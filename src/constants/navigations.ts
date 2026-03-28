@@ -1,0 +1,103 @@
+import { LuBarChartBig, LuBook, LuBookOpen, LuCalendarCheck2, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageCircle, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuTicket, LuUsers } from 'react-icons/lu';
+import { MdOutlineManageHistory, MdOutlineSupportAgent } from 'react-icons/md';
+import { TbSettingsHeart } from 'react-icons/tb';
+
+
+export const HOME_ROUTING = `/`;
+export const CLIENT_DASHBOARD_ROUTING = `/dashboard`;
+
+export const NAVIGARIONS_ROUTINGS = {
+
+    BILLING: `/billing`,
+    BUSINESS_SETTINGS: `/business-settings`,
+    DASHBOARD: `/dashboard`,
+    TODAY: `/today`,  // Social Content - "What should I do today?"
+    PROJECTS: `/projects`,
+    TRANSACTIONS: `/transactions`,
+    MENU: `/menu`,
+    QR_CODE: `/qr-code`,
+    FEEDBACK: `/feedback`,  // Guest Feedback Inbox
+    LOCATIONS: `/locations`,  // Chain Control Panel (Feature #4C)
+    USE_MENULIST: `/use-menulist`,  // Output Center — links, screens, print assets
+
+    HELP: `/help-center`,
+    PLATFORM: `/platform`,
+    USERS: `/users`,
+    SIGNIN: `/signin`,
+    FORGOT_PASSWORD: 'forgot-password',
+    PLATFORM_SUPPORT_TICKETS: `/platform/support-tickets`,
+    PLATFORM_KB_GENERATION: `/platform/kb-generation`,
+    PLATFORM_KNOWLEDGE_BASE: `/platform/knowledge-base`,
+    PLATFORM_CHANGELOG: `/platform/changelog`,
+    CHAT_MANAGEMENT: `/platform/chat-management`,
+    CHAT_INSIGHTS: `/platform/chat-insights`,
+    CHAT_ROI_CALCULATOR: `/platform/chat-roi-calculator`,
+    CHAT_WEEKLY_DIGEST: `/platform/chat-weekly-digest`,
+    CHAT_BACKFILL: `/platform/chat-backfill`,
+    PLATFORM_FEEDBACK_ADMIN: `/platform/feedback-admin`,
+}
+
+export const SKIP_CLIENT_APP_LAYOUT_ROUTINGS = [NAVIGARIONS_ROUTINGS.SIGNIN, HOME_ROUTING, NAVIGARIONS_ROUTINGS.MENU, NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD];
+
+export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean };
+
+export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
+    { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard },
+    { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2 },  // Social Content - daily action
+    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart },
+    { label: 'Users', route: NAVIGARIONS_ROUTINGS.USERS, icon: LuUsers },
+    { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2 },
+    { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
+    { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },
+    { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
+    { label: 'Transactions', route: NAVIGARIONS_ROUTINGS.TRANSACTIONS, icon: LuReceipt },
+    { label: 'Locations', route: NAVIGARIONS_ROUTINGS.LOCATIONS, icon: LuMapPin },
+    { label: 'Billing', route: NAVIGARIONS_ROUTINGS.BILLING, icon: LuCreditCard },
+    { label: 'Help', route: NAVIGARIONS_ROUTINGS.HELP, icon: LuHeartHandshake },
+    {
+        label: 'Conversations', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageCircle,
+        subNav: [
+            { label: 'Chat List', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageSquare },       // Most used - view/manage chats
+            { label: 'Chat Insights', route: NAVIGARIONS_ROUTINGS.CHAT_INSIGHTS, icon: LuBarChartBig },              // Daily analytics & metrics
+            { label: 'Weekly Digest', route: NAVIGARIONS_ROUTINGS.CHAT_WEEKLY_DIGEST, icon: LuLineChart },        // Weekly AI summary (trend line)
+            { label: 'ROI Calculator', route: NAVIGARIONS_ROUTINGS.CHAT_ROI_CALCULATOR, icon: LuPieChart },       // Monthly business value (breakdown)
+            { label: 'Chat Backfill', route: NAVIGARIONS_ROUTINGS.CHAT_BACKFILL, icon: LuDatabaseBackup },        // Admin tool (rare use)
+        ]
+    },
+    {
+        label: 'Platform', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: TbSettingsHeart,
+        subNav: [
+            { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: MdOutlineManageHistory },
+            { label: 'Support Tickets', route: NAVIGARIONS_ROUTINGS.PLATFORM_SUPPORT_TICKETS, icon: MdOutlineSupportAgent },
+            { label: 'Knowledge Base', route: NAVIGARIONS_ROUTINGS.PLATFORM_KNOWLEDGE_BASE, icon: LuBook },
+            { label: 'KB Generation', route: NAVIGARIONS_ROUTINGS.PLATFORM_KB_GENERATION, icon: LuDatabase },
+            { label: 'Changelog', route: NAVIGARIONS_ROUTINGS.PLATFORM_CHANGELOG, icon: LuReceipt },
+            { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.PLATFORM_FEEDBACK_ADMIN, icon: LuHeartHandshake }
+        ]
+    },
+]
+
+// Support menu options for help popover
+export const SUPPORT_MENU_OPTIONS = [
+    {
+        key: 'help-center',
+        label: 'Help Center',
+        description: 'Browse guides and tutorials',
+        icon: LuHeartHandshake,
+        route: NAVIGARIONS_ROUTINGS.HELP
+    },
+    {
+        key: 'documentation',
+        label: 'Documentation',
+        description: 'Learn how to use features',
+        icon: LuBookOpen,
+        route: NAVIGARIONS_ROUTINGS.HELP,
+    },
+    {
+        key: 'submit-ticket',
+        label: 'Submit a Ticket',
+        description: 'Get help from our team',
+        icon: LuTicket,
+        route: NAVIGARIONS_ROUTINGS.HELP,
+    },
+] as const;

@@ -1,0 +1,101 @@
+[
+  {
+    "featureName": "Enhance Image",
+    "description": "Enhance and upscale images online. Improve clarity, color, and resolution.",
+    "prompt": "Optional: e.g., 'make it brighter' or 'enhance the reds'",
+    "userPrompt": "optional",
+    "promptImage": "",
+    "icon": "LuZap",
+    "friendlyName": "Make it Better",
+    "whatItDoes": "Improves colors, sharpness & quality",
+    "example": "Before: Dull photo → After: Vibrant & crisp"
+  },
+  {
+    "featureName": "Replace Background",
+    "description": "Easily replace background from images",
+    "prompt": "Optional: e.g., 'place the subject on the left side'",
+    "userPrompt": "optional",
+    "promptImage": "",
+    "icon": "LuPalette",
+    "friendlyName": "Change Background",
+    "whatItDoes": "Swaps the background with a new one",
+    "example": "Before: White wall → After: Cozy cafe"
+  },
+  {
+    "featureName": "Remove Background",
+    "description": "Easily remove background from images",
+    "prompt": "",
+    "userPrompt": "",
+    "promptImage": "",
+    "icon": "LuScissors",
+    "friendlyName": "Cut Out Subject",
+    "whatItDoes": "Removes background, keeps your subject",
+    "example": "Before: Cluttered bg → After: Clean cutout"
+  },
+  {
+    "featureName": "Object Placement",
+    "description": "Easily place objects in images",
+    "prompt": "e.g., 'Place the vase on the coffee table'",
+    "userPrompt": "required",
+    "promptImage": "required",
+    "icon": "LuImagePlus",
+    "friendlyName": "Add Something",
+    "whatItDoes": "Places a new object in your image",
+    "example": "Add a plant, cup, or decoration"
+  },
+  {
+    "featureName": "Hair Style",
+    "description": "Easily change hair style in images",
+    "prompt": "e.g., 'Change my hair to platinum blonde' or 'Give me a curly bob'",
+    "userPrompt": "required",
+    "promptImage": "optional",
+    "icon": "LuSparkles",
+    "friendlyName": "New Hairstyle",
+    "whatItDoes": "Changes hair color, style, or cut",
+    "example": "Before: Brown bob → After: Blonde waves"
+  },
+  {
+    "featureName": "Clothing Try-On",
+    "description": "Virtually try on clothes on a model or yourself.",
+    "prompt": "e.g., 'Put this jacket on the model'",
+    "userPrompt": "required",
+    "promptImage": "optional",
+    "icon": "LuShirt",
+    "friendlyName": "Try On Clothes",
+    "whatItDoes": "Virtually puts clothing on a person",
+    "example": "See how an outfit looks on you"
+  },
+  {
+    "featureName": "Tattoo Try-On",
+    "description": "Preview a tattoo on a model or your own photo.",
+    "prompt": "e.g., 'on my forearm' OR 'on a man's muscular back'",
+    "userPrompt": "required",
+    "promptImage": "optional",
+    "icon": "LuPenTool",
+    "friendlyName": "Preview Tattoo",
+    "whatItDoes": "Shows how a tattoo would look",
+    "example": "See the design on your arm first"
+  },
+  {
+    "featureName": "Skin Treatment",
+    "description": "Easily treat skin in images",
+    "prompt": "e.g., 'Remove the acne from my cheek' or 'soften the wrinkles'",
+    "userPrompt": "required",
+    "promptImage": "",
+    "icon": "LuSparkles",
+    "friendlyName": "Skin Retouch",
+    "whatItDoes": "Smooths and enhances skin appearance",
+    "example": "Before: Blemishes → After: Clear skin"
+  },
+  {
+    "featureName": "Custom Prompt",
+    "description": "Enter what you want to do with the image. You can also upload a second image.",
+    "prompt": "e.g., 'Make this look like a vintage postcard' or 'add a pirate hat to the dog'",
+    "userPrompt": "required",
+    "promptImage": "optional",
+    "icon": "LuWand2",
+    "friendlyName": "Custom Edit",
+    "whatItDoes": "Tell AI exactly what you want",
+    "example": "Make it warmer, add steam, etc."
+  }
+]

@@ -1,0 +1,14 @@
+export const APPEAR_ANIMATIONS = 'appearAnimations';
+export const TEXT_STYLES = 'textStyles';
+export const BACKGROUND = 'background';
+export const BORDER = 'border';
+export const BORDER_RADIUS = 'borderRadius';
+export const MARGIN = 'margin';
+export const PADDING = 'padding';
+export const BOX_SHADOW = 'boxShadow';
+export const CONTENT_ALIGNMENT = 'contentAlignment';
+export const SIZE = 'size';
+export const POSITION = "position";
+export const STYLES = "styles";
+export const TEXT = "text";
+export const OBJECT_FIT = "objectFit";

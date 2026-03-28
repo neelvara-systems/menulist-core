@@ -1,0 +1,1349 @@
+{
+  "food": [
+    {
+      "id": "food_starters",
+      "label": "Starters",
+      "aliases": [
+        "Starters",
+        "Appetizers",
+        "Appetizer",
+        "Snacks",
+        "Snack",
+        "Nibbles",
+        "Small Bites",
+        "Finger Food",
+        "Entrées"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "food_soups",
+      "label": "Soups",
+      "aliases": [
+        "Soups",
+        "Soup",
+        "Broths",
+        "Shorba"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "food_salads",
+      "label": "Salads",
+      "aliases": [
+        "Salads",
+        "Salad",
+        "Fresh Salads",
+        "Garden Salads"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "food_mains",
+      "label": "Main Course",
+      "aliases": [
+        "Main Course",
+        "Mains",
+        "Main Dishes",
+        "Entrée",
+        "Entrees",
+        "Main Menu",
+        "Specials"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "food_rice",
+      "label": "Rice & Biryani",
+      "aliases": [
+        "Rice",
+        "Biryani",
+        "Biryanis",
+        "Pulao",
+        "Pulav",
+        "Fried Rice",
+        "Rice Dishes",
+        "Rice & Biryani"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "food_bread",
+      "label": "Breads",
+      "aliases": [
+        "Breads",
+        "Bread",
+        "Roti",
+        "Naan",
+        "Rotis",
+        "Naans",
+        "Indian Breads",
+        "Chapati",
+        "Paratha",
+        "Parathas"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "food_pasta",
+      "label": "Pasta & Noodles",
+      "aliases": [
+        "Pasta",
+        "Pastas",
+        "Noodles",
+        "Spaghetti",
+        "Penne",
+        "Pasta & Noodles"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "food_pizza",
+      "label": "Pizza",
+      "aliases": [
+        "Pizza",
+        "Pizzas",
+        "Wood Fired Pizza",
+        "Thin Crust",
+        "Flatbread"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "food_burgers",
+      "label": "Burgers & Sandwiches",
+      "aliases": [
+        "Burgers",
+        "Burger",
+        "Sandwiches",
+        "Sandwich",
+        "Wraps",
+        "Wrap",
+        "Subs",
+        "Burgers & Sandwiches"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "food_sides",
+      "label": "Sides",
+      "aliases": [
+        "Sides",
+        "Side Dishes",
+        "Side Orders",
+        "Accompaniments",
+        "Extras",
+        "Add-ons"
+      ],
+      "sortOrder": 10
+    },
+    {
+      "id": "food_desserts",
+      "label": "Desserts",
+      "aliases": [
+        "Desserts",
+        "Dessert",
+        "Sweets",
+        "Sweet Dishes",
+        "Mithai",
+        "Ice Cream",
+        "Cakes",
+        "Pastries"
+      ],
+      "sortOrder": 11
+    },
+    {
+      "id": "food_beverages",
+      "label": "Beverages",
+      "aliases": [
+        "Beverages",
+        "Drinks",
+        "Drink",
+        "Refreshments",
+        "Hot Drinks",
+        "Cold Drinks",
+        "Juices",
+        "Smoothies",
+        "Shakes",
+        "Milkshakes"
+      ],
+      "sortOrder": 12
+    },
+    {
+      "id": "food_coffee_tea",
+      "label": "Coffee & Tea",
+      "aliases": [
+        "Coffee",
+        "Tea",
+        "Chai",
+        "Espresso",
+        "Latte",
+        "Cappuccino",
+        "Hot Beverages",
+        "Coffee & Tea"
+      ],
+      "sortOrder": 13
+    },
+    {
+      "id": "food_alcohol",
+      "label": "Alcohol",
+      "aliases": [
+        "Alcohol",
+        "Alcoholic Drinks",
+        "Beer",
+        "Wine",
+        "Cocktails",
+        "Spirits",
+        "Bar Menu",
+        "Liquor",
+        "IMFL"
+      ],
+      "sortOrder": 14
+    },
+    {
+      "id": "food_combos",
+      "label": "Combos & Meals",
+      "aliases": [
+        "Combos",
+        "Combo",
+        "Meals",
+        "Meal Deals",
+        "Value Meals",
+        "Thali",
+        "Platters",
+        "Set Menu",
+        "Combos & Meals"
+      ],
+      "sortOrder": 15
+    },
+    {
+      "id": "food_breakfast",
+      "label": "Breakfast",
+      "aliases": [
+        "Breakfast",
+        "Morning Menu",
+        "Brunch",
+        "Early Morning"
+      ],
+      "sortOrder": 16
+    },
+    {
+      "id": "food_seafood",
+      "label": "Seafood",
+      "aliases": [
+        "Seafood",
+        "Fish",
+        "Prawns",
+        "Shrimp",
+        "Crab",
+        "Lobster",
+        "Fish & Seafood"
+      ],
+      "sortOrder": 17
+    },
+    {
+      "id": "food_tandoor",
+      "label": "Tandoor & Grill",
+      "aliases": [
+        "Tandoor",
+        "Grill",
+        "Grilled",
+        "BBQ",
+        "Barbecue",
+        "Kebabs",
+        "Kebab",
+        "Tikka",
+        "Tandoori"
+      ],
+      "sortOrder": 18
+    },
+    {
+      "id": "food_chinese",
+      "label": "Chinese",
+      "aliases": [
+        "Chinese",
+        "Indo-Chinese",
+        "Manchurian",
+        "Hakka",
+        "Chinese Specials"
+      ],
+      "sortOrder": 19
+    },
+    {
+      "id": "food_south_indian",
+      "label": "South Indian",
+      "aliases": [
+        "South Indian",
+        "Dosa",
+        "Idli",
+        "Uttapam",
+        "Vada",
+        "Tiffin"
+      ],
+      "sortOrder": 20
+    },
+    {
+      "id": "food_kids",
+      "label": "Kids Menu",
+      "aliases": [
+        "Kids",
+        "Kids Menu",
+        "Children's Menu",
+        "Junior Menu",
+        "Little Ones"
+      ],
+      "sortOrder": 21
+    }
+  ],
+  "service": [
+    {
+      "id": "service_hair",
+      "label": "Hair Services",
+      "aliases": [
+        "Hair",
+        "Haircut",
+        "Hair Styling",
+        "Hair Color",
+        "Hair Colouring",
+        "Hair Treatment",
+        "Blowout",
+        "Hair Services",
+        "Hair Cut",
+        "Rebonding",
+        "Keratin",
+        "Smoothening",
+        "Hair Spa"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "service_skin",
+      "label": "Skin Care",
+      "aliases": [
+        "Skin",
+        "Facial",
+        "Facials",
+        "Skin Care",
+        "Face Treatment",
+        "Cleanup",
+        "Skin Treatment",
+        "Face Pack",
+        "De-Tan",
+        "Bleach",
+        "Brightening"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "service_nails",
+      "label": "Nail Services",
+      "aliases": [
+        "Nails",
+        "Manicure",
+        "Pedicure",
+        "Nail Art",
+        "Nail Services",
+        "Nail Care",
+        "Gel Nails",
+        "Acrylic Nails",
+        "Nail Extension"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "service_spa",
+      "label": "Spa & Massage",
+      "aliases": [
+        "Spa",
+        "Massage",
+        "Body Massage",
+        "Thai Massage",
+        "Aromatherapy",
+        "Spa & Massage",
+        "Relaxation",
+        "Deep Tissue",
+        "Swedish Massage",
+        "Hot Stone"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "service_makeup",
+      "label": "Makeup",
+      "aliases": [
+        "Makeup",
+        "Make-up",
+        "Bridal Makeup",
+        "Party Makeup",
+        "Makeup Services",
+        "HD Makeup",
+        "Airbrush Makeup"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "service_waxing",
+      "label": "Waxing & Threading",
+      "aliases": [
+        "Waxing",
+        "Threading",
+        "Hair Removal",
+        "Waxing & Threading",
+        "Eyebrow",
+        "Full Body Wax",
+        "Upper Lip",
+        "Laser"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "service_grooming",
+      "label": "Grooming",
+      "aliases": [
+        "Grooming",
+        "Beard",
+        "Shaving",
+        "Men's Grooming",
+        "Beard Trim",
+        "Groom",
+        "Men's Services"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "service_body",
+      "label": "Body Treatments",
+      "aliases": [
+        "Body",
+        "Body Treatment",
+        "Body Wrap",
+        "Scrub",
+        "Body Scrub",
+        "Body Polish",
+        "Exfoliation"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "service_bridal",
+      "label": "Bridal Services",
+      "aliases": [
+        "Bridal",
+        "Wedding",
+        "Pre-Bridal",
+        "Bridal Package",
+        "Mehendi",
+        "Henna"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "service_kids",
+      "label": "Kids Services",
+      "aliases": [
+        "Kids",
+        "Children",
+        "Kids Haircut",
+        "Kids Services",
+        "Junior"
+      ],
+      "sortOrder": 10
+    },
+    {
+      "id": "service_cleaning",
+      "label": "Cleaning Services",
+      "aliases": [
+        "Cleaning",
+        "Deep Clean",
+        "House Cleaning",
+        "Office Cleaning",
+        "Sanitization",
+        "Disinfection"
+      ],
+      "sortOrder": 11
+    },
+    {
+      "id": "service_repair",
+      "label": "Repair & Maintenance",
+      "aliases": [
+        "Repair",
+        "Maintenance",
+        "Fix",
+        "Service",
+        "Installation",
+        "Plumbing",
+        "Electrical",
+        "AC Service"
+      ],
+      "sortOrder": 12
+    },
+    {
+      "id": "service_pet",
+      "label": "Pet Services",
+      "aliases": [
+        "Pet",
+        "Pet Grooming",
+        "Dog Grooming",
+        "Cat Grooming",
+        "Pet Bath",
+        "Pet Styling"
+      ],
+      "sortOrder": 13
+    },
+    {
+      "id": "service_auto",
+      "label": "Auto Services",
+      "aliases": [
+        "Car Wash",
+        "Detailing",
+        "Car Care",
+        "Auto Detailing",
+        "Polishing",
+        "Ceramic Coating",
+        "Paint Protection"
+      ],
+      "sortOrder": 14
+    },
+    {
+      "id": "service_packages",
+      "label": "Packages",
+      "aliases": [
+        "Packages",
+        "Combos",
+        "Bundle",
+        "Offers",
+        "Package Deals",
+        "Service Packages",
+        "Combo Offers"
+      ],
+      "sortOrder": 15
+    }
+  ],
+  "health": [
+    {
+      "id": "health_classes",
+      "label": "Classes",
+      "aliases": [
+        "Classes",
+        "Group Classes",
+        "Sessions",
+        "Programs",
+        "Fitness Classes",
+        "Batch",
+        "Batches"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "health_personal_training",
+      "label": "Personal Training",
+      "aliases": [
+        "Personal Training",
+        "PT",
+        "1-on-1",
+        "Private Training",
+        "Trainer",
+        "One on One"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "health_yoga",
+      "label": "Yoga",
+      "aliases": [
+        "Yoga",
+        "Yoga Classes",
+        "Hot Yoga",
+        "Power Yoga",
+        "Meditation",
+        "Pranayama",
+        "Asana"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "health_cardio",
+      "label": "Cardio & Aerobics",
+      "aliases": [
+        "Cardio",
+        "Aerobics",
+        "Zumba",
+        "Dance Fitness",
+        "HIIT",
+        "Spinning",
+        "Cycling"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "health_strength",
+      "label": "Strength Training",
+      "aliases": [
+        "Strength",
+        "Weight Training",
+        "Weights",
+        "Gym Floor",
+        "CrossFit",
+        "Functional Training",
+        "Calisthenics"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "health_martial_arts",
+      "label": "Martial Arts",
+      "aliases": [
+        "Martial Arts",
+        "Karate",
+        "Taekwondo",
+        "Boxing",
+        "MMA",
+        "Kickboxing",
+        "Judo",
+        "Self Defense"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "health_swimming",
+      "label": "Swimming",
+      "aliases": [
+        "Swimming",
+        "Pool",
+        "Aqua",
+        "Aqua Fitness",
+        "Swim Classes"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "health_dental",
+      "label": "Dental Services",
+      "aliases": [
+        "Dental",
+        "Teeth",
+        "Cleaning",
+        "Whitening",
+        "Braces",
+        "Root Canal",
+        "Extraction",
+        "Implant",
+        "Crown"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "health_consultation",
+      "label": "Consultation",
+      "aliases": [
+        "Consultation",
+        "Check-up",
+        "Check Up",
+        "Diagnosis",
+        "Examination",
+        "OPD",
+        "Doctor Visit"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "health_therapy",
+      "label": "Therapy",
+      "aliases": [
+        "Therapy",
+        "Physiotherapy",
+        "Physical Therapy",
+        "Rehab",
+        "Rehabilitation",
+        "Chiropractic"
+      ],
+      "sortOrder": 10
+    },
+    {
+      "id": "health_wellness",
+      "label": "Wellness Programs",
+      "aliases": [
+        "Wellness",
+        "Detox",
+        "Weight Loss",
+        "Weight Management",
+        "Nutrition",
+        "Diet Plan",
+        "Health Plan"
+      ],
+      "sortOrder": 11
+    },
+    {
+      "id": "health_membership",
+      "label": "Memberships",
+      "aliases": [
+        "Membership",
+        "Memberships",
+        "Plans",
+        "Monthly Plan",
+        "Annual Plan",
+        "Subscription",
+        "Pass",
+        "Day Pass"
+      ],
+      "sortOrder": 12
+    },
+    {
+      "id": "health_treatments",
+      "label": "Treatments",
+      "aliases": [
+        "Treatments",
+        "Treatment",
+        "Procedure",
+        "Cosmetic",
+        "Aesthetic",
+        "Laser Treatment",
+        "Dermatology"
+      ],
+      "sortOrder": 13
+    },
+    {
+      "id": "health_packages",
+      "label": "Health Packages",
+      "aliases": [
+        "Packages",
+        "Health Check",
+        "Full Body Checkup",
+        "Annual Checkup",
+        "Lab Tests"
+      ],
+      "sortOrder": 14
+    }
+  ],
+  "retail": [
+    {
+      "id": "retail_new_arrivals",
+      "label": "New Arrivals",
+      "aliases": [
+        "New Arrivals",
+        "New",
+        "Just In",
+        "Latest",
+        "New Collection",
+        "Fresh Stock",
+        "New Launch"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "retail_bestsellers",
+      "label": "Bestsellers",
+      "aliases": [
+        "Bestsellers",
+        "Best Sellers",
+        "Top Sellers",
+        "Popular",
+        "Most Popular",
+        "Trending",
+        "Hot Picks"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "retail_mens",
+      "label": "Men's Collection",
+      "aliases": [
+        "Men",
+        "Men's",
+        "Mens",
+        "For Men",
+        "Gents",
+        "Male",
+        "Boys"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "retail_womens",
+      "label": "Women's Collection",
+      "aliases": [
+        "Women",
+        "Women's",
+        "Womens",
+        "For Women",
+        "Ladies",
+        "Female",
+        "Girls"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "retail_kids",
+      "label": "Kids Collection",
+      "aliases": [
+        "Kids",
+        "Children",
+        "Kids Collection",
+        "Junior",
+        "Boys & Girls",
+        "Infant",
+        "Baby"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "retail_clothing",
+      "label": "Clothing",
+      "aliases": [
+        "Clothing",
+        "Apparel",
+        "Clothes",
+        "Garments",
+        "Wear",
+        "Outfits",
+        "Tops",
+        "Bottoms"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "retail_footwear",
+      "label": "Footwear",
+      "aliases": [
+        "Footwear",
+        "Shoes",
+        "Sandals",
+        "Boots",
+        "Sneakers",
+        "Heels",
+        "Flats",
+        "Slippers"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "retail_accessories",
+      "label": "Accessories",
+      "aliases": [
+        "Accessories",
+        "Accessory",
+        "Bags",
+        "Watches",
+        "Sunglasses",
+        "Belts",
+        "Wallets",
+        "Jewelry",
+        "Jewellery"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "retail_electronics",
+      "label": "Electronics",
+      "aliases": [
+        "Electronics",
+        "Gadgets",
+        "Devices",
+        "Tech",
+        "Phones",
+        "Laptops",
+        "Headphones"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "retail_home",
+      "label": "Home & Living",
+      "aliases": [
+        "Home",
+        "Home Decor",
+        "Furniture",
+        "Living",
+        "Household",
+        "Kitchen",
+        "Bedding",
+        "Bath"
+      ],
+      "sortOrder": 10
+    },
+    {
+      "id": "retail_beauty",
+      "label": "Beauty & Personal Care",
+      "aliases": [
+        "Beauty",
+        "Personal Care",
+        "Skincare",
+        "Cosmetics",
+        "Perfume",
+        "Fragrance",
+        "Makeup"
+      ],
+      "sortOrder": 11
+    },
+    {
+      "id": "retail_books",
+      "label": "Books & Stationery",
+      "aliases": [
+        "Books",
+        "Stationery",
+        "Notebooks",
+        "Pens",
+        "Art Supplies",
+        "Journals"
+      ],
+      "sortOrder": 12
+    },
+    {
+      "id": "retail_gifts",
+      "label": "Gifts",
+      "aliases": [
+        "Gifts",
+        "Gift Sets",
+        "Hampers",
+        "Gift Box",
+        "Gift Cards",
+        "Presents"
+      ],
+      "sortOrder": 13
+    },
+    {
+      "id": "retail_sale",
+      "label": "Sale",
+      "aliases": [
+        "Sale",
+        "Clearance",
+        "Discount",
+        "Offers",
+        "Deals",
+        "On Sale",
+        "End of Season"
+      ],
+      "sortOrder": 14
+    }
+  ],
+  "creative": [
+    {
+      "id": "creative_photography",
+      "label": "Photography",
+      "aliases": [
+        "Photography",
+        "Photo Shoot",
+        "Portraits",
+        "Product Photography",
+        "Event Photography",
+        "Wedding Photography"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "creative_design",
+      "label": "Design Services",
+      "aliases": [
+        "Design",
+        "Graphic Design",
+        "Logo",
+        "Branding",
+        "Visual Identity",
+        "Illustration"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "creative_art",
+      "label": "Art & Prints",
+      "aliases": [
+        "Art",
+        "Prints",
+        "Paintings",
+        "Canvas",
+        "Wall Art",
+        "Originals",
+        "Limited Edition"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "creative_tattoo",
+      "label": "Tattoo",
+      "aliases": [
+        "Tattoo",
+        "Tattoos",
+        "Body Art",
+        "Custom Tattoo",
+        "Piercing",
+        "Permanent Tattoo",
+        "Temporary Tattoo"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "creative_music",
+      "label": "Music",
+      "aliases": [
+        "Music",
+        "Music Lessons",
+        "Guitar",
+        "Piano",
+        "Vocals",
+        "Singing",
+        "Drums",
+        "Instruments"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "creative_craft",
+      "label": "Handmade & Craft",
+      "aliases": [
+        "Handmade",
+        "Craft",
+        "Custom Made",
+        "Artisan",
+        "Bespoke",
+        "Hand Crafted",
+        "DIY"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "creative_tailoring",
+      "label": "Tailoring",
+      "aliases": [
+        "Tailoring",
+        "Alterations",
+        "Custom Stitch",
+        "Bespoke Tailoring",
+        "Stitching",
+        "Made to Measure"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "creative_events",
+      "label": "Event Services",
+      "aliases": [
+        "Events",
+        "Event Planning",
+        "Decoration",
+        "Party Planning",
+        "Wedding Planning",
+        "Venue"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "creative_classes",
+      "label": "Classes & Workshops",
+      "aliases": [
+        "Classes",
+        "Workshop",
+        "Workshops",
+        "Course",
+        "Courses",
+        "Training",
+        "Lessons",
+        "Learn"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "creative_portfolio",
+      "label": "Portfolio",
+      "aliases": [
+        "Portfolio",
+        "Gallery",
+        "Work",
+        "Our Work",
+        "Showcase",
+        "Projects"
+      ],
+      "sortOrder": 10
+    },
+    {
+      "id": "creative_packages",
+      "label": "Packages",
+      "aliases": [
+        "Packages",
+        "Plans",
+        "Pricing",
+        "Bundles",
+        "Combo"
+      ],
+      "sortOrder": 11
+    }
+  ],
+  "professional": [
+    {
+      "id": "professional_legal",
+      "label": "Legal Services",
+      "aliases": [
+        "Legal",
+        "Law",
+        "Attorney",
+        "Lawyer",
+        "Advocate",
+        "Legal Advice",
+        "Case"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "professional_financial",
+      "label": "Financial Services",
+      "aliases": [
+        "Financial",
+        "Finance",
+        "Investment",
+        "Tax",
+        "Accounting",
+        "Audit",
+        "Insurance",
+        "Wealth Management"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "professional_consulting",
+      "label": "Consulting",
+      "aliases": [
+        "Consulting",
+        "Consultation",
+        "Advisory",
+        "Strategy",
+        "Business Consulting",
+        "Management Consulting"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "professional_real_estate",
+      "label": "Real Estate",
+      "aliases": [
+        "Real Estate",
+        "Property",
+        "Rental",
+        "Lease",
+        "Buy",
+        "Sell",
+        "Commercial",
+        "Residential"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "professional_education",
+      "label": "Education & Tutoring",
+      "aliases": [
+        "Education",
+        "Tutoring",
+        "Tuition",
+        "Coaching",
+        "Training",
+        "Online Classes",
+        "Exam Prep"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "professional_it",
+      "label": "IT & Tech Services",
+      "aliases": [
+        "IT",
+        "Technology",
+        "Software",
+        "Web Development",
+        "App Development",
+        "IT Support",
+        "Digital Marketing"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "professional_marketing",
+      "label": "Marketing Services",
+      "aliases": [
+        "Marketing",
+        "Advertising",
+        "SEO",
+        "Social Media",
+        "Content",
+        "Branding",
+        "PR"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "professional_travel",
+      "label": "Travel & Tours",
+      "aliases": [
+        "Travel",
+        "Tour",
+        "Tours",
+        "Trip",
+        "Holiday",
+        "Vacation",
+        "Packages",
+        "Itinerary"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "professional_services",
+      "label": "General Services",
+      "aliases": [
+        "Services",
+        "Service",
+        "Our Services",
+        "What We Do",
+        "Solutions"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "professional_packages",
+      "label": "Packages & Plans",
+      "aliases": [
+        "Packages",
+        "Plans",
+        "Pricing",
+        "Tiers",
+        "Subscription",
+        "Retainer"
+      ],
+      "sortOrder": 10
+    }
+  ],
+  "specialty": [
+    {
+      "id": "specialty_rooms",
+      "label": "Rooms & Suites",
+      "aliases": [
+        "Rooms",
+        "Room Types",
+        "Suites",
+        "Accommodation",
+        "Stay",
+        "Deluxe",
+        "Standard",
+        "Premium"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "specialty_dining",
+      "label": "Dining",
+      "aliases": [
+        "Dining",
+        "Restaurant",
+        "Cafe",
+        "Bar",
+        "Lounge",
+        "Room Service",
+        "Breakfast"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "specialty_activities",
+      "label": "Activities",
+      "aliases": [
+        "Activities",
+        "Adventure",
+        "Excursions",
+        "Tours",
+        "Experience",
+        "Things to Do"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "specialty_childcare",
+      "label": "Childcare Programs",
+      "aliases": [
+        "Childcare",
+        "Daycare",
+        "Preschool",
+        "Nursery",
+        "After School",
+        "Summer Camp",
+        "Play Group"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "specialty_coworking",
+      "label": "Workspace Plans",
+      "aliases": [
+        "Workspace",
+        "Desk",
+        "Office",
+        "Meeting Room",
+        "Conference Room",
+        "Hot Desk",
+        "Dedicated Desk",
+        "Cabin"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "specialty_vehicles",
+      "label": "Vehicles",
+      "aliases": [
+        "Vehicles",
+        "Cars",
+        "Bikes",
+        "Scooters",
+        "Electric",
+        "Used Cars",
+        "New Cars",
+        "Pre-Owned"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "specialty_rentals",
+      "label": "Rentals",
+      "aliases": [
+        "Rentals",
+        "Rental",
+        "Hire",
+        "Booking",
+        "Hourly",
+        "Daily",
+        "Weekly"
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "specialty_repair",
+      "label": "Repair & Service",
+      "aliases": [
+        "Repair",
+        "Service",
+        "Fix",
+        "Maintenance",
+        "Restoration",
+        "Diagnostics"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "specialty_services",
+      "label": "General Services",
+      "aliases": [
+        "Services",
+        "Service",
+        "Our Services",
+        "Offerings"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "specialty_packages",
+      "label": "Packages",
+      "aliases": [
+        "Packages",
+        "Plans",
+        "Deals",
+        "Bundles",
+        "Offers"
+      ],
+      "sortOrder": 10
+    }
+  ]
+}

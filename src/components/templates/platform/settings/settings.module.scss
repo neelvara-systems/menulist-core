@@ -1,0 +1,11 @@
+.navigations {
+  width: 250px;
+  height: calc(100vh - 61px);
+  padding: 10px;
+}
+.contentWrap {
+  width: calc(100vw - 250px);
+  height: calc(100vh - 61px);
+  overflow-y: auto;
+  padding: 20px;
+}

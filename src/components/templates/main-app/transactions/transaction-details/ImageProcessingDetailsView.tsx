@@ -1,0 +1,169 @@
+import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { formatCurrency } from '@util/formatters';
+import { Descriptions, Divider, Image, Table, Tag, Typography } from 'antd';
+import React, { useContext } from 'react';
+import { TransactionDetails } from '../TransactionDetailsModal'; // Adjust import path if needed
+
+interface ImageProcessingDetailsViewProps {
+    transaction: TransactionDetails;
+}
+
+// Helper to render extracted menu items from image processing
+const renderExtractedMenuItems = (clientResponse: any, categories: any[]) => {
+    if (!clientResponse?.data?.items || clientResponse.data.items.length === 0) {
+        return <Typography.Text>No menu items found</Typography.Text>;
+    }
+    const items = clientResponse.data.items;
+
+    return (
+        <Table
+            dataSource={items.map((item: any) => ({
+                key: item.id,
+                name: typeof item.name === 'object' ? item.name?.en : String(item.name) || 'Unnamed Item',
+                category: (() => {
+                    const category = categories.find((c: any) => c.id === item.category);
+                    if (category && typeof category.name === 'object') {
+                        return category.name?.en || 'Unknown';
+                    }
+                    return category?.name || 'Unknown';
+                })(),
+                price: item.price || (item.attributes ? 'Multiple prices' : 'N/A')
+            }))}
+            columns={[
+                { title: 'Item Name', dataIndex: 'name', key: 'name' },
+                { title: 'Category', dataIndex: 'category', key: 'category' },
+                {
+                    title: 'Price', dataIndex: 'price', key: 'price',
+                    render: (price) => {
+                        if (typeof price === 'string' && price !== 'N/A' && price !== 'Multiple prices') {
+                            const numericPrice = parseFloat(price);
+                            return isNaN(numericPrice) ? price : formatCurrency(numericPrice * 100, 'INR'); // Convert to cents
+                        }
+                        return price;
+                    }
+                }
+            ]}
+            expandable={{
+                expandedRowRender: (record: any) => {
+                    const item = items.find((i: any) => {
+                        if (typeof i.name === 'object') {
+                            return i.name?.en === record.name;
+                        }
+                        return String(i.name) === record.name;
+                    });
+                    if (!item || !Array.isArray(item.attributes) || item.attributes.length === 0) return null;
+
+                    return (
+                        <Table
+                            dataSource={Array.isArray(item.attributes) ?
+                                item.attributes.map((attr: any, index: number) => ({
+                                    ...attr,
+                                    key: `${record.key}-attr-${index}`,
+                                    name: typeof attr.name === 'string' ? attr.name : 'Variation',
+                                    price: typeof attr.price === 'string' ? attr.price : '0'
+                                })) : []}
+                            columns={[
+                                { title: 'Variation', dataIndex: 'name', key: 'name' },
+                                {
+                                    title: 'Price',
+                                    dataIndex: 'price',
+                                    key: 'price',
+                                    render: (price) => {
+                                        const numericPrice = parseFloat(price);
+                                        return isNaN(numericPrice) ? price : formatCurrency(numericPrice * 100, 'INR'); // Convert to cents
+                                    }
+                                }
+                            ]}
+                            pagination={false}
+                            size="small"
+                        />
+                    );
+                },
+                rowExpandable: (record: any) => {
+                    const item = items.find((i: any) => {
+                        if (typeof i.name === 'object') {
+                            return i.name?.en === record.name;
+                        }
+                        return String(i.name) === record.name;
+                    });
+                    return item && Array.isArray(item.attributes) && item.attributes.length > 0;
+                }
+            }}
+            pagination={false}
+            size="small"
+        />
+    );
+};
+
+const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({ transaction }) => {
+    const { files, targetLanguages, clientResponse } = transaction;
+    const { tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+
+    const categories = clientResponse?.data?.categories || [];
+    const items = clientResponse?.data?.items || [];
+
+    return (
+        <>
+            <Descriptions title="Processing Information" column={1}>
+                <Descriptions.Item label="Target Languages">
+                    {targetLanguages?.map((lang) => (
+                        <Tag key={lang.code}>{lang.name} ({lang.code})</Tag>
+                    ))}
+                </Descriptions.Item>
+            </Descriptions>
+
+            <Divider />
+
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                {/* Left section - Image */}
+                {files && files.length > 0 && (
+                    <div style={{ flex: '0 0 45%', minWidth: '300px' }}>
+                        <Typography.Title level={5}>Input Image</Typography.Title>
+                        <div style={{ textAlign: 'center' }}>
+                            <Image
+                                src={files[0].url}
+                                alt="Input Image"
+                                style={{ maxHeight: '400px', maxWidth: '100%' }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Right section - Extracted Content */}
+                <div style={{ flex: '1 1 45%', minWidth: '300px' }}>
+                    <Typography.Title level={5}>Extracted Content</Typography.Title>
+                    <div style={{ maxHeight: 400, overflow: 'auto' }}>
+                        {tenantDetails?.businessEntityType === 'B2B' ? (
+                            // Raw JSON for B2B
+                            <pre style={{ whiteSpace: 'pre-wrap', fontSize: '12px' }}>
+                                {JSON.stringify(clientResponse, null, 2)}
+                            </pre>
+                        ) : (
+                            // Formatted view for others
+                            <>
+                                {categories.length > 0 && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <Typography.Text strong>Menu Categories:</Typography.Text>
+                                        {categories.map((category: any) => (
+                                            <Tag key={category.id} color="blue" style={{ margin: '4px' }}>
+                                                {category.name?.en || 'Unnamed Category'}
+                                            </Tag>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {renderExtractedMenuItems(clientResponse, categories)}
+
+                                {items.length === 0 && categories.length === 0 && (
+                                    <Typography.Text>No menu items or categories found</Typography.Text>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+export default ImageProcessingDetailsView;

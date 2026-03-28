@@ -1,0 +1,1419 @@
+# AI Image Generation — Implementation
+
+**Feature:** AI-Powered Image Generation & Editing  
+**Status:** ✅ Production Ready  
+**Last Updated:** January 28, 2026  
+**Audience:** Developers, Future Maintainers
+
+---
+
+## Table of Contents
+
+1. [Architecture Overview](#architecture-overview)
+2. [Database Schema](#database-schema)
+3. [API Contracts](#api-contracts)
+4. [File Inventory](#file-inventory)
+5. [Implementation Patterns](#implementation-patterns)
+6. [Security Checklist](#security-checklist)
+7. [Testing Guide](#testing-guide)
+8. [Recommendations & Technical Debt](#recommendations--technical-debt)
+
+---
+
+## Architecture Overview
+
+### System Components
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           AI IMAGE GENERATION SYSTEM                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ SINGLE IMAGE GENERATION (Synchronous)                                │    │
+│  │                                                                      │    │
+│  │  ImageUploadModal → AiImageGenerator → generateImageViaApi          │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  POST /api/image-generation                                         │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  Gemini 2.0 Flash / Imagen 3                                        │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  Base64 Image → Preview → Select → Upload to Storage                │    │
+│  │                                                                      │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ BULK IMAGE GENERATION (Asynchronous)                                 │    │
+│  │                                                                      │    │
+│  │  ImageUploadModal → BatchSetupView → BatchImageGenerationView       │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  addImageBatchProcessingJob (Firestore)                             │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  POST /api/image-generation/batch-trigger                           │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  Google Cloud Tasks (one task per item)                             │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  POST /api/image-generation/batch-generation (Worker)               │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  useImageBatchJobListener (Real-time Firestore updates)             │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  BatchImageGenerationResultView → Review → Upload/Discard           │    │
+│  │                                                                      │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ IMAGE EDITING                                                        │    │
+│  │                                                                      │    │
+│  │  EditImageModal → editImageViaApi                                   │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  POST /api/image-editing                                            │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  Gemini 2.0 Flash (with reference image)                            │    │
+│  │       │                                                              │    │
+│  │       ▼                                                              │    │
+│  │  Preview → Select → Upload                                          │    │
+│  │                                                                      │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### AI Models Used
+
+| Model                                       | Use Case                    | Notes                       |
+| ------------------------------------------- | --------------------------- | --------------------------- |
+| `gemini-2.0-flash-preview-image-generation` | Primary generation, editing | Supports reference images   |
+| `imagen-3.0-generate-002`                   | Alternative generation      | Better for text-free images |
+
+---
+
+## Multi-Outlet Governance
+
+Image generation follows the same multi-outlet governance rules as translations and descriptions:
+
+| Store Type     | Can Generate Images For                   |
+| -------------- | ----------------------------------------- |
+| **Standalone** | All items (whole menu)                    |
+| **Master**     | All items (whole menu)                    |
+| **Outlet**     | **ONLY local-only items** (`L_I_` prefix) |
+
+### Implementation
+
+**Files Modified:**
+
+| File                                                          | Change                                                     |
+| ------------------------------------------------------------- | ---------------------------------------------------------- |
+| `src/components/.../ImageUploadModal.tsx:12,36-39,54,127-138` | Added governance props, filter items by `local-only` state |
+| `src/components/.../Editor.tsx:972-974`                       | Pass `itemStates` and `isMasterLinked` to ImageUploadModal |
+
+**Governance Flow:**
+
+```
+Outlet opens Image Upload Modal →
+  ├── ImageUploadModal receives itemStates + isMasterLinked
+  ├── items useMemo filters by governance
+  │   ├── inherited items → EXCLUDED (images from master)
+  │   ├── overridden items → EXCLUDED (images from master)
+  │   └── local-only items → INCLUDED ✓
+  ├── Single image generation: Only local-only items in dropdown
+  └── Batch image generation: Only local-only items available for selection
+```
+
+**Why Outlets Can't Generate Images for Inherited/Overridden Items:**
+
+- `inherited` items: Master owns the item content, including images
+- `overridden` items: Outlet only overrides price/availability, not content
+- `local-only` items: Outlet owns these entirely, can generate images
+
+---
+
+## Database Schema
+
+### Firestore Collection: `IMAGE_BATCH_PROCESSING_JOBS`
+
+**Path:** `IMAGE_BATCH_PROCESSING_JOBS/{tenantId}/{storeId}/{jobId}`
+
+```typescript
+interface BatchImageGenerationJobType {
+  id?: string;
+  status:
+    | "queued"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "finished"
+    | "discarded";
+  totalImages: number;
+  generatedCount: number;
+  generationConfig: {
+    prompt?: string;
+    referanceImage?: UserUploadedFileType | null;
+    stylesCategory?: string;
+    styles?: string[];
+    aspectRatio?: string;
+    environments?: string[];
+    lighting?: string[];
+    colors?: string[];
+    moods?: string[];
+    compositions?: string[];
+    backgroundColor?: string;
+    transparentBg?: boolean;
+    negativePrompt?: string;
+    foregroundColor?: string;
+    selectedImageTypes?: string[];
+    isMultiMode?: boolean;
+    agreeToTerms?: boolean;
+  };
+  projectId: string;
+  itemsList: Array<{
+    id: string;
+    name: string;
+    images: UserUploadedFileType[];
+  }>;
+  statusHistory: Array<{
+    status: string;
+    reason?: string;
+    createdOn: string | number | Date;
+  }>;
+  error?: string;
+  modifiedOn?: string | number | Date;
+  createdOn?: string | number | Date;
+}
+```
+
+### Status Lifecycle
+
+```
+┌─────────┐    ┌────────────┐    ┌───────────┐    ┌──────────┐
+│ QUEUED  │ → │ PROCESSING │ → │ COMPLETED │ → │ FINISHED │
+└─────────┘    └────────────┘    └───────────┘    └──────────┘
+     │              │                  │
+     │              │                  ▼
+     │              │           ┌───────────┐
+     │              │           │ DISCARDED │
+     │              │           └───────────┘
+     │              │
+     ▼              ▼
+┌───────────┐  ┌────────┐
+│ CANCELLED │  │ FAILED │
+└───────────┘  └────────┘
+```
+
+---
+
+## API Contracts
+
+### 1. Single Image Generation
+
+**Endpoint:** `POST /api/image-generation`
+
+**Request Schema (Zod):**
+
+```typescript
+const ImageGenerationRequestSchema = z.object({
+  generationConfig: z.object({
+    prompt: z.string().optional(),
+    referanceImage: UserUploadedFileSchema.nullable().optional(),
+    stylesCategory: z.string().optional(),
+    styles: z.array(z.string()).optional(),
+    aspectRatio: z.string().optional(),
+    environments: z.array(z.string()).optional(),
+    lighting: z.array(z.string()).optional(),
+    colors: z.array(z.string()).optional(),
+    moods: z.array(z.string()).optional(),
+    compositions: z.array(z.string()).optional(),
+    backgroundColor: z.string().optional(),
+    transparentBg: z.boolean().optional(),
+    negativePrompt: z.string().optional(),
+    foregroundColor: z.string().optional(),
+    selectedImageTypes: z.array(z.string()).optional(),
+    isMultiMode: z.boolean().optional(),
+  }),
+  projectId: z.string(),
+  fileId: z.string().optional(),
+  businessType: z.string(),
+  itemDetails: z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    attributes: z.array(z.string()).optional(),
+    category: z.string().optional(),
+  }),
+});
+```
+
+**Response:**
+
+```typescript
+{
+  data: Array<{
+    base64: string; // Base64-encoded image
+    mimeType: string; // e.g., "image/png"
+  }>;
+  message: string;
+  transaction: {
+    totalCharge: number;
+    totalCredits: number;
+    processingTime: number;
+    transactionId: string;
+  }
+}
+```
+
+### 2. Batch Trigger
+
+**Endpoint:** `POST /api/image-generation/batch-trigger`
+
+**Request:**
+
+```typescript
+{
+  generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
+  projectId: string;
+  businessType: string;
+  itemsList: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    attributes?: string[];
+    category?: string;
+  }>;
+  jobId: string;
+}
+```
+
+**Response:**
+
+```typescript
+{
+  data: {
+    jobId: string;
+  }
+  message: string;
+}
+```
+
+### 3. Batch Generation Worker
+
+**Endpoint:** `POST /api/image-generation/batch-generation`
+
+Called by Google Cloud Tasks for each item. Same request structure as batch trigger but with single `itemDetails`.
+
+### 4. Image Editing
+
+**Endpoint:** `POST /api/image-editing`
+
+**Request:**
+
+```typescript
+{
+    generationConfig: {
+        prompt: string;
+        referanceImage: UserUploadedFileType;
+        feature?: string;
+        promptImages?: UserUploadedFileType[];
+    };
+    businessType: string;
+    projectId: string;
+    fileId: string;
+    itemDetails: {
+        id?: string;
+        name?: string;
+        description?: string;
+        attributes?: string[];
+        category?: string;
+    };
+}
+```
+
+---
+
+## File Inventory
+
+### Frontend Components
+
+| File                                                                                                                             | LOC  | Purpose                             |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---- | ----------------------------------- |
+| `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx`                                                     | 619  | Main modal container                |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx`                                               | 527  | Single generation UI                |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/EditImageModal.tsx`                                      | 478  | Image editing UI                    |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/index.tsx`                          | 255  | BatchSetupView                      |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/BatchImageGenerationView.tsx`       | 265  | Batch config UI                     |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/BatchImageGenerationResultView.tsx` | 520  | Batch results UI                    |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/StyleSelector.tsx`                                       | 113  | Style selection modal               |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/AspectRatioSelector.tsx`                                 | 70   | Aspect ratio picker                 |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/ChatWidgetUi.tsx`                                        | 130  | Prompt input UI                     |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/MultiSelectAttributeSelector.tsx`                        | 73   | Attribute selection                 |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/GenerationHistory.tsx`                                   | 135  | History [NOT INTEGRATED]            |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/PromptEnhancer.tsx`                                      | 173  | Prompt enhancement [NOT INTEGRATED] |
+| `src/components/templates/main-app/projects/editorView/AiImageGenerator/imageViewType.ts`                                        | 6723 | Business-specific features          |
+
+### Backend API Routes
+
+| File                                                     | LOC | Purpose               |
+| -------------------------------------------------------- | --- | --------------------- |
+| `src/app/api/image-generation/route.ts`                  | 300 | Single generation API |
+| `src/app/api/image-generation/prompt.ts`                 | 279 | Prompt construction   |
+| `src/app/api/image-generation/batch-trigger/route.ts`    | 105 | Batch trigger API     |
+| `src/app/api/image-generation/batch-generation/route.ts` | 358 | Cloud Task worker     |
+| `src/app/api/image-editing/route.ts`                     | 162 | Image editing API     |
+| `src/app/api/image-editing/promptsList/index.ts`         | 67  | Editing prompt router |
+
+### Services & Hooks
+
+| File                                                      | LOC | Purpose                      |
+| --------------------------------------------------------- | --- | ---------------------------- |
+| `src/services/ai/image/generateImageViaApi.ts`            | 66  | Single generation service    |
+| `src/services/ai/image/triggerBatchImageGenerationApi.ts` | 26  | Batch trigger service        |
+| `src/services/ai/image/editImageViaApi.ts`                | 35  | Image editing service        |
+| `src/hooks/useImageBatchJobListener.ts`                   | 94  | Firestore real-time listener |
+
+### Database & Infrastructure
+
+| File                                            | LOC | Purpose                            |
+| ----------------------------------------------- | --- | ---------------------------------- |
+| `src/database/imageBatchProcessing/index.tsx`   | 119 | Batch job DAL                      |
+| `src/database/storage/uploadBase64ToStorage.ts` | 219 | Upload base64 to Firebase Storage  |
+| `src/database/storage/deleteFromStorage.ts`     | 67  | Delete files from Firebase Storage |
+| `src/lib/google/cloudTask/index.ts`             | 67  | Cloud Task client                  |
+
+### Types & Constants
+
+| File                                                                        | LOC | Purpose                            |
+| --------------------------------------------------------------------------- | --- | ---------------------------------- |
+| `src/components/templates/main-app/projects/types/imageGeneration.types.ts` | 98  | Generation types                   |
+| `src/components/templates/main-app/projects/types/batchJob.types.ts`        | 32  | Batch job types                    |
+| `src/constants/AI/index.tsx`                                                | 207 | AI constants, styles               |
+| `src/constants/AI/models.ts`                                                | 245 | Centralized AI model configuration |
+
+### Image Utilities (Constitutional Compliance)
+
+| File                             | LOC | Purpose                                                             |
+| -------------------------------- | --- | ------------------------------------------------------------------- |
+| `src/lib/imageQualityGuard.ts`   | 105 | Image quality validation (Law 5: Public Surfaces Demand Perfection) |
+| `src/lib/image/optimizeImage.ts` | 254 | Image optimization before upload                                    |
+| `src/utils/imageToBase64.ts`     | 14  | Convert HTMLImageElement to base64                                  |
+
+---
+
+## Implementation Patterns
+
+### Prompt Construction
+
+```typescript
+// src/app/api/image-generation/prompt.ts
+
+// 1. Sanitize all user inputs to prevent prompt injection
+const itemName = sanitizeAIPromptInput(details.name ?? "Subject");
+
+// 2. Build prompt based on reference image presence
+if (referanceImage) {
+  prompt = `Using the provided reference image as the primary visual foundation...`;
+} else {
+  prompt = `A ${styleCategory} image of a ${itemName}...`;
+}
+
+// 3. Add configuration options
+if (styles.length > 0) {
+  prompt += `Captured in the style of ${styles.join(" and ")}. `;
+}
+
+// 4. Generate multiple prompts for image types if selected
+if (config.selectedImageTypes?.length > 0) {
+  for (const typeName of config.selectedImageTypes) {
+    generatedPrompts.push(specificPrompt);
+  }
+}
+```
+
+### Cloud Task Integration
+
+```typescript
+// src/lib/google/cloudTask/index.ts
+
+export async function enqueueImageGenerationTask(data) {
+  const parent = client.queuePath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID);
+
+  const task = {
+    httpRequest: {
+      httpMethod: "POST",
+      url: IMAGE_GENERATION_WORKER_URL,
+      headers: {
+        "project-id": process.env.FIREBASE_PROJECT_ID,
+        "Content-Type": "application/json",
+      },
+      body: Buffer.from(JSON.stringify(data)).toString("base64"),
+    },
+  };
+
+  const [response] = await client.createTask({ parent, task });
+  return response.name;
+}
+```
+
+### Real-time Listener
+
+```typescript
+// src/hooks/useImageBatchJobListener.ts
+
+useEffect(() => {
+  const jobsCollectionRef = getBatchImageJobCollectionRef(session, projectId);
+
+  const unsubscribe = onSnapshot(jobsCollectionRef, (querySnapshot) => {
+    const jobsList = [];
+    querySnapshot.forEach((doc) => {
+      jobsList.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (jobsList.length > 0) {
+      setActiveBatchImageJob(jobsList[0]);
+    }
+  });
+
+  return () => unsubscribe();
+}, [projectId, session]);
+```
+
+### DAL Pattern
+
+```typescript
+// src/database/imageBatchProcessing/index.tsx
+
+// Collection reference with tenant isolation
+export const getBatchImageJobCollectionRef = (session, projectId) => {
+  const collectionRef = collection(
+    firebaseClient,
+    `${COLLECTION}/${session.tId}/${session.sId}`,
+  );
+  return query(
+    collectionRef,
+    where("projectId", "==", projectId),
+    where("status", "in", ["queued", "processing", "completed", "failed"]),
+  );
+};
+
+// Update with special field handling
+export const updateImageBatchProcessingJob = async (data, projectId) => {
+  // Handle statusHistory with arrayUnion
+  if ("statusHistory" in data) {
+    specialFields.statusHistory = arrayUnion(latestStatusEntry);
+  }
+
+  // Handle generatedCount with increment
+  if ("generatedCount" in data) {
+    specialFields.generatedCount = increment(1);
+  }
+
+  await setDoc(docRef, finalUpdateData, { merge: true });
+};
+```
+
+---
+
+## Security Checklist
+
+| Requirement                     | Implementation                   | Status |
+| ------------------------------- | -------------------------------- | ------ |
+| **Authentication**              | `withAuth()` middleware          | ✅     |
+| **Rate Limiting**               | 5 req/min single, 3/5min batch   | ✅     |
+| **Input Validation**            | Zod schemas                      | ✅     |
+| **Prompt Injection Prevention** | `sanitizeAIPromptInput()`        | ✅     |
+| **AI Safety Settings**          | Gemini HarmCategory blocks       | ✅     |
+| **Content Policy Agreement**    | Required for batch               | ✅     |
+| **Tenant Isolation**            | Collection path includes tId/sId | ✅     |
+| **Security Logging**            | `logger.security()` on failures  | ✅     |
+
+### Prompt Injection Prevention
+
+```typescript
+// Dangerous patterns removed
+const dangerousPatterns = [
+  /ignore\s+(previous|above|all)\s+(instructions?|prompts?)/gi,
+  /forget\s+(previous|above|all)\s+(instructions?|prompts?)/gi,
+  /system\s+(prompt|instruction|command)/gi,
+  /you\s+are\s+(now|a|an)\s+/gi,
+  /act\s+as\s+(a|an)?\s*/gi,
+];
+
+// Special characters removed
+sanitized = sanitized.replace(/[<>{}\[\]\\|`~@#$%^&*()+=;:"]/g, "");
+```
+
+### AI Safety Settings
+
+```typescript
+safetySettings: [
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+];
+```
+
+---
+
+## Testing Guide
+
+### Single Generation Testing
+
+1. **Basic Generation**
+   - Select item without image
+   - Click "Generate with AI"
+   - Verify image generated
+   - Verify can upload
+
+2. **With Reference Image**
+   - Upload reference image
+   - Generate
+   - Verify style influence
+
+3. **With Custom Prompt**
+   - Add specific instructions
+   - Verify output matches
+
+### Batch Generation Testing
+
+1. **Job Creation**
+   - Select multiple items
+   - Configure settings
+   - Accept policy
+   - Start generation
+   - Verify Firestore job created
+
+2. **Progress Tracking**
+   - Monitor real-time updates
+   - Verify count increments
+   - Verify status transitions
+
+3. **Actions**
+   - Cancel mid-job → Verify cancellation
+   - Retry failed → Verify retry
+   - Upload selected → Verify storage
+   - Discard → Verify cleanup
+
+### Image Editing Testing
+
+1. **Each Feature**
+   - Test each editing feature
+   - Verify prompt generation
+   - Verify output quality
+
+2. **Multi-Edit Flow**
+   - Apply edit
+   - Use edited image as source
+   - Apply another edit
+
+---
+
+## Recommendations & Technical Debt
+
+### Critical Issues (P0) — Must Fix
+
+| Issue                            | Location                        | Impact                                  | Fix                               |
+| -------------------------------- | ------------------------------- | --------------------------------------- | --------------------------------- |
+| Transaction recording disabled   | `route.ts:264`                  | Token usage not tracked, billing broken | Uncomment `logTransaction()` call |
+| Debugger statement in production | `batch-generation/route.ts:164` | Breaks production execution             | Remove `debugger` statement       |
+| Console.log statements           | Multiple files                  | Performance, security                   | Replace with `logger` utility     |
+
+### High Priority (P1) — Security & Cost
+
+| Improvement               | Current State      | Recommendation                                        | Effort |
+| ------------------------- | ------------------ | ----------------------------------------------------- | ------ |
+| Cloud Task Authentication | Header-based only  | Add OIDC token verification per Google best practices | Medium |
+| Cost Estimation           | Post-generation    | Show estimated cost before batch start                | Low    |
+| Batch Size Limit          | No limit           | Add max 50 items to prevent runaway costs             | Low    |
+| Rate Limit Bypass         | No Cloud Task auth | Validate task origin with service account             | Medium |
+
+### Medium Priority (P2) — Code Quality
+
+| Improvement            | Recommendation                                                    | Effort                |
+| ---------------------- | ----------------------------------------------------------------- | --------------------- |
+| Typo: `referanceImage` | Rename to `referenceImage` across codebase                        | Low (breaking change) |
+| Duplicate Gemini code  | Extract shared `generateImage()` function for single/batch routes | Medium                |
+| No unit tests          | Add tests for prompt generation and sanitization                  | High                  |
+| Model names hardcoded  | Use `AI_MODELS` from `@constant/AI/models.ts`                     | Low                   |
+
+---
+
+## Suggestions & Improvements (From Codebase Cross-Check & Web Research)
+
+### 1. Missing Integrations Found in Codebase
+
+| Component               | Status                    | Purpose                                    | Recommendation                                                    |
+| ----------------------- | ------------------------- | ------------------------------------------ | ----------------------------------------------------------------- |
+| `GenerationHistory.tsx` | Built, NOT integrated     | Track and reuse generation settings        | Integrate to improve UX - users can regenerate with same settings |
+| `PromptEnhancer.tsx`    | Built, NOT integrated     | Enhance prompts with quality tags          | Integrate with API call for AI-enhanced prompts                   |
+| `imageQualityGuard.ts`  | Built, NOT used in AI gen | Validates image quality (min 400×300px)    | Apply to generated images before upload                           |
+| `optimizeImage.ts`      | Built, NOT used in AI gen | Optimizes images (max 1500px, 70% quality) | Apply to reduce storage costs                                     |
+
+### 2. Google Best Practices (From Official Docs - Jan 2026)
+
+#### Prompt Engineering Improvements
+
+Based on [Google Imagen 3 Prompt Guide](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/image/img-gen-prompt-guide):
+
+| Current Implementation     | Google Recommendation                                                           | Action                             |
+| -------------------------- | ------------------------------------------------------------------------------- | ---------------------------------- |
+| Basic prompts              | Use **photography modifiers**: camera proximity, position, lighting, lens types | Enhance `prompt.ts` with modifiers |
+| No quality modifiers       | Add **quality modifiers**: "4K", "HDR", "Studio Photo", "high-quality"          | Add to default prompt suffix       |
+| Negative prompts with "no" | Use **plain descriptions** without "no" or "don't"                              | Update `sanitizeAIPromptInput()`   |
+| Fixed aspect ratios        | Support all 5 ratios: 1:1, 4:3, 3:4, 16:9, 9:16                                 | Verify all supported in UI         |
+
+#### Recommended Prompt Template
+
+```typescript
+// Enhanced prompt structure per Google guidelines
+const enhancedPrompt = `
+  ${subject}, ${context}, ${style}
+  Photography: ${cameraProximity}, ${lighting}, ${lensType}
+  Quality: 4K, HDR, professional studio photo, high detail
+  ${negativePrompt ? `Avoid: ${negativePromptClean}` : ""}
+`;
+```
+
+### 3. Cost Optimization Opportunities
+
+| Optimization            | Current                | Recommended                                              | Savings Est.    |
+| ----------------------- | ---------------------- | -------------------------------------------------------- | --------------- |
+| **Context Caching**     | Not used               | Use Gemini explicit context caching for repeated prompts | 20-40%          |
+| **Batch Inference**     | Cloud Tasks (per-item) | Use Vertex AI Batch Prediction for 50+ items             | 50% per request |
+| **Image Deduplication** | None                   | Hash prompts, cache results for identical requests       | Variable        |
+| **Model Selection**     | Always Gemini Flash    | Use Imagen 3 Fast for simple items (cheaper)             | 30%             |
+
+#### Vertex AI Batch Prediction (Alternative to Cloud Tasks)
+
+```typescript
+// For large batches (50+ items), consider Vertex AI Batch Prediction
+// Source: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini
+
+// Benefits:
+// - 50% cost reduction vs real-time
+// - No Cloud Tasks management
+// - Built-in retry and error handling
+// - Results in BigQuery or Cloud Storage
+```
+
+### 4. Doctrine Alignment (MenuList Constitution)
+
+| Doctrine Law                                 | Current State                 | Alignment                   | Recommendation                                |
+| -------------------------------------------- | ----------------------------- | --------------------------- | --------------------------------------------- |
+| **Law 5: Public Surfaces Demand Perfection** | `imageQualityGuard.ts` exists | ⚠️ NOT applied to AI images | Apply quality guard to generated images       |
+| **Law 6: No Cognitive Load**                 | Multiple style options        | ✅ Good - presets available | Add "Quick Generate" with sensible defaults   |
+| **Law 8: Trust > Engagement**                | Quality over quantity         | ✅ Good                     | Consider reducing options, more automation    |
+| **Law 2: Silence Is a Feature**              | Shows all generated images    | ⚠️ Consider                 | Auto-select best image, show others on expand |
+
+#### Constitutional Compliance Fix
+
+```typescript
+// Apply imageQualityGuard to AI-generated images
+import { validateImageQuality } from "@lib/imageQualityGuard";
+
+// Before uploading generated image:
+const qualityResult = await validateImageQuality(generatedImageBlob);
+if (!qualityResult.allowed) {
+  // Regenerate or reject - don't show low-quality to public
+  console.warn("Generated image failed quality check:", qualityResult.reason);
+}
+```
+
+### 5. Performance Improvements
+
+| Area                  | Current                      | Recommendation                            | Impact                 |
+| --------------------- | ---------------------------- | ----------------------------------------- | ---------------------- |
+| **Single Generation** | Sequential prompts           | Parallel prompt execution when multi-mode | 2-3x faster            |
+| **Batch Job Polling** | Real-time listener always on | Disconnect after 5 min inactivity         | Reduce Firestore reads |
+| **Image Upload**      | Full resolution              | Resize to max 2048px before upload        | 50% storage reduction  |
+| **Base64 Handling**   | Full image in memory         | Stream to storage directly                | Memory efficiency      |
+
+### 6. Feature Enhancements (Per Project Context)
+
+| Enhancement                         | Value                                            | Effort | Priority |
+| ----------------------------------- | ------------------------------------------------ | ------ | -------- |
+| **Style Presets per Business Type** | Auto-select best styles for restaurants vs cafes | Medium | P2       |
+| **Image Variations**                | Generate 3 variations, user picks best           | Low    | P2       |
+| **Partial Batch Retry**             | Retry only failed items, not entire batch        | Medium | P1       |
+| **Progress Estimation**             | Show ETA based on batch size                     | Low    | P3       |
+| **Favorite Styles**                 | Save user's preferred generation settings        | Medium | P3       |
+
+### 7. Technical Debt Inventory
+
+| Item                                      | Location                                | Effort | Risk if Unaddressed                       |
+| ----------------------------------------- | --------------------------------------- | ------ | ----------------------------------------- |
+| Duplicate `generateGeminiImageViaFlash()` | `route.ts`, `batch-generation/route.ts` | Medium | Inconsistent behavior, double maintenance |
+| No input validation on worker             | `batch-generation/route.ts`             | Low    | Security vulnerability                    |
+| Hardcoded model names                     | Multiple files                          | Low    | Upgrade friction                          |
+| Missing error boundaries                  | UI components                           | Medium | Poor UX on failures                       |
+| No retry logic for transient failures     | API routes                              | Medium | Failed generations not recovered          |
+
+---
+
+## Implementation Priority Matrix
+
+| Priority             | Items                                                              | Timeline |
+| -------------------- | ------------------------------------------------------------------ | -------- |
+| **P0 - This Week**   | Remove debugger, enable transaction logging, add batch size limit  | 1-2 days |
+| **P1 - This Sprint** | Cloud Task auth, cost estimation, partial retry                    | 1 week   |
+| **P2 - Next Sprint** | Code deduplication, prompt enhancements, quality guard integration | 2 weeks  |
+| **P3 - Backlog**     | Batch inference migration, style presets, image variations         | Future   |
+
+---
+
+## Environment Variables Required
+
+```env
+# AI Models
+GOOGLE_AI_API_KEY=your-api-key
+
+# Cloud Tasks
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PROJECT_LOCATION=us-central1
+BATCH_IMAGE_GENERATION_QUEUE_ID=image-generation-queue
+BATCH_IMAGE_GENERATION_WORKER_URL=https://your-domain.com/api/image-generation/batch-generation
+```
+
+---
+
+## Development Checklist (Pending Implementation)
+
+> **Source**: Cross-check of codebase + external review validation (Jan 2026)
+> **Validation**: Each item verified against actual code before inclusion
+
+### Critical Fixes (P0) — Must Complete Before Next Release
+
+| #   | Task                                | Location                                                     | Verified Issue                                            | Status                            |
+| --- | ----------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- | --------------------------------- |
+| 1   | **Remove debugger statement**       | `src/app/api/image-generation/batch-generation/route.ts:164` | `debugger` statement breaks production execution          | ✅ Done (Jan 30, 2026)            |
+| 2   | **Enable transaction logging**      | `src/app/api/image-generation/route.ts:264`                  | `logTransaction()` commented out, token usage not tracked | ⬜ Pending                        |
+| 3   | **Add batch size limit**            | `src/app/api/image-generation/batch-trigger/route.ts`        | No max item count validation, risk of runaway costs       | ⬜ Pending                        |
+| 4   | **Replace console.log with logger** | Multiple API routes                                          | Security & performance issue                              | ⚠️ Partial (UI done, API pending) |
+| 5   | **Add feature flag**                | `src/config/features.ts`                                     | Missing ENABLE_AI_IMAGE_GENERATION flag                   | ✅ Done (Jan 30, 2026)            |
+
+### Security Hardening (P1) — This Sprint
+
+| #   | Task                                 | Location                    | Issue                                                 | Status     |
+| --- | ------------------------------------ | --------------------------- | ----------------------------------------------------- | ---------- |
+| 5   | **Add Cloud Task OIDC verification** | `batch-generation/route.ts` | Header-based auth only, no service account validation | ⬜ Pending |
+| 6   | **Add input validation to worker**   | `batch-generation/route.ts` | Worker accepts payload without Zod validation         | ⬜ Pending |
+| 7   | **Validate task origin**             | `batch-generation/route.ts` | No verification that request comes from Cloud Tasks   | ⬜ Pending |
+
+### Code Quality (P2) — Next Sprint
+
+| #   | Task                                          | Location                                | Issue                                                       | Status     |
+| --- | --------------------------------------------- | --------------------------------------- | ----------------------------------------------------------- | ---------- |
+| 8   | **Fix typo: `referanceImage`**                | Multiple files                          | Typo in variable name, breaking change if fixed             | ⬜ Pending |
+| 9   | **Extract shared `generateImage()` function** | `route.ts`, `batch-generation/route.ts` | Duplicate `generateGeminiImageViaFlash()` code              | ⬜ Pending |
+| 10  | **Use centralized model constants**           | Multiple files                          | Hardcoded model names instead of `AI_MODELS`                | ⬜ Pending |
+| 11  | **Integrate `imageQualityGuard.ts`**          | Generation flow                         | Quality guard exists but not applied to AI-generated images | ⬜ Pending |
+| 12  | **Integrate `optimizeImage.ts`**              | Upload flow                             | Optimizer exists but not used for generated images          | ⬜ Pending |
+
+### UX Improvements (P2) — Next Sprint
+
+| #   | Task                                  | Location                             | Issue                                                    | Status     |
+| --- | ------------------------------------- | ------------------------------------ | -------------------------------------------------------- | ---------- |
+| 13  | **Add cost estimation before batch**  | `BatchImageGenerationView.tsx`       | Users don't see estimated cost before starting           | ⬜ Pending |
+| 14  | **Add partial batch retry**           | `BatchImageGenerationResultView.tsx` | Can only retry entire batch, not individual failed items | ⬜ Pending |
+| 15  | **Integrate `GenerationHistory.tsx`** | `AiImageGenerator/index.tsx`         | Component built but not integrated                       | ⬜ Pending |
+
+### Testing (P2) — Next Sprint
+
+| #   | Task                                       | Status     |
+| --- | ------------------------------------------ | ---------- |
+| 16  | **Add unit tests for prompt sanitization** | ⬜ Pending |
+| 17  | **Add unit tests for prompt construction** | ⬜ Pending |
+| 18  | **Add integration tests for batch flow**   | ⬜ Pending |
+
+---
+
+## Feature Guardrails (Scope Freeze)
+
+> **Purpose**: Protect USP and prevent feature drift
+> **Authority**: Product/CEO — locked until doctrine revision
+
+### USP Definition (Locked)
+
+**Inline Menu Image Creation**: Images are created inside the menu item, for that item, with its context, and without any asset workflow.
+
+**Three Non-Negotiable Pillars**:
+
+1. **Item-Native**: Images born inside item, reviewed inside item, stored for item
+2. **Zero Asset Workflow**: No upload/download, no media library, no asset management
+3. **One-Click Completion**: Optimize for "item is done", not "explore options"
+
+### Explicitly OUT OF SCOPE (Forever)
+
+These capabilities are **permanently forbidden** to protect the USP:
+
+| Category             | Forbidden Features                                               | Reason                                    |
+| -------------------- | ---------------------------------------------------------------- | ----------------------------------------- |
+| **Analytics**        | Image performance metrics, CTR tracking, "best performing image" | Creates authority where none should exist |
+| **Optimization**     | A/B testing, variant testing, auto-optimization                  | Learning implies decision-making          |
+| **Ranking**          | Image ranking, image-based menu ordering                         | Ranking is decision logic                 |
+| **Automation**       | Auto-apply images, auto-replace, silent changes                  | Breaks trust boundaries                   |
+| **Personalization**  | Different images per customer, dynamic swapping                  | Fragments single-source reality           |
+| **Asset Management** | Image libraries, galleries, folders, tagging                     | Creates asset workflow                    |
+
+### Owner Control (Intentional)
+
+Image selection is **explicitly owner-controlled** because:
+
+- Images influence persuasion, not correctness
+- Persuasion is subjective
+- Subjective choices must remain human
+
+The system may **assist** but must **never decide** which image represents an item.
+
+---
+
+## Future Migration Path (Design Only — No Implementation Commitment)
+
+> **Status**: DESIGN-ONLY — No timelines, no promises
+> **Purpose**: Enable future evolution without blocking current USP
+
+### Phase 1: Manual (Current State) ✅
+
+| Dimension  | State           |
+| ---------- | --------------- |
+| Trigger    | Owner-initiated |
+| Control    | High            |
+| Automation | None            |
+| Authority  | Owner           |
+
+This phase must remain **fully supported forever**.
+
+### Phase 2: Guided (Future, Optional)
+
+System may:
+
+- Pre-select defaults
+- Highlight recommended preset
+- Reduce visible choices by default
+
+System must NOT:
+
+- Hide controls permanently
+- Block manual override
+- Explain reasoning
+
+### Phase 3: Silent (Future, Very Careful)
+
+"Ready when you are" — images prepared but never auto-applied.
+
+**Non-negotiable rule**: No image ever appears publicly without owner review.
+
+---
+
+## UI Language Guidelines
+
+### Allowed Language
+
+| Category                | Examples                                                         |
+| ----------------------- | ---------------------------------------------------------------- |
+| **Action verbs**        | Generate, Create, Try, Edit, Preview, Choose, Apply, Discard     |
+| **Neutral descriptors** | Style, Look, Appearance, Variation, Version                      |
+| **Optional guidance**   | Recommended (for presets only), Common, Suggested starting point |
+
+### Forbidden Language
+
+| Category             | Forbidden Words                                   | Reason                        |
+| -------------------- | ------------------------------------------------- | ----------------------------- |
+| **Authority**        | Best, Optimal, Correct, Perfect, Ideal            | Never imply correctness       |
+| **Intelligence**     | Smart, Learns, Improves, Adapts, Optimizes        | Never imply thinking          |
+| **Performance**      | High-performing, Converts better, Proven, Winning | Never imply results           |
+| **System Authority** | MenuList decided, System chose, AI selected       | Images never chosen by system |
+
+---
+
+## ChatGPT Feedback Audit Summary
+
+> **Validation Date**: Jan 29, 2026
+> **Methodology**: Each point verified against codebase before acceptance
+
+| #   | ChatGPT Claim                      | Valid?     | Evidence                                      | Action                |
+| --- | ---------------------------------- | ---------- | --------------------------------------------- | --------------------- |
+| 1   | "Too many choices exposed"         | ⚠️ Partial | UI shows ~6 options, not 12+ as claimed       | No change needed      |
+| 2   | "No batch size limit"              | ✅ Valid   | `batch-trigger/route.ts` lacks max count      | Added to P0 checklist |
+| 3   | "Transaction recording disabled"   | ✅ Valid   | `route.ts:264` commented out                  | Added to P0 checklist |
+| 4   | "Debugger in production"           | ✅ Valid   | `batch-generation/route.ts:164`               | Added to P0 checklist |
+| 5   | "USP = Inline Menu Image Creation" | ✅ Valid   | Code confirms item-scoped, no asset workflow  | Added to Guardrails   |
+| 6   | "Scope freeze rules"               | ✅ Valid   | These features don't exist, good to document  | Added to Guardrails   |
+| 7   | "Future migration path"            | ✅ Valid   | Design-only, no implementation                | Added as design doc   |
+| 8   | "UI language rules"                | ✅ Valid   | Marketing/UX guidance                         | Added as guidelines   |
+| 9   | "Image editing is dangerous"       | ❌ Invalid | Feature is owner-triggered, scoped, not risky | Rejected              |
+| 10  | "Batch mode too powerful"          | ⚠️ Partial | Needs limit, but architecture is sound        | Added limit to P0     |
+
+**Summary**: 8 valid points integrated, 1 rejected, 1 partially valid with nuance added.
+
+---
+
+## Default Confidence & Designing for Inaction
+
+> **Source**: ChatGPT feedback loop reconciliation (Jan 29, 2026)
+> **Status**: PRODUCT QUESTION — Requires founder decision
+> **Priority**: Strategic (affects product positioning)
+
+### The Critical Product Question
+
+> **"If a user generates 100 images using defaults only, will you confidently stand behind every one of them?"**
+
+This question exposes the gap between:
+
+- **Technical capability** (system can generate images)
+- **Product confidence** (system produces results worth shipping)
+
+### Why This Matters
+
+**Current state**: The system assumes active user participation.
+
+- User clicks "Generate"
+- User reviews options
+- User tweaks if needed
+- User approves
+
+**Ideal state**: User can be passive and still get good results.
+
+- User clicks "Generate"
+- User ships immediately
+- System handled everything worth handling
+
+### The Psychological Responsibility Gap
+
+Cognitive load is **not** caused by the number of controls.
+It's caused by **decision responsibility**.
+
+Even with minimal UI, the user is forced to ask:
+
+- "Should I change the style?"
+- "Is default lighting good enough?"
+- "Am I doing this right?"
+
+This is **creative anxiety**, not UI clutter.
+
+**The goal**: Eliminate the question "Am I doing this right?" from the user's mind.
+
+### Design Principles for Inaction
+
+| Principle                              | Implementation                                             | Status              |
+| -------------------------------------- | ---------------------------------------------------------- | ------------------- |
+| **Defaults should be shippable**       | Default style produces professional, brand-safe results    | ⬜ Needs validation |
+| **First result should be good enough** | No regeneration needed in 80%+ of cases                    | ⬜ Needs metrics    |
+| **Quality guard as safety net**        | `imageQualityGuard.ts` catches bad outputs                 | ⬜ Not integrated   |
+| **No explanation needed**              | User shouldn't need to know "why" the image looks this way | ✅ Current behavior |
+| **Presets over parameters**            | Business-type presets pre-configure optimal settings       | ✅ Implemented      |
+
+### What "Default Confidence" Requires
+
+To answer "yes" to the critical question, the system must:
+
+1. **Validate default outputs systematically**
+   - Test 100+ items across business types with defaults only
+   - Measure: How many are "shippable" without edits?
+   - Target: 80%+ first-generation acceptance rate
+
+2. **Apply quality guard to AI-generated images**
+   - Currently: `imageQualityGuard.ts` exists but not applied
+   - Action: Integrate into generation flow (P2 checklist item #11)
+
+3. **Optimize default prompt for reliability**
+   - Current: Prompts optimized for variety
+   - Needed: Prompts optimized for consistency + safety
+
+4. **Track default vs customized usage**
+   - Metric: What % of users change settings?
+   - Goal: If most users customize, defaults aren't good enough
+
+### Founder Decision Required
+
+**Question to answer**:
+
+> "Do we optimize for **creative exploration** or **reliable completion**?"
+
+| Path                     | Trade-off                                                          |
+| ------------------------ | ------------------------------------------------------------------ |
+| **Creative exploration** | More options, more user control, higher engagement, higher anxiety |
+| **Reliable completion**  | Fewer options, better defaults, lower engagement, higher trust     |
+
+**Current positioning**: Leans toward exploration (many style options exposed).
+
+**USP positioning**: Should lean toward completion ("one-click item completion").
+
+**Recommendation**: Shift toward reliable completion without removing options.
+
+- Keep options available but collapsed by default
+- Make defaults so good that expansion is rarely needed
+- Measure and optimize default acceptance rate
+
+### Success Metric (Proposed)
+
+> **Default Acceptance Rate**: % of generated images uploaded without any setting changes.
+
+**Target**: 80%+
+
+If this metric is below 60%, the system is asking users to do the system's job.
+
+---
+
+## Final Feedback Loop Summary
+
+| Source             | Valid Points        | Rejected | Action Taken                   |
+| ------------------ | ------------------- | -------- | ------------------------------ |
+| ChatGPT (Round 1)  | 8                   | 2        | Integrated into guardrails     |
+| Cascade validation | N/A                 | N/A      | Cross-checked against codebase |
+| ChatGPT (Round 2)  | 1 (inaction design) | 0        | Added this section             |
+
+**Net result**: Product documentation is stronger. Technical debt is inventoried. Strategic gaps are surfaced.
+
+---
+
+## UX Audit: SMB Owner Perspective
+
+> **Audit Date**: Jan 29, 2026
+> **Perspective**: Non-technical small/medium business owner (e.g., restaurant owner, cafe manager)
+> **Goal**: Identify friction points that prevent quick, confident image generation
+
+---
+
+### Component-by-Component Analysis
+
+#### 1. Main Generation UI (`index.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/index.tsx` (~527 lines)
+
+| What Works                             | What Doesn't                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ✅ Clear "Generate Image" button       | ❌ **Information overload** - 10+ controls visible at once                                  |
+| ✅ Loading state with skeleton preview | ❌ **No visible defaults** - user doesn't know what happens if they just click Generate     |
+| ✅ Image selection for upload          | ❌ **Technical jargon** - "Negative Prompt", "Aspect Ratio", "Compositions"                 |
+|                                        | ❌ **Reference image label confusing** - "(only one can be selected)" buried in parentheses |
+|                                        | ❌ **Multi-mode toggle** - purpose unclear for single-item generation                       |
+
+**SMB Owner Thought**: _"I just want a picture of my burger. Why do I need to choose environments, lighting, moods, AND compositions?"_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-01 | Too many options visible | Collapse advanced options by default, show only: Style + Generate button | P1 | **DONE** |
+| ✅ UX-02 | No guidance for prompt | Add placeholder: "Describe any special details (optional - we'll use your item info)" | P2 | **DONE** |
+| UX-03 | Multi-mode toggle confusing | Rename to "Generate Multiple Angles" with tooltip showing examples | P3 |
+| ✅ UX-04 | Reference image label | Change to "Reference Image (select one)" with visual indicator | P2 | **DONE** |
+
+---
+
+#### 2. Style Selector (`StyleSelector.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/StyleSelector.tsx` (~113 lines)
+
+| What Works                                          | What Doesn't                                                             |
+| --------------------------------------------------- | ------------------------------------------------------------------------ |
+| ✅ Modal interface - doesn't clutter main view      | ❌ **No visual previews** - just text descriptions of styles             |
+| ✅ Category tabs (Photorealism, Illustration, etc.) | ❌ **No "recommended" indicator** - which style is best for restaurants? |
+| ✅ Multi-select capability                          | ❌ **No default pre-selection** - user must choose from scratch          |
+
+**SMB Owner Thought**: _"What does 'Warm Soft Focus' look like? I don't want to guess and waste a generation."_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-05 | No visual style previews | Add thumbnail examples for each style | P1 | **DONE** |
+| ✅ UX-06 | No business-type recommendation | Auto-highlight "Recommended for Restaurants" styles | P1 | **DONE** |
+| ✅ UX-07 | No default selection | Pre-select "Natural Light" for food businesses | P2 | **DONE** |
+
+---
+
+#### 3. Aspect Ratio Selector (`AspectRatioSelector.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/AspectRatioSelector.tsx` (~70 lines)
+
+| What Works                     | What Doesn't                                                          |
+| ------------------------------ | --------------------------------------------------------------------- |
+| ✅ Visual shape representation | ❌ **No use-case guidance** - when to use 1:1 vs 16:9?                |
+| ✅ Clear selection state       | ❌ **Missing context labels** - "Best for Instagram", "Best for Menu" |
+| ✅ Card-based selection        |                                                                       |
+
+**SMB Owner Thought**: _"Is 1:1 for my menu or my Instagram? I don't know which to pick."_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-08 | No use-case labels | Add subtitle: "1:1 Square - Best for Instagram, Menu Cards" | P2 | **DONE** |
+| UX-09 | No smart default | Default to 1:1 for food items (most versatile) | P3 |
+
+---
+
+#### 4. Chat Widget UI (`ChatWidgetUi.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/ChatWidgetUi.tsx` (~130 lines)
+
+| What Works                              | What Doesn't                                                    |
+| --------------------------------------- | --------------------------------------------------------------- |
+| ✅ Sticky at bottom - always accessible | ❌ **Generic prompt placeholder** - "Enter your prompt here..." |
+| ✅ Shows selected style as tag          | ❌ **No example prompts** - SMB owners don't know what to write |
+| ✅ Shows reference image thumbnail      | ❌ **No "Generate with defaults" shortcut**                     |
+| ✅ Large, clear Generate button         |                                                                 |
+
+**SMB Owner Thought**: _"What prompt should I write? Can't the system just figure it out from my item name?"_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-10 | Unhelpful placeholder | Change to "Add special instructions (optional)" | P1 | **DONE** |
+| ✅ UX-11 | No prompt examples | Add rotating examples: "e.g., 'on a rustic wooden table'" | P2 | **DONE** |
+| UX-12 | No quick generate | Add "Quick Generate" button that skips all options | P1 |
+
+---
+
+#### 5. Multi-Select Attribute Selector (`MultiSelectAttributeSelector.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/MultiSelectAttributeSelector.tsx` (~73 lines)
+
+| What Works                            | What Doesn't                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------ |
+| ✅ Chip-based selection - clear state | ❌ **Technical labels** - "Environments (The Setting) (Optional)"        |
+| ✅ Supports single and multi-select   | ❌ **No visual previews** - what does "Warm Ambient" lighting look like? |
+|                                       | ❌ **Too many options** - 10+ chips per category                         |
+
+**SMB Owner Thought**: _"Is 'Golden Hour' the same as 'Warm Ambient'? I don't know photography terms."_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-13 | Technical labels | Simplify: "Setting" instead of "Environments (The Setting) (Optional)" | P2 | **DONE** |
+| ✅ UX-14 | No visual previews | Show small preview on hover/tap | P2 | **DONE** |
+| UX-15 | Too many options | Show top 4 options + "More" expander | P1 |
+
+---
+
+#### 6. Edit Image Modal (`EditImageModal.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/EditImageModal.tsx` (~478 lines)
+
+| What Works                                | What Doesn't                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| ✅ Clear Original vs Generated comparison | ❌ **Green border system confusing** - "Changes will be applied to the green border image" |
+| ✅ Feature cards with descriptions        | ❌ **No preview of what each enhancement does**                                            |
+| ✅ Generated edits thumbnail strip        | ❌ **Nested modals** - EditModal → Upload Selection Modal                                  |
+|                                           | ❌ **Feature names are technical** - "Regenerate Background"                               |
+
+**SMB Owner Thought**: _"What does 'Enhance Food Vibrancy' actually do to my image? Can I see before I commit?"_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-16 | Green border confusing | Use clear labels: "Editing This Image →" with arrow | P1 | **DONE** |
+| ✅ UX-17 | No enhancement previews | Show before/after thumbnail for each feature | P1 | **DONE** |
+| ✅ UX-18 | Nested modals | Inline upload confirmation instead of second modal | P2 | **DONE** |
+| ✅ UX-19 | Technical feature names | Rename: "Make Colors Pop", "Change Background", "Add Steam Effect" | P2 | **DONE** |
+
+---
+
+#### 7. Batch Setup View (`batchImageGeneration/index.tsx`)
+
+**File**: `src/components/.../batchImageGeneration/index.tsx` (~255 lines)
+
+| What Works                            | What Doesn't                                                 |
+| ------------------------------------- | ------------------------------------------------------------ |
+| ✅ Search and filter functionality    | ❌ **No estimated time/cost** - how long will 50 items take? |
+| ✅ "Only items without images" filter | ❌ **No visual preview of batch output**                     |
+| ✅ Category grouping with checkboxes  | ❌ **No "Generate All Missing" shortcut**                    |
+| ✅ Sticky action buttons              |                                                              |
+
+**SMB Owner Thought**: _"If I select all 50 items, how long will this take? Will it cost me extra?"_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-20 | No time estimate | Show "Estimated: ~5 minutes for 20 items" | P1 | **DONE** |
+| ✅ UX-21 | No cost indicator | Show credit/cost estimate before starting | P1 | **DONE** |
+| ✅ UX-22 | No quick action | Add "Generate All Missing Images" one-click button | P2 | **DONE** |
+
+---
+
+#### 8. Batch Configuration View (`BatchImageGenerationView.tsx`)
+
+**File**: `src/components/.../batchImageGeneration/BatchImageGenerationView.tsx` (~265 lines)
+
+| What Works                                    | What Doesn't                                            |
+| --------------------------------------------- | ------------------------------------------------------- |
+| ✅ Same controls as single mode - consistency | ❌ **Same overwhelming options** - even worse for batch |
+| ✅ Content Policy Agreement                   | ❌ **No "just use defaults" option**                    |
+|                                               | ❌ **Agreement checkbox feels legal/scary**             |
+
+**SMB Owner Thought**: _"I'm generating 50 images - do I really need to pick lighting for each one? Can't you just make them look good?"_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| UX-23 | Same overwhelming options | For batch: show only Style + Aspect Ratio, hide rest | P1 |
+| ✅ UX-24 | No defaults button | Add "Use Smart Defaults" toggle that hides all options | P1 | **DONE** |
+| UX-25 | Scary agreement | Soften: "I understand images are AI-generated" with info icon | P3 |
+
+---
+
+#### 9. Batch Results View (`BatchImageGenerationResultView.tsx`)
+
+**File**: `src/components/.../batchImageGeneration/BatchImageGenerationResultView.tsx` (~520 lines)
+
+| What Works                                            | What Doesn't                                                       |
+| ----------------------------------------------------- | ------------------------------------------------------------------ |
+| ✅ Clear status indicators (Queued, Processing, etc.) | ❌ **Multiple confirmation modals** - Cancel, Discard, Upload      |
+| ✅ Progress tracking with counts                      | ❌ **Consequences not clear** - what happens to unselected images? |
+| ✅ Select all / individual selection                  | ❌ **Decision fatigue** - too many choices at completion           |
+| ✅ Visual status cards (color-coded)                  |                                                                    |
+
+**SMB Owner Thought**: _"Job completed - do I click Upload or Discard? What happens to the ones I didn't select?"_
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-26 | Multiple modals | Single confirmation with clear consequences | P2 | **DONE** |
+| ✅ UX-27 | Unclear consequences | Add: "3 selected → will be added. 2 unselected → will be deleted." | P1 | **DONE** |
+| ✅ UX-28 | Decision fatigue | Default to "Upload All" with option to review | P2 | **DONE** |
+
+---
+
+#### 10. Generation History (`GenerationHistory.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/GenerationHistory.tsx` (~135 lines)
+
+| What Works                           | What Doesn't                                                 |
+| ------------------------------------ | ------------------------------------------------------------ |
+| ✅ Popover interface - non-intrusive | ❌ **Hidden in small button** - SMB owners may never find it |
+| ✅ Shows timestamp and prompt        | ❌ **No settings preview** - what style was used?            |
+| ✅ "Regenerate with these settings"  |                                                              |
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| UX-29 | Hidden feature | Show "Recent" pill/badge when history exists | P3 |
+| UX-30 | No settings preview | Show style/config summary in history card | P3 |
+
+---
+
+#### 11. Prompt Enhancer (`PromptEnhancer.tsx`)
+
+**File**: `src/components/.../AiImageGenerator/PromptEnhancer.tsx` (~173 lines)
+
+| What Works               | What Doesn't                                         |
+| ------------------------ | ---------------------------------------------------- |
+| ✅ Quality enhancer tags | ❌ **Not integrated** - separate modal, easy to miss |
+| ✅ Custom tag addition   | ❌ **Technical term** - "Quality Enhancers"          |
+|                          | ❌ **Simulated API** - not actually enhancing yet    |
+
+**Improvement Opportunities**:
+| ID | Issue | Suggested Fix | Priority |
+|----|-------|---------------|----------|
+| ✅ UX-31 | Not integrated | Move tags inline below prompt input | P2 | **DONE** |
+| UX-32 | Technical term | Rename to "Quick Boost" or "Make it Better" | P3 |
+
+---
+
+### Priority Summary
+
+| Priority | Count | Completed | Remaining | Description                       |
+| -------- | ----- | --------- | --------- | --------------------------------- |
+| **P1**   | 12    | **12**    | **0**     | ✅ All Critical UX blockers done! |
+| **P2**   | 13    | **13**    | **0**     | ✅ All P2 items complete!         |
+| **P3**   | 7     | 0         | 7         | Nice-to-have polish               |
+
+### UX Improvements — ✅ IMPLEMENTED (Jan 29, 2026)
+
+| ID        | Issue                      | Fix Applied                                                                    | File Changed                                     |
+| --------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ |
+| **UX-01** | Too many options visible   | Wrapped in collapsible "Customize Image (Optional)" section                    | `index.tsx`                                      |
+| **UX-05** | No visual style previews   | Added emoji indicators + "Best for" labels (🍔 Food, 💎 Products, etc.)        | `StyleSelector.tsx`                              |
+| **UX-06** | No business recommendation | Auto-highlights "⭐ Recommended" styles based on business type                 | `StyleSelector.tsx`                              |
+| **UX-08** | No use-case labels         | Added "Best for Instagram, Menu Cards" etc. to each aspect ratio               | `constants/common.ts`, `AspectRatioSelector.tsx` |
+| **UX-10** | Unhelpful placeholder      | Changed to "Add special instructions (optional - we'll use your item details)" | `ChatWidgetUi.tsx`                               |
+| **UX-16** | Green border confusing     | Added clear visual indicator: "Editing this image → Click another to switch"   | `EditImageModal.tsx`                             |
+| **UX-17** | No enhancement previews    | Added friendly names, icons, "what it does" + before/after examples            | `EditImageModal.tsx`                             |
+| **UX-20** | No time estimate           | Added "~X min • Y images" estimate on batch selection                          | `batchImageGeneration/index.tsx`                 |
+| **UX-21** | No cost indicator          | Added credit cost estimate (e.g., "15 credits")                                | `batchImageGeneration/index.tsx`                 |
+| **UX-22** | No quick action            | Added "Quick Select: All Items Without Images" button                          | `batchImageGeneration/index.tsx`                 |
+| **UX-24** | No defaults button         | Added "Use Smart Defaults" toggle card (ON by default, hides all options)      | `BatchImageGenerationView.tsx`                   |
+| **UX-27** | Unclear consequences       | Shows "X images will be added, Y images will be deleted" with color coding     | `BatchImageGenerationResultView.tsx`             |
+| **UX-28** | Decision fatigue           | Default to "Upload All" (all images pre-selected)                              | `BatchImageGenerationResultView.tsx`             |
+| **UX-11** | No prompt examples         | Added rotating examples: "e.g., on a rustic wooden table"                      | `ChatWidgetUi.tsx`                               |
+| **UX-14** | No visual previews         | Added emoji + description tooltips on hover for attributes                     | `MultiSelectAttributeSelector.tsx`               |
+| **UX-31** | Tags not integrated        | Added quick enhancer tags inline below prompt (✨ HD, 📸 Professional, etc.)   | `ChatWidgetUi.tsx`                               |
+| **UX-04** | Reference image confusing  | Changed to "📷 Reference Image (Optional - AI will match this style)"          | `index.tsx`                                      |
+| **UX-07** | No default style           | Auto-selects first recommended style when modal opens                          | `StyleSelector.tsx`                              |
+| **UX-13** | Technical labels           | Already simplified: "Setting", "Lighting", "Camera Angle"                      | `index.tsx`                                      |
+| **UX-18** | Nested modals              | Inline upload selection with checkboxes, auto-select new images                | `EditImageModal.tsx`                             |
+| **UX-19** | Technical feature names    | Friendly names: "Make it Better", "Change Background", "Cut Out Subject"       | `EditImageModal.tsx`                             |
+| **UX-26** | Multiple modals            | Simplified: Direct upload button, single discard confirmation                  | `BatchImageGenerationResultView.tsx`             |
+
+**Bonus fixes during implementation:**
+
+- Simplified all attribute labels (removed technical jargon):
+  - "Environments (The Setting) (Optional)" → "Setting"
+  - "Lighting (The Atmosphere | How it's lit) (Optional)" → "Lighting"
+  - "Compositions (The Camera Angle/Framing) (Optional)" → "Camera Angle"
+  - "Negative Prompt" → "Exclude from image"
+  - "Prompt" → "Special Instructions"
+
+- StyleSelector modal improvements:
+  - Tab switching no longer clears selections (users can select from multiple categories)
+  - Added selection count badge + "Clear all" button
+  - Disabled submit until at least one style selected
+  - Dynamic button label: "Select a Style" → "Apply 2 Styles"
+
+- EditImageModal improvements:
+  - Default to "Enhance Image" (most common action) instead of "Custom Prompt"
+  - Friendlier modal title: "Enhance: [Item Name]"
+  - Dynamic button: "Enhance Now" vs "Apply Edit" based on feature
+
+- ChatWidgetUi improvements:
+  - Rotating prompt examples every 4 seconds to inspire users
+
+### Top 5 High Impact (Requires More Effort)
+
+1. **UX-05**: Add visual style previews (thumbnails)
+2. **UX-06**: Auto-recommend styles based on business type
+3. **UX-17**: Show before/after previews for editing features
+4. **UX-20**: Show time/cost estimates for batch jobs
+5. **UX-12**: Add "Quick Generate" button that skips all options
+
+---
+
+### The "Zero-Click" Goal
+
+**Current state**: User must make 5+ decisions before generating.
+**Ideal state**: User can generate with 0 decisions (just click Generate).
+
+**Recommended approach**:
+
+1. Smart defaults based on business type + item category
+2. All options collapsed by default
+3. "Quick Generate" prominent, "Customize" secondary
+4. Results should be "shippable" 80%+ of the time with defaults
+
+---
+
+**Net result**: Product documentation is stronger. Technical debt is inventoried. Strategic gaps are surfaced.
+
+---
+
+_Document follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` impl template._

@@ -1,0 +1,32 @@
+.editorComponent {
+  width: 100%;
+  border-radius: 4px;
+
+  .elementContainer {
+    margin-bottom: 4px;
+    .ant-collapse-content-box {
+      padding: 0 !important;
+    }
+    .editorHeading {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 0;
+      .editorHeadingLabel {
+        padding: 8px 12px;
+      }
+      > div {
+        height: 37px !important;
+        padding: 12px !important;
+        position: absolute;
+        right: 0;
+      }
+    }
+  }
+  .elementName {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    padding: 5px;
+  }
+}

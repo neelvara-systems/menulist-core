@@ -1,0 +1,44 @@
+.sidebarContainer {
+  position: sticky;
+  top: 0;
+  
+  // Action menu button styles
+  :global(.ant-btn-text) {
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.06);
+    }
+    
+    &:focus-visible {
+      outline: 2px solid var(--ant-primary-color, #1677ff);
+      outline-offset: 2px;
+    }
+  }
+}
+.menuItemWrap {
+  div {
+    display: flex !important;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+.subMenuWrap {
+  ul {
+    // background: linear-gradient(
+    //     135deg,
+    //     rgba(138, 76, 224, 0.18) 0%,
+    //     rgb(22 119 255 / 16%) 30%,
+    //     rgba(241, 56, 223, 0.11) 70%,
+    //     rgb(19, 194, 194) 100%
+    //   )
+    //   0% 0% / 200% 200% !important;
+    .menuItemWrap {
+      display: flex !important;
+      justify-content: flex-start;
+      align-items: center;
+    }
+  }
+}

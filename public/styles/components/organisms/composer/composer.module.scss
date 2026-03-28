@@ -1,0 +1,15 @@
+@import "@styles/abstracts/mixins";
+
+.composerWrap {
+  @include transition;
+  &:hover {
+    @include transition;
+    box-shadow: rgb(0, 84, 208) 0px 0px 0px 2px inset !important;
+    outline-offset: 4px;
+  }
+  position: relative;
+  width: 100%;
+  color: black;
+  z-index: 1;
+  pointer-events: all !important;
+}

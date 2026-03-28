@@ -1,0 +1,850 @@
+/**
+ * Owner Dashboard Styles
+ * 
+ * Clean, modern styling for the SMB Owner Dashboard.
+ * Design Principles:
+ * - Card UI patterns for grouping
+ * - Clear visual hierarchy
+ * - Mobile-first responsive
+ * - Subtle shadows (no heavy textures)
+ * - Consistent spacing (8px grid)
+ * - Neutral color palette with accent highlights
+ */
+
+// Design tokens
+$primary-color: #1890ff;
+$success-color: #52c41a;
+$warning-color: #faad14;
+$text-primary: #262626;
+$text-secondary: #595959;
+$text-tertiary: #8c8c8c;
+$border-color: #f0f0f0;
+$background-light: #fafafa;
+$background-card: #ffffff;
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+$shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+$radius-sm: 8px;
+$radius-md: 12px;
+$radius-lg: 16px;
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+.ownerDashboard {
+  padding: $spacing-md;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: $background-light;
+
+  @media (max-width: 576px) {
+    padding: $spacing-sm;
+  }
+}
+
+// View Mode Tabs - Primary action area
+.viewModeTabs {
+  margin-bottom: $spacing-md;
+
+  :global(.ant-segmented) {
+    background: $background-card;
+    padding: $spacing-xs;
+    border-radius: $radius-md;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border-color;
+    width: 100%;
+  }
+
+  :global(.ant-segmented-item) {
+    border-radius: $radius-sm;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 44px; // Touch-friendly
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.ant-segmented-item-selected) {
+    background: $primary-color;
+    box-shadow: $shadow-md;
+
+    .primaryTab,
+    .secondaryTab,
+    .activeTab {
+      color: #fff !important;
+    }
+  }
+
+  :global(.ant-segmented-item-label) {
+    padding: $spacing-sm $spacing-md;
+  }
+}
+
+.primaryTab {
+  font-weight: 600;
+  font-size: 14px;
+  color: $text-primary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.secondaryTab {
+  font-weight: 500;
+  color: $text-secondary;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.activeTab {
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+// Metric Cards - Key data display
+.metricCard {
+  height: 100%;
+  border-radius: $radius-md;
+  box-shadow: $shadow-sm;
+  border: 1px solid $border-color;
+  background: $background-card;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-1px);
+  }
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
+.metricCardSmall {
+  :global(.ant-card-body) {
+    padding: $spacing-md;
+  }
+}
+
+.metricHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.metricIcon {
+  font-size: 18px;
+  color: $primary-color;
+  opacity: 0.8;
+}
+
+.metricTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: $text-secondary;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.tooltipIcon {
+  margin-left: $spacing-xs;
+  font-size: 12px;
+  cursor: help;
+  color: $text-tertiary;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.metricValue {
+  margin: 0 0 $spacing-xs 0 !important;
+  font-weight: 700;
+  font-size: 28px;
+  color: $text-primary;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+
+  @media (max-width: 576px) {
+    font-size: 24px;
+  }
+}
+
+.metricSubtitle {
+  font-size: 12px;
+  color: $text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.changeTag {
+  margin-left: $spacing-sm;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  padding: 2px 8px;
+}
+
+// AI Summary Card - Hero section
+.aiSummaryCard {
+  background: linear-gradient(135deg, #f8fafc 0%, $background-card 100%);
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  border-left: 4px solid $primary-color;
+  box-shadow: $shadow-sm;
+  margin-bottom: $spacing-md;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
+.aiSummaryHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-md;
+  border-bottom: 1px solid $border-color;
+}
+
+.aiIcon {
+  font-size: 24px;
+  color: $warning-color;
+  background: rgba(250, 173, 20, 0.1);
+  padding: $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.aiTitle {
+  margin: 0 !important;
+  font-weight: 600;
+  font-size: 16px;
+  color: $text-primary;
+}
+
+.aiBulletList {
+  :global(.ant-list-item) {
+    padding: $spacing-sm 0;
+    border-bottom: none !important;
+  }
+}
+
+.aiBulletItem {
+  position: relative;
+  padding-left: $spacing-lg;
+  font-size: 14px;
+  line-height: 1.6;
+  color: $text-primary;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 6px;
+    height: 6px;
+    background: $primary-color;
+    border-radius: 50%;
+  }
+}
+
+// Metrics Row
+.metricsRow {
+  margin-bottom: $spacing-md;
+
+  :global(.ant-col) {
+    margin-bottom: 0;
+  }
+}
+
+// Views - Main content areas
+.weeklyView,
+.dailyView,
+.monthlyView {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+// Block Performance Card
+.blockPerformanceCard {
+  height: 100%;
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  box-shadow: $shadow-sm;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+
+  h5 {
+    margin-bottom: $spacing-md;
+    font-weight: 600;
+    color: $text-primary;
+  }
+}
+
+.blockList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.blockItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md;
+  background: $background-light;
+  border-radius: $radius-sm;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: $border-color;
+    background: $background-card;
+  }
+
+  > span:first-child {
+    font-weight: 500;
+    color: $text-primary;
+  }
+}
+
+// Top Items - Ranking list
+.topItemsCard {
+  height: 100%;
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  box-shadow: $shadow-sm;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+
+  h5 {
+    margin-bottom: $spacing-md;
+    font-weight: 600;
+    color: $text-primary;
+  }
+}
+
+.topItemsList {
+  :global(.ant-list-item) {
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $border-color !important;
+
+    &:last-child {
+      border-bottom: none !important;
+    }
+  }
+}
+
+.topItemRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  width: 100%;
+}
+
+.topItemRank {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $background-light;
+  border-radius: $radius-sm;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.topItemIcon {
+  color: #fa8c16;
+  font-size: 16px;
+}
+
+.rankNumber {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-tertiary;
+}
+
+.topItemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.topItemName {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: $text-primary;
+}
+
+.topItemClicks {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: $text-secondary;
+  font-weight: 500;
+}
+
+// Daily View
+.lowActivityAlert {
+  margin-bottom: $spacing-md;
+  border-radius: $radius-sm;
+  border: none;
+  background: rgba(24, 144, 255, 0.06);
+
+  :global(.ant-alert-message) {
+    font-weight: 600;
+    color: $text-primary;
+  }
+
+  :global(.ant-alert-description) {
+    color: $text-secondary;
+  }
+}
+
+// Monthly View
+.monthHeader {
+  background: linear-gradient(135deg, #f0fdf4 0%, $background-card 100%);
+  border-radius: $radius-md;
+  border: 1px solid #d9f7be;
+  box-shadow: $shadow-sm;
+  margin-bottom: $spacing-md;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
+.monthHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.monthIcon {
+  font-size: 36px;
+  color: $success-color;
+
+  @media (max-width: 576px) {
+    font-size: 28px;
+  }
+}
+
+.monthTitle {
+  margin: 0 !important;
+  font-size: 18px;
+
+  @media (max-width: 576px) {
+    font-size: 16px;
+  }
+}
+
+.subscriptionValue {
+  border-radius: $radius-md;
+  background: $background-light;
+  border: 1px solid $border-color;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+
+  h5 {
+    margin-bottom: $spacing-md;
+    font-weight: 600;
+  }
+
+  :global(.ant-statistic-title) {
+    font-size: 12px;
+    color: $text-tertiary;
+    margin-bottom: $spacing-xs;
+  }
+
+  :global(.ant-statistic-content) {
+    font-size: 20px;
+    font-weight: 600;
+    color: $text-primary;
+
+    @media (max-width: 576px) {
+      font-size: 18px;
+    }
+  }
+}
+
+// Overall Footer - Lifetime anchor
+.overallFooter {
+  background: $background-card;
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  border-top: 3px solid #722ed1;
+  box-shadow: $shadow-sm;
+  margin-top: $spacing-lg;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
+.overallHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.overallIcon {
+  font-size: 28px;
+  color: #722ed1;
+  background: rgba(114, 46, 209, 0.08);
+  padding: $spacing-sm;
+  border-radius: $radius-sm;
+
+  @media (max-width: 576px) {
+    font-size: 24px;
+  }
+}
+
+.overallTitle {
+  margin: 0 !important;
+  flex: 1;
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.overallDateRange {
+  font-size: 12px;
+  color: $text-tertiary;
+  background: $background-light;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.overallDivider {
+  margin: $spacing-md 0;
+}
+
+.overallStat {
+  text-align: center;
+
+  @media (max-width: 576px) {
+    text-align: left;
+  }
+
+  :global(.ant-statistic-title) {
+    font-size: 12px;
+    color: $text-tertiary;
+    margin-bottom: $spacing-xs;
+  }
+
+  :global(.ant-statistic-content) {
+    font-size: 22px;
+    font-weight: 600;
+    color: $text-primary;
+
+    @media (max-width: 576px) {
+      font-size: 18px;
+    }
+  }
+}
+
+.lastUpdated {
+  display: block;
+  text-align: right;
+  font-size: 11px;
+  color: $text-tertiary;
+  margin-top: $spacing-md;
+}
+
+// Empty State
+.emptyCard,
+.emptyStateCard {
+  border-radius: $radius-md;
+  text-align: center;
+  padding: $spacing-xl $spacing-lg;
+  border: 1px solid $border-color;
+  background: $background-card;
+
+  :global(.ant-empty-image) {
+    margin-bottom: $spacing-md;
+  }
+}
+
+.emptyIcon {
+  font-size: 56px !important;
+  color: #d9d9d9;
+  opacity: 0.6;
+}
+
+.emptyContent {
+  margin-top: $spacing-md;
+}
+
+.emptyTitle {
+  margin-bottom: $spacing-sm !important;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.emptyDescription {
+  max-width: 280px;
+  margin: 0 auto;
+  color: $text-secondary;
+  line-height: 1.6;
+}
+
+// Error Card
+.errorCard {
+  border-radius: $radius-md;
+  border: 1px solid #ffccc7;
+  background: #fff2f0;
+}
+
+// Loading State
+.loadingState {
+  padding: $spacing-md;
+
+  @media (max-width: 576px) {
+    padding: $spacing-sm;
+  }
+}
+
+// Additional responsive utilities
+@media (max-width: 768px) {
+  .ownerDashboard {
+    padding: $spacing-sm;
+  }
+
+  .metricsRow {
+    :global(.ant-col) {
+      margin-bottom: $spacing-sm;
+    }
+  }
+}
+
+// Touch-friendly interactions
+@media (hover: none) {
+  .metricCard:hover,
+  .blockItem:hover {
+    transform: none;
+    box-shadow: $shadow-sm;
+  }
+}
+
+// Animation utilities
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.weeklyView,
+.dailyView,
+.monthlyView,
+.overviewView {
+  animation: fadeIn 0.3s ease-out;
+}
+
+// Dashboard Header (Project Selector + View Tabs)
+.dashboardHeader {
+  padding: $spacing-sm 0;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+// Overview View (v2 Primary)
+.overviewView {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.heroCard {
+  border-radius: $radius-lg;
+  overflow: hidden;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
+.heroContent {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+  margin-bottom: $spacing-lg;
+
+  @media (max-width: 576px) {
+    flex-direction: column;
+    text-align: center;
+    gap: $spacing-md;
+  }
+}
+
+.heroIcon {
+  flex-shrink: 0;
+}
+
+.heroText {
+  h3 {
+    margin: 0 0 $spacing-xs 0;
+  }
+}
+
+.quickStats {
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.quickStat {
+  text-align: center;
+
+  h4,
+  h5 {
+    color: $text-primary;
+    line-height: 1.2;
+  }
+}
+
+.historicalWeeksChart {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.weekBar {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px;
+  align-items: center;
+  gap: $spacing-sm;
+
+  @media (max-width: 576px) {
+    grid-template-columns: 80px 1fr 70px;
+  }
+}
+
+.weekLabel {
+  text-align: left;
+}
+
+.barContainer {
+  flex: 1;
+}
+
+.weekValue {
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.bulletList {
+  padding-left: $spacing-lg;
+  margin: 0;
+
+  li {
+    margin-bottom: $spacing-sm;
+    line-height: 1.6;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.detailCard {
+  :global(.ant-collapse-ghost) {
+    :global(.ant-collapse-item) {
+      border-bottom: 1px solid $border-color;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    :global(.ant-collapse-header) {
+      padding: $spacing-md 0;
+      font-weight: 500;
+    }
+
+    :global(.ant-collapse-content-box) {
+      padding: 0 0 $spacing-md 0;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .viewModeTabs {
+    display: none;
+  }
+
+  .ownerDashboard {
+    background: white;
+    padding: 0;
+  }
+
+  .metricCard,
+  .aiSummaryCard,
+  .topItemsCard,
+  .blockPerformanceCard,
+  .overallFooter {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

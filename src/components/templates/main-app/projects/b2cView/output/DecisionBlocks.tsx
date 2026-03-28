@@ -1,0 +1,698 @@
+/**
+ * Decision Blocks Component
+ * 
+ * Displays the three Decision Blocks at the top of the menu:
+ * - ⭐ Popular Right Now
+ * - ⚡ Quick Pick  
+ * - 💰 Best Value
+ * 
+ * ARCHITECTURE (2-Layer System):
+ * - Layer 1: Cloud Function precomputes top 3 candidates per block nightly
+ * - Layer 2: This component applies runtime availability filter
+ * - Fallback: Local computation if precomputed data is stale/unavailable
+ * 
+ * CORE RULE: Never show a Decision Block the customer cannot act on
+ * - Availability always beats intelligence
+ * - Hide block if no valid candidates (don't show empty/error states)
+ * 
+ * Features:
+ * - Horizontal scrollable on mobile
+ * - Business-type aware labels
+ * - Tracks Decision Block clicks (views tracked via decision_blocks_rendered)
+ * - Scrolls to item when tapped
+ * - Runtime availability filtering on precomputed candidates
+ * - TTL check with automatic fallback to local computation
+ */
+
+import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlockTranslation, getEnabledBlocks } from '@config/decisionBlocks';
+import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
+import Image from 'next/image';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { DecisionBlockEntry, PrecomputedDecisionBlocks } from '../../types';
+import { ExtractedDataCategory, ExtractedDataItem } from '../../types/extractedData.types';
+import { MenuSettings } from '../../types/project.types';
+import { MenuMoodConfig } from '../designSystem';
+
+interface DecisionBlocksProps {
+    items: ExtractedDataItem[];
+    /** Categories for time-slot validation */
+    categories?: ExtractedDataCategory[];
+    activeLanguage: string;
+    businessType?: string;
+    moodConfig: MenuMoodConfig;
+    onItemClick?: (item: ExtractedDataItem) => void;
+    currency?: string;
+    menuSettings?: MenuSettings;
+    /** Precomputed Decision Blocks from Cloud Function (optional) */
+    precomputedBlocks?: PrecomputedDecisionBlocks | null;
+    /** Required for project-wise analytics storage */
+    analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId'>>;
+}
+
+interface ComputedBlock {
+    blockType: DecisionBlockType;
+    item: ExtractedDataItem;
+    reason: string;                      // i18n key or plain text
+    reasonParams?: Record<string, any>;  // Optional params for interpolation
+}
+
+/**
+ * Owner controls for Decision Blocks
+ */
+interface OwnerControls {
+    enablePopular?: boolean;
+    enableQuickPick?: boolean;
+    enableBestValue?: boolean;
+    pinnedPopular?: string;
+    pinnedQuickPick?: string;
+    pinnedBestValue?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HARDENING: Lifecycle States + Activation Gates
+// "Decision Blocks exist only when data earns the right to guide."
+// ═══════════════════════════════════════════════════════════════
+
+type LifecycleState = 'COLD' | 'LEARNING' | 'STABLE';
+
+/** Thresholds for lifecycle gating */
+const LIFECYCLE_THRESHOLDS = {
+    COLD_MAX_VIEWS: 100,       // Below this = COLD (no blocks)
+    LEARNING_MAX_VIEWS: 500,   // Below this = LEARNING (Popular only)
+    MIN_CLICKS: 20,            // Global minimum clicks to show anything
+    MIN_ITEMS: 5,              // Global minimum items to show anything
+    MIN_ANALYTICS_DAYS: 3,     // Need at least 3 days of data
+    POPULAR_MIN_CLICKS: 30,    // Popular block: min total clicks
+    POPULAR_MIN_ITEMS: 3,      // Popular block: min unique items with clicks
+    QUICK_PICK_DURATION_COV: 0.6,  // Quick Pick: 60% items need duration
+    BEST_VALUE_PRICE_COV: 0.7,     // Best Value: 70% items need price
+    BEST_VALUE_MIN_ITEMS: 5,       // Best Value: min items with price
+    MIN_BLOCKS_TO_RENDER: 2,       // Minimum blocks or show nothing
+    STALE_HOURS: 72,               // Hard cutoff: no blocks at all after 72h
+} as const;
+
+/**
+ * Determine lifecycle state from statsUsed
+ */
+function getLifecycleState(stats: PrecomputedDecisionBlocks['statsUsed'] | undefined): LifecycleState {
+    if (!stats) return 'COLD';
+    const views = stats.totalViews ?? 0;
+    if (views < LIFECYCLE_THRESHOLDS.COLD_MAX_VIEWS) return 'COLD';
+    if (views < LIFECYCLE_THRESHOLDS.LEARNING_MAX_VIEWS) return 'LEARNING';
+    return 'STABLE';
+}
+
+/**
+ * Check if precomputed blocks are still valid (not expired)
+ */
+function isPrecomputedValid(precomputed: PrecomputedDecisionBlocks | null | undefined): boolean {
+    if (!precomputed) return false;
+    if (!precomputed.validUntil) return false;
+
+    const validUntil = precomputed.validUntil instanceof Date
+        ? precomputed.validUntil
+        : new Date(precomputed.validUntil);
+
+    return validUntil > new Date();
+}
+
+/**
+ * Check if precomputed blocks are critically stale (>72h)
+ * Beyond normal TTL — even pinned items should not show
+ */
+function isHardStale(precomputed: PrecomputedDecisionBlocks | null | undefined): boolean {
+    if (!precomputed?.computedAt) return true;
+
+    const computedAt = (precomputed.computedAt as any)?.toDate
+        ? (precomputed.computedAt as any).toDate()
+        : precomputed.computedAt instanceof Date
+            ? precomputed.computedAt
+            : new Date(precomputed.computedAt as any);
+
+    const hoursSinceCompute = (Date.now() - computedAt.getTime()) / (1000 * 60 * 60);
+    return hoursSinceCompute > LIFECYCLE_THRESHOLDS.STALE_HOURS;
+}
+
+/**
+ * Global activation gate — all must pass before any blocks render
+ */
+function passesGlobalGate(precomputed: PrecomputedDecisionBlocks | null | undefined): boolean {
+    if (!precomputed?.statsUsed) return false;
+    const stats = precomputed.statsUsed;
+
+    // Hard stale: scheduler hasn't run in >72h
+    if (isHardStale(precomputed)) return false;
+
+    // Minimum data thresholds
+    if ((stats.totalViews ?? 0) < LIFECYCLE_THRESHOLDS.COLD_MAX_VIEWS) return false;
+    if ((stats.totalClicks ?? 0) < LIFECYCLE_THRESHOLDS.MIN_CLICKS) return false;
+    if (stats.totalItems < LIFECYCLE_THRESHOLDS.MIN_ITEMS) return false;
+
+    // Need at least some analytics days (graceful: skip if field not yet populated)
+    if (stats.daysWithData !== undefined && stats.daysWithData < LIFECYCLE_THRESHOLDS.MIN_ANALYTICS_DAYS) return false;
+
+    return true;
+}
+
+/**
+ * Check if current time falls within a category's time slots
+ * Returns true if:
+ * - Category has no time slots (always visible)
+ * - Current time is within any of the category's time slots
+ */
+function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined): boolean {
+    if (!category) return true; // No category = always visible
+    if (!category.timeSlots || category.timeSlots.length === 0) return true; // No slots = always visible
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    for (const slot of category.timeSlots) {
+        const [startHour, startMin] = slot.startTime.split(':').map(Number);
+        const [endHour, endMin] = slot.endTime.split(':').map(Number);
+        const slotStart = startHour * 60 + startMin;
+        const slotEnd = endHour * 60 + endMin;
+
+        // Handle overnight slots (e.g., 22:00 - 02:00)
+        if (slotEnd < slotStart) {
+            if (currentMinutes >= slotStart || currentMinutes <= slotEnd) return true;
+        } else {
+            if (currentMinutes >= slotStart && currentMinutes <= slotEnd) return true;
+        }
+    }
+
+    return false; // Current time not within any slot
+}
+
+/**
+ * Runtime availability filter for precomputed candidates
+ * Selects first available item from candidates list
+ * 
+ * CORE RULES (3 mandatory checks):
+ * 1. active === true (item not disabled)
+ * 2. available === true (item not sold out)
+ * 3. Category time-slot is valid (item visible at current time)
+ * 
+ * - Availability always wins over score
+ * - If pinned item unavailable, skip to next candidate
+ * - If all candidates unavailable, return undefined (block will be hidden)
+ */
+function selectAvailableCandidate(
+    candidates: DecisionBlockEntry[],
+    items: ExtractedDataItem[],
+    categoryMap: Map<string, ExtractedDataCategory>,
+    usedItemIds: Set<string>,
+    pinnedId?: string
+): { item: ExtractedDataItem; reason: string; reasonParams?: Record<string, any> } | undefined {
+    // Build lookup map for O(1) access
+    const itemMap = new Map(items.map(item => [item.id, item]));
+
+    // Check if item is available at runtime (3 mandatory checks)
+    const isAvailable = (itemId: string): boolean => {
+        const item = itemMap.get(itemId);
+        if (!item) return false;
+
+        // Check 1: Item not disabled
+        if (item.active === false) return false;
+
+        // Check 2: Item not sold out
+        if (item.available === false) return false;
+
+        // Check 3: Category time-slot validation
+        const category = categoryMap.get(item.category);
+        if (!isCategoryWithinTimeSlot(category)) return false;
+
+        // Check 4: Not already used in another block
+        if (usedItemIds.has(itemId)) return false;
+
+        return true;
+    };
+
+    // If owner pinned an item, try it first (but only if available)
+    if (pinnedId && isAvailable(pinnedId)) {
+        const item = itemMap.get(pinnedId)!;
+        usedItemIds.add(pinnedId);
+        return { item, reason: DECISION_REASON_KEYS.pinned.ownerPick };
+    }
+
+    // Find first available candidate from precomputed list
+    for (const candidate of candidates) {
+        if (isAvailable(candidate.itemId)) {
+            const item = itemMap.get(candidate.itemId)!;
+            usedItemIds.add(candidate.itemId);
+            return {
+                item,
+                reason: candidate.reason,
+                reasonParams: candidate.reasonParams
+            };
+        }
+    }
+
+    // No available candidates - block will be hidden
+    return undefined;
+}
+
+/**
+ * Compute blocks from precomputed candidates with runtime filtering
+ * 
+ * HARDENING LAYERS (applied in order):
+ * 1. Global activation gate (minimum data thresholds)
+ * 2. Lifecycle state (COLD/LEARNING/STABLE)
+ * 3. Block-level eligibility (data coverage per block)
+ * 4. Runtime availability filter (active, available, time-slot)
+ * 5. Minimum viability rule (≥2 blocks or nothing)
+ */
+function computeFromPrecomputed(
+    precomputed: PrecomputedDecisionBlocks,
+    items: ExtractedDataItem[],
+    categories: ExtractedDataCategory[],
+    businessType?: string,
+    ownerControls?: OwnerControls
+): ComputedBlock[] {
+    const stats = precomputed.statsUsed;
+    const lifecycle = getLifecycleState(stats);
+    const enabledBlocks = getEnabledBlocks(businessType);
+    const blocks: ComputedBlock[] = [];
+    const usedItemIds = new Set<string>();
+
+    // Build category lookup map for time-slot validation
+    const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
+
+    // ── Block-level eligibility (data coverage gates) ──
+
+    // ⭐ Popular: needs sufficient clicks + unique items with clicks
+    const isPopularEligible =
+        (stats.totalClicks ?? 0) >= LIFECYCLE_THRESHOLDS.POPULAR_MIN_CLICKS &&
+        (stats.itemsWithClicks ?? 0) >= LIFECYCLE_THRESHOLDS.POPULAR_MIN_ITEMS;
+
+    // ⚡ Quick Pick: needs STABLE lifecycle + duration data coverage
+    const isQuickPickEligible =
+        lifecycle === 'STABLE' &&
+        (stats.durationCoverage ?? 0) >= LIFECYCLE_THRESHOLDS.QUICK_PICK_DURATION_COV;
+
+    // 💰 Best Value: needs price data coverage
+    const isBestValueEligible =
+        (stats.priceCoverage ?? 0) >= LIFECYCLE_THRESHOLDS.BEST_VALUE_PRICE_COV &&
+        (stats.itemsWithPrice ?? 0) >= LIFECYCLE_THRESHOLDS.BEST_VALUE_MIN_ITEMS;
+
+    // ⭐ Popular Right Now
+    const isPopularEnabled = ownerControls?.enablePopular !== false && enabledBlocks.includes('popular') && isPopularEligible;
+    if (isPopularEnabled && precomputed.popular?.length > 0) {
+        const result = selectAvailableCandidate(
+            precomputed.popular,
+            items,
+            categoryMap,
+            usedItemIds,
+            ownerControls?.pinnedPopular
+        );
+        if (result) {
+            blocks.push({
+                blockType: 'popular',
+                item: result.item,
+                reason: result.reason,
+                reasonParams: result.reasonParams,
+            });
+        }
+    }
+
+    // ⚡ Quick Pick (only in STABLE lifecycle with duration coverage)
+    const isQuickPickEnabled = ownerControls?.enableQuickPick !== false && enabledBlocks.includes('quickPick') && isQuickPickEligible;
+    if (isQuickPickEnabled && precomputed.quickPick?.length > 0) {
+        const result = selectAvailableCandidate(
+            precomputed.quickPick,
+            items,
+            categoryMap,
+            usedItemIds,
+            ownerControls?.pinnedQuickPick
+        );
+        if (result) {
+            blocks.push({
+                blockType: 'quickPick',
+                item: result.item,
+                reason: result.reason,
+                reasonParams: result.reasonParams,
+            });
+        }
+    }
+
+    // 💰 Best Value (only with price coverage)
+    const isBestValueEnabled = ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue') && isBestValueEligible;
+    if (isBestValueEnabled && precomputed.bestValue?.length > 0) {
+        const result = selectAvailableCandidate(
+            precomputed.bestValue,
+            items,
+            categoryMap,
+            usedItemIds,
+            ownerControls?.pinnedBestValue
+        );
+        if (result) {
+            blocks.push({
+                blockType: 'bestValue',
+                item: result.item,
+                reason: result.reason,
+                reasonParams: result.reasonParams,
+            });
+        }
+    }
+
+    // ── Minimum viability: require ≥2 blocks or show nothing ──
+    // Showing 1 lonely block looks weak and reduces trust
+    if (blocks.length < LIFECYCLE_THRESHOLDS.MIN_BLOCKS_TO_RENDER) {
+        return [];
+    }
+
+    return blocks;
+}
+
+/**
+ * Fallback when precomputed data is stale/unavailable
+ * 
+ * CRITICAL: Client should NEVER rank items - only the scheduler has analytics data.
+ * Fallback behavior:
+ * - If TTL expired: Show ONLY owner-pinned items (no intelligence, just owner picks)
+ * - If no pinned items: Hide all blocks (better than wrong intelligence)
+ * 
+ * This avoids "dual authority" where client and scheduler produce different rankings.
+ */
+function computeBlocksFallback(
+    items: ExtractedDataItem[],
+    categories: ExtractedDataCategory[],
+    businessType?: string,
+    ownerControls?: OwnerControls
+): ComputedBlock[] {
+    const enabledBlocks = getEnabledBlocks(businessType);
+    const blocks: ComputedBlock[] = [];
+    const usedItemIds = new Set<string>();
+
+    // Build category lookup map for time-slot validation
+    const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
+
+    // Build item lookup map
+    const itemMap = new Map(items.map(item => [item.id, item]));
+
+    // Check if item is available (same 3 checks as runtime gate)
+    const isAvailable = (itemId: string): boolean => {
+        const item = itemMap.get(itemId);
+        if (!item) return false;
+        if (item.active === false) return false;
+        if (item.available === false) return false;
+        const category = categoryMap.get(item.category);
+        if (!isCategoryWithinTimeSlot(category)) return false;
+        if (usedItemIds.has(itemId)) return false;
+        return true;
+    };
+
+    // ONLY show owner-pinned items in fallback mode (no client-side ranking)
+    // This ensures single source of truth: scheduler ranks, client only filters
+
+    // ⭐ Popular - only if owner pinned
+    const isPopularEnabled = ownerControls?.enablePopular !== false && enabledBlocks.includes('popular');
+    if (isPopularEnabled && ownerControls?.pinnedPopular && isAvailable(ownerControls.pinnedPopular)) {
+        const item = itemMap.get(ownerControls.pinnedPopular)!;
+        usedItemIds.add(item.id);
+        blocks.push({
+            blockType: 'popular',
+            item,
+            reason: DECISION_REASON_KEYS.pinned.ownerPick,
+        });
+    }
+
+    // ⚡ Quick Pick - only if owner pinned
+    const isQuickPickEnabled = ownerControls?.enableQuickPick !== false && enabledBlocks.includes('quickPick');
+    if (isQuickPickEnabled && ownerControls?.pinnedQuickPick && isAvailable(ownerControls.pinnedQuickPick)) {
+        const item = itemMap.get(ownerControls.pinnedQuickPick)!;
+        usedItemIds.add(item.id);
+        blocks.push({
+            blockType: 'quickPick',
+            item,
+            reason: DECISION_REASON_KEYS.pinned.ownerPick,
+        });
+    }
+
+    // 💰 Best Value - only if owner pinned
+    const isBestValueEnabled = ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue');
+    if (isBestValueEnabled && ownerControls?.pinnedBestValue && isAvailable(ownerControls.pinnedBestValue)) {
+        const item = itemMap.get(ownerControls.pinnedBestValue)!;
+        usedItemIds.add(item.id);
+        blocks.push({
+            blockType: 'bestValue',
+            item,
+            reason: DECISION_REASON_KEYS.pinned.ownerPick,
+        });
+    }
+
+    // If no pinned items available, return empty (hide all blocks)
+    // This is correct behavior: better to show nothing than show wrong intelligence
+    return blocks;
+}
+
+export default function DecisionBlocks({
+    items,
+    categories = [],
+    activeLanguage,
+    businessType,
+    moodConfig,
+    onItemClick,
+    currency = '$',
+    menuSettings,
+    precomputedBlocks,
+    analyticsIds,
+}: DecisionBlocksProps) {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    /**
+     * Translate reason key to localized text
+     * 
+     * NOTE: Customer-facing menu doesn't use next-intl
+     * We use a simple static translation lookup instead
+     * This keeps the menu lightweight and doesn't require i18n provider
+     */
+    const translateReason = useCallback((reason: string, params?: Record<string, any>): string => {
+        // If reason doesn't look like an i18n key, return as-is (backward compat)
+        if (!reason.startsWith('decision.')) {
+            return reason;
+        }
+
+        // Get translation from static map
+        const translation = getDecisionBlockTranslation(reason, activeLanguage);
+
+        // Interpolate params (e.g., {minutes} -> 5)
+        if (params && translation) {
+            return Object.entries(params).reduce(
+                (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+                translation
+            );
+        }
+
+        return translation;
+    }, [activeLanguage]);
+
+    // Extract owner controls from menuSettings
+    const ownerControls: OwnerControls | undefined = useMemo(() => {
+        if (!menuSettings?.decisionBlocks) return undefined;
+        return {
+            enablePopular: menuSettings.decisionBlocks.enablePopular,
+            enableQuickPick: menuSettings.decisionBlocks.enableQuickPick,
+            enableBestValue: menuSettings.decisionBlocks.enableBestValue,
+            pinnedPopular: menuSettings.decisionBlocks.pinnedPopular,
+            pinnedQuickPick: menuSettings.decisionBlocks.pinnedQuickPick,
+            pinnedBestValue: menuSettings.decisionBlocks.pinnedBestValue,
+        };
+    }, [menuSettings?.decisionBlocks]);
+
+    // Compute blocks using hardened 2-layer system:
+    // LAYER 0: Global activation gate (minimum data thresholds)
+    // LAYER 1: If precomputed valid → lifecycle-aware block computation + runtime availability filter
+    // LAYER 2: If precomputed stale → owner-pinned only (no client-side ranking)
+    // LAYER 3: If hard stale (>72h) → nothing at all
+    const blocks = useMemo(() => {
+        // Hard stale guard: if scheduler hasn't run in >72h, show nothing
+        if (isHardStale(precomputedBlocks)) {
+            return [];
+        }
+
+        const usePrecomputed = isPrecomputedValid(precomputedBlocks);
+
+        if (usePrecomputed && precomputedBlocks) {
+            // Global activation gate: minimum data thresholds must pass
+            if (!passesGlobalGate(precomputedBlocks)) {
+                return [];
+            }
+
+            // Layer 1 + 2: Precomputed candidates with lifecycle-aware gating + runtime filter
+            return computeFromPrecomputed(
+                precomputedBlocks,
+                items,
+                categories,
+                businessType,
+                ownerControls
+            );
+        }
+
+        // Fallback: Only show owner-pinned items (client never ranks)
+        // This ensures single source of truth - scheduler ranks, client filters
+        return computeBlocksFallback(items, categories, businessType, ownerControls);
+    }, [items, categories, businessType, ownerControls, precomputedBlocks]);
+
+    // Handle block click
+    const handleClick = useCallback((rec: ComputedBlock) => {
+        const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
+        const price = parseFloat(rec.item.price || '0');
+
+        // Track the click (pass analyticsIds for project-wise Firestore storage)
+        trackDecisionBlockClick(
+            rec.blockType,
+            rec.item.id,
+            itemName,
+            rec.item.category,
+            price,
+            { ...analyticsIds }
+        );
+
+        // Scroll to item
+        const itemElement = document.getElementById(`item-${rec.item.id}`);
+        if (itemElement) {
+            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add highlight effect
+            itemElement.classList.add('ring-2', 'ring-offset-2');
+            setTimeout(() => {
+                itemElement.classList.remove('ring-2', 'ring-offset-2');
+            }, 2000);
+        }
+
+        // Trigger item click callback (opens PDP modal)
+        if (onItemClick) {
+            onItemClick(rec.item);
+        }
+    }, [activeLanguage, onItemClick]);
+
+    // Track when blocks are rendered (once per session)
+    // Why not use menu_view? It fires even when blocks DON'T render (feature off, no items, TTL expired)
+    // Accurate CTR = clicks / renders (not clicks / menu_views)
+    const hasTrackedRender = useRef(false);
+    useEffect(() => {
+        if (blocks.length > 0 && !hasTrackedRender.current) {
+            hasTrackedRender.current = true;
+            const blockTypes = blocks.map(b => b.blockType);
+            trackDecisionBlocksRendered(
+                blockTypes,
+                { ...analyticsIds }
+            );
+        }
+    }, [blocks]);
+
+    // Don't render if no blocks to show
+    if (blocks.length === 0) {
+        return null;
+    }
+
+    const formatPrice = (price: string | undefined) => {
+        if (!price) return null;
+        const num = parseFloat(price);
+        return isNaN(num) ? price : `${currency}${num.toFixed(2)}`;
+    };
+
+    return (
+        <div
+            ref={containerRef}
+            className="w-full overflow-x-auto scrollbar-hide"
+            style={{
+                paddingBottom: 16,
+                marginBottom: 8,
+            }}
+        >
+            <div
+                className="flex gap-3 px-4"
+                style={{
+                    minWidth: 'max-content',
+                }}
+            >
+                {blocks.map((rec, index) => {
+                    const labels = getBlockLabels(rec.blockType, businessType);
+                    // Guard: labels should never be null here since blocks are pre-filtered by enabledBlocks
+                    // But we check for type safety
+                    if (!labels) return null;
+
+                    const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
+                    const itemImage = rec.item.images?.[0]?.url;
+                    const itemPrice = formatPrice(rec.item.price);
+
+                    // P3.1: Visual Hierarchy - first block is slightly larger/prominent
+                    const isFirstBlock = index === 0;
+
+                    return (
+                        <button
+                            key={rec.blockType}
+                            onClick={() => handleClick(rec)}
+                            className="flex-shrink-0 flex items-center gap-3 p-3 rounded-xl transition-all duration-150 active:scale-[0.98] hover:shadow-md"
+                            style={{
+                                background: moodConfig.itemStyle.background,
+                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                // P3.1: First block is slightly wider for visual hierarchy
+                                minWidth: isFirstBlock ? 220 : 200,
+                                maxWidth: isFirstBlock ? 300 : 280,
+                            }}
+                        >
+                            {/* Item Image (optional) */}
+                            {itemImage && (
+                                <div
+                                    className="relative flex-shrink-0 overflow-hidden rounded-lg"
+                                    style={{ width: 56, height: 56 }}
+                                >
+                                    <Image
+                                        src={itemImage}
+                                        alt={itemName}
+                                        fill
+                                        className="object-cover"
+                                        sizes="56px"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Content */}
+                            <div className="flex-1 text-left min-w-0">
+                                {/* Block Label - P2.6: Only show icon if non-empty */}
+                                <div
+                                    className="flex items-center gap-1 text-xs font-medium mb-1"
+                                    style={{ color: moodConfig.accentColor }}
+                                >
+                                    {labels.icon && <span>{labels.icon}</span>}
+                                    <span>{labels.title}</span>
+                                </div>
+
+                                {/* Item Name */}
+                                <div
+                                    className="text-sm font-semibold truncate"
+                                    style={{
+                                        color: moodConfig.headingColor,
+                                        fontFamily: moodConfig.headingFont,
+                                    }}
+                                >
+                                    {itemName}
+                                </div>
+
+                                {/* Reason + Price */}
+                                <div className="flex items-center justify-between gap-2 mt-1">
+                                    <span
+                                        className="text-xs truncate"
+                                        style={{ color: moodConfig.descriptionColor }}
+                                    >
+                                        {translateReason(rec.reason, rec.reasonParams)}
+                                    </span>
+                                    {itemPrice && (
+                                        <span
+                                            className="text-xs font-semibold flex-shrink-0"
+                                            style={{ color: moodConfig.priceColor }}
+                                        >
+                                            {itemPrice}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}

@@ -1,0 +1,107 @@
+/**
+ * WhatsApp Status Template — 1080×1920 PNG
+ *
+ * Store-level "Updated Menu" status image.
+ * Owner posts to WhatsApp status, staff reposts.
+ *
+ * @see __docs__/menu-kit/menu-kit_spec.md
+ */
+
+import QRCode from 'qrcode';
+import { getOfferingLabels } from '../businessTypeLabels';
+import { PreloadedLogo } from '../imageLoader';
+import { MenuKitInput } from '../types';
+
+type StatusInput = MenuKitInput & { _logo?: PreloadedLogo | null };
+
+const W = 1080;
+const H = 1920;
+
+export async function generateWhatsappStatus(input: StatusInput): Promise<Blob> {
+    const { storeName, menuUrl, shortLink, businessType, _logo } = input;
+    const labels = getOfferingLabels(businessType);
+    const logo = _logo || null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to get canvas context');
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // Logo — centered, above store name (if available)
+    let nameY = 340;
+    if (logo) {
+        const maxLH = 100;
+        const maxLW = 280;
+        const scale = Math.min(maxLW / (logo.width || 1), maxLH / (logo.height || 1), 1);
+        const lw = Math.round((logo.width || 100) * scale);
+        const lh = Math.round((logo.height || 100) * scale);
+        ctx.drawImage(logo.element, W / 2 - lw / 2, 220, lw, lh);
+        nameY = 220 + lh + 40;
+    }
+
+    // Store name — bold, top area
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 64px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    let displayName = storeName;
+    while (ctx.measureText(displayName).width > W - 120 && displayName.length > 3) {
+        displayName = displayName.slice(0, -1);
+    }
+    if (displayName !== storeName) displayName += '\u2026';
+    ctx.fillText(displayName, W / 2, nameY);
+
+    // Decorative line
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 120, 400);
+    ctx.lineTo(W / 2 + 120, 400);
+    ctx.stroke();
+
+    // "Updated Menu ✅"
+    ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#22c55e';
+    ctx.fillText(labels.updatedTitle, W / 2, 490);
+
+    // QR Code — large, centered
+    const qrCanvas = document.createElement('canvas');
+    await QRCode.toCanvas(qrCanvas, menuUrl, {
+        width: 500,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'H',
+    });
+    ctx.drawImage(qrCanvas, (W - 500) / 2, 600, 500, 500);
+
+    // "Scan / Tap to view menu"
+    ctx.font = '40px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#000000';
+    ctx.fillText(`Scan / Tap to view ${labels.offeringLower}`, W / 2, 1200);
+
+    // Short link
+    ctx.font = '32px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#888888';
+    ctx.fillText(shortLink, W / 2, 1280);
+
+    // Bottom branding
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(0, H - 120, W, 120);
+    ctx.font = '24px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#bbbbbb';
+    ctx.fillText('Powered by MenuList', W / 2, H - 55);
+
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('Failed to generate WhatsApp status'))),
+            'image/png'
+        );
+    });
+}

@@ -1,0 +1,170 @@
+rules_version = '2';
+
+/**
+ * Firebase Storage Security Rules
+ * 
+ * CRITICAL: These rules enforce:
+ * 1. Authentication (only logged-in users)
+ * 2. Tenant isolation (users can only access their tenant's data)
+ * 3. File type validation (images only)
+ * 4. File size limits (max 10MB)
+ * 5. Content type validation (MIME type checking)
+ * 
+ * Documentation: /Users/danny/Projects/MenuListAi/dashboard/__docs__/security/
+ */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ═══════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════
+    
+    /**
+     * Check if user is authenticated
+     */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    /**
+     * Check if user belongs to the tenant
+     */
+    function belongsToTenant(tId) {
+      return isAuthenticated() 
+             && request.auth.token.tId == int(tId);
+    }
+    
+    /**
+     * Check if user belongs to the store
+     */
+    function belongsToStore(tId, sId) {
+      return belongsToTenant(tId)
+             && request.auth.token.sId == int(sId);
+    }
+    
+    /**
+     * Validate image file type (MIME type whitelist)
+     */
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+    
+    /**
+     * Validate file size (max 10MB)
+     */
+    function isValidSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB
+    }
+    
+    /**
+     * Combined validation for uploads
+     */
+    function isValidImageUpload() {
+      return isValidImageType() && isValidSize();
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // TENANT-SCOPED STORAGE PATTERN (NEW)
+    // Path: {collection}/{fileType}/{tId}/{sId}/{fileId}
+    // ═══════════════════════════════════════════════════════════
+    
+    /**
+     * Chat Session Images
+     * Path: chatSessions/chatimages/{tId}/{sId}/{imageId}
+     */
+    match /chatSessions/chatimages/{tId}/{sId}/{imageId} {
+      allow read: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+    
+    /**
+     * Support Ticket Documents
+     * Path: supportTickets/documents/{tId}/{sId}/{fileId}
+     */
+    match /supportTickets/documents/{tId}/{sId}/{fileId} {
+      allow read: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+    
+    /**
+     * Support Ticket Message Attachments
+     * Path: supportTickets/messages/{tId}/{sId}/{fileId}
+     */
+    match /supportTickets/messages/{tId}/{sId}/{fileId} {
+      allow read: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+    
+    /**
+     * Changelog Files
+     * Path: changelog/files/{tId}/{sId}/{fileId}
+     */
+    match /changelog/files/{tId}/{sId}/{fileId} {
+      allow read: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // LEGACY PROJECT STORAGE PATTERN
+    // Path: MenuListAi/project/{type}/{fileId}
+    // TODO: Migrate to tenant-scoped pattern
+    // ═══════════════════════════════════════════════════════════
+    
+    /**
+     * Project Files (Legacy Pattern)
+     * Path: MenuListAi/project/files/{fileId}
+     */
+    match /MenuListAi/project/files/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated();
+    }
+    
+    /**
+     * Project Generated Images (Legacy Pattern)
+     * Path: MenuListAi/project/generated/{projectId}/{fileId}
+     */
+    match /MenuListAi/project/generated/{projectId}/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated();
+    }
+    
+    /**
+     * Project Edited Images (Legacy Pattern)
+     * Path: MenuListAi/project/edited/{projectId}/{fileId}
+     */
+    match /MenuListAi/project/edited/{projectId}/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated();
+    }
+    
+    /**
+     * Project Custom Images (Legacy Pattern)
+     * Path: MenuListAi/project/custom/{projectId}/{fileId}
+     */
+    match /MenuListAi/project/custom/{projectId}/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated();
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // DEFAULT DENY (Security First)
+    // ═══════════════════════════════════════════════════════════
+    
+    /**
+     * Deny all other access by default
+     * Explicit allow rules must be defined above
+     */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

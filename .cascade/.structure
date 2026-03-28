@@ -1,0 +1,59 @@
+.cascade/
+├── rules/                                   # MANDATORY RULES (Strict Enforcement)
+│   ├── README.md                           # Rules index & how they work
+│   ├── SECURITY_IMPLEMENTATION_RULES.md    # 20 mandatory security rules (900+ lines)
+│   └── DOCUMENTATION_ORGANIZATION_RULES.md # Doc placement rules (400+ lines)
+│
+├── RULES_CREATED_SUMMARY.md                # Historical: Nov 5, 2025 creation log
+└── RULES_UPDATE_NOV_6_2025.md              # Historical: Nov 6, 2025 update log (Rules 16-20)
+
+RELATED CONFIG:
+.windsurf/
+├── rules/
+│   └── menu-enforcement.md                 # Digital Menu Output Constitution enforcement
+├── workflows/                              # 12 workflow slash commands
+│   ├── help.md                            # /help — smart router
+│   ├── chatgpt-review.md                  # /chatgpt-review
+│   ├── new-feature.md                     # /new-feature
+│   ├── doc-feedback.md                    # /doc-feedback
+│   ├── code-feedback.md                   # /code-feedback
+│   ├── retro-doc.md                       # /retro-doc
+│   ├── refactor-feature.md                # /refactor-feature
+│   ├── doc-organize.md                    # /doc-organize
+│   ├── system-audit.md                    # /system-audit
+│   ├── final-review.md                    # /final-review
+│   ├── owner-dashboard.md                 # /owner-dashboard
+│   └── customer-facing.md                 # /customer-facing
+└── mcp-config.json                         # MCP server config
+
+.windsurfrules                               # Tech stack versions (always loaded)
+
+AUTHORITY HIERARCHY:
+┌─────────────────────────────────────────┐
+│ 1. __docs__/constitution/ (10 Laws)     │ ← PRODUCT AUTHORITY (The North Star)
+│    - 8 governance documents              │
+│    - Founder-only modification           │
+├─────────────────────────────────────────┤
+│ 2. .cascade/rules/ (MANDATORY)          │ ← CODE AUTHORITY (Cannot override)
+│    - 20 security rules                   │
+│    - Doc organization rules              │
+│    - Zero tolerance enforcement          │
+├─────────────────────────────────────────┤
+│ 3. .windsurf/rules/ (ENFORCEMENT)       │ ← DOMAIN AUTHORITY
+│    - Menu output constitution            │
+├─────────────────────────────────────────┤
+│ 4. OWASP Top 10 Standards               │ ← Industry Requirements
+├─────────────────────────────────────────┤
+│ 5. __docs__/security/ (Guides)          │ ← Implementation How-To
+├─────────────────────────────────────────┤
+│ 6. IDE_PROMPTS/ (Process)               │ ← Development Pipeline
+├─────────────────────────────────────────┤
+│ 7. .windsurf/workflows/ (Automation)    │ ← Slash Commands
+├─────────────────────────────────────────┤
+│ 8. Cascade Memories (Context)           │ ← Past Work & Preferences
+└─────────────────────────────────────────┘
+
+KEY DIFFERENCE:
+- Constitution = PRODUCT LAW (what MenuList IS and ISN'T)
+- Rules = CODE LAW (enforced, no exceptions)
+- Workflows = PROCESS AUTOMATION (slash commands, flexible)

@@ -1,0 +1,347 @@
+// OBP — Official Business Page Styles
+// Ultra-minimal, mobile-first, infrastructure feel.
+// @see __docs__/official-business-page/official-business-page_impl.md §7
+
+// ── Variables ──
+$obp-bg: #fafafa;
+$obp-max-width: 440px;
+$obp-border: #e8e8e8;
+$obp-text-primary: #111;
+$obp-text-secondary: #666;
+$obp-text-muted: #999;
+$obp-text-info: #444;
+$obp-open-bg: #e8f5e9;
+$obp-open-color: #2e7d32;
+$obp-closed-bg: #fce4ec;
+$obp-closed-color: #c62828;
+
+.page {
+  min-height: 100vh;
+  background: $obp-bg;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px;
+  -webkit-font-smoothing: antialiased;
+  // Accent color CSS custom property — set via inline style from accentColor
+  // Used by action buttons, social links, and attribute tags for brand coherence
+}
+
+// ── Identity Block ──
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 48px;
+  padding-bottom: 8px;
+  width: 100%;
+  max-width: $obp-max-width;
+}
+
+.logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: $obp-border;
+  margin-bottom: 16px;
+}
+
+.logoFallback {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #333;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.name {
+  font-size: 22px;
+  font-weight: 700;
+  color: $obp-text-primary;
+  text-align: center;
+  margin: 0 0 4px;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.descriptor {
+  font-size: 14px;
+  color: $obp-text-secondary;
+  text-align: center;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+// ── Status Badge ──
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statusOpen {
+  background: $obp-open-bg;
+  color: $obp-open-color;
+}
+
+.statusClosed {
+  background: $obp-closed-bg;
+  color: $obp-closed-color;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.statusDotOpen {
+  background: $obp-open-color;
+}
+
+.statusDotClosed {
+  background: $obp-closed-color;
+}
+
+.nextChange {
+  font-size: 12px;
+  color: $obp-text-muted;
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+// ── Primary CTA ──
+
+.primaryCta {
+  width: 100%;
+  max-width: $obp-max-width;
+  margin-top: 28px;
+  margin-bottom: 24px;
+}
+
+.menuButton {
+  display: block;
+  width: 100%;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.menuButtonDisabled {
+  @extend .menuButton;
+  background: #ccc;
+  color: $obp-text-muted;
+  cursor: default;
+  pointer-events: none;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// ── Quick Actions ──
+
+.actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 32px;
+  width: 100%;
+  max-width: $obp-max-width;
+}
+
+.actionButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid $obp-border;
+  border-radius: 16px;
+  background: #fff;
+  text-decoration: none;
+  color: $obp-text-primary;
+  font-size: 12px;
+  font-weight: 500;
+  flex: 1;
+  max-width: 110px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: #f8f8f8;
+    border-color: #ccc;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.actionIcon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+// ── Info Block ──
+
+.info {
+  width: 100%;
+  max-width: $obp-max-width;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.infoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: $obp-text-info;
+  line-height: 1.5;
+}
+
+.infoIcon {
+  font-size: 16px;
+  color: #888;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+// ── Business Attributes ──
+
+.attributes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: $obp-max-width;
+}
+
+.attributeTag {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: #f5f5f5;
+  color: $obp-text-secondary;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  border: 1px solid #eee;
+}
+
+// ── Social Links ──
+
+.socials {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.socialLink {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #eee;
+    transform: translateY(-1px);
+  }
+}
+
+// ── Footer ──
+
+.footer {
+  margin-top: auto;
+  padding: 32px 0 24px;
+  text-align: center;
+  width: 100%;
+}
+
+.footerText {
+  font-size: 11px;
+  color: #bbb;
+  letter-spacing: 0.02em;
+}
+
+// ── Responsive ──
+
+@media (min-width: 480px) {
+  .identity {
+    padding-top: 64px;
+  }
+
+  .logo,
+  .logoFallback {
+    width: 96px;
+    height: 96px;
+    font-size: 38px;
+  }
+
+  .name {
+    font-size: 26px;
+  }
+}

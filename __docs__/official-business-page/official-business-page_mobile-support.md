@@ -1,0 +1,111 @@
+# Official Business Page (OBP) — Mobile Support Assessment
+
+**Date:** February 15, 2026
+
+---
+
+## Mobile Relevance Decision: **PARTIAL**
+
+OBP has TWO surfaces — each assessed separately:
+
+### Surface 1: Public OBP Page (Customer-Facing)
+
+**Mobile relevance:** YES — inherently mobile-first (customers open on phone from WhatsApp/Instagram).  
+**But:** This is a public page, NOT an owner dashboard screen. It's already mobile-responsive by design (server-rendered HTML). No mobile shell integration needed — it renders in the browser like the digital menu.
+
+### Surface 2: OBP Settings in Dashboard (Owner-Facing)
+
+**Mobile relevance:** Run admission test below.
+
+---
+
+## Feature Admission Test (4 Gates) — Dashboard OBP Settings
+
+| Gate          | Question                                  | Answer                                                        | Pass/Fail  |
+| ------------- | ----------------------------------------- | ------------------------------------------------------------- | ---------- |
+| **Frequency** | Is this done daily or multiple times/day? | No. OBP settings configured once, rarely changed.             | ❌ FAIL    |
+| **Speed**     | Completes in <5 seconds on mobile?        | Yes (copy link = instant). But settings editing = slower.     | ⚠️ PARTIAL |
+| **Touch**     | Works with thumb-only?                    | Copy link: yes. Color picker + URL fields: awkward on mobile. | ⚠️ PARTIAL |
+| **Value**     | Needed while away from desk?              | Copy/share link: YES. Edit settings: NO.                      | ⚠️ PARTIAL |
+
+### Gate Results
+
+**Full OBP settings editor on mobile:** ❌ FAIL (Frequency gate fails — one-time setup)
+
+**Copy/Share link on mobile:** ✅ PASS (all 4 gates pass for this sub-action)
+
+---
+
+## Decision
+
+| Component              | Mobile                      | Rationale                                            |
+| ---------------------- | --------------------------- | ---------------------------------------------------- |
+| Public OBP page        | ✅ Built mobile-first       | Customer-facing, rendered in browser, responsive CSS |
+| Copy link action       | ✅ DONE — MobileShareScreen | High value, daily use, one-tap action                |
+| Copy message action    | ✅ DONE — OBPLinkCard       | Conversation-ready message for WhatsApp/Instagram    |
+| Dual QR (Share + Menu) | ✅ DONE — OBPLinkCard       | Two QR types with Segmented toggle + download        |
+| OBP settings editor    | ❌ Desktop only             | One-time setup, requires color picker + URL fields   |
+| Photo upload           | ❌ Desktop only             | File upload + crop UI not suitable for mobile        |
+| Google review fields   | ❌ Desktop only             | One-time setup, number inputs                        |
+| Descriptor/knownFor    | ❌ Desktop only             | Rare, small text field, not urgent                   |
+
+---
+
+## Mobile Implementation
+
+### What to build:
+
+**MobileShareScreen** (existing screen) — Add:
+
+- Official link display (prominent, top of screen)
+- Copy link button
+- QR download button
+- "Share via WhatsApp" quick action
+
+**No new mobile screens needed.** The share functionality integrates into the existing MobileShareScreen.
+
+### Public OBP Page (customer-facing):
+
+Already mobile-first by design:
+
+- Server-rendered HTML + CSS modules
+- No JS framework needed on client
+- Responsive layout (mobile-first CSS)
+- Touch targets ≥ 44px for action buttons
+- Single-column layout, no horizontal scroll
+
+---
+
+## Localization
+
+- **Inherits from desktop:** Same next-intl, RTL support, timezone, date/time format
+- **OBP page language:** Uses store's `defaultLanguage` for any localized content
+- **Hours display:** Uses store's `timeZone` for correct open/closed calculation
+
+---
+
+## Auth
+
+- **Public OBP page:** No auth (public, like digital menu)
+- **Dashboard OBP settings:** Same NextAuth session, same RBAC — no separate mobile auth
+- **MobileShareScreen:** Already behind auth in MobileShell
+
+---
+
+## Settings Inheritance
+
+- Theme mode (dark/light): N/A for public page (own design). Dashboard: inherits from `clientThemeConfig`
+- Language, timezone, date format: All from AppSettings Redux state
+- Icons: `react-icons/lu` (Lucide) — same as desktop
+
+---
+
+## ICP Compliance
+
+- **Public page:** Designed for customers on mid-range Android phones. Fast load, minimal data. Large touch targets.
+- **Dashboard link/QR:** Designed for non-tech SMB owner. One-tap copy. No jargon. "Your Official Business Link" — clear and direct.
+
+---
+
+**Document Signature:** Cascade (Lead Architect)  
+**Last Updated:** March 11, 2026

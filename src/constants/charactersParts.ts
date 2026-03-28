@@ -1,0 +1,16 @@
+export const CHARACTER_PARTS = {
+    HEAD: 'Head',
+    EXPRESSIONS: 'Expression',
+    BEARD: 'Beard',
+    HAIRSTYLES: 'Hairstyles',
+    FACECUT: 'Facecut',
+    LOWER_BODY: 'Lower Body',
+    UPPER_BODY: 'Upper Body',
+    MASK: 'Mask',
+    ELEMENTS: 'Elements',
+    BACKGROUND: 'Backgrounds',
+    ACCESSORIES: 'Accessories',
+    SEAT: 'Seat',
+    TREES: 'Trees',
+    POSE: 'Pose',
+}

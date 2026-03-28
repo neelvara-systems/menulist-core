@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Firebase Function Test</title>
+</head>
+
+<body>
+    <h1>Test Callable Function</h1>
+    <button id="testButton">Call helloWorld</button>
+    <pre id="response"></pre>
+
+    <!-- IMPORTANT: We now use the 'module' version of the SDKs -->
+    <script type="module">
+        // --- 1. Import the necessary functions from the SDKs ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getFunctions, connectFunctionsEmulator, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js";
+
+        // --- 2. PASTE YOUR FIREBASE CONFIG HERE ---
+        const firebaseConfig = {
+            // apiKey: "AIzaSyD2MxoESWL0R0wv_uh-84jUu_JBtkm4dyI",
+            // authDomain: "ecomsai.firebaseapp.com",
+            // databaseURL: "https://ecomsai-default-rtdb.firebaseio.com",
+            // projectId: "ecomsai",
+            // storageBucket: "ecomsai.appspot.com",
+            // messagingSenderId: "461236130629",
+            // appId: "1:461236130629:web:b3fab28090856c05c7a42c",
+            // measurementId: "G-8QJNFHDGNL"
+        };
+
+        // --- 3. Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const functions = getFunctions(app);
+
+        // --- 4. Connect to the Local Emulator ---
+        connectFunctionsEmulator(functions, "localhost", 5001);
+
+        // --- 5. Get a reference to the function ---
+        const helloWorld = httpsCallable(functions, 'helloWorld');
+
+        // --- 6. Add event listener to the button ---
+        document.getElementById('testButton').addEventListener('click', () => {
+            console.log('Calling function...');
+            document.getElementById('response').textContent = 'Calling...';
+
+            // --- 7. Call the function and show the response ---
+            helloWorld({ text: 'This is a test payload from the client!' })
+                .then((result) => {
+                    console.log('Function response:', result.data);
+                    document.getElementById('response').textContent = JSON.stringify(result.data, null, 2);
+                })
+                .catch((error) => {
+                    console.error('Function error:', error);
+                    document.getElementById('response').textContent = 'Error: ' + error.message;
+                });
+        });
+    </script>
+</body>
+
+</html>

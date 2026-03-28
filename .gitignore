@@ -1,0 +1,54 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+**/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# Firebase Functions
+functions/lib
+
+# misc
+.DS_Store
+/.idea
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# local env files
+.env.local
+.env.prod
+*.env
+.env.development.local
+.env.test.local
+.env.production.local
+.service-account.json
+/service-account.json
+
+# Auto Generated PWA files
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+**/public/worker-*.js.map
+
+/samplesMd
+.env
+logs
+
+# Sentry Config File
+.env.sentry-build-plugin

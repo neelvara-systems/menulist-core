@@ -1,0 +1,91 @@
+// Color Picker Styles
+.skeletonWrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.colors {
+  .colorElement {
+    width: 32px; // Reduced from 40px
+    height: 32px; // Reduced from 40px
+    border-radius: 6px;
+    position: relative;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s;
+
+    &:hover {
+      transform: scale(1.08); // Refined from 1.1
+    }
+
+    span {
+      width: 100%;
+      height: 100%;
+      display: block;
+      transition: border-radius 0.2s;
+    }
+  }
+}
+
+// App Settings Panel Styles
+.appSettingsPanelWrap {
+  width: 100%;
+}
+
+// Advanced Settings Styles - Fix Switch alignment
+.advancedSettingsItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 0;
+  gap: 16px;
+
+  :global {
+    // Fix Ant Design Switch vertical alignment
+    .ant-switch {
+      flex-shrink: 0;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+      vertical-align: middle;
+
+      .ant-switch-handle {
+        position: absolute;
+        top: 2px;
+        inset-inline-start: 2px;
+        width: 18px;
+        height: 18px;
+        transition: all 0.2s ease-in-out;
+
+        &::before {
+          position: absolute;
+          top: 0;
+          inset-inline-end: 0;
+          bottom: 0;
+          inset-inline-start: 0;
+          border-radius: 9px;
+          background-color: #fff;
+          box-shadow: 0 2px 4px 0 rgba(0, 35, 11, 0.2);
+          transition: all 0.2s ease-in-out;
+          content: "";
+        }
+      }
+
+      &.ant-switch-checked {
+        .ant-switch-handle {
+          inset-inline-start: calc(100% - 20px);
+        }
+      }
+    }
+  }
+
+  .settingLabel {
+    flex: 1;
+    cursor: help;
+    user-select: none;
+    line-height: 1.5;
+  }
+}

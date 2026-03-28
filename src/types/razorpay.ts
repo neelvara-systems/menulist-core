@@ -1,0 +1,166 @@
+import { Timestamp } from "firebase/firestore";
+
+// Core Types for the Payment System
+export type PaymentProvider = "razorpay";
+export type PaymentStatus =
+  | "pending"
+  | "active"
+  | "cancelled"
+  | "expired"
+  | "paid"
+  | "failed"
+  | "past_due"
+  | "paused"
+  | "completed";
+
+export type PlanInterval = "MONTH" | "YEAR"; // Match the casing from PlatformPlansList.ts
+export type UserType = "B2C" | "B2B";
+export type Currency = "INR" | "USD";
+
+// The metadata we will pass into the 'notes' field for any payment creation
+// This is the key to linking webhook events back to our database
+export interface PaymentMetadata {
+  tenantId: number | string;
+  storeId: number | string;
+  userId: string;
+  userType: UserType;
+}
+
+// ----------------------------------------------------------------
+// Provider-Agnostic Firestore Document Schemas
+// ----------------------------------------------------------------
+
+/**
+ * Represents a subscription document in Firestore.
+ * Path: /tenants/{tenantId}/stores/{storeId}/subscriptions/{sub_id}
+ *
+ * @immutable BILLING IMMUTABILITY RULE:
+ * This document must ONLY be modified through:
+ *   1. Webhook handler       — /api/razorpay/webhook (Razorpay-initiated events)
+ *   2. Verified API routes   — /api/razorpay/* (user-initiated with withAuth + tenant check)
+ *   3. Reconciliation job    — /api/internal/reconcile-subscriptions (daily cron sync)
+ *   4. DAL auto-expire       — expireIfGracePeriodEnded() (grace period enforcement)
+ *
+ * NEVER edit subscription documents manually in the Firestore console.
+ * All status changes must pass through validateTransition() from subscriptionStateMachine.ts.
+ */
+export interface FirestoreSubscriptionDoc {
+  id?: string;
+  paymentProvider: PaymentProvider;
+  providerSubscriptionId: string;
+  providerPlanId: string;
+
+  // --- Core User & Tenant Context ---
+  userId: string;
+  name: string;
+  email: string;
+  tenantId: number | string;
+  storeId: number | string;
+  userType: UserType;
+
+  // --- Plan & Status Details ---
+  status: PaymentStatus;
+  planName: string;                 // NEW: User-friendly name, e.g., "Pro Plan (Yearly)"
+  planId: string;                   // NEW: The internal plan identifier, e.g., "pro"
+  planType: PlanInterval;
+  amount: number;
+  currency: Currency;
+
+  // --- CRITICAL: Billing Cycle Dates ---
+  cycleStartDate: Timestamp;        // NEW: The start date of the current billing period.
+  cycleEndDate: Timestamp;          // NEW: The end date of the current billing period.
+  renewsOn: Timestamp;              // NEW: When the next charge will occur. Same as cycleEndDate.
+  subscriptionStartDate: Timestamp;     // NEW: When the subscription will start.
+  subscriptionEndDate: Timestamp;     // NEW: When the subscription will end.
+  pastDueSinceAt: Timestamp;        // NEW: When the subscription was past due.
+
+  // --- CRITICAL: Credit Management System ---
+  monthlyCreditsAllowance: number;  // NEW: The fixed number of credits this plan grants per cycle. Set ONCE.
+  monthlyCredits: number;           // NEW: The current balance of recurring credits. RESET every cycle.
+  topUpCredits: number;             // NEW: Balance of purchased credits from top-up packs. Does NOT reset.
+  creditsLastResetMonth?: number;   // YYYYMM format (e.g., 202602). Tracks when monthlyCredits was last reset.
+
+  totalPaymentsNeededCount: number;
+  totalPaymentsMadeCount: number;
+  shortUrl: string;                 //NEW: The short url of the subscription for razorpay page 
+
+  // --- Payment Method Details ---
+  paymentMethod: {                  // NEW: Stored for display and user info.
+    type: string;                   // e.g., 'card'
+    brand?: string;                 // e.g., 'visa'
+    last4?: string;                 // e.g., '4024'
+    upiId?: string;                 //upi id
+    upiTransactionId?: string;      //upi transaction id
+  } | null;
+
+  statuses: Array<{
+    status: string;
+    timestamp: Timestamp;
+    amount: number;
+    currency: string;
+    remark: string
+  }>;
+
+  // --- Multi-Outlet Billing (Feature #4C-B) ---
+  quantity?: number;                // Number of billable stores. Default: 1. Master + outlets.
+
+  // --- History & Auditing ---
+  billingHistory: string[];         // Array of providerPaymentIds from successful charges.
+  lastWebhook: {
+    event: string;
+    timestamp: Timestamp;
+  } | null;
+
+  // --- Reseller Dashboard Fields ---
+  // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §2.1
+  billingMode?: 'auto' | 'manual';           // 'auto' = Razorpay recurring, 'manual' = reseller offline
+  validUntil?: Timestamp | null;             // For manual billing only: when access expires
+  onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING';  // How this store was onboarded
+  resellerId?: string | null;                // User ID of the reseller who onboarded this store
+  resellerPricingTier?: string | null;       // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'
+  commitmentPeriodMonths?: number | null;    // 3 | 6 | 12 (online: tracking only, offline: duration)
+  manualPaymentConfirmed?: boolean;          // For offline: reseller confirmed payment received
+  manualPaymentConfirmedAt?: Timestamp | null;
+}
+
+export type FirestoreBillingHistoryDoc = Array<{
+  id: string;
+  type: 'Subscription Payment' | 'Credit Pack Purchase';
+  date: number;
+  description: string;
+  amount: number; // Assuming payment.amount is a number
+  currency: string; // Assuming payment.currency is a string
+  status: string; // Assuming payment.status is a string
+  invoiceId: string; // Assuming payment.invoice_id is a string
+}>
+/**
+ * Represents a one-time top-up document in Firestore.
+ * Path: /tenants/{tenantId}/stores/{storeId}/topups/{order_id}
+ */
+export interface FirestoreTopupDoc {
+  id?: string;
+  paymentProvider: PaymentProvider;
+  providerOrderId: string; // e.g., order_xxxxxxxx from a provider
+  providerPaymentId?: string; // e.g., pay_xxxxxxxx from a provider
+  creditsAdded: number;
+  amount: number; // in the smallest currency unit (paise/cents)
+  currency: Currency;
+  status: PaymentStatus;
+  userId: string;
+  tenantId: number | string;
+  storeId: number | string;
+  paidAt?: Timestamp;
+  packId?: string;
+}
+
+export interface BillingHistoryItem {
+  id: string;
+  type: string;//'Subscription Payment' | 'Credit Pack Purchase';
+  date: number; // JavaScript timestamp
+  description: string;
+  amount: number;
+  currency: string;
+  status: string;
+  invoiceId?: string;
+  invoiceUrl?: string;
+}

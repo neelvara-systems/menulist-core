@@ -1,0 +1,307 @@
+'use client';
+
+import AnimatedGradientBubbles from '@atoms/AnimatedGradientBubbles';
+import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
+import { loadOlderChangelogPage } from '@database/changelog';
+import { useAppDispatch } from '@hook/useAppDispatch';
+import { useChangelogCache } from '@hook/useChangelogCache';
+import { getTextFromTiptapJson } from '@lib/tiptap';
+import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { startLoader, stopLoader } from '@reduxSlices/loader';
+import { ChangelogEntry, ChangelogPage } from '@type/changelog';
+import { generateGradientFromHex } from '@util/utils';
+import { Badge, Empty, Flex, Input, Layout, List, Typography, message, theme } from 'antd';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import InfiniteScroll from 'react-infinite-scroll-component';
+import AnimatedVersionNumber from './AnimatedVersionNumber';
+import ChangelogPreview from './ChangelogPreview';
+
+const { Title, Text } = Typography;
+const { Content, Sider } = Layout;
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+        },
+    },
+};
+
+const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+        y: 0,
+        opacity: 1,
+        transition: {
+            type: 'spring',
+            stiffness: 100,
+        },
+    },
+};
+
+const { useToken } = theme;
+
+const LAST_VIEWED_KEY = 'changelog_last_viewed_at';
+
+function isNewEntry(entry: ChangelogEntry, lastViewedAt: number): boolean {
+    if (!lastViewedAt) return false;
+    try {
+        const entryDate = entry.releasedOn?.toDate ? entry.releasedOn.toDate().getTime() : new Date(entry.releasedOn as any).getTime();
+        return entryDate > lastViewedAt;
+    } catch { return false; }
+}
+
+function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null }) {
+    const { getItem } = useChangelogCache();
+    const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
+    const [entries, setEntries] = useState<ChangelogEntry[]>([]);
+    const [hasMore, setHasMore] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const dispatch = useAppDispatch();
+    const { token } = useToken();
+
+    // Track last viewed time for "New" badge
+    const lastViewedRef = useRef<number>(0);
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem(LAST_VIEWED_KEY);
+            lastViewedRef.current = stored ? parseInt(stored, 10) : 0;
+        } catch { /* localStorage unavailable */ }
+
+        // Update lastViewed after 2s delay so user sees "New" badges first
+        const timer = setTimeout(() => {
+            try { localStorage.setItem(LAST_VIEWED_KEY, Date.now().toString()); } catch { }
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const handleTagChange = (tag: string, checked: boolean) => {
+        const nextSelectedTags = checked
+            ? [...selectedTags, tag]
+            : selectedTags.filter(t => t !== tag);
+        setSelectedTags(nextSelectedTags);
+    };
+
+    const filteredEntries = useMemo(() => {
+        return entries
+            .filter(entry => {
+                const query = searchQuery.toLowerCase();
+                const titleMatch = entry?.title?.toLowerCase().includes(query);
+                const descriptionText = getTextFromTiptapJson(entry.description as any);
+                const descriptionMatch = descriptionText.toLowerCase().includes(query);
+                return titleMatch || descriptionMatch;
+            })
+            .filter(entry => {
+                if (selectedTags.length === 0) return true;
+                return selectedTags.some(tag => (entry?.tags || []).includes(tag));
+            });
+    }, [entries, searchQuery, selectedTags]);
+
+    const fetchLatestPage = async () => {
+        if (!storeDetails) return;
+        dispatch(startLoader('Fetching Changelog...'));
+        try {
+            let page = pageData;
+            if (!pageData) {
+                page = await getItem();
+            }
+            if (page) {
+                setChangelogPage(page as ChangelogPage);
+                setEntries(page.entries || []);
+                setHasMore(page.nextPageId !== null);
+            } else {
+                setEntries([]);
+                setHasMore(false);
+            }
+        } catch (error) {
+            message.error('Failed to fetch changelog.');
+        } finally {
+            dispatch(stopLoader('Fetching Changelog...'));
+        }
+    };
+
+    useEffect(() => {
+        fetchLatestPage();
+    }, [storeDetails, pageData]);
+
+    const loadMore = async () => {
+        if (!changelogPage || !storeDetails) return;
+        dispatch(startLoader('Loading More...'));
+        try {
+            const olderPage = await loadOlderChangelogPage(changelogPage.pageNumber);
+            if (olderPage) {
+                setChangelogPage(olderPage as ChangelogPage);
+                setEntries(prev => [...prev, ...olderPage.entries]);
+                setHasMore(olderPage.nextPageId !== null);
+            } else {
+                setHasMore(false);
+            }
+        } catch (error) {
+            message.error('Failed to load more entries.');
+        } finally {
+            dispatch(stopLoader('Loading More...'));
+        }
+    };
+
+    return (
+        <Layout style={{ background: token.colorBgContainer, height: '100%', padding: 12 }}>
+            <Content >
+                <Flex
+                    align="center"
+                    justify="center"
+                    style={{
+                        position: 'relative',
+                        height: 120,
+                        background: `linear-gradient(90deg, ${token.colorPrimaryBorder} 0%, ${token.colorPrimaryBg} 100%)`,
+                        borderRadius: token.borderRadiusLG,
+                        marginBottom: 24,
+                        overflow: 'hidden',
+                    }}
+                >
+                    <AnimatedGradientBubbles colors={['#ffbe0b', '#fb5607', '#8338ec']} count={6} speed="fast" />
+                    <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                        <Title level={2} style={{ color: 'white', margin: 0 }}>What&apos;s New?</Title>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.85)' }}>A log of all the awesome new features and updates.</Text>
+                    </div>
+                </Flex>
+
+                <Layout style={{ background: token.colorBgContainer }}>
+                    <Content>
+                        {/* <div id="scrollableDivPublic" style={{ height: 'calc(100vh - 260px)', overflow: 'auto' }}> */}
+                        <div id="scrollableDivPublic" style={{}}>
+                            <InfiniteScroll
+                                dataLength={filteredEntries.length}
+                                next={loadMore}
+                                hasMore={hasMore}
+                                loader={<h4>Loading...</h4>}
+                                scrollableTarget="scrollableDivPublic"
+                                endMessage={
+                                    <>
+                                        {searchQuery || (selectedTags.length > 0) &&
+                                            <Empty
+                                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                                description={
+                                                    <Flex vertical align='center'>
+                                                        <Text>No results found for your search.</Text>
+                                                        <Text>
+                                                            Can&apos;t find what you&apos;re looking for? Check out our{' '}
+                                                            <Link href="/platform/knowledge-base">
+                                                                knowledge base
+                                                            </Link>
+                                                            .
+                                                        </Text>
+                                                    </Flex>
+                                                }
+                                            />
+                                        }
+                                    </>
+                                }
+                            >
+                                <motion.div
+                                    variants={containerVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                >
+                                    {filteredEntries.map((item, index) => (
+                                        <motion.div key={item.id} variants={itemVariants} style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start' }}>
+                                            {/* Left Column: Decorative Date and Version */}
+                                            <Flex
+                                                vertical
+                                                align="flex-end"
+                                                justify="space-between"
+                                                style={{
+                                                    width: 120,
+                                                    flexShrink: 0,
+                                                    padding: '16px 24px 16px 0',
+                                                    // background: GRADIENTS[index % GRADIENTS.length],
+                                                    background: generateGradientFromHex(token[CHANGELOG_TAG_CONFIG[item.tags[0]]?.color] || token.colorPrimary),
+                                                    borderRadius: `${token.borderRadiusLG}px 0 0 ${token.borderRadiusLG}px`,
+                                                    borderRight: `1px solid ${token.colorBorderSecondary}`,
+                                                    textAlign: 'right',
+                                                    position: 'relative',
+                                                    overflow: 'hidden',
+                                                    height: '-webkit-fill-available',
+                                                }}
+                                            >
+                                                <Flex vertical align="flex-end">
+                                                    <DateTimeDisplay value={item.releasedOn} />
+                                                    {item.version && <Text strong>V{item.version}</Text>}
+                                                </Flex>
+                                                <AnimatedVersionNumber version={item.version} />
+                                            </Flex>
+
+                                            {/* Center Column: Timeline Axis */}
+                                            <Flex vertical align="center" style={{ flexShrink: 0, alignSelf: 'stretch', position: 'relative' }}>
+                                                {/* This div creates the continuous line */}
+                                                <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, backgroundColor: token.colorBorder, transform: 'translateX(-50%)' }} />
+                                                {/* This is the dot for the current item — with "New" badge for unread entries */}
+                                                <Badge dot={isNewEntry(item, lastViewedRef.current)} offset={[2, 0]} color={token.colorSuccess}>
+                                                    <div style={{ width: 10, height: 10, background: token.colorPrimary, borderRadius: '50%', zIndex: 1, border: `2px solid ${token.colorBgContainer}`, marginTop: 5 }} />
+                                                </Badge>
+                                            </Flex>
+
+                                            {/* Right Column: Content */}
+                                            <div style={{ paddingLeft: 24, paddingBottom: 24, flex: 1 }}>
+                                                <ChangelogPreview mode="inline" item={item} pageId={changelogPage?.id || ''} />
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            </InfiniteScroll>
+                        </div>
+                    </Content>
+                    <Sider width={280} style={{ background: token.colorBgContainer, paddingLeft: 24, borderLeft: `1px solid ${token.colorBorderSecondary}` }}>
+                        <Input.Search
+                            placeholder="Search changelog..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ marginBottom: 24 }}
+                            allowClear
+                        />
+
+                        <Title level={5} style={{ marginBottom: 16 }}>Filter by Tags</Title>
+                        <List
+                            dataSource={CHANGELOG_TAG_OPTIONS}
+                            renderItem={tag => {
+                                const config = CHANGELOG_TAG_CONFIG[tag];
+                                const Icon = config?.icon;
+                                const color = config?.color;
+                                const isSelected = selectedTags.includes(tag);
+
+                                return (
+                                    <List.Item
+                                        onClick={() => handleTagChange(tag, !isSelected)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            padding: '8px 12px',
+                                            borderRadius: token.borderRadius,
+                                            background: isSelected ? token.colorPrimaryBg : 'transparent',
+                                            borderLeft: isSelected ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
+                                            marginBottom: 4,
+                                        }}
+                                    >
+                                        <Flex align="center" gap={8}>
+                                            {Icon && <Icon style={{ color }} />}
+                                            <Typography.Text style={{ color: isSelected ? token.colorPrimary : token.colorText }}>
+                                                {tag}
+                                            </Typography.Text>
+                                        </Flex>
+                                    </List.Item>
+                                );
+                            }}
+                        />
+                    </Sider>
+                </Layout>
+            </Content>
+        </Layout>
+    );
+}
+
+export default DisplayChangelog;

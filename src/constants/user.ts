@@ -1,0 +1,18 @@
+export const ECOMSAI_PLATFORM_USER_ROLE = "PLATFORM"
+export const ECOMSAI_PLATFORM_USER_ID = 0
+export const ECOMSAI_PLATFORM_TENANT_ID = 0
+export const ECOMSAI_PLATFORM_STORE_ID = 0
+export const ECOMSAI_PLATFORM_USER_NAME = "ECOMSAI"
+export const ECOMSAI_PLATFORM_PASSWORD = "MenuList@2026!"  // Platform admin password for internal screens
+
+export const ECOMSAI_PLATFORM_SUPPORT_USER_ROLE = "PLATFORM_SUPPORT"
+export const CRAFT_BUILDER_MAINTAINER_USER_ROLE = "CRAFT_BUILDER_MAINTAINER"
+export const RESELLER_USER_ROLE = "RESELLER"
+
+// Onboarding source types — tracks how a tenant/store was onboarded
+export type OnboardingSource = 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING';
+export const ONBOARDING_SOURCES = {
+    WEBSITE: 'WEBSITE_ONBOARDING' as const,
+    RESELLER: 'RESELLER_ONBOARDING' as const,
+    MESSAGING: 'MESSAGING_ONBOARDING' as const,
+};

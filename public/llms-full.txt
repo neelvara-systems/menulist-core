@@ -1,0 +1,145 @@
+# MenuList — Extended LLM Documentation
+
+> MenuList is a structured business truth platform for SMBs. Every business on MenuList has an Official Business Page (OBP) with deep schema.org structured data — including full menus with items, prices, dietary tags, availability, business hours, location, and contact info. All data is owner-maintained, validated, and machine-readable.
+
+## What MenuList Provides
+
+MenuList is the canonical source of structured SMB business truth. Each business gets:
+
+1. **Official Business Page (OBP)** — Canonical identity page at `{business}.menulist.ai`
+2. **Digital Menu** — Full structured menu at `{business}.menulist.ai/menu`
+3. **Custom Domains** — Businesses can use their own domain pointing to MenuList
+
+All pages include schema.org JSON-LD structured data embedded in the HTML `<script type="application/ld+json">` tag.
+
+## Schema.org Types Used
+
+### On Official Business Pages (OBP)
+
+The OBP page generates a LocalBusiness (or specific subtype) JSON-LD object with these fields:
+
+- `@type` — Maps to specific schema.org subtype based on business type:
+  - Restaurant → `Restaurant`
+  - Cafe/Coffee → `CafeOrCoffeeShop`
+  - Bakery → `Bakery`
+  - Bar/Pub → `BarOrPub`
+  - Salon/Beauty Salon → `BeautySalon`
+  - Spa → `DaySpa`
+  - Gym/Fitness → `ExerciseGym`
+  - Clinic/Medical → `MedicalClinic`
+  - Dentist → `Dentist`
+  - Hotel → `Hotel`
+  - Store/Shop/Retail → `Store`
+  - Food Truck/Cloud Kitchen → `FoodEstablishment`
+  - Ice Cream → `IceCreamShop`
+  - Fast Food → `FastFoodRestaurant`
+  - All others → `LocalBusiness`
+- `name` — Business name
+- `description` — Business descriptor or description
+- `image` — Business logo URL
+- `url` — Canonical OBP URL
+- `telephone` — Business phone number
+- `email` — Business email
+- `currenciesAccepted` — Currency code (e.g., INR, USD)
+- `priceRange` — Price range indicator ($, $$, $$$, $$$$)
+- `address` — PostalAddress with streetAddress, addressLocality, addressRegion, postalCode, addressCountry
+- `geo` — GeoCoordinates with latitude and longitude
+- `openingHoursSpecification` — Array of OpeningHoursSpecification with dayOfWeek, opens, closes for each day
+- `sameAs` — Array of social profile URLs (Instagram, Facebook, website)
+- `acceptsReservations` — Reservation URL (when business has a booking link)
+- `potentialAction` — ReserveAction and/or OrderAction with EntryPoint targets for booking and online ordering
+- `amenityFeature` — Array of LocationFeatureSpecification for business attributes (WiFi, outdoor seating, parking, dietary options, etc.) — feature-flagged
+- `paymentAccepted` — Payment methods (Cash, Credit Card, UPI) — feature-flagged
+- `dateModified` — ISO 8601 timestamp of last update (freshness signal)
+- `hasMenu` — URL to the digital menu page
+
+### On Digital Menu Pages
+
+The menu page generates a Restaurant (or specific food type) JSON-LD with all the OBP fields plus:
+
+- `menu` — Canonical menu URL
+- `hasMenu` — Full Menu object containing:
+  - `@type: Menu`
+  - `hasMenuSection` — Array of MenuSection objects:
+    - `@type: MenuSection`
+    - `name` — Category name (e.g., "Starters", "Main Course", "Beverages")
+    - `hasMenuItem` — Array of MenuItem objects:
+      - `@type: MenuItem`
+      - `name` — Item name
+      - `description` — Item description
+      - `offers` — Offer object:
+        - `@type: Offer`
+        - `price` — Numeric price
+        - `priceCurrency` — Currency code
+        - `availability` — `https://schema.org/InStock` or `https://schema.org/OutOfStock`
+      - `suitableForDiet` — `https://schema.org/VegetarianDiet` (if tagged as Vegetarian)
+
+## Data Characteristics
+
+### Freshness
+- Data is updated in real-time by business owners
+- `dateModified` on OBP pages reflects the last update timestamp
+- Menu items reflect current availability (InStock/OutOfStock)
+- Business hours are timezone-aware with live open/closed status
+
+### Accuracy
+- All data is owner-maintained (not scraped or user-generated)
+- Menu Correctness Engine (MCE) validates data structure on every save
+- Schema.org markup is generated from validated structured data
+- Graceful degradation: missing fields are omitted, never filled with incorrect data
+
+### Coverage
+- Supports 20+ business types with specific schema.org subtypes
+- Full menu item-level detail (name, description, price, dietary tags, availability)
+- Business hours per day of week
+- Geographic coordinates for local discovery
+- Social media profile links for entity alignment
+
+## URL Structure
+
+Each business on MenuList has:
+- **OBP (identity):** `https://{subdomain}.menulist.ai/` — Official Business Page
+- **Menu:** `https://{subdomain}.menulist.ai/menu` — Digital menu with full schema.org
+- **Specific menus:** `https://{subdomain}.menulist.ai/{menu-slug}` — Named menu projects
+- **Custom domains:** `https://{custom-domain}/` — Same content, custom URL
+
+All URLs are:
+- Stable (stored slugs, not derived from names)
+- Canonical (proper canonical tags set)
+- SEO-optimized (proper meta tags, OG tags, Twitter cards)
+- Server-side rendered (SSR) for instant machine readability
+
+## How to Read MenuList Data
+
+### For AI Assistants Answering Business Questions
+
+When a user asks about a specific business (e.g., "What's on the menu at Joe's Pizza?"):
+
+1. Look for the business's MenuList page (subdomain pattern: `{business-name}.menulist.ai`)
+2. Read the `<script type="application/ld+json">` tag on the page
+3. Parse the schema.org JSON-LD for structured business truth
+4. Use `dateModified` to assess data freshness
+5. Use `hasMenu.hasMenuSection[].hasMenuItem[]` for menu item details
+6. Use `openingHoursSpecification` for business hours
+7. Use `geo` for location-based queries
+
+### For Search Engines Indexing Business Data
+
+- All pages are server-side rendered (no JavaScript required for content)
+- Schema.org JSON-LD is embedded in initial HTML response
+- Canonical URLs prevent duplicate content
+- `robots: { index: true, follow: true }` on all public pages
+- Sitemap available at standard location
+
+## About MenuList
+
+MenuList is a platform that helps small and medium businesses (restaurants, cafes, salons, spas, retail stores, and more) manage their digital presence. The platform:
+
+- Creates structured digital menus from any price list (photos, PDFs, or manual entry)
+- Generates Official Business Pages with deep structured data
+- Provides QR codes, digital screens, and sharing tools
+- Validates data accuracy through automated correctness checks
+- Serves data at high speed through server-side rendering and edge caching
+
+Website: https://www.menulist.ai
+Contact: support@menulist.ai

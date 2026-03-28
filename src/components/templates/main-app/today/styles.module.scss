@@ -1,0 +1,307 @@
+// Today Screen Styles
+// Mobile-first, calm, action-focused
+
+.todayContainer {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  min-height: calc(100vh - 120px);
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
+  h2 {
+    font-weight: 500;
+    margin-bottom: 24px;
+    color: var(--ant-color-text);
+  }
+}
+
+// Loading State
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+// Empty State
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+
+  .emptyIcon {
+    font-size: 48px;
+    color: var(--ant-color-text-quaternary);
+    margin-bottom: 8px;
+  }
+}
+
+// Post Action State
+.postActionState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+
+  .checkIcon {
+    font-size: 48px;
+    color: var(--ant-color-success);
+    margin-bottom: 8px;
+  }
+
+  h4 {
+    margin: 0;
+    color: var(--ant-color-text);
+  }
+}
+
+// Primary Card
+.primaryCard {
+  border-radius: 12px;
+  margin-bottom: 24px;
+
+  :global(.ant-card-body) {
+    padding: 24px;
+
+    @media (max-width: 768px) {
+      padding: 16px;
+    }
+  }
+
+  .actionTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--ant-color-success);
+    margin-bottom: 12px;
+
+    svg {
+      font-size: 18px;
+    }
+  }
+
+  .itemName {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+    color: var(--ant-color-text);
+
+    @media (max-width: 768px) {
+      font-size: 24px;
+    }
+  }
+
+  .context {
+    font-size: 14px;
+    color: var(--ant-color-text-secondary);
+    margin-bottom: 24px;
+  }
+
+  .actionButtons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    :global(.ant-btn) {
+      height: 48px;
+      border-radius: 8px;
+      font-size: 16px;
+
+      @media (max-width: 768px) {
+        height: 44px;
+        font-size: 15px;
+      }
+    }
+
+    .skipButton {
+      color: var(--ant-color-text-secondary);
+
+      &:hover {
+        color: var(--ant-color-text);
+      }
+    }
+  }
+}
+
+// Operational Section
+.operationalSection {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+
+  .sectionTitle {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ant-color-text-tertiary);
+    margin-bottom: 16px;
+  }
+
+  .operationalCards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+// Operational Card (Smaller, lighter)
+.operationalCard {
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--ant-color-border-secondary);
+
+  :global(.ant-card-body) {
+    padding: 16px;
+  }
+
+  .cardContent {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  .cardInfo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .checkMark {
+      color: var(--ant-color-success);
+      font-size: 16px;
+    }
+
+    .cardText {
+      .cardTitle {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--ant-color-text);
+        margin: 0;
+      }
+
+      .cardSubtitle {
+        font-size: 12px;
+        color: var(--ant-color-text-secondary);
+        margin: 0;
+      }
+    }
+  }
+
+  .cardActions {
+    display: flex;
+    gap: 8px;
+
+    @media (max-width: 480px) {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    :global(.ant-btn) {
+      height: 36px;
+      border-radius: 6px;
+
+      @media (max-width: 480px) {
+        flex: 1;
+      }
+    }
+  }
+}
+
+// History Link
+.historyLink {
+  display: block;
+  text-align: center;
+  margin-top: 32px;
+  color: var(--ant-color-text-tertiary);
+  font-size: 14px;
+
+  &:hover {
+    color: var(--ant-color-text-secondary);
+  }
+}
+
+// Past Activity Screen
+.pastActivityContainer {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+
+    .backButton {
+      color: var(--ant-color-text-secondary);
+    }
+  }
+
+  .activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dateGroup {
+    margin-bottom: 16px;
+
+    .dateLabel {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ant-color-text-tertiary);
+      margin-bottom: 8px;
+    }
+  }
+
+  .activityItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--ant-color-bg-container);
+
+    .statusIcon {
+      font-size: 16px;
+
+      &.completed {
+        color: var(--ant-color-success);
+      }
+
+      &.skipped {
+        color: var(--ant-color-text-tertiary);
+      }
+    }
+
+    .activityText {
+      flex: 1;
+      font-size: 14px;
+      color: var(--ant-color-text);
+    }
+  }
+}

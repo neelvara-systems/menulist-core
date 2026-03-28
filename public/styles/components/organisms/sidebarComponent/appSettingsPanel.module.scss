@@ -1,0 +1,149 @@
+@import "@styles/abstracts/mixins";
+.settingsWrap {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  .settingsDetails {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    .setting {
+      width: 100%;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      justify-content: flex-start;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      position: relative;
+      @include transition;
+      .skeletonWrap {
+        width: 100%;
+        border-radius: 4px;
+        padding: 4px;
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 5px;
+        .small,
+        .large {
+          border-radius: 5px;
+        }
+        .small {
+          height: 20px;
+          width: 40%;
+        }
+        .large {
+          width: 100%;
+          height: 20px;
+        }
+        &.light {
+          background: rgb(255, 255, 255);
+          .small,
+          .large {
+            background: rgba(0, 0, 0, 0.06);
+          }
+        }
+        &.dark {
+          background: rgb(0, 0, 0);
+          .small,
+          .large {
+            background: #ffffff63;
+          }
+        }
+        &.sidebar {
+          .elementWrap {
+            border: 1px solid;
+            border-radius: 4px;
+            width: max-content;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: flex-start;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            // box-shadow: 0px 0px 10px rgba(54, 55, 56, 0.211);
+          }
+          &.default {
+            .elementWrap {
+              width: max-content;
+              align-items: flex-end;
+              padding-left: 22px;
+            }
+            .element {
+              width: 16px;
+              height: 5px;
+              position: relative;
+              top: 3px;
+              margin-bottom: 5px;
+              span {
+                height: 15px;
+                width: 15px;
+                border-radius: 15px;
+                position: absolute;
+                left: -19px;
+                top: -4px;
+              }
+            }
+          }
+          &.minimized {
+            .element {
+              height: 16px;
+              width: 16px;
+              border-radius: 15px;
+            }
+          }
+        }
+        .contentWrap {
+          background: antiquewhite;
+          width: 84px;
+          height: 87px;
+          border-radius: 6px;
+        }
+        &.colors {
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 20px;
+          .element {
+            width: 34px;
+            height: 34px;
+            border: 1px solid;
+            border-radius: 5px;
+            padding: unset;
+            border: unset;
+            @include flexCenter;
+            @include hover;
+            span {
+              width: 18px;
+              height: 18px;
+              border-radius: 20px;
+              @include transition;
+            }
+            &:hover {
+              span {
+                @include hover;
+                border-radius: 5px;
+                @include transition;
+              }
+            }
+          }
+        }
+      }
+      &.active {
+        background: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 8px 32px 0 rgb(0 0 0 / 14%);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+@import "@styles/abstracts/mixins";
+
+.proUserIconWrap {
+  width: auto;
+  @include flexCenter;
+  margin-left: auto;
+  .iconWrap {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 5px;
+    border: 1px solid rgba(218, 165, 32, 0.383);
+    @include transition;
+    border-radius: 16px;
+    color: goldenrod;
+    img,
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
+}

@@ -1,0 +1,26 @@
+@import "@styles/abstracts/mixins";
+
+.proUserIconWrap {
+  width: auto;
+  margin-left: auto;
+  @include flexCenter;
+}
+
+.iconWrap {
+  animation: 50s ease 0s infinite normal none running glow;
+  background-size: 5px 5px !important;
+}
+
+@keyframes glow {
+  0% {
+    background-position: 0px -100%;
+  }
+
+  50% {
+    background-position: 200% 50%;
+  }
+
+  100% {
+    background-position: 0px -100%;
+  }
+}

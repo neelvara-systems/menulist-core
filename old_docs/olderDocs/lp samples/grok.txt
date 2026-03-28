@@ -1,0 +1,139 @@
+```markdown
+# MenuListAI Landing Page Copy
+
+## 1. Navbar
+
+- Home
+- Features
+- Pricing
+- API
+- Contact
+
+## 2. Hero Section
+
+**Headline:** Your Stunning Digital Catalog, Created in Minutes  
+**Sub-headline:** Upload your price list, and our AI instantly builds a beautiful, professional catalog with persuasive descriptions and unique images—no design skills or expensive pros needed.  
+**Primary CTA Button:** Create Your Catalog Now
+
+## 3. Trust Badges
+
+**Badge 1:** Lightning-Fast: Go from upload to polished catalog in under 5 minutes.  
+**Badge 2:** Flawless Quality: AI extracts data with 99% accuracy and crafts pro-level content.  
+**Badge 3:** Loved by Thousands: Join 10,000+ businesses who save time with MenuListAI.
+
+## 4. Business Types Section
+
+**Section Title:** Built for Every Business  
+**Section Description:** From cozy cafes to bustling salons, real estate pros to retail shops, MenuListAI creates digital catalogs that make your products or services shine.
+
+## 5. How It Works Section
+
+**Section Title:** Three Steps to a Stunning Catalog  
+**Section Description:** Transform your price list into a professional digital presence faster than you can brew a coffee.
+
+**Step 1: Upload**  
+Upload your price list as a PDF, JPG, or even a phone photo.
+
+**Step 2: AI Creates**  
+Our AI extracts items, crafts compelling descriptions, and generates beautiful images in seconds.
+
+**Step 3: Share**  
+Publish your catalog instantly or export clean data for your apps.
+
+## 6. Two Platforms in One Section (Use Cases)
+
+**Section Title:** One Platform, Two Powerful Solutions  
+**Section Description:** Whether you’re a business owner or a developer, MenuListAI delivers exactly what you need to save time and impress customers.
+
+**Card 1: The Digital Catalog Platform**  
+Create a professional, mobile-ready catalog in minutes without hiring designers or writers.
+
+**Card 2: The Data API Platform**  
+Access clean, structured JSON data instantly, skipping the hassle of web scraping or manual entry.
+
+## 7. Features Section
+
+**Section Title:** Features That Save You Time and Money  
+**Section Description:** MenuListAI combines cutting-edge AI with effortless usability to deliver results that wow your customers.
+
+**AI Data Extraction**  
+Upload any price list, and our AI pulls items, prices, and details with near-perfect accuracy.
+
+**AI Description Generation**  
+Get persuasive, tailored descriptions for every product or service, written in seconds.
+
+**AI Image Generation**  
+Stunning, unique visuals for every item, created instantly—no photographer required.
+
+**Multi-Language Translation**  
+Reach global customers with catalogs translated into any language in one click.
+
+## 8. Templates Section
+
+**Section Title:** Beautiful Templates, Ready to Impress  
+**Section Description:** Choose from dozens of sleek, customizable designs to showcase your products or services in a way that feels uniquely yours.
+
+## 9. Why Choose Us Section (The Advantage)
+
+**Section Title:** Why MenuListAI Is Your Best Choice  
+**Section Description:** Get a professional digital presence without the cost, time, or headaches of traditional solutions.
+
+**Saving Time**  
+Create and update catalogs in minutes, not days, with our AI-powered automation.
+
+**Saving Money**  
+Skip hiring writers, designers, or photographers—get pro results at a fraction of the cost.
+
+**Avoiding Errors**  
+Our AI ensures accurate data extraction and consistent formatting every time.
+
+**Versatility**  
+Perfect for any business, from restaurants to retail, with flexible tools for owners and developers.
+
+## 10. Testimonials Section
+
+**Elena R., Multi-Location Restaurant Owner**  
+"MenuListAI saved us weeks of work—our menus are now online, look amazing, and we update them in minutes!"
+
+**David L., Freelance Web Developer**  
+"The API gives me clean, structured data instantly, letting me focus on building apps instead of scraping messy websites."
+
+**Maria S., High-End Salon Owner**  
+"I’m not tech-savvy, but MenuListAI made it so easy to create a gorgeous service catalog that my clients love."
+
+## 11. FAQ Section
+
+**What types of businesses can use MenuListAI?**  
+MenuListAI is perfect for restaurants, cafes, salons, spas, retail shops, consultants, real estate agents, and any business with products or services to showcase.
+
+**Can I use my own domain name?**  
+Yes, you can connect your custom domain to your digital catalog for a fully branded experience.
+
+**What file types can I upload to get started?**  
+Upload PDFs, JPGs, PNGs, or even photos taken with your phone—our AI handles it all.
+
+**How does the AI Image Generation work?**  
+Our AI creates unique, high-quality images based on your item names and descriptions, tailored to your brand’s style.
+
+**How many digital catalogs can I create?**  
+Create unlimited catalogs, depending on your plan, with easy management from one dashboard.
+
+## 12. Pricing Section
+
+**Section Title:** Simple Pricing, Unbeatable Value  
+**Section Description:** Choose a plan that fits your needs and start creating stunning catalogs today—no surprises, just results.
+
+## 13. Footer Section
+
+**Final Tagline:** MenuListAI: Your Business, Beautifully Online in Minutes.  
+**Footer Links:**
+
+- About Us
+- Contact
+- Blog
+- API Docs
+- Privacy Policy
+- Terms of Service
+
+**Copyright Notice:** © 2025 MenuListAI. All rights reserved.
+```

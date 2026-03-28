@@ -1,0 +1,150 @@
+# Multi-Outlet Consistency — Firebase Cost Tracking
+
+**Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
+**Status:** ✅ Production Ready  
+**Last Updated:** February 13, 2026  
+**Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
+
+> **Scope:** This doc covers menu consistency ops (signal docs, merge resolution, MOL events) and outlet creation/deactivation transactions. For OutletPolicy editor ops (`updateOutletPolicy`), see [Multi-Chain Permissions Firebase](../multi-chain-permissions/multi-chain-permissions_firebase.md). For base store CRUD ops (`addStore`, `updateStore`, summary syncs), see [Stores Management Firebase](../stores-management/stores-management_firebase.md).
+
+---
+
+## Summary
+
+- **Collections Used:** `projects/{tId}/{sId}`, `masterOperationalState/{projectId}`, `stores`, `tenants`, `subscriptions`, `platformSummary`, `multiOutletEvents/{tId}/{sId}`
+- **Storage Buckets:** None (shared via project data)
+- **Cloud Functions:** None (client-side resolution + real-time listeners)
+- **External APIs:** Razorpay Subscriptions API (quantity updates)
+- **Estimated Monthly Cost:** **Medium** — Real-time listeners + outlet creation transactions
+
+---
+
+## Firestore Operations
+
+### Reads
+
+| Operation                  | Collection                                 | Trigger                    | Frequency                  | Docs Read    | Indexed?   | Notes                                                                                                |
+| -------------------------- | ------------------------------------------ | -------------------------- | -------------------------- | ------------ | ---------- | ---------------------------------------------------------------------------------------------------- |
+| Load master project        | `projects/{tId}/{sId}/{masterProjectId}`   | Outlet editor opens        | Per editor session         | 1            | Direct doc | Reads master project for merge resolution. File: `src/lib/multiOutlet/index.ts`                      |
+| Resolve project for render | `projects/{tId}/{sId}/{masterProjectId}`   | Customer views outlet menu | Per menu view (cached 60s) | 1            | Direct doc | `resolveProjectForRender()` merges master + outlet. File: `src/app/_client/[[...slug]]/page.tsx:216` |
+| Listen to signal doc       | `masterOperationalState/{masterProjectId}` | Outlet editor open         | Real-time (onSnapshot)     | 1 per change | Direct doc | `onSnapshot` listener for `operationalVersion` changes. Fires when master saves operational changes. |
+| Load store config          | `stores/{storeId}`                         | Multi-outlet setup         | Per setup                  | 1            | Direct doc | Check `isMaster` flag, linked outlets.                                                               |
+
+### Writes
+
+| Operation                     | Collection                                 | Trigger                                       | Frequency                   | Docs Written | Fields                                               | Notes                                                                                                                                             |
+| ----------------------------- | ------------------------------------------ | --------------------------------------------- | --------------------------- | ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Increment operational version | `masterOperationalState/{masterProjectId}` | Master saves with item/price/category changes | Per master operational save | 1            | operationalVersion (atomic increment), lastUpdatedAt | Only fires for operational changes (items, prices, categories), NOT UI config. File: `src/database/projects/index.ts:451-468`                     |
+| Log MOL event                 | `multiOutletEvents/{tId}/{sId}`            | Any menu edit (master, outlet, standalone)    | Per save                    | 1            | Event type, metadata, actor                          | `logMultiOutletEvent()`. Tracks MASTER_MENU_UPDATED, OUTLET_MENU_UPDATED, STANDALONE_MENU_UPDATED. File: `src/database/projects/index.ts:489-529` |
+| Save outlet overrides         | `projects/{tId}/{sId}/{outletProjectId}`   | Outlet saves local changes                    | Per outlet save             | 1            | Merge update with overrides                          | Local price adjustments, availability toggles.                                                                                                    |
+
+### Deletes
+
+| Operation | Collection | Trigger | Frequency | Docs Deleted | Soft/Hard | Notes                                                    |
+| --------- | ---------- | ------- | --------- | ------------ | --------- | -------------------------------------------------------- |
+| None      | —          | —       | —         | —            | —         | Outlets never delete master data. Local overrides merge. |
+
+---
+
+## Cost Optimization Notes
+
+### Current Optimizations
+
+- **Signal doc pattern**: Single lightweight doc (`operationalVersion` + `lastUpdatedAt`) instead of full project listener. Only 2 fields = minimal bandwidth.
+- **Atomic increment**: `increment(1)` is a server-side transform — no read needed before write.
+- **Operational change detection**: `detectOperationalChange()` compares old vs new project. Only triggers signal write for actual item/price/category changes, not UI config saves.
+- **Client-side merge cache**: `invalidateMasterCache()` clears in-memory cache on master save.
+- **Vercel cache**: Customer-facing resolution cached 60s via `unstable_cache`.
+
+### Warnings: Expensive Patterns
+
+- **Real-time listener on signal doc**: Each outlet editor open = 1 active listener. 10 outlets open = 10 listeners. Reads accumulate on every master save.
+- **Master project reads**: Each outlet resolution reads the full master project (~50KB). At scale, this is the dominant cost.
+- **MOL event logging**: Every save creates an event doc. High-frequency editors = many event docs.
+
+---
+
+## Cost Estimate (per 100 multi-outlet stores, 5 outlets each, 10 saves/day)
+
+| Resource                            | Operations/month          | Unit Cost  | Monthly Cost     |
+| ----------------------------------- | ------------------------- | ---------- | ---------------- |
+| Firestore Reads (signal listener)   | 500 outlets × 30 = 15,000 | $0.06/100K | $0.01            |
+| Firestore Reads (master resolution) | 50,000                    | $0.06/100K | $0.03            |
+| Firestore Reads (customer render)   | 100,000 ÷ cache = 10,000  | $0.06/100K | $0.01            |
+| Firestore Writes (signal increment) | 30,000                    | $0.18/100K | $0.05            |
+| Firestore Writes (MOL events)       | 150,000                   | $0.18/100K | $0.27            |
+| **Total**                           |                           |            | **~$0.37/month** |
+
+---
+
+## DAL Functions Used
+
+| Function                  | File                                      | Operation Type                   |
+| ------------------------- | ----------------------------------------- | -------------------------------- |
+| `resolveProjectForRender` | `src/lib/multiOutlet/index.ts`            | Read (master project)            |
+| `invalidateMasterCache`   | `src/lib/multiOutlet/index.ts`            | Cache invalidation               |
+| `detectOperationalChange` | `src/lib/multiOutlet/masterUpdateDiff.ts` | Comparison (no Firebase)         |
+| `logMultiOutletEvent`     | `src/lib/multiOutlet/molEvents.ts`        | Write (addDoc)                   |
+| Signal doc increment      | `src/database/projects/index.ts:451-468`  | Write (setDoc merge + increment) |
+
+---
+
+## Store Onboarding (Feature #4C) — Firebase Operations
+
+> Added February 12, 2026. Covers outlet creation, deactivation, store switching, subscription fallback, and project propagation.
+
+### Reads (Feature #4C)
+
+| Operation                    | Collection                     | Trigger                      | Docs Read | File                                         |
+| ---------------------------- | ------------------------------ | ---------------------------- | --------- | -------------------------------------------- |
+| Check isMaster (create)      | `stores/{sId}`                 | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:53`     |
+| Get active subscription      | `subscriptions` (query)        | POST /api/outlets/create     | 1-2       | `src/database/subscriptions/index.ts`        |
+| Lock check (in tx)           | `tenants/{tId}`                | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:69`     |
+| Fetch master projects        | `projects/{tId}/{sId}` (query) | POST /api/outlets/create     | N         | `src/app/api/outlets/create/route.ts:94`     |
+| Get storesList (create)      | `tenants/{tId}`                | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:100`    |
+| Get store count (in tx)      | `platformSummary/summary`      | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:105`    |
+| Check isMaster (deactivate)  | `stores/{sId}`                 | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:39` |
+| Get storesList (deactivate)  | `tenants/{tId}`                | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:45` |
+| Check isMaster (switch)      | `stores/{sId}`                 | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:29`  |
+| Get storesList (switch)      | `tenants/{tId}`                | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:34`  |
+| Outlet sub fallback          | `tenants/{tId}`                | Outlet loads billing         | 1         | `src/database/subscriptions/index.ts:127`    |
+| Master sub fetch (fallback)  | `subscriptions` (query)        | Outlet loads billing         | 1-2       | `src/database/subscriptions/index.ts:137`    |
+| Get storesList (propagation) | `tenants/{tId}`                | Master creates project       | 1         | `src/database/multiOutlet/propagation.ts:34` |
+
+### Writes (Feature #4C)
+
+| Operation                      | Collection                             | Trigger                      | Docs Written         | File                                      |
+| ------------------------------ | -------------------------------------- | ---------------------------- | -------------------- | ----------------------------------------- |
+| Acquire lock (in tx)           | `tenants/{tId}`                        | POST /api/outlets/create     | 1                    | `route.ts:76`                             |
+| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 1                    | `route.ts:91`                             |
+| Create outlet store (in tx)    | `stores/{newSId}`                      | POST /api/outlets/create     | 1                    | `route.ts:114`                            |
+| Sync storesSummary (in tx)     | `platformSummary/storesSummary`        | POST /api/outlets/create     | 1                    | `route.ts:132`                            |
+| Update storesList (in tx)      | `tenants/{tId}`                        | POST /api/outlets/create     | 1                    | `route.ts:145`                            |
+| Update store count (in tx)     | `platformSummary/summary`              | POST /api/outlets/create     | 1                    | `route.ts:155`                            |
+| Create outlet projects (in tx) | `projects/{tId}/{newSId}/{id}`         | POST /api/outlets/create     | N per master project | `route.ts:164`                            |
+| Sync project summaries (in tx) | `platformSummary/projects_{newSId}`    | POST /api/outlets/create     | N per master project | `route.ts:179`                            |
+| Revert sub quantity (error)    | `subscriptions/{subId}`                | Creation failure             | 1                    | `route.ts:213`                            |
+| Release lock (error)           | `tenants/{tId}`                        | Creation failure             | 1                    | `route.ts:223`                            |
+| Deactivate outlet              | `stores/{outletSId}`                   | POST /api/outlets/deactivate | 1                    | `deactivate/route.ts:53`                  |
+| Sync deactivation              | `platformSummary/storesSummary`        | POST /api/outlets/deactivate | 1                    | `deactivate/route.ts:60`                  |
+| Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Master creates project       | 1 per outlet         | `propagation.ts:60`                       |
+| Sync propagated summary        | `platformSummary/projects_{outletSId}` | Master creates project       | 1 per outlet         | `propagation.ts:77`                       |
+| Set isMaster (onboarding)      | `stores/{sId}` + `tenants/{tId}`       | Onboarding                   | 2                    | `onboarding/create-subscription/route.ts` |
+| Set sub quantity=1             | `subscriptions/{subId}`                | Subscription creation        | 1                    | Both create-subscription routes           |
+
+### External API Calls (Feature #4C)
+
+| Operation                    | Service      | Trigger                  | File           |
+| ---------------------------- | ------------ | ------------------------ | -------------- |
+| Update subscription quantity | Razorpay API | POST /api/outlets/create | `route.ts:86`  |
+| Revert subscription quantity | Razorpay API | Creation failure         | `route.ts:210` |
+
+### DAL Functions (Feature #4C)
+
+| Function                                               | File                                      | Operation                    |
+| ------------------------------------------------------ | ----------------------------------------- | ---------------------------- |
+| `getActiveSubscriptionForStore` (with outlet fallback) | `src/database/subscriptions/index.ts`     | Read (query + fallback)      |
+| `getMasterStoreIdFromList`                             | `src/database/subscriptions/index.ts:102` | In-memory (no Firebase)      |
+| `updateSubscription`                                   | `src/database/subscriptions/index.ts:168` | Write (setDoc merge)         |
+| `propagateNewProjectToOutlets`                         | `src/database/multiOutlet/propagation.ts` | Read tenant + Write projects |
+| `calculateProration`                                   | `src/utils/razorpay.ts:52`                | In-memory (no Firebase)      |

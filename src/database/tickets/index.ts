@@ -1,0 +1,426 @@
+import { DB_COLLECTIONS } from "@constant/database";
+import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
+import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where } from "@firebase/firestore";
+import { requestBodyComposer } from "@lib/apiHelper";
+import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from "@lib/auth/getActiveSession";
+import { emitCanonicaSignal } from "@lib/canonica/signalEmitter";
+import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
+import { clearCapturedLogs, getCapturedLogs } from "@lib/localLogs/localLogsTracker";
+import { triggerNotification } from "@lib/notifications/client";
+import { generateStoragePath } from "@lib/storage/pathGenerator";
+import { CANONICA_SIGNAL_TYPE } from "@type/canonica";
+import { UserUploadedFileType } from "@type/common";
+import { SupportTicketType, TicketMessage } from "@type/supportTicket";
+import { addDoc } from "firebase/firestore";
+
+const COLLECTION = DB_COLLECTIONS.SUPPORT_TICKETS;
+
+const getCollectionRef = () => {
+    return collection(canonicaFirebaseClient, `${COLLECTION}`)
+}
+
+const getDocRef = (docId: string) => {
+    return doc(canonicaFirebaseClient, `${COLLECTION}`, docId)
+}
+
+const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase()
+
+/**
+ * Upload ticket file to Firebase Storage with tenant/store isolation
+ * @param data - File data with base64 content
+ * @param type - File category (e.g., 'documents', 'messages')
+ */
+const uploadImage = async (data: UserUploadedFileType, type = 'documents') => {
+
+    let uploadedUrl: any = '';
+    const docId = `${new Date().getTime()}-${data.uid}`;
+
+    if (data.url?.includes('base64')) {
+        // Get fresh session for tenant-scoped storage paths
+        const session = await getActiveSession();
+
+        // Generate tenant/store-scoped path for multi-tenancy isolation
+        const path = generateStoragePath({
+            collection: COLLECTION,
+            fileType: type,
+            session,
+            fileId: docId
+        });
+
+        // Upload to Firebase Storage
+        uploadedUrl = await uploadBase64ToStorage({
+            fileId: docId,
+            url: data.url,
+            path,
+            type: data.type
+        })
+    }
+    return uploadedUrl || data.url;
+}
+
+export const addTicket = async (data: SupportTicketType) => {
+    return await apiCallComposer(
+        async () => {
+            const capturedLogs = getCapturedLogs();
+            clearCapturedLogs(); // Clear after capturing to prevent duplicates
+
+            const submitData = await requestBodyComposer({ ...data, deleted: false, logs: capturedLogs });
+            delete submitData.documents;
+            const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
+            if (files.length) {
+                submitData.documents = data.documents;
+                for (let i = 0; i < data.documents.length; i++) {
+                    submitData.documents[i].url = await uploadImage(data.documents[i], 'documents')
+                }
+            }
+            const docRef = await addDoc(getCollectionRef(), submitData);
+            const displayId = getDisplayId(docRef.id);
+
+            // Canonica: emit ticket creation signal (fire-and-forget)
+            // For AI escalation tickets, emit ESCALATION signal (3x severity weight)
+            // For manual tickets, emit TICKET signal (1.5x weight)
+            const signalType = data.source === 'ai_escalation'
+                ? CANONICA_SIGNAL_TYPE.ESCALATION
+                : CANONICA_SIGNAL_TYPE.TICKET;
+
+            emitCanonicaSignal({
+                type: signalType,
+                tId: submitData.tId,
+                sId: submitData.sId,
+                metadata: {
+                    ticketId: docRef.id,
+                    subject: data.subject,
+                    category: data.category,
+                    priority: data.priority,
+                    ...(data.source === 'ai_escalation' && {
+                        query: data.escalationContext?.query,
+                        triggerTypes: data.escalationContext?.triggerTypes,
+                        conversationId: data.escalationContext?.conversationId,
+                    }),
+                },
+            });
+
+            // Notification: ticket creation confirmation (fire-and-forget)
+            if (data.clientDetails?.email) {
+                triggerNotification({
+                    eventType: 'TICKET_CREATED',
+                    recipientEmail: data.clientDetails.email,
+                    recipientName: data.clientDetails.storeName || undefined,
+                    referenceId: `ticket-created-${docRef.id}`,
+                    metadata: {
+                        ticketId: docRef.id,
+                        ticketDisplayId: displayId,
+                        ticketSubject: data.subject,
+                        category: data.category,
+                        priority: data.priority,
+                    },
+                });
+            }
+
+            return { ...submitData, id: docRef.id, displayId };
+        },
+        data,
+        "addTicket"
+    );
+}
+
+export const updateTicket = async (data: any) => {
+    return await apiCallComposer(
+        async () => {
+            const updateData = await requestBodyComposer(data);
+
+            const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
+            if (files.length) {
+                for (let i = 0; i < data.documents.length; i++) {
+                    updateData.documents[i].url = await uploadImage(data.documents[i], 'documents')
+                }
+            }
+
+            await setDoc(getDocRef(data.id), updateData, { merge: true });
+            return updateData;
+        },
+        data,
+        "updateTicket"
+    );
+}
+
+export const addTicketMessage = async (ticketId: string, currentMessages: TicketMessage[], message: TicketMessage, attachments?: any[]) => {
+    return await apiCallComposer(
+        async () => {
+            // Handle file uploads for attachments (same pattern as ticket documents)
+            if (attachments?.length) {
+                message.attachments = [];
+                for (let i = 0; i < attachments.length; i++) {
+                    const uploadedUrl = await uploadImage(attachments[i], 'messages');
+                    message.attachments.push({
+                        url: uploadedUrl,
+                        name: attachments[i].name,
+                        type: attachments[i].type,
+                        size: attachments[i].size
+                    });
+                }
+            }
+
+            // Guard: prevent unbounded message array growth (Firestore 1MB doc limit)
+            const MAX_TICKET_MESSAGES = 500;
+            if (currentMessages.length >= MAX_TICKET_MESSAGES) {
+                throw new Error(`Ticket has reached maximum ${MAX_TICKET_MESSAGES} messages. Please create a new ticket.`);
+            }
+
+            // Add message to messages array (passed from parent, no DB read needed)
+            const updatedMessages = [...currentMessages, message];
+
+            // Update ticket with new message ONLY (requestBodyComposer adds timestamps)
+            // No logs - only send logs on initial ticket creation
+            const updateData = await requestBodyComposer({
+                messages: updatedMessages
+            });
+
+            const ticketRef = getDocRef(ticketId);
+            await setDoc(ticketRef, updateData, { merge: true });
+
+            // Notification: ticket reply (fire-and-forget)
+            // Only notify when the sender is NOT the ticket creator (i.e., support agent replied)
+            if (message.sender?.email && message.type !== 'system') {
+                triggerNotification({
+                    eventType: 'TICKET_REPLY',
+                    recipientEmail: (message as any)._notifyEmail || '',
+                    recipientName: (message as any)._notifyName || undefined,
+                    referenceId: `ticket-reply-${ticketId}-${message.id}`,
+                    metadata: {
+                        ticketId,
+                        ticketSubject: (message as any)._ticketSubject || 'Support Request',
+                        replyPreview: message.text?.slice(0, 300) || '',
+                        replierName: message.sender.name,
+                    },
+                });
+            }
+
+            return message;
+        },
+        { ticketId, currentMessages, message, attachments },
+        "addTicketMessage"
+    );
+}
+
+export const updateTicketStatus = async (ticketId: string, currentStatuses: any[], newStatus: string, remark: string = '', changedBy: { id: string, name: string, email: string }) => {
+    return await apiCallComposer(
+        async () => {
+            // Create new status entry for audit trail
+            const newStatusEntry = {
+                status: newStatus,
+                timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+                createdBy: changedBy,
+                remark: remark || `Status changed to ${newStatus}`
+            };
+
+            // Add to statuses array (passed from parent, no DB read needed)
+            const updatedStatuses = [...currentStatuses, newStatusEntry];
+
+            // Update both status field and statuses array (requestBodyComposer adds timestamps)
+            // No logs - only send logs on initial ticket creation
+            const updateData = await requestBodyComposer({
+                status: newStatus,
+                statuses: updatedStatuses
+            });
+
+            const ticketRef = getDocRef(ticketId);
+            await setDoc(ticketRef, updateData, { merge: true });
+
+            // Notification: ticket status changed (fire-and-forget)
+            // _notifyEmail is set by the calling component with the ticket creator's email
+            const notifyEmail = (changedBy as any)._notifyEmail;
+            if (notifyEmail) {
+                triggerNotification({
+                    eventType: 'TICKET_STATUS_CHANGED',
+                    recipientEmail: notifyEmail,
+                    recipientName: (changedBy as any)._notifyName || undefined,
+                    referenceId: `ticket-status-${ticketId}-${newStatus}-${Date.now()}`,
+                    metadata: {
+                        ticketId,
+                        ticketSubject: (changedBy as any)._ticketSubject || 'Support Request',
+                        newStatus,
+                        remark,
+                        changedByName: changedBy.name,
+                    },
+                });
+            }
+
+            return { status: newStatus, statusEntry: newStatusEntry };
+        },
+        { ticketId, currentStatuses, newStatus, remark, changedBy },
+        "updateTicketStatus"
+    );
+}
+
+export const deleteTicket = async (data: any) => {
+    return await apiCallComposer(
+        async () => {
+            if (data.documents?.length) {
+                for (let i = 0; i < data.documents.length; i++) {
+                    await deleteFileByUrl(data.documents[i].url)
+                }
+            }
+            const docRef = getDocRef(data.id);
+            await deleteDoc(docRef);
+            return null;
+        },
+        data,
+        "deleteTicket"
+    );
+}
+
+export const submitTicketSatisfaction = async (ticketId: string, rating: number, comment?: string) => {
+    return await apiCallComposer(
+        async () => {
+            const satisfaction = {
+                rating,
+                comment: comment || '',
+                submittedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+            };
+            const updateData = await requestBodyComposer({ satisfaction });
+            const ticketRef = getDocRef(ticketId);
+            await setDoc(ticketRef, updateData, { merge: true });
+            return satisfaction;
+        },
+        { ticketId, rating, comment },
+        "submitTicketSatisfaction"
+    );
+};
+
+export const restoreTicket = async (data: any) => {
+    return await updateTicket({ ...data, deleted: false });
+}
+
+export const getTicketById = async (id: string) => {
+    return await apiCallComposer(
+        async () => {
+            const docRef = getDocRef(id);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                return { ...docSnap.data(), id: docSnap.id, displayId: getDisplayId(docSnap.id) };
+            }
+            return null;
+        },
+        id,
+        "getTicketById"
+    );
+}
+
+export const getStoresTickets = async () => {
+    return await apiCallComposer(
+        async () => {
+            const session = await getActiveSession();
+            const q = query(
+                getCollectionRef(),
+                where("tId", "==", session.tId),
+                where("sId", "==", session.sId),
+                where("deleted", "==", false), // ✅ Filter at database level
+                orderBy("createdOn", "desc")
+            );
+
+            const querySnapshot = await getDocs(q);
+            const list = [];
+            querySnapshot.forEach((doc) => {
+                list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) });
+            });
+            return list;
+        },
+        "getStoresTickets"
+    );
+}
+
+export const getSupportTickets = async (includeDeleted = false) => {
+    return await apiCallComposer(
+        async () => {
+            const q = includeDeleted
+                ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(500))
+                : query(
+                    getCollectionRef(),
+                    where("deleted", "==", false), // ✅ Filter at database level
+                    orderBy("createdOn", "desc"),
+                    limit(500)
+                );
+
+            const querySnapshot = await getDocs(q);
+            const list = [];
+            querySnapshot.forEach((doc) => {
+                list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) });
+            });
+            return list;
+        },
+        "getSupportTickets"
+    );
+}
+
+// Real-time listener for support tickets (admin view)
+export const subscribeSupportTickets = async (
+    onUpdate: (tickets: SupportTicketType[]) => void,
+    onError?: (error: Error) => void,
+    includeDeleted = false
+) => {
+    try {
+        const q = includeDeleted
+            ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(500))
+            : query(
+                getCollectionRef(),
+                where("deleted", "==", false), // ✅ Filter at database level
+                orderBy("createdOn", "desc"),
+                limit(500)
+            );
+
+        const unsubscribe = onSnapshot(
+            q,
+            (querySnapshot) => {
+                const list: SupportTicketType[] = [];
+                querySnapshot.forEach((doc) => {
+                    list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) } as SupportTicketType);
+                });
+                onUpdate(list);
+            },
+            (error) => {
+                onError?.(error);
+            }
+        );
+
+        return unsubscribe;
+    } catch (error) {
+        onError?.(error as Error);
+        return () => { }; // Return no-op unsubscribe
+    }
+}
+
+// Real-time listener for store tickets (client view)
+export const subscribeStoreTickets = async (onUpdate: (tickets: SupportTicketType[]) => void, onError?: (error: Error) => void) => {
+    try {
+        const session = await getActiveSession();
+        const q = query(
+            getCollectionRef(),
+            where("tId", "==", session.tId),
+            where("sId", "==", session.sId),
+            where("deleted", "==", false), // ✅ Filter at database level
+            orderBy("createdOn", "desc")
+        );
+
+        const unsubscribe = onSnapshot(
+            q,
+            (querySnapshot) => {
+                const list: SupportTicketType[] = [];
+                querySnapshot.forEach((doc) => {
+                    list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) } as SupportTicketType);
+                });
+                onUpdate(list);
+            },
+            (error) => {
+                onError?.(error);
+            }
+        );
+
+        return unsubscribe;
+    } catch (error) {
+        onError?.(error as Error);
+        return () => { }; // Return no-op unsubscribe
+    }
+}

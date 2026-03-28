@@ -1,0 +1,55 @@
+.inactive-store-wrapper {
+  height: calc(100vh - calc(100vh - 100%));
+  background: white;
+
+  .inactive-store-image {
+    height: 100%;
+    background: url(/assets/images/store_inactive.jpg);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 70%;
+    background-position-y: 30%;
+  }
+
+  .NF-404-image {
+    height: 100%;
+    background: url(/assets/images/male/page_not_found.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 70%;
+    height: 100vh;
+  }
+
+  .container {
+    position: absolute;
+    top: 13%;
+    width: 100%;
+  }
+
+  .page-wrap {
+    height: fit-content;
+    padding: 14px;
+    background-color: white;
+    margin: 0px 10px;
+    margin-bottom: 14px;
+    border-radius: 5px;
+    box-shadow: 0px 2px 11px -1px rgba(0, 0, 0, 0.2),
+      0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+
+    .main-wrap {
+      width: 100%;
+      padding: 80px 0;
+      background-color: white;
+      color: var(--primary-color);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+
+      .wrap {
+        width: fit-content;
+        margin: auto;
+        text-align: center;
+      }
+    }
+  }
+}

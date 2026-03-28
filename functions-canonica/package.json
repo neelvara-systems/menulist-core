@@ -1,0 +1,28 @@
+{
+  "name": "canonica-functions",
+  "description": "Canonica Cloud Functions — Support Knowledge Control Plane",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions --config ../firebase-canonica.json",
+    "shell": "npm run build && firebase functions:shell --config ../firebase-canonica.json",
+    "deploy": "firebase deploy --only functions --project canonica --config ../firebase-canonica.json",
+    "logs": "firebase functions:log --project canonica"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/vertexai": "^1.0.0",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0",
+    "nodemailer": "^8.0.2"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.11",
+    "firebase-functions-test": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "private": true
+}

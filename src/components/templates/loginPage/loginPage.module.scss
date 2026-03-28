@@ -1,0 +1,249 @@
+@import "@styles/abstracts/mixins";
+.loginPageWrap {
+  width: 100vw;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  // background-image: radial-gradient(circle at 10px 10px, #5f5f5f 1px, black 0);
+  background-size: 10px 10px !important;
+  .headerWrap {
+    height: auto;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    .itemWrap {
+      width: auto;
+      height: auto;
+      img {
+        width: auto;
+        height: 50px;
+      }
+    }
+  }
+  .bodyWrap {
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: auto;
+    position: relative;
+    background-repeat: no-repeat !important;
+    background-size: auto !important;
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: auto;
+    position: relative;
+    background-repeat: no-repeat !important;
+    background-size: 500px !important;
+    background-position-y: 100px !important;
+    background-position: left;
+    height: calc(100vh - 99px);
+
+    .bodyContent {
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      width: 100%;
+      .rightContent {
+        min-width: 0;
+        max-width: 500px;
+        width: 100%;
+        padding: 10px;
+        .formWrap {
+          @include flexCenterCol;
+          width: 100%;
+          border: 1px solid #444;
+          background: #ffffff05;
+          padding: 30px;
+          // -webkit-filter: drop-shadow(5px 6px 4px rgba(0, 0, 0, 0.3));
+          // filter: drop-shadow(5px 6px 4px rgba(0, 0, 0, 0.3));
+          box-shadow: var(--card-shadow);
+          border-radius: 15px !important;
+          background-image: radial-gradient(
+            circle at 10px 10px,
+            #2f344ebf 1px,
+            black 0
+          );
+          background-size: 15px 15px !important;
+          padding: 30px 45px;
+          .heading {
+            font-weight: 500;
+            margin-top: 0;
+            cursor: pointer;
+            @include hover;
+            &.title {
+              font-weight: 700;
+              // padding: 0 10px;
+              background-image: linear-gradient(
+                to right,
+                #30c4b8 30%,
+                #1677ff 85%
+              );
+              -webkit-text-fill-color: transparent;
+              -webkit-background-clip: text;
+              background-clip: text;
+              color: white;
+              display: inline;
+              white-space: nowrap;
+              font-size: 40px;
+              margin-top: 0;
+              margin-bottom: 5px;
+            }
+          }
+          .subHeading {
+            text-align: center;
+            font-size: 18px;
+            color: var(--primary-color-beta);
+            margin-bottom: 30px;
+            letter-spacing: 0.3px;
+            font-weight: 400;
+          }
+          .saperator {
+            border-color: gray;
+            margin: 30px 0;
+          }
+          .form {
+            width: 80%;
+            .formItem {
+              width: 100%;
+              background: rgba(255, 255, 255, 0.0196078431);
+              margin-bottom: 30px;
+              input {
+                margin-left: 10px;
+              }
+            }
+            .submitBtnWrap {
+              width: 100%;
+              display: flex;
+              justify-content: flex-end;
+              align-items: flex-end;
+              margin: 10px;
+              button[type="submit"] {
+                background-color: #1677ff;
+                margin-bottom: 10px;
+              }
+            }
+          }
+        }
+      }
+    }
+    .error {
+      color: red;
+      margin-top: -20px;
+    }
+    .bgWrap {
+      z-index: 10;
+      pointer-events: none;
+      position: absolute;
+      bottom: -250px;
+      left: 50%;
+      transform: translateX(-50%) scale(1.5);
+      width: 100vw;
+      height: 100vh;
+      opacity: 0.2;
+      filter: blur(100px);
+      will-change: transform;
+      animation-timeline: auto;
+      animation-range-start: normal;
+      animation-range-end: normal;
+      background: linear-gradient(
+          135deg,
+          rgb(114, 46, 209) 0%,
+          rgb(22, 119, 255) 30%,
+          rgba(245, 34, 224, 0.519) 70%,
+          rgb(19, 194, 194) 100%,
+          rgb(114, 46, 209) 0%,
+          rgb(22, 119, 255) 30%,
+          rgba(245, 34, 224, 0.519) 70%,
+          rgb(19, 194, 194) 100%,
+          var(--primary-color-alpha)
+        )
+        0% 0% / 200% 200%;
+      animation: 50s ease 0s infinite normal none running glow;
+    }
+  }
+
+  @keyframes glow {
+    0% {
+      background-position: 0px -100%;
+    }
+
+    50% {
+      background-position: 200% 50%;
+    }
+
+    100% {
+      background-position: 0px -100%;
+    }
+  }
+
+  // Tablet and below
+  @media screen and (max-width: 1024px) {
+    .bodyWrap {
+      height: auto;
+      min-height: calc(100vh - 99px);
+      .bodyContent {
+        flex-direction: column;
+        .rightContent {
+          padding: 0 20px 20px;
+          transform: unset;
+          .formWrap {
+            padding: 20px;
+            .form {
+              width: 100%;
+            }
+            .formItem {
+              margin-bottom: 15px !important;
+            }
+          }
+          .heading {
+            margin-bottom: 10px !important;
+          }
+          .subHeading {
+            font-size: 14px !important;
+            margin-bottom: 20px !important;
+          }
+          .saperator {
+            margin: 15px !important;
+          }
+        }
+      }
+    }
+  }
+
+  // Mobile phones
+  @media screen and (max-width: 480px) {
+    .headerWrap {
+      padding: 12px 16px;
+      .itemWrap img {
+        height: 36px;
+      }
+    }
+    .bodyWrap {
+      .bodyContent {
+        .rightContent {
+          padding: 0 12px 20px;
+          .formWrap {
+            padding: 20px 16px;
+            border-radius: 12px !important;
+            .heading.title {
+              font-size: 28px;
+            }
+            .subHeading {
+              font-size: 13px !important;
+              margin-bottom: 16px !important;
+            }
+            .googleLoginWrap button {
+              width: 100%;
+            }
+            .saperator {
+              margin: 12px 0 !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}

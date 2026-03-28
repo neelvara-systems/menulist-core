@@ -1,0 +1,267 @@
+import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
+import { getBusinessCategory } from "@constant/common";
+import { DB_COLLECTIONS } from "@constant/database";
+import { createDefaultRoles } from "@data/defaultRoles";
+import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
+import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
+import { collection, getDocs, query, where } from "@firebase/firestore";
+import { requestBodyComposer } from "@lib/apiHelper";
+import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { computeSchedulerHour } from "@lib/utils/schedulerHour";
+import { TimeSlotPreset } from "@type/platform/store";
+import { deleteField, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+
+const COLLECTION = DB_COLLECTIONS.STORES;
+
+const getCollectionRef = () => {
+    return collection(firebaseClient, COLLECTION)
+}
+
+const getDocRef = (docId: any) => {
+    return doc(firebaseClient, `${COLLECTION}`, `${docId}`)
+}
+
+export const getAllStores = async () => {
+    return await apiCallComposer(
+        async () => {
+            const querySnapshot = await getDocs(await getCollectionRef());
+            const list = [];
+            querySnapshot.forEach((doc) => {
+                list.push({ ...doc.data(), id: doc.id })
+            });
+            return (list);
+        },
+        "getAllStores"
+    );
+}
+
+export const getAllStoresByTenantId = async (tenantId: any) => {
+    return await apiCallComposer(
+        async () => {
+            const ref = query(await getCollectionRef(), where("tenantId", "==", tenantId));
+            const querySnapshot = await getDocs(ref);
+            if (querySnapshot.empty) {
+                console.log(`${tenantId} : Stores not available getAllStoresByTenantId`);
+                return ([]);
+            } else {
+                const list: any = [];
+                querySnapshot.forEach((doc) => {
+                    list.push({ ...doc.data(), id: doc.id })
+                });
+                return (list)
+            }
+        },
+        tenantId,
+        "getAllStoresByTenantId"
+    );
+}
+
+export const getStoreById = async (id: number) => {
+    return await apiCallComposer(
+        async () => {
+            const collectionDocRef = await getDocRef(id);
+            const docSnap = await getDoc(collectionDocRef);
+            if (docSnap.exists()) {
+                return docSnap.data();
+            } else {
+                return null
+            }
+        },
+        id,
+        "getStoreById"
+    );
+}
+
+const updateLogoImage = async (data) => {
+
+    let logoUrl: any = '';
+    let imageType: any = data.imageType;
+    let imageToUpdate: any = data.imageToUpdate;
+
+    delete data.imageToUpdate;
+    delete data.imageType;
+    const docId = data.storeId//which is storeId
+    const docRef = await getDocRef(`${docId}`);
+
+    if (imageToUpdate) {
+        if (imageToUpdate?.includes('base64')) {
+            //upload logo image to firebase storage
+            logoUrl = await uploadBase64ToStorage({
+                fileId: docId,
+                url: imageToUpdate,
+                path: `${COLLECTION}/logos/${docId}`,
+                type: imageType
+            })
+        }
+        return logoUrl;
+    } else return "";
+}
+
+export const addStore = async (data: any, from: string = "") => {
+    return await apiCallComposer(
+        async () => {
+
+            data.id = data.storeId
+            if (data.imageToUpdate) {
+                const newUrl = await updateLogoImage(data)
+                data.logo = newUrl;
+                delete data.imageToUpdate;
+                delete data.imageType;
+            }
+
+            // Assign default time slot presets based on business type
+            if (!data.timeSlotPresets && data.businessType && data.tenantId && data.storeId) {
+                data.timeSlotPresets = getDefaultTimeSlotPresets(
+                    data.businessType,
+                    data.tenantId,
+                    data.storeId
+                );
+            }
+
+            // Assign default roles if not provided (Owner, Manager, Staff)
+            // Skip if from onboarding (roles already created in transaction)
+            if (!data.roles && from !== "onboarding") {
+                const createdBy = data.email || data.createdBy || 'system';
+                data.roles = createDefaultRoles(data.storeId, createdBy);
+            }
+
+            await setDoc(getDocRef(data.id), await requestBodyComposer(data));
+            if (from != "onboarding") {
+                await updateStoresCountInPlatformSummary()
+            }
+
+            // Derive businessCategory from businessType if not provided
+            const businessCategory = data.businessCategory || getBusinessCategory(data.businessType || '');
+            data.businessCategory = businessCategory;
+
+            // Auto-compute schedulerHour from timezone if not explicitly set
+            const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone);
+            data.schedulerHour = schedulerHour;
+
+            // Sync to storesSummary for Cloud Function optimization
+            // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
+            await syncStoreToSummary(data.storeId, {
+                tId: data.tenantId,
+                businessType: data.businessType || 'unknown',
+                businessCategory,
+                active: true,
+                name: data.name || '',
+                timeZone: data.timeZone,
+                schedulerHour,
+            });
+
+            return ({ ...data })
+        },
+        data,
+        "addStore"
+    );
+}
+
+export const updateStore = async (data: any) => {
+    return await apiCallComposer(
+        async () => {
+
+            data.id = data.storeId
+            if (data.imageToUpdate) {
+                const newUrl = await updateLogoImage(data)
+                data.logo = newUrl;
+                delete data.imageToUpdate;
+                delete data.imageType;
+            }
+
+            // Derive businessCategory from businessType if not provided
+            const businessCategory = data.businessCategory || getBusinessCategory(data.businessType || '');
+            data.businessCategory = businessCategory;
+
+            await updateDoc(getDocRef(data.id), await requestBodyComposer(data));
+
+            // Recompute schedulerHour if timezone changed
+            if (data.timeZone) {
+                data.schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone);
+            }
+
+            // Sync to storesSummary for Cloud Function optimization
+            // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
+            await syncStoreToSummary(data.storeId, {
+                tId: data.tenantId,
+                businessType: data.businessType || 'unknown',
+                businessCategory,
+                active: data.active ?? true,
+                name: data.name || '',
+                timeZone: data.timeZone,
+                schedulerHour: data.schedulerHour,
+            });
+
+            return data;
+        },
+        data,
+        "updateStore"
+    );
+}
+
+// ============================
+// TIME SLOT PRESETS
+// ============================
+
+/**
+ * Generate a unique ID for a time slot preset
+ * Format: {tenantId}{random3chars}{storeId} e.g., "1ABC15"
+ */
+export const generatePresetId = (tenantId: number, storeId: number) =>
+    `${tenantId}${Math.random().toString(36).substring(2, 5).toUpperCase()}${storeId}`;
+
+/**
+ * Update time slot presets for a store
+ * Uses merge: true to only update the timeSlotPresets field
+ * 
+ * Note: storeDetails is already fetched in PlatformGlobalDataContext
+ * Callers should get existing presets from context, modify locally, then call this to persist
+ */
+export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: TimeSlotPreset[]) => {
+    return await apiCallComposer(
+        async () => {
+            const docRef = getDocRef(`${storeId}`);
+            await setDoc(docRef, { timeSlotPresets }, { merge: true });
+            return timeSlotPresets;
+        },
+        { storeId, timeSlotPresets },
+        "updateTimeSlotPresets"
+    );
+};
+
+// ============================
+// MENU PRESENCE MONITOR
+// @see __docs__/menu-presence-monitor/menu-presence-monitor_impl.md
+// ============================
+
+export type MenuPresenceSurface = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
+
+/**
+ * Update a manual presence confirmation for a specific surface.
+ * Timestamp-only schema: exists = confirmed, missing = not confirmed.
+ * Persists on the store document under `menuPresence.{surface}`.
+ */
+export const updateMenuPresence = async (
+    storeId: number,
+    surface: MenuPresenceSurface,
+    confirmed: boolean
+) => {
+    return await apiCallComposer(
+        async () => {
+            const docRef = getDocRef(`${storeId}`);
+            if (confirmed) {
+                await updateDoc(docRef, {
+                    [`menuPresence.${surface}`]: new Date().toISOString(),
+                });
+            } else {
+                await updateDoc(docRef, {
+                    [`menuPresence.${surface}`]: deleteField(),
+                });
+            }
+            return { surface, confirmed };
+        },
+        { storeId, surface, confirmed },
+        "updateMenuPresence"
+    );
+};

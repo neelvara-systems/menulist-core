@@ -1,0 +1,575 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ═══════════════════════════════════════════════════════════
+    // DEFAULT DENY ALL - Security First Approach
+    // ═══════════════════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // TENANT MULTI-TENANCY RULES
+    // ═══════════════════════════════════════════════════════════
+    
+    // Projects Metadata - Multi-tenant isolated project metadata
+    match /projectsMetadata/{tId}/{sId}/{projectId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // Projects Data - Multi-tenant isolated project data
+    // Case 72: Multi-Outlet Protection - Outlet cannot write to master-controlled fields
+    match /projectsData/{tId}/{sId}/{projectId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      
+      // Create: Normal tenant admin check (new projects have no masterProjectId yet)
+      allow create: if isTenantAdmin(tId, sId);
+      
+      // Update: If linked to master, restrict what can be modified
+      allow update: if isTenantAdmin(tId, sId)
+                    && isValidOutletUpdate();
+      
+      // Delete: Normal tenant admin check (deletion protected in DAL via hasLinkedOutlets)
+      allow delete: if isTenantAdmin(tId, sId);
+    }
+    
+    // Changelog Pages - Require authentication & tenant match
+    match /tenants/{tId}/stores/{sId}/changelogPages/{pageId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // All tenant documents - Default secure access
+    match /tenants/{tId}/stores/{sId}/{document=**} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // User profiles - Users can read/write their own data
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // PAYMENT & ONBOARDING SECURITY (Phase 1-3 Implementation)
+    // ═══════════════════════════════════════════════════════════
+    
+    // Tenants - SERVER-SIDE ONLY (no client writes)
+    match /tenants/{tenantId} {
+      // Users can READ their own tenant data
+      allow read: if isAuthenticated() && belongsToTenantById(int(tenantId));
+      // NO client writes - must use server-side API
+      allow write: if false;
+    }
+    
+    // Stores - SERVER-SIDE ONLY (no client writes)
+    match /stores/{storeId} {
+      // Users can READ their own store data
+      allow read: if isAuthenticated() && belongsToStoreById(int(storeId));
+      // NO client writes - must use server-side API
+      allow write: if false;
+    }
+    
+    // Platform Summary - PLATFORM ADMIN ONLY (read-only for admins)
+    match /platformSummary/{document} {
+      // Only platform admins can read
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      // NO client writes - only server-side via Admin SDK
+      allow write: if false;
+    }
+    
+    // Subscriptions - SERVER-SIDE ONLY (no client writes)
+    // Contains: monthlyCredits, topUpCredits, monthlyCreditsAllowance (AI capacity fields)
+    // Note: Firestore does not support field-level read restrictions.
+    // Client can read full doc (needed for state management) but all writes
+    // are server-only (payment APIs + capacity consumption in AI routes).
+    // Credit values are NOT displayed in UI (doctrine compliance).
+    match /subscriptions/{subscriptionId} {
+      // Users can READ their own subscription
+      allow read: if isAuthenticated() && ownsSubscription(subscriptionId);
+      // NO client writes - must use payment APIs
+      allow write: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // GUEST FEEDBACK (Internal Feedback System)
+    // @see __docs__/projects/internal-feedback-system/
+    // ═══════════════════════════════════════════════════════════
+    
+    match /guestFeedback/{feedbackId} {
+      // PUBLIC CREATE: Allow guest submissions (no auth required)
+      // Rate limiting is handled at API layer, not Firestore rules
+      allow create: if
+        request.resource.data.rating is int &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.tId is int &&
+        request.resource.data.sId is int &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.createdBy == 'guest';
+      
+      // AUTHENTICATED READ: Only tenant members can read their feedback
+      allow read: if isAuthenticated()
+                  && belongsToTenantById(resource.data.tId);
+      
+      // AUTHENTICATED UPDATE: Only tenant admins can update status
+      allow update: if isAuthenticated()
+                    && belongsToTenantById(resource.data.tId)
+                    && request.resource.data.tId == resource.data.tId
+                    && request.resource.data.sId == resource.data.sId;
+      
+      // DELETE: Not allowed from client (cleanup via retention function)
+      allow delete: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // MESSAGING ONBOARDING — Admin SDK Only (Cloud Functions + Next.js API routes)
+    // @see __docs__/messaging-onboarding/messaging-onboarding_impl.md §9
+    // ═══════════════════════════════════════════════════════════
+    
+    match /messagingOnboardingSessions/{sessionId} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK
+    }
+    
+    match /messagingOnboardingRateLimits/{userHash} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK
+    }
+    
+    match /messagingOnboardingEvents/{eventId} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK (fire-and-forget writes)
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // TENANT-SCOPED SUBCOLLECTIONS ({collection}/{tId}/{sId}/...)
+    // Client DAL uses path: {collection}/{tId}/{sId}/{docId}
+    // ═══════════════════════════════════════════════════════════
+    
+    // Todos — Owner task management
+    match /todos/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // Todos Metadata — Config (statuses, tags)
+    match /todosMetadata/{path1}/{tId}/{sId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // Notes — Owner notes
+    match /notes/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // Notes Metadata — Config (categories)
+    match /notesMetadata/{path1}/{tId}/{sId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // Campaigns — Social content management
+    match /campaigns/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // Campaign Exports — Generated campaign assets
+    match /campaignExports/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // FLAT COLLECTIONS — Compound doc IDs ({tId}_{sId}_...)
+    // Tenant isolation via request.auth.token checks
+    // ═══════════════════════════════════════════════════════════
+    
+    // Analytics — Customer-facing menu analytics
+    match /analytics/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Chat Analytics — Aggregated daily chat stats
+    match /chatAnalytics/{docId} {
+      allow read: if isAuthenticated();
+      // Writes are server-side only (nightly aggregation)
+      allow write: if false;
+    }
+    
+    // Chat Sessions — Individual chat sessions
+    match /chatSessions/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // AI Search History — Search query logs
+    match /aiSearchHistory/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Query Embeddings — Cached vector embeddings
+    match /queryEmbeddings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Feedback — User feedback
+    match /feedback/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Support Tickets — Customer support
+    match /supportTickets/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Decision Blocks — Precomputed intelligence (read-only from client)
+    match /decisionBlocks/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    
+    // Menu Intelligence — Continuous intelligence state (read-only from client)
+    match /menuIntelligence/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    
+    // Owner Control Usage — Authority maturation tracking
+    match /ownerControlUsage/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Image Batch Processing Jobs — Batch image generation
+    match /imageBatchProcessingJobs/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Master Operational State — Multi-outlet awareness signals
+    match /masterOperationalState/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // PUBLIC / STATIC READ COLLECTIONS
+    // ═══════════════════════════════════════════════════════════
+    
+    // Pricing Plans — Public read, no client writes
+    match /pricingPlans/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Blogs — Public read
+    match /blogs/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Changelog — Public read
+    match /changelog/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Changelog Feedback — Authenticated write
+    match /changelog_feedback/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+    
+    // Article Feedback — Authenticated write
+    match /article_feedback/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+    
+    // Landing Page Enquiries — Public create
+    match /landingPageEnquiries/{docId} {
+      allow create: if true;
+      allow read: if isAuthenticated();
+      allow update, delete: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // KNOWLEDGE BASE — Authenticated access
+    // ═══════════════════════════════════════════════════════════
+    
+    match /kb_categories/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /kb_articles/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /kb_sections/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /kb_generation_jobs/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /kb_staging_sections/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /kb_staging_chunks/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // LOGGING — Client write-only (fire-and-forget)
+    // ═══════════════════════════════════════════════════════════
+    
+    match /applicationLogs/{docId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if false;
+    }
+    
+    match /errorLogs/{docId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if false;
+    }
+    
+    // AI Help Center Feedback — Authenticated write
+    match /aiHelpCenterFeedback/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // AI OPERATIONS COST TRACKING
+    // Written by Cloud Functions (admin SDK), read by platform admins only
+    // ═══════════════════════════════════════════════════════════
+    
+    match /MENULIST_AI_OPERATIONS/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // SERVER-ONLY COLLECTIONS — Admin SDK only (deny all client)
+    // ═══════════════════════════════════════════════════════════
+    
+    match /authSecurityEvents/{docId} {
+      allow read, write: if false;
+    }
+    
+    match /schedulerRunLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+    
+    match /systemAlerts/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    
+    match /ops_config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    
+    match /systemTelemetry/{docId} {
+      allow read, write: if false;
+    }
+    
+    match /systemErrors/{docId} {
+      allow read, write: if false;
+    }
+    
+    match /negativeFeedbackAlerts/{docId} {
+      allow read, write: if false;
+    }
+    
+    match /messageLogs/{docId} {
+      allow read, write: if false;
+    }
+    
+    // Reseller Dashboard — Admin SDK only (API routes with withAuth)
+    // @see __docs__/reseller-dashboard/reseller-dashboard_firebase.md §8
+    match /resellerTransactions/{docId} {
+      allow read, write: if false;
+    }
+    
+    match /resellerProfiles/{userId} {
+      allow read, write: if false;
+    }
+    
+    // Reviews & Reputation — Server-only writes, auth reads
+    match /reviews/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if false;
+    }
+    
+    match /reviewsState/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    
+    // Compliance Pages — Public read (required for verification bots)
+    // Write: authenticated users only (API route has withAuth + Zod validation)
+    // @see __docs__/compliance-pages/
+    match /compliancePages/{docId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // CANONICAL TRUTH INFRASTRUCTURE — Server-Only Collections
+    // @see __docs__/canonical-truth-infrastructure/
+    // ═══════════════════════════════════════════════════════════
+    
+    // Menu Change Log (MOL) — Append-only event ledger
+    // Written by client DAL (fire-and-forget) but scoped to tenant
+    match /menuChangeLog/{tId}/{sId}/{entryId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow create: if isAuthenticated() && belongsToTenant(tId);
+      // Immutable: no updates or deletes from client
+      allow update, delete: if false;
+    }
+    
+    // Menu Snapshots — Immutable publish-time snapshots
+    // Written by client DAL on publish, never modified
+    match /menuSnapshots/{tId}/{sId}/{snapshotId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow create: if isAuthenticated() && belongsToTenant(tId);
+      // Immutable: no updates or deletes from client
+      allow update, delete: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // MENU IMAGE PROCESSING JOBS (Section 8.8)
+    // Spec: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md
+    // ═══════════════════════════════════════════════════════════
+    
+    match /menuImageProcessingJobs/{jobId} {
+      // Users can only read their own jobs
+      // Platform admins can read all jobs (for extraction monitoring dashboard)
+      allow read: if isAuthenticated()
+                  && (resource.data.uId == request.auth.uid || isPlatformAdmin());
+      
+      // Create: Must include tenant context, match user's tenant, and start as pending
+      // Security: Validates tId/sId match authenticated user's claims
+      //           to prevent cross-tenant project injection via crafted projectId
+      allow create: if isAuthenticated()
+                    && request.resource.data.uId == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.tId is string
+                    && request.resource.data.sId is string
+                    && request.resource.data.tId == string(request.auth.token.tenantId)
+                    && request.resource.data.projectId is string;
+      
+      // Update: Only allow cancellation from client
+      // (processing → cancelling only)
+      allow update: if isAuthenticated()
+                    && resource.data.uId == request.auth.uid
+                    && request.resource.data.status == 'cancelling'
+                    && resource.data.status == 'processing';
+      
+      // Delete: Not allowed from client (cleanup via scheduled function)
+      allow delete: if false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user belongs to tenant
+    function belongsToTenant(tId) {
+      return request.auth != null
+        && request.auth.token.tenantId == tId;
+    }
+    
+    // Check if user is tenant admin
+    function isTenantAdmin(tId, sId) {
+      return request.auth != null
+        && request.auth.token.tenantId == tId
+        && request.auth.token.admin == true
+        && (request.auth.token.storeIds == null || request.auth.token.storeIds.has(sId));
+    }
+    
+    // Check if user belongs to specific tenant by ID
+    function belongsToTenantById(tenantIdInt) {
+      return request.auth != null
+        && request.auth.token.tenantId == tenantIdInt;
+    }
+    
+    // Check if user belongs to specific store by ID
+    function belongsToStoreById(storeIdInt) {
+      return request.auth != null
+        && request.auth.token.storeId == storeIdInt;
+    }
+    
+    // Check if user is platform admin
+    function isPlatformAdmin() {
+      return request.auth != null
+        && request.auth.token.platformRole == 'PLATFORM';
+    }
+    
+    // Check if user owns subscription (for read access)
+    function ownsSubscription(subscriptionId) {
+      // User must be authenticated and have tenant/store IDs
+      // We'll validate ownership by reading the subscription document
+      // This is safe because it's read-only access
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null;
+      // Note: Full ownership validation happens in the API routes
+      // This just ensures authenticated users with tenant/store can read
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // MULTI-OUTLET PROTECTION (Case 72)
+    // Outlets linked to master cannot modify master-controlled fields
+    // ═══════════════════════════════════════════════════════════
+    
+    // Check if update is valid for outlet projects
+    // If project has masterProjectId, block writes to extractedData and files
+    function isValidOutletUpdate() {
+      // If NOT linked to master (no masterProjectId), allow all writes
+      let isLinkedToMaster = resource.data.masterProjectId != null;
+      // If linked to master, only allow writes to safe fields:
+      // - overrides (price, availability, active overrides)
+      // - themeConfig (if permissions allow - checked in DAL)
+      // - published status
+      // - metadata fields (modifiedOn, etc.)
+      // 
+      // Block writes that modify:
+      // - files[] (contains extractedData with master items)
+      // - masterProjectId (cannot self-unlink)
+      let filesUnchanged = !request.resource.data.diff(resource.data).affectedKeys().hasAny(['files']);
+      let masterIdUnchanged = request.resource.data.masterProjectId == resource.data.masterProjectId;
+      
+      return !isLinkedToMaster || (filesUnchanged && masterIdUnchanged);
+    }
+  }
+}

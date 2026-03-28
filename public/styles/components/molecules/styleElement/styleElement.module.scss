@@ -1,0 +1,39 @@
+.styleWrap {
+  width: 100%;
+  // background: var(--styleElementBg);
+  padding: 0 8px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+  min-width: max-content;
+  &:first-child {
+    margin: unset;
+  }
+  button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .label {
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    margin-bottom: 8px;
+    font-weight: 800;
+    text-transform: capitalize;
+  }
+  .elementWrap {
+    width: 100%;
+  }
+  .subStyleElementWrap {
+    min-width: 100%;
+    padding: 10px 0 0 0;
+  }
+  .styleWrap {
+    .label {
+      font-weight: 100;
+      // color: var(--lightest-navy);
+    }
+  }
+}

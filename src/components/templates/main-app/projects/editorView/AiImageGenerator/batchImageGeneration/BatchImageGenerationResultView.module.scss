@@ -1,0 +1,81 @@
+@keyframes animatedGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradientBackground {
+  background-size: 300% 300%; // Make it larger to slow down the visible change
+  animation: animatedGradient 12s ease infinite; // Faster default
+  border-radius: 8px; // Matches Ant Design's default border-radius for Result
+  // The Result component has its own padding, so applying padding here might double it.
+  // We might need to adjust if the default Result padding isn't enough or conflicts.
+}
+
+.queuedBackground {
+  @extend .gradientBackground;
+  // Using Ant Design's info colors for a base, very lightened
+  background-image: linear-gradient(
+    -45deg,
+    #f7faff,
+    // lightest blue
+    #e6f0ff,
+    #d9e8ff,
+    // very light blue
+    #e6f0ff,
+    #f7faff
+  );
+}
+
+.processingBackground {
+  @extend .gradientBackground;
+  // Using Ant Design's primary/processing colors for a base, very lightened
+  background-image: linear-gradient(
+    -45deg,
+    #f0fbff,
+    // lightest primary blue
+    #d9f2ff,
+    #ccebff,
+    // very light primary blue
+    #d9f2ff,
+    #f0fbff
+  );
+  animation-duration: 9s; // Faster processing
+}
+
+.completedBackground {
+  @extend .gradientBackground;
+  // Using Ant Design's success colors for a base, very lightened
+  background-image: linear-gradient(
+    -45deg,
+    rgba(250, 255, 242, 0.6941176471),
+    rgb(156 187 121 / 69%),
+    rgba(217, 247, 200, 0.8039215686),
+    #94d945,
+    rgba(250, 255, 242, 0.6941176471)
+  );
+  animation-duration: 15s; // Faster completed state
+  color: black !important;
+}
+
+.failedBackground {
+  @extend .gradientBackground;
+  // Using Ant Design's error colors for a base, very lightened
+  background-image: linear-gradient(
+    -45deg,
+    #fff7f5,
+    // lightest red
+    #ffe0db,
+    #ffcdc7,
+    // very light red
+    #ffe0db,
+    #fff7f5
+  );
+  animation-duration: 7s; // Faster failed state
+}

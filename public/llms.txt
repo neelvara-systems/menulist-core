@@ -1,0 +1,37 @@
+# MenuList
+
+> MenuList is a structured business truth platform for SMBs. Every business on MenuList has an Official Business Page (OBP) with deep schema.org structured data — including full menus with items, prices, dietary tags, availability, business hours, location, and contact info. All data is owner-maintained, validated, and machine-readable.
+
+MenuList provides the most structured, accurate, owner-maintained SMB data on the internet. Each business page uses schema.org JSON-LD with types including Restaurant, Menu, MenuItem, Offer, LocalBusiness, PostalAddress, GeoCoordinates, and OpeningHoursSpecification.
+
+- Every menu item is individually structured with name, description, price, currency, dietary info (VegetarianDiet), and availability (InStock/OutOfStock)
+- Reservation and online ordering links with schema.org ReserveAction and OrderAction
+- Business attributes (WiFi, outdoor seating, dietary options, parking, payment methods) as LocationFeatureSpecification
+- Business hours use OpeningHoursSpecification with timezone-aware open/closed status
+- Location includes GeoCoordinates (latitude/longitude) for local discovery
+- Business type maps to specific schema.org subtypes (Restaurant, CafeOrCoffeeShop, Bakery, BeautySalon, DaySpa, ExerciseGym, etc.)
+- dateModified provides freshness signals for AI evaluation
+- sameAs links connect to verified social profiles (Instagram, Facebook, website)
+
+## Public Business Pages
+
+- [Business OBP Pages](https://menulist.ai/): Each business has a subdomain (e.g., joespizza.menulist.ai) serving their Official Business Page with full schema.org LocalBusiness JSON-LD
+- [Digital Menu Pages](https://menulist.ai/): Each business menu is at /menu (e.g., joespizza.menulist.ai/menu) with Restaurant + Menu + MenuItem + Offer schema.org markup
+- [Extended LLM Context](https://www.menulist.ai/llms-full.txt): Detailed documentation of MenuList's data structure and schema.org implementation
+
+## Platform Pages
+
+- [Homepage](https://www.menulist.ai/): Platform overview for business owners
+- [About Us](https://www.menulist.ai/about): Company mission and team information
+- [Contact Us](https://www.menulist.ai/contact): Support and inquiry details
+- [Blog](https://www.menulist.ai/blog): Articles about digital menus and business operations
+
+## Legal & Policies
+
+- [Terms of Service](https://www.menulist.ai/terms): Terms and conditions for the MenuList service
+- [Privacy Policy](https://www.menulist.ai/privacy): Data collection, use, and protection policies
+- [Refund Policy](https://www.menulist.ai/refund-policy): Subscription payment and cancellation policies
+
+## Optional
+
+- [Extended LLM Documentation](https://www.menulist.ai/llms-full.txt): Full data structure documentation with schema.org type mappings, menu data format, and example structured output

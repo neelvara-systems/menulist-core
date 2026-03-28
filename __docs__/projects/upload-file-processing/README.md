@@ -1,0 +1,75 @@
+# Upload & File Processing
+
+**Sub-feature of:** Projects (Menu Digitization)  
+**Status:** ✅ Production Ready
+
+---
+
+## Overview
+
+Upload & File Processing is the entry point for digitizing menus. Users upload photos or PDFs, which are validated, converted (if PDF), and prepared for AI extraction.
+
+---
+
+## Documentation
+
+| Document        | Audience          | Purpose                          |
+| --------------- | ----------------- | -------------------------------- |
+| `_spec.md`      | Product, Business | Requirements, user flows, limits |
+| `_impl.md`      | Developers        | Architecture, code, validation   |
+| `_marketing.md` | Sales, Marketing  | Pitch, copy, objection handling  |
+
+---
+
+## Quick Reference
+
+### Supported Files
+
+- **Images:** JPG, PNG, WebP (max 10MB each)
+- **PDFs:** Up to 50 pages (max 50MB each)
+- **Session:** 200MB total per upload session
+
+### Key Files
+
+```
+src/components/templates/main-app/projects/
+├── index.tsx           # Upload View (View 1)
+├── constants.ts        # Limits, allowed types
+├── validation.ts       # All validation (270 LOC)
+├── FileList.tsx        # Preview component
+└── utils/pdfUtils.ts   # PDF conversion (198 LOC)
+```
+
+### Security
+
+- Triple-layer validation (MIME + extension + magic bytes)
+- Blocks EXE, ZIP, SVG (XSS risk)
+- Multi-tenant isolation via {tId}/{sId} paths
+
+---
+
+## Legacy Documentation
+
+The following files have been **consolidated** into this folder:
+
+| Legacy File                                            | Status         |
+| ------------------------------------------------------ | -------------- |
+| `Assessments/ASSESSMENT-01-UPLOAD.md`                  | → Consolidated |
+| `01-UPLOAD-FILE-PROCESSING.md`                         | → Consolidated |
+| `development_done/1-IMPLEMENTATION-UPLOAD-COMPLETE.md` | → Consolidated |
+| `development_done/1-TESTING-GUIDE-UPLOAD.md`           | → Consolidated |
+| `development_done/1-CROSS-CHECK-UPLOAD.md`             | → Consolidated |
+
+---
+
+## Related Features
+
+| Feature            | Relationship             |
+| ------------------ | ------------------------ |
+| AI Data Extraction | Processes uploaded files |
+| Data Editor        | Displays extracted data  |
+| Project Management | Organizes uploaded menus |
+
+---
+
+_Last Updated: January 2026_

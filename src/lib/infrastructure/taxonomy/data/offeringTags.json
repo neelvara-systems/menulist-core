@@ -1,0 +1,44 @@
+{
+  "_description": "SMB-universal offering tags. Each tag applies to specific business categories (scope). Tags with scope=['*'] apply to all businesses.",
+  "tags": [
+    { "id": "popular", "label": "Popular", "aliases": ["Popular", "Best Seller", "Bestseller", "Top Pick", "Must Try", "Recommended", "Favourite", "Favorite"], "scope": ["*"] },
+    { "id": "new", "label": "New", "aliases": ["New", "New Arrival", "Just Added", "New Launch", "Latest"], "scope": ["*"] },
+    { "id": "premium", "label": "Premium", "aliases": ["Premium", "Luxury", "Exclusive", "VIP", "Signature", "Special", "Deluxe"], "scope": ["*"] },
+    { "id": "budget", "label": "Budget Friendly", "aliases": ["Budget", "Budget Friendly", "Value", "Affordable", "Economy", "Basic"], "scope": ["*"] },
+    { "id": "express", "label": "Express / Quick", "aliases": ["Express", "Quick", "Fast", "Instant", "Speed", "Rapid", "30 Min"], "scope": ["*"] },
+    { "id": "seasonal", "label": "Seasonal", "aliases": ["Seasonal", "Limited Time", "Limited Edition", "Festival", "Holiday", "Special Occasion"], "scope": ["*"] },
+
+    { "id": "vegetarian", "label": "Vegetarian", "aliases": ["Vegetarian", "Veg", "Pure Veg", "Veggie", "Shakahari"], "scope": ["food"], "schemaOrg": "https://schema.org/VegetarianDiet" },
+    { "id": "non_vegetarian", "label": "Non-Vegetarian", "aliases": ["Non-Vegetarian", "Non Veg", "Non-Veg", "Nonveg", "Meat"], "scope": ["food"] },
+    { "id": "vegan", "label": "Vegan", "aliases": ["Vegan", "Plant Based", "Plant-Based", "100% Vegan"], "scope": ["food"], "schemaOrg": "https://schema.org/VeganDiet" },
+    { "id": "halal", "label": "Halal", "aliases": ["Halal", "Halaal"], "scope": ["food"], "schemaOrg": "https://schema.org/HalalDiet" },
+    { "id": "kosher", "label": "Kosher", "aliases": ["Kosher"], "scope": ["food"], "schemaOrg": "https://schema.org/KosherDiet" },
+    { "id": "gluten_free", "label": "Gluten Free", "aliases": ["Gluten Free", "Gluten-Free", "GF", "No Gluten"], "scope": ["food"], "schemaOrg": "https://schema.org/GlutenFreeDiet" },
+    { "id": "dairy_free", "label": "Dairy Free", "aliases": ["Dairy Free", "Dairy-Free", "No Dairy", "Lactose Free"], "scope": ["food"] },
+    { "id": "nut_free", "label": "Nut Free", "aliases": ["Nut Free", "Nut-Free", "No Nuts", "Peanut Free"], "scope": ["food"] },
+    { "id": "jain", "label": "Jain", "aliases": ["Jain", "Jain Food", "No Onion No Garlic", "NONG"], "scope": ["food"] },
+    { "id": "spicy", "label": "Spicy", "aliases": ["Spicy", "Hot", "Extra Spicy", "Mild Spicy"], "scope": ["food"] },
+    { "id": "sugar_free", "label": "Sugar Free", "aliases": ["Sugar Free", "Sugar-Free", "No Sugar", "Diabetic Friendly"], "scope": ["food"], "schemaOrg": "https://schema.org/DiabeticDiet" },
+    { "id": "organic", "label": "Organic", "aliases": ["Organic", "100% Organic", "Certified Organic", "Natural"], "scope": ["food", "retail", "health"] },
+    { "id": "keto", "label": "Keto Friendly", "aliases": ["Keto", "Keto Friendly", "Keto-Friendly", "Low Carb", "Low-Carb"], "scope": ["food"] },
+
+    { "id": "for_men", "label": "For Men", "aliases": ["For Men", "Men", "Men's", "Mens", "Gents", "Male"], "scope": ["service", "health", "retail"] },
+    { "id": "for_women", "label": "For Women", "aliases": ["For Women", "Women", "Women's", "Womens", "Ladies", "Female"], "scope": ["service", "health", "retail"] },
+    { "id": "unisex", "label": "Unisex", "aliases": ["Unisex", "For All", "All Gender", "Universal"], "scope": ["service", "health", "retail"] },
+    { "id": "for_kids", "label": "For Kids", "aliases": ["For Kids", "Kids", "Children", "Junior", "Child", "Baby"], "scope": ["service", "health", "retail", "creative"] },
+    { "id": "for_seniors", "label": "For Seniors", "aliases": ["For Seniors", "Senior", "Elderly", "Senior Citizen", "60+"], "scope": ["service", "health"] },
+
+    { "id": "beginner", "label": "Beginner", "aliases": ["Beginner", "Starter", "Introductory", "Basic", "Novice", "First Time"], "scope": ["health", "creative", "professional"] },
+    { "id": "intermediate", "label": "Intermediate", "aliases": ["Intermediate", "Regular", "Standard", "Moderate"], "scope": ["health", "creative"] },
+    { "id": "advanced", "label": "Advanced", "aliases": ["Advanced", "Expert", "Pro", "Professional", "Intense"], "scope": ["health", "creative"] },
+
+    { "id": "appointment_required", "label": "Appointment Required", "aliases": ["Appointment", "By Appointment", "Booking Required", "Reserve", "Pre-Book"], "scope": ["service", "health", "professional"] },
+    { "id": "walk_in", "label": "Walk-In Welcome", "aliases": ["Walk-In", "Walk In", "No Appointment", "Drop In", "No Booking"], "scope": ["service", "health"] },
+    { "id": "home_service", "label": "Home Service", "aliases": ["Home Service", "At Home", "Doorstep", "Home Visit", "House Call"], "scope": ["service", "health", "professional"] },
+    { "id": "online_available", "label": "Available Online", "aliases": ["Online", "Virtual", "Remote", "Video Call", "Zoom", "Online Class"], "scope": ["health", "professional", "creative"] },
+
+    { "id": "eco_friendly", "label": "Eco-Friendly", "aliases": ["Eco-Friendly", "Eco Friendly", "Green", "Sustainable", "Cruelty Free", "Cruelty-Free"], "scope": ["service", "retail", "food"] },
+    { "id": "handmade", "label": "Handmade", "aliases": ["Handmade", "Hand Made", "Artisan", "Crafted", "Bespoke", "Custom"], "scope": ["retail", "creative"] },
+    { "id": "imported", "label": "Imported", "aliases": ["Imported", "International", "Foreign", "Exotic"], "scope": ["retail", "food"] }
+  ]
+}

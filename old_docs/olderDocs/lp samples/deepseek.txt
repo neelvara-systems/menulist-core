@@ -1,0 +1,161 @@
+### MenuListAI Landing Page Copy
+
+**1. Navbar**
+
+- Home
+- Features
+- How It Works
+- Pricing
+- Contact
+
+---
+
+**2. Hero Section**  
+**Headline:**  
+Your Stunning Digital Catalog—Ready in Minutes, Not Weeks.  
+**Sub-headline:**  
+Upload any price list or photo. Watch AI instantly transform it into a beautiful, customer-ready digital catalog. No designers. No writers. No headaches.  
+**Primary CTA Button:**  
+✨ Create Your Catalog →
+
+---
+
+**3. Trust Badges**
+
+- **Badge 1:** Instant Setup: Go live in <5 minutes
+- **Badge 2:** 99.8% Accuracy Guarantee
+- **Badge 3:** Loved by 5,000+ Businesses
+
+---
+
+**4. Business Types Section**  
+**Title:**  
+Perfect For Any Business. Flawless For Yours.  
+**Description:**  
+Whether you serve tacos, tattoos, or tech consulting—MenuListAI adapts to you.
+
+---
+
+**5. How It Works Section**  
+**Title:**  
+Done Before Your Coffee Cools.  
+**Description:**  
+Three steps. Zero effort. Professional results:
+
+1. **Upload:** Drag in PDFs, photos, or spreadsheets.
+2. **AI Creates:** We extract data, write descriptions, and generate images.
+3. **Share:** Publish your catalog anywhere—or use the API.
+
+---
+
+**6. Two Platforms in One Section**  
+**Title:**  
+One Tool. Two Superpowers.  
+**Description:**  
+Built for business owners and developers alike.
+
+- **Card 1: Digital Catalog Platform**  
+  _For Business Owners_  
+  "Create gorgeous, no-code catalogs that wow customers—no tech skills needed."
+- **Card 2: Data API Platform**  
+  _For Developers_  
+  "Get clean, structured JSON data in seconds. Ditch scraping and manual entry."
+
+---
+
+**7. Features Section**  
+**Title:**  
+AI That Works Like Magic. (Only Smarter.)  
+**Description:**  
+We handle the heavy lifting—you reap the rewards:
+
+- **AI Data Extraction:** Turn messy files into organized data with one click.
+- **AI Description Generation:** Craft mouthwatering, SEO-friendly copy that sells.
+- **AI Image Generation:** Generate unique product photos—no camera required.
+- **Multi-Language Translation:** Instantly localize catalogs for global audiences.
+
+---
+
+**8. Templates Section**  
+**Title:**  
+Stunning By Default. Uniquely Yours.  
+**Description:**  
+Choose from designer-grade templates—all mobile-friendly and brand-customizable.
+
+---
+
+**9. Why Choose Us Section**  
+**Title:**  
+The Smart Business Owner’s Secret Weapon.  
+**Description:**  
+Stop paying for piecework. Start scaling profitably:
+
+- **Save 20+ Hours/Month:** Replace manual updates with AI automation.
+- **Slash $1,000s in Costs:** Dump expensive photographers and copywriters.
+- **Zero Embarrassing Errors:** AI-proof pricing and descriptions.
+- **Grow Anywhere:** From Shopify to WhatsApp—deploy catalogs everywhere.
+
+---
+
+**10. Testimonials Section**
+
+> "I updated 3 restaurant menus in 15 minutes—something that used to take my team _days_. Our online orders jumped 40%."  
+> **— Elena R., Multi-Location Restaurant Owner**
+>
+> "The API saved me 80% of dev time. Now I integrate client catalogs into apps while they’re still on our discovery call."  
+> **— David L., Freelance Web Developer**
+>
+> "Clients book 3x more services because our AI-generated salon catalog looks like a Vogue spread. No photographer? No problem."  
+> **— Maria S., High-End Salon Owner**
+
+---
+
+**11. FAQ Section**  
+**Q:** What types of businesses can use MenuListAI?  
+**A:** Any! Restaurants, retailers, salons, realtors, consultants—even dog groomers.  
+**Q:** Can I use my own domain name?  
+**A:** Yes! Use your custom domain (e.g., menu.yourbusiness.com) for free.  
+**Q:** What file types can I upload?  
+**A:** PDFs, JPGs, PNGs, spreadsheets (XLS/CSV), or even smartphone photos.  
+**Q:** How does AI Image Generation work?  
+**A:** Describe your product (e.g., "luxury gold facial"), and we create a high-res image in your brand’s style.  
+**Q:** How many catalogs can I create?  
+**A:** Unlimited! Update seasonal offers, specials, or locations—no extra cost.
+
+---
+
+**12. Pricing Section**  
+**Title:**  
+Professional Results. Unbeatable Value.  
+**Description:**  
+Start free. Upgrade anytime. Cancel never—we’re that confident you’ll stay.
+
+---
+
+**13. Footer Section**  
+**Tagline:**  
+Turn Chaos Into Catalogs.  
+**Footer Links:**
+
+- About Us
+- Contact
+- Blog
+- API Docs
+- Privacy Policy
+- Terms of Service  
+  **Copyright Notice:**  
+  © 2025 MenuListAI. All rights reserved.
+
+---
+
+_End of Landing Page Copy_
+
+### Key Tone & USP Highlights
+
+- **Speed Focus:** Verbs like "instant," "minutes," and "zero effort" reinforce the core USP.
+- **Empowerment:** Language like "no designers needed" and "your secret weapon" targets pain points.
+- **Dual Audience:** Clear separation of B2C ("no-code catalogs") and B2B ("clean JSON API") use cases.
+- **AI Warmth:** "Works like magic" subtly humanizes tech while emphasizing results.
+- **Trust Builders:** Specific stats (e.g., "99.8% accuracy"), testimonials, and risk-reducing FAQs.
+
+This copy balances brevity with benefit-driven urgency, positioning MenuListAI as the effortless solution for digital presence.

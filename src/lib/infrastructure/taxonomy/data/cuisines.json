@@ -1,0 +1,22 @@
+[
+  { "id": "indian", "label": "Indian", "aliases": ["Indian", "Desi", "Hindustani"] },
+  { "id": "north_indian", "label": "North Indian", "aliases": ["North Indian", "Mughlai", "Punjabi", "Awadhi", "Lucknowi"] },
+  { "id": "south_indian", "label": "South Indian", "aliases": ["South Indian", "Tamil", "Kerala", "Andhra", "Chettinad", "Udupi"] },
+  { "id": "italian", "label": "Italian", "aliases": ["Italian", "Italiano"] },
+  { "id": "chinese", "label": "Chinese", "aliases": ["Chinese", "Indo-Chinese", "Hakka", "Szechuan", "Cantonese"] },
+  { "id": "japanese", "label": "Japanese", "aliases": ["Japanese", "Sushi", "Ramen", "Izakaya"] },
+  { "id": "thai", "label": "Thai", "aliases": ["Thai", "Thailand"] },
+  { "id": "mexican", "label": "Mexican", "aliases": ["Mexican", "Tex-Mex", "Burritos", "Tacos"] },
+  { "id": "continental", "label": "Continental", "aliases": ["Continental", "European", "Western", "French"] },
+  { "id": "mediterranean", "label": "Mediterranean", "aliases": ["Mediterranean", "Greek", "Turkish", "Lebanese", "Middle Eastern"] },
+  { "id": "american", "label": "American", "aliases": ["American", "USA", "Burgers", "BBQ", "Southern"] },
+  { "id": "korean", "label": "Korean", "aliases": ["Korean", "K-Food", "Korean BBQ"] },
+  { "id": "asian", "label": "Asian Fusion", "aliases": ["Asian", "Asian Fusion", "Pan-Asian", "Southeast Asian"] },
+  { "id": "bengali", "label": "Bengali", "aliases": ["Bengali", "Bangla", "Kolkata"] },
+  { "id": "gujarati", "label": "Gujarati", "aliases": ["Gujarati", "Gujju"] },
+  { "id": "rajasthani", "label": "Rajasthani", "aliases": ["Rajasthani", "Marwadi", "Marwari"] },
+  { "id": "goan", "label": "Goan", "aliases": ["Goan", "Konkani"] },
+  { "id": "street_food", "label": "Street Food", "aliases": ["Street Food", "Chaat", "Street Eats", "Fast Food"] },
+  { "id": "cafe", "label": "Cafe", "aliases": ["Cafe", "Coffee", "Bakery Cafe", "Patisserie"] },
+  { "id": "multi_cuisine", "label": "Multi-Cuisine", "aliases": ["Multi-Cuisine", "Multi Cuisine", "All Cuisine", "Mixed"] }
+]

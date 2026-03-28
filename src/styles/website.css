@@ -1,0 +1,463 @@
+/* ============================================
+   MenuList Website Design System
+   Source: __docs__/main-website/main-website_design-system.md
+   Status: LOCKED — Do not modify without doc update
+   ============================================ */
+
+:root {
+  /* Backgrounds */
+  --ws-bg-primary: #ffffff;
+  --ws-bg-subtle: #f8fafc;
+  --ws-bg-accent: #eff6ff;
+
+  /* Text */
+  --ws-text-primary: #0f172a;
+  --ws-text-secondary: #475569;
+  --ws-text-muted: #94a3b8;
+  --ws-text-on-accent: #ffffff;
+
+  /* Brand */
+  --ws-brand-primary: #1e40af;
+  --ws-brand-secondary: #2563eb;
+  --ws-brand-light: #dbeafe;
+
+  /* CTA */
+  --ws-cta-default: #2563eb;
+  --ws-cta-hover: #1d4ed8;
+  --ws-cta-active: #1e40af;
+  --ws-cta-disabled: #93c5fd;
+
+  /* Borders */
+  --ws-border-default: #e2e8f0;
+  --ws-border-subtle: #f1f5f9;
+  --ws-border-focus: #2563eb;
+
+  /* Semantic */
+  --ws-success: #059669;
+  --ws-warning: #d97706;
+  --ws-error: #dc2626;
+
+  /* Spacing scale (4px base) */
+  --ws-space-1: 0.25rem;
+  --ws-space-2: 0.5rem;
+  --ws-space-3: 0.75rem;
+  --ws-space-4: 1rem;
+  --ws-space-5: 1.25rem;
+  --ws-space-6: 1.5rem;
+  --ws-space-8: 2rem;
+  --ws-space-10: 2.5rem;
+  --ws-space-12: 3rem;
+  --ws-space-14: 3.5rem;
+  --ws-space-16: 4rem;
+  --ws-space-20: 5rem;
+  --ws-space-24: 6rem;
+
+  /* Section padding */
+  --ws-section-py: 6rem;
+  --ws-section-py-mobile: 3rem;
+
+  /* Max widths */
+  --ws-max-w-content: 1200px;
+  --ws-max-w-text: 720px;
+  --ws-max-w-narrow: 540px;
+
+  /* Border radius — kept sharp for infrastructure authority */
+  --ws-radius-sm: 0.25rem;
+  --ws-radius-md: 0.375rem;
+  --ws-radius-lg: 0.5rem;
+  --ws-radius-xl: 0.625rem;
+
+  /* Shadows */
+  --ws-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --ws-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --ws-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+
+  /* Transitions */
+  --ws-transition-fast: 150ms ease;
+  --ws-transition-normal: 250ms ease;
+  --ws-transition-slow: 350ms ease;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+.ws-page {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ws-text-primary);
+  background-color: var(--ws-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Section Wrapper
+   ============================================ */
+
+.ws-section {
+  padding: var(--ws-section-py) var(--ws-space-6);
+}
+
+.ws-section--subtle {
+  background-color: var(--ws-bg-subtle);
+}
+
+.ws-section--accent {
+  background-color: var(--ws-bg-accent);
+}
+
+.ws-container {
+  max-width: var(--ws-max-w-content);
+  margin: 0 auto;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.text-center {
+  text-align: center;
+}
+
+/* ============================================
+   Typography
+   ============================================ */
+
+.ws-h1 {
+  font-size: 2.5rem;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ws-text-primary);
+}
+
+.ws-h2 {
+  font-size: 2rem;
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ws-text-primary);
+}
+
+.ws-h3 {
+  font-size: 1.25rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ws-text-primary);
+}
+
+.ws-body {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: var(--ws-text-secondary);
+}
+
+.ws-body-sm {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ws-text-secondary);
+}
+
+.ws-caption {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ws-text-muted);
+}
+
+/* ============================================
+   Highlighted Text (accent words in headings)
+   ============================================ */
+
+.ws-highlight {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: inherit;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.ws-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: var(--ws-radius-md);
+  transition: all var(--ws-transition-fast);
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+
+.ws-btn--primary {
+  background-color: var(--ws-cta-default);
+  color: var(--ws-text-on-accent);
+  padding: 0.875rem 2rem;
+}
+
+.ws-btn--primary:hover {
+  background-color: var(--ws-cta-hover);
+}
+
+.ws-btn--primary:active {
+  background-color: var(--ws-cta-active);
+}
+
+.ws-btn--ghost {
+  background-color: transparent;
+  color: var(--ws-text-secondary);
+  padding: 0.625rem 1rem;
+}
+
+.ws-btn--ghost:hover {
+  color: var(--ws-text-primary);
+  background-color: var(--ws-bg-subtle);
+}
+
+/* ============================================
+   Cards / Tiles
+   ============================================ */
+
+.ws-card {
+  background-color: var(--ws-bg-primary);
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-lg);
+  padding: var(--ws-space-6);
+  transition: box-shadow var(--ws-transition-normal);
+}
+
+.ws-card:hover {
+  box-shadow: var(--ws-shadow-md);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .ws-section {
+    padding: var(--ws-section-py-mobile) var(--ws-space-4);
+  }
+
+  .ws-h1 {
+    font-size: 1.875rem;
+  }
+
+  .ws-h2 {
+    font-size: 1.5rem;
+  }
+
+  .ws-h3 {
+    font-size: 1.125rem;
+  }
+
+  .ws-body {
+    font-size: 1rem;
+  }
+
+  .ws-card {
+    padding: var(--ws-space-5);
+  }
+
+  /* Reduce hero top padding on mobile */
+  .ws-page>section:first-child,
+  .ws-page>main>section:first-child {
+    padding-top: var(--ws-space-16) !important;
+    padding-bottom: var(--ws-space-10) !important;
+  }
+}
+
+/* Prevent horizontal overflow on mobile */
+.ws-page {
+  overflow-x: hidden;
+}
+
+/* Force single-column on small screens for all pages using inline grid styles.
+   minmax(400px+) overflows on 320-414px devices. This catches all grids. */
+@media (max-width: 520px) {
+
+  .ws-section [style*="grid-template-columns"],
+  .ws-container [style*="grid-template-columns"],
+  .ws-page [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Industry icon grid keeps 3 columns on mobile */
+  .ws-section .ws-industry-grid[style] {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ws-h1 {
+    font-size: 3.25rem;
+  }
+
+  .ws-h2 {
+    font-size: 2.25rem;
+  }
+}
+
+/* ============================================
+   Header Responsive
+   ============================================ */
+
+.ws-mobile-nav-toggle {
+  display: none !important;
+}
+
+.ws-mobile-menu {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .ws-desktop-nav {
+    display: none !important;
+  }
+
+  .ws-mobile-nav-toggle {
+    display: flex !important;
+  }
+
+  .ws-mobile-menu--open {
+    display: flex !important;
+    flex-direction: column;
+  }
+}
+
+/* ============================================
+   Footer Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .ws-footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--ws-space-8) !important;
+  }
+
+  .ws-footer-grid>div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .ws-footer-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ============================================
+   How It Works Step Connector
+   ============================================ */
+
+@media (max-width: 768px) {
+  .ws-step-connector {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   Pipeline Flow Diagram
+   ============================================ */
+
+.ws-pipeline-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ws-space-3);
+  min-width: 580px;
+}
+
+.ws-pipeline-badge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.ws-pipeline-arrow-v {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .ws-pipeline-wrap {
+    overflow-x: visible !important;
+    padding: var(--ws-space-4) !important;
+  }
+
+  .ws-pipeline-inner {
+    flex-direction: column;
+    align-items: center;
+    min-width: unset;
+    gap: var(--ws-space-2);
+  }
+
+  .ws-pipeline-badge-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .ws-pipeline-arrow-h {
+    display: none !important;
+  }
+
+  .ws-pipeline-arrow-v {
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* ============================================
+   Mobile Drawer
+   ============================================ */
+
+.ws-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.ws-drawer-backdrop--open {
+  opacity: 1;
+}
+
+.ws-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 85vw);
+  background: var(--ws-bg-primary);
+  box-shadow: -4px 0 32px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+.ws-drawer-panel--open {
+  transform: translateX(0);
+}
+
+/* ============================================
+   Sticky CTA Bar
+   ============================================ */
+
+@media (min-width: 640px) {
+  .ws-sticky-cta-text {
+    display: inline !important;
+  }
+}

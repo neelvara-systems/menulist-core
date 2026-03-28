@@ -1,0 +1,281 @@
+# URL Routing Architecture — Implementation Guide
+
+> **Audience:** Developers  
+> **Last Updated:** February 19, 2026  
+> **Version:** 2.0  
+> **Status:** Phase 1 + Phase 2 Complete  
+> **ADRs:** See [url-routing-architecture_adr.md](./url-routing-architecture_adr.md) for all architecture decisions
+
+---
+
+## Architecture Overview
+
+```
+Customer opens: storypizza.menulist.ai/food-menu
+                                │
+                    ┌───────────┴───────────┐
+                    │     MIDDLEWARE          │
+                    │  src/middleware.ts      │
+                    │                        │
+                    │  1. resolveDomain()    │
+                    │     → subdomain        │
+                    │  2. Set CDN headers    │
+                    │  3. Set tenant headers │
+                    │  4. Rewrite /_client   │
+                    └───────────┬───────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │  _client/[[...slug]]   │
+                    │  page.tsx              │
+                    │                        │
+                    │  1. Read headers       │
+                    │  2. getStoreBySubdomain│
+                    │  3. getProjectBySlug   │
+                    │     a. stored slug     │
+                    │     b. slugify(name)   │
+                    │     c. previousSlugs   │
+                    │        → 301 redirect  │
+                    │  4. Render menu        │
+                    └────────────────────────┘
+```
+
+---
+
+## Database Schema
+
+### Project Summary Data (platformSummary/projects\_{sId})
+
+```typescript
+interface ProjectSummaryData {
+  name: string;
+  description?: string;
+  active: boolean;
+  isDefault?: boolean;
+  slug?: string; // NEW: Permanent URL slug
+  previousSlugs?: string[]; // NEW: Old slugs for 301 redirect
+}
+```
+
+### Store Data (stores/{sId})
+
+```typescript
+// Added to StoreDataType:
+outletSlug?: string;  // NEW: URL path segment for outlet routing
+                      // e.g., "pune" → brand.menulist.ai/pune
+                      // Only set on outlet stores (isMaster=false)
+```
+
+---
+
+## File Inventory
+
+### New Files (Phase 1 + Phase 2)
+
+| File                                                                | Purpose                                                   |
+| ------------------------------------------------------------------- | --------------------------------------------------------- |
+| `src/constants/reservedSlugs.ts`                                    | Reserved slug/subdomain namespace constants + validators  |
+| `src/app/api/subdomain/check/route.ts`                              | Subdomain availability checker API (GET)                  |
+| `src/app/api/domain/route.ts`                                       | Custom domain management via Vercel API (POST/GET/DELETE) |
+| `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
+| `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Custom domain UI with DNS verification flow               |
+| `src/app/_client/obp/BrandOBPContent.tsx`                           | Multi-store brand OBP (store selector)                    |
+| `scripts/backfill-project-slugs.ts`                                 | Migration: backfill slugs on existing projects            |
+| `__docs__/url-routing-architecture/url-routing-architecture_adr.md` | All architecture decision records (ADR-1 through ADR-11)  |
+
+### Modified Files (Phase 1 + Phase 2)
+
+| File                                                   | Change                                                                     |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `src/components/.../projects/types/project.types.ts`   | Added `slug`, `previousSlugs`, `slugLockedAt` to types                     |
+| `src/types/platform/store.ts`                          | Added `outletSlug` + `subdomain` to `MinimalStoreDataType`                 |
+| `src/database/projects/index.ts`                       | `addProject` slug gen, `updateProjectMetadata` slug change + previousSlugs |
+| `src/app/api/outlets/create/route.ts`                  | `outletSlug` generation on outlet creation                                 |
+| `src/app/_client/[[...slug]]/page.tsx`                 | Stored slug resolver, previousSlugs 301, subdomain→custom domain 301       |
+| `src/config/features.ts`                               | Added `ENABLE_STORED_SLUGS` feature flag                                   |
+| `src/middleware.ts`                                    | CDN cache headers, lowercase + trailing slash normalization                |
+| `src/app/api/onboarding/create-subscription/route.ts`  | Auto-generate subdomain, `subDomain` on tenant, `subdomain` in storesList  |
+| `src/app/api/msg-preview/[sessionId]/approve/route.ts` | **BUG FIX**: Added subdomain, slug, projectsSummary, fixed publicUrl       |
+| `src/app/_client/obp/OBPContent.tsx`                   | Multi-store brand detection → BrandOBP                                     |
+| `src/components/.../businessSettings/index.tsx`        | Integrated SubdomainTab + CustomDomainTab into tab list                    |
+| `src/components/.../businessSettings/tabs/index.ts`    | Added SubdomainTab + CustomDomainTab exports                               |
+
+---
+
+## Key Implementation Details
+
+### 1. Slug Generation (addProject)
+
+**File:** `src/database/projects/index.ts:337-345`
+
+```typescript
+let projectSlug = data.slug || slugify(data.name || "untitled");
+if (isReservedProjectSlug(projectSlug)) {
+  projectSlug = `${projectSlug}-menu`;
+}
+```
+
+- Auto-generated from name on creation
+- Reserved slugs get `-menu` suffix (e.g., "reviews" → "reviews-menu")
+- Stored in `projectsSummary` alongside project name
+
+### 2. Slug Change on Rename (updateProjectMetadata)
+
+**File:** `src/database/projects/index.ts:396-412`
+
+When project name changes:
+
+1. Generate new slug from new name
+2. Push old slug to `previousSlugs[]`
+3. Both stored in summary
+
+### 3. Client Resolver (getProjectBySlugOrDefault)
+
+**File:** `src/app/_client/[[...slug]]/page.tsx:196-220`
+
+Resolution order:
+
+1. **Stored slug** — `p.slug === normalizedSlug`
+2. **Slugified name** — `slugify(p.name) === normalizedSlug` (backward compat)
+3. **Previous slugs** — `p.previousSlugs.includes(normalizedSlug)` → sets `redirectSlug`
+
+If matched via previousSlugs, `redirect()` is called for 301.
+
+### 4. Outlet Slug Generation
+
+**File:** `src/app/api/outlets/create/route.ts:118-122`
+
+```typescript
+let outletSlug = slugify(outletName);
+if (isReservedOutletSlug(outletSlug)) {
+  outletSlug = `${outletSlug}-outlet`;
+}
+```
+
+Stored on outlet store doc as `outletSlug` field.
+
+### 5. CDN Cache Headers
+
+**File:** `src/middleware.ts:45-49`
+
+```typescript
+response.headers.set(
+  "Cache-Control",
+  "public, s-maxage=60, stale-while-revalidate=300",
+);
+```
+
+Set on all client domain rewrites (subdomain + custom domain).
+
+---
+
+## Feature Flag
+
+```typescript
+// src/config/features.ts
+ENABLE_STORED_SLUGS: true;
+```
+
+When disabled: slugs derived from name at runtime (current behavior), no redirect support, no reserved namespace enforcement.
+
+---
+
+## Environment Variables
+
+| Variable            | Required                 | Purpose                                                                             |
+| ------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
+| `VERCEL_TOKEN`      | Yes (for custom domains) | Vercel API Bearer token — used by `/api/domain` to add/verify/remove custom domains |
+| `VERCEL_PROJECT_ID` | Yes (for custom domains) | Vercel project ID — identifies which project to manage domains for                  |
+| `VERCEL_TEAM_ID`    | No                       | Vercel team ID — only needed for team-owned projects                                |
+
+**Setup:** Add to `.env.local` for development, Vercel Environment Variables for production.
+
+```bash
+# Custom Domain Management (URL Routing Architecture — ADR-5)
+VERCEL_TOKEN=your_vercel_api_token
+VERCEL_PROJECT_ID=prj_xxxxxxxxxxxx
+VERCEL_TEAM_ID=team_xxxxxxxxxxxx  # Optional
+```
+
+---
+
+## Security Checklist
+
+| Check                          | Status | Notes                                                 |
+| ------------------------------ | ------ | ----------------------------------------------------- |
+| API routes auth-protected      | ✅     | `/api/domain` + `/api/subdomain/check` use `withAuth` |
+| Reserved slug validation       | ✅     | Blocked at project creation/rename/onboarding         |
+| No user-provided slugs exposed | ✅     | Auto-generated from name via `slugify()`              |
+| XSS prevention                 | ✅     | `slugify()` strips all non-alphanumeric chars         |
+| Redirect loop prevention       | ✅     | Only redirects if `redirectSlug !== slug`             |
+| Domain ownership validation    | ✅     | Vercel handles DNS verification + SSL                 |
+| Subdomain uniqueness           | ✅     | Pre-checked before transaction in both flows          |
+
+---
+
+## Migration Plan
+
+### For Existing Projects (One-Time Script)
+
+```
+For each tenant:
+  For each store:
+    Read projectsSummary
+    For each active project:
+      If project.slug is undefined:
+        project.slug = slugify(project.name)
+        Save to projectsSummary
+```
+
+**Safe:** Idempotent. Backward-compatible (resolver falls back to slugify).
+**Scope:** Batch operation, runs in minutes.
+
+---
+
+## Deployment Environments & URL Configuration
+
+### Domains
+
+| Environment           | Domain                   | Purpose                                            |
+| --------------------- | ------------------------ | -------------------------------------------------- |
+| **Production**        | `menulist.ai`            | Custom domain — marketing, dashboard, client menus |
+| **Vercel Production** | `menulistai.vercel.app`  | Vercel's auto-assigned production domain           |
+| **Staging/Preview**   | `menulist-ai.vercel.app` | Static preview alias for staging branch            |
+| **Local**             | `localhost:3000`         | Development                                        |
+
+### Key Env Var: `NEXT_PUBLIC_APP_URL`
+
+Set per environment on Vercel:
+
+| Environment | Value                            |
+| ----------- | -------------------------------- |
+| Production  | `https://menulist.ai`            |
+| Preview     | `https://menulist-ai.vercel.app` |
+
+Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`screen/utils.ts`), QR codes (`feedbackQrCode.ts`), SEO metadata (`layout.tsx`, `SchemaMarkup.tsx`).
+
+### Where Vercel Domains Are Registered
+
+- **`constants/urls.ts`** — `VERCEL_URLS` array + `PLATFORM_DOMAINS` array
+- **`corsValidation.ts`** — `ALLOWED_ORIGINS` includes `...VERCEL_URLS`
+- **`csp-allowlist.ts`** — `frameSources` includes `https://vercel.live`
+- **`middleware.ts`** — CSP allows `'unsafe-inline'` for styles/scripts (Ant Design + Next.js require it)
+
+### Adding a New Vercel Domain
+
+1. Add to `VERCEL_URLS` in `constants/urls.ts`
+2. Add to `PLATFORM_DOMAINS` in `constants/urls.ts` (prevents tenant routing)
+3. CORS and CSP pick it up automatically via the shared constants
+
+---
+
+## Testing Guide
+
+| Test                              | Expected                                             |
+| --------------------------------- | ---------------------------------------------------- |
+| Create new project "Food Menu"    | slug = "food-menu" stored in summary                 |
+| Create project "Reviews"          | slug = "reviews-menu" (reserved, auto-suffixed)      |
+| Rename "Food Menu" → "Lunch Menu" | slug = "lunch-menu", previousSlugs = ["food-menu"]   |
+| Visit `/food-menu` after rename   | 301 redirect to `/lunch-menu`                        |
+| Visit non-existent slug           | Falls back to default project or "Menu Not Found"    |
+| Create outlet "Pune Store"        | outletSlug = "pune-store" on store doc               |
+| Create outlet "Menu"              | outletSlug = "menu-outlet" (reserved, auto-suffixed) |

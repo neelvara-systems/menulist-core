@@ -1,0 +1,14 @@
+@import "@styles/abstracts/mixins";
+
+.componentActionsWrap {
+  width: max-content;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-direction: column;
+  gap: var(--medium-gap);
+  button {
+    // border: unset;
+    font-size: 16px;
+  }
+}

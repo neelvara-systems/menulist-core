@@ -1,0 +1,271 @@
+# Context-Aware Support — Customer Help Documentation
+
+> **Status:** READY FOR IMPLEMENTATION
+> **Version:** 1.0.0
+> **Created:** 2026-03-08
+> **Last Updated:** 2026-03-08
+> **Feature Flag:** `ENABLE_CANONICA_CONTEXT_AWARE`
+> **Audience:** SaaS developers integrating Canonica
+
+---
+
+## §1 — Overview
+
+Context-Aware Support allows your Canonica widget to understand **where** your users are in your product, not just **what** they're asking. By passing a small context payload with each support query, Canonica delivers more accurate, page-specific answers.
+
+**Result:** Higher answer accuracy, fewer irrelevant results, better end-user experience.
+
+---
+
+## §2 — Quick Start
+
+### Step 1: Initialize the Widget with Context
+
+When embedding the Canonica widget, pass a `context` object:
+
+```javascript
+Canonica.init({
+  apiKey: 'ck_your_api_key',
+  context: {
+    feature: 'integrations',
+    page: 'stripe_integration_page',
+    plan: 'pro',
+    userRole: 'admin'
+  }
+});
+```
+
+### Step 2: Update Context on Navigation
+
+As users move through your product, update the context:
+
+```javascript
+// User navigates to webhook settings
+Canonica.updateContext({
+  page: 'webhook_settings_page',
+  workflow: 'configure_webhook',
+  entityHints: ['webhook']
+});
+```
+
+### Step 3: That's It
+
+Context is automatically attached to every support query. No changes needed to your search calls.
+
+---
+
+## §3 — Context Fields Reference
+
+All fields are **optional**. The system works without any context (existing behavior preserved).
+
+| Field | Type | Max Length | Description | Example |
+|-------|------|-----------|-------------|---------|
+| `contextVersion` | number | — | Schema version (default: 1) | `1` |
+| `feature` | string | 100 chars | Product subsystem | `"integrations"` |
+| `page` | string | 100 chars | UI location identifier | `"stripe_integration_page"` |
+| `workflow` | string | 100 chars | Current user action | `"connect_integration"` |
+| `entityHints` | string[] | 5 items, 64 chars each | Entity references | `["stripe"]` |
+| `userRole` | string | 100 chars | User permission level | `"admin"` |
+| `plan` | string | 100 chars | Subscription tier | `"pro"` |
+
+### Best Practices for Field Values
+
+- **Use stable identifiers, not URLs:** `"stripe_integration_page"` not `"/settings/integrations/stripe"`
+- **Use lowercase with underscores:** `"connect_integration"` not `"Connect Integration"`
+- **entityHints should match your product entity names:** If your product has a "Stripe" integration, use `"stripe"` as a hint
+- **Keep values simple:** Context should answer "what is the user doing?" not "who is the user?"
+
+---
+
+## §4 — API Reference
+
+### Widget Search Endpoint
+
+```
+POST /api/widget/search
+Headers: X-API-Key: ck_your_api_key
+
+Body:
+{
+  "query": "Why is Stripe not connecting?",
+  "context": {
+    "contextVersion": 1,
+    "feature": "integrations",
+    "page": "stripe_integration_page",
+    "workflow": "connect_integration",
+    "entityHints": ["stripe"],
+    "userRole": "admin",
+    "plan": "pro"
+  }
+}
+```
+
+### Response (unchanged)
+
+```json
+{
+  "answer": "To resolve Stripe connection issues...",
+  "canonical": true,
+  "confidence": "high",
+  "references": []
+}
+```
+
+### Validation Rules
+
+- Total context payload must be < 2KB
+- Unknown fields are silently dropped
+- Invalid values are sanitized (lowercased, special characters removed)
+- If validation fails entirely, context is dropped and query proceeds without it
+
+---
+
+## §5 — How Context Improves Results
+
+### Example 1: Vague Query with Page Context
+
+**Without context:**
+```
+Query: "Why is this failing?"
+Result: Generic troubleshooting article (or no match)
+```
+
+**With context:**
+```
+Query: "Why is this failing?"
+Context: { page: "stripe_integration_page" }
+Result: Stripe integration troubleshooting (specific canonical answer)
+```
+
+### Example 2: Role-Aware Answers
+
+**Without context:**
+```
+Query: "How do I add a team member?"
+Result: Admin workflow for adding team members
+```
+
+**With context:**
+```
+Query: "How do I add a team member?"
+Context: { userRole: "viewer" }
+Result: "Only admins can add team members. Contact your admin."
+```
+
+### Example 3: Plan-Aware Answers
+
+**Without context:**
+```
+Query: "How do I use advanced analytics?"
+Result: Setup guide for advanced analytics
+```
+
+**With context:**
+```
+Query: "How do I use advanced analytics?"
+Context: { plan: "free" }
+Result: "Advanced analytics is available on the Pro plan."
+```
+
+---
+
+## §6 — Frameworks Integration
+
+### React
+
+```tsx
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Map routes to context
+    const contextMap: Record<string, object> = {
+      '/settings/integrations/stripe': {
+        feature: 'integrations',
+        page: 'stripe_integration_page',
+      },
+      '/settings/billing': {
+        feature: 'billing',
+        page: 'billing_settings_page',
+      },
+    };
+
+    const context = contextMap[location.pathname];
+    if (context) {
+      Canonica.updateContext(context);
+    }
+  }, [location.pathname]);
+
+  return <>{/* your app */}</>;
+}
+```
+
+### Next.js
+
+```tsx
+'use client';
+import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+
+export function CanonicaContextProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Update Canonica context on route change
+    Canonica.updateContext({
+      page: pathname.replace(/\//g, '_').slice(1) || 'home',
+    });
+  }, [pathname]);
+
+  return <>{children}</>;
+}
+```
+
+---
+
+## §7 — Troubleshooting
+
+### Context not affecting results?
+
+1. **Check feature flag:** Context-aware support must be enabled for your tenant
+2. **Check field names:** Values must use lowercase with underscores
+3. **Check entityHints:** Hints should match entity names in your Canonica ontology
+4. **Check payload size:** Total context must be < 2KB
+
+### How do I know if context is being used?
+
+The API response includes a `canonical: true` flag when a canonical answer is returned. Compare canonical hit rates with and without context to measure impact.
+
+### What happens if I send bad context?
+
+Context is validated and sanitized server-side. Invalid fields are silently dropped. The query still executes normally — just without context benefits. No errors are thrown.
+
+---
+
+## §8 — FAQ
+
+**Q: Is context stored anywhere?**
+A: No. Context is processed in memory only and never stored in any database. It is transient per request.
+
+**Q: Does context cost extra?**
+A: No. Context processing adds zero additional database operations. It may actually reduce costs by improving canonical hit rates (fewer expensive RAG fallbacks).
+
+**Q: What if my product doesn't have clear page names?**
+A: Start with `entityHints` only — that's the most impactful field. Add `page` and `feature` as you refine.
+
+**Q: Can context be used with the authenticated search-kb endpoint too?**
+A: Yes. Pass `productContext` inside the existing `context` object in the search-kb request body.
+
+**Q: What's the performance impact?**
+A: Less than 2ms overhead per request. Negligible compared to network latency.
+
+---
+
+## Version History
+
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-03-08 | 1.0.0 | Initial customer documentation |

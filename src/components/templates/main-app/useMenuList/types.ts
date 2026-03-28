@@ -1,0 +1,53 @@
+/**
+ * Use MenuList — Output Center Types (v2)
+ *
+ * @see __docs__/use-menulist/use-menulist_impl.md
+ */
+
+export interface ProjectLink {
+    projectId: string;
+    name: string;
+    isDefault: boolean;
+    url: string;
+    feedbackUrl: string;
+}
+
+export interface UseMenuListData {
+    // Links
+    obpLink: string;
+    menuLink: string;
+    feedbackLink: string;
+
+    // Screen
+    screenToken: string | null;
+    menuBoardLink: string | null;
+    highlightsLink: string | null;
+    screenLastSeenAt: any;
+
+    // Store info
+    storeName: string;
+    storeLogo: string | null;
+    subdomain: string;
+    customDomain: string | null;
+    businessType: string;
+
+    // Project info (active/selected project)
+    projectId: string | null;
+    projectName: string | null;
+    isDefaultProject: boolean;
+    menuModifiedOn: any;
+
+    // Multi-project support
+    allProjects: ProjectLink[];
+
+    // POS Sync (optional — only when enabled)
+    hasPosSync: boolean;
+    posSyncStatus: string | null;
+
+    // States
+    hasPublishedMenu: boolean;
+    hasScreen: boolean;
+    hasFeedbackEnabled: boolean;
+}
+
+export type PageState = 'loading' | 'no_menu' | 'not_published' | 'ready';

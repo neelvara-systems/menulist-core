@@ -1,0 +1,1198 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "feedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "uId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "kb_articles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    },
+    {
+      "collectionGroup": "kb_articles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "embedding.value",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    },
+    {
+      "collectionGroup": "kb_articles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    },
+    {
+      "collectionGroup": "payment_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "event",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenantId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptionPayments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tenantId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cycleEndDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "chatSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "uId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "chatAnalytics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guestFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guestFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guestFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rating",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guestFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "needsAttention",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "provider",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "providerUserId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "intakeExpiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "reminderSentAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "confirmationPending",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fixMessagePending",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "publishedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sessionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messagingOnboardingEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "eventType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messageLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "storeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eventType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "referenceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messageLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "storeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "schedulerRunLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "schedulerRunLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "trigger",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuChangeLog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "changeType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messageLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "recipientStoreId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sentAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "authSecurityEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "email",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eventType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reviewsState",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "blockActive",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reviewsState",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "escalationActive",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "systemAlerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "acknowledged",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "systemAlerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "title",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "billingMode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "validUntil",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "resellerTransactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "resellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "resellerTransactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "resellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_canonicalAnswers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_canonicalAnswers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scope.entityIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_canonicalAnswers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "governance.driftFlag",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_releases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "versionNormalized",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_releases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "versionNormalized",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_signalEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_signalEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_signalEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_signalEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_entityCandidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "confidence",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_entityCandidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "confidence",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_entitySearchIndex",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "canonica_entityRelations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fromEntityId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "publicMenuDrafts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claimed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "projectId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "uId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "completedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timeoutAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "menuImageProcessingJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "MENULIST_AI_OPERATIONS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "action",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "notificationLogs",
+      "fieldPath": "eventType",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "notificationLogs",
+      "fieldPath": "recipientEmail",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "topups",
+      "fieldPath": "providerOrderId",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+# Razorpay — Firebase Cost Tracking
+
+**Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
+**Last Updated:** Feb 12, 2026
+
+---
+
+## Nightly Reconciliation (`functions/src/billing/reconcileSubscriptions.ts`)
+
+**Trigger:** Nightly scheduler at 2:30 AM UTC (Firebase Cloud Function)
+**Feature flag:** `ENABLE_SUBSCRIPTION_RECONCILIATION`
+
+| Operation | Collection | Count per run | Type | Description |
+|-----------|-----------|---------------|------|-------------|
+| Query | `subscriptions` | 1 read | READ | `where('status', 'in', ['active', 'past_due', 'paused'])` — fetches all alive subs |
+| Fetch docs | `subscriptions` | N reads | READ | N = number of alive subscriptions (typically 1 per active store) |
+| Update | `subscriptions` | 0-N writes | WRITE | Only writes if mismatch found (status, cycleDates, paidCount, renewsOn, lastWebhook) |
+
+**Cost estimate (per night):**
+- **Best case (no mismatches):** 1 query + N doc reads = ~N+1 reads, 0 writes
+- **Worst case (all mismatched):** 1 query + N doc reads + N writes
+- **Typical:** N+1 reads, 0-2 writes (mismatches are rare — webhooks handle 99%+ of updates)
+
+**External API calls (not Firebase):**
+- Razorpay `subscriptions.fetch()` — 1 call per alive subscription per night
+
+---
+
+## Webhook Handler (`src/app/api/razorpay/webhook/route.ts`)
+
+| Operation | Collection | Count per event | Type | Description |
+|-----------|-----------|----------------|------|-------------|
+| Query | `subscriptions` | 1 read | READ | Find subscription by `providerSubscriptionId` |
+| Update | `subscriptions` | 1 write | WRITE | Update status, dates, credits, lastWebhook, billingHistory |
+| Create | `payment_transactions` | 0-1 write | WRITE | Append-only payment log (only on `subscription.charged` and `payment.failed`) |
+
+**Frequency:** Per webhook event (typically 1-3 events per billing cycle per store)
+
+---
+
+## Verify Subscription (`src/app/api/razorpay/verify-subscription/route.ts`)
+
+| Operation | Collection | Count per call | Type | Description |
+|-----------|-----------|---------------|------|-------------|
+| Query | `subscriptions` | 1 read | READ | Find pending subscription |
+| Update | `subscriptions` | 1 write | WRITE | Activate subscription (status, dates, credits) |
+
+**Frequency:** Once per new subscription or renewal verification
+
+---
+
+## Create Subscription (`src/app/api/razorpay/create-subscription/route.ts`)
+
+| Operation | Collection | Count per call | Type | Description |
+|-----------|-----------|---------------|------|-------------|
+| Create | `subscriptions` | 1 write | WRITE | New subscription document |
+
+---
+
+## Cancel / Pause / Resume / Upgrade
+
+| Route | Reads | Writes | Description |
+|-------|-------|--------|-------------|
+| `cancel-subscription` | 1 (fetch sub) | 1 (update status) | Sets cancelled + subscriptionEndDate |
+| `pause-subscription` | 1 (fetch sub) | 1 (update status) | Sets paused |
+| `resume-subscription` | 1 (fetch sub) | 1 (update status) | Sets active |
+| `upgrade-subscription` | 1 (fetch old sub) | 1 (expire old sub) | Old sub → expired, new sub created separately |
+
+---
+
+## DAL — `getActiveSubscriptionForStore()`
+
+| Operation | Collection | Count per call | Type | Description |
+|-----------|-----------|---------------|------|-------------|
+| Query | `subscriptions` | 1 read | READ | Primary query (status in active/past_due/paused + cycleEndDate >= now) |
+| Query | `subscriptions` | 0-1 read | READ | Fallback query for paused subs with expired cycle |
+| Update | `subscriptions` | 0-1 write | WRITE | Auto-expire if grace period ended (rare) |
+
+**Frequency:** Every page load in the main app (cached in session provider)
+
+---
+
+## Top-Up Orders
+
+| Route | Reads | Writes | Description |
+|-------|-------|--------|-------------|
+| `create-topup-order` | 0 | 0 | Only creates Razorpay order (no Firestore) |
+| `verify-topup` | 1 read | 1 write + 1 create | Update subscription credits + create payment transaction |
+
+---
+
+## Cost Summary
+
+| Trigger | Reads/night | Writes/night | Notes |
+|---------|-------------|-------------|-------|
+| Nightly reconciliation | N+1 | 0-2 typical | N = active stores |
+| Webhooks | ~3 per store/month | ~3 per store/month | Charged, renewed events |
+| User actions | 1-2 per action | 1 per action | Cancel, pause, resume, upgrade |
+| Page loads | 1 per session | 0 (usually) | Cached after first load |
+
+**For 100 stores:** ~101 reads/night from reconciliation, ~300 webhook reads/month, ~100 writes/month total.

@@ -1,0 +1,165 @@
+# Menu Correctness Engine (MCE)
+
+**Your menu is always correct — everywhere, automatically.**
+
+---
+
+## What This Is
+
+The Menu Correctness Engine is a validation layer that runs on every menu save, ensuring project data is complete, valid, and safe before it reaches customer-facing surfaces. MCE validates — it does not duplicate, route, or store separate copies of data.
+
+All surfaces already read from the same Firestore project document. MCE adds the missing piece: **deterministic validation at save-time** and verification metadata (`_mce` field) stamped on the existing document.
+
+| Surface                | How MCE Protects It                               |
+| ---------------------- | ------------------------------------------------- |
+| 🌐 **QR/Web Menu**     | Validated project data served via Firestore       |
+| 📺 **Digital Screens** | Same validated data via `getMenuItemsForScreen()` |
+| 📄 **PDF Menu**        | Generated on-demand from validated project data   |
+| 🤖 **Staff Prompt**    | Same Firestore project document (live read)       |
+| 🔗 **POS Webhook**     | Same project data via webhook sync                |
+
+---
+
+## Quick Navigation
+
+| You Are…               | Read This                              |
+| ---------------------- | -------------------------------------- |
+| CEO / PM               | `menu-correctness-engine_spec.md`      |
+| Developer              | `menu-correctness-engine_impl.md`      |
+| Sales / Marketing      | `menu-correctness-engine_marketing.md` |
+| Website Content Writer | `menu-correctness-engine_website.md`   |
+| Support Team           | `menu-correctness-engine_helpdoc.md`   |
+| Firebase / Cost Audit  | `menu-correctness-engine_firebase.md`  |
+
+---
+
+## Problem Solved
+
+**Without MCE:** A price change in the editor may reach Firestore but with invalid data (missing name, broken category reference, negative price). Each surface independently reads this data without any validation gate. The owner doesn't know if the menu state is complete and correct.
+
+**With MCE:** Every edit passes through CSR validation before the write. Invalid data is flagged immediately. Verification metadata is stamped on the project document. Surfaces continue reading from the same document — but the data is now guaranteed to be validated.
+
+---
+
+## Architecture Overview
+
+```
+Owner Edits Menu (Dashboard Editor)
+    │
+    ▼
+┌─────────────────────────────────┐
+│  Correctness State Resolver     │  ← Validates completeness & safety
+│  (CSR) — client-side, < 100ms  │
+└─────────┬───────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────┐
+│  Stamp _mce metadata on         │  ← Part of same setDoc() call
+│  existing project document      │
+└─────────┬───────────────────────┘
+          │
+    ┌─────┼─────┬──────┬──────┐
+    ▼     ▼     ▼      ▼      ▼
+   QR   Screen  PDF  Staff   POS
+   Web   TV    Export Prompt  Webhook
+  (all read from same project document — unchanged)
+```
+
+**No separate snapshot collection. No routing layer. No background Cloud Functions in v1.**
+
+---
+
+## Key Files (Codebase — Implemented)
+
+| File                                 | Purpose                           |
+| ------------------------------------ | --------------------------------- |
+| `src/lib/mce/correctnessResolver.ts` | CSR — validation logic            |
+| `src/lib/mce/types.ts`               | All MCE types                     |
+| `src/lib/mce/utils.ts`               | Centralized `sanitizeForClient()` |
+| `src/lib/mce/index.ts`               | MCE entry point — `mceValidate()` |
+| `src/config/features.ts`             | Feature flag: `ENABLE_MCE`        |
+
+---
+
+## Feature Flag
+
+| Flag         | Default | Purpose                        |
+| ------------ | ------- | ------------------------------ |
+| `ENABLE_MCE` | `false` | Enable Menu Correctness Engine |
+
+When disabled, the existing direct-write flow continues unchanged. When enabled, all saves pass through CSR validation and `_mce` metadata is stamped on the project document.
+
+---
+
+## Key Concepts
+
+- **Correctness State Resolver (CSR):** Client-side validation engine that checks menu data against deterministic rules on every save. Zero Firebase cost.
+- **`_mce` Verification Metadata:** Field added to existing project document (`verified`, `verifiedAt`, `warnings`). Part of the same `setDoc` call — zero extra writes.
+- **Centralized Sanitization:** `sanitizeForClient()` extracted from `_client/[[...slug]]/page.tsx` into shared `src/lib/mce/utils.ts` for all surface data paths.
+
+---
+
+## The 5 Correctness Laws
+
+Every save must pass all 5 laws before project data is marked as verified.
+
+| Law | Name                       | Core Rule                                                              |
+| --- | -------------------------- | ---------------------------------------------------------------------- |
+| 1   | **Price Integrity**        | One correct, valid price per item per outlet. No conflicts, no empties |
+| 2   | **Availability Integrity** | Disabled items disappear everywhere simultaneously                     |
+| 3   | **Hours Data Consistency** | Hours data consistent across all surfaces that display it              |
+| 4   | **Data Completeness**      | All fields present and valid. No empty names, no broken references     |
+| 5   | **Structural Integrity**   | Master→outlet inheritance stable; local overrides preserved            |
+
+---
+
+## Authority Model
+
+MCE follows 6 authority rules (see `_spec.md` §5 for details):
+
+1. Controls validation, not editor — owner can edit freely
+2. Validate on every save — silent, fast (< 100ms client-side)
+3. Never block the save — raw data write always succeeds
+4. Silent authority, zero notifications
+5. Per-outlet independence — each outlet validates independently
+6. Multi-outlet protection — `resolveProjectForRender()` output validated
+
+---
+
+## Hardening Review (From Stress Tests)
+
+During stress testing, we evaluated 10 hardening requirements. **8 of 10 are already handled by existing codebase features.** Only 2 are new CSR validation rules.
+
+| ID   | Requirement                        | Status          |
+| ---- | ---------------------------------- | --------------- |
+| H-2  | Override preservation validation   | ✅ New CSR rule |
+| H-9  | Structural completeness validation | ✅ New CSR rule |
+| H-1  | Per-outlet data isolation          | Already handled |
+| H-3  | Per-outlet sync independence       | Already handled |
+| H-4  | New outlet safe activation         | Already handled |
+| H-5  | Rapid edit consolidation           | Already handled |
+| H-6  | Screen/device localStorage cache   | Already exists  |
+| H-7  | Offline screen non-blocking        | Already handled |
+| H-8  | Dynamic PDF generation             | Already handled |
+| H-10 | Staff view = customer view         | Already true    |
+
+---
+
+## Related Features
+
+| Feature                  | Relationship                                     |
+| ------------------------ | ------------------------------------------------ |
+| Pricing Integrity System | PIS price validation rules become CSR rules      |
+| Multi-Outlet Consistency | MCE validates `resolveProjectForRender()` output |
+| POS Webhook Sync         | POS reads same validated project data            |
+| Digital Screens          | Screens read same validated project data         |
+
+---
+
+## Firebase Cost Impact
+
+**$0.00/month additional.** CSR runs client-side. `_mce` metadata is part of existing `setDoc` call. No new collections, no new reads, no new writes. See `_firebase.md` for details.
+
+---
+
+_Last Updated: February 14, 2026_

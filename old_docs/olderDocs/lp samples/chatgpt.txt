@@ -1,0 +1,231 @@
+# 📄 MenuListAI Landing Page Copy (Markdown Format)
+
+---
+
+## 1. Navbar
+
+- Features
+- How It Works
+- Templates
+- Pricing
+- Login
+
+---
+
+## 2. Hero Section
+
+### **Headline**
+
+Create a Beautiful Digital Catalog in Minutes — Powered by AI
+
+### **Sub-headline**
+
+Skip the tedious work. Just upload your menu, price list, or even a phone photo — MenuListAI instantly extracts your data, writes persuasive descriptions, and creates stunning visuals. No designers, no developers, no delays.
+
+### **Primary Call-to-Action Button**
+
+👉 Get Started Instantly — It’s Free
+
+---
+
+## 3. Trust Badges
+
+- ⚡ **Live in Minutes**  
+  Launch your catalog in under 5 minutes — from upload to publish.
+
+- 🎯 **Pixel-Perfect Accuracy**  
+  Advanced AI ensures 99% precision in data extraction and formatting.
+
+- 🧠 **Truly Effortless**  
+  Zero learning curve. If you can upload a photo, you can build a catalog.
+
+---
+
+## 4. Business Types Section
+
+### **Section Title**
+
+Built for Every Business
+
+### **Section Description**
+
+Whether you run a café, spa, salon, retail store, or consulting service, MenuListAI adapts to your industry. It's your fast lane to a stunning digital presence — no tech skills required.
+
+---
+
+## 5. How It Works Section
+
+### **Section Title**
+
+From Paper to Digital in 3 Simple Steps
+
+### **Section Description**
+
+It’s so simple, you’ll think it’s magic. Just upload and let the AI handle the rest.
+
+#### **Step 1: Upload**
+
+Snap a photo or upload a file — PDF, JPG, even a handwritten list.
+
+#### **Step 2: AI Creates**
+
+Our AI instantly extracts the data, writes vivid descriptions, and generates beautiful product images.
+
+#### **Step 3: Share**
+
+Your fully responsive digital catalog is ready to share or embed anywhere.
+
+---
+
+## 6. Two Platforms in One Section (Use Cases)
+
+### **Section Title**
+
+Two Powerful Tools — One Simple Platform
+
+### **Section Description**
+
+MenuListAI serves both business owners and developers, streamlining catalog creation and structured data extraction.
+
+#### **Card 1: The Digital Catalog Platform**
+
+**For Business Owners**  
+Design a professional digital menu or product list — no code, no designers, no delays.
+
+#### **Card 2: The Data API Platform**
+
+**For Developers & Agencies**  
+Get clean, structured JSON data from any menu, rate card, or catalog — ready for your apps and automations.
+
+---
+
+## 7. Features Section
+
+### **Section Title**
+
+Smarter Features That Work for You
+
+### **Section Description**
+
+Each AI-powered feature is designed to save you time, cut costs, and elevate your presentation.
+
+#### **AI Data Extraction**
+
+Upload any file — our AI reads it and pulls structured, accurate data in seconds.
+
+#### **AI Description Generation**
+
+No copywriter? No problem. Instantly generate persuasive, engaging descriptions for every item.
+
+#### **AI Image Generation**
+
+Create stunning visuals for your items — even if you don’t have photos.
+
+#### **Multi-Language Translation**
+
+Expand your reach. Auto-translate your catalog into multiple languages for global customers.
+
+---
+
+## 8. Templates Section
+
+### **Section Title**
+
+Beautiful Templates, Ready to Launch
+
+### **Section Description**
+
+Choose from professionally designed templates tailored to your business type. Just pick a style, and your AI-generated content flows in — no formatting needed.
+
+---
+
+## 9. Why Choose Us Section (The Advantage)
+
+### **Section Title**
+
+Why MenuListAI? Because Your Time Is Valuable
+
+### **Section Description**
+
+We combine cutting-edge AI with real-world simplicity — to help you get online, faster and smarter.
+
+#### **Save Time**
+
+From upload to published catalog in under 5 minutes.
+
+#### **Save Money**
+
+No need to hire designers, developers, or content writers.
+
+#### **Avoid Errors**
+
+AI ensures structured data, consistent formatting, and accurate output.
+
+#### **Versatility**
+
+Use it for menus, service lists, real estate listings, product catalogs, and more.
+
+---
+
+## 10. Testimonials Section
+
+> _"I launched my restaurant’s entire digital menu in 10 minutes — no designers, no developers. MenuListAI saved me weeks of work."_  
+> **— Elena R., Multi-location Restaurant Owner**
+
+> _"The API is a game changer. I used to spend hours scraping messy menus. Now I get perfect JSON in seconds."_  
+> **— David L., Freelance Web Developer**
+
+> _"I'm not a tech person, but I created a gorgeous online catalog for my salon — with AI images and all. Clients love it!"_  
+> **— Maria S., High-End Salon Owner**
+
+---
+
+## 11. FAQ Section
+
+**Q: What types of businesses can use MenuListAI?**  
+A: Any business with a list of products or services — restaurants, salons, consultants, retailers, real estate agents, and more.
+
+**Q: Can I use my own domain name?**  
+A: Yes! You can easily connect your custom domain for a fully branded experience.
+
+**Q: What file types can I upload to get started?**  
+A: JPG, PNG, PDF — even a phone photo works. Our AI handles it all.
+
+**Q: How does the AI Image Generation work?**  
+A: Based on item names and descriptions, our AI generates stunning, industry-relevant visuals to match.
+
+**Q: How many digital catalogs can I create?**  
+A: As many as you like — there’s no limit on creativity.
+
+---
+
+## 12. Pricing Section
+
+### **Section Title**
+
+Simple, Transparent Pricing
+
+### **Section Description**
+
+No hidden fees. No tech headaches. Just powerful AI features — ready to grow with your business.
+
+---
+
+## 13. Footer Section
+
+### **Final Tagline**
+
+Your Catalog. Your Brand. Your AI Assistant.
+
+### **Footer Links**
+
+- About Us
+- Contact
+- Blog
+- API Docs
+- Privacy Policy
+- Terms of Service
+
+### **Copyright Notice**
+
+© 2025 MenuListAI. All rights reserved.

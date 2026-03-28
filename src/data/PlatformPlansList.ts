@@ -1,0 +1,154 @@
+import { removeObjRef } from "@util/utils";
+import { AIEnhancementPack, Feature, Plan } from "./common";
+import PlatformFeaturesList from "./PlatformFeaturesList";
+
+
+// ***********
+// DO NOT CHANGE THE PLAN ID IN FUTURE (Used to shhow upgrade button in active subscription card)
+// ***********
+
+const B2CplansList = [
+    // Starter Monthly
+    {
+        "planId": "starter", "type": "B2C", "name": "Starter Plan", "isRecommended": false,
+        "description": "For one location managing its official menu across all surfaces.",
+        "priceINR": { "price": 49900, "monthlyCredits": 75 },
+        "priceUSD": { "price": 2900, "monthlyCredits": 100 },
+        "billingInterval": "MONTH"
+    },
+    // Starter Yearly
+    {
+        "planId": "starter", "type": "B2C", "name": "Starter Plan (Yearly)", "isRecommended": false,
+        "description": "For one location managing its official menu across all surfaces.",
+        "priceINR": { "price": 499000, "monthlyCredits": 75 },
+        "priceUSD": { "price": 29000, "monthlyCredits": 100 },
+        "billingInterval": "YEAR"
+    },
+    // Pro Monthly
+    {
+        "planId": "pro", "type": "B2C", "name": "Pro Plan", "isRecommended": true,
+        "description": "For businesses managing multiple outlets with centralized control.",
+        "priceINR": { "price": 149900, "monthlyCredits": 200 },
+        "priceUSD": { "price": 7900, "monthlyCredits": 400 },
+        "billingInterval": "MONTH"
+    },
+    // Pro Yearly
+    {
+        "planId": "pro", "type": "B2C", "name": "Pro Plan (Yearly)", "isRecommended": true,
+        "description": "For businesses managing multiple outlets with centralized control.",
+        "priceINR": { "price": 1499000, "monthlyCredits": 200 },
+        "priceUSD": { "price": 79000, "monthlyCredits": 400 },
+        "billingInterval": "YEAR"
+    },
+    // Premium Monthly
+    {
+        "planId": "premium", "type": "B2C", "name": "Premium Plan", "isRecommended": false,
+        "description": "For larger chains requiring governance across many locations.",
+        "priceINR": { "price": 399900, "monthlyCredits": 600 },
+        "priceUSD": { "price": 14900, "monthlyCredits": 1000 },
+        "billingInterval": "MONTH"
+    },
+    // Premium Yearly
+    {
+        "planId": "premium", "type": "B2C", "name": "Premium Plan (Yearly)", "isRecommended": false,
+        "description": "For larger chains requiring governance across many locations.",
+        "priceINR": { "price": 3999000, "monthlyCredits": 600 },
+        "priceUSD": { "price": 149000, "monthlyCredits": 1000 },
+        "billingInterval": "YEAR"
+    }
+] as const;
+
+
+const B2BplansList = [
+    // Starter API Monthly
+    {
+        "planId": "starter", "type": "B2B", "name": "Starter API",
+        "description": "Perfect for small businesses getting started",
+        "priceINR": { "price": 499900, "monthlyCredits": 200 },
+        "priceUSD": { "price": 6900, "monthlyCredits": 200 },
+        "billingInterval": "MONTH", "monthlyApiCallAllowance": 1000
+    },
+    // Starter API Yearly
+    {
+        "planId": "starter", "type": "B2B", "name": "Starter API (Yearly)",
+        "description": "Perfect for small businesses getting started",
+        "priceINR": { "price": 4999000, "monthlyCredits": 200 },
+        "priceUSD": { "price": 69000, "monthlyCredits": 200 },
+        "billingInterval": "YEAR", "monthlyApiCallAllowance": 1000
+    },
+    // Pro API Monthly
+    {
+        "planId": "pro", "type": "B2B", "name": "Pro API",
+        "description": "Most popular for growing businesses",
+        "priceINR": { "price": 18999000, "monthlyCredits": 1000 },
+        "priceUSD": { "price": 24900, "monthlyCredits": 1000 },
+        "billingInterval": "MONTH", "monthlyApiCallAllowance": 5000
+    },
+    // Pro API Yearly
+    {
+        "planId": "pro", "type": "B2B", "name": "Pro API (Yearly)",
+        "description": "Most popular for growing businesses",
+        "priceINR": { "price": 18999000, "monthlyCredits": 1000 },
+        "priceUSD": { "price": 249000, "monthlyCredits": 1000 },
+        "billingInterval": "YEAR", "monthlyApiCallAllowance": 5000
+    }
+] as const;
+
+const CustomePlanForB2B: any = {
+    "planId": "custom",
+    "type": "B2B",
+    "name": "Custom API",
+    "billingInterval": null,
+    "priceINR": { "price": null, "monthlyCredits": "Custom" },
+    "priceUSD": { "price": null, "monthlyCredits": "Custom" },
+    "monthlyApiCallAllowance": null,
+    "featuresList": PlatformFeaturesList.B2B
+} as const;
+
+// ═══════════════════════════════════════════════════════════
+// AI Enhancement Packs (One pack at launch — per-store)
+// @see __docs__/ai-enhancement-packs/ai-enhancement-packs_spec.md
+// ═══════════════════════════════════════════════════════════
+const aiEnhancementPacksList: AIEnhancementPack[] = [
+    {
+        "packId": "enhancement",
+        "name": "AI Enhancement Pack",
+        "description": "More AI-enhanced images, descriptions, and translations for your menu.",
+        "creditAmount": 250,
+        "priceINR": { "price": 299900, "monthlyCredits": null },
+        "priceUSD": { "price": 3500, "monthlyCredits": null }
+    },
+];
+
+/** @deprecated Use aiEnhancementPacksList instead */
+const creditPacksList: AIEnhancementPack[] = aiEnhancementPacksList;
+
+const getB2CPlansList = () => {
+    const plansList: Plan[] = [];
+    removeObjRef(B2CplansList).map((plan: any) => {
+        const planFeaturesList: { [key: string]: string | number | boolean } = {};
+        PlatformFeaturesList.B2C.map((feature: Feature) => {
+            planFeaturesList[feature.id] = feature.values[plan.planId];
+        })
+        plan.featuresList = planFeaturesList;
+        return plansList.push(plan);
+    })
+    return plansList;
+}
+
+const getB2BPlansList = () => {
+    const plansList: Plan[] = [];
+    removeObjRef(B2BplansList).map((plan: any) => {
+        const planFeaturesList: { [key: string]: string | number | boolean } = {};
+        PlatformFeaturesList.B2B.map((feature: Feature) => {
+            planFeaturesList[feature.id] = feature.values[plan.planId];
+        })
+        plan.featuresList = planFeaturesList;
+        return plansList.push(plan);
+    })
+    return plansList;
+}
+
+export { aiEnhancementPacksList, B2BplansList, B2CplansList, creditPacksList, CustomePlanForB2B, getB2BPlansList, getB2CPlansList };
+
+

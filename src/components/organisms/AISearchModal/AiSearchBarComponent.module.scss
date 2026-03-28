@@ -1,0 +1,32 @@
+.blinking-cursor {
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    from,
+    to {
+        color: transparent;
+    }
+    50% {
+        color: inherit;
+    }
+}
+
+.typing-indicator {
+    display: flex;
+    padding: 20px;
+    justify-content: center;
+    align-items: center;
+
+}
+
+@keyframes bounce {
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}

@@ -1,0 +1,12 @@
+@import "@styles/abstracts/mixins";
+
+.editorContainer {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 10px;
+  flex-direction: column;
+  @include transition;
+}

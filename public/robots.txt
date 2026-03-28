@@ -1,0 +1,34 @@
+# Explicitly allow AI crawlers (GEO/AEO discovery infrastructure)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Allow all other user agents
+User-agent: *
+Allow: /
+
+# Disallow crawling of internal surfaces
+Disallow: /admin/
+Disallow: /login/
+Disallow: /register/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /editor/
+Disallow: /preview/
+
+# Path to the sitemap
+Sitemap: https://www.menulist.ai/sitemap.xml

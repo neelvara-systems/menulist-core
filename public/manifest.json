@@ -1,0 +1,51 @@
+{
+  "name": "MenuList AI",
+  "short_name": "MenuList",
+  "description": "Manage your restaurant menu, hours, feedback, and more — all from your phone.",
+  "theme_color": "#386aff",
+  "background_color": "#141414",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/dashboard",
+  "dir": "auto",
+  "lang": "en-US",
+  "id": "https://menulist.ai",
+  "categories": [
+    "business",
+    "food",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon512maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

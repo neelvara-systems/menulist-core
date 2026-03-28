@@ -1,0 +1,31 @@
+.install-pwa-modal-wrap {
+  .ios-note {
+    font-size: 12px;
+    letter-spacing: 0.1px;
+    font-style: italic;
+  }
+  .install-text-ios {
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    .icon {
+      width: 35px;
+      height: 35px;
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #dee1ec;
+      font-size: 12px;
+      border-radius: 20px;
+      color: var(--primary-color);
+      padding: 7px;
+      margin: 0 6px;
+      svg {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+}

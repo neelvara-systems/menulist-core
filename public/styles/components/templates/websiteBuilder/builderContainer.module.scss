@@ -1,0 +1,160 @@
+@import "@styles/abstracts/mixins";
+
+.builderDroppableList {
+  @include transition;
+  width: 100%;
+  position: relative;
+
+  .deviceTypeHeader {
+    position: absolute;
+    top: -85px;
+    width: 100%;
+    padding: 30px;
+    font-size: 25px;
+    letter-spacing: 0.3px;
+    border-radius: 4px;
+    text-align: center;
+    margin-bottom: 10px;
+    box-shadow: rgba(0, 0, 0, 0) 0px 10px 20px;
+  }
+  .sortingInProgress {
+    top: auto !important;
+    left: auto !important;
+    padding: 10px;
+    outline-offset: 0px;
+  }
+  &.Mobile {
+    @include transition;
+    width: 480px;
+    .sortingInProgress {
+      min-width: 480px;
+      max-width: 480px;
+      width: 480px;
+      // padding: 10px;
+      outline: 10px solid;
+    }
+  }
+  &.Tablet {
+    @include transition;
+    width: 768px;
+    .sortingInProgress {
+      min-width: 768px;
+      max-width: 768px;
+      width: 768px;
+      padding: 10px;
+    }
+  }
+  &.Desktop {
+    @include transition;
+    width: 1024px;
+
+    .sortingInProgress {
+      min-width: 1024px;
+      max-width: 1024px;
+      width: 1024px;
+      padding: 10px;
+    }
+  }
+  &.fullscreenMode {
+    &.Desktop {
+      @include transition;
+      width: 100%;
+      max-width: calc(100vw - 470px);
+
+      .sortingInProgress {
+        width: 100%;
+        max-width: calc(100vw - 470px);
+        padding: 10px;
+      }
+    }
+  }
+  .bodyFrame {
+    background: #fff;
+    border-radius: 5px;
+    flex: 0 0 150px;
+    height: 100%;
+    background: #f8f9fe;
+    position: relative;
+    padding: 3px;
+    @include transition;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: column;
+    &.fullscreenMode {
+      // height: calc(100vh - 130px);
+      // overflow: auto;
+    }
+    &.isDraggingOver {
+      // @include transition;
+      background: var(--common-color);
+    }
+    .draggComponentWrap {
+      display: flex;
+      user-select: none;
+      width: 100%;
+      cursor: pointer;
+      position: relative;
+      &:hover {
+        @include transition;
+        outline: 1px groove var(--outlineColor);
+        box-shadow: 0 1px 5px #dee1ec;
+      }
+      &.sortingInProgress {
+        top: auto !important;
+        left: auto !important;
+        // min-width: max-content;
+        // min-height: max-content;
+        padding: 2px;
+        border-radius: 4px;
+        // border: 1px dashed #4099ff;
+      }
+      .dragDropHandle {
+        position: absolute;
+        left: -100px;
+        top: 50%;
+        @include flexCenter;
+        border: 2px solid;
+        border-radius: 50%;
+        padding: 10px;
+        z-index: 2;
+        &.Desktop {
+          left: unset;
+          right: -100px;
+        }
+        svg {
+          width: 70px;
+          height: 70px;
+          @include flexCenter;
+          font-size: 50px;
+          line-height: unset;
+          width: 100%;
+          height: 100%;
+        }
+      }
+    }
+  }
+  .emptyEditorWrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0px;
+    font-size: 22px;
+    height: 200px;
+    width: 100%;
+    text-align: center;
+    margin: unset;
+    // border-radius: 7px;
+    letter-spacing: 0.2px;
+    div {
+      outline: 1px inset;
+      outline-style: dotted;
+      outline-offset: 10px;
+      width: 80%;
+      border-radius: 5px;
+    }
+  }
+}
+.ant-descriptions-row {
+  width: 100%;
+}

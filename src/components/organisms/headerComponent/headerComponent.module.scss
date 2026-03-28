@@ -1,0 +1,80 @@
+@import "@styles/abstracts/mixins";
+.logo {
+  width: 100px;
+  height: 35px;
+}
+.headerComponentWrap {
+  width: 100%;
+  height: var(--header-Height);
+  line-height: unset;
+  padding: 0 10px;
+  // box-shadow: rgba(0, 0, 0, 0.14) 0px 8px 32px 0px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  // position: static;
+  // top: 0;
+  // right: 0;
+  &.fixedHeader {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 90;
+  }
+  z-index: 11;
+  @include transition;
+  .breadcrumbsWrap {
+    @include flexStart;
+    .saperator {
+      font-size: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0 10px;
+    }
+    .bradcrumbLabel {
+      padding: 7px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      letter-spacing: 0.2px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      .subnavIcon {
+        font-size: 20px;
+      }
+    }
+  }
+  .rightActionsWrap {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: var(--large-gap);
+    button {
+      padding: unset;
+      font-size: 17px;
+    }
+    .actionsWrap {
+      @include flexCenter;
+      gap: var(--small-gap);
+      &.dateWrap {
+        flex-direction: column;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        text-align: center;
+      }
+    }
+    .profileWrap {
+      @include flexCenter;
+      cursor: pointer;
+      gap: var(--large-gap);
+      img {
+        border-radius: 50%;
+      }
+    }
+  }
+}

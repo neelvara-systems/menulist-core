@@ -1,0 +1,281 @@
+'use client'
+
+import AnimatedGradientBubbles from '@atoms/AnimatedGradientBubbles';
+import { APP_THEME_COLOR } from '@constant/common';
+import { Breadcrumb, Button, Flex, Input, Typography, theme } from 'antd';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
+import { LuArrowLeft, LuSearch } from 'react-icons/lu';
+import HelpChat from '../helpChat';
+import { HELP_CENTER_TABS, HOME_TAB_KEY } from './tabsConfig';
+
+const { Paragraph } = Typography;
+
+const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (key: string) => void }) => {
+    const t = useTranslations('HelpCenter');
+    const { token } = theme.useToken();
+    const [showAISearchModal, setShowAISearchModal] = useState(false);
+
+    // Get current tab info for breadcrumb
+    const currentTab = HELP_CENTER_TABS.find(tab => tab.key === activeTab);
+
+    // Keyboard shortcut: Ctrl+/ or Cmd+/ to open AI search (changed from Cmd+K to avoid conflict with settings)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                setShowAISearchModal(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    return (
+        <>
+            <motion.div
+                layout
+                style={{
+                    position: 'relative',
+                    width: '100%',
+                    borderRadius: token.borderRadiusLG,
+                    overflow: 'hidden',
+                }}
+                initial={false}
+                animate={{
+                    padding: activeTab === 'home' ? '48px 24px' : '0px',
+                    background: activeTab === 'home' ? `linear-gradient(90deg, ${token.colorPrimaryBg} 0%, ${token.colorBgElevated} 100%)` : 'linear-gradient(90deg, transparent 0%, transparent 100%)',
+                }}
+                transition={{
+                    duration: 0.6,
+                    ease: [0.32, 0.72, 0, 1],
+                    padding: {
+                        duration: activeTab === 'home' ? 0.6 : 0.3,
+                        ease: activeTab === 'home' ? [0.25, 0.46, 0.45, 0.94] : [0.32, 0.72, 0, 1]
+                    }
+                }}
+            >
+                {activeTab === 'home' && (
+                    <AnimatedGradientBubbles colors={[`${token.colorPrimary}40`, `${token.colorPrimary}20`, `${token.colorPrimary}10`]} count={10} speed="fast" />
+                )}
+
+                <motion.div
+                    layout
+                    transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                    style={{ width: '100%', position: 'relative', zIndex: 1 }}
+                >
+                    <Flex
+                        vertical={true}
+                        gap={activeTab === 'home' ? 12 : 0}
+                        justify='center'
+                        align={activeTab === 'home' ? 'center' : 'flex-end'}
+                        style={{
+                            transition: 'align-items 0.5s cubic-bezier(0.32, 0.72, 0, 1), gap 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
+                        }}
+                    >
+                        <AnimatePresence>
+                            {activeTab === 'home' && (
+                                <motion.div
+                                    key="hero-text"
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{
+                                        duration: 0.5,
+                                        ease: [0.32, 0.72, 0, 1],
+                                        exit: {
+                                            opacity: { duration: 0.15 },
+                                            height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] }
+                                        }
+                                    }}
+                                    style={{
+                                        textAlign: 'center',
+                                        overflow: 'hidden',
+                                        width: '100%',
+                                        alignSelf: 'center'
+                                    }}
+                                >
+                                    <h2 style={{ margin: 0, fontSize: token.fontSizeHeading2, fontWeight: 600, lineHeight: token.lineHeightHeading2 }}>
+                                        {t('heroTitle')} <span style={{
+                                            backgroundImage: `linear-gradient(90deg, ${token.colorPrimary} 0%, ${APP_THEME_COLOR} 100%)`,
+                                            WebkitBackgroundClip: 'text',
+                                            backgroundClip: 'text',
+                                            color: 'transparent',
+                                            fontSize: token.fontSizeHeading2,
+                                            fontWeight: 600,
+                                            lineHeight: token.lineHeightHeading2
+                                        }}>{t('heroTitleHighlight')}</span>
+                                    </h2>
+                                    <Paragraph style={{ marginTop: 8, marginBottom: 0, color: token.colorTextSecondary }}>
+                                        {t('heroSubtitle')}
+                                    </Paragraph>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <motion.div
+                            layout
+                            animate={{
+                                width: activeTab === 'home' ? 720 : 600,
+                            }}
+                            transition={{
+                                duration: 0.6,
+                                ease: [0.32, 0.72, 0, 1],
+                                width: {
+                                    duration: activeTab === 'home' ? 0.6 : 0.5,
+                                    ease: activeTab === 'home' ? [0.25, 0.46, 0.45, 0.94] : [0.32, 0.72, 0, 1]
+                                },
+                                layout: {
+                                    duration: 0.6,
+                                    ease: [0.32, 0.72, 0, 1]
+                                }
+                            }}
+                            style={{
+                                zIndex: 2,
+                                maxWidth: activeTab === 'home' ? 720 : 600
+                            }}
+                        >
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setShowAISearchModal(true)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowAISearchModal(true) }}
+                                style={{
+                                    width: '100%',
+                                    background: token.colorBgContainer,
+                                    borderRadius: activeTab === 'home' ? 12 : 7,
+                                    border: `1px solid ${token.colorBorder}`,
+                                    boxShadow: activeTab === 'home' ? '0 20px 40px rgba(2,6,23,0.08)' : 'none',
+                                    padding: '3px',
+                                    transition: 'all 0.5s ease',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, paddingLeft: 12 }}>
+                                        <LuSearch size={18} color={token.colorTextPlaceholder} aria-hidden="true" />
+                                        <Input
+                                            readOnly
+                                            size="large"
+                                            placeholder={t('searchPlaceholder')}
+                                            aria-label="Search help center"
+                                            style={{
+                                                border: 'none',
+                                                boxShadow: 'none',
+                                                paddingLeft: 0,
+                                                background: 'transparent',
+                                                padding: activeTab === 'home' ? '3px 10px' : '0px',
+                                                fontSize: activeTab === 'home' ? 14 : 12,
+                                                transition: 'all 0.5s ease'
+                                            }}
+                                        />
+                                    </div>
+                                    {/* Keyboard hint */}
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            paddingRight: 8,
+                                            fontSize: 11,
+                                            color: token.colorTextTertiary,
+                                            fontWeight: 500
+                                        }}
+                                        aria-hidden="true"
+                                    >
+                                        <kbd style={{
+                                            padding: '2px 6px',
+                                            borderRadius: 4,
+                                            background: token.colorBgElevated,
+                                            border: `1px solid ${token.colorBorder}`,
+                                            fontSize: 10
+                                        }}>⌘K</kbd>
+                                    </div>
+                                    <Button
+                                        size="large"
+                                        style={{
+                                            height: activeTab === 'home' ? 40 : 30,
+                                            fontSize: activeTab === 'home' ? 14 : 12,
+                                            paddingLeft: 16,
+                                            paddingRight: 16,
+                                            borderRadius: activeTab === 'home' ? 12 : 7,
+                                            border: 'none',
+                                            background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${APP_THEME_COLOR} 100%)`,
+                                            color: '#ffffff',
+                                            boxShadow: activeTab === 'home' ? `0 8px 18px ${token.colorPrimary}59` : 'none',
+                                            transition: 'all 0.5s ease'
+                                        }}
+                                        onClick={() => setShowAISearchModal(true)}
+                                    >
+                                        {t('search')}
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </Flex>
+                </motion.div>
+
+                <AnimatePresence>
+                    {activeTab !== 'home' && currentTab && (
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            style={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
+                        >
+                            <Flex align="center" gap={16}>
+                                <Button
+                                    type="default"
+                                    icon={<LuArrowLeft size={16} />}
+                                    onClick={() => setActiveTab(HOME_TAB_KEY)}
+                                >
+                                    {t('backToHome')}
+                                </Button>
+
+                                <Breadcrumb
+                                    separator=">"
+                                    items={[
+                                        {
+                                            title: (
+                                                <a
+                                                    onClick={() => setActiveTab(HOME_TAB_KEY)}
+                                                    style={{
+                                                        color: token.colorPrimary,
+                                                        cursor: 'pointer',
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    {t('breadcrumbHome')}
+                                                </a>
+                                            ),
+                                        },
+                                        {
+                                            title: (
+                                                <span style={{
+                                                    color: token.colorText,
+                                                    fontWeight: 600
+                                                }}>
+                                                    {currentTab.title}
+                                                </span>
+                                            ),
+                                        },
+                                    ]}
+                                    style={{ fontSize: 14 }}
+                                />
+                            </Flex>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+            <HelpChat
+                open={showAISearchModal}
+                onClose={() => setShowAISearchModal(false)}
+            />
+        </>
+    );
+};
+
+export default HeroSearchBar;

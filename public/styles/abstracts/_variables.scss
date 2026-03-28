@@ -1,0 +1,53 @@
+$breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+);
+
+$color-error: #ff003d;
+
+:root {
+  --spark: 1.8s;
+  --transition: all ease-out 0.3s;
+  --primary-color: #ff8dc7;
+  --primary-color-bg-image: linear-gradient(195deg, #463c52, #9d94ba);
+  --primary-color-alpha: #9d94ba;
+  --primary-color-beta: #d1d5e8;
+
+  --secondary-color: #a599c0;
+  --secondary-color-bg-image: linear-gradient(195deg, #a599c0, #9d94ba);
+  --secondary-color-alpha: #fbeaff;
+  --secondary-color-beta: #d1d5e8;
+
+  --common-color: #a7ffe4;
+
+  --card-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
+
+  --primary-text-color: black;
+  --primary-heading-color: #042953;
+  --app-color: #0054d0;
+  --app-color-alpha: #84afef;
+  --dark-navy: #020c1b;
+  --navy: #0a192f;
+  --light-navy: #172a45;
+  --lightest-navy: #303c55;
+  --navy-shadow: rgba(2, 12, 27, 0.7);
+  --slate: #8892b0;
+  --light-slate: #a8b2d1;
+  --lightest-slate: #ccd6f6;
+  --small-gap: 5px;
+  --medium-gap: 10px;
+  --large-gap: 15px;
+  --fz-xs: 13px;
+  --fz-sm: 14px;
+  --fz-md: 16px;
+  --fz-lg: 18px;
+  --fz-xl: 20px;
+  --fz-xxl: 22px;
+  --styleElementBg: #d1d5e845;
+  --outlineColor: #0054d0;
+  --fullHeight: calc(100vh - calc(100vh - 100%));
+  --header-Height: 52px; //update in src/components/templates/websiteBuilder/BuilderCanvasWrapper.tsx
+}

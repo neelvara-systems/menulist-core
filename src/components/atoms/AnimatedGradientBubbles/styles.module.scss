@@ -1,0 +1,31 @@
+@keyframes moveBubble {
+  0% {
+    transform: translate(var(--start-x), var(--start-y));
+  }
+  50% {
+    transform: translate(calc(var(--start-x) + var(--x)), calc(var(--start-y) + var(--y)));
+  }
+  100% {
+    transform: translate(var(--start-x), var(--start-y));
+  }
+}
+
+.bubblesContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.6;
+  animation: moveBubble infinite ease-in-out;
+  --start-x: -50%; // Corresponds to transform: translate(-50%, -50%)
+  --start-y: -50%;
+}

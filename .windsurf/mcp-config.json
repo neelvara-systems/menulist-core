@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "description": "Browser automation for testing - navigation, clicks, inputs, screenshots"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"],
+      "description": "Chrome DevTools Protocol access - network monitoring, console logs, performance profiling"
+    }
+  }
+}

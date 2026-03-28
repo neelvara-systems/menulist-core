@@ -1,0 +1,150 @@
+/**
+ * Weekly View (PRIMARY)
+ * 
+ * The default and most prominent view for the Owner Dashboard.
+ * Shows weekly performance with AI summary and key metrics.
+ * 
+ * Features:
+ * - AI Summary (max 5 bullets)
+ * - Key metrics with % change from previous week
+ * - Top performing items
+ * - Smart Picks performance
+ */
+
+import { AppstoreOutlined, EyeOutlined, FallOutlined, FireOutlined, RiseOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { EMPTY_STATE_MESSAGES, WeeklyViewData } from '@template/main-app/projects/types';
+import { Card, Col, Empty, Row, Tag, Typography } from 'antd';
+import React from 'react';
+import AISummaryCard from './AISummaryCard';
+import MetricCard from './MetricCard';
+import styles from './OwnerDashboard.module.scss';
+import TopItemsList from './TopItemsList';
+
+const { Text, Title } = Typography;
+
+interface WeeklyViewProps {
+    data: WeeklyViewData | null;
+}
+
+const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
+    const labels = useOfferingLabels();
+
+    if (!data) {
+        return (
+            <Card className={styles.emptyCard}>
+                <Empty
+                    description={
+                        <Text type="secondary">
+                            {EMPTY_STATE_MESSAGES.noWeeklyData.description}
+                        </Text>
+                    }
+                />
+            </Card>
+        );
+    }
+
+    const { metrics, metricsChange, aiSummary, topItems, blockPerformance } = data;
+
+    const smartPicksEngagementRate = metrics.smartPicksRendered > 0
+        ? Math.round((metrics.smartPicksClicks / metrics.smartPicksRendered) * 100)
+        : 0;
+
+    const renderChangeTag = (change: number | undefined) => {
+        if (change === undefined || change === 0) return null;
+
+        const isPositive = change > 0;
+        return (
+            <Tag
+                color={isPositive ? 'green' : 'orange'}
+                className={styles.changeTag}
+            >
+                {isPositive ? <RiseOutlined /> : <FallOutlined />}
+                {isPositive ? '+' : ''}{change}%
+            </Tag>
+        );
+    };
+
+    return (
+        <div className={styles.weeklyView}>
+            {/* AI Summary - Most prominent */}
+            {aiSummary && (
+                <AISummaryCard summary={aiSummary} period="weekly" />
+            )}
+
+            {/* Key Metrics */}
+            <Row gutter={[16, 16]} className={styles.metricsRow}>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title={labels.scansLabel}
+                        value={metrics.menuVisits}
+                        icon={<EyeOutlined />}
+                        subtitle={metricsChange?.menuVisitsChange !== undefined
+                            ? `${metricsChange.menuVisitsChange > 0 ? '+' : ''}${metricsChange.menuVisitsChange}% vs last week`
+                            : undefined}
+                        tooltip={labels.scansTooltip}
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Item Clicks"
+                        value={metrics.itemClicks}
+                        icon={<AppstoreOutlined />}
+                        tooltip="Number of times customers tapped on items"
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Smart Picks Shown"
+                        value={metrics.smartPicksRendered}
+                        icon={<ThunderboltOutlined />}
+                        tooltip="How many times Smart Picks appeared on your page"
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Smart Picks Used"
+                        value={`${smartPicksEngagementRate}%`}
+                        icon={<FireOutlined />}
+                        subtitle={`${metrics.smartPicksClicks} clicks`}
+                        tooltip="Percentage of customers who used Smart Picks"
+                    />
+                </Col>
+            </Row>
+
+            {/* Top Items and Block Performance */}
+            <Row gutter={[16, 16]}>
+                <Col xs={24} lg={12}>
+                    <TopItemsList items={topItems} title="Most Popular Items" />
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card className={styles.blockPerformanceCard} variant="borderless">
+                        <Title level={5}>Smart Picks Performance</Title>
+                        <div className={styles.blockList}>
+                            <div className={styles.blockItem}>
+                                <Text>Popular Items</Text>
+                                <Text type="secondary">
+                                    {blockPerformance.popular.clicks} clicks from {blockPerformance.popular.rendered} views
+                                </Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>Quick Pick</Text>
+                                <Text type="secondary">
+                                    {blockPerformance.quickPick.clicks} clicks from {blockPerformance.quickPick.rendered} views
+                                </Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>Best Value</Text>
+                                <Text type="secondary">
+                                    {blockPerformance.bestValue.clicks} clicks from {blockPerformance.bestValue.rendered} views
+                                </Text>
+                            </div>
+                        </div>
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
+};
+
+export default WeeklyView;

@@ -1,0 +1,58 @@
+'use client';
+
+import type { ComparisonEngineOutput } from '@lib/extraction/comparisonEngine.types';
+import { Modal } from 'antd';
+import ExtractionJobReviewScreen from './ExtractionJobReviewScreen';
+
+interface ExtractionJobReviewModalProps {
+    open: boolean;
+    projectId: string;
+    jobId: string;
+    comparisonResult: ComparisonEngineOutput;
+    primaryLang: string;
+    onSaveComplete: () => void;
+    onDiscard: () => void;
+}
+
+/**
+ * ExtractionJobReviewModal
+ * 
+ * Modal wrapper for the ExtractionJobReviewScreen component.
+ * Displayed when a re-extraction job is PREVIEW_READY and requires user approval.
+ * 
+ * Flow:
+ * - Re-extraction completes → Job status = PREVIEW_READY
+ * - Comparison engine runs on client → comparisonResult generated
+ * - This modal displays the ExtractionJobReviewScreen for user to approve/reject changes
+ * - User saves → onSaveComplete called → changes written to Firestore
+ * - User discards → onDiscard called → job cancelled
+ */
+export default function ExtractionJobReviewModal({
+    open,
+    projectId,
+    jobId,
+    comparisonResult,
+    primaryLang,
+    onSaveComplete,
+    onDiscard,
+}: ExtractionJobReviewModalProps) {
+    return (
+        <Modal
+            open={open}
+            onCancel={onDiscard}
+            footer={null}
+            width="90%"
+            style={{ top: 20, maxWidth: 1200 }}
+            title="Review Extracted Changes"
+        >
+            <ExtractionJobReviewScreen
+                projectId={projectId}
+                jobId={jobId}
+                comparisonResult={comparisonResult}
+                primaryLang={primaryLang}
+                onSaveComplete={onSaveComplete}
+                onDiscard={onDiscard}
+            />
+        </Modal>
+    );
+}

@@ -1,0 +1,204 @@
+'use client'
+
+import ArticleView from '@organisms/ArticleView';
+import { Badge, Button, Card, Flex, Space, Tag, Tooltip, Typography, theme } from 'antd';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
+import { LuArrowRight, LuFileText, LuMaximize2 } from 'react-icons/lu';
+import { TbLayoutBottombarCollapse, TbLayoutNavbarCollapse } from 'react-icons/tb';
+
+const { Text } = Typography;
+
+interface MessageReferencesProps {
+    references: any[];
+    onArticleModalOpen: (article: any) => void;
+    showConfidenceScores?: boolean; // Admin-only feature
+}
+
+// Helper to get confidence level and color
+const getConfidenceInfo = (score?: number) => {
+    if (!score) return { label: 'N/A', color: 'default' };
+    
+    const percentage = Math.round(score * 100);
+    
+    if (score >= 0.8) return { label: `${percentage}% - Excellent`, color: 'success' };
+    if (score >= 0.6) return { label: `${percentage}% - Good`, color: 'processing' };
+    if (score >= 0.4) return { label: `${percentage}% - Fair`, color: 'warning' };
+    return { label: `${percentage}% - Low`, color: 'error' };
+};
+
+const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScores = false }: MessageReferencesProps) => {
+    const { token } = theme.useToken();
+    const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+
+    if (!references || references.length === 0) {
+        return null;
+    }
+
+    // Sort references by similarity score (highest first) for better admin UX
+    const sortedReferences = [...references].sort((a, b) => {
+        const scoreA = a.similarityScore || 0;
+        const scoreB = b.similarityScore || 0;
+        return scoreB - scoreA; // Descending order
+    });
+
+    return (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${token.colorBorder}` }}>
+            <Text strong style={{ fontSize: 11, color: token.colorTextSecondary, display: 'block', marginBottom: 12, letterSpacing: 0.5 }}>
+                📚 HELPFUL RESOURCES
+            </Text>
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                {sortedReferences.map((ref) => {
+                    const isExpanded = expandedArticleId === ref.id;
+                    return (
+                        <motion.div
+                            key={ref.id}
+                            style={{ width: '100%' }}
+                            whileHover={{ scale: 1.01 }}
+                            transition={{ duration: 0.15 }}
+                        >
+                            <Card
+                                size="small"
+                                style={{
+                                    background: token.colorBgContainer,
+                                    borderRadius: 12,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <Flex gap={8} align="center" justify="space-between">
+                                    <Flex gap={8} align="center" style={{ flex: 1 }}>
+                                        <LuFileText size={16} color={token.colorPrimary} />
+                                        <div style={{ flex: 1 }}>
+                                            <Flex align="center" gap={8}>
+                                                <Text
+                                                    strong
+                                                    style={{
+                                                        fontSize: 13,
+                                                        cursor: 'pointer',
+                                                        color: token.colorPrimary
+                                                    }}
+                                                    onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}
+                                                >
+                                                    {ref.title}
+                                                </Text>
+                                                {/* Admin-only: Confidence Score Badge */}
+                                                {showConfidenceScores && ref.similarityScore !== undefined && (
+                                                    <Tooltip title={`Similarity score: ${(ref.similarityScore * 100).toFixed(1)}% match to query`}>
+                                                        <Tag
+                                                            color={getConfidenceInfo(ref.similarityScore).color}
+                                                            style={{ 
+                                                                margin: 0,
+                                                                fontSize: 11,
+                                                                padding: '0 6px',
+                                                                lineHeight: '18px'
+                                                            }}
+                                                        >
+                                                            {getConfidenceInfo(ref.similarityScore).label}
+                                                        </Tag>
+                                                    </Tooltip>
+                                                )}
+                                            </Flex>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {ref.categoryTitle}{ref.sectionTitle ? ` / ${ref.sectionTitle}` : ''}
+                                            </Text>
+                                        </div>
+                                    </Flex>
+                                    <Space size={4}>
+                                        <Tooltip title="Quick preview">
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={
+                                                    <motion.span
+                                                        initial={false}
+                                                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                                                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                                        style={{ display: 'inline-flex', alignItems: 'center' }}
+                                                    >
+                                                        {isExpanded ? <TbLayoutNavbarCollapse size={14} /> : <TbLayoutBottombarCollapse size={14} />}
+                                                    </motion.span>
+                                                }
+                                                onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}
+                                                style={{ borderRadius: 8 }}
+                                            >
+                                                {isExpanded ? 'Hide' : 'Preview'}
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="View full article">
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<LuMaximize2 size={14} />}
+                                                onClick={() => onArticleModalOpen(ref)}
+                                                style={{ borderRadius: 8 }}
+                                            />
+                                        </Tooltip>
+                                    </Space>
+                                </Flex>
+                            </Card>
+
+                            {/* Expandable Article Preview - Backend returns full article */}
+                            <AnimatePresence mode="wait">
+                                {isExpanded && ref.content && (
+                                    <motion.div
+                                        key={`preview-${ref.id}`}
+                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                        animate={{
+                                            opacity: 1,
+                                            height: 'auto',
+                                            marginTop: 8,
+                                            transition: {
+                                                height: { duration: 0.3, ease: 'easeOut' },
+                                                opacity: { duration: 0.2, delay: 0.1 }
+                                            }
+                                        }}
+                                        exit={{
+                                            opacity: 0,
+                                            height: 0,
+                                            marginTop: 0,
+                                            transition: {
+                                                height: { duration: 0.25, ease: 'easeIn' },
+                                                opacity: { duration: 0.15 }
+                                            }
+                                        }}
+                                        style={{
+                                            overflow: 'hidden',
+                                            padding: 2,
+                                            backgroundColor: token.colorFillTertiary,
+                                            borderRadius: 12,
+                                            border: `1px solid ${token.colorBorderSecondary}`
+                                        }}
+                                    >
+                                        <ArticleView
+                                            article={ref}
+                                            mode="preview"
+                                            showBreadcrumbs={false}
+                                            showTags={false}
+                                            showCopyLink={false}
+                                            showMetadata={false}
+                                            enableKeyboardShortcuts={false}
+                                            showFeedback={false}
+                                        />
+                                        <div style={{ marginTop: 4, borderTop: `1px solid ${token.colorBorder}`, paddingTop: 12 }}>
+                                            <Button
+                                                icon={<LuArrowRight />}
+                                                type="text"
+                                                onClick={() => onArticleModalOpen(ref)}
+                                                style={{ borderRadius: 8 }}
+                                            >
+                                                View full article
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    );
+                })}
+            </Space>
+        </div>
+    );
+};
+
+export default MessageReferences;

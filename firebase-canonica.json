@@ -1,0 +1,9 @@
+{
+  "functions": {
+    "source": "functions-canonica"
+  },
+  "firestore": {
+    "rules": "firestore-canonica.rules",
+    "indexes": "firestore-canonica.indexes.json"
+  }
+}

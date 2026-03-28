@@ -1,0 +1,92 @@
+.togglecheckbox {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.toggleslot {
+  font-size: 10px;
+  position: relative;
+  height: 2.5em;
+  width: 6em;
+  outline: 1px solid var(--app-color);
+  border-radius: 10em;
+  background-color: white;
+  transition: background-color 250ms;
+}
+
+.togglecheckbox:checked ~ .toggleslot {
+  background-color: #374151;
+}
+
+.togglebutton {
+  transform: translate(0.3em, 0.25em);
+  position: absolute;
+  height: 2em;
+  width: 2em;
+  border-radius: 50%;
+  background-color: #ffeccf;
+  box-shadow: inset 0px 0px 0px 0.3em #ffbb52;
+  transition: background-color 250ms, border-color 250ms,
+    transform 500ms cubic-bezier(0.26, 2, 0.46, 0.71);
+}
+
+.togglecheckbox:checked ~ .toggleslot .togglebutton {
+  background-color: #485367;
+  box-shadow: inset 0px 0px 0px 0.3em white;
+  transform: translate(3.65em, 0.25em);
+}
+
+.sunicon {
+  position: absolute;
+  height: 2em;
+  width: 2em;
+  color: #ffbb52;
+}
+
+.suniconwrapper {
+  position: absolute;
+  height: 2em;
+  width: 2em;
+  opacity: 1;
+  transform: translate(3.5em, 0.3em) rotate(15deg);
+  transform-origin: 50% 50%;
+  transition: opacity 150ms, transform 500ms cubic-bezier(0.26, 2, 0.46, 0.71);
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.togglecheckbox:checked ~ .toggleslot .suniconwrapper {
+  opacity: 0;
+  transform: translate(3em, 2em) rotate(0deg);
+}
+
+.moonicon {
+  position: absolute;
+  height: 2em;
+  width: 2em;
+  color: white;
+}
+
+.mooniconwrapper {
+  position: absolute;
+  height: 2em;
+  width: 2em;
+  opacity: 0;
+  transform: translate(11em, 2em) rotate(0deg);
+  transform-origin: 50% 50%;
+  transition: opacity 150ms, transform 500ms cubic-bezier(0.26, 2.5, 0.46, 0.71);
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.togglecheckbox:checked ~ .toggleslot .mooniconwrapper {
+  opacity: 1;
+  transform: translate(0.4em, 0.3em) rotate(-15deg);
+}
