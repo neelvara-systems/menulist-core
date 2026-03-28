@@ -238,14 +238,6 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         outletLinkedLabel: 'This Store is Linked to Your Main Catalog',
         subscribeDesc: 'Subscribe to get started.',
         creditsDesc: 'More AI-enhanced images, descriptions, and translations for your catalog.',
-        // Processing states
-        processingTitle: 'Creating Your Product Catalog',
-        processingDesc: 'AI is reading your product documents and extracting all products and prices. This usually takes 1-2 minutes.',
-        processingStepUploading: 'Uploading your documents...',
-        processingStepAI: 'AI is analyzing your document layout...',
-        processingStepExtracting: 'Extracting products and prices...',
-        processingStepFinalizing: 'Finalizing your product catalog...',
-        processingComplete: 'Your catalog is ready!',
         itemsPlural: 'products', itemSingular: 'product',
     },
     health: {
