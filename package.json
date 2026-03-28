@@ -13,7 +13,8 @@
     "lint": "next lint",
     "devstart": "npm run dev",
     "firebase:emulators": "firebase emulators:start --project ecomsai",
-    "docs:generate": "node scripts/generate-docs-index.js"
+    "docs:generate": "node scripts/generate-docs-index.js",
+    "verify:recycle-bin": "node scripts/verification/verify-recycle-bin.js"
   },
   "overrides": {
     "zod": "^3.25.0"

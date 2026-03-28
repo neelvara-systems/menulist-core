@@ -21,7 +21,7 @@ function checkFileContains(filePath, searchStrings, description) {
       const found = isRegex ? str.test(content) : content.includes(str);
       return { str: isRegex ? str.toString() : str, found };
     });
-    
+
     const allFound = results.every(r => r.found);
     checks.push({
       file: path.basename(filePath),
@@ -44,7 +44,7 @@ function checkFileContains(filePath, searchStrings, description) {
 // 1. Check database queries
 console.log('1️⃣  Checking database queries...');
 checkFileContains(
-  './src/database/tickets/index.ts',
+  'src/database/tickets/index.ts',
   [
     'where("deleted", "==", false)',
     'includeDeleted',
@@ -56,7 +56,7 @@ checkFileContains(
 // 2. Check type definition
 console.log('2️⃣  Checking type definitions...');
 checkFileContains(
-  './src/types/supportTicket.ts',
+  'src/types/supportTicket.ts',
   ['deleted?: boolean'],
   'SupportTicketType has deleted field'
 );
@@ -64,7 +64,7 @@ checkFileContains(
 // 3. Check admin UI components
 console.log('3️⃣  Checking admin UI components...');
 checkFileContains(
-  './src/components/templates/platform/supportTickets/index.tsx',
+  'src/components/templates/platform/supportTickets/index.tsx',
   [
     'deletedTickets',
     'fetchDeletedTickets',
@@ -77,7 +77,7 @@ checkFileContains(
 // 4. Check table columns
 console.log('4️⃣  Checking table columns...');
 checkFileContains(
-  './src/components/templates/platform/supportTickets/TicketTableColumns.tsx',
+  'src/components/templates/platform/supportTickets/TicketTableColumns.tsx',
   [
     'onRestore',
     'handleRestore',
@@ -90,7 +90,7 @@ checkFileContains(
 // 5. Check PlatformTicketsView
 console.log('5️⃣  Checking PlatformTicketsView...');
 checkFileContains(
-  './src/components/templates/platform/supportTickets/PlatformTicketsView.tsx',
+  'src/components/templates/platform/supportTickets/PlatformTicketsView.tsx',
   [
     'isTrashView',
     'handleRestore',
@@ -102,7 +102,7 @@ checkFileContains(
 // 6. Check TicketFiltersBar
 console.log('6️⃣  Checking TicketFiltersBar...');
 checkFileContains(
-  './src/components/templates/platform/supportTickets/TicketFiltersBar.tsx',
+  'src/components/templates/platform/supportTickets/TicketFiltersBar.tsx',
   [
     'isTrashView',
     'onNewTicket?',
@@ -123,7 +123,7 @@ checks.forEach((check, index) => {
   console.log(`${index + 1}. ${check.description}`);
   console.log(`   File: ${check.file}`);
   console.log(`   Status: ${check.status}`);
-  
+
   if (check.error) {
     console.log(`   Error: ${check.error}`);
     failCount++;
