@@ -44,9 +44,13 @@ const nextConfig = {
         optimizeCss: true,
         optimizePackageImports: ['antd', 'antd-mobile', 'react-icons'],
         // Enable compression
-        compress: true,
+        // compress: true,
         // Enable modern JavaScript features
         esmExternals: true,
+        // TEMPORARY: Disabled — Sentry webpack plugin emits client-formatted bundles
+        // into .next/server/ causing 'self is not defined' in npm start.
+        // Re-enable once @sentry/nextjs fixes server instrumentation bundling.
+        instrumentationHook: false,
     },
     typescript: {
         ignoreBuildErrors: false,
@@ -286,21 +290,22 @@ const withPWA = require("next-pwa")({
 });
 const { withSentryConfig } = require("@sentry/nextjs");
 
-module.exports = withSentryConfig(
-    withBundleAnalyzer(withPWA(withNextIntl(nextConfig))),
-    {
-        org: "test-dev-vw",
-        project: "javascript-nextjs",
-        sentryConfigFile: "./instrumentation-client.ts",
-        silent: true,
-        // On Vercel preview builds: disable both webpack plugins (saves ~1GB peak memory)
-        // Sentry runtime SDK still initialises — errors are still captured
-        // Source maps + performance tracing only run on production deploys
-        disableClientWebpackPlugin: isVercelPreview,
-        disableServerWebpackPlugin: isVercelPreview,
-        disableSourceMapUpload: isVercelPreview,
-        widenClientFileUpload: false,
-        disableLogger: true,
-        automaticVercelMonitors: true,
-    }
-);
+// TEMPORARY: Sentry webpack plugin bypassed — emits client-formatted bundles
+// into .next/server/ causing 'self is not defined' + middleware TypeError in npm start.
+// Re-enable once @sentry/nextjs fixes server instrumentation bundling.
+// module.exports = withSentryConfig(
+//     withBundleAnalyzer(withPWA(withNextIntl(nextConfig))),
+//     {
+//         org: "test-dev-vw",
+//         project: "javascript-nextjs",
+//         sentryConfigFile: "./instrumentation-client.ts",
+//         silent: true,
+//         disableClientWebpackPlugin: isVercelPreview,
+//         disableServerWebpackPlugin: isVercelPreview,
+//         disableSourceMapUpload: isVercelPreview,
+//         widenClientFileUpload: false,
+//         disableLogger: true,
+//         automaticVercelMonitors: true,
+//     }
+// );
+module.exports = withBundleAnalyzer(withPWA(withNextIntl(nextConfig)));
