@@ -53,7 +53,8 @@
       "@assets/*": ["public/assets/*"],
       "@shadcncomponents/*": ["src/components/website/shadcn/ui/*"],
       "@shadcnhooks/*": ["src/components/website/shadcn/hooks/*"],
-      "@shadcnlib/*": ["src/components/website/shadcn/lib/*"]
+      "@shadcnlib/*": ["src/components/website/shadcn/lib/*"],
+      "logs/*": ["src/lib/logs/*"]
     }
   },
   "include": [
