@@ -52,8 +52,6 @@ const OPTIONAL_VARS = [
     'SMTP_PASS',                     // Lifecycle messaging
     'TELEGRAM_BOT_TOKEN',           // Ops alerts (ENABLE_OPS_ALERTS)
     'TELEGRAM_CHAT_ID',             // Ops alerts
-    'SENTRY_DSN',                   // Error tracking (ENABLE_SENTRY)
-    'NEXT_PUBLIC_SENTRY_DSN',       // Error tracking
     'GA_CLIENT_EMAIL',              // Analytics
     'GA_PRIVATE_KEY',               // Analytics
 ] as const;

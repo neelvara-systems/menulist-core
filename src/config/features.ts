@@ -100,62 +100,6 @@ export const FEATURE_FLAGS = {
     ENABLE_APP_CHECK: false, // Toggle this for dev/prod
 
     /**
-     * Enable Sentry error tracking and monitoring
-     *
-     * ✅ PRODUCTION-READY - Dual dev/prod projects configured!
-     *
-     * true: Enable Sentry tracking (recommended for both dev and prod)
-     * false: Disable Sentry completely (no errors sent, no overhead)
-     *
-     * How It Works (Dual Projects):
-     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     *
-     * 🔧 DEVELOPMENT:
-     *    - Errors → Dev Sentry project
-     *    - Clean separation from production
-     *    - Test error tracking without polluting prod data
-     *    - Full context: tenant, store, subscription
-     *
-     * 🚀 PRODUCTION:
-     *    - Errors → Production Sentry project
-     *    - Release tracking with git commit SHA
-     *    - User context with email-friendly username
-     *    - Session replay for visual debugging
-     *    - Performance monitoring (10% sample rate)
-     *
-     * What Gets Tracked:
-     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     * - ✅ Errors with full stack traces
-     * - ✅ User context (tenant/store/subscription)
-     * - ✅ API call breadcrumbs
-     * - ✅ User action breadcrumbs
-     * - ✅ Business events
-     * - ✅ Performance metrics
-     * - ✅ Session replays (on errors)
-     *
-     * Why Disable in Development?
-     * - Testing without sending errors to Sentry
-     * - Faster debugging with console logs only
-     * - No Sentry quota usage during local dev
-     * - Cleaner Sentry dashboard (no test errors)
-     *
-     * Production: ALWAYS keep this true
-     * Development: Keep true to test error tracking, false for pure local dev
-     *
-     * Email Notifications:
-     * - Username format: "Danny Test | Danysa(14) | Danysa(15)"
-     * - Instantly see which tenant/store from email
-     * - All errors tagged with tenant_id, store_id, subscription_plan
-     *
-     * Cost: $26/month for 50k errors (included in plan)
-     *
-     * Dashboards:
-     * - Dev:  https://sentry.io/organizations/test-dev-vw/projects/javascript-nextjs-dev/
-     * - Prod: https://sentry.io/organizations/test-dev-vw/projects/javascript-nextjs/
-     */
-    ENABLE_SENTRY: false, // Toggle this for dev/prod
-
-    /**
      * Enable Keyboard Shortcuts in Editor
      *
      * ✅ Power User Feature - Boost productivity!

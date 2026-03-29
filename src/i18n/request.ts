@@ -109,7 +109,7 @@ export default getRequestConfig(async () => {
         };
 
     } catch (error) {
-        // Log to Sentry in production
+        // Log error for debugging
         logger.error('i18n Configuration Error', error, {
             userAgent: windowRef()?.navigator?.userAgent,
             location: windowRef()?.location?.href,

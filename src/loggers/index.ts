@@ -1,11 +1,11 @@
 /**
- * DEPRECATED: Legacy logger - now uses unified Sentry-based logger
+ * DEPRECATED: Legacy logger - now uses unified console-based logger
  * 
  * This file is kept for backward compatibility.
  * New code should import from '@lib/monitoring/logger' instead.
  * 
  * Migration status: ✅ Redirects to new logger
- * Firebase DB logging: ❌ REMOVED (now uses Sentry)
+ * Firebase DB logging: ❌ REMOVED
  */
 
 import { logger as newLogger } from '@lib/monitoring/logger';

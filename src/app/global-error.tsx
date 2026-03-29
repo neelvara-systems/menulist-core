@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect, useState } from "react";
 
 // Default colors from constants/common.ts
@@ -42,7 +41,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    Sentry.captureException(error);
+    console.error('[GlobalError]', error);
     setTheme(getPersistedTheme());
     setMounted(true);
   }, [error]);

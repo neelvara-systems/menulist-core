@@ -9,7 +9,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const withNextIntl = createNextIntlPlugin();
 
 // Disable memory-heavy webpack plugins on Vercel preview builds
-// Production deploys (VERCEL_ENV=production) get full Sentry + PWA
+// Production deploys (VERCEL_ENV=production) get full PWA
 const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
 
 // Additional memory optimization for local builds
@@ -32,7 +32,6 @@ const nextConfig = {
                 'node_modules/terser/**',
                 'node_modules/firebase-admin/**',
                 'node_modules/@google-cloud/**',
-                'node_modules/@sentry/webpack-plugin/**',
                 'node_modules/pdfjs-dist/**',
                 'node_modules/jspdf/**',
                 'node_modules/exceljs/**',
@@ -47,10 +46,6 @@ const nextConfig = {
         // compress: true,
         // Enable modern JavaScript features
         esmExternals: true,
-        // TEMPORARY: Disabled — Sentry webpack plugin emits client-formatted bundles
-        // into .next/server/ causing 'self is not defined' in npm start.
-        // Re-enable once @sentry/nextjs fixes server instrumentation bundling.
-        instrumentationHook: false,
     },
     typescript: {
         ignoreBuildErrors: false,
@@ -74,9 +69,11 @@ const nextConfig = {
             { protocol: 'https', hostname: 'firebasestorage.googleapis.com', pathname: '**' },
         ],
     },
-    webpack(config, { isServer, dev }) {
+    webpack(config, { isServer, dev, nextRuntime }) {
         // Memory optimizations for builds
-        if (!dev) {
+        // Skip splitChunks for edge runtime — chunk splitting adds content hashes
+        // to entry names which breaks the middleware sandbox's entry lookup.
+        if (!dev && nextRuntime !== 'edge') {
             config.optimization = {
                 ...config.optimization,
                 splitChunks: {
@@ -288,24 +285,4 @@ const withPWA = require("next-pwa")({
         },
     ],
 });
-const { withSentryConfig } = require("@sentry/nextjs");
-
-// TEMPORARY: Sentry webpack plugin bypassed — emits client-formatted bundles
-// into .next/server/ causing 'self is not defined' + middleware TypeError in npm start.
-// Re-enable once @sentry/nextjs fixes server instrumentation bundling.
-// module.exports = withSentryConfig(
-//     withBundleAnalyzer(withPWA(withNextIntl(nextConfig))),
-//     {
-//         org: "test-dev-vw",
-//         project: "javascript-nextjs",
-//         sentryConfigFile: "./instrumentation-client.ts",
-//         silent: true,
-//         disableClientWebpackPlugin: isVercelPreview,
-//         disableServerWebpackPlugin: isVercelPreview,
-//         disableSourceMapUpload: isVercelPreview,
-//         widenClientFileUpload: false,
-//         disableLogger: true,
-//         automaticVercelMonitors: true,
-//     }
-// );
 module.exports = withBundleAnalyzer(withPWA(withNextIntl(nextConfig)));
