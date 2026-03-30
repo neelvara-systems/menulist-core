@@ -4,15 +4,14 @@ import { commonFeaturesList } from '@data/PlatformFeaturesList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@shadcncomponents/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@shadcncomponents/tooltip';
 import { FC, Fragment } from 'react';
-import { FaCheckCircle, FaInfoCircle } from 'react-icons/fa';
-import { IoCloseCircle } from 'react-icons/io5';
+import { LuCheckCircle, LuInfo, LuXCircle } from 'react-icons/lu';
 
 const renderFeatureValue = (value: string | number | boolean) => {
     if (typeof value === 'boolean') {
         return value ? (
-            <FaCheckCircle className="text-green-500 text-xl mx-auto" />
+            <LuCheckCircle className="text-green-500 text-xl mx-auto" />
         ) : (
-            <IoCloseCircle className="text-slate-400 text-xl mx-auto" />
+            <LuXCircle className="text-slate-400 text-xl mx-auto" />
         );
     }
     return <span className="text-slate-600 dark:text-slate-300 font-medium">{value}</span>;
@@ -59,7 +58,7 @@ const FeatureComparisonTable: FC<{ allFeaturesList: Feature[], plans: Plan[], pl
                                             <Tooltip>
                                                 <TooltipTrigger className="flex items-center gap-2 cursor-help text-left">
                                                     <span>{feature.name}</span>
-                                                    <FaInfoCircle className="text-slate-400 dark:text-slate-500" />
+                                                    <LuInfo className="text-slate-400 dark:text-slate-500" />
                                                 </TooltipTrigger>
                                                 <TooltipContent>
                                                     <p className="max-w-xs">{feature.description}</p>

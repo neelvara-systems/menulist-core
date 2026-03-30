@@ -12,8 +12,7 @@ import { getGracePeriodInfo, hasValidSubscriptionAccess } from "@util/razorpay";
 import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { FaCcMastercard, FaCcVisa, FaCreditCard } from "react-icons/fa";
-import { LuHeartCrack, LuHeartOff, LuHeartPulse, LuLayoutDashboard, LuPause, LuReceipt, LuTimer } from 'react-icons/lu';
+import { LuCreditCard, LuHeartCrack, LuHeartOff, LuHeartPulse, LuLayoutDashboard, LuPause, LuReceipt, LuTimer } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from ".";
 import PricingFaq from "./PricingFaq";
 import CreditPacksCtaSection from "./shared/CreditPacksCtaSection";
@@ -24,10 +23,7 @@ interface SubscriptionManagementRendererProps {
 }
 
 const PaymentMethodIcon = ({ brand }: { brand?: string }) => {
-    const lowerBrand = brand?.toLowerCase();
-    if (lowerBrand === "visa") return <FaCcVisa className="w-4 h-4 mr-2" />;
-    if (lowerBrand === "mastercard") return <FaCcMastercard className="w-4 h-4 mr-2" />;
-    return <FaCreditCard className="w-4 h-4 mr-2 text-gray-400" />;
+    return <LuCreditCard className="w-4 h-4 mr-2 text-gray-400" title={brand || 'Card'} />;
 };
 
 const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererProps> = ({ activeSubscription, refetchActiveSubscription }) => {

@@ -1,13 +1,16 @@
 'use client';
 
 import PricingPageRenderer from '@/components/website/pricing-pages';
-import SubscriptionManagementPage from '@/components/website/pricing-pages/SubscriptionManagement';
-import { getActiveSubscriptionForStore } from '@database/subscriptions';
-import { getTenantById } from '@database/tenants';
 import { Toaster } from '@shadcncomponents/toaster';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { useSession } from 'next-auth/react';
+import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
+
+const SubscriptionManagementPage = dynamic(
+    () => import('@/components/website/pricing-pages/SubscriptionManagement'),
+    { ssr: false }
+);
 
 export default function PricingWrapper() {
     const { data: session, status, update } = useSession();
@@ -18,6 +21,10 @@ export default function PricingWrapper() {
     const [welcomeTenantName, setWelcomeTenantName] = useState<string | null>(null);
 
     const getSubscription = async () => {
+        const [{ getActiveSubscriptionForStore }, { getTenantById }] = await Promise.all([
+            import('@database/subscriptions'),
+            import('@database/tenants'),
+        ]);
         const sub = await getActiveSubscriptionForStore(session?.user?.tenantId, session?.user?.storeId);
         setActiveSubscription(sub);
         setIsLoading(false);

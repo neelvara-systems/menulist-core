@@ -1,6 +1,5 @@
 'use client';
 
-import { addEnquiry } from '@/database/landingPage/enquiries';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -64,6 +63,7 @@ export default function ContactPage() {
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
+      const { addEnquiry } = await import('@/database/landingPage/enquiries');
       await addEnquiry(values);
       reset();
       setSubmitted(true);

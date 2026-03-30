@@ -10,19 +10,21 @@ import { Tabs, TabsList, TabsTrigger } from '@shadcncomponents/tabs';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { signIn, useSession } from 'next-auth/react';
+import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import { LuCode, LuStore } from 'react-icons/lu';
 import CurrencySwitcher from './CurrencySwitcher';
-import FeatureComparisonTable from './FeatureComparisonTable';
 import './main.css';
-import OnboardingModal from './OnboardingModal';
 import PlanCard from './PlanCard';
 import PricingFaq from './PricingFaq';
 import CreditPacksCtaSection from './shared/CreditPacksCtaSection';
 import EnterpriseCtaSection from './shared/EnterpriseCtaSection';
 import Loader from './shared/Loader';
-import SubscriptionPayementSuccessModal from './SubscriptionPayementSuccessModal';
 import WelcomeBackBanner from './WelcomeBackBanner';
+
+const FeatureComparisonTable = dynamic(() => import('./FeatureComparisonTable'), { ssr: false });
+const OnboardingModal = dynamic(() => import('./OnboardingModal'), { ssr: false });
+const SubscriptionPayementSuccessModal = dynamic(() => import('./SubscriptionPayementSuccessModal'), { ssr: false });
 
 export const formatCurrencyOnPricingPage = (amount: number, currency: Currency) => {
     if (!currency) return '';
