@@ -21,7 +21,7 @@ const nextConfig = {
     },
     experimental: {
         serverComponentsExternalPackages: ['@google-cloud/tasks', 'firebase-admin'],
-        webpackBuildWorker: true,
+        webpackBuildWorker: false,
         serverSourceMaps: false,
         outputFileTracingExcludes: {
             '*': [
@@ -40,7 +40,7 @@ const nextConfig = {
             ],
         },
         // Optimize for memory usage in builds
-        optimizeCss: true,
+        // optimizeCss: true, // Disabled — causes silent page drops on Vercel OOM builds
         optimizePackageImports: ['antd', 'antd-mobile', 'react-icons'],
         // Enable compression
         // compress: true,

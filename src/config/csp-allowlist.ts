@@ -27,6 +27,7 @@ export const CSP_ALLOWLIST = {
         'https://www.gstatic.com/recaptcha/',
         'https://cdnjs.cloudflare.com', // Animate.css and other libraries
         "https://checkout.razorpay.com/v1/checkout.js",
+        'https://www.clarity.ms', // Microsoft Clarity analytics
         // Add more script sources here as needed
     ],
 
@@ -77,6 +78,7 @@ export const CSP_ALLOWLIST = {
         'http://localhost:8080', // Firebase Firestore Emulator (alternative)
         'http://127.0.0.1:9199', // Firebase Storage Emulator (dev only)
         'http://localhost:9199', // Firebase Storage Emulator (alternative)
+        'https://*.clarity.ms', // Microsoft Clarity analytics reporting
         // Add more API endpoints here as needed
     ],
 
