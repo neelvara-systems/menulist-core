@@ -73,7 +73,7 @@ const nextConfig = {
         // Memory optimizations for builds
         // Skip splitChunks for edge runtime — chunk splitting adds content hashes
         // to entry names which breaks the middleware sandbox's entry lookup.
-        if (!dev && nextRuntime !== 'edge') {
+        if (!dev && !isServer && nextRuntime !== 'edge') {
             config.optimization = {
                 ...config.optimization,
                 splitChunks: {
