@@ -4,10 +4,10 @@ import Confetti from '@atoms/Confetti';
 import { AIEnhancementPack, Currency } from '@data/common';
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
 import usePaymentHandler from '@hook/usePaymentHandler';
-import CtaSection from '@shadcncomponents/CtaSection';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import React, { useState } from 'react';
+import SectionHeading from '../../shared/SectionHeading';
 import CreditPackCard from '../CreditPackCard';
 import Loader from './Loader';
 
@@ -55,17 +55,18 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
 
     return (
         <>
-            <CtaSection
-                heading="Need more content generation credits?"
-                subheading="Purchase additional credits for image and description generation. Credits are added to your account immediately."
-                primaryButton={
-                    <div id="credit-packs" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-4xl mx-auto mt-8">
-                        {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (
-                            <CreditPackCard activeSubscription={activeSubscription} key={pack.packId} pack={pack} currency={currency} onPurchase={handleCreditsCardClick} />
-                        ))}
-                    </div>
-                }
-            />
+            <div style={{ textAlign: 'center' }}>
+                <SectionHeading
+                    title="Need more content generation credits?"
+                    subtitle="Purchase additional credits for image and description generation. Credits are added to your account immediately."
+                    centered
+                />
+                <div id="credit-packs" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap', maxWidth: '800px', margin: 'var(--ws-space-10) auto 0' }}>
+                    {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (
+                        <CreditPackCard activeSubscription={activeSubscription} key={pack.packId} pack={pack} currency={currency} onPurchase={handleCreditsCardClick} />
+                    ))}
+                </div>
+            </div>
             {isLoading && <Loader />}
             {showConfetti && (
                 <div className="fixed top-0 left-0 w-full h-full z-50">

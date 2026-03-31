@@ -7,9 +7,8 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@shadcncomponents/accordion";
-import { Button } from "@shadcncomponents/button";
-import { cn } from "@shadcnlib/utils";
 import { useState } from 'react';
+import SectionHeading from '../shared/SectionHeading';
 
 const pricingFaqData = [
     // == Understanding Our Plans ==
@@ -124,51 +123,57 @@ const PricingFaq = () => {
     const filteredFaqs = pricingFaqData.filter(faq => faq.category === activeFilter);
 
     return (
-        <section className="py-16 sm:py-24" style={{ backgroundColor: 'var(--ws-bg-subtle)', color: 'var(--ws-text-primary)' }}>
-            <div className="container mx-auto px-4">
-                <div className="max-w-3xl mx-auto text-center mb-12">
-                    <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: 'var(--ws-text-primary)' }}>
-                        Frequently Asked Questions
-                    </h2>
-                    <p className="mt-4 text-lg" style={{ color: 'var(--ws-text-secondary)' }}>
-                        Here is a list of answers to the most common questions about our plans and pricing.
-                    </p>
+        <section className="ws-section ws-section--subtle">
+            <div className="ws-container">
+                <div style={{ marginBottom: 'var(--ws-space-10)' }}>
+                    <SectionHeading
+                        title="Frequently Asked Questions"
+                        subtitle="Here is a list of answers to the most common questions about our plans and pricing."
+                        centered
+                    />
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-2 mb-12">
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-2)', marginBottom: 'var(--ws-space-10)', flexWrap: 'wrap' }}>
                     {Array.from(categories).map(category => (
-                        <Button
+                        <button
                             key={category}
                             onClick={() => setActiveFilter(category)}
-                            variant={activeFilter === category ? 'default' : 'outline'}
-                            className={cn(
-                                "rounded-full px-6 py-2 transition-all duration-200",
-                                {
-                                    'bg-blue-600 text-white hover:bg-blue-700': activeFilter === category,
-                                    'border-slate-200 text-slate-600 hover:bg-slate-100': activeFilter !== category,
-                                }
-                            )}
+                            style={{
+                                padding: '6px 18px',
+                                borderRadius: '20px',
+                                fontSize: '0.8125rem',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                border: `1px solid ${activeFilter === category ? 'var(--ws-brand-secondary)' : 'var(--ws-border-default)'}`,
+                                backgroundColor: activeFilter === category ? 'var(--ws-brand-secondary)' : 'transparent',
+                                color: activeFilter === category ? '#fff' : 'var(--ws-text-secondary)',
+                                transition: 'all var(--ws-transition-fast)',
+                            }}
                         >
                             {category}
-                        </Button>
+                        </button>
                     ))}
                 </div>
 
-                <div className="max-w-4xl mx-auto">
-                    <Accordion type="single" collapsible className="w-full space-y-4">
+                <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                    <Accordion type="single" collapsible className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
                         {filteredFaqs.map((faq, index) => (
-                            <AccordionItem key={index} value={`item-${index}`} className="border border-slate-200 bg-white rounded-lg px-2">
+                            <AccordionItem
+                                key={index}
+                                value={`item-${index}`}
+                                style={{
+                                    background: 'var(--ws-bg-primary)',
+                                    border: '1px solid var(--ws-border-default)',
+                                    borderRadius: 'var(--ws-radius-lg)',
+                                    padding: '0 var(--ws-space-2)',
+                                }}
+                            >
                                 <AccordionTrigger className="hover:no-underline py-4 px-4">
-                                    <div className="w-full flex flex-col items-start gap-3 text-left">
-                                        {/* <span className="py-1 px-3 bg-blue-100 text-blue-800 dark:bg-blue-600/20 dark:text-blue-300 rounded-full text-xs font-semibold tracking-wide">
-                                            {faq.category}
-                                        </span> */}
-                                        <span className="text-base md:text-md font-medium" style={{ color: 'var(--ws-text-primary)' }}>
-                                            {faq.question}
-                                        </span>
-                                    </div>
+                                    <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--ws-text-primary)', textAlign: 'left' }}>
+                                        {faq.question}
+                                    </span>
                                 </AccordionTrigger>
-                                <AccordionContent className="px-4 pb-4 text-sm" style={{ color: 'var(--ws-text-secondary)' }}>
+                                <AccordionContent className="px-4 pb-4" style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--ws-text-secondary)' }}>
                                     {faq.answer}
                                 </AccordionContent>
                             </AccordionItem>

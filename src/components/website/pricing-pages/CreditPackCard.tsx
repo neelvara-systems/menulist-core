@@ -5,10 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shadcncomponents/card
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { signIn, useSession } from 'next-auth/react';
 import React from 'react';
-import { FaCoins } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
-import { GiTwoCoins } from 'react-icons/gi';
-import { RiCoinFill } from 'react-icons/ri';
+import { LuCoins } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from '.';
 import './main.css';
 
@@ -26,25 +24,25 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
 
     const planStyles = {
         starter: {
-            icon: <RiCoinFill className="h-10 w-5 text-blue-500" />,
+            icon: <LuCoins className="h-5 w-5 text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-slate-200',
             buttonClass: 'bg-blue-600 hover:bg-blue-700'
         },
         value: {
-            icon: <GiTwoCoins className="h-10 w-5 text-blue-500" />,
+            icon: <LuCoins className="h-5 w-5 text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-blue-400',
             buttonClass: 'bg-blue-600 hover:bg-blue-700'
         },
         pro: {
-            icon: <FaCoins className="h-10 w-5 text-blue-500" />,
+            icon: <LuCoins className="h-5 w-5 text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-slate-200',
             buttonClass: 'bg-blue-600 hover:bg-blue-700'
         },
         enhancement: {
-            icon: <RiCoinFill className="h-10 w-5 text-blue-500" />,
+            icon: <LuCoins className="h-5 w-5 text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-blue-400',
             buttonClass: 'bg-blue-600 hover:bg-blue-700'
@@ -52,7 +50,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
     };
 
     const defaultStyle = {
-        icon: <RiCoinFill className="h-10 w-5 text-blue-500" />,
+        icon: <LuCoins className="h-5 w-5 text-blue-500" />,
         bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
         borderColor: 'border-slate-200',
         buttonClass: 'bg-blue-600 hover:bg-blue-700'
@@ -62,7 +60,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
 
     const cardClasses = `
             relative flex flex-col h-full p-6 pb-4 rounded-2xl transition-all duration-300 hover:-translate-y-1.5 text-white
-            ${currentStyle.bgColor} ${currentStyle.borderColor} border
+            ${currentStyle.bgColor} ${currentStyle.borderColor} border w-full max-w-[320px]
         `;
 
     const onClickOurchasePlan = () => {

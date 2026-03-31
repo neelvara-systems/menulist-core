@@ -26,7 +26,8 @@ export const CSP_ALLOWLIST = {
         'https://www.google.com/recaptcha/',
         'https://www.gstatic.com/recaptcha/',
         'https://cdnjs.cloudflare.com', // Animate.css and other libraries
-        "https://checkout.razorpay.com/v1/checkout.js",
+        "https://checkout.razorpay.com",
+        "https://cdn.razorpay.com",
         'https://www.clarity.ms', // Microsoft Clarity analytics
         // Add more script sources here as needed
     ],
@@ -79,6 +80,7 @@ export const CSP_ALLOWLIST = {
         'http://127.0.0.1:9199', // Firebase Storage Emulator (dev only)
         'http://localhost:9199', // Firebase Storage Emulator (alternative)
         'https://*.clarity.ms', // Microsoft Clarity analytics reporting
+        'https://*.razorpay.com', // Razorpay payment processing API calls
         // Add more API endpoints here as needed
     ],
 

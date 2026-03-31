@@ -69,7 +69,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests"
+        ...(isProduction ? ["upgrade-insecure-requests"] : []),
     ];
 
     const cspDirectivesStrict = [
@@ -90,7 +90,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests",
+        ...(isProduction ? ["upgrade-insecure-requests"] : []),
     ];
 
     if (!isDev) {

@@ -5,8 +5,7 @@ import { CustomPlanFeaturesList, PremiumPlanFeaturesList, ProPlanFeaturesList, S
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@shadcncomponents/tooltip';
 
 import React from 'react';
-import { HiOutlineOfficeBuilding } from 'react-icons/hi';
-import { LuCheck, LuInfo, LuStore, LuZap } from 'react-icons/lu';
+import { LuBuilding2, LuCheck, LuInfo, LuStore, LuZap } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from '.';
 import './main.css';
 
@@ -46,7 +45,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, allFeaturesList, on
             buttonText: 'Create your MenuList'
         },
         pro: {
-            icon: <HiOutlineOfficeBuilding className="w-full h-full text-blue-500" />,
+            icon: <LuBuilding2 className="w-full h-full text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-blue-400 dark:border-blue-500',
             buttonClass: 'bg-blue-600 hover:bg-blue-700',

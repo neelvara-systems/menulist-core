@@ -3,7 +3,7 @@
 
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import * as React from "react"
-import { FaChevronDown } from "react-icons/fa"
+import { LuChevronDown } from "react-icons/lu"
 
 import { cn } from "../lib/utils"
 
@@ -38,7 +38,7 @@ const AccordionTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      <FaChevronDown className="h-4 w-4 shrink-0 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+      <LuChevronDown className="h-4 w-4 shrink-0 transition-transform duration-300 group-data-[state=open]:rotate-180" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))

@@ -4,15 +4,14 @@ import { BillingInterval, Currency, Plan, PlanType, PurchaseIntent } from '@data
 import PlatformFeaturesList from '@data/PlatformFeaturesList';
 import { CustomePlanForB2B, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import usePaymentHandler from '@hook/usePaymentHandler';
-import SectionHeading from '@shadcncomponents/SectionHeading';
 import { Switch } from '@shadcncomponents/switch';
-import { Tabs, TabsList, TabsTrigger } from '@shadcncomponents/tabs';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { signIn, useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
-import { LuCode, LuStore } from 'react-icons/lu';
+import SectionHeading from '../shared/SectionHeading';
+import SectionWrapper from '../shared/SectionWrapper';
 import CurrencySwitcher from './CurrencySwitcher';
 import './main.css';
 import PlanCard from './PlanCard';
@@ -150,98 +149,101 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     }
 
     return (
-        <div className="container mx-auto px-4 py-20">
-            {welcomeTenantName && <WelcomeBackBanner tenantName={welcomeTenantName} />}
+        <>
+            {welcomeTenantName && (
+                <SectionWrapper variant="default">
+                    <WelcomeBackBanner tenantName={welcomeTenantName} />
+                </SectionWrapper>
+            )}
 
-            <SectionHeading
-                text="Simple, transparent pricing."
-                highlightedText="transparent pricing."
-                subheading='Choose the plan that matches your business size. Every plan includes the complete official menu system.'
-            />
-
-            <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
-
-            <div id="subscription-plans">
-                <div className="flex justify-center items-center mb-6">
-                    <Tabs value={activeBusinessType} onValueChange={(value) => setActiveBusinessType(value as PlanType)} className="w-full max-w-md mx-auto">
-                        <TabsList className="grid w-full grid-cols-2 p-1 h-auto rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                            <TabsTrigger value="B2C" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-                                <div className="flex items-center justify-center gap-3">
-                                    <LuStore className="h-6 w-6" />
-                                    Business Owners
-                                </div>
-                            </TabsTrigger>
-                            <TabsTrigger value="B2B" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-                                <div className="flex items-center justify-center gap-3">
-                                    <LuCode className="h-6 w-6" />
-                                    Developers
-                                </div>
-                            </TabsTrigger>
-                        </TabsList>
-                    </Tabs>
+            <section style={{ padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-6)', textAlign: 'center' }}>
+                <div className="ws-container" style={{ maxWidth: 'var(--ws-max-w-text)' }}>
+                    <SectionHeading
+                        title="Simple, transparent pricing."
+                        highlightedText="transparent pricing."
+                        subtitle="Choose the plan that matches your business size. Every plan includes the complete official menu system."
+                        centered
+                    />
                 </div>
 
-                <div className="flex justify-center items-center gap-4 my-10">
-                    <span className={`font-medium ${billingInterval === 'MONTH' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Monthly</span>
-                    <Switch
-                        checked={billingInterval === 'YEAR'}
-                        onCheckedChange={(checked) => setBillingInterval(checked ? 'YEAR' : 'MONTH')}
-                        aria-label="Switch between monthly and yearly billing"
-                    />
-                    <div className="flex items-center gap-2">
-                        <span className={`font-medium ${billingInterval === 'YEAR' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Yearly</span>
-                        <span className="text-xs font-semibold text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400 px-2 py-1 rounded-full">SAVE 17%</span>
+                <div className="ws-container">
+                    <div style={{ marginTop: 'var(--ws-space-8)' }}>
+                        <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
                     </div>
                 </div>
+            </section>
 
-                <div className="mb-20">
-                    {activeBusinessType === 'B2C' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
-                            {allPlansList.filter(plan => plan.type === 'B2C' && plan.billingInterval === billingInterval).map(plan => (
-                                <PlanCard
-                                    allFeaturesList={PlatformFeaturesList.B2C}
-                                    key={`${plan.planId}-${plan.billingInterval}`}
-                                    plan={plan}
-                                    currency={currency}
-                                    onPurchase={(plan) => handlePaymentCardClick(plan)}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
-                            {allPlansList.filter(plan => plan.type === 'B2B' && plan.billingInterval === billingInterval).map(plan => (
-                                <PlanCard
-                                    allFeaturesList={PlatformFeaturesList.B2B}
-                                    key={`${plan.planId}-${plan.billingInterval}`}
-                                    plan={plan}
-                                    currency={currency}
-                                    onPurchase={(plan) => handlePaymentCardClick(plan)}
-                                />
-                            ))}
-                            <PlanCard
-                                allFeaturesList={PlatformFeaturesList.B2B}
-                                key={CustomePlanForB2B.planId}
-                                plan={CustomePlanForB2B}
-                                currency={currency}
-                                onPurchase={(plan) => handlePaymentCardClick(plan)}
+            <section style={{ padding: '0 var(--ws-space-6) var(--ws-space-16)' }}>
+                <div className="ws-container">
+                    <div id="subscription-plans">
+                        <div className="flex justify-center items-center gap-4 my-10">
+                            <span className={`font-medium ${billingInterval === 'MONTH' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Monthly</span>
+                            <Switch
+                                checked={billingInterval === 'YEAR'}
+                                onCheckedChange={(checked) => setBillingInterval(checked ? 'YEAR' : 'MONTH')}
+                                aria-label="Switch between monthly and yearly billing"
                             />
+                            <div className="flex items-center gap-2">
+                                <span className={`font-medium ${billingInterval === 'YEAR' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Yearly</span>
+                                <span className="text-xs font-semibold text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400 px-2 py-1 rounded-full">SAVE 17%</span>
+                            </div>
                         </div>
-                    )}
+
+                        <div className="mb-20">
+                            {activeBusinessType === 'B2C' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
+                                    {allPlansList.filter(plan => plan.type === 'B2C' && plan.billingInterval === billingInterval).map(plan => (
+                                        <PlanCard
+                                            allFeaturesList={PlatformFeaturesList.B2C}
+                                            key={`${plan.planId}-${plan.billingInterval}`}
+                                            plan={plan}
+                                            currency={currency}
+                                            onPurchase={(plan) => handlePaymentCardClick(plan)}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
+                                    {allPlansList.filter(plan => plan.type === 'B2B' && plan.billingInterval === billingInterval).map(plan => (
+                                        <PlanCard
+                                            allFeaturesList={PlatformFeaturesList.B2B}
+                                            key={`${plan.planId}-${plan.billingInterval}`}
+                                            plan={plan}
+                                            currency={currency}
+                                            onPurchase={(plan) => handlePaymentCardClick(plan)}
+                                        />
+                                    ))}
+                                    <PlanCard
+                                        allFeaturesList={PlatformFeaturesList.B2B}
+                                        key={CustomePlanForB2B.planId}
+                                        plan={CustomePlanForB2B}
+                                        currency={currency}
+                                        onPurchase={(plan) => handlePaymentCardClick(plan)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <CreditPacksCtaSection currency={currency} activeSubscription={activeSubscription} />
+            <SectionWrapper variant="subtle">
+                <CreditPacksCtaSection currency={currency} activeSubscription={activeSubscription} />
+            </SectionWrapper>
 
-            <div className="my-20">
-                <div className="text-center mb-10">
-                    <h2 className="text-3xl font-bold">Plan comparison</h2>
+            <SectionWrapper variant="default">
+                <div style={{ marginBottom: 'var(--ws-space-10)' }}>
+                    <SectionHeading
+                        title="Plan comparison"
+                        centered
+                    />
                 </div>
                 {activeBusinessType === 'B2C' ? (
                     <FeatureComparisonTable allFeaturesList={PlatformFeaturesList.B2C} plans={allPlansList.filter(plan => plan.type === 'B2C' && plan.billingInterval === billingInterval)} planType={'B2C'} />
                 ) : (
                     <FeatureComparisonTable allFeaturesList={PlatformFeaturesList.B2B} plans={allPlansList.filter(plan => plan.type === 'B2B' && plan.billingInterval === billingInterval)} planType={'B2B'} />
                 )}
-            </div>
+            </SectionWrapper>
 
             <EnterpriseCtaSection />
 
@@ -264,17 +266,15 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             />
 
             {isLoading && <Loader />}
-        </div>
+        </>
     );
 };
 
 const PricingPage: React.FC<{ welcomeTenantName?: string, activeSubscription?: FirestoreSubscriptionDoc }> = ({ welcomeTenantName, activeSubscription }) => {
     return (
-        <div id="pricing" className="flex flex-col min-h-screen antialiased" style={{ backgroundColor: 'var(--ws-bg-primary)', color: 'var(--ws-text-primary)' }}>
-            <main className="relative flex-grow overflow-hidden">
-                <PricingPageRenderer welcomeTenantName={welcomeTenantName} activeSubscription={activeSubscription} />
-                <PricingFaq />
-            </main>
+        <div id="pricing" className="ws-page">
+            <PricingPageRenderer welcomeTenantName={welcomeTenantName} activeSubscription={activeSubscription} />
+            <PricingFaq />
         </div>
     );
 }
