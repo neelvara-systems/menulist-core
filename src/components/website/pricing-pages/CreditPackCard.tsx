@@ -59,8 +59,8 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
     const currentStyle = planStyles[pack.packId as keyof typeof planStyles] || defaultStyle;
 
     const cardClasses = `
-            relative flex flex-col h-full p-6 pb-4 rounded-2xl transition-all duration-300 hover:-translate-y-1.5 text-white
-            ${currentStyle.bgColor} ${currentStyle.borderColor} border w-full max-w-[320px]
+            relative flex flex-col h-full p-4 pb-3 rounded-xl transition-all duration-300 hover:-translate-y-1 text-white
+            ${currentStyle.bgColor} ${currentStyle.borderColor} border w-full max-w-[280px]
         `;
 
     const onClickOurchasePlan = () => {
@@ -76,40 +76,40 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
     const CTAButton = () => {
         if (!Boolean(session?.user)) {
             return <Button
-                className={`mt-8 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
+                className={`mt-6 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
                 variant='ghost'
                 onClick={() => signIn('google', { callbackUrl: window.location.href })}
             >
-                Sign In to Purchase<>&nbsp; <FcGoogle /></>
+                Add more AI capacity<>&nbsp; <FcGoogle /></>
             </Button>
         } else if (Boolean(activeSubscription?.id)) {
             return <Button
-                className={`mt-8 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
+                className={`mt-6 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
                 variant='ghost'
                 onClick={() => onPurchase(pack, currency)}
             >
-                Purchase<>&nbsp; {currentStyle.icon}</>
+                Add more AI capacity<>&nbsp; {currentStyle.icon}</>
             </Button>
         } else {
             return <Button
-                className={`mt-8 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
+                className={`mt-6 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
                 variant='ghost'
                 onClick={() => onClickOurchasePlan()}
             >
-                Purchase Plan
+                Add more AI capacity
             </Button>
         }
     }
 
     return (
         <Card className={cardClasses}>
-            <CardHeader className="text-center pb-4">
-                <CardTitle className="text-xl font-semibold m-0 text-center text-gray-600 dark:text-gray-400">{pack.name}</CardTitle>
+            <CardHeader className="text-center pb-2">
+                <CardTitle className="text-lg font-semibold m-0 text-center text-gray-600 dark:text-gray-400">{pack.name}</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-0 flex-grow flex flex-col items-center justify-between">
+            <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-between">
                 <div className="text-center">
                     <p className="text-gray-600 dark:text-gray-300 text-sm">{pack.description || 'AI Enhancement Pack'}</p>
-                    <span className="text-4xl font-bold text-slate-900 dark:text-white mt-2 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white mt-1 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
                 </div>
                 <CTAButton />
                 {/* {status === 'authenticated' && session?.user ? <Button

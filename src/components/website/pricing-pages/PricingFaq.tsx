@@ -11,107 +11,93 @@ import { useState } from 'react';
 import SectionHeading from '../shared/SectionHeading';
 
 const pricingFaqData = [
-    // == Understanding Our Plans ==
+    // == Getting Started ==
     {
-        category: 'Understanding Our Plans',
-        question: `What's the difference between the Starter, Pro, and Premium plans?`,
+        category: 'Getting Started',
+        question: `How long does setup take?`,
+        answer: (
+            <p>Go live in minutes.</p>
+        )
+    },
+    {
+        category: 'Getting Started',
+        question: `Do I need technical knowledge?`,
+        answer: (
+            <p>No. Everything works without setup or coding.</p>
+        )
+    },
+    {
+        category: 'Getting Started',
+        question: `What happens after I subscribe?`,
+        answer: (
+            <p>Upload your menu, review it, and publish instantly.</p>
+        )
+    },
+    // == Understanding Plans ==
+    {
+        category: 'Understanding Plans',
+        question: `Which plan should I choose?`,
         answer: (
             <div className="space-y-2">
-                <p>Each plan is designed for a different stage of your business:</p>
+                <p>Choose based on your stage:</p>
                 <ul className="list-disc list-outside pl-5 space-y-1">
-                    <li><strong>Starter</strong> gets your business online with one complete project, AI content generation, and your official business page.</li>
-                    <li><strong>Pro</strong> is built for growing businesses — more projects, custom domains, full analytics, and higher AI usage limits.</li>
-                    <li><strong>Premium</strong> is for businesses that need maximum creative power, with the highest credit allowance and access to all advanced features.</li>
+                    <li><strong>Starter</strong> — getting your menu online quickly with one outlet.</li>
+                    <li><strong>Pro</strong> — full presentation control, AI content, multi-language, and branding. Most restaurants choose this.</li>
+                    <li><strong>Premium</strong> — central control across multiple outlets with consistent branding.</li>
                 </ul>
             </div>
         )
     },
     {
-        category: 'Understanding Our Plans',
-        question: `What is a "Project"?`,
+        category: 'Understanding Plans',
+        question: `Can I upgrade later?`,
         answer: (
-            <p>A Project is a complete digital catalog for your business. Each Project has its own items, categories, design, URL, and analytics. For example, a business might have separate projects for &quot;Food Menu&quot; and &quot;Bar Menu&quot;.</p>
+            <p>Yes. Move from Starter to Pro or Premium anytime without losing data. Upgrades happen instantly with prorated billing.</p>
         )
     },
     {
-        category: 'Understanding Our Plans',
-        question: `Do you offer a free trial?`,
-        answer: (
-            <p>Our Starter plan is priced to let you experience the full platform at minimal cost. You can also contact us for a live demo before subscribing.</p>
-        )
-    },
-    {
-        category: 'Understanding Our Plans',
-        question: `Can I change my plan later?`,
-        answer: (
-            <p>Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades happen instantly with prorated billing. Downgrades take effect at the end of your current billing cycle.</p>
-        )
-    },
-    {
-        category: 'Understanding Our Plans',
-        question: `What is your refund policy?`,
-        answer: (
-            <div className="space-y-2">
-                <p>MenuList has a no-refund policy for subscriptions and credit pack purchases, as AI processing costs are incurred immediately.</p>
-                <p>We recommend starting with the Starter plan to experience the platform before upgrading. You can cancel at any time to prevent future charges.</p>
-            </div>
-        )
-    },
-    {
-        category: 'Understanding Our Plans',
+        category: 'Understanding Plans',
         question: `What's included with every plan?`,
         answer: (
             <div className="space-y-2">
                 <p>Every plan includes:</p>
                 <ul className="list-disc list-outside pl-5 space-y-1">
-                    <li>AI-powered data extraction from photos, PDFs, or typed input</li>
+                    <li>QR menu, web menu, and shareable link</li>
+                    <li>Official Business Page with hours, contact, and menu</li>
+                    <li>AI data extraction from images, PDFs, or links</li>
                     <li>AI descriptions, translations, and image generation</li>
-                    <li>Official Business Page with your menu, hours, contact, and Google rating</li>
-                    <li>QR menu, shareable link, digital screen display, and PDF export</li>
-                    <li>Real-time open/closed status and live updates across all surfaces</li>
+                    <li>Real-time updates across all surfaces</li>
                 </ul>
             </div>
         )
     },
-    // == About AI Credits ==
     {
-        category: 'About AI Credits',
-        question: `What are AI Credits?`,
+        category: 'Understanding Plans',
+        question: `What is your refund policy?`,
         answer: (
-            <div className="space-y-2">
-                <p>AI Credits are used for advanced creative operations like image generation and editing. Core features like data extraction, descriptions, and translations are included with your plan and do not use credits.</p>
-                <p>Credits are consumed when you:</p>
-                <ul className="list-disc list-outside pl-5 space-y-1">
-                    <li><strong>Generate images</strong> for your menu items</li>
-                    <li><strong>Edit images</strong> with AI-powered tools</li>
-                    <li><strong>Batch generate</strong> images across your entire catalog</li>
-                </ul>
-            </div>
+            <p>MenuList has a no-refund policy as AI processing costs are incurred immediately. You can cancel anytime to prevent future charges.</p>
+        )
+    },
+    // == AI & Credits ==
+    {
+        category: 'AI & Credits',
+        question: `How does AI usage work?`,
+        answer: (
+            <p>AI runs on credits. Core features like data extraction and descriptions are included. Credits are used for image generation and editing. Each plan includes a monthly allowance, and you can top up anytime.</p>
         )
     },
     {
-        category: 'About AI Credits',
+        category: 'AI & Credits',
         question: `What happens to unused credits?`,
         answer: (
-            <p>Monthly credits reset at the start of each billing cycle and do not roll over. If you need more credits, you can purchase a Credit Pack from your dashboard — these top-up credits do not expire.</p>
-        )
-    },
-    // == Your Business Page ==
-    {
-        category: 'Your Business Page',
-        question: `What is the Official Business Page?`,
-        answer: (
-            <div className="space-y-2">
-                <p>Your Official Business Page is a single link you share everywhere — WhatsApp, Instagram bio, Google Business, packaging, and QR codes. It shows your menu, hours, contact info, Google rating, and photos.</p>
-                <p>It&apos;s auto-generated, always up to date, and included with every plan at no extra cost.</p>
-            </div>
+            <p>Monthly credits reset each billing cycle. Purchased credit packs do not expire.</p>
         )
     },
     {
-        category: 'Your Business Page',
+        category: 'AI & Credits',
         question: `Can I use my own domain?`,
         answer: (
-            <p>Yes. Pro and Premium plans include custom domain support. You can connect your own domain (e.g., joespizza.com) so customers see your brand, not ours.</p>
+            <p>Yes. Pro and Premium plans include custom domain support so customers see your brand, not ours.</p>
         )
     },
 ];
