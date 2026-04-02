@@ -96,7 +96,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         buildCSPDirective('worker-src', CSP_ALLOWLIST.workerSources),
         "object-src 'none'",
         "base-uri 'self'",
-        "form-action 'self'",
+        "form-action 'self' https://accounts.google.com",
         "frame-ancestors 'none'",
     ];
 
