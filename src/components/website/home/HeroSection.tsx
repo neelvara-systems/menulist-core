@@ -1,5 +1,6 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { LuFileText, LuLayoutGrid, LuLink, LuMonitor, LuQrCode } from 'react-icons/lu';
@@ -36,9 +37,12 @@ function SurfaceCard({ label, isActive, dark, children }: { label: string; isAct
 
 export default function HeroSection() {
   const t = useTranslations('Website');
+  const { data: session, status } = useSession();
   const [activeIndex, setActiveIndex] = useState(0);
   const pausedRef = useRef(false);
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const ctaHref = status === 'authenticated' && session ? '/pricing' : '/get-started';
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -78,7 +82,7 @@ export default function HeroSection() {
         </p>
 
         <div style={{ marginTop: 'var(--ws-space-8)' }}>
-          <WebsiteButton href="/get-started">
+          <WebsiteButton href={ctaHref}>
             {t('Hero.cta')}
           </WebsiteButton>
         </div>

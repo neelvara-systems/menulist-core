@@ -77,6 +77,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 paddingLeft: 0,
+                minWidth: 250
             }}
             styles={{
                 body: {

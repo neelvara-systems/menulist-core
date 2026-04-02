@@ -108,7 +108,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                 <Space>
                     {isFinalCycle ? <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })}>Change Plan</Button> :
                         <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
-                    <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button>
+                    {/* <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button> */}
                     {activeSubscription.planId !== 'premium' && <Button icon={<FaBolt />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
                 </Space>
             );

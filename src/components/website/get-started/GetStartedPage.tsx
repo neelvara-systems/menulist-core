@@ -1,9 +1,47 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function GetStartedPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      router.replace('/pricing');
+    }
+  }, [status, session, router]);
+
+  // Show loading state while checking session
+  if (status === 'loading' || (status === 'authenticated' && session)) {
+    return (
+      <main>
+        <section
+          style={{
+            padding: 'var(--ws-space-24) var(--ws-space-6)',
+            backgroundColor: 'var(--ws-bg-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '70vh',
+          }}
+        >
+          <div style={{
+            width: '32px',
+            height: '32px',
+            border: '3px solid var(--ws-border-default)',
+            borderTopColor: 'var(--ws-brand-secondary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </section>
+      </main>
+    );
+  }
   return (
     <main>
       <section

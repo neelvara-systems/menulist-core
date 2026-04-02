@@ -6,7 +6,7 @@ import { Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRC
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa6';
-import { LuAlertTriangle, LuCopy, LuExternalLink, LuFileText } from 'react-icons/lu';
+import { LuAlertTriangle, LuCopy, LuDownload, LuExternalLink, LuFileText } from 'react-icons/lu';
 import MenuKitSection from './MenuKitSection';
 
 const { Text, Title } = Typography;
@@ -160,6 +160,7 @@ function ShareModal({
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            message.success('QR code downloaded');
         }
     };
 
@@ -228,7 +229,7 @@ function ShareModal({
             footer={null}
             width={480}
         >
-            <Flex vertical gap={24}>
+            <Flex vertical gap={24} style={{ maxHeight: '70vh', overflow: 'auto', paddingRight: 8 }}>
                 {/* Header */}
                 <Flex vertical gap={4}>
                     <Title level={4} style={{ margin: 0 }}>{labels.shareTitle}</Title>
@@ -300,6 +301,12 @@ function ShareModal({
                                             Menu PDF
                                         </Button>
                                     </Tooltip>
+                                    <Button
+                                        icon={<LuDownload />}
+                                        onClick={handleDownloadQR}
+                                    >
+                                        Download QR
+                                    </Button>
                                 </Flex>
                             </Flex>
                         </Flex>

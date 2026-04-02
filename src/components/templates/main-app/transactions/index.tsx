@@ -180,7 +180,7 @@ function TransactionPage() {
 
     const fetchProjectsList = async () => {
         const fetchedProjects = await getMetadataProjectsList();
-        setProjectsList(fetchedProjects)
+        setProjectsList(fetchedProjects?.projects || fetchedProjects || [])
         console.log("fetchedProjects", fetchedProjects)
     }
 

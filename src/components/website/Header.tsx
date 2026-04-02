@@ -1,10 +1,11 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LuArrowRight, LuFileText, LuLayoutGrid, LuMapPin, LuMenu, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowRight, LuFileText, LuLayoutGrid, LuMapPin, LuMenu, LuUser, LuX, LuZap } from 'react-icons/lu';
 import LogoMark from './shared/LogoMark';
 import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
 
@@ -17,6 +18,7 @@ const navItemKeys = [
 
 export default function Header() {
   const t = useTranslations('Website');
+  const { data: session, status } = useSession();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
@@ -60,14 +62,29 @@ export default function Header() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-3)' }} className="ws-desktop-nav">
             <WebsiteLanguageSwitcher />
-            <Link href="/pricing" style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ws-text-secondary)', textDecoration: 'none', padding: '0.5rem 0.75rem', transition: 'color var(--ws-transition-fast)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ws-text-primary)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ws-text-secondary)')}>
-              {t('Header.login')}
-            </Link>
-            <Link href="/get-started" className="ws-btn ws-btn--primary" style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem' }}>
-              {t('Header.cta')}
-            </Link>
+            {status === 'authenticated' && session?.user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="ws-btn ws-btn--secondary"
+                  style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}
+                >
+                  <LuUser size={16} />
+                  {session.user.name || session.user.email || 'Dashboard'}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/pricing" style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ws-text-secondary)', textDecoration: 'none', padding: '0.5rem 0.75rem', transition: 'color var(--ws-transition-fast)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ws-text-primary)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ws-text-secondary)')}>
+                  {t('Header.login')}
+                </Link>
+                <Link href="/get-started" className="ws-btn ws-btn--primary" style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem' }}>
+                  {t('Header.cta')}
+                </Link>
+              </>
+            )}
           </div>
 
           <button onClick={openDrawer} className="ws-mobile-nav-toggle" style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 'var(--ws-space-2)', color: 'var(--ws-text-primary)' }} aria-label={t('Header.openMenu')}>
@@ -148,23 +165,42 @@ export default function Header() {
 
               <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '8px 12px' }} />
 
-              <Link
-                href="/pricing"
-                onClick={closeDrawer}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '14px 12px',
-                  fontSize: '0.9375rem', fontWeight: 500,
-                  color: '#64748b', textDecoration: 'none',
-                  borderRadius: '10px',
-                  transition: 'background-color 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <LuArrowRight size={18} color="#94a3b8" />
-                {t('Header.login')}
-              </Link>
+              {status === 'authenticated' && session?.user ? (
+                <Link
+                  href="/dashboard"
+                  onClick={closeDrawer}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 12px',
+                    fontSize: '0.9375rem', fontWeight: 500,
+                    color: '#2563eb', textDecoration: 'none',
+                    borderRadius: '10px',
+                    backgroundColor: '#eff6ff',
+                    transition: 'background-color 0.15s',
+                  }}
+                >
+                  <LuUser size={18} color="#2563eb" />
+                  {session.user.name || session.user.email || 'Dashboard'}
+                </Link>
+              ) : (
+                <Link
+                  href="/pricing"
+                  onClick={closeDrawer}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 12px',
+                    fontSize: '0.9375rem', fontWeight: 500,
+                    color: '#64748b', textDecoration: 'none',
+                    borderRadius: '10px',
+                    transition: 'background-color 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <LuArrowRight size={18} color="#94a3b8" />
+                  {t('Header.login')}
+                </Link>
+              )}
             </nav>
 
             {/* CTA */}
@@ -172,14 +208,16 @@ export default function Header() {
               <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
                 <WebsiteLanguageSwitcher />
               </div>
-              <Link
-                href="/get-started"
-                onClick={closeDrawer}
-                className="ws-btn ws-btn--primary"
-                style={{ display: 'flex', justifyContent: 'center', width: '100%', fontSize: '0.9375rem', padding: '0.875rem', borderRadius: '10px' }}
-              >
-                {t('Header.cta')}
-              </Link>
+              {status !== 'authenticated' && (
+                <Link
+                  href="/get-started"
+                  onClick={closeDrawer}
+                  className="ws-btn ws-btn--primary"
+                  style={{ display: 'flex', justifyContent: 'center', width: '100%', fontSize: '0.9375rem', padding: '0.875rem', borderRadius: '10px' }}
+                >
+                  {t('Header.cta')}
+                </Link>
+              )}
             </div>
           </div>
         </>

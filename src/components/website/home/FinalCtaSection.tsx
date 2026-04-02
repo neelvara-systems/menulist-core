@@ -1,3 +1,6 @@
+'use client';
+
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -5,6 +8,10 @@ import WebsiteButton from '../shared/WebsiteButton';
 
 export default function FinalCtaSection() {
   const t = useTranslations('Website');
+  const { data: session, status } = useSession();
+
+  const ctaHref = status === 'authenticated' && session ? '/pricing' : '/get-started';
+
   return (
     <SectionWrapper>
       <AnimateOnScroll>
@@ -24,7 +31,7 @@ export default function FinalCtaSection() {
           </p>
 
           <div style={{ marginTop: 'var(--ws-space-8)' }}>
-            <WebsiteButton href="/get-started">
+            <WebsiteButton href={ctaHref}>
               {t('FinalCta.cta')}
             </WebsiteButton>
           </div>
