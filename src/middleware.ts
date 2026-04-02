@@ -29,7 +29,11 @@ import { NextRequest, NextResponse } from 'next/server';
 // ═══════════════════════════════════════════════════════════════
 
 function applySecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Use VERCEL_ENV to distinguish real production from preview deployments.
+    // On Vercel, NODE_ENV is always 'production' for both, but VERCEL_ENV is
+    // 'preview' on PR deploys — we don't want strict HSTS/CSP there.
+    const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
+    const isProduction = process.env.NODE_ENV === 'production' && !isVercelPreview;
     const isDev = !isProduction;
 
     // A02: Force HTTPS in Production
@@ -72,6 +76,10 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         ...(isProduction ? ["upgrade-insecure-requests"] : []),
     ];
 
+    // Strict CSP (Report-Only) — monitors what would break under a tighter policy.
+    // Does NOT block anything. Console warnings from this are expected and harmless.
+    // Note: upgrade-insecure-requests is omitted here because browsers ignore it
+    // in report-only mode (W3C spec), and it just adds console noise.
     const cspDirectivesStrict = [
         "default-src 'self'",
         buildCSPDirective('script-src', CSP_ALLOWLIST.scriptSources, {
@@ -90,7 +98,6 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        ...(isProduction ? ["upgrade-insecure-requests"] : []),
     ];
 
     if (!isDev) {
@@ -170,7 +177,19 @@ export function middleware(request: NextRequest) {
     // Priority 2: Multi-Tenant Client Routing
     // ═══════════════════════════════════════════════════════════
 
+    // Skip routing for static assets, API, and internal routes BEFORE
+    // URL normalization — API routes like /api/WebhookPayload must not
+    // be 301-redirected to lowercase.
+    const skipRouting = shouldBypassDomainRouting(pathname) ||
+        pathname.startsWith('/(main)') ||
+        pathname.startsWith('/(global-pages)');
+
+    if (skipRouting) {
+        return applySecurityHeaders(request, NextResponse.next());
+    }
+
     // URL Routing Architecture — Phase 2: Lowercase + trailing slash normalization
+    // Only applies to client tenant routes (not API, not static assets)
     if (domainInfo.isClient && pathname !== pathname.toLowerCase()) {
         const url = request.nextUrl.clone();
         url.pathname = pathname.toLowerCase();
@@ -182,14 +201,9 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(url, 301);
     }
 
-    // Skip routing for static assets, API, and internal routes
-    const skipRouting = shouldBypassDomainRouting(pathname) ||
-        pathname.startsWith('/(main)') ||
-        pathname.startsWith('/(global-pages)');
-
     let response: NextResponse;
 
-    if (domainInfo.isClient && !skipRouting) {
+    if (domainInfo.isClient) {
         // Client domain - rewrite to (client) route group
         const url = request.nextUrl.clone();
         url.pathname = `/_client${pathname === '/' ? '' : pathname}`;
@@ -226,6 +240,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public folder files
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
     ],
 };

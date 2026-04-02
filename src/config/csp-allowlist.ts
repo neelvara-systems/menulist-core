@@ -28,7 +28,7 @@ export const CSP_ALLOWLIST = {
         'https://cdnjs.cloudflare.com', // Animate.css and other libraries
         "https://checkout.razorpay.com",
         "https://cdn.razorpay.com",
-        'https://www.clarity.ms', // Microsoft Clarity analytics
+        'https://*.clarity.ms', // Microsoft Clarity analytics (scripts.clarity.ms + www.clarity.ms)
         // Add more script sources here as needed
     ],
 

@@ -12,8 +12,7 @@ const withNextIntl = createNextIntlPlugin();
 // Production deploys (VERCEL_ENV=production) get full PWA
 const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
 
-// Additional memory optimization for local builds
-const isLocalBuild = !process.env.VERCEL;
+
 
 const nextConfig = {
     sassOptions: {
@@ -64,53 +63,9 @@ const nextConfig = {
     },
     webpack(config, { isServer, dev, nextRuntime }) {
         // Memory optimizations for builds
-        // Skip splitChunks for edge runtime — chunk splitting adds content hashes
-        // to entry names which breaks the middleware sandbox's entry lookup.
         if (!dev && !isServer && nextRuntime !== 'edge') {
             config.optimization = {
                 ...config.optimization,
-                splitChunks: {
-                    ...config.optimization.splitChunks,
-                    chunks: 'all',
-                    minSize: 20000,
-                    maxSize: 150000, // Reduced from 244000
-                    cacheGroups: {
-                        ...config.optimization.splitChunks?.cacheGroups,
-                        commons: {
-                            name: 'commons',
-                            chunks: 'all',
-                            minChunks: 3, // Increased from 2
-                            priority: 10,
-                            reuseExistingChunk: true,
-                        },
-                        vendor: {
-                            test: /[\\/]node_modules[\\/]/,
-                            name: 'vendors',
-                            chunks: 'all',
-                            priority: 20,
-                            reuseExistingChunk: true,
-                        },
-                        // Specific optimizations for large libraries
-                        antd: {
-                            test: /[\\/]node_modules[\\/]antd[\\/]/,
-                            name: 'antd',
-                            chunks: 'all',
-                            priority: 30,
-                        },
-                        'react-icons': {
-                            test: /[\\/]node_modules[\\/]react-icons[\\/]/,
-                            name: 'react-icons',
-                            chunks: 'all',
-                            priority: 30,
-                        },
-                        firebase: {
-                            test: /[\\/]node_modules[\\/](@firebase|firebase)[\\/]/,
-                            name: 'firebase',
-                            chunks: 'all',
-                            priority: 30,
-                        },
-                    },
-                },
                 // Enable tree shaking
                 usedExports: true,
                 sideEffects: false,
@@ -169,19 +124,9 @@ const nextConfig = {
 
         return config;
     },
-    async headers() {
-        return [
-            {
-                source: '/(.*)',
-                headers: [
-                    { key: 'X-Frame-Options', value: 'DENY' },
-                    { key: 'X-Content-Type-Options', value: 'nosniff' },
-                    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-                    { key: 'X-DNS-Prefetch-Control', value: 'on' },
-                ],
-            },
-        ];
-    },
+    // Security headers are managed exclusively by src/middleware.ts
+    // (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.)
+    // Do NOT add an async headers() block here — it would create duplicates.
     async redirects() {
         return [
             { source: '/about-us', destination: '/about', permanent: true },
