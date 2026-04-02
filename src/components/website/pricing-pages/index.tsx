@@ -176,16 +176,61 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 <div className="ws-container" style={{ marginTop: 'var(--ws-space-10)' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-10)', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>
                         <span>Look premium instantly</span>
-                        <span>Update your menu in seconds</span>
+                        <span>No manual menu work</span>
                         <span>No more outdated PDFs</span>
                     </div>
-                    <p style={{ textAlign: 'center', fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-4)' }}>
-                        Make your menu easier to read, easier to update, and better for customers.
-                    </p>
                 </div>
 
-                {/* Spacer to plans */}
-                <div style={{ marginTop: 'var(--ws-space-12)' }} />
+                {/* LAYER 3 — Decision + Controls */}
+                <div className="ws-container" style={{ marginTop: 'var(--ws-space-8)' }}>
+                    {/* Plan selector pills */}
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-3)', flexWrap: 'wrap', marginBottom: 'var(--ws-space-6)' }}>
+                        {['starter', 'pro', 'premium'].map((planId) => (
+                            <button
+                                key={planId}
+                                onClick={() => {
+                                    const element = document.getElementById('subscription-plans');
+                                    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }}
+                                style={{
+                                    padding: '10px 20px',
+                                    borderRadius: 'var(--ws-radius-md)',
+                                    border: planId === 'pro' ? '2px solid var(--ws-brand-secondary)' : '1px solid var(--ws-border-default)',
+                                    background: planId === 'pro' ? 'var(--ws-brand-secondary)' : 'transparent',
+                                    color: planId === 'pro' ? '#fff' : 'var(--ws-text-primary)',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all var(--ws-transition-fast)',
+                                }}
+                            >
+                                {planId === 'starter' && 'Starter'}
+                                {planId === 'pro' && 'Pro (Recommended)'}
+                                {planId === 'premium' && 'Premium'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Grouped toggles: Currency + Billing */}
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap' }}>
+                        <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
+                        <div className="flex justify-center items-center gap-3">
+                            <span className={`text-sm font-medium ${billingInterval === 'MONTH' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Monthly</span>
+                            <Switch
+                                checked={billingInterval === 'YEAR'}
+                                onCheckedChange={(checked) => setBillingInterval(checked ? 'YEAR' : 'MONTH')}
+                                aria-label="Switch between monthly and yearly billing"
+                            />
+                            <div className="flex items-center gap-2">
+                                <span className={`text-sm font-medium ${billingInterval === 'YEAR' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Yearly</span>
+                                <span className="text-xs font-semibold text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400 px-2 py-0.5 rounded-full">SAVE 17%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)' }}>
+                        Pricing shown based on your location
+                    </p>
+                </div>
             </section>
 
             <section style={{ padding: '0 var(--ws-space-6) var(--ws-space-16)' }}>
@@ -230,30 +275,6 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     <strong style={{ color: 'var(--ws-text-primary)' }}>Most restaurants choose Pro</strong> for the best balance of presentation and automation.<br />
                     If you&apos;re unsure, start with Pro.
                 </p>
-
-                {/* Toggles below pricing cards */}
-                <div className="ws-container" style={{ marginTop: 'var(--ws-space-10)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--ws-space-8)', flexWrap: 'wrap' }}>
-                        <div style={{ opacity: 0.8 }}>
-                            <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
-                        </div>
-                        <div className="flex justify-center items-center gap-2">
-                            <span className={`text-sm ${billingInterval === 'MONTH' ? 'text-slate-700 dark:text-gray-300' : 'text-slate-400 dark:text-gray-500'}`}>Monthly</span>
-                            <Switch
-                                checked={billingInterval === 'YEAR'}
-                                onCheckedChange={(checked) => setBillingInterval(checked ? 'YEAR' : 'MONTH')}
-                                aria-label="Switch between monthly and yearly billing"
-                            />
-                            <div className="flex items-center gap-1">
-                                <span className={`text-sm ${billingInterval === 'YEAR' ? 'text-slate-700 dark:text-gray-300' : 'text-slate-400 dark:text-gray-500'}`}>Yearly</span>
-                                <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded">-17%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)' }}>
-                        Pricing shown based on your location
-                    </p>
-                </div>
             </section>
 
             <SectionWrapper variant="subtle">

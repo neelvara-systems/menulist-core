@@ -30,13 +30,6 @@ const nextConfig = {
                 'node_modules/webpack/**',
                 'node_modules/rollup/**',
                 'node_modules/terser/**',
-                'node_modules/firebase-admin/**',
-                'node_modules/@google-cloud/**',
-                'node_modules/pdfjs-dist/**',
-                'node_modules/jspdf/**',
-                'node_modules/exceljs/**',
-                'node_modules/razorpay/**',
-                'node_modules/stripe',
             ],
         },
         // Optimize for memory usage in builds
