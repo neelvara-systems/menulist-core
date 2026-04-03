@@ -1,7 +1,9 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { useAppSelector } from '@hook/useAppSelector';
 import { signOutSession } from '@lib/auth/client';
+import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
 import { Card, Dialog, List, Toast } from 'antd-mobile';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
@@ -36,6 +38,7 @@ export default function MobileMoreScreen() {
     const t = useTranslations('MobileMore');
     const [subScreen, setSubScreen] = useState<MoreSubScreen>('main');
     const { data: session } = useSession();
+    const isDarkMode = useAppSelector(getDarkModeState);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const userName = session?.user?.name || 'User';
@@ -242,6 +245,16 @@ export default function MobileMoreScreen() {
         },
     ];
 
+    // Theme colors
+    const theme = {
+        bg: isDarkMode ? '#0f172a' : '#ffffff',
+        textPrimary: isDarkMode ? '#f1f5f9' : '#0f172a',
+        textSecondary: isDarkMode ? '#94a3b8' : '#64748b',
+        textMuted: isDarkMode ? '#64748b' : '#94a3b8',
+        border: isDarkMode ? '#334155' : '#e2e8f0',
+        cardBg: isDarkMode ? '#1e293b' : '#ffffff',
+    };
+
     const handleLogout = () => {
         Dialog.confirm({
             content: t('logoutConfirm'),
@@ -262,7 +275,7 @@ export default function MobileMoreScreen() {
     return (
         <div className="px-4 pt-3 pb-4 space-y-4">
             {/* Profile Header */}
-            <Card className="rounded-xl">
+            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
                 <div className="flex items-center gap-3">
                     {userImage ? (
                         <img
@@ -272,16 +285,17 @@ export default function MobileMoreScreen() {
                             referrerPolicy="no-referrer"
                         />
                     ) : (
-                        <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg font-semibold">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-semibold"
+                            style={{ backgroundColor: '#2563eb' }}>
                             {userName.charAt(0).toUpperCase()}
                         </div>
                     )}
                     <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        <p className="text-[15px] font-semibold truncate" style={{ color: theme.textPrimary }}>
                             {userName}
                         </p>
                         {userEmail && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            <p className="text-xs truncate" style={{ color: theme.textSecondary }}>
                                 {userEmail}
                             </p>
                         )}
@@ -290,88 +304,88 @@ export default function MobileMoreScreen() {
             </Card>
 
             {/* Navigation Items */}
-            <Card className="rounded-xl">
-                <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
                     {menuItems.map((item) => (
                         <List.Item
                             key={item.key}
                             prefix={item.icon}
                             onClick={item.onClick}
-                            description={item.description}
-                            arrow={<LuChevronRight size={18} className="text-gray-400" />}
+                            description={<span style={{ color: theme.textSecondary }}>{item.description}</span>}
+                            arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
                             style={{ minHeight: '48px' }}
                         >
-                            <span className="text-[15px] font-medium">{item.label}</span>
+                            <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{item.label}</span>
                         </List.Item>
                     ))}
                 </List>
             </Card>
 
             {/* Settings */}
-            <Card className="rounded-xl">
-                <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
                     {settingsItems.map((item) => (
                         <List.Item
                             key={item.key}
                             prefix={item.icon}
                             onClick={item.onClick}
-                            description={item.description}
-                            arrow={<LuChevronRight size={18} className="text-gray-400" />}
+                            description={<span style={{ color: theme.textSecondary }}>{item.description}</span>}
+                            arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
                             style={{ minHeight: '48px' }}
                         >
-                            <span className="text-[15px] font-medium">{item.label}</span>
+                            <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{item.label}</span>
                         </List.Item>
                     ))}
                 </List>
             </Card>
 
             {/* Support */}
-            <Card className="rounded-xl">
-                <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
                     <List.Item
-                        prefix={<LuHelpCircle size={20} className="text-blue-500" />}
+                        prefix={<LuHelpCircle size={20} style={{ color: '#3b82f6' }} />}
                         onClick={() => setSubScreen('help')}
-                        description={t('helpCenterDesc')}
-                        arrow={<LuChevronRight size={18} className="text-gray-400" />}
+                        description={<span style={{ color: theme.textSecondary }}>{t('helpCenterDesc')}</span>}
+                        arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium">{t('helpCenter')}</span>
+                        <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{t('helpCenter')}</span>
                     </List.Item>
                     <List.Item
-                        prefix={<LuMessageCircle size={20} className="text-green-500" />}
+                        prefix={<LuMessageCircle size={20} style={{ color: '#22c55e' }} />}
                         onClick={() => {
                             window.open('https://wa.me/917042916884?text=Hi%2C%20I%20need%20help%20with%20MenuList.ai', '_blank');
                         }}
-                        description={t('contactSupportDesc')}
-                        arrow={<LuChevronRight size={18} className="text-gray-400" />}
+                        description={<span style={{ color: theme.textSecondary }}>{t('contactSupportDesc')}</span>}
+                        arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium">{t('contactSupport')}</span>
+                        <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{t('contactSupport')}</span>
                     </List.Item>
                 </List>
             </Card>
 
             {/* Switch to Desktop + Logout */}
-            <Card className="rounded-xl">
-                <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
                     <List.Item
-                        prefix={<LuMonitor size={20} className="text-gray-500" />}
+                        prefix={<LuMonitor size={20} style={{ color: theme.textSecondary }} />}
                         onClick={() => {
                             localStorage.setItem('forceDesktopMode', 'true');
                             window.location.reload();
                         }}
-                        description={t('switchToDesktopDesc')}
-                        arrow={<LuChevronRight size={18} className="text-gray-400" />}
+                        description={<span style={{ color: theme.textSecondary }}>{t('switchToDesktopDesc')}</span>}
+                        arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium">{t('switchToDesktop')}</span>
+                        <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{t('switchToDesktop')}</span>
                     </List.Item>
                     <List.Item
-                        prefix={<LuLogOut size={20} className="text-red-500" />}
+                        prefix={<LuLogOut size={20} style={{ color: '#dc2626' }} />}
                         onClick={handleLogout}
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium text-red-500">
+                        <span className="text-[15px] font-medium" style={{ color: '#dc2626' }}>
                             {isLoggingOut ? t('loggingOut') : t('logOut')}
                         </span>
                     </List.Item>

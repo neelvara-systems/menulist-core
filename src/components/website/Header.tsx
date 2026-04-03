@@ -1,11 +1,11 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LuArrowRight, LuFileText, LuLayoutGrid, LuMapPin, LuMenu, LuUser, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowRight, LuFileText, LuLayoutGrid, LuLogOut, LuMapPin, LuMenu, LuUser, LuX, LuZap } from 'react-icons/lu';
 import LogoMark from './shared/LogoMark';
 import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
 
@@ -72,6 +72,14 @@ export default function Header() {
                   <LuUser size={16} />
                   {session.user.name || session.user.email || 'Dashboard'}
                 </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="ws-btn ws-btn--secondary"
+                  style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', background: 'transparent', border: '1px solid var(--ws-border-default)', cursor: 'pointer' }}
+                >
+                  <LuLogOut size={16} />
+                  Logout
+                </button>
               </>
             ) : (
               <>
@@ -166,22 +174,48 @@ export default function Header() {
               <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '8px 12px' }} />
 
               {status === 'authenticated' && session?.user ? (
-                <Link
-                  href="/dashboard"
-                  onClick={closeDrawer}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '14px 12px',
-                    fontSize: '0.9375rem', fontWeight: 500,
-                    color: '#2563eb', textDecoration: 'none',
-                    borderRadius: '10px',
-                    backgroundColor: '#eff6ff',
-                    transition: 'background-color 0.15s',
-                  }}
-                >
-                  <LuUser size={18} color="#2563eb" />
-                  {session.user.name || session.user.email || 'Dashboard'}
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard"
+                    onClick={closeDrawer}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '14px 12px',
+                      fontSize: '0.9375rem', fontWeight: 500,
+                      color: '#2563eb', textDecoration: 'none',
+                      borderRadius: '10px',
+                      backgroundColor: '#eff6ff',
+                      transition: 'background-color 0.15s',
+                    }}
+                  >
+                    <LuUser size={18} color="#2563eb" />
+                    {session.user.name || session.user.email || 'Dashboard'}
+                  </Link>
+                  <button
+                    onClick={() => {
+                      closeDrawer();
+                      signOut({ callbackUrl: '/' });
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '14px 12px',
+                      fontSize: '0.9375rem', fontWeight: 500,
+                      color: '#dc2626', textDecoration: 'none',
+                      borderRadius: '10px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'background-color 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <LuLogOut size={18} color="#dc2626" />
+                    Logout
+                  </button>
+                </>
               ) : (
                 <Link
                   href="/pricing"

@@ -958,7 +958,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when mobile screens are ready
      * Development: Enable to test mobile UI
      */
-    ENABLE_MOBILE_UI: false,
+    ENABLE_MOBILE_UI: true,
 
     // ─────────────────────────────────────────────────────────────
     // MESSAGING ONBOARDING (Zero-Friction SMB Acquisition Engine)

@@ -28,7 +28,6 @@ export default function MobileMenuScreen() {
     const [menuData, setMenuData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch menu data on mount — uses existing DAL (getProjectsList + getProjectData)
     const fetchMenuData = useCallback(async () => {
         try {
             setIsLoading(true);

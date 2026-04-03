@@ -1,7 +1,9 @@
 'use client'
 
 import { getFeedbackCount } from '@database/guestFeedback';
+import { useAppSelector } from '@hook/useAppSelector';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { Button, SafeArea } from 'antd-mobile';
 import dynamic from 'next/dynamic';
@@ -16,6 +18,7 @@ const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { s
 
 export default function MobileShell() {
     const { activeSubscription } = useContext(PlatformGlobalDataContext);
+    const isDarkMode = useAppSelector(getDarkModeState);
     const [activeTab, setActiveTab] = useState<MobileTab>('menu');
     const [feedbackBadgeCount, setFeedbackBadgeCount] = useState<number>(0);
     const [isOffline, setIsOffline] = useState(false);
@@ -73,7 +76,7 @@ export default function MobileShell() {
     // No subscription — show upgrade prompt instead of shell
     if (!hasSubscription) {
         return (
-            <div className="flex flex-col h-[100dvh] bg-white dark:bg-[#141414]">
+            <div className={`flex flex-col h-[100dvh] bg-white dark:bg-[#141414] ${isDarkMode ? 'dark' : ''}`}>
                 <SafeArea position="top" />
                 <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
                     <LuCreditCard size={48} className="text-blue-500" />
@@ -102,7 +105,7 @@ export default function MobileShell() {
     }
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-white dark:bg-[#141414]">
+        <div className={`flex flex-col h-[100dvh] bg-white dark:bg-[#141414] ${isDarkMode ? 'dark' : ''}`}>
             <SafeArea position="top" />
             {isOffline && (
                 <div className="bg-yellow-500 text-white text-center text-xs py-1.5 px-4 font-medium">
