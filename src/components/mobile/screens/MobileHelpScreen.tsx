@@ -9,7 +9,7 @@ interface MobileHelpScreenProps {
 }
 
 const FAQ_ITEMS = [
-    { key: '1', question: 'How do I upgrade my subscription?', answer: 'Go to More → Billing → tap "Upgrade Plan" and select your new plan.' },
+    { key: '1', question: 'How do I upgrade my subscription?', answer: 'Go to More → Billing → tap &quot;Upgrade Plan&quot; and select your new plan.' },
     { key: '2', question: 'What file formats are supported for menu uploads?', answer: 'We support JPG, PNG, and PDF formats for menu uploads.' },
     { key: '3', question: 'How long does it take to process a menu?', answer: 'A standard menu is typically processed within 2 minutes. Larger menus may take slightly longer.' },
     { key: '4', question: 'Can I edit the menu after it has been digitized?', answer: 'Yes! Tap any item in the Menu tab to edit name, price, description, and availability.' },

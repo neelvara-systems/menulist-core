@@ -139,7 +139,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                             <Flex gap={4} vertical>
                                 <Text type="secondary">{t('staffPromptForToday')}</Text>
                                 <Text strong>{t('sayThisWhenCustomersAsk')}</Text>
-                                <Text>"{staffPrompt.text}"</Text>
+                                <Text>&quot;{staffPrompt.text}&quot;</Text>
                                 <Text type="secondary">{t('appliesToday')}</Text>
                             </Flex>
                         </Flex>
