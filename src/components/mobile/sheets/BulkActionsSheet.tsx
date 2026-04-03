@@ -1,12 +1,11 @@
 'use client'
 
-import { getProjectData } from '@database/projects';
-import { updateProject } from '@database/projects';
+import { getProjectData, updateProject } from '@database/projects';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
-import { Button, Checkbox, Dialog, List, NavBar, Popup, SearchBar, Tag, Toast } from 'antd-mobile';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuEye, LuEyeOff, LuToggleRight } from 'react-icons/lu';
+import { Button, Card, Checkbox, Dialog, Empty, Flex, List, NavBar, Popup, SearchBar, Tag, Text, Title, Toast } from '../antd';
 
 interface BulkActionsSheetProps {
     visible: boolean;
@@ -15,18 +14,17 @@ interface BulkActionsSheetProps {
 }
 
 type BulkAction = 'availability' | 'showHide' | null;
-type ItemEntry = { id: string; name: string; price: string; category: string; categoryName: string; available: boolean; active: boolean; fileUid: string };
+type ItemEntry = {
+    id: string;
+    name: string;
+    price: string;
+    category: string;
+    categoryName: string;
+    available: boolean;
+    active: boolean;
+    fileUid: string;
+};
 
-/**
- * Mobile Bulk Actions Sheet — simplified Menu Command Center
- * 
- * Supports only the two most mobile-relevant operations:
- * 1. Bulk Availability (mark available / sold out)
- * 2. Bulk Show/Hide (permanently show or hide from menu)
- * 
- * Pricing and category moves are desktop-only (complex multi-step UX).
- * Uses same bulkOperations utils and updateProject DAL as desktop.
- */
 export default function BulkActionsSheet({ visible, onClose, projectId }: BulkActionsSheetProps) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [projectData, setProjectData] = useState<any>(null);
@@ -36,23 +34,23 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
     const [search, setSearch] = useState('');
     const [applying, setApplying] = useState(false);
 
-    // Fetch project data
     useEffect(() => {
         if (!visible || !projectId) return;
         setLoading(true);
         setSelectedIds(new Set());
         setAction(null);
         setSearch('');
-        getProjectData(projectId).then((data) => {
-            setProjectData(data);
-            setLoading(false);
-        }).catch(() => {
-            Toast.show({ content: 'Failed to load menu data', duration: 2000 });
-            setLoading(false);
-        });
-    }, [visible, projectId]);
+        getProjectData(projectId)
+            .then((data) => {
+                setProjectData(data);
+                setLoading(false);
+            })
+            .catch(() => {
+                Toast.show({ content: 'Failed to load menu data', duration: 2000 });
+                setLoading(false);
+            });
+    }, [projectId, visible]);
 
-    // Build flat item list from project
     const items: ItemEntry[] = useMemo(() => {
         if (!projectData) return [];
         const result: ItemEntry[] = [];
@@ -61,14 +59,14 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
         projectData.files?.forEach((file: any) => {
             if (!file.extractedData?.data) return;
             const catMap: Record<string, string> = {};
-            (file.extractedData.data.categories || []).forEach((cat: any) => {
-                catMap[cat.id] = cat.name?.[activeLang] || cat.name?.['en'] || 'Untitled';
+            (file.extractedData.data.categories || []).forEach((category: any) => {
+                catMap[category.id] = category.name?.[activeLang] || category.name?.en || 'Untitled';
             });
 
             (file.extractedData.data.items || []).forEach((item: any) => {
                 result.push({
                     id: item.id,
-                    name: item.name?.[activeLang] || item.name?.['en'] || 'Untitled',
+                    name: item.name?.[activeLang] || item.name?.en || 'Untitled',
                     price: item.price || '',
                     category: item.category,
                     categoryName: catMap[item.category] || 'Uncategorized',
@@ -78,22 +76,21 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
                 });
             });
         });
+
         return result;
     }, [projectData]);
 
-    // Filter by search
     const filteredItems = useMemo(() => {
         if (!search.trim()) return items;
         const term = search.toLowerCase();
-        return items.filter(i => i.name.toLowerCase().includes(term) || i.categoryName.toLowerCase().includes(term));
+        return items.filter((item) => item.name.toLowerCase().includes(term) || item.categoryName.toLowerCase().includes(term));
     }, [items, search]);
 
-    // Group by category
     const categories = useMemo(() => {
         const map = new Map<string, ItemEntry[]>();
-        filteredItems.forEach(item => {
+        filteredItems.forEach((item) => {
             if (!map.has(item.categoryName)) map.set(item.categoryName, []);
-            map.get(item.categoryName)!.push(item);
+            map.get(item.categoryName)?.push(item);
         });
         return map;
     }, [filteredItems]);
@@ -108,17 +105,17 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
     const toggleAll = () => {
         if (selectedIds.size === filteredItems.length) {
             setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(filteredItems.map(i => i.id)));
+            return;
         }
+        setSelectedIds(new Set(filteredItems.map((item) => item.id)));
     };
 
     const handleApply = async (target: string) => {
         if (selectedIds.size === 0) return;
 
         const actionLabel = action === 'availability'
-            ? (target === 'available' ? 'Mark Available' : 'Mark Sold Out')
-            : (target === 'show' ? 'Show on Menu' : 'Hide from Menu');
+            ? (target === 'available' ? 'Mark available' : 'Mark sold out')
+            : (target === 'show' ? 'Show on menu' : 'Hide from menu');
 
         Dialog.confirm({
             content: `${actionLabel} for ${selectedIds.size} items?`,
@@ -148,7 +145,7 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
                     setAction(null);
                     Toast.show({ content: `${selectedIds.size} items updated`, duration: 1500 });
                 } catch {
-                    Toast.show({ content: 'Failed to apply', duration: 2000 });
+                    Toast.show({ content: 'Failed to apply changes', duration: 2000 });
                 } finally {
                     setApplying(false);
                 }
@@ -158,171 +155,162 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
 
     if (!visible) return null;
 
-    // Step 1: Choose action
     if (!action) {
         return (
-            <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', height: '50vh' }} destroyOnClose>
-                <div className="flex flex-col h-full">
-                    <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex justify-center mb-3"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
-                        <h2 className="text-lg font-semibold">Bulk Actions</h2>
-                        <p className="text-xs text-gray-500 mt-1">Make changes to multiple items at once</p>
-                    </div>
-                    <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 space-y-3">
-                        <button
-                            onClick={() => setAction('availability')}
-                            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-800 text-left min-h-[60px]"
-                        >
-                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                                <LuToggleRight size={20} className="text-blue-500" />
-                            </div>
-                            <div>
-                                <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">Change Availability</p>
-                                <p className="text-xs text-gray-500">Mark items as available or sold out</p>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setAction('showHide')}
-                            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-800 text-left min-h-[60px]"
-                        >
-                            <div className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
-                                <LuEyeOff size={20} className="text-orange-500" />
-                            </div>
-                            <div>
-                                <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">Show or Hide Items</p>
-                                <p className="text-xs text-gray-500">Permanently show or hide from customer menu</p>
-                            </div>
-                        </button>
-                        <p className="text-xs text-center text-gray-400 pt-2">
-                            For bulk pricing and category moves, use desktop.
-                        </p>
-                    </div>
-                </div>
+            <Popup
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '50vh' }}
+                destroyOnClose
+                onMaskClick={onClose}
+                position="bottom"
+                visible={visible}
+            >
+                <Flex gap={16} style={{ height: '100%' }} vertical>
+                    <Flex gap={4} vertical>
+                        <Title level={4} style={{ margin: 0 }}>
+                            Bulk Actions
+                        </Title>
+                        <Text type="secondary">Make changes to multiple items at once for {storeDetails?.name || 'your menu'}.</Text>
+                    </Flex>
+
+                    <Card onClick={() => setAction('availability')}>
+                        <Flex align="center" gap={12}>
+                            <LuToggleRight color="#1677ff" size={20} />
+                            <Flex gap={2} vertical>
+                                <Text strong>Change Availability</Text>
+                                <Text type="secondary">Mark selected items as available or sold out.</Text>
+                            </Flex>
+                        </Flex>
+                    </Card>
+
+                    <Card onClick={() => setAction('showHide')}>
+                        <Flex align="center" gap={12}>
+                            <LuEyeOff color="#d97706" size={20} />
+                            <Flex gap={2} vertical>
+                                <Text strong>Show or Hide Items</Text>
+                                <Text type="secondary">Control whether customers can see selected items.</Text>
+                            </Flex>
+                        </Flex>
+                    </Card>
+
+                    <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                        <Text type="secondary">Bulk pricing and category moves stay on desktop for now.</Text>
+                    </Card>
+                </Flex>
             </Popup>
         );
     }
 
-    // Step 2: Select items + apply
     return (
-        <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', height: '90vh' }} destroyOnClose>
-            <div className="flex flex-col h-full">
+        <Popup
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '90vh' }}
+            destroyOnClose
+            onMaskClick={onClose}
+            position="bottom"
+            visible={visible}
+        >
+            <Flex style={{ height: '100%' }} vertical>
                 <NavBar
                     onBack={() => setAction(null)}
-                    right={
-                        <Tag color="primary" fill="outline" style={{ fontSize: 11 }}>
-                            {selectedIds.size} selected
-                        </Tag>
-                    }
+                    right={<Tag color="processing">{selectedIds.size} selected</Tag>}
                     style={{ '--height': '48px' } as React.CSSProperties}
                 >
-                    {action === 'availability' ? 'Availability' : 'Show/Hide'}
+                    {action === 'availability' ? 'Availability' : 'Show and Hide'}
                 </NavBar>
 
-                {/* Search + Select All */}
-                <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800 space-y-2">
+                <Flex gap={12} style={{ padding: 16 }} vertical>
                     <SearchBar
-                        value={search}
                         onChange={setSearch}
-                        placeholder="Search items..."
-                        style={{ '--height': '36px' } as React.CSSProperties}
+                        placeholder="Search items"
+                        value={search}
                     />
-                    <div className="flex items-center justify-between">
+
+                    <Flex align="center" justify="space-between">
                         <Checkbox
                             checked={filteredItems.length > 0 && selectedIds.size === filteredItems.length}
                             indeterminate={selectedIds.size > 0 && selectedIds.size < filteredItems.length}
                             onChange={toggleAll}
-                            style={{ '--icon-size': '18px' } as React.CSSProperties}
                         >
-                            <span className="text-xs text-gray-500">Select all ({filteredItems.length})</span>
+                            <Text>Select all ({filteredItems.length})</Text>
                         </Checkbox>
-                    </div>
-                </div>
+                    </Flex>
+                </Flex>
 
-                {/* Item List */}
-                <div className="flex-1 overflow-y-auto">
+                <Flex style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }} vertical>
                     {loading ? (
-                        <div className="flex items-center justify-center h-32 text-sm text-gray-400">Loading...</div>
+                        <Card>
+                            <Text type="secondary">Loading items...</Text>
+                        </Card>
+                    ) : categories.size === 0 ? (
+                        <Empty description="No matching items" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     ) : (
-                        Array.from(categories.entries()).map(([catName, catItems]) => (
-                            <div key={catName}>
-                                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase">{catName}</p>
-                                </div>
-                                <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
-                                    {catItems.map(item => (
-                                        <List.Item
-                                            key={item.id}
-                                            prefix={
-                                                <Checkbox
-                                                    checked={selectedIds.has(item.id)}
-                                                    onChange={() => toggleItem(item.id)}
-                                                    style={{ '--icon-size': '18px' } as React.CSSProperties}
-                                                />
-                                            }
-                                            description={
-                                                <span className="flex items-center gap-1.5 text-xs">
-                                                    {item.price && <span className="text-gray-500">{item.price}</span>}
-                                                    {!item.available && <Tag color="warning" fill="outline" style={{ fontSize: 10 }}>Sold Out</Tag>}
-                                                    {!item.active && <Tag color="default" fill="outline" style={{ fontSize: 10 }}>Hidden</Tag>}
-                                                </span>
-                                            }
-                                            onClick={() => toggleItem(item.id)}
-                                            style={{ minHeight: '44px' }}
-                                        >
-                                            <span className="text-sm">{item.name}</span>
-                                        </List.Item>
-                                    ))}
-                                </List>
-                            </div>
-                        ))
+                        <Flex gap={16} vertical>
+                            {Array.from(categories.entries()).map(([categoryName, categoryItems]) => (
+                                <Card
+                                    key={categoryName}
+                                    size="small"
+                                    title={<Text strong>{categoryName}</Text>}
+                                >
+                                    <List>
+                                        {categoryItems.map((item) => (
+                                            <List.Item
+                                                key={item.id}
+                                                description={
+                                                    <Flex gap={8} wrap="wrap">
+                                                        {item.price ? <Text type="secondary">{item.price}</Text> : null}
+                                                        {!item.available ? <Tag color="warning">Sold Out</Tag> : null}
+                                                        {!item.active ? <Tag>Hidden</Tag> : null}
+                                                    </Flex>
+                                                }
+                                                onClick={() => toggleItem(item.id)}
+                                                prefix={
+                                                    <Checkbox
+                                                        checked={selectedIds.has(item.id)}
+                                                        onChange={() => toggleItem(item.id)}
+                                                    />
+                                                }
+                                                title={<Text>{item.name}</Text>}
+                                            />
+                                        ))}
+                                    </List>
+                                </Card>
+                            ))}
+                        </Flex>
                     )}
-                </div>
+                </Flex>
 
-                {/* Action Buttons */}
-                {selectedIds.size > 0 && (
-                    <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+                {selectedIds.size > 0 ? (
+                    <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderBottom: 0 }}>
                         {action === 'availability' ? (
-                            <div className="flex gap-3">
-                                <Button
-                                    block color="primary" fill="solid" size="large"
-                                    loading={applying}
-                                    onClick={() => handleApply('available')}
-                                    style={{ minHeight: '44px' }}
-                                >
-                                    <LuCheck size={16} className="inline mr-1" /> Available
+                            <Flex gap={12}>
+                                <Button block color="primary" loading={applying} onClick={() => handleApply('available')} size="large">
+                                    <Flex align="center" gap={6}>
+                                        <LuCheck size={16} />
+                                        <Text>Available</Text>
+                                    </Flex>
                                 </Button>
-                                <Button
-                                    block color="warning" fill="solid" size="large"
-                                    loading={applying}
-                                    onClick={() => handleApply('unavailable')}
-                                    style={{ minHeight: '44px' }}
-                                >
+                                <Button block color="warning" loading={applying} onClick={() => handleApply('unavailable')} size="large">
                                     Sold Out
                                 </Button>
-                            </div>
+                            </Flex>
                         ) : (
-                            <div className="flex gap-3">
-                                <Button
-                                    block color="primary" fill="solid" size="large"
-                                    loading={applying}
-                                    onClick={() => handleApply('show')}
-                                    style={{ minHeight: '44px' }}
-                                >
-                                    <LuEye size={16} className="inline mr-1" /> Show
+                            <Flex gap={12}>
+                                <Button block color="primary" loading={applying} onClick={() => handleApply('show')} size="large">
+                                    <Flex align="center" gap={6}>
+                                        <LuEye size={16} />
+                                        <Text>Show</Text>
+                                    </Flex>
                                 </Button>
-                                <Button
-                                    block color="danger" fill="solid" size="large"
-                                    loading={applying}
-                                    onClick={() => handleApply('hide')}
-                                    style={{ minHeight: '44px' }}
-                                >
-                                    <LuEyeOff size={16} className="inline mr-1" /> Hide
+                                <Button block color="danger" loading={applying} onClick={() => handleApply('hide')} size="large">
+                                    <Flex align="center" gap={6}>
+                                        <LuEyeOff size={16} />
+                                        <Text>Hide</Text>
+                                    </Flex>
                                 </Button>
-                            </div>
+                            </Flex>
                         )}
-                    </div>
-                )}
-            </div>
+                    </Card>
+                ) : null}
+            </Flex>
         </Popup>
     );
 }

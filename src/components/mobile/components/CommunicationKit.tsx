@@ -1,18 +1,9 @@
 'use client';
 
-/**
- * Customer Communication Kit — Mobile Component
- *
- * Mobile-optimized message templates using antd-mobile.
- * WhatsApp as primary action (India = WhatsApp-first market).
- *
- * @see __docs__/customer-communication-kit/README.md
- */
-
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
-import { Button, Card, Toast } from 'antd-mobile';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageSquare } from 'react-icons/lu';
+import { Button, Card, Flex, Text, Title, Toast } from '../antd';
 
 interface MobileCommunicationKitProps {
     storeName: string;
@@ -25,52 +16,45 @@ interface MobileCommunicationKitProps {
 }
 
 export default function MobileCommunicationKit({
-    storeName,
+    address,
     businessType,
     menuLink,
-    address,
     phone,
-    workingHours,
+    storeName,
     timeZone,
+    workingHours,
 }: MobileCommunicationKitProps) {
     const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
 
     const input: MessageTemplateInput = useMemo(() => ({
-        storeName,
-        businessType,
-        menuLink,
         address,
-        phone,
-        todayHours: todayResult.hours,
+        businessType,
         isClosedToday: todayResult.isClosed,
-    }), [storeName, businessType, menuLink, address, phone, todayResult]);
+        menuLink,
+        phone,
+        storeName,
+        todayHours: todayResult.hours,
+    }), [address, businessType, menuLink, phone, storeName, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
 
     return (
-        <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-                <LuMessageSquare size={16} className="text-gray-600 dark:text-gray-300" />
-                <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-100">Customer Messages</p>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 px-1">
-                Ready-to-send replies — tap to send via WhatsApp or copy
-            </p>
-
-            {templates.map((tmpl) => (
-                <MobileMessageCard key={tmpl.id} template={tmpl} />
-            ))}
-        </div>
+        <Flex gap={12} vertical>
+            <Flex align="center" gap={8}>
+                <LuMessageSquare size={16} />
+                <Title level={5} style={{ margin: 0 }}>Customer Messages</Title>
+            </Flex>
+            <Text type="secondary">Ready-to-send replies for WhatsApp or copy/paste.</Text>
+            <Flex gap={12} vertical>
+                {templates.map((template) => (
+                    <MobileMessageCard key={template.id} template={template} />
+                ))}
+            </Flex>
+        </Flex>
     );
 }
 
-// ── Mobile Message Card ───────────────────────────────────────────
-
-interface MobileMessageCardProps {
-    template: MessageTemplate;
-}
-
-function MobileMessageCard({ template }: MobileMessageCardProps) {
+function MobileMessageCard({ template }: { template: MessageTemplate }) {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -84,58 +68,36 @@ function MobileMessageCard({ template }: MobileMessageCardProps) {
         }
     };
 
-    const handleWhatsApp = () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank');
-    };
-
     return (
-        <Card className="rounded-xl">
-            <div className="flex flex-col gap-3">
-                <div>
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{template.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{template.description}</p>
-                </div>
-
-                {/* Message preview */}
-                <div
-                    className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap break-words text-gray-700 dark:text-gray-200"
-                    style={{ border: '1px solid var(--adm-color-border)' }}
-                >
-                    {template.message}
-                </div>
-
-                {/* Actions — WhatsApp primary on mobile */}
-                <div className="flex gap-2">
+        <Card>
+            <Flex gap={12} vertical>
+                <Flex gap={4} vertical>
+                    <Text strong>{template.title}</Text>
+                    <Text type="secondary">{template.description}</Text>
+                </Flex>
+                <Card style={{ backgroundColor: '#fafafa' }}>
+                    <Text>{template.message}</Text>
+                </Card>
+                <Flex gap={8}>
                     <Button
-                        color="success"
-                        fill="solid"
+                        block
+                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank')}
                         size="small"
-                        onClick={handleWhatsApp}
-                        style={{
-                            minHeight: '36px',
-                            flex: 1,
-                            backgroundColor: '#25D366',
-                            borderColor: '#25D366',
-                        }}
+                        style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
                     >
-                        <span className="flex items-center justify-center gap-1.5">
+                        <Flex align="center" gap={6}>
                             <LuMessageSquare size={14} />
-                            WhatsApp
-                        </span>
+                            <Text style={{ color: '#fff' }}>WhatsApp</Text>
+                        </Flex>
                     </Button>
-                    <Button
-                        fill="outline"
-                        size="small"
-                        onClick={handleCopy}
-                        style={{ minHeight: '36px', flex: 1 }}
-                    >
-                        <span className="flex items-center justify-center gap-1.5">
+                    <Button block fill="outline" onClick={() => void handleCopy()} size="small">
+                        <Flex align="center" gap={6}>
                             {copied ? <LuCheck size={14} /> : <LuCopy size={14} />}
-                            {copied ? 'Copied' : 'Copy'}
-                        </span>
+                            <Text>{copied ? 'Copied' : 'Copy'}</Text>
+                        </Flex>
                     </Button>
-                </div>
-            </div>
+                </Flex>
+            </Flex>
         </Card>
     );
 }

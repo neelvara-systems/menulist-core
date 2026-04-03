@@ -2,10 +2,10 @@
 
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, DotLoading, NavBar, Picker, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, NavBar, Picker, Text, Toast } from '../antd';
 
 interface MobileLocaleSettingsScreenProps {
     onBack: () => void;
@@ -35,41 +35,27 @@ const TIMEZONES = [
     { label: 'Australia/Sydney (AEST)', value: 'Australia/Sydney' },
 ];
 
-const CURRENCIES = [
-    { label: '₹ INR (Indian Rupee)', value: 'INR', symbol: '₹' },
-    { label: '$ USD (US Dollar)', value: 'USD', symbol: '$' },
-    { label: '€ EUR (Euro)', value: 'EUR', symbol: '€' },
-    { label: '£ GBP (Pound)', value: 'GBP', symbol: '£' },
-    { label: 'د.إ AED (Dirham)', value: 'AED', symbol: 'د.إ' },
-    { label: '$ SGD (Singapore Dollar)', value: 'SGD', symbol: 'S$' },
-    { label: '$ AUD (Australian Dollar)', value: 'AUD', symbol: 'A$' },
-];
-
 export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
     const { storeDetails, setStoreDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-
     const [showLangPicker, setShowLangPicker] = useState(false);
     const [showTzPicker, setShowTzPicker] = useState(false);
-
     const [formData, setFormData] = useState({
-        language: storeDetails?.language || 'en-US',
-        timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         currencyCode: tenantDetails?.currencyCode || 'INR',
         currencySymbol: tenantDetails?.currencySymbol || '₹',
+        language: storeDetails?.language || 'en-US',
+        timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
 
-    const getLabel = (list: { label: string; value: string }[], value: string) =>
-        list.find(item => item.value === value)?.label || value;
+    const getLabel = (list: { label: string; value: string }[], value: string) => list.find((item) => item.value === value)?.label || value;
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
 
-        // Optimistic update
-        setStoreDetails((prev: any) => ({
-            ...prev,
+        setStoreDetails((previous: any) => ({
+            ...previous,
             language: formData.language,
             timeZone: formData.timeZone,
         }));
@@ -82,8 +68,8 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                 timeZone: formData.timeZone,
             } as any);
         } catch {
-            setStoreDetails((prev: any) => ({
-                ...prev,
+            setStoreDetails((previous: any) => ({
+                ...previous,
                 language: storeDetails.language,
                 timeZone: storeDetails.timeZone,
             }));
@@ -91,100 +77,81 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
         } finally {
             setIsSaving(false);
         }
-    }, [storeDetails, formData, setStoreDetails]);
+    }, [formData.language, formData.timeZone, setStoreDetails, storeDetails, t]);
 
     if (!storeDetails) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
                 <DotLoading color="primary" />
-            </div>
+            </Flex>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <NavBar onBack={onBack} className="border-b border-gray-200 dark:border-gray-700">
-                {t('languageRegion')}
-            </NavBar>
-
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4">
-                {/* Language */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <LuGlobe size={12} />
-                            {t('language')}
-                        </label>
-                        <div
-                            className="py-2.5 px-3 border border-gray-200 dark:border-gray-700 rounded-lg text-[15px] text-gray-900 dark:text-gray-100 min-h-[44px] flex items-center"
-                            onClick={() => setShowLangPicker(true)}
-                        >
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <NavBar onBack={onBack}>{t('languageRegion')}</NavBar>
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuGlobe size={14} />
+                            <Text type="secondary">{t('language')}</Text>
+                        </Flex>
+                        <Button block fill="outline" onClick={() => setShowLangPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
                             {getLabel(LANGUAGES, formData.language)}
-                        </div>
+                        </Button>
                         <Picker
                             columns={[LANGUAGES]}
-                            visible={showLangPicker}
                             onClose={() => setShowLangPicker(false)}
-                            onConfirm={(val) => {
-                                if (val[0]) setFormData(prev => ({ ...prev, language: val[0] as string }));
+                            onConfirm={(value) => {
+                                if (value[0]) {
+                                    setFormData((previous) => ({ ...previous, language: value[0] as string }));
+                                }
                             }}
                             value={[formData.language]}
+                            visible={showLangPicker}
                         />
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* Timezone */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <LuClock size={12} />
-                            {t('timezone')}
-                        </label>
-                        <div
-                            className="py-2.5 px-3 border border-gray-200 dark:border-gray-700 rounded-lg text-[15px] text-gray-900 dark:text-gray-100 min-h-[44px] flex items-center"
-                            onClick={() => setShowTzPicker(true)}
-                        >
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuClock size={14} />
+                            <Text type="secondary">{t('timezone')}</Text>
+                        </Flex>
+                        <Button block fill="outline" onClick={() => setShowTzPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
                             {getLabel(TIMEZONES, formData.timeZone)}
-                        </div>
+                        </Button>
                         <Picker
                             columns={[TIMEZONES]}
-                            visible={showTzPicker}
                             onClose={() => setShowTzPicker(false)}
-                            onConfirm={(val) => {
-                                if (val[0]) setFormData(prev => ({ ...prev, timeZone: val[0] as string }));
+                            onConfirm={(value) => {
+                                if (value[0]) {
+                                    setFormData((previous) => ({ ...previous, timeZone: value[0] as string }));
+                                }
                             }}
                             value={[formData.timeZone]}
+                            visible={showTzPicker}
                         />
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* Currency (read-only on mobile — tenant-level setting) */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <LuDollarSign size={12} />
-                            {t('currency')}
-                        </label>
-                        <div className="py-2.5 px-3 border border-gray-200 dark:border-gray-700 rounded-lg text-[15px] text-gray-900 dark:text-gray-100 min-h-[44px] flex items-center">
-                            {formData.currencySymbol} {formData.currencyCode}
-                        </div>
-                        <p className="text-xs text-gray-400">{t('currencyDesktopNote')}</p>
-                    </div>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuDollarSign size={14} />
+                            <Text type="secondary">{t('currency')}</Text>
+                        </Flex>
+                        <Text strong>{formData.currencySymbol} {formData.currencyCode}</Text>
+                        <Text type="secondary">{t('currencyDesktopNote')}</Text>
+                    </Flex>
                 </Card>
 
-                {/* Save */}
-                <Button
-                    block
-                    color="primary"
-                    fill="solid"
-                    size="large"
-                    loading={isSaving}
-                    onClick={handleSave}
-                    style={{ minHeight: '44px' }}
-                >
+                <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
                     {t('saveChanges')}
                 </Button>
-            </div>
-        </div>
+            </Flex>
+        </Flex>
     );
 }

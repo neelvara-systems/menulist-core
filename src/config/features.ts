@@ -942,7 +942,7 @@ export const FEATURE_FLAGS = {
      * - Detects mobile device (<768px width)
      * - Renders MobileShell instead of desktop layout
      * - Bottom TabBar navigation (Menu, Hours, Feedback, More)
-     * - Purpose-built mobile screens using antd-mobile
+     * - Purpose-built mobile screens using Ant Design
      * - Same DAL, same hooks, same auth — different UI
      *
      * What It Does NOT Do:

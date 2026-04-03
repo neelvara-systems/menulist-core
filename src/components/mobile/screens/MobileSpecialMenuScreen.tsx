@@ -18,10 +18,10 @@
 
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
-import { Button, Card, Dialog, DotLoading, NavBar, Tag, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuSparkles, LuX } from 'react-icons/lu';
+import { Button, Card, Dialog, DotLoading, Empty, Flex, NavBar, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileSpecialMenuScreenProps {
     onBack: () => void;
@@ -29,32 +29,19 @@ interface MobileSpecialMenuScreenProps {
 
 function formatDate(iso: string): string {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const date = new Date(iso);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function StatusTag({ status }: { status: string }) {
     const config: Record<string, { color: string; text: string }> = {
-        active: { color: '#52c41a', text: 'Active' },
-        scheduled: { color: '#1890ff', text: 'Scheduled' },
-        expired: { color: '#d9d9d9', text: 'Ended' },
-        cancelled: { color: '#d9d9d9', text: 'Cancelled' },
+        active: { color: 'success', text: 'Active' },
+        scheduled: { color: 'processing', text: 'Scheduled' },
+        expired: { color: 'default', text: 'Ended' },
+        cancelled: { color: 'default', text: 'Cancelled' },
     };
-    const c = config[status] || config.scheduled;
-    return (
-        <Tag
-            style={{
-                '--background-color': c.color + '20',
-                '--text-color': c.color,
-                '--border-color': c.color,
-                fontSize: 11,
-                padding: '2px 8px',
-                borderRadius: 4,
-            }}
-        >
-            {c.text}
-        </Tag>
-    );
+    const current = config[status] || config.scheduled;
+    return <Tag color={current.color}>{current.text}</Tag>;
 }
 
 function SpecialMenuItem({
@@ -78,11 +65,11 @@ function SpecialMenuItem({
         setLoading(true);
         onDeactivate(item.projectId);
         setLoading(false);
-    }, [item, onDeactivate]);
+    }, [item.displayName, item.projectId, onDeactivate]);
 
     const handleCancel = useCallback(async () => {
         const confirmed = await Dialog.confirm({
-            content: `Cancel "${item.displayName}"? It won't activate on ${formatDate(item.startsAt)}.`,
+            content: `Cancel "${item.displayName}"? It will not activate on ${formatDate(item.startsAt)}.`,
             confirmText: 'Cancel It',
             cancelText: 'Keep Scheduled',
         });
@@ -90,60 +77,50 @@ function SpecialMenuItem({
         setLoading(true);
         onCancel(item.projectId);
         setLoading(false);
-    }, [item, onCancel]);
+    }, [item.displayName, item.projectId, item.startsAt, onCancel]);
 
     return (
         <Card
             style={{
-                marginBottom: 12,
-                borderRadius: 12,
-                border: item.status === 'active' ? '1px solid #b7eb8f' : '1px solid #f0f0f0',
-                background: item.status === 'active' ? '#f6ffed' : '#fff',
+                backgroundColor: item.status === 'active' ? '#f6ffed' : '#ffffff',
+                borderColor: item.status === 'active' ? '#b7eb8f' : undefined,
             }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 15 }}>{item.displayName}</span>
+            <Flex align="flex-start" gap={12} justify="space-between">
+                <Flex gap={8} style={{ flex: 1 }} vertical>
+                    <Flex align="center" gap={8} wrap="wrap">
+                        <Text strong>{item.displayName}</Text>
                         <StatusTag status={item.status} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#999', fontSize: 13, marginBottom: 4 }}>
-                        <LuCalendar size={12} />
-                        <span>{formatDate(item.startsAt)} → {formatDate(item.endsAt)}</span>
-                    </div>
-                    <div style={{ color: '#999', fontSize: 12 }}>
-                        {item.mode === 'replace' ? 'Replaces regular menu' : 'Added as special section'}
-                    </div>
-                </div>
+                    </Flex>
 
-                <div>
-                    {item.status === 'active' && (
-                        <Button
-                            size="small"
-                            color="danger"
-                            fill="outline"
-                            loading={loading}
-                            onClick={handleEnd}
-                            style={{ fontSize: 13, borderRadius: 8 }}
-                        >
-                            <LuPause size={14} style={{ marginRight: 4 }} />
-                            End Now
-                        </Button>
-                    )}
-                    {item.status === 'scheduled' && (
-                        <Button
-                            size="small"
-                            fill="outline"
-                            loading={loading}
-                            onClick={handleCancel}
-                            style={{ fontSize: 13, borderRadius: 8 }}
-                        >
-                            <LuX size={14} style={{ marginRight: 4 }} />
-                            Cancel
-                        </Button>
-                    )}
-                </div>
-            </div>
+                    <Flex align="center" gap={6}>
+                        <LuCalendar color="#94a3b8" size={12} />
+                        <Text type="secondary">{`${formatDate(item.startsAt)} to ${formatDate(item.endsAt)}`}</Text>
+                    </Flex>
+
+                    <Text type="secondary">
+                        {item.mode === 'replace' ? 'Replaces the regular menu.' : 'Added as a special section.'}
+                    </Text>
+                </Flex>
+
+                {item.status === 'active' ? (
+                    <Button color="danger" fill="outline" loading={loading} onClick={handleEnd} size="small">
+                        <Flex align="center" gap={6}>
+                            <LuPause size={14} />
+                            <Text>End Now</Text>
+                        </Flex>
+                    </Button>
+                ) : null}
+
+                {item.status === 'scheduled' ? (
+                    <Button fill="outline" loading={loading} onClick={handleCancel} size="small">
+                        <Flex align="center" gap={6}>
+                            <LuX size={14} />
+                            <Text>Cancel</Text>
+                        </Flex>
+                    </Button>
+                ) : null}
+            </Flex>
         </Card>
     );
 }
@@ -169,7 +146,7 @@ export default function MobileSpecialMenuScreen({ onBack }: MobileSpecialMenuScr
         } else {
             Toast.show({ content: result.error || t('failedToEnd'), duration: 2000 });
         }
-    }, [deactivateMenu]);
+    }, [deactivateMenu, t]);
 
     const handleCancel = useCallback(async (projectId: string) => {
         const result = await cancelMenu(projectId);
@@ -178,87 +155,73 @@ export default function MobileSpecialMenuScreen({ onBack }: MobileSpecialMenuScr
         } else {
             Toast.show({ content: result.error || t('failedToCancel'), duration: 2000 });
         }
-    }, [cancelMenu]);
+    }, [cancelMenu, t]);
 
     const activeOrScheduled = [...(activeMenu ? [activeMenu] : []), ...scheduledMenus];
     const hasAny = specialMenus.length > 0;
 
     return (
-        <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-            <NavBar onBack={onBack} style={{ '--height': '48px', background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Flex style={{ height: '100%' }} vertical>
+            <NavBar onBack={onBack}>
+                <Flex align="center" gap={6}>
                     <LuSparkles size={16} />
-                    {t('title')}
-                </div>
+                    <Text strong>{t('title')}</Text>
+                </Flex>
             </NavBar>
 
-            <div style={{ padding: 16 }}>
-                {isLoading && (
-                    <div style={{ textAlign: 'center', padding: 40 }}>
-                        <DotLoading />
-                    </div>
-                )}
+            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                {isLoading ? (
+                    <Card>
+                        <Flex align="center" gap={12} justify="center" vertical>
+                            <DotLoading />
+                            <Text type="secondary">Loading special menus...</Text>
+                        </Flex>
+                    </Card>
+                ) : null}
 
-                {!isLoading && !hasAny && (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
-                        <LuSparkles size={32} style={{ marginBottom: 12, opacity: 0.5 }} />
-                        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>{t('noSpecialMenus')}</div>
-                        <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                            {t('createFromDesktop')}
-                        </div>
-                    </div>
-                )}
+                {!isLoading && !hasAny ? (
+                    <Card>
+                        <Flex align="center" gap={12} vertical>
+                            <LuSparkles color="#cbd5e1" size={32} />
+                            <Empty description={t('noSpecialMenus')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            <Text type="secondary" style={{ textAlign: 'center' }}>
+                                {t('createFromDesktop')}
+                            </Text>
+                        </Flex>
+                    </Card>
+                ) : null}
 
-                {/* Active & scheduled menus */}
                 {activeOrScheduled.map((item) => (
                     <SpecialMenuItem
                         key={item.projectId}
                         item={item}
-                        onDeactivate={handleDeactivate}
                         onCancel={handleCancel}
+                        onDeactivate={handleDeactivate}
                     />
                 ))}
 
-                {/* Expired/cancelled toggle */}
-                {expiredMenus.length > 0 && (
-                    <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 8 }}>
-                        <Button
-                            fill="none"
-                            size="small"
-                            onClick={() => setShowExpired(!showExpired)}
-                            style={{ color: '#999', fontSize: 13 }}
-                        >
-                            {showExpired ? t('hidePastMenus') : t('showPastMenus', { count: expiredMenus.length })}
-                        </Button>
-                    </div>
-                )}
+                {expiredMenus.length > 0 ? (
+                    <Button fill="none" onClick={() => setShowExpired(!showExpired)} size="small">
+                        {showExpired ? t('hidePastMenus') : t('showPastMenus', { count: expiredMenus.length })}
+                    </Button>
+                ) : null}
 
-                {showExpired && expiredMenus.slice(0, 5).map((item) => (
+                {showExpired ? expiredMenus.slice(0, 5).map((item) => (
                     <SpecialMenuItem
                         key={item.projectId}
                         item={item}
-                        onDeactivate={handleDeactivate}
                         onCancel={handleCancel}
+                        onDeactivate={handleDeactivate}
                     />
-                ))}
+                )) : null}
 
-                {/* Desktop-only notice */}
-                <div style={{
-                    marginTop: 24,
-                    padding: '12px 16px',
-                    background: '#fff',
-                    borderRadius: 10,
-                    border: '1px solid #f0f0f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                }}>
-                    <LuMonitor size={18} style={{ color: '#999', flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: '#999', lineHeight: 1.4 }}>
-                        {t('desktopOnlyNotice')}
-                    </span>
-                </div>
-            </div>
-        </div>
+                <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                    <Flex align="flex-start" gap={10}>
+                        <LuMonitor color="#94a3b8" size={18} />
+                        <Text type="secondary">{t('desktopOnlyNotice')}</Text>
+                    </Flex>
+                </Card>
+            </Flex>
+        </Flex>
     );
 }

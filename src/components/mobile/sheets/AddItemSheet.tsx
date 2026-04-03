@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { Popup, Input, TextArea, Button, Picker } from 'antd-mobile';
+import { Button, Card, Flex, Input, Picker, Popup, Text, TextArea, Title } from '../antd';
 
 interface AddItemSheetProps {
     currencySymbol: string;
@@ -17,139 +17,65 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     const [selectedCategory, setSelectedCategory] = useState(categories[0] || '');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-    const categoryColumns = [
-        categories.map((cat) => ({ label: cat, value: cat })),
-    ];
-
     const handleSave = () => {
         if (!name.trim()) return;
         onSave({
-            name: name.trim(),
-            price: parseFloat(price) || 0,
             category: selectedCategory,
             description: description.trim(),
+            name: name.trim(),
+            price: parseFloat(price) || 0,
         });
     };
 
     return (
-        <Popup
-            visible
-            onMaskClick={onClose}
-            position="bottom"
-            bodyStyle={{
-                borderTopLeftRadius: '16px',
-                borderTopRightRadius: '16px',
-                maxHeight: '85vh',
-            }}
-            destroyOnClose
-        >
-            <div className="px-4 pt-4 pb-6 space-y-4">
-                {/* Drag Handle */}
-                <div className="flex justify-center">
-                    <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-                </div>
+        <Popup bodyStyle={{ maxHeight: '85vh' }} destroyOnClose onMaskClick={onClose} visible>
+            <Flex gap={12} vertical>
+                <Title level={4} style={{ margin: 0 }}>Add Item</Title>
 
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Add Item
-                </h2>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text type="secondary">Item Name</Text>
+                        <Input autoFocus onChange={setName} placeholder="Item name" value={name} />
+                    </Flex>
+                </Card>
 
-                {/* Name */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Item Name
-                    </label>
-                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
-                        <Input
-                            value={name}
-                            onChange={setName}
-                            placeholder="Item name"
-                            autoFocus
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
-                        />
-                    </div>
-                </div>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text type="secondary">Price ({currencySymbol})</Text>
+                        <Input onChange={setPrice} placeholder="0" type="number" value={price} />
+                    </Flex>
+                </Card>
 
-                {/* Price */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Price ({currencySymbol})
-                    </label>
-                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
-                        <Input
-                            value={price}
-                            onChange={setPrice}
-                            placeholder="0"
-                            type="number"
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
-                        />
-                    </div>
-                </div>
+                {categories.length > 0 ? (
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text type="secondary">Category</Text>
+                            <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
+                                {selectedCategory || 'Select category'}
+                            </Button>
+                            <Picker
+                                columns={[categories.map((category) => ({ label: category, value: category }))]}
+                                onClose={() => setShowCategoryPicker(false)}
+                                onConfirm={(value) => { if (value[0]) setSelectedCategory(value[0] as string); }}
+                                value={[selectedCategory]}
+                                visible={showCategoryPicker}
+                            />
+                        </Flex>
+                    </Card>
+                ) : null}
 
-                {/* Category */}
-                {categories.length > 0 && (
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                            Category
-                        </label>
-                        <div
-                            className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg text-[15px] text-gray-900 dark:text-gray-100"
-                            onClick={() => setShowCategoryPicker(true)}
-                        >
-                            {selectedCategory || 'Select category'}
-                        </div>
-                        <Picker
-                            columns={categoryColumns}
-                            visible={showCategoryPicker}
-                            onClose={() => setShowCategoryPicker(false)}
-                            onConfirm={(val) => {
-                                if (val[0]) setSelectedCategory(val[0] as string);
-                            }}
-                            value={[selectedCategory]}
-                        />
-                    </div>
-                )}
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text type="secondary">Description (optional)</Text>
+                        <TextArea maxLength={200} onChange={setDescription} placeholder="Item description" rows={2} showCount value={description} />
+                    </Flex>
+                </Card>
 
-                {/* Description */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Description (optional)
-                    </label>
-                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
-                        <TextArea
-                            value={description}
-                            onChange={setDescription}
-                            placeholder="Item description"
-                            rows={2}
-                            maxLength={200}
-                            showCount
-                        />
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                    <Button
-                        block
-                        fill="outline"
-                        size="large"
-                        onClick={onClose}
-                        style={{ minHeight: '44px' }}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        block
-                        color="primary"
-                        fill="solid"
-                        size="large"
-                        onClick={handleSave}
-                        disabled={!name.trim()}
-                        style={{ minHeight: '44px' }}
-                    >
-                        Add Item
-                    </Button>
-                </div>
-            </div>
+                <Flex gap={8}>
+                    <Button block fill="outline" onClick={onClose} size="large">Cancel</Button>
+                    <Button block disabled={!name.trim()} onClick={handleSave} size="large">Add Item</Button>
+                </Flex>
+            </Flex>
         </Popup>
     );
 }

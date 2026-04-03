@@ -1,8 +1,9 @@
 'use client'
 
-import { Button, Dialog, Input, Popup, Switch, TextArea, Toast } from 'antd-mobile';
-import { useRef, useState } from 'react';
+import type { UploadFile, UploadProps } from 'antd';
+import { useMemo, useState } from 'react';
 import { LuCamera } from 'react-icons/lu';
+import { Button, Card, Dialog, Flex, Image, Input, Popup, Switch, Text, TextArea, Title, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
 
 interface ItemEditSheetProps {
@@ -19,21 +20,33 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
     const [description, setDescription] = useState(item.description || '');
     const [isAvailable, setIsAvailable] = useState(item.isAvailable);
     const [imagePreview, setImagePreview] = useState<string | null>(item.image || null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-            Toast.show({ content: 'Image must be under 5MB', duration: 2000 });
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-            setImagePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-    };
+    const uploadProps: UploadProps = useMemo(() => ({
+        accept: 'image/*',
+        beforeUpload: (file) => {
+            if (file.size > 5 * 1024 * 1024) {
+                Toast.show({ content: 'Image must be under 5MB', duration: 2000 });
+                return Upload.LIST_IGNORE;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+            return false;
+        },
+        fileList: imagePreview
+            ? [{ uid: item.id, name: `${item.name || 'item'}.jpg`, status: 'done', url: imagePreview } as UploadFile]
+            : [],
+        listType: 'picture',
+        maxCount: 1,
+        onRemove: () => {
+            setImagePreview(null);
+            return true;
+        },
+        showUploadList: false,
+    }), [imagePreview, item.id, item.name]);
 
     const handleSave = () => {
         onSave({
@@ -47,151 +60,105 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
 
     return (
         <Popup
-            visible
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh' }}
+            destroyOnClose
             onMaskClick={onClose}
             position="bottom"
-            bodyStyle={{
-                borderTopLeftRadius: '16px',
-                borderTopRightRadius: '16px',
-                maxHeight: '85vh',
-            }}
-            destroyOnClose
+            visible
         >
-            <div className="px-4 pt-4 pb-6 space-y-4">
-                {/* Drag Handle */}
-                <div className="flex justify-center">
-                    <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-                </div>
-
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <Flex gap={16} vertical>
+                <Title level={4} style={{ margin: 0 }}>
                     Edit Item
-                </h2>
+                </Title>
 
-                {/* Name */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Item Name
-                    </label>
-                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
-                        <Input
-                            value={name}
-                            onChange={setName}
-                            placeholder="Item name"
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
-                        />
-                    </div>
-                </div>
-
-                {/* Price */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Price ({currencySymbol})
-                    </label>
-                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
-                        <Input
-                            value={price}
-                            onChange={setPrice}
-                            placeholder="0"
-                            type="number"
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
-                        />
-                    </div>
-                </div>
-
-                {/* Image — Camera capture for mobile */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Item Image
-                    </label>
-                    <div className="flex items-center gap-3">
-                        {imagePreview ? (
-                            <img
-                                src={imagePreview}
-                                alt={name}
-                                className="w-16 h-16 rounded-lg object-cover"
+                <Card size="small">
+                    <Flex gap={16} vertical>
+                        <Flex gap={6} vertical>
+                            <Text strong>Item Name</Text>
+                            <Input
+                                onChange={setName}
+                                placeholder="Item name"
+                                value={name}
                             />
-                        ) : (
-                            <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                <LuCamera size={20} className="text-gray-400" />
-                            </div>
-                        )}
-                        <Button
-                            size="small"
-                            fill="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                            style={{ minHeight: '36px' }}
-                        >
-                            <LuCamera size={14} className="inline mr-1" />
-                            {imagePreview ? 'Change' : 'Add Photo'}
-                        </Button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handleImageCapture}
-                            className="hidden"
-                            style={{ display: 'none' }}
-                        />
-                    </div>
-                </div>
+                        </Flex>
 
-                {/* Description */}
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Description
-                    </label>
-                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
-                        <TextArea
-                            value={description}
-                            onChange={setDescription}
-                            placeholder="Item description (optional)"
-                            rows={2}
-                            maxLength={200}
-                            showCount
-                        />
-                    </div>
-                </div>
+                        <Flex gap={6} vertical>
+                            <Text strong>{`Price (${currencySymbol})`}</Text>
+                            <Input
+                                onChange={setPrice}
+                                placeholder="0"
+                                type="number"
+                                value={price}
+                            />
+                        </Flex>
 
-                {/* Availability */}
-                <div className="flex items-center justify-between py-2">
-                    <span className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                        Available
-                    </span>
-                    <Switch
-                        checked={isAvailable}
-                        onChange={setIsAvailable}
-                        style={{ '--height': '26px', '--width': '44px' } as React.CSSProperties}
-                    />
-                </div>
+                        <Flex gap={6} vertical>
+                            <Text strong>Item Image</Text>
+                            <Flex align="center" gap={12}>
+                                {imagePreview ? (
+                                    <Image
+                                        height={64}
+                                        preview={false}
+                                        src={imagePreview}
+                                        style={{ borderRadius: 8, objectFit: 'cover', width: 64 }}
+                                        width={64}
+                                    />
+                                ) : (
+                                    <Card size="small" style={{ margin: 0 }}>
+                                        <Flex align="center" justify="center" style={{ height: 48, width: 48 }}>
+                                            <LuCamera color="#94a3b8" size={20} />
+                                        </Flex>
+                                    </Card>
+                                )}
+                                <Upload {...uploadProps}>
+                                    <Button fill="outline" size="small">
+                                        <Flex align="center" gap={6}>
+                                            <LuCamera size={14} />
+                                            <Text>{imagePreview ? 'Change Photo' : 'Add Photo'}</Text>
+                                        </Flex>
+                                    </Button>
+                                </Upload>
+                            </Flex>
+                        </Flex>
 
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                    <Button
-                        block
-                        fill="outline"
-                        size="large"
-                        onClick={onClose}
-                        style={{ minHeight: '44px' }}
-                    >
+                        <Flex gap={6} vertical>
+                            <Text strong>Description</Text>
+                            <TextArea
+                                maxLength={200}
+                                onChange={setDescription}
+                                placeholder="Item description"
+                                rows={3}
+                                showCount
+                                value={description}
+                            />
+                        </Flex>
+
+                        <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                            <Flex align="center" justify="space-between">
+                                <Flex gap={2} vertical>
+                                    <Text strong>Available</Text>
+                                    <Text type="secondary">Turn this off when the item is sold out.</Text>
+                                </Flex>
+                                <Switch checked={isAvailable} onChange={setIsAvailable} />
+                            </Flex>
+                        </Card>
+                    </Flex>
+                </Card>
+
+                <Flex gap={12}>
+                    <Button block fill="outline" onClick={onClose} size="large">
                         Cancel
                     </Button>
-                    <Button
-                        block
-                        color="primary"
-                        fill="solid"
-                        size="large"
-                        onClick={handleSave}
-                        disabled={!name.trim()}
-                        style={{ minHeight: '44px' }}
-                    >
+                    <Button block color="primary" disabled={!name.trim()} onClick={handleSave} size="large">
                         Save
                     </Button>
-                </div>
+                </Flex>
 
-                {/* Delete Button */}
-                {onDelete && (
-                    <button
+                {onDelete ? (
+                    <Button
+                        block
+                        color="danger"
+                        fill="outline"
                         onClick={() => {
                             Dialog.confirm({
                                 title: 'Delete Item',
@@ -201,12 +168,12 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                                 onConfirm: () => onDelete(item.id),
                             });
                         }}
-                        className="w-full text-center text-red-500 text-sm font-medium py-3 active:bg-red-50 dark:active:bg-red-900/20 rounded-lg min-h-[44px]"
+                        size="large"
                     >
                         Delete This Item
-                    </button>
-                )}
-            </div>
+                    </Button>
+                ) : null}
+            </Flex>
         </Popup>
     );
 }

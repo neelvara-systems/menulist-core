@@ -2,10 +2,10 @@
 
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, DotLoading, Input, NavBar, TextArea, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuBuilding2, LuFileText, LuMapPin, LuPhone } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Text, TextArea, Toast } from '../antd';
 
 interface MobilePublicInfoScreenProps {
     onBack: () => void;
@@ -15,138 +15,113 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
     const t = useTranslations('MobileSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-
     const [formData, setFormData] = useState({
-        phoneNumber: storeDetails?.phoneNumber || '',
         addressLine: storeDetails?.addressLine || '',
         city: storeDetails?.city || '',
         description: storeDetails?.description || '',
+        phoneNumber: storeDetails?.phoneNumber || '',
     });
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
-
-        // Optimistic update (Law 8)
-        setStoreDetails((prev: any) => ({ ...prev, ...formData }));
+        setStoreDetails((previous: any) => ({ ...previous, ...formData }));
         Toast.show({ content: t('saved'), duration: 1000 });
 
         try {
             await updateStore({ ...storeDetails, ...formData } as any);
         } catch {
-            // Revert on failure
-            setStoreDetails((prev: any) => ({
-                ...prev,
-                phoneNumber: storeDetails.phoneNumber,
+            setStoreDetails((previous: any) => ({
+                ...previous,
                 addressLine: storeDetails.addressLine,
                 city: storeDetails.city,
                 description: storeDetails.description,
+                phoneNumber: storeDetails.phoneNumber,
             }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         } finally {
             setIsSaving(false);
         }
-    }, [storeDetails, formData, setStoreDetails]);
+    }, [formData, setStoreDetails, storeDetails, t]);
 
     if (!storeDetails) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
                 <DotLoading color="primary" />
-            </div>
+            </Flex>
         );
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
-            <NavBar onBack={onBack} style={{ borderBottom: '1px solid var(--adm-color-border, #eee)' }}>
-                {t('publicInfo')}
-            </NavBar>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                {/* Business Name (read-only on mobile) */}
-                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <LuBuilding2 size={12} />
-                            {t('businessName')}
-                        </label>
-                        <p style={{ fontSize: '15px', fontWeight: 500, color: 'var(--adm-color-text, #333)', margin: 0 }}>
-                            {storeDetails.name}
-                        </p>
-                        <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('changeOnDesktop')}</p>
-                    </div>
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <NavBar onBack={onBack}>{t('publicInfo')}</NavBar>
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card>
+                    <Flex gap={4} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuBuilding2 size={14} />
+                            <Text type="secondary">{t('businessName')}</Text>
+                        </Flex>
+                        <Text strong>{storeDetails.name}</Text>
+                        <Text type="secondary">{t('changeOnDesktop')}</Text>
+                    </Flex>
                 </Card>
 
-                {/* Phone */}
-                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <LuPhone size={12} />
-                            {t('phoneNumber')}
-                        </label>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuPhone size={14} />
+                            <Text type="secondary">{t('phoneNumber')}</Text>
+                        </Flex>
                         <Input
-                            value={formData.phoneNumber}
-                            onChange={(val) => setFormData(prev => ({ ...prev, phoneNumber: val }))}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))}
                             placeholder={t('enterPhoneNumber')}
                             type="tel"
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
+                            value={formData.phoneNumber}
                         />
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* Address */}
-                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <LuMapPin size={12} />
-                            {t('address')}
-                        </label>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuMapPin size={14} />
+                            <Text type="secondary">{t('address')}</Text>
+                        </Flex>
                         <Input
-                            value={formData.addressLine}
-                            onChange={(val) => setFormData(prev => ({ ...prev, addressLine: val }))}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
                             placeholder={t('streetAddress')}
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
+                            value={formData.addressLine}
                         />
                         <Input
-                            value={formData.city}
-                            onChange={(val) => setFormData(prev => ({ ...prev, city: val }))}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, city: value }))}
                             placeholder={t('city')}
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
+                            value={formData.city}
                         />
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* Description */}
-                <Card style={{ borderRadius: '12px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <LuFileText size={12} />
-                            {t('description')}
-                        </label>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuFileText size={14} />
+                            <Text type="secondary">{t('description')}</Text>
+                        </Flex>
                         <TextArea
-                            value={formData.description}
-                            onChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
+                            maxLength={300}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, description: value }))}
                             placeholder={t('describeYourBusiness')}
                             rows={3}
-                            maxLength={300}
                             showCount
+                            value={formData.description}
                         />
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* Save Button */}
-                <Button
-                    block
-                    color="primary"
-                    fill="solid"
-                    size="large"
-                    loading={isSaving}
-                    onClick={handleSave}
-                    style={{ minHeight: '44px', borderRadius: '8px' }}
-                >
+                <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
                     {t('saveChanges')}
                 </Button>
-            </div>
-        </div>
+            </Flex>
+        </Flex>
     );
 }

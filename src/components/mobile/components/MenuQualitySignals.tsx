@@ -1,118 +1,83 @@
 'use client';
 
-/**
- * Menu Quality Signals — Mobile Component
- * 
- * Read-only quality signals panel for mobile.
- * Action buttons show a message directing to desktop for AI features.
- * 
- * @see __docs__/menu-quality-signals/menu-quality-signals_mobile-support.md
- */
-
 import { FEATURE_FLAGS } from '@config/features';
 import { computeQualitySignals, getVisibleSignals, isAllClear, QualitySignal } from '@lib/mce/qualitySignals';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
-import { Card, List, Toast } from 'antd-mobile';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
+import { Button, Card, Flex, List, Text, Toast } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
-    images: <LuImage size={16} />,
-    prices: <LuDollarSign size={16} />,
     hidden: <LuEyeOff size={16} />,
+    images: <LuImage size={16} />,
     priceOutliers: <LuTrendingDown size={16} />,
+    prices: <LuDollarSign size={16} />,
 };
 
 interface MobileMenuQualitySignalsProps {
     files: ProjectFileType[] | undefined;
 }
 
-const MobileMenuQualitySignals: React.FC<MobileMenuQualitySignalsProps> = ({ files }) => {
+export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySignalsProps) {
     const allSignals = useMemo(() => computeQualitySignals(files), [files]);
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
 
-    if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS) return null;
-    if (signals.length === 0) return null;
+    if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || signals.length === 0) {
+        return null;
+    }
 
     const handleAction = (signal: QualitySignal) => {
-        if (signal.actionRoute === 'descriptions' || signal.actionRoute === 'images') {
-            Toast.show({
-                content: 'Open MenuList on desktop to generate content',
-                duration: 2000,
-            });
-        } else {
-            Toast.show({
-                content: 'Open the editor on desktop to review',
-                duration: 2000,
-            });
-        }
+        Toast.show({
+            content: signal.actionRoute === 'descriptions' || signal.actionRoute === 'images'
+                ? 'Open MenuList on desktop to generate content'
+                : 'Open the editor on desktop to review',
+            duration: 2000,
+        });
     };
 
     return (
         <Card
-            title={
-                <div className="flex items-center gap-2">
-                    <LuSparkles size={16} className={allClear ? 'text-green-500' : 'text-amber-500'} />
-                    <span className="text-sm font-semibold">Menu Quality</span>
-                </div>
-            }
-            style={{ borderRadius: 12 }}
+            title={(
+                <Flex align="center" gap={8}>
+                    <LuSparkles color={allClear ? '#16a34a' : '#d97706'} size={16} />
+                    <Text strong>Menu Quality</Text>
+                </Flex>
+            )}
         >
             {allClear ? (
-                <div className="flex items-center gap-3 py-2">
-                    <LuCheckCircle size={24} className="text-green-500 flex-shrink-0" />
-                    <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 m-0">
-                            Your menu looks great
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 m-0">
-                            Descriptions, images, prices — all set
-                        </p>
-                    </div>
-                </div>
+                <Flex align="center" gap={12}>
+                    <LuCheckCircle color="#16a34a" size={24} />
+                    <Flex gap={2} vertical>
+                        <Text strong>Your menu looks great</Text>
+                        <Text type="secondary">Descriptions, images, and prices are in good shape.</Text>
+                    </Flex>
+                </Flex>
             ) : (
-                <List style={{ '--border-inner': 'none', '--border-top': 'none', '--border-bottom': 'none', '--padding-left': '0' } as React.CSSProperties}>
+                <List>
                     {signals.map((signal) => (
                         <List.Item
                             key={signal.id}
-                            prefix={
-                                <span className={signal.status === 'ok' ? 'text-green-500' : 'text-amber-500'}>
-                                    {signal.status === 'ok'
-                                        ? <LuCheckCircle size={16} />
-                                        : <LuAlertCircle size={16} />
-                                    }
-                                </span>
-                            }
-                            description={
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-gray-400">{SIGNAL_ICONS[signal.id]}</span>
-                                    <div>
-                                        <span className="text-xs text-gray-600 dark:text-gray-300">{signal.label}</span>
-                                        {signal.helpText && (
-                                            <span className="block text-[10px] text-gray-400 dark:text-gray-500">{signal.helpText}</span>
-                                        )}
-                                    </div>
-                                </div>
-                            }
-                            extra={
-                                signal.actionLabel && signal.actionRoute ? (
-                                    <button
-                                        onClick={() => handleAction(signal)}
-                                        className="text-xs text-blue-500 font-medium px-2 py-1 rounded active:bg-blue-50 dark:active:bg-blue-900/20 min-h-[44px] flex items-center"
-                                    >
-                                        {signal.actionLabel}
-                                    </button>
-                                ) : null
-                            }
-                            style={{ paddingLeft: 0 }}
+                            description={(
+                                <Flex gap={8} vertical>
+                                    <Flex align="center" gap={8}>
+                                        {SIGNAL_ICONS[signal.id]}
+                                        <Text>{signal.label}</Text>
+                                    </Flex>
+                                    {signal.helpText ? <Text type="secondary">{signal.helpText}</Text> : null}
+                                </Flex>
+                            )}
+                            extra={signal.actionLabel && signal.actionRoute ? (
+                                <Button fill="outline" onClick={() => handleAction(signal)} size="small">
+                                    {signal.actionLabel}
+                                </Button>
+                            ) : null}
+                            prefix={signal.status === 'ok' ? <LuCheckCircle color="#16a34a" size={16} /> : <LuAlertCircle color="#d97706" size={16} />}
                         />
                     ))}
                 </List>
             )}
         </Card>
     );
-};
-
-export default MobileMenuQualitySignals;
+}

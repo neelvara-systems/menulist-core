@@ -4,30 +4,24 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getFormatedDateAndTime } from '@util/dateTime';
 import { formatCurrency, formatProcessingTime } from '@util/formatters';
-import { Card, DotLoading, InfiniteScroll, List, NavBar, Toast } from 'antd-mobile';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuReceipt, LuRefreshCw } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, InfiniteScroll, List, NavBar, Text, Title, Toast } from '../antd';
 
 interface MobileTransactionsScreenProps {
     onBack: () => void;
 }
 
 interface TransactionItem {
-    id: string;
     action: string;
-    totalCharge: number;
-    processingTime: number;
     createdOn: string;
+    id: string;
+    processingTime: number;
     projectId?: string;
+    totalCharge: number;
 }
 
-/**
- * Mobile Transactions Screen — zero desktop dependency
- * 
- * View AI credit usage history with infinite scroll.
- * Uses same DAL: getPaginatedAiOperations
- */
 export default function MobileTransactionsScreen({ onBack }: MobileTransactionsScreenProps) {
     const t = useTranslations('Transactions');
     const [transactions, setTransactions] = useState<TransactionItem[]>([]);
@@ -46,38 +40,31 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
             }
 
             const response = await getPaginatedAiOperations({
-                pageSize: 15,
-                pageNumber: pageRef.current,
-                lastVisibleDoc: lastVisibleRef.current,
-                dateRange: null,
                 action: null,
+                dateRange: null,
+                lastVisibleDoc: lastVisibleRef.current,
+                pageNumber: pageRef.current,
+                pageSize: 15,
             });
 
             lastVisibleRef.current = response.lastVisibleDoc;
-
             if (response.data.length === 0) {
                 setHasMore(false);
                 return;
             }
 
             setHasMore(response.hasMore);
-
-            if (reset || pageRef.current === 1) {
-                setTransactions(response.data);
-            } else {
-                setTransactions((prev) => [...prev, ...response.data]);
-            }
-
+            setTransactions((previous) => (reset || pageRef.current === 1 ? response.data : [...previous, ...response.data]));
             pageRef.current += 1;
         } catch {
             Toast.show({ content: t('failedToLoad'), duration: 2000 });
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
-        fetchPage(true);
+        void fetchPage(true);
     }, [fetchPage]);
 
     const getActionColor = (action: string) => {
@@ -87,78 +74,61 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
         return '#6b7280';
     };
 
-    const formatActionLabel = (action: string) => {
-        return action
-            .split('_')
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(' ');
-    };
-
-    const loadMore = async () => {
-        if (!hasMore) return;
-        await fetchPage(false);
-    };
+    const formatActionLabel = (action: string) => action.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
     return (
-        <div className="flex flex-col h-full">
+        <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar
                 onBack={onBack}
-                right={
-                    <button
-                        onClick={() => { setLoading(true); fetchPage(true); }}
-                        className="p-2 active:opacity-60"
-                    >
-                        <LuRefreshCw size={18} className="text-gray-500" />
-                    </button>
-                }
-                style={{ '--height': '48px' } as React.CSSProperties}
+                right={(
+                    <Button fill="none" onClick={() => { setLoading(true); void fetchPage(true); }}>
+                        <LuRefreshCw color="#64748b" size={18} />
+                    </Button>
+                )}
             >
                 Transactions
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto">
+            <Flex gap={12} style={{ padding: 16 }} vertical>
                 {loading && transactions.length === 0 ? (
-                    <div className="flex items-center justify-center py-20"><DotLoading color="primary" /></div>
+                    <Flex align="center" justify="center" style={{ padding: 48 }}>
+                        <DotLoading color="primary" />
+                    </Flex>
                 ) : transactions.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 pt-16 px-6">
-                        <LuReceipt size={36} className="text-gray-300" />
-                        <p className="text-sm text-gray-500 text-center">No AI transactions yet.</p>
-                    </div>
+                    <Card>
+                        <Flex align="center" gap={12} vertical>
+                            <LuReceipt color="#d1d5db" size={36} />
+                            <Title level={5} style={{ margin: 0 }}>No AI transactions yet.</Title>
+                        </Flex>
+                    </Card>
                 ) : (
-                    <div className="px-4 pt-3 pb-4">
-                        <Card style={{ padding: 0 }} className="rounded-xl">
-                            <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+                    <>
+                        <Card>
+                            <List>
                                 {transactions.map((tx) => (
                                     <List.Item
+                                        description={(
+                                            <Flex gap={8}>
+                                                <Text type="secondary">{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>
+                                                <Text type="secondary">{formatProcessingTime(tx.processingTime)}</Text>
+                                            </Flex>
+                                        )}
+                                        extra={<Text strong style={{ color: '#16a34a' }}>{formatCurrency(tx.totalCharge, 'INR')}</Text>}
                                         key={tx.id}
-                                        description={
-                                            <span className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-gray-400">{getFormatedDateAndTime(formatter, tx.createdOn)}</span>
-                                                <span className="text-xs text-gray-400">{formatProcessingTime(tx.processingTime)}</span>
-                                            </span>
-                                        }
-                                        extra={
-                                            <span className="text-sm font-semibold text-green-600">
-                                                {formatCurrency(tx.totalCharge, 'INR')}
-                                            </span>
-                                        }
-                                        style={{ minHeight: '48px' }}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <span
-                                                className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                                                style={{ backgroundColor: getActionColor(tx.action) }}
-                                            />
-                                            <span className="text-sm font-medium">{formatActionLabel(tx.action)}</span>
-                                        </span>
-                                    </List.Item>
+                                        title={(
+                                            <Flex align="center" gap={8}>
+                                                <Card style={{ backgroundColor: getActionColor(tx.action), borderRadius: '50%', height: 8, minWidth: 8, padding: 0, width: 8 }} />
+                                                <Text strong>{formatActionLabel(tx.action)}</Text>
+                                            </Flex>
+                                        )}
+                                    />
                                 ))}
                             </List>
                         </Card>
-                        <InfiniteScroll loadMore={loadMore} hasMore={hasMore} />
-                    </div>
+                        <InfiniteScroll hasMore={hasMore} loadMore={async () => { await fetchPage(false); }} />
+                    </>
                 )}
-            </div>
-        </div>
+            </Flex>
+        </Flex>
     );
 }

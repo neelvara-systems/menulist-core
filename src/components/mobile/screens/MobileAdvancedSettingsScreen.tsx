@@ -2,47 +2,32 @@
 
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Input, List, NavBar, Popup, Switch, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMessageSquare, LuShare2, LuUser } from 'react-icons/lu';
+import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileAdvancedSettingsScreenProps {
     onBack: () => void;
 }
 
-/**
- * Mobile Advanced Settings — Apple Settings-style grouped metadata screen
- * 
- * Covers 3 desktop business settings tabs that had no mobile equivalent:
- * 1. Contact Person (name, email, phone)
- * 2. Social Media (Facebook, Instagram, WhatsApp, etc.)
- * 3. Feedback Settings (enable/disable, collect fields, Google Review URL)
- * 
- * All data saved via updateStore() — same DAL as desktop.
- * Time Slot Presets excluded (complex add/edit/delete with color picker — desktop-only setup).
- */
 export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Contact Person
     const [contactName, setContactName] = useState(storeDetails?.contactPersonName || '');
     const [contactEmail, setContactEmail] = useState(storeDetails?.contactPersonEmail || '');
     const [contactPhone, setContactPhone] = useState(storeDetails?.contactPersonNumber || '');
 
-    // Social Media
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
 
-    // Feedback Settings
     const [feedbackEnabled, setFeedbackEnabled] = useState(storeDetails?.feedbackEnabled !== false);
     const [collectName, setCollectName] = useState(storeDetails?.feedbackDefaults?.collectName ?? false);
     const [collectPhone, setCollectPhone] = useState(storeDetails?.feedbackDefaults?.collectPhone ?? true);
     const [collectEmail, setCollectEmail] = useState(storeDetails?.feedbackDefaults?.collectEmail ?? true);
     const [reviewUrl, setReviewUrl] = useState(storeDetails?.reviewUrl || '');
 
-    // Social media edit sheet
     const [showSocialEdit, setShowSocialEdit] = useState(false);
 
     const SOCIAL_PLATFORMS = [
@@ -77,8 +62,8 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
 
     const handleSaveSocialMedia = () => {
         const cleaned: Record<string, string> = {};
-        Object.entries(socialMedia).forEach(([k, v]) => {
-            if (v.trim()) cleaned[k] = v.trim();
+        Object.entries(socialMedia).forEach(([key, value]) => {
+            if (value.trim()) cleaned[key] = value.trim();
         });
         saveField({ socialMedia: cleaned });
         setShowSocialEdit(false);
@@ -105,205 +90,165 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
         saveField({ reviewUrl: reviewUrl.trim() });
     };
 
-    const filledSocialCount = Object.values(socialMedia).filter(v => v.trim()).length;
+    const filledSocialCount = Object.values(socialMedia).filter((value) => value.trim()).length;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
-            <NavBar onBack={onBack} style={{ borderBottom: '1px solid var(--adm-color-border, #eee)' }}>
+        <Flex style={{ height: '100%' }} vertical>
+            <NavBar
+                onBack={onBack}
+                right={isSaving ? <Tag color="processing">Saving</Tag> : null}
+            >
                 {t('title')}
             </NavBar>
 
-            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '32px' }}>
-                {/* SECTION: Contact Person */}
-                <div style={{ padding: '16px 16px 4px' }}>
-                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('contactPerson')}</p>
-                </div>
-                <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
-                    <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <Card size="small" title={<Text strong>{t('contactPerson')}</Text>}>
+                    <List>
                         <List.Item
-                            prefix={<LuUser size={18} color="var(--adm-color-primary, #1677ff)" />}
+                            prefix={<LuUser color="#1677ff" size={18} />}
                             extra={
                                 <Input
-                                    value={contactName}
-                                    onChange={setContactName}
                                     onBlur={handleSaveContactPerson}
+                                    onChange={setContactName}
                                     placeholder={t('fullName')}
-                                    style={{ '--text-align': 'right', '--font-size': '15px' } as React.CSSProperties}
+                                    value={contactName}
                                 />
                             }
-                        >
-                            <span style={{ fontSize: '15px' }}>{t('name')}</span>
-                        </List.Item>
+                            title={<Text>{t('name')}</Text>}
+                        />
                         <List.Item
                             extra={
                                 <Input
-                                    value={contactEmail}
-                                    onChange={setContactEmail}
                                     onBlur={handleSaveContactPerson}
+                                    onChange={setContactEmail}
                                     placeholder={t('email')}
                                     type="email"
-                                    style={{ '--text-align': 'right', '--font-size': '15px' } as React.CSSProperties}
+                                    value={contactEmail}
                                 />
                             }
-                        >
-                            <span style={{ fontSize: '15px' }}>{t('email')}</span>
-                        </List.Item>
+                            title={<Text>{t('email')}</Text>}
+                        />
                         <List.Item
                             extra={
                                 <Input
-                                    value={contactPhone}
-                                    onChange={setContactPhone}
                                     onBlur={handleSaveContactPerson}
+                                    onChange={setContactPhone}
                                     placeholder={t('phone')}
                                     type="tel"
-                                    style={{ '--text-align': 'right', '--font-size': '15px' } as React.CSSProperties}
+                                    value={contactPhone}
                                 />
                             }
-                        >
-                            <span style={{ fontSize: '15px' }}>{t('phone')}</span>
-                        </List.Item>
+                            title={<Text>{t('phone')}</Text>}
+                        />
                     </List>
-                </div>
+                </Card>
 
-                {/* SECTION: Social Media */}
-                <div style={{ padding: '24px 16px 4px' }}>
-                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('socialMedia')}</p>
-                </div>
-                <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
-                    <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+                <Card size="small" title={<Text strong>{t('socialMedia')}</Text>}>
+                    <List>
                         <List.Item
-                            prefix={<LuShare2 size={18} color="var(--adm-color-weak, #999)" />}
-                            onClick={() => setShowSocialEdit(true)}
                             arrow
                             description={filledSocialCount > 0 ? t('platformsLinked', { count: filledSocialCount }) : t('notSet')}
-                        >
-                            <span style={{ fontSize: '15px' }}>{t('socialProfiles')}</span>
-                        </List.Item>
+                            onClick={() => setShowSocialEdit(true)}
+                            prefix={<LuShare2 color="#94a3b8" size={18} />}
+                            title={<Text>{t('socialProfiles')}</Text>}
+                        />
                     </List>
-                </div>
+                </Card>
 
-                {/* SECTION: Guest Feedback */}
-                <div style={{ padding: '24px 16px 4px' }}>
-                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('guestFeedback')}</p>
-                </div>
-                <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
-                    <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+                <Card size="small" title={<Text strong>{t('guestFeedback')}</Text>}>
+                    <List>
                         <List.Item
-                            prefix={<LuMessageSquare size={18} color="var(--adm-color-success, #52c41a)" />}
-                            extra={
-                                <Switch
-                                    checked={feedbackEnabled}
-                                    onChange={handleToggleFeedback}
-                                    style={{ '--height': '22px', '--width': '38px' } as React.CSSProperties}
-                                />
-                            }
-                        >
-                            <span style={{ fontSize: '15px' }}>{t('enableFeedback')}</span>
-                        </List.Item>
+                            prefix={<LuMessageSquare color="#16a34a" size={18} />}
+                            extra={<Switch checked={feedbackEnabled} onChange={handleToggleFeedback} />}
+                            title={<Text>{t('enableFeedback')}</Text>}
+                        />
                     </List>
-                </div>
+                </Card>
 
-                {feedbackEnabled && (
+                {feedbackEnabled ? (
                     <>
-                        <div style={{ padding: '16px 16px 4px' }}>
-                            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('feedbackFormFields')}</p>
-                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', marginTop: '2px' }}>{t('feedbackFormFieldsDesc')}</p>
-                        </div>
-                        <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
-                            <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
-                                <List.Item
-                                    extra={
-                                        <Switch
-                                            checked={collectName}
-                                            onChange={(v) => handleToggleCollectField('collectName', v)}
-                                            style={{ '--height': '22px', '--width': '38px' } as React.CSSProperties}
-                                        />
-                                    }
-                                >
-                                    <span style={{ fontSize: '15px' }}>{t('askForName')}</span>
-                                </List.Item>
-                                <List.Item
-                                    extra={
-                                        <Switch
-                                            checked={collectPhone}
-                                            onChange={(v) => handleToggleCollectField('collectPhone', v)}
-                                            style={{ '--height': '22px', '--width': '38px' } as React.CSSProperties}
-                                        />
-                                    }
-                                    description={t('forWhatsAppFollowUp')}
-                                >
-                                    <span style={{ fontSize: '15px' }}>{t('askForPhone')}</span>
-                                </List.Item>
-                                <List.Item
-                                    extra={
-                                        <Switch
-                                            checked={collectEmail}
-                                            onChange={(v) => handleToggleCollectField('collectEmail', v)}
-                                            style={{ '--height': '22px', '--width': '38px' } as React.CSSProperties}
-                                        />
-                                    }
-                                >
-                                    <span style={{ fontSize: '15px' }}>{t('askForEmail')}</span>
-                                </List.Item>
-                            </List>
-                        </div>
-
-                        <div style={{ padding: '16px 16px 4px' }}>
-                            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('googleReview')}</p>
-                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', marginTop: '2px' }}>{t('googleReviewDesc')}</p>
-                        </div>
-                        <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
-                            <List>
-                                <List.Item>
-                                    <Input
-                                        value={reviewUrl}
-                                        onChange={setReviewUrl}
-                                        onBlur={handleSaveReviewUrl}
-                                        placeholder="https://g.page/r/your-id/review"
-                                        style={{ '--font-size': '14px' } as React.CSSProperties}
+                        <Card
+                            size="small"
+                            title={<Text strong>{t('feedbackFormFields')}</Text>}
+                        >
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">{t('feedbackFormFieldsDesc')}</Text>
+                                <List>
+                                    <List.Item
+                                        extra={<Switch checked={collectName} onChange={(value) => handleToggleCollectField('collectName', value)} />}
+                                        title={<Text>{t('askForName')}</Text>}
                                     />
-                                </List.Item>
-                            </List>
-                        </div>
+                                    <List.Item
+                                        description={<Text type="secondary">{t('forWhatsAppFollowUp')}</Text>}
+                                        extra={<Switch checked={collectPhone} onChange={(value) => handleToggleCollectField('collectPhone', value)} />}
+                                        title={<Text>{t('askForPhone')}</Text>}
+                                    />
+                                    <List.Item
+                                        extra={<Switch checked={collectEmail} onChange={(value) => handleToggleCollectField('collectEmail', value)} />}
+                                        title={<Text>{t('askForEmail')}</Text>}
+                                    />
+                                </List>
+                            </Flex>
+                        </Card>
+
+                        <Card size="small" title={<Text strong>{t('googleReview')}</Text>}>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">{t('googleReviewDesc')}</Text>
+                                <Input
+                                    onBlur={handleSaveReviewUrl}
+                                    onChange={setReviewUrl}
+                                    placeholder="https://g.page/r/your-id/review"
+                                    value={reviewUrl}
+                                />
+                            </Flex>
+                        </Card>
                     </>
-                )}
+                ) : null}
 
-                <p style={{ fontSize: '12px', textAlign: 'center', color: 'var(--adm-color-weak, #999)', padding: '24px 16px 0' }}>
+                <Text style={{ textAlign: 'center' }} type="secondary">
                     {t('desktopOnlyNote')}
-                </p>
-            </div>
+                </Text>
+            </Flex>
 
-            {/* Social Media Edit Sheet */}
             <Popup
-                visible={showSocialEdit}
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh' }}
                 onMaskClick={() => setShowSocialEdit(false)}
                 position="bottom"
-                bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '80vh' }}
+                visible={showSocialEdit}
             >
-                <div style={{ padding: '16px 16px 24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--adm-color-border, #eee)', borderRadius: '999px' }} />
-                    </div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('socialMedia')}</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {SOCIAL_PLATFORMS.map((p) => (
-                            <div key={p.key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)' }}>{p.label}</label>
-                                <Input
-                                    value={socialMedia[p.key] || ''}
-                                    onChange={(v) => setSocialMedia({ ...socialMedia, [p.key]: v })}
-                                    placeholder={p.placeholder}
-                                    style={{ '--font-size': '15px' } as React.CSSProperties}
-                                />
-                            </div>
+                <Flex gap={16} vertical>
+                    <Flex align="center" justify="space-between">
+                        <Title level={4} style={{ margin: 0 }}>
+                            {t('socialMedia')}
+                        </Title>
+                        <Tag color="processing">{filledSocialCount}</Tag>
+                    </Flex>
+
+                    <Flex gap={12} vertical>
+                        {SOCIAL_PLATFORMS.map((platform) => (
+                            <Card key={platform.key} size="small">
+                                <Flex gap={6} vertical>
+                                    <Text strong>{platform.label}</Text>
+                                    <Input
+                                        onChange={(value) => setSocialMedia({ ...socialMedia, [platform.key]: value })}
+                                        placeholder={platform.placeholder}
+                                        value={socialMedia[platform.key] || ''}
+                                    />
+                                </Flex>
+                            </Card>
                         ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', paddingTop: '16px' }}>
-                        <Button block fill="outline" size="large" onClick={() => setShowSocialEdit(false)} style={{ minHeight: '44px' }}>{t('cancel')}</Button>
-                        <Button block color="primary" fill="solid" size="large" onClick={handleSaveSocialMedia} loading={isSaving} style={{ minHeight: '44px' }}>{t('save')}</Button>
-                    </div>
-                </div>
+                    </Flex>
+
+                    <Flex gap={12}>
+                        <Button block fill="outline" onClick={() => setShowSocialEdit(false)} size="large">
+                            {t('cancel')}
+                        </Button>
+                        <Button block color="primary" loading={isSaving} onClick={handleSaveSocialMedia} size="large">
+                            {t('save')}
+                        </Button>
+                    </Flex>
+                </Flex>
             </Popup>
-        </div>
+        </Flex>
     );
 }

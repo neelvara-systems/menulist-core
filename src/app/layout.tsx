@@ -1,6 +1,5 @@
 import '@styles/app.scss';
 import '@styles/mobile-theme.css';
-import 'antd-mobile/bundle/style.css';
 import 'antd/dist/reset.css';
 import { Metadata } from 'next';
 import { Suspense } from 'react';

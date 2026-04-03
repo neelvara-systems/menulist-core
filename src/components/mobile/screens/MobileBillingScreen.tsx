@@ -8,22 +8,16 @@ import usePaymentHandler from '@hook/usePaymentHandler';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
-import { Button, Card, Dialog, DotLoading, NavBar, Popup, Tag, Toast } from 'antd-mobile';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuXCircle, LuZap } from 'react-icons/lu';
+import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileBillingScreenProps {
     onBack: () => void;
 }
 
-/**
- * Full Mobile Billing Screen — zero desktop dependency
- * 
- * Supports: view plan, AI credits, upgrade/change plan, buy credit packs,
- * pause/resume/cancel, billing history. Uses same DAL + usePaymentHandler as desktop.
- */
 export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
     const { activeSubscription, setActiveSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
@@ -34,17 +28,19 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const [showHistory, setShowHistory] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Dummy dispatcher for usePaymentHandler (mobile doesn't use redux loaders)
-    const noopDispatcher = (action: any) => { };
+    const noopDispatcher = (_action: any) => undefined;
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);
 
     const currency: Currency = (storeDetails?.currencyCode as Currency) || 'INR';
 
     if (!storeDetails) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <DotLoading color="primary" />
-            </div>
+            <Flex style={{ height: '100%' }} vertical>
+                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <Flex align="center" justify="center" style={{ flex: 1 }}>
+                    <DotLoading color="primary" />
+                </Flex>
+            </Flex>
         );
     }
 
@@ -52,8 +48,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const monthlyCredits = sub?.monthlyCredits || 0;
     const topUpCredits = sub?.topUpCredits || 0;
     const totalCredits = monthlyCredits + topUpCredits;
-    const monthlyAllowance = sub?.monthlyCreditsAllowance || 1;
-    const creditUsagePercent = monthlyAllowance > 0 ? Math.round((monthlyCredits / monthlyAllowance) * 100) : 0;
 
     const refetchSubscription = async () => {
         try {
@@ -69,7 +63,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         try {
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
             return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-        } catch { return 'N/A'; }
+        } catch {
+            return 'N/A';
+        }
     };
 
     const getStatusColor = (status: string) => {
@@ -89,7 +85,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         return status;
     };
 
-    // --- Plan Actions ---
     const handleUpgrade = async (plan: Plan) => {
         setShowPlans(false);
         setIsLoading(true);
@@ -97,7 +92,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             if (sub) {
                 await onUpgradePlan(sub, plan, currency);
             } else {
-                await onClickPaymentCard(plan, currency, () => { });
+                await onClickPaymentCard(plan, currency, () => undefined);
             }
             Toast.show({ content: t('planUpdated'), duration: 2000 });
             await refetchSubscription();
@@ -207,305 +202,279 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         }
     };
 
-    // Plans data
-    const plans = getB2CPlansList().filter(p => p.billingInterval === 'MONTH');
+    const plans = getB2CPlansList().filter((plan) => plan.billingInterval === 'MONTH');
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
-            <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>
-                {t('title')}
-            </NavBar>
+        <Flex style={{ height: '100%' }} vertical>
+            <NavBar onBack={onBack}>{t('title')}</NavBar>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {isLoading && (
-                    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Card style={{ borderRadius: '12px', padding: '24px 32px' }}><DotLoading color="primary" /> {t('processing')}</Card>
-                    </div>
-                )}
+            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                {isLoading ? (
+                    <Card>
+                        <Flex align="center" gap={8} justify="center">
+                            <DotLoading color="primary" />
+                            <Text type="secondary">{t('processing')}</Text>
+                        </Flex>
+                    </Card>
+                ) : null}
 
-                {/* Current Plan Card */}
                 {sub ? (
-                    <Card style={{ borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div>
-                                    <h2 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', color: 'var(--adm-color-text, #333)' }}>
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" justify="space-between">
+                                <Flex gap={4} vertical>
+                                    <Title level={4} style={{ margin: 0, textTransform: 'capitalize' }}>
                                         {sub.planName || `${sub.planId} Plan`}
-                                    </h2>
-                                    <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>
+                                    </Title>
+                                    <Text type="secondary">
                                         {formatCurrency(sub.amount * (sub.quantity || 1), sub.currency)} / {sub.planType === 'YEAR' ? 'year' : 'month'}
-                                    </p>
-                                </div>
-                                <Tag color={getStatusColor(sub.status)} fill="outline" style={{ fontSize: 13 }}>
+                                    </Text>
+                                </Flex>
+                                <Tag color={getStatusColor(sub.status)}>
                                     {getStatusLabel(sub.status)}
                                 </Tag>
-                            </div>
+                            </Flex>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
-                                <div>
-                                    <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)' }}>{t('billingCycle')}</p>
-                                    <p style={{ fontWeight: 500, color: 'var(--adm-color-text-secondary, #666)' }}>{formatDate(sub.cycleStartDate)} - {formatDate(sub.cycleEndDate)}</p>
-                                </div>
-                                <div>
-                                    <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)' }}>{sub.status === 'active' ? t('renews') : t('expires')}</p>
-                                    <p style={{ fontWeight: 500, color: 'var(--adm-color-text-secondary, #666)' }}>{formatDate(sub.renewsOn || sub.cycleEndDate)}</p>
-                                </div>
-                            </div>
+                            <Card size="small">
+                                <Flex justify="space-between">
+                                    <Flex gap={2} vertical>
+                                        <Text type="secondary">{t('billingCycle')}</Text>
+                                        <Text>{`${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>
+                                    </Flex>
+                                    <Flex gap={2} vertical>
+                                        <Text type="secondary">{sub.status === 'active' ? t('renews') : t('expires')}</Text>
+                                        <Text>{formatDate(sub.renewsOn || sub.cycleEndDate)}</Text>
+                                    </Flex>
+                                </Flex>
+                            </Card>
 
-                            {sub.status === 'past_due' && (
-                                <div style={{ backgroundColor: '#fefce8', borderRadius: '8px', padding: '12px', fontSize: '14px', color: '#a16207' }}>
-                                    Payment failed. {(() => { const { remainingDays } = getGracePeriodInfo(sub.pastDueSinceAt); return `${remainingDays} days grace period remaining.`; })()}
-                                    {sub.shortUrl && (
-                                        <Button
-                                            size="small"
-                                            color="warning"
-                                            fill="solid"
-                                            onClick={() => { window.open(sub.shortUrl, '_blank'); }}
-                                            style={{ marginTop: '8px', minHeight: '36px' }}
-                                        >
-                                            {t('retryPayment')}
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-
-                            {sub.status === 'paused' && (
-                                <div style={{ backgroundColor: '#fff7ed', borderRadius: '8px', padding: '12px', fontSize: '14px', color: '#9a3412' }}>
-                                    {!hasValidSubscriptionAccess(sub)
-                                        ? t('pausedCycleEnded')
-                                        : t('pausedAccessAvailable')}
-                                </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
-                                {sub.status === 'active' && (
-                                    <>
-                                        {sub.planId !== 'premium' && (
-                                            <Button size="small" color="primary" fill="solid" onClick={() => setShowPlans(true)} style={{ minHeight: '36px' }}>
-                                                <LuZap size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('upgrade')}
+                            {sub.status === 'past_due' ? (
+                                <Card size="small" style={{ backgroundColor: '#fefce8' }}>
+                                    <Flex gap={6} vertical>
+                                        <Text>{`${t('paymentFailed')}`}</Text>
+                                        <Text type="secondary">
+                                            {(() => {
+                                                const { remainingDays } = getGracePeriodInfo(sub.pastDueSinceAt);
+                                                return `${remainingDays} days grace period remaining.`;
+                                            })()}
+                                        </Text>
+                                        {sub.shortUrl ? (
+                                            <Button color="warning" onClick={() => window.open(sub.shortUrl, '_blank')} size="small">
+                                                {t('retryPayment')}
                                             </Button>
-                                        )}
-                                        <Button size="small" fill="outline" onClick={handlePause} style={{ minHeight: '36px' }}>
-                                            <LuPause size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('pause')}
-                                        </Button>
-                                        <Button size="small" color="danger" fill="outline" onClick={handleCancel} style={{ minHeight: '36px' }}>
-                                            <LuXCircle size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('cancel')}
-                                        </Button>
-                                    </>
-                                )}
-                                {sub.status === 'paused' && (
+                                        ) : null}
+                                    </Flex>
+                                </Card>
+                            ) : null}
+
+                            {sub.status === 'paused' ? (
+                                <Card size="small" style={{ backgroundColor: '#fff7ed' }}>
+                                    <Text>
+                                        {!hasValidSubscriptionAccess(sub) ? t('pausedCycleEnded') : t('pausedAccessAvailable')}
+                                    </Text>
+                                </Card>
+                            ) : null}
+
+                            <Flex gap={8} wrap>
+                                {sub.status === 'active' ? (
                                     <>
-                                        <Button size="small" color="primary" fill="solid" onClick={handleResume} style={{ minHeight: '36px' }}>
-                                            <LuPlay size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('resume')}
+                                        {sub.planId !== 'premium' ? (
+                                            <Button color="primary" onClick={() => setShowPlans(true)} size="small">
+                                                <Flex align="center" gap={6}>
+                                                    <LuZap size={14} />
+                                                    <Text>{t('upgrade')}</Text>
+                                                </Flex>
+                                            </Button>
+                                        ) : null}
+                                        <Button fill="outline" onClick={handlePause} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuPause size={14} />
+                                                <Text>{t('pause')}</Text>
+                                            </Flex>
                                         </Button>
-                                        <Button size="small" color="danger" fill="outline" onClick={handleCancel} style={{ minHeight: '36px' }}>
-                                            <LuXCircle size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('cancel')}
+                                        <Button color="danger" fill="outline" onClick={handleCancel} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuXCircle size={14} />
+                                                <Text>{t('cancel')}</Text>
+                                            </Flex>
                                         </Button>
                                     </>
-                                )}
-                                {(sub.status === 'cancelled' || sub.status === 'expired') && (
-                                    <Button size="small" color="primary" fill="solid" onClick={() => setShowPlans(true)} style={{ minHeight: '36px' }}>
+                                ) : null}
+                                {sub.status === 'paused' ? (
+                                    <>
+                                        <Button color="primary" onClick={handleResume} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuPlay size={14} />
+                                                <Text>{t('resume')}</Text>
+                                            </Flex>
+                                        </Button>
+                                        <Button color="danger" fill="outline" onClick={handleCancel} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuXCircle size={14} />
+                                                <Text>{t('cancel')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    </>
+                                ) : null}
+                                {(sub.status === 'cancelled' || sub.status === 'expired') ? (
+                                    <Button color="primary" onClick={() => setShowPlans(true)} size="small">
                                         {t('chooseNewPlan')}
                                     </Button>
-                                )}
-                            </div>
-                        </div>
+                                ) : null}
+                            </Flex>
+                        </Flex>
                     </Card>
                 ) : (
-                    <Card style={{ borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0', gap: '12px' }}>
-                            <LuCreditCard size={36} color="#d1d5db" />
-                            <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>{t('noActiveSubscription2')}</p>
-                            <Button color="primary" fill="solid" onClick={() => setShowPlans(true)} style={{ minHeight: '44px' }}>
-                                <LuZap size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('chooseAPlan')}
+                    <Card>
+                        <Flex align="center" gap={12} vertical>
+                            <LuCreditCard color="#d1d5db" size={36} />
+                            <Text type="secondary">{t('noActiveSubscription2')}</Text>
+                            <Button color="primary" onClick={() => setShowPlans(true)} size="large">
+                                <Flex align="center" gap={6}>
+                                    <LuZap size={14} />
+                                    <Text>{t('chooseAPlan')}</Text>
+                                </Flex>
                             </Button>
-                        </div>
+                        </Flex>
                     </Card>
                 )}
 
-                {/* AI Features */}
-                {sub && (
-                    <Card style={{ borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <h3 style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                                    <LuZap size={16} color="#f59e0b" />
-                                    {t('aiFeatures')}
-                                </h3>
-                                <Tag color={totalCredits > 0 ? 'success' : 'warning'} fill="outline" style={{ fontSize: 13 }}>
+                {sub ? (
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" justify="space-between">
+                                <Flex align="center" gap={8}>
+                                    <LuZap color="#f59e0b" size={16} />
+                                    <Text strong>{t('aiFeatures')}</Text>
+                                </Flex>
+                                <Tag color={totalCredits > 0 ? 'success' : 'warning'}>
                                     {totalCredits > 0 ? t('statusActive') : t('exhausted')}
                                 </Tag>
-                            </div>
-
-                            <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>
-                                {t('aiIncludesDesc')}
-                            </p>
-
-                            <Button
-                                block
-                                color="primary"
-                                fill="outline"
-                                size="middle"
-                                onClick={() => setShowCredits(true)}
-                                style={{ minHeight: '44px' }}
-                            >
-                                <LuZap size={14} style={{ marginRight: '4px', display: 'inline' }} /> {totalCredits > 0 ? t('getAiEnhancements') : t('getMoreAiEnhancements')}
+                            </Flex>
+                            <Text type="secondary">{t('aiIncludesDesc')}</Text>
+                            <Button block color="primary" fill="outline" onClick={() => setShowCredits(true)} size="large">
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuZap size={14} />
+                                    <Text>{totalCredits > 0 ? t('getAiEnhancements') : t('getMoreAiEnhancements')}</Text>
+                                </Flex>
                             </Button>
-                        </div>
+                        </Flex>
                     </Card>
-                )}
+                ) : null}
 
-                {/* Billing History */}
-                <Card style={{ borderRadius: '12px' }} onClick={fetchHistory}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <LuReceipt size={20} color="#3b82f6" />
-                            <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('billingHistory')}</span>
-                        </div>
-                        <LuChevronRight size={18} color="#9ca3af" />
-                    </div>
+                <Card onClick={fetchHistory}>
+                    <Flex align="center" justify="space-between">
+                        <Flex align="center" gap={8}>
+                            <LuReceipt color="#3b82f6" size={18} />
+                            <Text strong>{t('billingHistory')}</Text>
+                        </Flex>
+                        <LuChevronRight color="#9ca3af" size={16} />
+                    </Flex>
                 </Card>
 
-                {/* Support */}
-                <Card style={{ borderRadius: '12px' }} onClick={() => window.open('https://wa.me/919876543210', '_blank')}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
-                        <LuMessageCircle size={20} color="#22c55e" />
-                        <div>
-                            <p style={{ fontSize: '15px', fontWeight: 500, margin: 0 }}>{t('needBillingHelp')}</p>
-                            <p style={{ fontSize: '13px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('chatWhatsApp')}</p>
-                        </div>
-                    </div>
+                <Card onClick={() => window.open('https://wa.me/919876543210', '_blank')}>
+                    <Flex align="center" gap={12}>
+                        <LuMessageCircle color="#22c55e" size={20} />
+                        <Flex gap={2} vertical>
+                            <Text strong>{t('needBillingHelp')}</Text>
+                            <Text type="secondary">{t('chatWhatsApp')}</Text>
+                        </Flex>
+                    </Flex>
                 </Card>
-            </div>
+            </Flex>
 
-            {/* Plans Bottom Sheet */}
-            <Popup
-                visible={showPlans}
-                onMaskClick={() => setShowPlans(false)}
-                position="bottom"
-                bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '85vh' }}
-                destroyOnClose
-            >
-                <div style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                        <div style={{ width: '40px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '999px' }} />
-                    </div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('chooseAPlan')}</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {plans.filter(p => p.planId !== sub?.planId).map((plan) => {
+            <Popup bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh' }} onMaskClick={() => setShowPlans(false)} position="bottom" visible={showPlans}>
+                <Flex gap={12} vertical>
+                    <Title level={4} style={{ margin: 0 }}>
+                        {t('chooseAPlan')}
+                    </Title>
+                    <Flex gap={12} vertical>
+                        {plans.filter((plan) => plan.planId !== sub?.planId).map((plan) => {
                             const price = (plan as any)[`price${currency}`]?.price;
                             const credits = (plan as any)[`price${currency}`]?.monthlyCredits;
                             return (
-                                <Card
-                                    key={plan.planId}
-                                    style={{ borderRadius: '12px' }}
-                                    onClick={() => handleUpgrade(plan)}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div>
-                                            <p style={{ fontSize: '15px', fontWeight: 600, textTransform: 'capitalize', margin: 0 }}>{plan.planId} Plan</p>
-                                            <p style={{ fontSize: '13px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{credits} credits/mo · {plan.description}</p>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <p style={{ fontWeight: 700, color: '#2563eb', margin: 0 }}>
-                                                {price ? formatCurrency(price, currency) : t('contactUs')}
-                                            </p>
-                                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('perMonth')}</p>
-                                        </div>
-                                    </div>
+                                <Card key={plan.planId} onClick={() => handleUpgrade(plan)}>
+                                    <Flex align="center" justify="space-between">
+                                        <Flex gap={4} vertical>
+                                            <Text strong>{`${plan.planId} Plan`}</Text>
+                                            <Text type="secondary">{`${credits} credits/mo · ${plan.description}`}</Text>
+                                        </Flex>
+                                        <Flex gap={2} vertical>
+                                            <Text>{price ? formatCurrency(price, currency) : t('contactUs')}</Text>
+                                            <Text type="secondary">{t('perMonth')}</Text>
+                                        </Flex>
+                                    </Flex>
                                 </Card>
                             );
                         })}
-                    </div>
-                    <p style={{ fontSize: '12px', textAlign: 'center', color: 'var(--adm-color-weak, #999)', marginTop: '12px' }}>
+                    </Flex>
+                    <Text type="secondary" style={{ textAlign: 'center' }}>
                         {t('yearlyAvailable')}
-                    </p>
-                </div>
+                    </Text>
+                </Flex>
             </Popup>
 
-            {/* Credits Bottom Sheet */}
-            <Popup
-                visible={showCredits}
-                onMaskClick={() => setShowCredits(false)}
-                position="bottom"
-                bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '70vh' }}
-                destroyOnClose
-            >
-                <div style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                        <div style={{ width: '40px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '999px' }} />
-                    </div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('getMoreAiEnhancements')}</h2>
-                    <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)', marginBottom: '16px' }}>{t('moreAiDesc')}</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Popup bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }} onMaskClick={() => setShowCredits(false)} position="bottom" visible={showCredits}>
+                <Flex gap={12} vertical>
+                    <Title level={4} style={{ margin: 0 }}>
+                        {t('getMoreAiEnhancements')}
+                    </Title>
+                    <Text type="secondary">{t('moreAiDesc')}</Text>
+                    <Flex gap={12} vertical>
                         {aiEnhancementPacksList.map((pack: AIEnhancementPack) => {
                             const price = (pack as any)[`price${currency}`]?.price;
                             return (
-                                <Card
-                                    key={pack.packId}
-                                    style={{ borderRadius: '12px' }}
-                                    onClick={() => handleBuyCredits(pack.packId)}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div>
-                                            <p style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>{pack.name}</p>
-                                            <p style={{ fontSize: '13px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{pack.description || 'AI Enhancement Pack'}</p>
-                                        </div>
-                                        <p style={{ fontWeight: 700, color: '#10b981', margin: 0 }}>
-                                            {price ? formatCurrency(price, currency) : 'N/A'}
-                                        </p>
-                                    </div>
+                                <Card key={pack.packId} onClick={() => handleBuyCredits(pack.packId)}>
+                                    <Flex align="center" justify="space-between">
+                                        <Flex gap={4} vertical>
+                                            <Text strong>{pack.name}</Text>
+                                            <Text type="secondary">{pack.description || 'AI Enhancement Pack'}</Text>
+                                        </Flex>
+                                        <Text>{price ? formatCurrency(price, currency) : 'N/A'}</Text>
+                                    </Flex>
                                 </Card>
                             );
                         })}
-                    </div>
-                </div>
+                    </Flex>
+                </Flex>
             </Popup>
 
-            {/* Billing History Bottom Sheet */}
-            <Popup
-                visible={showHistory}
-                onMaskClick={() => setShowHistory(false)}
-                position="bottom"
-                bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '80vh' }}
-                destroyOnClose
-            >
-                <div style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                        <div style={{ width: '40px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '999px' }} />
-                    </div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('billingHistory')}</h2>
+            <Popup bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh' }} onMaskClick={() => setShowHistory(false)} position="bottom" visible={showHistory}>
+                <Flex gap={12} vertical>
+                    <Title level={4} style={{ margin: 0 }}>
+                        {t('billingHistory')}
+                    </Title>
                     {billingHistory.length === 0 ? (
-                        <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)', textAlign: 'center', padding: '24px 0' }}>{t('noBillingHistoryYet')}</p>
+                        <Text type="secondary" style={{ textAlign: 'center' }}>
+                            {t('noBillingHistoryYet')}
+                        </Text>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {billingHistory.map((item: any, idx: number) => (
-                                <Card key={idx} style={{ borderRadius: '10px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div>
-                                            <p style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>{item.type}</p>
-                                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>
-                                                {new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                            </p>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontWeight: 600, fontSize: '14px' }}>
-                                                {formatCurrency(item.amount, item.currency)}
-                                            </span>
-                                            {item.invoiceUrl && (
-                                                <Button style={{ padding: '8px', minWidth: '36px', minHeight: '36px' }} onClick={() => window.open(item.invoiceUrl, '_blank')}>
+                        <List>
+                            {billingHistory.map((item: any, index: number) => (
+                                <List.Item
+                                    key={item.id || index}
+                                    extra={
+                                        <Flex align="center" gap={8}>
+                                            <Text>{formatCurrency(item.amount, item.currency)}</Text>
+                                            {item.invoiceUrl ? (
+                                                <Button onClick={() => window.open(item.invoiceUrl, '_blank')} size="small">
                                                     <LuExternalLink size={16} color="#3b82f6" />
                                                 </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </Card>
+                                            ) : null}
+                                        </Flex>
+                                    }
+                                    title={<Text>{item.type}</Text>}
+                                    description={
+                                        <Text type="secondary">
+                                            {new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                        </Text>
+                                    }
+                                />
                             ))}
-                        </div>
+                        </List>
                     )}
-                </div>
+                </Flex>
             </Popup>
-        </div>
+        </Flex>
     );
 }

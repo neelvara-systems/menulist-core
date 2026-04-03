@@ -2,10 +2,10 @@
 
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Card, Input, NavBar, Switch, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
-import { LuArrowLeft, LuBarChart2, LuSearch } from 'react-icons/lu';
+import { LuBarChart2, LuSearch } from 'react-icons/lu';
+import { Card, Flex, Input, NavBar, Switch, Text, Title, Toast } from '../antd';
 
 interface MobileSeoAnalyticsScreenProps {
     onBack: () => void;
@@ -14,14 +14,10 @@ interface MobileSeoAnalyticsScreenProps {
 export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsScreenProps) {
     const t = useTranslations('MobileSeoAnalytics');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
-
-    // ── SEO fields ───────────────────────────────────────────────
     const [tagline, setTagline] = useState('');
     const [metaTitle, setMetaTitle] = useState('');
     const [metaDescription, setMetaDescription] = useState('');
     const [canonicalUrl, setCanonicalUrl] = useState('');
-
-    // ── Analytics fields ─────────────────────────────────────────
     const [gaId, setGaId] = useState('');
     const [fbPixelId, setFbPixelId] = useState('');
     const [searchConsole, setSearchConsole] = useState('');
@@ -29,7 +25,6 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
     const [trackMenuViews, setTrackMenuViews] = useState(false);
     const [trackLocation, setTrackLocation] = useState(false);
 
-    // ── Init from storeDetails ───────────────────────────────────
     useEffect(() => {
         if (!storeDetails) return;
         setTagline(storeDetails.tagline || '');
@@ -44,7 +39,6 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
         setTrackLocation(storeDetails.analytics?.trackLocation || false);
     }, [storeDetails]);
 
-    // ── Auto-save on blur ────────────────────────────────────────
     const saveField = async (field: string, value: any) => {
         if (!storeDetails?.storeId) return;
         try {
@@ -64,158 +58,85 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-            <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />}>
-                {t('title')}
-            </NavBar>
-
-            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
-                {/* ── SEO Section ──────────────────────────────── */}
-                <SectionHeader icon={<LuSearch size={18} className="text-blue-500" />} title={t('seoSettings')} subtitle={t('seoSubtitle')} />
-
-                <Card className="rounded-xl">
-                    <div className="space-y-4">
-                        <FieldGroup label={t('tagline')} hint={t('taglineHint')}>
-                            <Input
-                                value={tagline}
-                                onChange={setTagline}
-                                onBlur={() => saveField('tagline', tagline)}
-                                placeholder="Authentic Italian cuisine since 1985"
-                                maxLength={100}
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card title={<Flex align="center" gap={8}><LuSearch color="#1677ff" size={18} /><Text strong>{t('seoSettings')}</Text></Flex>}>
+                    <Flex gap={12} vertical>
+                        <FieldGroup hint={t('taglineHint')} label={t('tagline')}>
+                            <Input maxLength={100} onBlur={() => void saveField('tagline', tagline)} onChange={setTagline} placeholder="Authentic Italian cuisine since 1985" value={tagline} />
                         </FieldGroup>
-
-                        <FieldGroup label={t('metaTitle')} hint={t('metaTitleHint')}>
-                            <Input
-                                value={metaTitle}
-                                onChange={setMetaTitle}
-                                onBlur={() => saveField('metaTitle', metaTitle)}
-                                placeholder="Your Restaurant Name | Best Pizza in Town"
-                                maxLength={60}
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+                        <FieldGroup hint={t('metaTitleHint')} label={t('metaTitle')}>
+                            <Input maxLength={60} onBlur={() => void saveField('metaTitle', metaTitle)} onChange={setMetaTitle} placeholder="Your Restaurant Name | Best Pizza in Town" value={metaTitle} />
                         </FieldGroup>
-
-                        <FieldGroup label={t('metaDescription')} hint={t('metaDescriptionHint')}>
-                            <Input
-                                value={metaDescription}
-                                onChange={setMetaDescription}
-                                onBlur={() => saveField('metaDescription', metaDescription)}
-                                placeholder="Serving the best wood-fired pizza and handmade pasta..."
-                                maxLength={160}
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+                        <FieldGroup hint={t('metaDescriptionHint')} label={t('metaDescription')}>
+                            <Input maxLength={160} onBlur={() => void saveField('metaDescription', metaDescription)} onChange={setMetaDescription} placeholder="Serving the best wood-fired pizza and handmade pasta..." value={metaDescription} />
                         </FieldGroup>
-
-                        <FieldGroup label={t('websiteUrl')} hint={t('websiteUrlHint')}>
-                            <Input
-                                value={canonicalUrl}
-                                onChange={setCanonicalUrl}
-                                onBlur={() => saveField('canonicalUrl', canonicalUrl)}
-                                placeholder="https://yourrestaurant.com"
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+                        <FieldGroup hint={t('websiteUrlHint')} label={t('websiteUrl')}>
+                            <Input onBlur={() => void saveField('canonicalUrl', canonicalUrl)} onChange={setCanonicalUrl} placeholder="https://yourrestaurant.com" value={canonicalUrl} />
                         </FieldGroup>
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* ── Analytics Section ────────────────────────── */}
-                <SectionHeader icon={<LuBarChart2 size={18} className="text-green-500" />} title={t('analytics')} subtitle={t('analyticsSubtitle')} />
-
-                <Card className="rounded-xl">
-                    <div className="space-y-4">
-                        <FieldGroup label={t('gaId')} hint={t('gaIdHint')}>
-                            <Input
-                                value={gaId}
-                                onChange={setGaId}
-                                onBlur={() => saveField('analytics.googleAnalyticsId', gaId)}
-                                placeholder="G-XXXXXXXXXX"
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+                <Card title={<Flex align="center" gap={8}><LuBarChart2 color="#16a34a" size={18} /><Text strong>{t('analytics')}</Text></Flex>}>
+                    <Flex gap={12} vertical>
+                        <FieldGroup hint={t('gaIdHint')} label={t('gaId')}>
+                            <Input onBlur={() => void saveField('analytics.googleAnalyticsId', gaId)} onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
                         </FieldGroup>
-
-                        <FieldGroup label={t('fbPixelId')} hint={t('fbPixelIdHint')}>
-                            <Input
-                                value={fbPixelId}
-                                onChange={setFbPixelId}
-                                onBlur={() => saveField('analytics.facebookPixelId', fbPixelId)}
-                                placeholder="XXXXXXXXXXXXXXXXXX"
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+                        <FieldGroup hint={t('fbPixelIdHint')} label={t('fbPixelId')}>
+                            <Input onBlur={() => void saveField('analytics.facebookPixelId', fbPixelId)} onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
                         </FieldGroup>
-
-                        <FieldGroup label={t('searchConsole')} hint={t('searchConsoleHint')}>
-                            <Input
-                                value={searchConsole}
-                                onChange={setSearchConsole}
-                                onBlur={() => saveField('analytics.googleSearchConsole', searchConsole)}
-                                placeholder="Verification code"
-                                style={{ '--font-size': '14px' } as React.CSSProperties}
-                            />
+                        <FieldGroup hint={t('searchConsoleHint')} label={t('searchConsole')}>
+                            <Input onBlur={() => void saveField('analytics.googleSearchConsole', searchConsole)} onChange={setSearchConsole} placeholder="Verification code" value={searchConsole} />
                         </FieldGroup>
-                    </div>
+                    </Flex>
                 </Card>
 
-                {/* ── Tracking Toggles ─────────────────────────── */}
-                <Card className="rounded-xl">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('enhancedEcommerce')}</p>
-                                <p className="text-xs text-gray-500">{t('enhancedEcommerceDesc')}</p>
-                            </div>
-                            <Switch
-                                checked={enhancedEcommerce}
-                                onChange={(val) => { setEnhancedEcommerce(val); saveField('analytics.enhancedEcommerce', val); }}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('menuItemViews')}</p>
-                                <p className="text-xs text-gray-500">{t('menuItemViewsDesc')}</p>
-                            </div>
-                            <Switch
-                                checked={trackMenuViews}
-                                onChange={(val) => { setTrackMenuViews(val); saveField('analytics.trackMenuViews', val); }}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('customerLocations')}</p>
-                                <p className="text-xs text-gray-500">{t('customerLocationsDesc')}</p>
-                            </div>
-                            <Switch
-                                checked={trackLocation}
-                                onChange={(val) => { setTrackLocation(val); saveField('analytics.trackLocation', val); }}
-                            />
-                        </div>
-                    </div>
+                <Card>
+                    <Flex gap={16} vertical>
+                        <ToggleRow
+                            checked={enhancedEcommerce}
+                            description={t('enhancedEcommerceDesc')}
+                            label={t('enhancedEcommerce')}
+                            onChange={(value) => { setEnhancedEcommerce(value); void saveField('analytics.enhancedEcommerce', value); }}
+                        />
+                        <ToggleRow
+                            checked={trackMenuViews}
+                            description={t('menuItemViewsDesc')}
+                            label={t('menuItemViews')}
+                            onChange={(value) => { setTrackMenuViews(value); void saveField('analytics.trackMenuViews', value); }}
+                        />
+                        <ToggleRow
+                            checked={trackLocation}
+                            description={t('customerLocationsDesc')}
+                            label={t('customerLocations')}
+                            onChange={(value) => { setTrackLocation(value); void saveField('analytics.trackLocation', value); }}
+                        />
+                    </Flex>
                 </Card>
-            </div>
-        </div>
+            </Flex>
+        </Flex>
     );
 }
 
-// ── Reusable helpers ─────────────────────────────────────────────
-function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+function FieldGroup({ children, hint, label }: { children: React.ReactNode; hint: string; label: string }) {
     return (
-        <div className="flex items-center gap-2 pt-2">
-            {icon}
-            <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
-            </div>
-        </div>
-    );
-}
-
-function FieldGroup({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
-    return (
-        <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{label}</p>
+        <Flex gap={6} vertical>
+            <Text strong>{label}</Text>
             {children}
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">{hint}</p>
-        </div>
+            <Text type="secondary">{hint}</Text>
+        </Flex>
+    );
+}
+
+function ToggleRow({ checked, description, label, onChange }: { checked: boolean; description: string; label: string; onChange: (value: boolean) => void }) {
+    return (
+        <Flex align="center" justify="space-between">
+            <Flex gap={2} vertical>
+                <Text strong>{label}</Text>
+                <Text type="secondary">{description}</Text>
+            </Flex>
+            <Switch checked={checked} onChange={onChange} />
+        </Flex>
     );
 }

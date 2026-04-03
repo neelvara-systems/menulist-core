@@ -5,10 +5,10 @@ import { useAppSelector } from '@hook/useAppSelector';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
-import { Button, SafeArea } from 'antd-mobile';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
+import { Button, Card, Flex, SafeArea, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 
 const MobileMenuScreen = dynamic(() => import('./screens/MobileMenuScreen'), { ssr: false });
@@ -24,7 +24,6 @@ export default function MobileShell() {
     const [isOffline, setIsOffline] = useState(false);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
 
-    // Online/offline detection for PWA
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
         const handleOffline = () => setIsOffline(true);
@@ -37,20 +36,18 @@ export default function MobileShell() {
         };
     }, []);
 
-    // Fetch unread feedback count for badge display
     useEffect(() => {
         const fetchCount = async () => {
             try {
                 const result = await getFeedbackCount('needs_attention');
                 setFeedbackBadgeCount(typeof result === 'number' ? result : 0);
             } catch {
-                // Silently fail — badge is non-critical
+                setFeedbackBadgeCount(0);
             }
         };
-        fetchCount();
+        void fetchCount();
     }, []);
 
-    // Clear badge when user visits feedback tab
     const handleTabChange = useCallback((tab: MobileTab) => {
         setActiveTab(tab);
         if (tab === 'feedback') {
@@ -58,71 +55,62 @@ export default function MobileShell() {
         }
     }, []);
 
-    const renderScreen = () => {
-        switch (activeTab) {
-            case 'menu':
-                return <MobileMenuScreen />;
-            case 'hours':
-                return <MobileHoursScreen />;
-            case 'feedback':
-                return <MobileFeedbackScreen />;
-            case 'more':
-                return <MobileMoreScreen />;
-            default:
-                return <MobileMenuScreen />;
-        }
-    };
+    const screen = activeTab === 'hours'
+        ? <MobileHoursScreen />
+        : activeTab === 'feedback'
+            ? <MobileFeedbackScreen />
+            : activeTab === 'more'
+                ? <MobileMoreScreen />
+                : <MobileMenuScreen />;
 
-    // No subscription — show upgrade prompt instead of shell
     if (!hasSubscription) {
         return (
-            <div className={`flex flex-col h-[100dvh] bg-white dark:bg-[#141414] ${isDarkMode ? 'dark' : ''}`}>
+            <Flex style={{ background: isDarkMode ? '#141414' : '#ffffff', minHeight: '100dvh', padding: 16 }} vertical>
                 <SafeArea position="top" />
-                <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
-                    <LuCreditCard size={48} className="text-blue-500" />
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                        Subscribe to Get Started
-                    </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
-                        Choose a plan to start creating your digital menu and managing your business.
-                    </p>
-                    <Button
-                        color="primary"
-                        fill="solid"
-                        size="large"
-                        onClick={() => {
-                            // Switch to desktop for pricing page (mobile pricing not yet available)
-                            localStorage.setItem('forceDesktopMode', 'true');
-                            window.location.href = '/billing';
-                        }}
-                        style={{ minHeight: '44px', minWidth: '200px' }}
-                    >
-                        View Plans
-                    </Button>
-                </div>
-            </div>
+                <Flex align="center" flex={1} justify="center" vertical>
+                    <Card style={{ maxWidth: 420, width: '100%' }}>
+                        <Flex align="center" gap={16} vertical>
+                            <LuCreditCard color="#1677ff" size={48} />
+                            <Title level={4} style={{ margin: 0, textAlign: 'center' }}>Subscribe to Get Started</Title>
+                            <Text style={{ textAlign: 'center' }}>
+                                Choose a plan to start creating your digital menu and managing your business.
+                            </Text>
+                            <Button
+                                block
+                                onClick={() => {
+                                    localStorage.setItem('forceDesktopMode', 'true');
+                                    window.location.href = '/billing';
+                                }}
+                                size="large"
+                                style={{ minHeight: 44 }}
+                            >
+                                View Plans
+                            </Button>
+                        </Flex>
+                    </Card>
+                </Flex>
+            </Flex>
         );
     }
 
     return (
-        <div className={`relative h-[100dvh] bg-white dark:bg-[#141414] ${isDarkMode ? 'dark' : ''}`}>
+        <Flex style={{ background: isDarkMode ? '#141414' : '#f5f5f5', minHeight: '100dvh' }} vertical>
             <SafeArea position="top" />
-            {isOffline && (
-                <div className="bg-yellow-500 text-white text-center text-xs py-1.5 px-4 font-medium">
-                    You&apos;re offline. Some features may be limited.
-                </div>
-            )}
-            <div className="flex flex-col" style={{ height: 'calc(100vh - env(safe-area-inset-top))' }}>
-                <div className="flex-1 overflow-y-auto" style={{ paddingBottom: '75px' }}>
-                    {renderScreen()}
-                </div>
-            </div>
+            {isOffline ? (
+                <Card style={{ background: '#faad14', borderRadius: 0, color: '#fff', margin: 0 }}>
+                    <Text style={{ color: '#fff' }}>You&apos;re offline. Some features may be limited.</Text>
+                </Card>
+            ) : null}
+            <Flex flex={1} style={{ overflowY: 'auto', paddingBottom: 88 }} vertical>
+                {screen}
+            </Flex>
             <MobileNavigation
                 activeTab={activeTab}
-                onTabChange={handleTabChange}
                 feedbackCount={feedbackBadgeCount}
                 isDarkMode={isDarkMode}
+                onTabChange={handleTabChange}
             />
-        </div>
+            <SafeArea position="bottom" />
+        </Flex>
     );
 }

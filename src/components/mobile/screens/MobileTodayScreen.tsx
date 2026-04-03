@@ -5,22 +5,15 @@ import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign 
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName } from '@util/campaignUtils';
-import { Button, Card, DotLoading, NavBar, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCalendarOff, LuCheck, LuMessageCircle, LuSkipForward } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, NavBar, Text, Title, Toast } from '../antd';
 
 interface MobileTodayScreenProps {
     onBack: () => void;
 }
 
-/**
- * Mobile Today Screen — zero desktop dependency
- * 
- * Daily campaign actions: primary action + operational items.
- * WhatsApp share, skip, staff prompt — all from phone.
- * Uses same DAL: getTodayCampaigns, completeCampaign, skipCampaign
- */
 export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const t = useTranslations('MobileToday');
     const { todayCampaigns, staffPrompt, isLoading, mutate } = useTodayCampaigns();
@@ -55,53 +48,51 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
     if (!FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 24px' }}>
-                    <LuCalendarOff size={36} color="#d1d5db" />
-                    <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>{t('comingSoon')}</p>
-                </div>
-            </div>
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <Flex align="center" flex={1} gap={12} justify="center" style={{ padding: 24 }} vertical>
+                    <LuCalendarOff color="#d1d5db" size={36} />
+                    <Text type="secondary">{t('comingSoon')}</Text>
+                </Flex>
+            </Flex>
         );
     }
 
     if (isLoading) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DotLoading color="primary" /></div>
-            </div>
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <Flex align="center" flex={1} justify="center">
+                    <DotLoading color="primary" />
+                </Flex>
+            </Flex>
         );
     }
 
-    // Post-action feedback
     if (postAction) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <LuCheck size={32} color="#16a34a" />
-                    </div>
-                    <p style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937' }}>
-                        {postAction === 'shared' ? t('done') : t('skipped')}
-                    </p>
-                </div>
-            </div>
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <Flex align="center" flex={1} gap={12} justify="center" vertical>
+                    <Card style={{ borderRadius: '50%' }}>
+                        <LuCheck color="#16a34a" size={32} />
+                    </Card>
+                    <Title level={4} style={{ margin: 0 }}>{postAction === 'shared' ? t('done') : t('skipped')}</Title>
+                </Flex>
+            </Flex>
         );
     }
 
-    // Empty state
     if (!todayCampaigns || todayCampaigns.isEmpty || (!todayCampaigns.primary && (!todayCampaigns.operational || todayCampaigns.operational.length === 0))) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 24px' }}>
-                    <LuCheck size={36} color="#4ade80" />
-                    <p style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937' }}>{t('allDoneForToday')}</p>
-                    <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>{t('noActionsNeeded')}</p>
-                </div>
-            </div>
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <Flex align="center" flex={1} gap={12} justify="center" style={{ padding: 24 }} vertical>
+                    <LuCheck color="#4ade80" size={36} />
+                    <Title level={4} style={{ margin: 0 }}>{t('allDoneForToday')}</Title>
+                    <Text type="secondary">{t('noActionsNeeded')}</Text>
+                </Flex>
+            </Flex>
         );
     }
 
@@ -110,121 +101,76 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const operational = (todayCampaigns.operational || []).slice(0, 2) as TodayCampaignSummary[];
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>Today</NavBar>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Primary Campaign Card */}
-                {primary && (
-                    <Card style={{ borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#16a34a' }}>
-                                <LuCheck size={16} />
-                                <span style={{ fontWeight: 500 }}>
-                                    {(ACTION_TITLES[primary.type] || 'Share this item')
-                                        .replace('{itemName}', primary.subject?.itemName || 'Item')
-                                        .replace('{mealName}', mealName)
-                                        .replace('{festivalName}', 'the occasion')}
-                                </span>
-                            </div>
-
-                            <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937' }}>
-                                {primary.subject?.itemName || 'Menu Item'}
-                            </h3>
-
-                            <p style={{ fontSize: '14px', color: '#6b7280' }}>
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                {primary ? (
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>
+                                {(ACTION_TITLES[primary.type] || 'Share this item')
+                                    .replace('{itemName}', primary.subject?.itemName || 'Item')
+                                    .replace('{mealName}', mealName)
+                                    .replace('{festivalName}', 'the occasion')}
+                            </Text>
+                            <Title level={3} style={{ margin: 0 }}>{primary.subject?.itemName || 'Menu Item'}</Title>
+                            <Text type="secondary">
                                 {(CONTEXT_TEMPLATES[primary.type] || '')
                                     .replace('{mealName}', mealName.toLowerCase())
                                     .replace('{festivalName}', 'the occasion')}
-                            </p>
-
-                            <Button
-                                block
-                                color="primary"
-                                fill="solid"
-                                size="large"
-                                loading={isProcessing}
-                                onClick={() => handleComplete(primary)}
-                                style={{ minHeight: '48px' }}
-                            >
+                            </Text>
+                            <Button block loading={isProcessing} onClick={() => void handleComplete(primary)} size="large">
                                 {SURFACE_BUTTON_COPY[primary.primarySurface] || 'Share'}
                             </Button>
-
-                            <button
-                                onClick={() => handleSkip(primary.campaignId, primary.type)}
-                                disabled={isProcessing}
-                                style={{
-                                    width: '100%',
-                                    textAlign: 'center',
-                                    color: '#9ca3af',
-                                    fontSize: '14px',
-                                    padding: '8px',
-                                    minHeight: '44px',
-                                    backgroundColor: 'transparent',
-                                    border: 'none',
-                                    cursor: isProcessing ? 'not-allowed' : 'pointer'
-                                }}
-                            >
-                                <LuSkipForward size={14} style={{ display: 'inline', marginRight: '4px' }} /> {t('skip')}
-                            </button>
-                        </div>
+                            <Button block fill="none" onClick={() => void handleSkip(primary.campaignId, primary.type)} style={{ color: '#94a3b8' }}>
+                                <Flex align="center" gap={6}>
+                                    <LuSkipForward size={14} />
+                                    <Text type="secondary">{t('skip')}</Text>
+                                </Flex>
+                            </Button>
+                        </Flex>
                     </Card>
-                )}
+                ) : null}
 
-                {/* Staff Prompt */}
-                {staffPrompt?.eligible && (
-                    <Card style={{ borderRadius: '12px', borderLeft: '3px solid #3b82f6' }}>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <LuMessageCircle size={18} color="#3b82f6" style={{ marginTop: '2px', flexShrink: 0 }} />
-                            <div>
-                                <p style={{ fontSize: '12px', color: '#9ca3af' }}>{t('staffPromptForToday')}</p>
-                                <p style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937', marginTop: '4px' }}>
-                                    {t('sayThisWhenCustomersAsk')}
-                                </p>
-                                <p style={{ fontSize: '16px', fontWeight: 500, fontStyle: 'italic', color: '#374151', marginTop: '4px' }}>
-                                    &quot;{staffPrompt.text}&quot;
-                                </p>
-                                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>{t('appliesToday')}</p>
-                            </div>
-                        </div>
+                {staffPrompt?.eligible ? (
+                    <Card>
+                        <Flex gap={12}>
+                            <LuMessageCircle color="#3b82f6" size={18} />
+                            <Flex gap={4} vertical>
+                                <Text type="secondary">{t('staffPromptForToday')}</Text>
+                                <Text strong>{t('sayThisWhenCustomersAsk')}</Text>
+                                <Text>"{staffPrompt.text}"</Text>
+                                <Text type="secondary">{t('appliesToday')}</Text>
+                            </Flex>
+                        </Flex>
                     </Card>
-                )}
+                ) : null}
 
-                {/* Operational Campaigns */}
-                {operational.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <p style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('alsoToday')}</p>
-                        {operational.map((campaign) => {
-                            const title = campaign.type === 'now_available'
-                                ? `Now Available: ${campaign.subject?.itemName || 'Item'}`
-                                : (ACTION_TITLES[campaign.type] || 'Share')
-                                    .replace('{itemName}', campaign.subject?.itemName || 'Item')
-                                    .replace('{mealName}', mealName);
+                {operational.length > 0 ? (
+                    <Card title={t('alsoToday')}>
+                        <Flex gap={8} vertical>
+                            {operational.map((campaign) => {
+                                const title = campaign.type === 'now_available'
+                                    ? `Now Available: ${campaign.subject?.itemName || 'Item'}`
+                                    : (ACTION_TITLES[campaign.type] || 'Share')
+                                        .replace('{itemName}', campaign.subject?.itemName || 'Item')
+                                        .replace('{mealName}', mealName);
 
-                            return (
-                                <Card key={campaign.campaignId} style={{ borderRadius: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                                            <LuCheck size={14} color="#16a34a" style={{ flexShrink: 0 }} />
-                                            <p style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
-                                        </div>
-                                        <Button
-                                            size="small"
-                                            color="primary"
-                                            fill="outline"
-                                            loading={isProcessing}
-                                            onClick={() => handleComplete(campaign)}
-                                            style={{ minHeight: '36px', marginLeft: '8px' }}
-                                        >
-                                            {t('share')}
-                                        </Button>
-                                    </div>
-                                </Card>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-        </div >
+                                return (
+                                    <Card key={campaign.campaignId}>
+                                        <Flex align="center" justify="space-between">
+                                            <Text strong>{title}</Text>
+                                            <Button fill="outline" loading={isProcessing} onClick={() => void handleComplete(campaign)} size="small">
+                                                {t('share')}
+                                            </Button>
+                                        </Flex>
+                                    </Card>
+                                );
+                            })}
+                        </Flex>
+                    </Card>
+                ) : null}
+            </Flex>
+        </Flex>
     );
 }

@@ -2,19 +2,19 @@
 
 /**
  * MobileTempStatusScreen — Mobile screen for setting/clearing temporary status
- * 
+ *
  * Quick 2-tap flow: pick status type → set expiry → done.
  * Optimistic update pattern (UI updates instantly, backend syncs after).
- * 
+ *
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, DotLoading, Input, NavBar, Space, Tag, Toast } from 'antd-mobile';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Space, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
@@ -29,6 +29,14 @@ const STATUS_OPTIONS = [
     { value: 'custom', label: 'Custom', icon: 'ℹ️', defaultMsg: '' },
 ] as const;
 
+const EXPIRY_OPTIONS = [
+    { hours: 4, label: '4 hours' },
+    { hours: 8, label: '8 hours' },
+    { hours: 12, label: '12 hours' },
+    { hours: 24, label: '24 hours' },
+    { hours: 48, label: '2 days' },
+];
+
 export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScreenProps) {
     const t = useTranslations('MobileTempStatus');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
@@ -41,16 +49,19 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
     const [expiryHours, setExpiryHours] = useState<number>(24);
     const [isLoading, setIsLoading] = useState(false);
 
+    const previewMessage = statusType === 'custom'
+        ? (customMessage.trim() || 'Temporary notice')
+        : (STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
+
     const handleSet = useCallback(async () => {
         setIsLoading(true);
 
         const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString();
-        const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
+        const selectedOption = STATUS_OPTIONS.find((option) => option.value === statusType);
         const message = statusType === 'custom'
             ? (customMessage.trim() || 'Temporary notice')
             : (selectedOption?.defaultMsg || statusType);
 
-        // Optimistic update
         const newStatus = {
             type: statusType,
             message,
@@ -77,18 +88,16 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                 throw new Error('Failed to set status');
             }
         } catch {
-            // Revert optimistic update
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
             Toast.show({ content: t('failedToSet'), duration: 2000 });
         } finally {
             setIsLoading(false);
         }
-    }, [statusType, customMessage, expiryHours, storeDetails, setStoreDetails]);
+    }, [customMessage, expiryHours, setStoreDetails, statusType, storeDetails?.tempStatus, t]);
 
     const handleClear = useCallback(async () => {
         setIsLoading(true);
 
-        // Optimistic update
         const prevStatus = storeDetails?.tempStatus;
         setStoreDetails((prev: any) => {
             const { tempStatus, ...rest } = prev;
@@ -107,188 +116,138 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                 throw new Error('Failed to clear status');
             }
         } catch {
-            // Revert optimistic update
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
             Toast.show({ content: t('failedToClear'), duration: 2000 });
         } finally {
             setIsLoading(false);
         }
-    }, [storeDetails, setStoreDetails]);
+    }, [setStoreDetails, storeDetails?.tempStatus, t]);
 
     if (!storeDetails) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <Flex align="center" justify="center" style={{ height: '100%' }}>
                 <DotLoading color="primary" />
-            </div>
+            </Flex>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <NavBar onBack={onBack} className="border-b border-gray-200 dark:border-gray-700">
+        <Flex style={{ height: '100%' }} vertical>
+            <NavBar onBack={onBack}>
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4">
-                {/* Current Status */}
+            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 {isActive ? (
-                    <Card className="rounded-xl">
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <LuAlertTriangle size={16} className="text-amber-500" />
-                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    {t('activeStatus')}
-                                </span>
-                                <Tag color="warning" fill="outline" style={{ fontSize: 11 }}>Active</Tag>
-                            </div>
+                    <Card>
+                        <Flex gap={16} vertical>
+                            <Flex align="center" gap={8} wrap="wrap">
+                                <LuAlertTriangle color="#d97706" size={16} />
+                                <Text strong>{t('activeStatus')}</Text>
+                                <Tag color="warning">Active</Tag>
+                            </Flex>
 
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                <p className="text-sm font-medium text-amber-900">
-                                    {STATUS_OPTIONS.find(o => o.value === currentStatus.type)?.icon || 'ℹ️'}{' '}
-                                    {currentStatus.message}
-                                </p>
-                                <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">
-                                    <LuClock size={11} />
-                                    {t('expires')} {dayjs(currentStatus.expiresAt).format('MMM D, h:mm A')}
-                                </p>
-                            </div>
+                            <Card size="small" style={{ backgroundColor: '#fff7e6', borderColor: '#ffd591' }}>
+                                <Flex gap={8} vertical>
+                                    <Text strong>{`${STATUS_OPTIONS.find((option) => option.value === currentStatus.type)?.icon || 'ℹ️'} ${currentStatus.message}`}</Text>
+                                    <Flex align="center" gap={6}>
+                                        <LuClock color="#ad6800" size={12} />
+                                        <Text type="secondary">{`${t('expires')} ${dayjs(currentStatus.expiresAt).format('MMM D, h:mm A')}`}</Text>
+                                    </Flex>
+                                </Flex>
+                            </Card>
 
                             <Button
                                 block
                                 color="danger"
                                 fill="outline"
-                                size="middle"
                                 loading={isLoading}
                                 onClick={handleClear}
-                                style={{ minHeight: '44px' }}
+                                size="large"
                             >
-                                <span className="flex items-center justify-center gap-2">
+                                <Flex align="center" gap={8} justify="center">
                                     <LuX size={14} />
-                                    {t('clearStatus')}
-                                </span>
+                                    <Text>{t('clearStatus')}</Text>
+                                </Flex>
                             </Button>
-                        </div>
+                        </Flex>
                     </Card>
                 ) : (
                     <>
-                        {/* Set New Status */}
-                        <Card className="rounded-xl">
-                            <div className="space-y-3">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {t('bannerNotice')}
-                                </p>
+                        <Card>
+                            <Flex gap={16} vertical>
+                                <Text type="secondary">{t('bannerNotice')}</Text>
 
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-2">
-                                        {t('statusType')}
-                                    </label>
-                                    <Space wrap>
-                                        {STATUS_OPTIONS.map((opt) => (
+                                <Flex gap={8} vertical>
+                                    <Text strong>{t('statusType')}</Text>
+                                    <Space size={[8, 8]} wrap>
+                                        {STATUS_OPTIONS.map((option) => (
                                             <Tag
-                                                key={opt.value}
-                                                color={statusType === opt.value ? 'primary' : 'default'}
-                                                fill={statusType === opt.value ? 'solid' : 'outline'}
-                                                onClick={() => setStatusType(opt.value)}
-                                                style={{
-                                                    cursor: 'pointer',
-                                                    padding: '6px 12px',
-                                                    fontSize: 13,
-                                                    minHeight: 36,
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                }}
+                                                key={option.value}
+                                                color={statusType === option.value ? 'processing' : 'default'}
+                                                onClick={() => setStatusType(option.value)}
+                                                style={{ cursor: 'pointer', padding: '6px 12px' }}
                                             >
-                                                {opt.icon} {opt.label}
+                                                {`${option.icon} ${option.label}`}
                                             </Tag>
                                         ))}
                                     </Space>
-                                </div>
+                                </Flex>
 
-                                {statusType === 'custom' && (
-                                    <div>
-                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">
-                                            {t('customMessage')}
-                                        </label>
+                                {statusType === 'custom' ? (
+                                    <Flex gap={6} vertical>
+                                        <Text strong>{t('customMessage')}</Text>
                                         <Input
-                                            value={customMessage}
-                                            onChange={(val) => setCustomMessage(val)}
-                                            placeholder={t('customPlaceholder')}
                                             maxLength={100}
-                                            style={{ '--font-size': '14px' } as React.CSSProperties}
+                                            onChange={setCustomMessage}
+                                            placeholder={t('customPlaceholder')}
+                                            value={customMessage}
                                         />
-                                    </div>
-                                )}
+                                    </Flex>
+                                ) : null}
 
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-2">
-                                        {t('expiresAfter')}
-                                    </label>
-                                    <Space wrap>
-                                        {[
-                                            { hours: 4, label: '4 hours' },
-                                            { hours: 8, label: '8 hours' },
-                                            { hours: 12, label: '12 hours' },
-                                            { hours: 24, label: '24 hours' },
-                                            { hours: 48, label: '2 days' },
-                                        ].map((opt) => (
+                                <Flex gap={8} vertical>
+                                    <Text strong>{t('expiresAfter')}</Text>
+                                    <Space size={[8, 8]} wrap>
+                                        {EXPIRY_OPTIONS.map((option) => (
                                             <Tag
-                                                key={opt.hours}
-                                                color={expiryHours === opt.hours ? 'primary' : 'default'}
-                                                fill={expiryHours === opt.hours ? 'solid' : 'outline'}
-                                                onClick={() => setExpiryHours(opt.hours)}
-                                                style={{
-                                                    cursor: 'pointer',
-                                                    padding: '6px 12px',
-                                                    fontSize: 13,
-                                                    minHeight: 36,
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                }}
+                                                key={option.hours}
+                                                color={expiryHours === option.hours ? 'processing' : 'default'}
+                                                onClick={() => setExpiryHours(option.hours)}
+                                                style={{ cursor: 'pointer', padding: '6px 12px' }}
                                             >
-                                                {opt.label}
+                                                {option.label}
                                             </Tag>
                                         ))}
                                     </Space>
-                                </div>
-                            </div>
+                                </Flex>
+                            </Flex>
                         </Card>
 
-                        {/* Preview */}
-                        <Card className="rounded-xl">
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                    {t('preview')}
-                                </label>
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-                                    <p className="text-sm font-medium text-amber-900">
-                                        {STATUS_OPTIONS.find(o => o.value === statusType)?.icon || 'ℹ️'}{' '}
-                                        {statusType === 'custom'
-                                            ? (customMessage.trim() || 'Temporary notice')
-                                            : STATUS_OPTIONS.find(o => o.value === statusType)?.defaultMsg
-                                        }
-                                    </p>
-                                </div>
-                            </div>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text strong>{t('preview')}</Text>
+                                <Card size="small" style={{ backgroundColor: '#fff7e6', borderColor: '#ffd591' }}>
+                                    <Text strong>{`${STATUS_OPTIONS.find((option) => option.value === statusType)?.icon || 'ℹ️'} ${previewMessage}`}</Text>
+                                </Card>
+                            </Flex>
                         </Card>
 
-                        {/* Set Button */}
                         <Button
                             block
                             color="warning"
-                            fill="solid"
-                            size="large"
                             loading={isLoading}
                             onClick={handleSet}
-                            style={{ minHeight: '44px' }}
+                            size="large"
                         >
-                            <span className="flex items-center justify-center gap-2">
+                            <Flex align="center" gap={8} justify="center">
                                 <LuCheck size={16} />
-                                {t('setStatus')}
-                            </span>
+                                <Text>{t('setStatus')}</Text>
+                            </Flex>
                         </Button>
                     </>
                 )}
-            </div>
-        </div>
+            </Flex>
+        </Flex>
     );
 }

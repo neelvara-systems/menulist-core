@@ -6,21 +6,15 @@ import { updateOutletPolicy } from '@database/multiOutlet';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { calculateProration } from '@util/razorpay';
-import { Button, Card, Input, List, NavBar, Popup, Switch, Tag, Toast } from 'antd-mobile';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMapPin, LuPlus, LuStar } from 'react-icons/lu';
+import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileLocationsScreenProps {
     onBack: () => void;
 }
 
-/**
- * Mobile Locations / Chain Control Panel — zero desktop dependency
- * 
- * Master users can: view outlets, switch stores, add outlets, manage outlet policy.
- * Uses same DAL: updateOutletPolicy, /api/outlets/create, /api/auth/switch-store
- */
 export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenProps) {
     const t = useTranslations('MobileLocations');
     const {
@@ -42,17 +36,17 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
     if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <p style={{ fontSize: '14px', color: '#6b7280' }}>{t('notAvailable')}</p>
-                </div>
-            </div>
+            <Flex style={{ height: '100%' }} vertical>
+                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <Flex align="center" justify="center" style={{ flex: 1 }}>
+                    <Text type="secondary">{t('notAvailable')}</Text>
+                </Flex>
+            </Flex>
         );
     }
 
     const storesList = tenantDetails?.storesList || [];
-    const outletCount = storesList.filter((s: any) => !s.isMaster).length;
+    const outletCount = storesList.filter((store: any) => !store.isMaster).length;
     const currency = activeSubscription?.currency || 'INR';
     const amount = activeSubscription?.amount || 0;
 
@@ -121,167 +115,167 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>
-                {t('title')}
-            </NavBar>
+        <Flex style={{ height: '100%' }} vertical>
+            <NavBar onBack={onBack}>{t('title')}</NavBar>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Billing Summary */}
-                <Card style={{ borderRadius: '12px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
-                        <div>
-                            <p style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937' }}>{storesList.length}</p>
-                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('totalStores')}</p>
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '24px', fontWeight: 700, color: '#2563eb' }}>{outletCount}</p>
-                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('outlets')}</p>
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: 700, color: '#374151' }}>{currency} {amount * storesList.length}</p>
-                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('perMonthTotal')}</p>
-                        </div>
-                    </div>
+            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <Card>
+                    <Flex justify="space-between">
+                        <Flex gap={2} vertical>
+                            <Title level={4} style={{ margin: 0 }}>
+                                {storesList.length}
+                            </Title>
+                            <Text type="secondary">{t('totalStores')}</Text>
+                        </Flex>
+                        <Flex gap={2} vertical>
+                            <Title level={4} style={{ margin: 0, color: '#2563eb' }}>
+                                {outletCount}
+                            </Title>
+                            <Text type="secondary">{t('outlets')}</Text>
+                        </Flex>
+                        <Flex gap={2} vertical>
+                            <Title level={5} style={{ margin: 0 }}>
+                                {`${currency} ${amount * storesList.length}`}
+                            </Title>
+                            <Text type="secondary">{t('perMonthTotal')}</Text>
+                        </Flex>
+                    </Flex>
                 </Card>
 
-                {/* Store List */}
-                <Card style={{ padding: 0, borderRadius: '12px' }}>
-                    <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+                <Card size="small" title={<Text strong>{t('stores')}</Text>}>
+                    <List>
                         {storesList.map((store: any) => (
                             <List.Item
                                 key={store.storeId}
-                                prefix={store.isMaster
-                                    ? <LuStar size={18} color="#eab308" />
-                                    : <LuMapPin size={18} color="#60a5fa" />
-                                }
                                 onClick={() => handleSwitchStore(store.storeId)}
-                                extra={store.isMaster
-                                    ? <Tag color="warning" fill="outline" style={{ fontSize: 11 }}>HQ</Tag>
-                                    : <Tag fill="outline" style={{ fontSize: 11 }}>View</Tag>
+                                prefix={store.isMaster ? <LuStar color="#eab308" size={18} /> : <LuMapPin color="#60a5fa" size={18} />}
+                                extra={
+                                    store.isMaster ? (
+                                        <Tag color="warning">HQ</Tag>
+                                    ) : (
+                                        <Tag>View</Tag>
+                                    )
                                 }
-                                style={{ minHeight: '48px' }}
-                            >
-                                <span style={{ fontSize: '15px', fontWeight: 500 }}>{store.name || `Store ${store.storeId}`}</span>
-                            </List.Item>
+                                title={<Text strong>{store.name || `Store ${store.storeId}`}</Text>}
+                            />
                         ))}
                     </List>
                 </Card>
 
-                {/* Add Outlet */}
-                {FEATURE_FLAGS.ENABLE_OUTLET_CREATION && userPermissions?.canManageOutlets && (
-                    <Button
-                        block
-                        color="primary"
-                        fill="outline"
-                        size="large"
-                        onClick={() => setShowAddOutlet(true)}
-                        style={{ minHeight: '44px' }}
-                    >
-                        <LuPlus size={16} style={{ display: 'inline', marginRight: '4px' }} /> {t('addOutlet')}
+                {FEATURE_FLAGS.ENABLE_OUTLET_CREATION && userPermissions?.canManageOutlets ? (
+                    <Button block color="primary" fill="outline" onClick={() => setShowAddOutlet(true)} size="large">
+                        <Flex align="center" gap={6} justify="center">
+                            <LuPlus size={16} />
+                            <Text>{t('addOutlet')}</Text>
+                        </Flex>
                     </Button>
-                )}
+                ) : null}
 
-                {/* Outlet Policy */}
-                {outletCount > 0 && (
-                    <Card
-                        style={{ borderRadius: '12px' }}
-                        onClick={() => setShowPolicy(true)}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div>
-                                <p style={{ fontSize: '15px', fontWeight: 500, color: '#1f2937' }}>{t('outletPolicy')}</p>
-                                <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('outletPolicyDesc')}</p>
-                            </div>
-                            <Tag fill="outline" style={{ fontSize: 11 }}>{t('manage')}</Tag>
-                        </div>
+                {outletCount > 0 ? (
+                    <Card onClick={() => setShowPolicy(true)}>
+                        <Flex align="center" justify="space-between">
+                            <Flex gap={4} vertical>
+                                <Text strong>{t('outletPolicy')}</Text>
+                                <Text type="secondary">{t('outletPolicyDesc')}</Text>
+                            </Flex>
+                            <Tag>{t('manage')}</Tag>
+                        </Flex>
                     </Card>
-                )}
-            </div>
+                ) : null}
+            </Flex>
 
-            {/* Add Outlet Sheet */}
             <Popup
-                visible={showAddOutlet}
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '60vh' }}
                 onMaskClick={isCreating ? undefined : () => setShowAddOutlet(false)}
                 position="bottom"
-                bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '60vh' }}
-                destroyOnClose
+                visible={showAddOutlet}
             >
-                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center' }}><div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '999px' }} /></div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600 }}>{t('addNewOutlet')}</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280' }}>{t('outletName')}</label>
+                <Flex gap={16} vertical>
+                    <Title level={4} style={{ margin: 0 }}>
+                        {t('addNewOutlet')}
+                    </Title>
+                    <Flex gap={6} vertical>
+                        <Text strong>{t('outletName')}</Text>
                         <Input
-                            value={outletName}
                             onChange={setOutletName}
                             placeholder={t('outletNamePlaceholder')}
-                            style={{ '--font-size': '15px' } as React.CSSProperties}
+                            value={outletName}
                         />
-                    </div>
-                    {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription && (() => {
-                        const p = calculateProration(activeSubscription);
-                        return (
-                            <div style={{ backgroundColor: '#eff6ff', borderRadius: '8px', padding: '12px', fontSize: '14px' }}>
-                                <p style={{ color: '#1d4ed8' }}>
-                                    Prorated charge today: <strong>{currency} {p.proratedAmount}</strong>
-                                </p>
-                                <p style={{ fontSize: '12px', color: '#3b82f6', marginTop: '4px' }}>{p.daysRemaining} days left in cycle</p>
-                            </div>
-                        );
-                    })()}
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <Button block fill="outline" size="large" onClick={() => setShowAddOutlet(false)} style={{ minHeight: '44px' }}>{t('cancel')}</Button>
-                        <Button block color="primary" fill="solid" size="large" loading={isCreating} disabled={!outletName.trim()} onClick={handleCreateOutlet} style={{ minHeight: '44px' }}>{t('addOutlet')}</Button>
-                    </div>
-                </div>
+                    </Flex>
+
+                    {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription ? (
+                        (() => {
+                            const proration = calculateProration(activeSubscription);
+                            return (
+                                <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                                    <Flex gap={4} vertical>
+                                        <Text>{`Prorated charge today: ${currency} ${proration.proratedAmount}`}</Text>
+                                        <Text type="secondary">{`${proration.daysRemaining} days left in cycle`}</Text>
+                                    </Flex>
+                                </Card>
+                            );
+                        })()
+                    ) : null}
+
+                    <Flex gap={12}>
+                        <Button block fill="outline" onClick={() => setShowAddOutlet(false)} size="large">
+                            {t('cancel')}
+                        </Button>
+                        <Button
+                            block
+                            color="primary"
+                            disabled={!outletName.trim()}
+                            loading={isCreating}
+                            onClick={handleCreateOutlet}
+                            size="large"
+                        >
+                            {t('addOutlet')}
+                        </Button>
+                    </Flex>
+                </Flex>
             </Popup>
 
-            {/* Outlet Policy Sheet */}
             <Popup
-                visible={showPolicy}
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '90vh' }}
                 onMaskClick={() => setShowPolicy(false)}
                 position="bottom"
-                bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '90vh' }}
-                destroyOnClose
+                visible={showPolicy}
             >
-                <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
-                    <div style={{ padding: '16px 16px 8px', borderBottom: '1px solid #e5e7eb' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '999px' }} /></div>
-                        <h2 style={{ fontSize: '18px', fontWeight: 600 }}>{t('outletPolicy')}</h2>
-                        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{t('chainWideRules')}</p>
-                    </div>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px' }}>
-                        {OUTLET_POLICY_CATEGORIES.map((category, catIdx) => (
-                            <div key={catIdx} style={{ marginTop: '16px' }}>
-                                <h4 style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                                    {category.label}
-                                </h4>
-                                <Card style={{ padding: 0 }}>
-                                    <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
-                                        {category.items.map((item) => (
-                                            <List.Item
-                                                key={item.key}
-                                                extra={
-                                                    <Switch
-                                                        checked={policy[item.key]}
-                                                        loading={savingKey === item.key}
-                                                        onChange={(checked) => handleTogglePolicy(item.key, checked)}
-                                                        style={{ '--height': '22px', '--width': '38px' } as React.CSSProperties}
-                                                    />
-                                                }
-                                                style={{ minHeight: '44px' }}
-                                            >
-                                                <span style={{ fontSize: '14px' }}>{item.label}</span>
-                                            </List.Item>
-                                        ))}
-                                    </List>
-                                </Card>
-                            </div>
+                <Flex gap={12} style={{ maxHeight: '90vh' }} vertical>
+                    <Flex gap={4} vertical>
+                        <Title level={4} style={{ margin: 0 }}>
+                            {t('outletPolicy')}
+                        </Title>
+                        <Text type="secondary">{t('chainWideRules')}</Text>
+                    </Flex>
+
+                    <Flex gap={16} style={{ overflowY: 'auto' }} vertical>
+                        {OUTLET_POLICY_CATEGORIES.map((category, index) => (
+                            <Card
+                                key={`${category.label}-${index}`}
+                                size="small"
+                                title={<Text strong>{category.label}</Text>}
+                            >
+                                <List>
+                                    {category.items.map((item) => (
+                                        <List.Item
+                                            key={item.key}
+                                            extra={
+                                                <Switch
+                                                    checked={policy[item.key]}
+                                                    loading={savingKey === item.key}
+                                                    onChange={(checked) => handleTogglePolicy(item.key, checked)}
+                                                />
+                                            }
+                                            title={<Text>{item.label}</Text>}
+                                        />
+                                    ))}
+                                </List>
+                            </Card>
                         ))}
-                    </div>
-                </div>
+                    </Flex>
+                </Flex>
             </Popup>
-        </div>
+        </Flex>
     );
 }

@@ -1,15 +1,35 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { useAppSelector } from '@hook/useAppSelector';
 import { signOutSession } from '@lib/auth/client';
-import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
-import { Card, Dialog, List, Toast } from 'antd-mobile';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuBuilding2, LuCalendarCheck, LuClock, LuCreditCard, LuGlobe, LuHelpCircle, LuLogOut, LuMapPin, LuMessageCircle, LuMonitor, LuPalette, LuQrCode, LuReceipt, LuSettings, LuSettings2, LuShield, LuSparkles, LuTv, LuUsers } from 'react-icons/lu';
+import {
+    LuAlertTriangle,
+    LuBarChart3,
+    LuBuilding2,
+    LuCalendarCheck,
+    LuClock,
+    LuCreditCard,
+    LuGlobe,
+    LuHelpCircle,
+    LuLogOut,
+    LuMapPin,
+    LuMessageCircle,
+    LuMonitor,
+    LuPalette,
+    LuQrCode,
+    LuReceipt,
+    LuSettings,
+    LuSettings2,
+    LuShield,
+    LuSparkles,
+    LuTv,
+    LuUsers,
+} from 'react-icons/lu';
+import { Avatar, Card, Dialog, Flex, List, Text, Title, Toast } from '../antd';
 
 const MobileShareScreen = dynamic(() => import('./MobileShareScreen'), { ssr: false });
 const MobilePublicInfoScreen = dynamic(() => import('./MobilePublicInfoScreen'), { ssr: false });
@@ -32,234 +52,90 @@ const MobileTimeSlotsScreen = dynamic(() => import('./MobileTimeSlotsScreen'), {
 const MobileTempStatusScreen = dynamic(() => import('./MobileTempStatusScreen'), { ssr: false });
 const MobileSpecialMenuScreen = dynamic(() => import('./MobileSpecialMenuScreen'), { ssr: false });
 
-type MoreSubScreen = 'main' | 'share' | 'publicInfo' | 'billing' | 'basicSettings' | 'locale' | 'hoursEdit' | 'roles' | 'digitalScreens' | 'locations' | 'today' | 'users' | 'dashboard' | 'transactions' | 'help' | 'advancedSettings' | 'designEditor' | 'seoAnalytics' | 'timeSlots' | 'tempStatus' | 'specialMenus';
+type MoreSubScreen =
+    | 'main'
+    | 'share'
+    | 'publicInfo'
+    | 'billing'
+    | 'basicSettings'
+    | 'locale'
+    | 'hoursEdit'
+    | 'roles'
+    | 'digitalScreens'
+    | 'locations'
+    | 'today'
+    | 'users'
+    | 'dashboard'
+    | 'transactions'
+    | 'help'
+    | 'advancedSettings'
+    | 'designEditor'
+    | 'seoAnalytics'
+    | 'timeSlots'
+    | 'tempStatus'
+    | 'specialMenus';
 
 export default function MobileMoreScreen() {
     const t = useTranslations('MobileMore');
     const [subScreen, setSubScreen] = useState<MoreSubScreen>('main');
     const { data: session } = useSession();
-    const isDarkMode = useAppSelector(getDarkModeState);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const userName = session?.user?.name || 'User';
     const userEmail = session?.user?.email || '';
     const userImage = session?.user?.image || '';
 
-    if (subScreen === 'share') {
-        return <MobileShareScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'publicInfo') {
-        return <MobilePublicInfoScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'billing') {
-        return <MobileBillingScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'basicSettings') {
-        return <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'locale') {
-        return <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'hoursEdit') {
-        return <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'roles') {
-        return <MobileRolesScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'digitalScreens') {
-        return <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'locations') {
-        return <MobileLocationsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'today') {
-        return <MobileTodayScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'users') {
-        return <MobileUsersScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'dashboard') {
-        return <MobileDashboardScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'transactions') {
-        return <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'help') {
-        return <MobileHelpScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'advancedSettings') {
-        return <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'designEditor') {
-        return <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'seoAnalytics') {
-        return <MobileSeoAnalyticsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'timeSlots') {
-        return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'tempStatus') {
-        return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
-    }
-    if (subScreen === 'specialMenus') {
-        return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} />;
-    }
+    if (subScreen === 'share') return <MobileShareScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'publicInfo') return <MobilePublicInfoScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'billing') return <MobileBillingScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'basicSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'locale') return <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'hoursEdit') return <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'roles') return <MobileRolesScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'digitalScreens') return <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'locations') return <MobileLocationsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'today') return <MobileTodayScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'users') return <MobileUsersScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'dashboard') return <MobileDashboardScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'transactions') return <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'help') return <MobileHelpScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'advancedSettings') return <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'designEditor') return <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'seoAnalytics') return <MobileSeoAnalyticsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} />;
 
     const menuItems = [
-        {
-            key: 'dashboard',
-            icon: <LuBarChart3 size={20} color="#4f46e5" />,
-            label: t('dashboard'),
-            description: t('dashboardDesc'),
-            onClick: () => setSubScreen('dashboard'),
-        },
-        {
-            key: 'today',
-            icon: <LuCalendarCheck size={20} color="#10b981" />,
-            label: t('today'),
-            description: t('todayDesc'),
-            onClick: () => setSubScreen('today'),
-        },
-        {
-            key: 'share',
-            icon: <LuQrCode size={20} color="#2563eb" />,
-            label: t('shareQr'),
-            description: t('shareQrDesc'),
-            onClick: () => setSubScreen('share'),
-        },
-        ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{
-            key: 'tempStatus',
-            icon: <LuAlertTriangle size={20} color="#f59e0b" />,
-            label: t('tempStatus'),
-            description: t('tempStatusDesc'),
-            onClick: () => setSubScreen('tempStatus'),
-        }] : []),
-        ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{
-            key: 'specialMenus',
-            icon: <LuSparkles size={20} color="#f97316" />,
-            label: t('specialMenus'),
-            description: t('specialMenusDesc'),
-            onClick: () => setSubScreen('specialMenus' as MoreSubScreen),
-        }] : []),
-        {
-            key: 'designEditor',
-            icon: <LuPalette size={20} color="#e11d48" />,
-            label: t('menuDesign'),
-            description: t('menuDesignDesc'),
-            onClick: () => setSubScreen('designEditor'),
-        },
-        {
-            key: 'publicInfo',
-            icon: <LuBuilding2 size={20} color="#16a34a" />,
-            label: t('publicInfo'),
-            description: t('publicInfoDesc'),
-            onClick: () => setSubScreen('publicInfo'),
-        },
-        {
-            key: 'billing',
-            icon: <LuCreditCard size={20} color="#9333ea" />,
-            label: t('billing'),
-            description: t('billingDesc'),
-            onClick: () => setSubScreen('billing'),
-        },
-        {
-            key: 'transactions',
-            icon: <LuReceipt size={20} color="#ec4899" />,
-            label: t('transactions'),
-            description: t('transactionsDesc'),
-            onClick: () => setSubScreen('transactions'),
-        },
+        { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => setSubScreen('dashboard') },
+        { key: 'today', icon: <LuCalendarCheck color="#10b981" size={20} />, label: t('today'), description: t('todayDesc'), onClick: () => setSubScreen('today') },
+        { key: 'share', icon: <LuQrCode color="#2563eb" size={20} />, label: t('shareQr'), description: t('shareQrDesc'), onClick: () => setSubScreen('share') },
+        ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => setSubScreen('tempStatus') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => setSubScreen('specialMenus') }] : []),
+        { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => setSubScreen('designEditor') },
+        { key: 'publicInfo', icon: <LuBuilding2 color="#16a34a" size={20} />, label: t('publicInfo'), description: t('publicInfoDesc'), onClick: () => setSubScreen('publicInfo') },
+        { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, label: t('billing'), description: t('billingDesc'), onClick: () => setSubScreen('billing') },
+        { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, label: t('transactions'), description: t('transactionsDesc'), onClick: () => setSubScreen('transactions') },
     ];
 
     const settingsItems = [
-        {
-            key: 'basicSettings',
-            icon: <LuSettings size={20} color="#f97316" />,
-            label: t('basicSettings'),
-            description: t('basicSettingsDesc'),
-            onClick: () => setSubScreen('basicSettings'),
-        },
-        {
-            key: 'locale',
-            icon: <LuGlobe size={20} color="#14b8a6" />,
-            label: t('languageRegion'),
-            description: t('languageRegionDesc'),
-            onClick: () => setSubScreen('locale'),
-        },
-        {
-            key: 'hoursEdit',
-            icon: <LuClock size={20} color="#6366f1" />,
-            label: t('editWorkingHours'),
-            description: t('editWorkingHoursDesc'),
-            onClick: () => setSubScreen('hoursEdit'),
-        },
-        {
-            key: 'roles',
-            icon: <LuShield size={20} color="#8b5cf6" />,
-            label: t('rolesPermissions'),
-            description: t('rolesPermissionsDesc'),
-            onClick: () => setSubScreen('roles'),
-        },
-        {
-            key: 'digitalScreens',
-            icon: <LuTv size={20} color="#06b6d4" />,
-            label: t('digitalScreens'),
-            description: t('digitalScreensDesc'),
-            onClick: () => setSubScreen('digitalScreens'),
-        },
-        {
-            key: 'locations',
-            icon: <LuMapPin size={20} color="#f59e0b" />,
-            label: t('locations'),
-            description: t('locationsDesc'),
-            onClick: () => setSubScreen('locations'),
-        },
-        {
-            key: 'users',
-            icon: <LuUsers size={20} color="#3b82f6" />,
-            label: t('staff'),
-            description: t('staffDesc'),
-            onClick: () => setSubScreen('users'),
-        },
-        {
-            key: 'timeSlots',
-            icon: <LuClock size={20} color="#10b981" />,
-            label: t('timeSlots'),
-            description: t('timeSlotsDesc'),
-            onClick: () => setSubScreen('timeSlots'),
-        },
-        {
-            key: 'seoAnalytics',
-            icon: <LuGlobe size={20} color="#0ea5e9" />,
-            label: t('seoAnalytics'),
-            description: t('seoAnalyticsDesc'),
-            onClick: () => setSubScreen('seoAnalytics'),
-        },
-        {
-            key: 'advancedSettings',
-            icon: <LuSettings2 size={20} color="#6b7280" />,
-            label: t('advancedSettings'),
-            description: t('advancedSettingsDesc'),
-            onClick: () => setSubScreen('advancedSettings'),
-        },
+        { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: t('basicSettings'), description: t('basicSettingsDesc'), onClick: () => setSubScreen('basicSettings') },
+        { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => setSubScreen('locale') },
+        { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => setSubScreen('hoursEdit') },
+        { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => setSubScreen('roles') },
+        { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => setSubScreen('digitalScreens') },
+        { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: t('locations'), description: t('locationsDesc'), onClick: () => setSubScreen('locations') },
+        { key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, label: t('staff'), description: t('staffDesc'), onClick: () => setSubScreen('users') },
+        { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => setSubScreen('timeSlots') },
+        { key: 'seoAnalytics', icon: <LuGlobe color="#0ea5e9" size={20} />, label: t('seoAnalytics'), description: t('seoAnalyticsDesc'), onClick: () => setSubScreen('seoAnalytics') },
+        { key: 'advancedSettings', icon: <LuSettings2 color="#6b7280" size={20} />, label: t('advancedSettings'), description: t('advancedSettingsDesc'), onClick: () => setSubScreen('advancedSettings') },
     ];
 
-    // Theme colors
-    const theme = {
-        bg: isDarkMode ? '#0f172a' : '#ffffff',
-        textPrimary: isDarkMode ? '#f1f5f9' : '#0f172a',
-        textSecondary: isDarkMode ? '#94a3b8' : '#64748b',
-        textMuted: isDarkMode ? '#64748b' : '#94a3b8',
-        border: isDarkMode ? '#334155' : '#e2e8f0',
-        cardBg: isDarkMode ? '#1e293b' : '#ffffff',
-    };
-
     const handleLogout = () => {
-        Dialog.confirm({
-            content: t('logoutConfirm'),
-            confirmText: t('logOut'),
+        void Dialog.confirm({
             cancelText: 'Cancel',
+            confirmText: t('logOut'),
+            content: t('logoutConfirm'),
             onConfirm: async () => {
                 setIsLoggingOut(true);
                 try {
@@ -273,123 +149,85 @@ export default function MobileMoreScreen() {
     };
 
     return (
-        <div style={{ padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Profile Header */}
-            <Card style={{ borderRadius: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {userImage ? (
-                        <img
-                            src={userImage}
-                            alt={userName}
-                            style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }}
-                            referrerPolicy="no-referrer"
-                        />
-                    ) : (
-                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px', fontWeight: 600, backgroundColor: '#2563eb' }}>
-                            {userName.charAt(0).toUpperCase()}
-                        </div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '15px', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {userName}
-                        </p>
-                        {userEmail && (
-                            <p style={{ fontSize: '12px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--adm-color-weak, #999)' }}>
-                                {userEmail}
-                            </p>
-                        )}
-                    </div>
-                </div>
+        <Flex gap={12} style={{ padding: 16 }} vertical>
+            <Card>
+                <Flex align="center" gap={12}>
+                    {userImage ? <Avatar size={48} src={userImage} /> : <Avatar size={48}>{userName.charAt(0).toUpperCase()}</Avatar>}
+                    <Flex gap={2} vertical>
+                        <Title level={5} style={{ margin: 0 }}>{userName}</Title>
+                        {userEmail ? <Text type="secondary">{userEmail}</Text> : null}
+                    </Flex>
+                </Flex>
             </Card>
 
-            {/* Navigation Items */}
-            <Card style={{ borderRadius: '12px' }}>
+            <Card title={t('dashboard')}>
                 <List>
                     {menuItems.map((item) => (
                         <List.Item
-                            key={item.key}
-                            prefix={item.icon}
-                            onClick={item.onClick}
-                            description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{item.description}</span>}
                             arrow
-                            style={{ minHeight: '48px' }}
-                        >
-                            <span style={{ fontSize: '15px', fontWeight: 500 }}>{item.label}</span>
-                        </List.Item>
+                            description={<Text type="secondary">{item.description}</Text>}
+                            key={item.key}
+                            onClick={item.onClick}
+                            prefix={item.icon}
+                            title={<Text strong>{item.label}</Text>}
+                        />
                     ))}
                 </List>
             </Card>
 
-            {/* Settings */}
-            <Card style={{ borderRadius: '12px' }}>
+            <Card title={t('basicSettings')}>
                 <List>
                     {settingsItems.map((item) => (
                         <List.Item
-                            key={item.key}
-                            prefix={item.icon}
-                            onClick={item.onClick}
-                            description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{item.description}</span>}
                             arrow
-                            style={{ minHeight: '48px' }}
-                        >
-                            <span style={{ fontSize: '15px', fontWeight: 500 }}>{item.label}</span>
-                        </List.Item>
+                            description={<Text type="secondary">{item.description}</Text>}
+                            key={item.key}
+                            onClick={item.onClick}
+                            prefix={item.icon}
+                            title={<Text strong>{item.label}</Text>}
+                        />
                     ))}
                 </List>
             </Card>
 
-            {/* Support */}
-            <Card style={{ borderRadius: '12px' }}>
+            <Card title={t('helpCenter')}>
                 <List>
                     <List.Item
-                        prefix={<LuHelpCircle size={20} color="#3b82f6" />}
+                        arrow
+                        description={<Text type="secondary">{t('helpCenterDesc')}</Text>}
                         onClick={() => setSubScreen('help')}
-                        description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{t('helpCenterDesc')}</span>}
-                        arrow
-                        style={{ minHeight: '48px' }}
-                    >
-                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('helpCenter')}</span>
-                    </List.Item>
+                        prefix={<LuHelpCircle color="#3b82f6" size={20} />}
+                        title={<Text strong>{t('helpCenter')}</Text>}
+                    />
                     <List.Item
-                        prefix={<LuMessageCircle size={20} color="#22c55e" />}
-                        onClick={() => {
-                            window.open('https://wa.me/917042916884?text=Hi%2C%20I%20need%20help%20with%20MenuList.ai', '_blank');
-                        }}
-                        description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{t('contactSupportDesc')}</span>}
                         arrow
-                        style={{ minHeight: '48px' }}
-                    >
-                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('contactSupport')}</span>
-                    </List.Item>
+                        description={<Text type="secondary">{t('contactSupportDesc')}</Text>}
+                        onClick={() => window.open('https://wa.me/917042916884?text=Hi%2C%20I%20need%20help%20with%20MenuList.ai', '_blank')}
+                        prefix={<LuMessageCircle color="#22c55e" size={20} />}
+                        title={<Text strong>{t('contactSupport')}</Text>}
+                    />
                 </List>
             </Card>
 
-            {/* Switch to Desktop + Logout */}
-            <Card style={{ borderRadius: '12px' }}>
+            <Card>
                 <List>
                     <List.Item
-                        prefix={<LuMonitor size={20} color="var(--adm-color-weak, #999)" />}
+                        arrow
+                        description={<Text type="secondary">{t('switchToDesktopDesc')}</Text>}
                         onClick={() => {
                             localStorage.setItem('forceDesktopMode', 'true');
                             window.location.reload();
                         }}
-                        description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{t('switchToDesktopDesc')}</span>}
-                        arrow
-                        style={{ minHeight: '48px' }}
-                    >
-                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('switchToDesktop')}</span>
-                    </List.Item>
+                        prefix={<LuMonitor color="#64748b" size={20} />}
+                        title={<Text strong>{t('switchToDesktop')}</Text>}
+                    />
                     <List.Item
-                        prefix={<LuLogOut size={20} color="#dc2626" />}
                         onClick={handleLogout}
-                        style={{ minHeight: '48px' }}
-                    >
-                        <span style={{ fontSize: '15px', fontWeight: 500, color: '#dc2626' }}>
-                            {isLoggingOut ? t('loggingOut') : t('logOut')}
-                        </span>
-                    </List.Item>
+                        prefix={<LuLogOut color="#dc2626" size={20} />}
+                        title={<Text strong style={{ color: '#dc2626' }}>{isLoggingOut ? t('loggingOut') : t('logOut')}</Text>}
+                    />
                 </List>
             </Card>
-        </div>
+        </Flex>
     );
 }
