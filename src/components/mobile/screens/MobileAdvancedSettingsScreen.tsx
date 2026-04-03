@@ -108,20 +108,20 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
     const filledSocialCount = Object.values(socialMedia).filter(v => v.trim()).length;
 
     return (
-        <div className="flex flex-col h-full">
-            <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
+            <NavBar onBack={onBack} style={{ borderBottom: '1px solid var(--adm-color-border, #eee)' }}>
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto pb-8">
+            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '32px' }}>
                 {/* SECTION: Contact Person */}
-                <div className="px-4 pt-4 pb-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('contactPerson')}</p>
+                <div style={{ padding: '16px 16px 4px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('contactPerson')}</p>
                 </div>
-                <div className="mx-4 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
                     <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
                         <List.Item
-                            prefix={<LuUser size={18} className="text-blue-500" />}
+                            prefix={<LuUser size={18} color="var(--adm-color-primary, #1677ff)" />}
                             extra={
                                 <Input
                                     value={contactName}
@@ -132,7 +132,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                 />
                             }
                         >
-                            <span className="text-[15px]">{t('name')}</span>
+                            <span style={{ fontSize: '15px' }}>{t('name')}</span>
                         </List.Item>
                         <List.Item
                             extra={
@@ -146,7 +146,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                 />
                             }
                         >
-                            <span className="text-[15px]">{t('email')}</span>
+                            <span style={{ fontSize: '15px' }}>{t('email')}</span>
                         </List.Item>
                         <List.Item
                             extra={
@@ -160,36 +160,36 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                 />
                             }
                         >
-                            <span className="text-[15px]">{t('phone')}</span>
+                            <span style={{ fontSize: '15px' }}>{t('phone')}</span>
                         </List.Item>
                     </List>
                 </div>
 
                 {/* SECTION: Social Media */}
-                <div className="px-4 pt-6 pb-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('socialMedia')}</p>
+                <div style={{ padding: '24px 16px 4px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('socialMedia')}</p>
                 </div>
-                <div className="mx-4 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
                     <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
                         <List.Item
-                            prefix={<LuShare2 size={18} className="text-purple-500" />}
+                            prefix={<LuShare2 size={18} color="var(--adm-color-weak, #999)" />}
                             onClick={() => setShowSocialEdit(true)}
                             arrow
                             description={filledSocialCount > 0 ? t('platformsLinked', { count: filledSocialCount }) : t('notSet')}
                         >
-                            <span className="text-[15px]">{t('socialProfiles')}</span>
+                            <span style={{ fontSize: '15px' }}>{t('socialProfiles')}</span>
                         </List.Item>
                     </List>
                 </div>
 
                 {/* SECTION: Guest Feedback */}
-                <div className="px-4 pt-6 pb-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('guestFeedback')}</p>
+                <div style={{ padding: '24px 16px 4px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('guestFeedback')}</p>
                 </div>
-                <div className="mx-4 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
                     <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
                         <List.Item
-                            prefix={<LuMessageSquare size={18} className="text-green-500" />}
+                            prefix={<LuMessageSquare size={18} color="var(--adm-color-success, #52c41a)" />}
                             extra={
                                 <Switch
                                     checked={feedbackEnabled}
@@ -198,18 +198,18 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                 />
                             }
                         >
-                            <span className="text-[15px]">{t('enableFeedback')}</span>
+                            <span style={{ fontSize: '15px' }}>{t('enableFeedback')}</span>
                         </List.Item>
                     </List>
                 </div>
 
                 {feedbackEnabled && (
                     <>
-                        <div className="px-4 pt-4 pb-1">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('feedbackFormFields')}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{t('feedbackFormFieldsDesc')}</p>
+                        <div style={{ padding: '16px 16px 4px' }}>
+                            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('feedbackFormFields')}</p>
+                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', marginTop: '2px' }}>{t('feedbackFormFieldsDesc')}</p>
                         </div>
-                        <div className="mx-4 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                        <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
                             <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
                                 <List.Item
                                     extra={
@@ -220,7 +220,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                         />
                                     }
                                 >
-                                    <span className="text-[15px]">{t('askForName')}</span>
+                                    <span style={{ fontSize: '15px' }}>{t('askForName')}</span>
                                 </List.Item>
                                 <List.Item
                                     extra={
@@ -232,7 +232,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                     }
                                     description={t('forWhatsAppFollowUp')}
                                 >
-                                    <span className="text-[15px]">{t('askForPhone')}</span>
+                                    <span style={{ fontSize: '15px' }}>{t('askForPhone')}</span>
                                 </List.Item>
                                 <List.Item
                                     extra={
@@ -243,16 +243,16 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                                         />
                                     }
                                 >
-                                    <span className="text-[15px]">{t('askForEmail')}</span>
+                                    <span style={{ fontSize: '15px' }}>{t('askForEmail')}</span>
                                 </List.Item>
                             </List>
                         </div>
 
-                        <div className="px-4 pt-4 pb-1">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('googleReview')}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{t('googleReviewDesc')}</p>
+                        <div style={{ padding: '16px 16px 4px' }}>
+                            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--adm-color-weak, #999)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('googleReview')}</p>
+                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', marginTop: '2px' }}>{t('googleReviewDesc')}</p>
                         </div>
-                        <div className="mx-4 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                        <div style={{ margin: '0 16px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--adm-color-background, #fff)' }}>
                             <List>
                                 <List.Item>
                                     <Input
@@ -268,7 +268,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                     </>
                 )}
 
-                <p className="text-xs text-center text-gray-400 px-4 pt-6">
+                <p style={{ fontSize: '12px', textAlign: 'center', color: 'var(--adm-color-weak, #999)', padding: '24px 16px 0' }}>
                     {t('desktopOnlyNote')}
                 </p>
             </div>
@@ -279,15 +279,16 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                 onMaskClick={() => setShowSocialEdit(false)}
                 position="bottom"
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '80vh' }}
-                destroyOnClose
             >
-                <div className="px-4 pt-4 pb-6 space-y-4">
-                    <div className="flex justify-center"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
-                    <h2 className="text-lg font-semibold">{t('socialMedia')}</h2>
-                    <div className="space-y-3">
+                <div style={{ padding: '16px 16px 24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--adm-color-border, #eee)', borderRadius: '999px' }} />
+                    </div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('socialMedia')}</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {SOCIAL_PLATFORMS.map((p) => (
-                            <div key={p.key} className="space-y-1">
-                                <label className="text-xs font-medium text-gray-500">{p.label}</label>
+                            <div key={p.key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)' }}>{p.label}</label>
                                 <Input
                                     value={socialMedia[p.key] || ''}
                                     onChange={(v) => setSocialMedia({ ...socialMedia, [p.key]: v })}
@@ -297,7 +298,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                             </div>
                         ))}
                     </div>
-                    <div className="flex gap-3 pt-2">
+                    <div style={{ display: 'flex', gap: '12px', paddingTop: '16px' }}>
                         <Button block fill="outline" size="large" onClick={() => setShowSocialEdit(false)} style={{ minHeight: '44px' }}>{t('cancel')}</Button>
                         <Button block color="primary" fill="solid" size="large" onClick={handleSaveSocialMedia} loading={isSaving} style={{ minHeight: '44px' }}>{t('save')}</Button>
                     </div>

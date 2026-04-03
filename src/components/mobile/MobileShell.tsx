@@ -105,20 +105,23 @@ export default function MobileShell() {
     }
 
     return (
-        <div className={`flex flex-col h-[100dvh] bg-white dark:bg-[#141414] ${isDarkMode ? 'dark' : ''}`}>
+        <div className={`relative h-[100dvh] bg-white dark:bg-[#141414] ${isDarkMode ? 'dark' : ''}`}>
             <SafeArea position="top" />
             {isOffline && (
                 <div className="bg-yellow-500 text-white text-center text-xs py-1.5 px-4 font-medium">
                     You&apos;re offline. Some features may be limited.
                 </div>
             )}
-            <div className="flex-1 overflow-y-auto pb-14">
-                {renderScreen()}
+            <div className="flex flex-col" style={{ height: 'calc(100vh - env(safe-area-inset-top))' }}>
+                <div className="flex-1 overflow-y-auto" style={{ paddingBottom: '75px' }}>
+                    {renderScreen()}
+                </div>
             </div>
             <MobileNavigation
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
                 feedbackCount={feedbackBadgeCount}
+                isDarkMode={isDarkMode}
             />
         </div>
     );

@@ -135,12 +135,12 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <NavBar onBack={onBack} className="border-b border-gray-200 dark:border-gray-700">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <NavBar onBack={onBack} style={{ borderBottom: '1px solid var(--adm-color-border, #e5e7eb)' }}>
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Menu Presence Monitor */}
                 {storeDetails && (
                     <MobilePresenceMonitor
@@ -157,13 +157,13 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                     const obpUrl = generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain);
                     if (!obpUrl) return null;
                     return (
-                        <Card className="rounded-xl">
-                            <div className="flex flex-col items-center py-4 gap-3">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <LuGlobe size={16} className="text-blue-500" />
-                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('officialBusinessLink')}</p>
+                        <Card style={{ borderRadius: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                    <LuGlobe size={16} color="#3b82f6" />
+                                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{t('officialBusinessLink')}</p>
                                 </div>
-                                <div className="bg-white p-3 rounded-xl">
+                                <div style={{ backgroundColor: '#ffffff', padding: '12px', borderRadius: '12px' }}>
                                     <QRCodeCanvas
                                         value={obpUrl}
                                         size={140}
@@ -172,10 +172,10 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                         id="obp-qr-code"
                                     />
                                 </div>
-                                <p className="text-xs text-gray-400 text-center break-all px-4">
+                                <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', wordBreak: 'break-all', padding: '0 16px' }}>
                                     {obpUrl}
                                 </p>
-                                <div className="flex gap-2">
+                                <div style={{ display: 'flex', gap: '8px' }}>
                                     <Button
                                         size="small"
                                         fill="solid"
@@ -190,8 +190,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                         }}
                                         style={{ minHeight: '36px' }}
                                     >
-                                        <LuCopy size={14} className="inline mr-1" />
-                                        {t('copy')}
+                                        <LuCopy size={14} style={{ display: 'inline', marginRight: '4px' }} /> {t('copy')}
                                     </Button>
                                     <Button
                                         size="small"
@@ -208,11 +207,10 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                         }}
                                         style={{ minHeight: '36px' }}
                                     >
-                                        <LuDownload size={14} className="inline mr-1" />
-                                        QR
+                                        <LuDownload size={14} style={{ display: 'inline', marginRight: '4px' }} /> QR
                                     </Button>
                                 </div>
-                                <p className="text-[11px] text-gray-400 text-center">
+                                <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center' }}>
                                     {FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES
                                         ? t('obpNudgeHint')
                                         : t('obpShareHint')
@@ -224,9 +222,9 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                 })()}
 
                 {/* Menu QR Code */}
-                <Card className="rounded-xl">
-                    <div className="flex flex-col items-center py-6 gap-4">
-                        <div className="bg-white p-4 rounded-xl">
+                <Card style={{ borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0', gap: '16px' }}>
+                        <div style={{ backgroundColor: '#ffffff', padding: '16px', borderRadius: '12px' }}>
                             <QRCodeCanvas
                                 value={menuUrl}
                                 size={192}
@@ -235,13 +233,13 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                 id="mobile-qr-code"
                             />
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                        <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
                             {FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES
                                 ? t('menuNudgeHint')
                                 : t('menuScanHint')
                             }
                         </p>
-                        <p className="text-xs text-gray-400 text-center break-all px-4">
+                        <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', wordBreak: 'break-all', padding: '0 16px' }}>
                             {menuUrl}
                         </p>
                         <Button
@@ -259,18 +257,17 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                             }}
                             style={{ minHeight: '36px' }}
                         >
-                            <LuDownload size={14} className="inline mr-1" />
-                            {t('saveQrImage')}
+                            <LuDownload size={14} style={{ display: 'inline', marginRight: '4px' }} /> {t('saveQrImage')}
                         </Button>
                     </div>
                 </Card>
 
                 {/* PDF Download */}
-                <Card className="rounded-xl">
-                    <div className="flex items-center justify-between">
+                <Card style={{ borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
-                            <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">{t('menuPdf')}</p>
-                            <p className="text-xs text-gray-500">{t('menuPdfDesc')}</p>
+                            <p style={{ fontSize: '15px', fontWeight: 500, color: '#1f2937' }}>{t('menuPdf')}</p>
+                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('menuPdfDesc')}</p>
                         </div>
                         <Button
                             size="small"
@@ -313,23 +310,22 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                             }}
                             style={{ minHeight: '36px' }}
                         >
-                            <LuFileText size={14} className="inline mr-1" />
-                            {t('download')}
+                            <LuFileText size={14} style={{ display: 'inline', marginRight: '4px' }} /> {t('download')}
                         </Button>
                     </div>
                 </Card>
 
                 {/* Menu Kit — Print + Social assets (mobile-optimized individual share) */}
                 {FEATURE_FLAGS.ENABLE_MENU_KIT && (
-                    <Card className="rounded-xl">
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2">
-                                <LuPackage size={16} className="text-gray-600" />
-                                <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">{labels.offeringTitle} Kit</p>
+                    <Card style={{ borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <LuPackage size={16} color="#6b7280" />
+                                <p style={{ fontSize: '15px', fontWeight: 500, color: '#1f2937' }}>{labels.offeringTitle} Kit</p>
                             </div>
-                            <p className="text-xs text-gray-500">Share print-ready and social-ready assets directly.</p>
+                            <p style={{ fontSize: '12px', color: '#6b7280' }}>Share print-ready and social-ready assets directly.</p>
                             {supportsNativeShare && (
-                                <div className="flex gap-2 flex-wrap">
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                     <Button
                                         size="mini"
                                         fill="outline"
@@ -337,8 +333,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                         onClick={() => handleShareMenuKitAsset(5, 'Instagram Story')}
                                         style={{ minHeight: '36px' }}
                                     >
-                                        <LuShare2 size={12} className="inline mr-1" />
-                                        Instagram
+                                        <LuShare2 size={12} style={{ display: 'inline', marginRight: '4px' }} /> Instagram
                                     </Button>
                                     <Button
                                         size="mini"
@@ -347,8 +342,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                         onClick={() => handleShareMenuKitAsset(6, 'WhatsApp Status')}
                                         style={{ minHeight: '36px' }}
                                     >
-                                        <LuShare2 size={12} className="inline mr-1" />
-                                        WA Status
+                                        <LuShare2 size={12} style={{ display: 'inline', marginRight: '4px' }} /> WA Status
                                     </Button>
                                     <Button
                                         size="mini"
@@ -357,8 +351,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                         onClick={() => handleShareMenuKitAsset(7, 'Google Maps')}
                                         style={{ minHeight: '36px' }}
                                     >
-                                        <LuShare2 size={12} className="inline mr-1" />
-                                        Google Maps
+                                        <LuShare2 size={12} style={{ display: 'inline', marginRight: '4px' }} /> Google Maps
                                     </Button>
                                 </div>
                             )}
@@ -368,13 +361,12 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                                 onClick={handleCopyShareMessage}
                                 style={{ minHeight: '36px' }}
                             >
-                                <LuCopy size={14} className="inline mr-1" />
-                                Copy share message
+                                <LuCopy size={14} style={{ display: 'inline', marginRight: '4px' }} /> Copy share message
                             </Button>
                             {/* GBP Hint */}
-                            <div className="flex gap-2 items-start bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
-                                <LuMapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
-                                <p className="text-[11px] text-gray-400">
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '8px' }}>
+                                <LuMapPin size={14} color="#9ca3af" style={{ flexShrink: 0, marginTop: '2px' }} />
+                                <p style={{ fontSize: '11px', color: '#9ca3af' }}>
                                     Add your {labels.gbpLabel} link to Google Maps: find your business → Edit → Menu/Website → paste your link.
                                 </p>
                             </div>
@@ -396,7 +388,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                 )}
 
                 {/* Share Actions */}
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <Button
                         block
                         color="primary"
@@ -405,8 +397,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                         onClick={handleCopyLink}
                         style={{ minHeight: '44px' }}
                     >
-                        <LuCopy size={16} className="inline mr-2" />
-                        {t('copyLink')}
+                        <LuCopy size={16} style={{ display: 'inline', marginRight: '8px' }} /> {t('copyLink')}
                     </Button>
 
                     <Button
@@ -417,8 +408,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                         onClick={handleShareWhatsApp}
                         style={{ minHeight: '44px', backgroundColor: '#25D366', borderColor: '#25D366' }}
                     >
-                        <LuMessageCircle size={16} className="inline mr-2" />
-                        {t('shareWhatsApp')}
+                        <LuMessageCircle size={16} style={{ display: 'inline', marginRight: '8px' }} /> {t('shareWhatsApp')}
                     </Button>
 
                     {supportsNativeShare && (
@@ -429,8 +419,7 @@ export default function MobileShareScreen({ onBack }: MobileShareScreenProps) {
                             onClick={handleNativeShare}
                             style={{ minHeight: '44px' }}
                         >
-                            <LuShare2 size={16} className="inline mr-2" />
-                            {t('moreOptions')}
+                            <LuShare2 size={16} style={{ display: 'inline', marginRight: '8px' }} /> {t('moreOptions')}
                         </Button>
                     )}
                 </div>

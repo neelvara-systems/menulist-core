@@ -143,15 +143,15 @@ export default function MobileHoursScreen() {
 
     const statusConfig = {
         open: {
-            color: 'text-green-600',
-            bg: 'bg-green-50 dark:bg-green-900/20',
+            color: '#52c41a',
+            bg: 'var(--adm-color-success-bg, #f6ffed)',
             icon: '🟢',
             label: t('open'),
             sublabel: storeDetails?.name || 'Your business',
         },
         closed_today: {
-            color: 'text-red-600',
-            bg: 'bg-red-50 dark:bg-red-900/20',
+            color: '#ff4d4f',
+            bg: 'var(--adm-color-danger-bg, #fff2f0)',
             icon: '🔴',
             label: t('closedToday'),
             sublabel: t('customersSee'),
@@ -161,29 +161,30 @@ export default function MobileHoursScreen() {
     const status = statusConfig[todayStatus];
 
     return (
-        <div className="px-4 pt-3 pb-4 space-y-4">
+        <div style={{ padding: '12px 16px' }}>
             {/* Page Title */}
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '16px' }}>
                 {t('title')}
             </h1>
 
             {/* Today Status Card */}
-            <Card className={`${status.bg} rounded-xl`}>
-                <div className="flex flex-col items-center py-4 gap-3">
-                    <span className="text-3xl">{status.icon}</span>
-                    <span className={`text-lg font-bold ${status.color}`}>
-                        {status.label}
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {status.sublabel}
-                    </span>
+            <Card style={{ backgroundColor: status.bg, borderRadius: '12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '12px' }}>
+                    <span style={{ fontSize: '30px' }}>{status.icon}</span>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: status.color, marginBottom: '4px' }}>
+                            {status.label}
+                        </div>
+                        <div style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>
+                            {status.sublabel}
+                        </div>
+                    </div>
 
                     {todayStatus === 'open' && (
                         <Button
                             color="danger"
                             fill="solid"
                             size="large"
-                            className="w-full mt-2"
                             loading={isUpdating}
                             onClick={() => {
                                 Dialog.confirm({
@@ -193,9 +194,9 @@ export default function MobileHoursScreen() {
                                     onConfirm: handleCloseToday,
                                 });
                             }}
-                            style={{ minHeight: '44px' }}
+                            style={{ width: '100%', marginTop: '8px' }}
                         >
-                            <LuPowerOff size={16} className="inline mr-2" />
+                            <LuPowerOff size={16} style={{ marginRight: '8px', display: 'inline' }} />
                             {t('closeForToday')}
                         </Button>
                     )}
@@ -205,28 +206,26 @@ export default function MobileHoursScreen() {
                             color="primary"
                             fill="solid"
                             size="large"
-                            className="w-full mt-2"
                             loading={isUpdating}
                             onClick={handleReopenToday}
-                            style={{ minHeight: '44px' }}
+                            style={{ width: '100%', marginTop: '8px' }}
                         >
-                            <LuPower size={16} className="inline mr-2" />
+                            <LuPower size={16} style={{ marginRight: '8px', display: 'inline' }} />
                             {t('reopenToday')}
                         </Button>
                     )}
-
                 </div>
             </Card>
 
             {/* Today Actions — Quick share status on WhatsApp */}
-            <Card className="rounded-xl">
-                <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <Card style={{ borderRadius: '12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--adm-color-secondary, #666)' }}>
                         {t('quickShare')}
                     </h3>
                     <Button
                         block
-                        fill="outline"
+                        fill="solid"
                         size="middle"
                         onClick={() => {
                             const statusText = todayStatus === 'open'
@@ -240,9 +239,9 @@ export default function MobileHoursScreen() {
                             const fullText = encodeURIComponent(`${statusText}${url ? `\n\nMenu: ${url}` : ''}`);
                             window.open(`https://wa.me/?text=${fullText}`, '_blank');
                         }}
-                        style={{ minHeight: '44px', backgroundColor: '#25D366', borderColor: '#25D366', color: '#fff' }}
+                        style={{ backgroundColor: '#25D366', color: '#fff' }}
                     >
-                        <LuMessageCircle size={16} className="inline mr-2" />
+                        <LuMessageCircle size={16} style={{ marginRight: '8px', display: 'inline' }} />
                         {t('shareStatusWhatsApp')}
                     </Button>
                 </div>
@@ -250,29 +249,22 @@ export default function MobileHoursScreen() {
 
             {/* Weekly Hours */}
             <div>
-                <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <LuClock size={16} />
                     {t('weeklyHours')}
                 </h2>
-                <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
+                <List>
                     {weeklyHours.map((dayHours) => (
                         <List.Item
                             key={dayHours.day}
-                            title={
-                                <span className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                                    {dayHours.day}
-                                </span>
-                            }
+                            title={dayHours.day}
                             description={
                                 dayHours.isClosed ? (
-                                    <span className="text-sm text-red-500">{t('closed')}</span>
+                                    <span style={{ color: '#ff4d4f' }}>{t('closed')}</span>
                                 ) : (
-                                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                                        {dayHours.open} - {dayHours.close}
-                                    </span>
+                                    `${dayHours.open} - ${dayHours.close}`
                                 )
                             }
-                            style={{ minHeight: '48px' }}
                         />
                     ))}
                 </List>

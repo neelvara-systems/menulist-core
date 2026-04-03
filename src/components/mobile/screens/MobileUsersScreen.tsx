@@ -121,50 +121,50 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
     if (!storeDetails) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div className="flex-1 flex items-center justify-center"><DotLoading color="primary" /></div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DotLoading color="primary" /></div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 space-y-4">
-                <p className="text-sm text-gray-500">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ fontSize: '14px', color: '#6b7280' }}>
                     {t('staffMembers', { count: users.length })}
                 </p>
 
                 {/* Users List */}
                 {users.length === 0 ? (
-                    <div className="flex flex-col items-center gap-4 pt-12 text-center">
-                        <LuUser size={40} className="text-gray-300" />
-                        <p className="text-sm text-gray-500">{t('noStaffYet')}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', paddingTop: '48px', textAlign: 'center' }}>
+                        <LuUser size={40} color="#d1d5db" />
+                        <p style={{ fontSize: '14px', color: '#6b7280' }}>{t('noStaffYet')}</p>
                         <Button color="primary" onClick={() => setShowAddUser(true)} style={{ minHeight: '44px' }}>
-                            <LuPlus size={16} className="inline mr-1" /> {t('addStaff')}
+                            <LuPlus size={16} style={{ display: 'inline', marginRight: '4px' }} /> {t('addStaff')}
                         </Button>
                     </div>
                 ) : (
                     <>
-                        <Card style={{ padding: 0 }} className="rounded-xl">
+                        <Card style={{ padding: 0, borderRadius: '12px' }}>
                             <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
                                 {users.map((user: any) => (
                                     <List.Item
                                         key={user.id}
                                         prefix={
                                             user.profileImage
-                                                ? <img src={user.profileImage} alt="" className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
-                                                : <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                                    <LuUser size={14} className="text-blue-500" />
+                                                ? <img src={user.profileImage} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                                                : <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <LuUser size={14} color="#3b82f6" />
                                                 </div>
                                         }
                                         description={
-                                            <span className="flex items-center gap-1.5">
-                                                <span className="text-xs text-gray-500">{user.email}</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</span>
                                                 {!user.active && <Tag color="default" fill="outline" style={{ fontSize: 10 }}>Inactive</Tag>}
                                             </span>
                                         }
@@ -177,7 +177,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                         arrow
                                         style={{ minHeight: '48px' }}
                                     >
-                                        <span className="text-[15px] font-medium">{user.name || t('unnamed')}</span>
+                                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{user.name || t('unnamed')}</span>
                                     </List.Item>
                                 ))}
                             </List>
@@ -191,12 +191,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                             onClick={() => setShowAddUser(true)}
                             style={{ minHeight: '44px' }}
                         >
-                            <LuPlus size={16} className="inline mr-1" /> {t('addStaffMember')}
+                            <LuPlus size={16} style={{ display: 'inline', marginRight: '4px' }} /> {t('addStaffMember')}
                         </Button>
                     </>
                 )}
 
-                <p className="text-xs text-center text-gray-400 pt-2">
+                <p style={{ fontSize: '12px', textAlign: 'center', color: '#9ca3af', paddingTop: '8px' }}>
                     {t('desktopNote')}
                 </p>
             </div>
@@ -210,40 +210,42 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 destroyOnClose
             >
                 {selectedUser && (
-                    <div className="px-4 pt-4 pb-6 space-y-4">
-                        <div className="flex justify-center"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '999px' }} />
+                        </div>
 
-                        <div className="flex items-center gap-3">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             {(selectedUser as any).profileImage
-                                ? <img src={(selectedUser as any).profileImage} alt="" className="w-12 h-12 rounded-full object-cover" referrerPolicy="no-referrer" />
-                                : <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                                    <LuUser size={20} className="text-blue-500" />
+                                ? <img src={(selectedUser as any).profileImage} alt="" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                                : <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <LuUser size={20} color="#3b82f6" />
                                 </div>
                             }
                             <div>
-                                <p className="text-lg font-semibold">{(selectedUser as any).name || t('unnamed')}</p>
-                                <p className="text-sm text-gray-500">{(selectedUser as any).email}</p>
+                                <p style={{ fontSize: '18px', fontWeight: 600 }}>{(selectedUser as any).name || t('unnamed')}</p>
+                                <p style={{ fontSize: '14px', color: '#6b7280' }}>{(selectedUser as any).email}</p>
                             </div>
                         </div>
 
-                        <Card style={{ padding: 0 }} className="rounded-xl">
+                        <Card style={{ padding: 0, borderRadius: '12px' }}>
                             <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
-                                <List.Item prefix={<LuMail size={16} className="text-gray-400" />} style={{ minHeight: '40px' }}>
-                                    <span className="text-sm">{(selectedUser as any).email || 'No email'}</span>
+                                <List.Item prefix={<LuMail size={16} color="#9ca3af" />} style={{ minHeight: '40px' }}>
+                                    <span style={{ fontSize: '14px' }}>{(selectedUser as any).email || 'No email'}</span>
                                 </List.Item>
-                                <List.Item prefix={<LuPhone size={16} className="text-gray-400" />} style={{ minHeight: '40px' }}>
-                                    <span className="text-sm">{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</span>
+                                <List.Item prefix={<LuPhone size={16} color="#9ca3af" />} style={{ minHeight: '40px' }}>
+                                    <span style={{ fontSize: '14px' }}>{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</span>
                                 </List.Item>
                                 <List.Item
-                                    prefix={(selectedUser as any).active ? <LuUserCheck size={16} className="text-green-500" /> : <LuUserX size={16} className="text-red-400" />}
+                                    prefix={(selectedUser as any).active ? <LuUserCheck size={16} color="#22c55e" /> : <LuUserX size={16} color="#f87171" />}
                                     style={{ minHeight: '40px' }}
                                 >
-                                    <span className="text-sm">{(selectedUser as any).active ? t('active') : t('deactivated')}</span>
+                                    <span style={{ fontSize: '14px' }}>{(selectedUser as any).active ? t('active') : t('deactivated')}</span>
                                 </List.Item>
                             </List>
                         </Card>
 
-                        <div className="flex gap-3">
+                        <div style={{ display: 'flex', gap: '12px' }}>
                             <Button
                                 block
                                 fill="outline"
@@ -270,35 +272,43 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '80vh' }}
                 destroyOnClose
             >
-                <div className="px-4 pt-4 pb-6 space-y-4">
-                    <div className="flex justify-center"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
-                    <h2 className="text-lg font-semibold">{t('addStaffMember')}</h2>
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '999px' }} />
+                    </div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600 }}>{t('addStaffMember')}</h2>
 
-                    <div className="space-y-3">
-                        <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-500">{t('name')}</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280' }}>{t('name')}</label>
                             <Input value={newUserName} onChange={setNewUserName} placeholder={t('staffName')} style={{ '--font-size': '15px' } as React.CSSProperties} />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-500">{t('emailLabel')}</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280' }}>{t('emailLabel')}</label>
                             <Input value={newUserEmail} onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" style={{ '--font-size': '15px' } as React.CSSProperties} />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-500">{t('phone')}</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280' }}>{t('phone')}</label>
                             <Input value={newUserPhone} onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" style={{ '--font-size': '15px' } as React.CSSProperties} />
                         </div>
                         {roles.length > 0 && (
-                            <div className="space-y-1">
-                                <label className="text-xs font-medium text-gray-500">{t('role')}</label>
-                                <div className="flex flex-wrap gap-2">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280' }}>{t('role')}</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {roles.map((role: any) => (
                                         <button
                                             key={role.id}
                                             onClick={() => setNewUserRole(role.id)}
-                                            className={`px-3 py-1.5 rounded-full text-sm font-medium min-h-[36px] ${newUserRole === role.id
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                                                }`}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '9999px',
+                                                fontSize: '14px',
+                                                fontWeight: 500,
+                                                minHeight: '36px',
+                                                border: 'none',
+                                                backgroundColor: newUserRole === role.id ? '#3b82f6' : '#f3f4f6',
+                                                color: newUserRole === role.id ? '#fff' : '#374151'
+                                            }}
                                         >
                                             {role.name}
                                         </button>
@@ -308,7 +318,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                         )}
                     </div>
 
-                    <div className="flex gap-3 pt-2">
+                    <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
                         <Button block fill="outline" size="large" onClick={() => setShowAddUser(false)} style={{ minHeight: '44px' }}>{t('cancel')}</Button>
                         <Button block color="primary" fill="solid" size="large" loading={isAdding} disabled={!newUserEmail.trim()} onClick={handleAddUser} style={{ minHeight: '44px' }}>{t('add')}</Button>
                     </div>

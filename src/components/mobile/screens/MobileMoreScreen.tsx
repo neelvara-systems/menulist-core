@@ -9,7 +9,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuBuilding2, LuCalendarCheck, LuChevronRight, LuClock, LuCreditCard, LuGlobe, LuHelpCircle, LuLogOut, LuMapPin, LuMessageCircle, LuMonitor, LuPalette, LuQrCode, LuReceipt, LuSettings, LuSettings2, LuShield, LuSparkles, LuTv, LuUsers } from 'react-icons/lu';
+import { LuAlertTriangle, LuBarChart3, LuBuilding2, LuCalendarCheck, LuClock, LuCreditCard, LuGlobe, LuHelpCircle, LuLogOut, LuMapPin, LuMessageCircle, LuMonitor, LuPalette, LuQrCode, LuReceipt, LuSettings, LuSettings2, LuShield, LuSparkles, LuTv, LuUsers } from 'react-icons/lu';
 
 const MobileShareScreen = dynamic(() => import('./MobileShareScreen'), { ssr: false });
 const MobilePublicInfoScreen = dynamic(() => import('./MobilePublicInfoScreen'), { ssr: false });
@@ -109,63 +109,63 @@ export default function MobileMoreScreen() {
     const menuItems = [
         {
             key: 'dashboard',
-            icon: <LuBarChart3 size={20} className="text-indigo-600" />,
+            icon: <LuBarChart3 size={20} color="#4f46e5" />,
             label: t('dashboard'),
             description: t('dashboardDesc'),
             onClick: () => setSubScreen('dashboard'),
         },
         {
             key: 'today',
-            icon: <LuCalendarCheck size={20} className="text-emerald-500" />,
+            icon: <LuCalendarCheck size={20} color="#10b981" />,
             label: t('today'),
             description: t('todayDesc'),
             onClick: () => setSubScreen('today'),
         },
         {
             key: 'share',
-            icon: <LuQrCode size={20} className="text-blue-600" />,
+            icon: <LuQrCode size={20} color="#2563eb" />,
             label: t('shareQr'),
             description: t('shareQrDesc'),
             onClick: () => setSubScreen('share'),
         },
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{
             key: 'tempStatus',
-            icon: <LuAlertTriangle size={20} className="text-amber-500" />,
+            icon: <LuAlertTriangle size={20} color="#f59e0b" />,
             label: t('tempStatus'),
             description: t('tempStatusDesc'),
             onClick: () => setSubScreen('tempStatus'),
         }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{
             key: 'specialMenus',
-            icon: <LuSparkles size={20} className="text-orange-500" />,
+            icon: <LuSparkles size={20} color="#f97316" />,
             label: t('specialMenus'),
             description: t('specialMenusDesc'),
             onClick: () => setSubScreen('specialMenus' as MoreSubScreen),
         }] : []),
         {
             key: 'designEditor',
-            icon: <LuPalette size={20} className="text-rose-500" />,
+            icon: <LuPalette size={20} color="#e11d48" />,
             label: t('menuDesign'),
             description: t('menuDesignDesc'),
             onClick: () => setSubScreen('designEditor'),
         },
         {
             key: 'publicInfo',
-            icon: <LuBuilding2 size={20} className="text-green-600" />,
+            icon: <LuBuilding2 size={20} color="#16a34a" />,
             label: t('publicInfo'),
             description: t('publicInfoDesc'),
             onClick: () => setSubScreen('publicInfo'),
         },
         {
             key: 'billing',
-            icon: <LuCreditCard size={20} className="text-purple-600" />,
+            icon: <LuCreditCard size={20} color="#9333ea" />,
             label: t('billing'),
             description: t('billingDesc'),
             onClick: () => setSubScreen('billing'),
         },
         {
             key: 'transactions',
-            icon: <LuReceipt size={20} className="text-pink-500" />,
+            icon: <LuReceipt size={20} color="#ec4899" />,
             label: t('transactions'),
             description: t('transactionsDesc'),
             onClick: () => setSubScreen('transactions'),
@@ -175,70 +175,70 @@ export default function MobileMoreScreen() {
     const settingsItems = [
         {
             key: 'basicSettings',
-            icon: <LuSettings size={20} className="text-orange-500" />,
+            icon: <LuSettings size={20} color="#f97316" />,
             label: t('basicSettings'),
             description: t('basicSettingsDesc'),
             onClick: () => setSubScreen('basicSettings'),
         },
         {
             key: 'locale',
-            icon: <LuGlobe size={20} className="text-teal-500" />,
+            icon: <LuGlobe size={20} color="#14b8a6" />,
             label: t('languageRegion'),
             description: t('languageRegionDesc'),
             onClick: () => setSubScreen('locale'),
         },
         {
             key: 'hoursEdit',
-            icon: <LuClock size={20} className="text-indigo-500" />,
+            icon: <LuClock size={20} color="#6366f1" />,
             label: t('editWorkingHours'),
             description: t('editWorkingHoursDesc'),
             onClick: () => setSubScreen('hoursEdit'),
         },
         {
             key: 'roles',
-            icon: <LuShield size={20} className="text-violet-500" />,
+            icon: <LuShield size={20} color="#8b5cf6" />,
             label: t('rolesPermissions'),
             description: t('rolesPermissionsDesc'),
             onClick: () => setSubScreen('roles'),
         },
         {
             key: 'digitalScreens',
-            icon: <LuTv size={20} className="text-cyan-500" />,
+            icon: <LuTv size={20} color="#06b6d4" />,
             label: t('digitalScreens'),
             description: t('digitalScreensDesc'),
             onClick: () => setSubScreen('digitalScreens'),
         },
         {
             key: 'locations',
-            icon: <LuMapPin size={20} className="text-amber-500" />,
+            icon: <LuMapPin size={20} color="#f59e0b" />,
             label: t('locations'),
             description: t('locationsDesc'),
             onClick: () => setSubScreen('locations'),
         },
         {
             key: 'users',
-            icon: <LuUsers size={20} className="text-blue-500" />,
+            icon: <LuUsers size={20} color="#3b82f6" />,
             label: t('staff'),
             description: t('staffDesc'),
             onClick: () => setSubScreen('users'),
         },
         {
             key: 'timeSlots',
-            icon: <LuClock size={20} className="text-emerald-500" />,
+            icon: <LuClock size={20} color="#10b981" />,
             label: t('timeSlots'),
             description: t('timeSlotsDesc'),
             onClick: () => setSubScreen('timeSlots'),
         },
         {
             key: 'seoAnalytics',
-            icon: <LuGlobe size={20} className="text-sky-500" />,
+            icon: <LuGlobe size={20} color="#0ea5e9" />,
             label: t('seoAnalytics'),
             description: t('seoAnalyticsDesc'),
             onClick: () => setSubScreen('seoAnalytics'),
         },
         {
             key: 'advancedSettings',
-            icon: <LuSettings2 size={20} className="text-gray-500" />,
+            icon: <LuSettings2 size={20} color="#6b7280" />,
             label: t('advancedSettings'),
             description: t('advancedSettingsDesc'),
             onClick: () => setSubScreen('advancedSettings'),
@@ -273,29 +273,28 @@ export default function MobileMoreScreen() {
     };
 
     return (
-        <div className="px-4 pt-3 pb-4 space-y-4">
+        <div style={{ padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Profile Header */}
-            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                <div className="flex items-center gap-3">
+            <Card style={{ borderRadius: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {userImage ? (
                         <img
                             src={userImage}
                             alt={userName}
-                            className="w-12 h-12 rounded-full object-cover"
+                            style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }}
                             referrerPolicy="no-referrer"
                         />
                     ) : (
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-semibold"
-                            style={{ backgroundColor: '#2563eb' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px', fontWeight: 600, backgroundColor: '#2563eb' }}>
                             {userName.charAt(0).toUpperCase()}
                         </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-semibold truncate" style={{ color: theme.textPrimary }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '15px', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {userName}
                         </p>
                         {userEmail && (
-                            <p className="text-xs truncate" style={{ color: theme.textSecondary }}>
+                            <p style={{ fontSize: '12px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--adm-color-weak, #999)' }}>
                                 {userEmail}
                             </p>
                         )}
@@ -304,88 +303,88 @@ export default function MobileMoreScreen() {
             </Card>
 
             {/* Navigation Items */}
-            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px' }}>
+                <List>
                     {menuItems.map((item) => (
                         <List.Item
                             key={item.key}
                             prefix={item.icon}
                             onClick={item.onClick}
-                            description={<span style={{ color: theme.textSecondary }}>{item.description}</span>}
-                            arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
+                            description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{item.description}</span>}
+                            arrow
                             style={{ minHeight: '48px' }}
                         >
-                            <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{item.label}</span>
+                            <span style={{ fontSize: '15px', fontWeight: 500 }}>{item.label}</span>
                         </List.Item>
                     ))}
                 </List>
             </Card>
 
             {/* Settings */}
-            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px' }}>
+                <List>
                     {settingsItems.map((item) => (
                         <List.Item
                             key={item.key}
                             prefix={item.icon}
                             onClick={item.onClick}
-                            description={<span style={{ color: theme.textSecondary }}>{item.description}</span>}
-                            arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
+                            description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{item.description}</span>}
+                            arrow
                             style={{ minHeight: '48px' }}
                         >
-                            <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{item.label}</span>
+                            <span style={{ fontSize: '15px', fontWeight: 500 }}>{item.label}</span>
                         </List.Item>
                     ))}
                 </List>
             </Card>
 
             {/* Support */}
-            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px' }}>
+                <List>
                     <List.Item
-                        prefix={<LuHelpCircle size={20} style={{ color: '#3b82f6' }} />}
+                        prefix={<LuHelpCircle size={20} color="#3b82f6" />}
                         onClick={() => setSubScreen('help')}
-                        description={<span style={{ color: theme.textSecondary }}>{t('helpCenterDesc')}</span>}
-                        arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
+                        description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{t('helpCenterDesc')}</span>}
+                        arrow
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{t('helpCenter')}</span>
+                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('helpCenter')}</span>
                     </List.Item>
                     <List.Item
-                        prefix={<LuMessageCircle size={20} style={{ color: '#22c55e' }} />}
+                        prefix={<LuMessageCircle size={20} color="#22c55e" />}
                         onClick={() => {
                             window.open('https://wa.me/917042916884?text=Hi%2C%20I%20need%20help%20with%20MenuList.ai', '_blank');
                         }}
-                        description={<span style={{ color: theme.textSecondary }}>{t('contactSupportDesc')}</span>}
-                        arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
+                        description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{t('contactSupportDesc')}</span>}
+                        arrow
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{t('contactSupport')}</span>
+                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('contactSupport')}</span>
                     </List.Item>
                 </List>
             </Card>
 
             {/* Switch to Desktop + Logout */}
-            <Card style={{ borderRadius: '12px', backgroundColor: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                <List style={{ '--border-inner': `1px solid ${theme.border}` } as React.CSSProperties}>
+            <Card style={{ borderRadius: '12px' }}>
+                <List>
                     <List.Item
-                        prefix={<LuMonitor size={20} style={{ color: theme.textSecondary }} />}
+                        prefix={<LuMonitor size={20} color="var(--adm-color-weak, #999)" />}
                         onClick={() => {
                             localStorage.setItem('forceDesktopMode', 'true');
                             window.location.reload();
                         }}
-                        description={<span style={{ color: theme.textSecondary }}>{t('switchToDesktopDesc')}</span>}
-                        arrow={<LuChevronRight size={18} style={{ color: theme.textMuted }} />}
+                        description={<span style={{ color: 'var(--adm-color-weak, #999)' }}>{t('switchToDesktopDesc')}</span>}
+                        arrow
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium" style={{ color: theme.textPrimary }}>{t('switchToDesktop')}</span>
+                        <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('switchToDesktop')}</span>
                     </List.Item>
                     <List.Item
-                        prefix={<LuLogOut size={20} style={{ color: '#dc2626' }} />}
+                        prefix={<LuLogOut size={20} color="#dc2626" />}
                         onClick={handleLogout}
                         style={{ minHeight: '48px' }}
                     >
-                        <span className="text-[15px] font-medium" style={{ color: '#dc2626' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 500, color: '#dc2626' }}>
                             {isLoggingOut ? t('loggingOut') : t('logOut')}
                         </span>
                     </List.Item>

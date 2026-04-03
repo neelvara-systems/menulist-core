@@ -231,18 +231,18 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     // ── Loading state ────────────────────────────────────────────
     if (isLoading) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />}>{t('title')}</NavBar>
-                <div className="flex-1 flex items-center justify-center"><DotLoading /></div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DotLoading /></div>
             </div>
         );
     }
 
     if (!projectData) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />}>{t('title')}</NavBar>
-                <div className="flex-1 flex items-center justify-center px-6 text-center text-gray-500">
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', textAlign: 'center', color: '#6b7280' }}>
                     {t('noMenuFound')}
                 </div>
             </div>
@@ -250,14 +250,14 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     }
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
             <NavBar
                 onBack={onBack}
                 backIcon={<LuArrowLeft size={20} />}
                 right={
                     <button
                         onClick={() => window.open(menuUrl, '_blank')}
-                        className="flex items-center gap-1 text-blue-600 text-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#2563eb', fontSize: '14px' }}
                     >
                         <LuExternalLink size={16} />
                         {t('preview')}
@@ -267,10 +267,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pb-32 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 128px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* ── Quick Start Presets ────────────────────── */}
                 <SectionCard title={t('quickStart')} subtitle={t('quickStartSubtitle')}>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                         {QUICK_PRESETS.map((preset) => {
                             const isActive =
                                 homeStyle === preset.homeStyle &&
@@ -280,14 +280,26 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                 <button
                                     key={preset.key}
                                     onClick={() => applyQuickPreset(preset)}
-                                    className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all active:scale-95 ${isActive
-                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-                                        }`}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '12px 8px',
+                                        borderRadius: '12px',
+                                        border: '2px solid',
+                                        borderColor: isActive ? '#3b82f6' : '#e5e7eb',
+                                        backgroundColor: isActive ? '#eff6ff' : '#ffffff',
+                                        transition: 'all 0.2s',
+                                        transform: 'scale(1)',
+                                    }}
+                                    onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
+                                    onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
                                 >
-                                    <span className="text-2xl">{preset.emoji}</span>
-                                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{preset.label}</span>
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight text-center">{preset.description}</span>
+                                    <span style={{ fontSize: '24px' }}>{preset.emoji}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#1f2937' }}>{preset.label}</span>
+                                    <span style={{ fontSize: '10px', color: '#6b7280', lineHeight: 1.4, textAlign: 'center' }}>{preset.description}</span>
                                 </button>
                             );
                         })}
@@ -296,7 +308,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
                 {/* ── Home Page Style ────────────────────────── */}
                 <SectionCard title={t('homePageStyle')} subtitle={t('homePageStyleSubtitle')}>
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {Object.entries(HOME_STYLES).map(([key, config]) => {
                             const styleKey = key as HomeStyle;
                             const isSelected = homeStyle === styleKey;
@@ -316,7 +328,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
                 {/* ── Menu Mood ──────────────────────────────── */}
                 <SectionCard title={t('menuMood')} subtitle={t('menuMoodSubtitle')}>
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {Object.entries(MENU_MOODS).map(([key, config]) => {
                             const moodKey = key as MenuMood;
                             const isSelected = menuMood === moodKey;
@@ -336,7 +348,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
                 {/* ── Menu Layout ────────────────────────────── */}
                 <SectionCard title={t('menuLayout')} subtitle={t('menuLayoutSubtitle')}>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                         {Object.entries(MENU_LAYOUTS).map(([key, config]) => {
                             const layoutKey = key as MenuLayout;
                             const isSelected = menuLayout === layoutKey;
@@ -346,24 +358,35 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     key={key}
                                     onClick={() => isCompatible && handleLayoutChange(layoutKey)}
                                     disabled={!isCompatible}
-                                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all ${!isCompatible
-                                        ? 'opacity-30 border-gray-200 dark:border-gray-700'
-                                        : isSelected
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 active:scale-95'
-                                        }`}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '12px',
+                                        borderRadius: '12px',
+                                        border: '2px solid',
+                                        borderColor: !isCompatible ? '#e5e7eb' : isSelected ? '#3b82f6' : '#e5e7eb',
+                                        backgroundColor: !isCompatible ? '#f9fafb' : isSelected ? '#eff6ff' : '#ffffff',
+                                        transition: 'all 0.2s',
+                                        opacity: !isCompatible ? 0.3 : 1,
+                                        transform: 'scale(1)',
+                                    }}
+                                    onMouseDown={(e) => { if (isCompatible) e.currentTarget.style.transform = 'scale(0.95)' }}
+                                    onMouseUp={(e) => { if (isCompatible) e.currentTarget.style.transform = 'scale(1)' }}
+                                    onMouseLeave={(e) => { if (isCompatible) e.currentTarget.style.transform = 'scale(1)' }}
                                 >
-                                    {isSelected && <LuCheck size={14} className="text-blue-500" />}
-                                    <span className={`text-sm font-semibold ${isSelected ? 'text-blue-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                                    {isSelected && <LuCheck size={14} color="#3b82f6" />}
+                                    <span style={{ fontSize: '14px', fontWeight: 600, color: isSelected ? '#2563eb' : '#1f2937' }}>
                                         {config.label}
                                     </span>
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{config.description}</span>
+                                    <span style={{ fontSize: '10px', color: '#6b7280' }}>{config.description}</span>
                                 </button>
                             );
                         })}
                     </div>
                     {compatibleLayouts.length < Object.keys(MENU_LAYOUTS).length && (
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                        <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
                             {t('layoutIncompatibleHint')}
                         </p>
                     )}
@@ -373,37 +396,55 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 <SectionCard title={t('brandColor')} subtitle={t('brandColorSubtitle')}>
                     <button
                         onClick={() => setIsColorPickerOpen(true)}
-                        className="flex items-center gap-3 w-full py-2 active:bg-gray-50 dark:active:bg-gray-800 rounded-lg"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            width: '100%',
+                            padding: '8px 0',
+                            borderRadius: '8px',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                        }}
+                        onMouseDown={(e) => { e.currentTarget.style.backgroundColor = 'var(--adm-color-hover, #f5f5f5)' }}
+                        onMouseUp={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
                     >
                         <div
-                            className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-700 flex-shrink-0"
-                            style={{ backgroundColor: brandAccentColor || defaultMoodColor }}
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                border: '2px solid #e5e7eb',
+                                flexShrink: 0,
+                                backgroundColor: brandAccentColor || defaultMoodColor
+                            }}
                         />
-                        <div className="flex-1 text-left">
-                            <p className="text-sm text-gray-900 dark:text-gray-100">
+                        <div style={{ flex: 1, textAlign: 'left' }}>
+                            <p style={{ fontSize: '14px', color: '#1f2937', margin: 0 }}>
                                 {brandAccentColor
                                     ? BRAND_COLOR_PRESETS.find(p => p.color === brandAccentColor)?.name || brandAccentColor.toUpperCase()
                                     : t('usingMoodDefault')}
                             </p>
                         </div>
-                        <LuPalette size={18} className="text-gray-400" />
+                        <LuPalette size={18} color="#9ca3af" />
                     </button>
                 </SectionCard>
 
                 {/* ── Display Options ────────────────────────── */}
                 <SectionCard title={t('displayOptions')}>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('showItemImages')}</p>
-                                <p className="text-xs text-gray-500">{t('showItemImagesDesc')}</p>
+                                <p style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937' }}>{t('showItemImages')}</p>
+                                <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('showItemImagesDesc')}</p>
                             </div>
                             <Switch checked={showImages} onChange={handleShowImagesChange} />
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('categoryTabs')}</p>
-                                <p className="text-xs text-gray-500">{t('categoryTabsDesc')}</p>
+                                <p style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937' }}>{t('categoryTabs')}</p>
+                                <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('categoryTabsDesc')}</p>
                             </div>
                             <Switch checked={showCategoryTabs} onChange={handleCategoryTabsChange} />
                         </div>
@@ -425,14 +466,25 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             </div>
 
             {/* ── Bottom Action Bar ──────────────────────────── */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex gap-3 z-50">
+            <div style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: 'var(--adm-color-background, #fff)',
+                borderTop: '1px solid var(--adm-color-border, #e5e7eb)',
+                padding: '12px 16px',
+                display: 'flex',
+                gap: '12px',
+                zIndex: 50
+            }}>
                 <Button
                     block
                     fill="outline"
                     onClick={() => { window.open(menuUrl, '_blank'); }}
                     style={{ flex: 1 }}
                 >
-                    <span className="flex items-center justify-center gap-1.5">
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                         <LuExternalLink size={16} />
                         {t('preview')}
                     </span>
@@ -464,11 +516,11 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 // ── Reusable Section Card ────────────────────────────────────────
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
     return (
-        <Card className="rounded-xl">
-            <div className="space-y-3">
+        <Card style={{ borderRadius: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</p>
-                    {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>}
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>{title}</p>
+                    {subtitle && <p style={{ fontSize: '12px', color: '#6b7280' }}>{subtitle}</p>}
                 </div>
                 {children}
             </div>
@@ -487,22 +539,40 @@ function OptionRow({ label, description, isSelected, onSelect, previewColor }: {
     return (
         <button
             onClick={onSelect}
-            className={`flex items-center gap-3 w-full p-3 rounded-xl border-2 transition-all active:scale-[0.98] ${isSelected
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-                }`}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                width: '100%',
+                padding: '12px',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: isSelected ? '#3b82f6' : '#e5e7eb',
+                backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                transition: 'all 0.2s',
+                transform: 'scale(1)',
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.98)' }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
         >
             {previewColor && (
                 <div
-                    className="w-8 h-8 rounded-lg flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                    style={{ backgroundColor: previewColor }}
+                    style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        flexShrink: 0,
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: previewColor
+                    }}
                 />
             )}
-            <div className="flex-1 text-left">
-                <p className={`text-sm font-medium ${isSelected ? 'text-blue-600' : 'text-gray-900 dark:text-gray-100'}`}>{label}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{ fontSize: '14px', fontWeight: 500, color: isSelected ? '#2563eb' : '#1f2937' }}>{label}</p>
+                <p style={{ fontSize: '12px', color: '#6b7280' }}>{description}</p>
             </div>
-            {isSelected && <LuCheck size={18} className="text-blue-500 flex-shrink-0" />}
+            {isSelected && <LuCheck size={18} color="#3b82f6" style={{ flexShrink: 0 }} />}
         </button>
     );
 }

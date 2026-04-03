@@ -988,7 +988,13 @@
         "itemDeleted": "Item deleted",
         "failedToSync": "Failed to sync. Pull to refresh.",
         "itemAdded": "Item added",
-        "failedToSaveRefresh": "Failed to save. Pull to refresh."
+        "failedToSaveRefresh": "Failed to save. Pull to refresh.",
+        "currentProject": "Current Project",
+        "unnamedProject": "Unnamed Project",
+        "selectProject": "Select Project",
+        "itemsCount": "{count} items",
+        "projectSwitched": "Project switched",
+        "cancel": "Cancel"
     },
     "MobileDashboard": {
         "title": "Dashboard",

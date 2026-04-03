@@ -42,7 +42,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     if (!storeDetails) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <DotLoading color="primary" />
             </div>
         );
@@ -211,28 +211,28 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const plans = getB2CPlansList().filter(p => p.billingInterval === 'MONTH');
 
     return (
-        <div className="flex flex-col h-full">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
             <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {isLoading && (
-                    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                        <Card className="rounded-xl px-8 py-6"><DotLoading color="primary" /> {t('processing')}</Card>
+                    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Card style={{ borderRadius: '12px', padding: '24px 32px' }}><DotLoading color="primary" /> {t('processing')}</Card>
                     </div>
                 )}
 
                 {/* Current Plan Card */}
                 {sub ? (
-                    <Card className="rounded-xl">
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
+                    <Card style={{ borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div>
-                                    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 capitalize">
+                                    <h2 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', color: 'var(--adm-color-text, #333)' }}>
                                         {sub.planName || `${sub.planId} Plan`}
                                     </h2>
-                                    <p className="text-sm text-gray-500">
+                                    <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>
                                         {formatCurrency(sub.amount * (sub.quantity || 1), sub.currency)} / {sub.planType === 'YEAR' ? 'year' : 'month'}
                                     </p>
                                 </div>
@@ -241,19 +241,19 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </Tag>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
                                 <div>
-                                    <p className="text-xs text-gray-400">{t('billingCycle')}</p>
-                                    <p className="font-medium text-gray-700 dark:text-gray-300">{formatDate(sub.cycleStartDate)} - {formatDate(sub.cycleEndDate)}</p>
+                                    <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)' }}>{t('billingCycle')}</p>
+                                    <p style={{ fontWeight: 500, color: 'var(--adm-color-text-secondary, #666)' }}>{formatDate(sub.cycleStartDate)} - {formatDate(sub.cycleEndDate)}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400">{sub.status === 'active' ? t('renews') : t('expires')}</p>
-                                    <p className="font-medium text-gray-700 dark:text-gray-300">{formatDate(sub.renewsOn || sub.cycleEndDate)}</p>
+                                    <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)' }}>{sub.status === 'active' ? t('renews') : t('expires')}</p>
+                                    <p style={{ fontWeight: 500, color: 'var(--adm-color-text-secondary, #666)' }}>{formatDate(sub.renewsOn || sub.cycleEndDate)}</p>
                                 </div>
                             </div>
 
                             {sub.status === 'past_due' && (
-                                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-sm text-yellow-700 dark:text-yellow-300">
+                                <div style={{ backgroundColor: '#fefce8', borderRadius: '8px', padding: '12px', fontSize: '14px', color: '#a16207' }}>
                                     Payment failed. {(() => { const { remainingDays } = getGracePeriodInfo(sub.pastDueSinceAt); return `${remainingDays} days grace period remaining.`; })()}
                                     {sub.shortUrl && (
                                         <Button
@@ -261,8 +261,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             color="warning"
                                             fill="solid"
                                             onClick={() => { window.open(sub.shortUrl, '_blank'); }}
-                                            className="mt-2"
-                                            style={{ minHeight: '36px' }}
+                                            style={{ marginTop: '8px', minHeight: '36px' }}
                                         >
                                             {t('retryPayment')}
                                         </Button>
@@ -271,7 +270,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             )}
 
                             {sub.status === 'paused' && (
-                                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-sm text-orange-700 dark:text-orange-300">
+                                <div style={{ backgroundColor: '#fff7ed', borderRadius: '8px', padding: '12px', fontSize: '14px', color: '#9a3412' }}>
                                     {!hasValidSubscriptionAccess(sub)
                                         ? t('pausedCycleEnded')
                                         : t('pausedAccessAvailable')}
@@ -279,29 +278,29 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             )}
 
                             {/* Action Buttons */}
-                            <div className="flex flex-wrap gap-2 pt-1">
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
                                 {sub.status === 'active' && (
                                     <>
                                         {sub.planId !== 'premium' && (
                                             <Button size="small" color="primary" fill="solid" onClick={() => setShowPlans(true)} style={{ minHeight: '36px' }}>
-                                                <LuZap size={14} className="inline mr-1" /> {t('upgrade')}
+                                                <LuZap size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('upgrade')}
                                             </Button>
                                         )}
                                         <Button size="small" fill="outline" onClick={handlePause} style={{ minHeight: '36px' }}>
-                                            <LuPause size={14} className="inline mr-1" /> {t('pause')}
+                                            <LuPause size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('pause')}
                                         </Button>
                                         <Button size="small" color="danger" fill="outline" onClick={handleCancel} style={{ minHeight: '36px' }}>
-                                            <LuXCircle size={14} className="inline mr-1" /> {t('cancel')}
+                                            <LuXCircle size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('cancel')}
                                         </Button>
                                     </>
                                 )}
                                 {sub.status === 'paused' && (
                                     <>
                                         <Button size="small" color="primary" fill="solid" onClick={handleResume} style={{ minHeight: '36px' }}>
-                                            <LuPlay size={14} className="inline mr-1" /> {t('resume')}
+                                            <LuPlay size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('resume')}
                                         </Button>
                                         <Button size="small" color="danger" fill="outline" onClick={handleCancel} style={{ minHeight: '36px' }}>
-                                            <LuXCircle size={14} className="inline mr-1" /> {t('cancel')}
+                                            <LuXCircle size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('cancel')}
                                         </Button>
                                     </>
                                 )}
@@ -314,12 +313,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         </div>
                     </Card>
                 ) : (
-                    <Card className="rounded-xl">
-                        <div className="flex flex-col items-center py-6 gap-3">
-                            <LuCreditCard size={36} className="text-gray-300" />
-                            <p className="text-sm text-gray-500">{t('noActiveSubscription2')}</p>
+                    <Card style={{ borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0', gap: '12px' }}>
+                            <LuCreditCard size={36} color="#d1d5db" />
+                            <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>{t('noActiveSubscription2')}</p>
                             <Button color="primary" fill="solid" onClick={() => setShowPlans(true)} style={{ minHeight: '44px' }}>
-                                <LuZap size={14} className="inline mr-1" /> {t('chooseAPlan')}
+                                <LuZap size={14} style={{ marginRight: '4px', display: 'inline' }} /> {t('chooseAPlan')}
                             </Button>
                         </div>
                     </Card>
@@ -327,11 +326,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
                 {/* AI Features */}
                 {sub && (
-                    <Card className="rounded-xl">
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                    <LuZap size={16} className="text-yellow-500" />
+                    <Card style={{ borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <h3 style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                                    <LuZap size={16} color="#f59e0b" />
                                     {t('aiFeatures')}
                                 </h3>
                                 <Tag color={totalCredits > 0 ? 'success' : 'warning'} fill="outline" style={{ fontSize: 13 }}>
@@ -339,7 +338,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </Tag>
                             </div>
 
-                            <p className="text-sm text-gray-500">
+                            <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>
                                 {t('aiIncludesDesc')}
                             </p>
 
@@ -351,30 +350,30 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 onClick={() => setShowCredits(true)}
                                 style={{ minHeight: '44px' }}
                             >
-                                <LuZap size={14} className="inline mr-1" /> {totalCredits > 0 ? t('getAiEnhancements') : t('getMoreAiEnhancements')}
+                                <LuZap size={14} style={{ marginRight: '4px', display: 'inline' }} /> {totalCredits > 0 ? t('getAiEnhancements') : t('getMoreAiEnhancements')}
                             </Button>
                         </div>
                     </Card>
                 )}
 
                 {/* Billing History */}
-                <Card className="rounded-xl" onClick={fetchHistory}>
-                    <div className="flex items-center justify-between py-1">
-                        <div className="flex items-center gap-3">
-                            <LuReceipt size={20} className="text-blue-500" />
-                            <span className="text-[15px] font-medium text-gray-900 dark:text-gray-100">{t('billingHistory')}</span>
+                <Card style={{ borderRadius: '12px' }} onClick={fetchHistory}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <LuReceipt size={20} color="#3b82f6" />
+                            <span style={{ fontSize: '15px', fontWeight: 500 }}>{t('billingHistory')}</span>
                         </div>
-                        <LuChevronRight size={18} className="text-gray-400" />
+                        <LuChevronRight size={18} color="#9ca3af" />
                     </div>
                 </Card>
 
                 {/* Support */}
-                <Card className="rounded-xl" onClick={() => window.open('https://wa.me/919876543210', '_blank')}>
-                    <div className="flex items-center gap-3 py-1">
-                        <LuMessageCircle size={20} className="text-green-500" />
+                <Card style={{ borderRadius: '12px' }} onClick={() => window.open('https://wa.me/919876543210', '_blank')}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
+                        <LuMessageCircle size={20} color="#22c55e" />
                         <div>
-                            <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">{t('needBillingHelp')}</p>
-                            <p className="text-sm text-gray-500">{t('chatWhatsApp')}</p>
+                            <p style={{ fontSize: '15px', fontWeight: 500, margin: 0 }}>{t('needBillingHelp')}</p>
+                            <p style={{ fontSize: '13px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('chatWhatsApp')}</p>
                         </div>
                     </div>
                 </Card>
@@ -388,38 +387,38 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '85vh' }}
                 destroyOnClose
             >
-                <div className="px-4 pt-4 pb-6">
-                    <div className="flex justify-center mb-3">
-                        <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                <div style={{ padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '999px' }} />
                     </div>
-                    <h2 className="text-lg font-semibold mb-4">{t('chooseAPlan')}</h2>
-                    <div className="space-y-3">
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('chooseAPlan')}</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {plans.filter(p => p.planId !== sub?.planId).map((plan) => {
                             const price = (plan as any)[`price${currency}`]?.price;
                             const credits = (plan as any)[`price${currency}`]?.monthlyCredits;
                             return (
                                 <Card
                                     key={plan.planId}
-                                    className="rounded-xl"
+                                    style={{ borderRadius: '12px' }}
                                     onClick={() => handleUpgrade(plan)}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div>
-                                            <p className="text-[15px] font-semibold capitalize">{plan.planId} Plan</p>
-                                            <p className="text-sm text-gray-500">{credits} credits/mo · {plan.description}</p>
+                                            <p style={{ fontSize: '15px', fontWeight: 600, textTransform: 'capitalize', margin: 0 }}>{plan.planId} Plan</p>
+                                            <p style={{ fontSize: '13px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{credits} credits/mo · {plan.description}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-blue-600">
+                                        <div style={{ textAlign: 'right' }}>
+                                            <p style={{ fontWeight: 700, color: '#2563eb', margin: 0 }}>
                                                 {price ? formatCurrency(price, currency) : t('contactUs')}
                                             </p>
-                                            <p className="text-xs text-gray-400">{t('perMonth')}</p>
+                                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('perMonth')}</p>
                                         </div>
                                     </div>
                                 </Card>
                             );
                         })}
                     </div>
-                    <p className="text-xs text-center text-gray-400 mt-3">
+                    <p style={{ fontSize: '12px', textAlign: 'center', color: 'var(--adm-color-weak, #999)', marginTop: '12px' }}>
                         {t('yearlyAvailable')}
                     </p>
                 </div>
@@ -433,27 +432,27 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '70vh' }}
                 destroyOnClose
             >
-                <div className="px-4 pt-4 pb-6">
-                    <div className="flex justify-center mb-3">
-                        <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                <div style={{ padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '999px' }} />
                     </div>
-                    <h2 className="text-lg font-semibold mb-2">{t('getMoreAiEnhancements')}</h2>
-                    <p className="text-sm text-gray-500 mb-4">{t('moreAiDesc')}</p>
-                    <div className="space-y-3">
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('getMoreAiEnhancements')}</h2>
+                    <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)', marginBottom: '16px' }}>{t('moreAiDesc')}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {aiEnhancementPacksList.map((pack: AIEnhancementPack) => {
                             const price = (pack as any)[`price${currency}`]?.price;
                             return (
                                 <Card
                                     key={pack.packId}
-                                    className="rounded-xl"
+                                    style={{ borderRadius: '12px' }}
                                     onClick={() => handleBuyCredits(pack.packId)}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div>
-                                            <p className="text-[15px] font-semibold">{pack.name}</p>
-                                            <p className="text-sm text-gray-500">{pack.description || 'AI Enhancement Pack'}</p>
+                                            <p style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>{pack.name}</p>
+                                            <p style={{ fontSize: '13px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{pack.description || 'AI Enhancement Pack'}</p>
                                         </div>
-                                        <p className="font-bold text-green-600">
+                                        <p style={{ fontWeight: 700, color: '#10b981', margin: 0 }}>
                                             {price ? formatCurrency(price, currency) : 'N/A'}
                                         </p>
                                     </div>
@@ -472,32 +471,32 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '80vh' }}
                 destroyOnClose
             >
-                <div className="px-4 pt-4 pb-6">
-                    <div className="flex justify-center mb-3">
-                        <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                <div style={{ padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '999px' }} />
                     </div>
-                    <h2 className="text-lg font-semibold mb-4">{t('billingHistory')}</h2>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>{t('billingHistory')}</h2>
                     {billingHistory.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-6">{t('noBillingHistoryYet')}</p>
+                        <p style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)', textAlign: 'center', padding: '24px 0' }}>{t('noBillingHistoryYet')}</p>
                     ) : (
-                        <div className="space-y-2">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {billingHistory.map((item: any, idx: number) => (
-                                <Card key={idx} className="rounded-lg">
-                                    <div className="flex items-center justify-between">
+                                <Card key={idx} style={{ borderRadius: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div>
-                                            <p className="text-sm font-medium">{item.type}</p>
-                                            <p className="text-xs text-gray-400">
+                                            <p style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>{item.type}</p>
+                                            <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>
                                                 {new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontWeight: 600, fontSize: '14px' }}>
                                                 {formatCurrency(item.amount, item.currency)}
                                             </span>
                                             {item.invoiceUrl && (
-                                                <button onClick={() => window.open(item.invoiceUrl, '_blank')} className="p-1">
-                                                    <LuExternalLink size={14} className="text-blue-500" />
-                                                </button>
+                                                <Button style={{ padding: '8px', minWidth: '36px', minHeight: '36px' }} onClick={() => window.open(item.invoiceUrl, '_blank')}>
+                                                    <LuExternalLink size={16} color="#3b82f6" />
+                                                </Button>
                                             )}
                                         </div>
                                     </div>

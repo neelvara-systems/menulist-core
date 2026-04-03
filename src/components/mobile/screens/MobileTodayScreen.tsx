@@ -55,11 +55,11 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
     if (!FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6">
-                    <LuCalendarOff size={36} className="text-gray-300" />
-                    <p className="text-sm text-gray-500 text-center">{t('comingSoon')}</p>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 24px' }}>
+                    <LuCalendarOff size={36} color="#d1d5db" />
+                    <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>{t('comingSoon')}</p>
                 </div>
             </div>
         );
@@ -67,9 +67,9 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div className="flex-1 flex items-center justify-center"><DotLoading color="primary" /></div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DotLoading color="primary" /></div>
             </div>
         );
     }
@@ -77,13 +77,13 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     // Post-action feedback
     if (postAction) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                    <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <LuCheck size={32} className="text-green-500" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <LuCheck size={32} color="#16a34a" />
                     </div>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    <p style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937' }}>
                         {postAction === 'shared' ? t('done') : t('skipped')}
                     </p>
                 </div>
@@ -94,12 +94,12 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     // Empty state
     if (!todayCampaigns || todayCampaigns.isEmpty || (!todayCampaigns.primary && (!todayCampaigns.operational || todayCampaigns.operational.length === 0))) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6">
-                    <LuCheck size={36} className="text-green-400" />
-                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('allDoneForToday')}</p>
-                    <p className="text-sm text-gray-500 text-center">{t('noActionsNeeded')}</p>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 24px' }}>
+                    <LuCheck size={36} color="#4ade80" />
+                    <p style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937' }}>{t('allDoneForToday')}</p>
+                    <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>{t('noActionsNeeded')}</p>
                 </div>
             </div>
         );
@@ -110,17 +110,17 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const operational = (todayCampaigns.operational || []).slice(0, 2) as TodayCampaignSummary[];
 
     return (
-        <div className="flex flex-col h-full">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>Today</NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Primary Campaign Card */}
                 {primary && (
-                    <Card className="rounded-xl">
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-green-600">
+                    <Card style={{ borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#16a34a' }}>
                                 <LuCheck size={16} />
-                                <span className="font-medium">
+                                <span style={{ fontWeight: 500 }}>
                                     {(ACTION_TITLES[primary.type] || 'Share this item')
                                         .replace('{itemName}', primary.subject?.itemName || 'Item')
                                         .replace('{mealName}', mealName)
@@ -128,11 +128,11 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                                 </span>
                             </div>
 
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                            <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937' }}>
                                 {primary.subject?.itemName || 'Menu Item'}
                             </h3>
 
-                            <p className="text-sm text-gray-500">
+                            <p style={{ fontSize: '14px', color: '#6b7280' }}>
                                 {(CONTEXT_TEMPLATES[primary.type] || '')
                                     .replace('{mealName}', mealName.toLowerCase())
                                     .replace('{festivalName}', 'the occasion')}
@@ -153,9 +153,19 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                             <button
                                 onClick={() => handleSkip(primary.campaignId, primary.type)}
                                 disabled={isProcessing}
-                                className="w-full text-center text-gray-400 text-sm py-2 active:text-gray-600 min-h-[44px]"
+                                style={{
+                                    width: '100%',
+                                    textAlign: 'center',
+                                    color: '#9ca3af',
+                                    fontSize: '14px',
+                                    padding: '8px',
+                                    minHeight: '44px',
+                                    backgroundColor: 'transparent',
+                                    border: 'none',
+                                    cursor: isProcessing ? 'not-allowed' : 'pointer'
+                                }}
                             >
-                                <LuSkipForward size={14} className="inline mr-1" /> {t('skip')}
+                                <LuSkipForward size={14} style={{ display: 'inline', marginRight: '4px' }} /> {t('skip')}
                             </button>
                         </div>
                     </Card>
@@ -163,18 +173,18 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
                 {/* Staff Prompt */}
                 {staffPrompt?.eligible && (
-                    <Card className="rounded-xl" style={{ borderLeft: '3px solid #3b82f6' }}>
-                        <div className="flex gap-3">
-                            <LuMessageCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                    <Card style={{ borderRadius: '12px', borderLeft: '3px solid #3b82f6' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <LuMessageCircle size={18} color="#3b82f6" style={{ marginTop: '2px', flexShrink: 0 }} />
                             <div>
-                                <p className="text-xs text-gray-400">{t('staffPromptForToday')}</p>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                                <p style={{ fontSize: '12px', color: '#9ca3af' }}>{t('staffPromptForToday')}</p>
+                                <p style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937', marginTop: '4px' }}>
                                     {t('sayThisWhenCustomersAsk')}
                                 </p>
-                                <p className="text-base font-medium italic text-gray-700 dark:text-gray-300 mt-1">
+                                <p style={{ fontSize: '16px', fontWeight: 500, fontStyle: 'italic', color: '#374151', marginTop: '4px' }}>
                                     &quot;{staffPrompt.text}&quot;
                                 </p>
-                                <p className="text-xs text-gray-400 mt-2">{t('appliesToday')}</p>
+                                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>{t('appliesToday')}</p>
                             </div>
                         </div>
                     </Card>
@@ -182,8 +192,8 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
                 {/* Operational Campaigns */}
                 {operational.length > 0 && (
-                    <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('alsoToday')}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <p style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('alsoToday')}</p>
                         {operational.map((campaign) => {
                             const title = campaign.type === 'now_available'
                                 ? `Now Available: ${campaign.subject?.itemName || 'Item'}`
@@ -192,11 +202,11 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                                     .replace('{mealName}', mealName);
 
                             return (
-                                <Card key={campaign.campaignId} className="rounded-xl">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <LuCheck size={14} className="text-green-500 flex-shrink-0" />
-                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{title}</p>
+                                <Card key={campaign.campaignId} style={{ borderRadius: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                            <LuCheck size={14} color="#16a34a" style={{ flexShrink: 0 }} />
+                                            <p style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
                                         </div>
                                         <Button
                                             size="small"
@@ -204,7 +214,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                                             fill="outline"
                                             loading={isProcessing}
                                             onClick={() => handleComplete(campaign)}
-                                            style={{ minHeight: '36px', marginLeft: 8 }}
+                                            style={{ minHeight: '36px', marginLeft: '8px' }}
                                         >
                                             {t('share')}
                                         </Button>
@@ -215,6 +225,6 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

@@ -50,37 +50,37 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
 
     if (!storeDetails) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <DotLoading color="primary" />
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <NavBar onBack={onBack} className="border-b border-gray-200 dark:border-gray-700">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
+            <NavBar onBack={onBack} style={{ borderBottom: '1px solid var(--adm-color-border, #eee)' }}>
                 {t('publicInfo')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
                 {/* Business Name (read-only on mobile) */}
-                <Card className="rounded-xl">
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <LuBuilding2 size={12} />
                             {t('businessName')}
                         </label>
-                        <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
+                        <p style={{ fontSize: '15px', fontWeight: 500, color: 'var(--adm-color-text, #333)', margin: 0 }}>
                             {storeDetails.name}
                         </p>
-                        <p className="text-xs text-gray-400">{t('changeOnDesktop')}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('changeOnDesktop')}</p>
                     </div>
                 </Card>
 
                 {/* Phone */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <LuPhone size={12} />
                             {t('phoneNumber')}
                         </label>
@@ -95,9 +95,9 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                 </Card>
 
                 {/* Address */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <LuMapPin size={12} />
                             {t('address')}
                         </label>
@@ -117,9 +117,9 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                 </Card>
 
                 {/* Description */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Card style={{ borderRadius: '12px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <LuFileText size={12} />
                             {t('description')}
                         </label>
@@ -142,7 +142,7 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                     size="large"
                     loading={isSaving}
                     onClick={handleSave}
-                    style={{ minHeight: '44px' }}
+                    style={{ minHeight: '44px', borderRadius: '8px' }}
                 >
                     {t('saveChanges')}
                 </Button>

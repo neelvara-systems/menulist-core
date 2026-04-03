@@ -1,0 +1,474 @@
+/*
+ * Modern Professional Theme for antd-mobile
+ * Overrides default antd-mobile CSS variables with clean, modern iOS-style values
+ */
+
+:root {
+  /* Primary Colors - Sophisticated blue instead of bright cyan */
+  --adm-color-primary: #2563eb;
+  --adm-color-primary-light: #3b82f6;
+  --adm-color-primary-dark: #1d4ed8;
+  --adm-color-primary-bg: #eff6ff;
+
+  /* Success - Muted green */
+  --adm-color-success: #10b981;
+  --adm-color-success-bg: #ecfdf5;
+
+  /* Warning - Warm amber */
+  --adm-color-warning: #f59e0b;
+  --adm-color-warning-bg: #fffbeb;
+
+  /* Danger - Soft red */
+  --adm-color-danger: #ef4444;
+  --adm-color-danger-bg: #fef2f2;
+
+  /* Text Colors - Sophisticated grays */
+  --adm-color-text: #1f2937;
+  --adm-color-text-secondary: #4b5563;
+  --adm-color-weak: #9ca3af;
+  --adm-color-light: #d1d5db;
+
+  /* Background Colors - Warm, subtle tones */
+  --adm-color-background: #fafafa;
+  --adm-color-background-grey: #f3f4f6;
+  --adm-color-border: #e5e7eb;
+  --adm-color-box: #ffffff;
+
+  /* Fill Colors */
+  --adm-color-fill-content: #f9fafb;
+  --adm-color-fill-body: #f3f4f6;
+
+  /* Font - Clean system fonts */
+  --adm-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Border Radius - More refined */
+  --adm-radius-s: 6px;
+  --adm-radius-m: 10px;
+  --adm-radius-l: 14px;
+  --adm-radius-xl: 20px;
+  --adm-radius-max: 999px;
+
+  /* Spacing - More breathing room */
+  --adm-padding-xs: 8px;
+  --adm-padding-s: 12px;
+  --adm-padding-m: 16px;
+  --adm-padding-l: 20px;
+  --adm-padding-xl: 24px;
+}
+
+/* Dark Mode Variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --adm-color-text: #f9fafb;
+    --adm-color-text-secondary: #d1d5db;
+    --adm-color-weak: #9ca3af;
+    --adm-color-light: #4b5563;
+
+    --adm-color-background: #111827;
+    --adm-color-background-grey: #1f2937;
+    --adm-color-border: #374151;
+    --adm-color-box: #1f2937;
+
+    --adm-color-fill-content: #1f2937;
+    --adm-color-fill-body: #111827;
+
+    --adm-color-primary-bg: #1e3a8a;
+    --adm-color-success-bg: #064e3b;
+    --adm-color-warning-bg: #78350f;
+    --adm-color-danger-bg: #7f1d1d;
+  }
+}
+
+/* Manual Dark Mode Override */
+[data-theme="dark"] {
+  --adm-color-text: #f9fafb;
+  --adm-color-text-secondary: #d1d5db;
+  --adm-color-weak: #9ca3af;
+  --adm-color-light: #4b5563;
+
+  --adm-color-background: #111827;
+  --adm-color-background-grey: #1f2937;
+  --adm-color-border: #374151;
+  --adm-color-box: #1f2937;
+
+  --adm-color-fill-content: #1f2937;
+  --adm-color-fill-body: #111827;
+
+  --adm-color-primary-bg: #1e3a8a;
+  --adm-color-success-bg: #064e3b;
+  --adm-color-warning-bg: #78350f;
+  --adm-color-danger-bg: #7f1d1d;
+}
+
+/* Card Component Refinements */
+.adm-card {
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  border: none;
+  background: var(--adm-color-box);
+}
+
+.adm-card-body {
+  padding: 16px;
+}
+
+/* List Component Refinements */
+.adm-list {
+  background: var(--adm-color-box);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.adm-list-item {
+  padding: 16px;
+  min-height: 56px;
+}
+
+.adm-list-item-content-main {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--adm-color-text);
+}
+
+.adm-list-item-description {
+  font-size: 13px;
+  color: var(--adm-color-weak);
+  margin-top: 3px;
+}
+
+/* Button Refinements */
+.adm-button {
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  height: 44px;
+  letter-spacing: -0.01em;
+}
+
+.adm-button-large {
+  height: 50px;
+  font-size: 16px;
+  border-radius: 12px;
+}
+
+.adm-button-small {
+  height: 36px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+/* Primary Button - Gradient effect */
+.adm-button-primary.adm-button-fill-solid {
+  background: linear-gradient(135deg, var(--adm-color-primary) 0%, var(--adm-color-primary-dark) 100%);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* Input Refinements */
+.adm-input {
+  font-size: 16px;
+  color: var(--adm-color-text);
+}
+
+.adm-input-element {
+  font-size: 16px;
+}
+
+/* Search Bar Refinements */
+.adm-search-bar {
+  --background: var(--adm-color-fill-content);
+  border-radius: 12px;
+}
+
+.adm-search-bar-input-box {
+  border-radius: 12px;
+  height: 44px;
+}
+
+/* Nav Bar Refinements */
+.adm-nav-bar {
+  background: var(--adm-color-background);
+  border-bottom: 1px solid var(--adm-color-border);
+  height: 52px;
+}
+
+.adm-nav-bar-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--adm-color-text);
+}
+
+/* Tab Bar Refinements */
+.adm-tab-bar {
+  background: var(--adm-color-box);
+  border-top: 1px solid var(--adm-color-border);
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.adm-tab-bar-item {
+  color: var(--adm-color-weak);
+}
+
+.adm-tab-bar-item-active {
+  color: var(--adm-color-primary);
+}
+
+.adm-tab-bar-item-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.adm-tab-bar-item-title {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Switch Refinements */
+.adm-switch {
+  --checked-color: var(--adm-color-primary);
+}
+
+.adm-switch-checkbox {
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+.adm-switch-checkbox::before {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+}
+
+/* Tag Refinements */
+.adm-tag {
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+}
+
+/* Dialog/Modal Refinements */
+.adm-modal-body {
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.adm-modal-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.adm-modal-content {
+  font-size: 15px;
+  color: var(--adm-color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Toast Refinements */
+.adm-toast-mask {
+  backdrop-filter: blur(4px);
+}
+
+.adm-toast-main {
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* Empty State Refinements */
+.adm-empty {
+  padding: 40px 24px;
+}
+
+.adm-empty-description {
+  font-size: 15px;
+  color: var(--adm-color-weak);
+  margin-top: 16px;
+}
+
+/* Picker Refinements */
+.adm-picker {
+  border-radius: 24px 24px 0 0;
+}
+
+.adm-picker-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--adm-color-border);
+}
+
+.adm-picker-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* Popup Refinements */
+.adm-popup-body {
+  border-radius: 24px 24px 0 0;
+  background: var(--adm-color-background);
+}
+
+/* Section Title Styling - for mobile screens */
+.mobile-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adm-color-weak);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 24px 16px 8px;
+}
+
+/* Card Group Styling */
+.mobile-card-group {
+  margin: 0 16px 16px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--adm-color-box);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* Modern Button Variants */
+.mobile-btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  height: 50px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.mobile-btn-secondary {
+  background: var(--adm-color-fill-content);
+  color: var(--adm-color-text);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  height: 50px;
+  border: 1px solid var(--adm-color-border);
+}
+
+.mobile-btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  height: 50px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+/* Status Badge Styling */
+.mobile-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mobile-status-badge-open {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.mobile-status-badge-closed {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Form Label Styling */
+.mobile-form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--adm-color-weak);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Input Field Styling */
+.mobile-input {
+  font-size: 16px;
+  color: var(--adm-color-text);
+  background: var(--adm-color-fill-content);
+  border: 1px solid var(--adm-color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  width: 100%;
+}
+
+.mobile-input:focus {
+  border-color: var(--adm-color-primary);
+  outline: none;
+}
+
+/* Improved Textarea */
+.mobile-textarea {
+  font-size: 16px;
+  color: var(--adm-color-text);
+  background: var(--adm-color-fill-content);
+  border: 1px solid var(--adm-color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  width: 100%;
+  min-height: 100px;
+  resize: none;
+}
+
+/* Screen Container */
+.mobile-screen {
+  min-height: 100vh;
+  background: var(--adm-color-background);
+  padding-bottom: 24px;
+}
+
+/* Page Header */
+.mobile-page-header {
+  padding: 16px;
+  background: var(--adm-color-background);
+  border-bottom: 1px solid var(--adm-color-border);
+}
+
+.mobile-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--adm-color-text);
+}
+
+/* Improved List Items */
+.mobile-list-item {
+  padding: 16px;
+  background: var(--adm-color-box);
+  border-bottom: 1px solid var(--adm-color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-list-item:last-child {
+  border-bottom: none;
+}
+
+.mobile-list-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mobile-list-item-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--adm-color-text);
+}
+
+.mobile-list-item-desc {
+  font-size: 13px;
+  color: var(--adm-color-weak);
+}

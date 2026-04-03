@@ -95,6 +95,7 @@ export const CSP_ALLOWLIST = {
         "https://api.razorpay.com",
         "https://checkout.razorpay.com",
         'https://vercel.live',
+        'https://ecomsai.firebaseapp.com',
     ],
 
     /**

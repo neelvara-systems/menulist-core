@@ -42,10 +42,10 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
     if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL) {
         return (
-            <div className="flex flex-col h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>{t('title')}</NavBar>
-                <div className="flex-1 flex items-center justify-center">
-                    <p className="text-sm text-gray-500">{t('notAvailable')}</p>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p style={{ fontSize: '14px', color: '#6b7280' }}>{t('notAvailable')}</p>
                 </div>
             </div>
         );
@@ -121,39 +121,39 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <NavBar onBack={onBack} style={{ '--height': '48px' } as React.CSSProperties}>
                 {t('title')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Billing Summary */}
-                <Card className="rounded-xl">
-                    <div className="grid grid-cols-3 gap-3 text-center">
+                <Card style={{ borderRadius: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
                         <div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{storesList.length}</p>
-                            <p className="text-xs text-gray-500">{t('totalStores')}</p>
+                            <p style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937' }}>{storesList.length}</p>
+                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('totalStores')}</p>
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-blue-600">{outletCount}</p>
-                            <p className="text-xs text-gray-500">{t('outlets')}</p>
+                            <p style={{ fontSize: '24px', fontWeight: 700, color: '#2563eb' }}>{outletCount}</p>
+                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('outlets')}</p>
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{currency} {amount * storesList.length}</p>
-                            <p className="text-xs text-gray-500">{t('perMonthTotal')}</p>
+                            <p style={{ fontSize: '14px', fontWeight: 700, color: '#374151' }}>{currency} {amount * storesList.length}</p>
+                            <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('perMonthTotal')}</p>
                         </div>
                     </div>
                 </Card>
 
                 {/* Store List */}
-                <Card style={{ padding: 0 }} className="rounded-xl">
+                <Card style={{ padding: 0, borderRadius: '12px' }}>
                     <List style={{ '--border-inner': '1px solid var(--adm-color-border, #eee)' } as React.CSSProperties}>
                         {storesList.map((store: any) => (
                             <List.Item
                                 key={store.storeId}
                                 prefix={store.isMaster
-                                    ? <LuStar size={18} className="text-yellow-500" />
-                                    : <LuMapPin size={18} className="text-blue-400" />
+                                    ? <LuStar size={18} color="#eab308" />
+                                    : <LuMapPin size={18} color="#60a5fa" />
                                 }
                                 onClick={() => handleSwitchStore(store.storeId)}
                                 extra={store.isMaster
@@ -162,7 +162,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                 }
                                 style={{ minHeight: '48px' }}
                             >
-                                <span className="text-[15px] font-medium">{store.name || `Store ${store.storeId}`}</span>
+                                <span style={{ fontSize: '15px', fontWeight: 500 }}>{store.name || `Store ${store.storeId}`}</span>
                             </List.Item>
                         ))}
                     </List>
@@ -178,20 +178,20 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                         onClick={() => setShowAddOutlet(true)}
                         style={{ minHeight: '44px' }}
                     >
-                        <LuPlus size={16} className="inline mr-1" /> {t('addOutlet')}
+                        <LuPlus size={16} style={{ display: 'inline', marginRight: '4px' }} /> {t('addOutlet')}
                     </Button>
                 )}
 
                 {/* Outlet Policy */}
                 {outletCount > 0 && (
                     <Card
-                        className="rounded-xl"
+                        style={{ borderRadius: '12px' }}
                         onClick={() => setShowPolicy(true)}
                     >
-                        <div className="flex items-center justify-between">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div>
-                                <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100">{t('outletPolicy')}</p>
-                                <p className="text-xs text-gray-500">{t('outletPolicyDesc')}</p>
+                                <p style={{ fontSize: '15px', fontWeight: 500, color: '#1f2937' }}>{t('outletPolicy')}</p>
+                                <p style={{ fontSize: '12px', color: '#6b7280' }}>{t('outletPolicyDesc')}</p>
                             </div>
                             <Tag fill="outline" style={{ fontSize: 11 }}>{t('manage')}</Tag>
                         </div>
@@ -207,11 +207,11 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '60vh' }}
                 destroyOnClose
             >
-                <div className="px-4 pt-4 pb-6 space-y-4">
-                    <div className="flex justify-center"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
-                    <h2 className="text-lg font-semibold">{t('addNewOutlet')}</h2>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500">{t('outletName')}</label>
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}><div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '999px' }} /></div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600 }}>{t('addNewOutlet')}</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280' }}>{t('outletName')}</label>
                         <Input
                             value={outletName}
                             onChange={setOutletName}
@@ -222,15 +222,15 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription && (() => {
                         const p = calculateProration(activeSubscription);
                         return (
-                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
-                                <p className="text-blue-700 dark:text-blue-300">
+                            <div style={{ backgroundColor: '#eff6ff', borderRadius: '8px', padding: '12px', fontSize: '14px' }}>
+                                <p style={{ color: '#1d4ed8' }}>
                                     Prorated charge today: <strong>{currency} {p.proratedAmount}</strong>
                                 </p>
-                                <p className="text-xs text-blue-500 mt-1">{p.daysRemaining} days left in cycle</p>
+                                <p style={{ fontSize: '12px', color: '#3b82f6', marginTop: '4px' }}>{p.daysRemaining} days left in cycle</p>
                             </div>
                         );
                     })()}
-                    <div className="flex gap-3">
+                    <div style={{ display: 'flex', gap: '12px' }}>
                         <Button block fill="outline" size="large" onClick={() => setShowAddOutlet(false)} style={{ minHeight: '44px' }}>{t('cancel')}</Button>
                         <Button block color="primary" fill="solid" size="large" loading={isCreating} disabled={!outletName.trim()} onClick={handleCreateOutlet} style={{ minHeight: '44px' }}>{t('addOutlet')}</Button>
                     </div>
@@ -245,16 +245,16 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', maxHeight: '90vh' }}
                 destroyOnClose
             >
-                <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
-                    <div className="px-4 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex justify-center mb-3"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
-                        <h2 className="text-lg font-semibold">{t('outletPolicy')}</h2>
-                        <p className="text-xs text-gray-500 mt-1">{t('chainWideRules')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+                    <div style={{ padding: '16px 16px 8px', borderBottom: '1px solid #e5e7eb' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '999px' }} /></div>
+                        <h2 style={{ fontSize: '18px', fontWeight: 600 }}>{t('outletPolicy')}</h2>
+                        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{t('chainWideRules')}</p>
                     </div>
-                    <div className="flex-1 overflow-y-auto px-4 pb-6">
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px' }}>
                         {OUTLET_POLICY_CATEGORIES.map((category, catIdx) => (
-                            <div key={catIdx} className="mt-4">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                            <div key={catIdx} style={{ marginTop: '16px' }}>
+                                <h4 style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                                     {category.label}
                                 </h4>
                                 <Card style={{ padding: 0 }}>
@@ -272,7 +272,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                                 }
                                                 style={{ minHeight: '44px' }}
                                             >
-                                                <span className="text-sm">{item.label}</span>
+                                                <span style={{ fontSize: '14px' }}>{item.label}</span>
                                             </List.Item>
                                         ))}
                                     </List>

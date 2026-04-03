@@ -57,45 +57,45 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
 
     if (!storeDetails) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <DotLoading color="primary" />
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <NavBar onBack={onBack} className="border-b border-gray-200 dark:border-gray-700">
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--adm-color-background, #f5f5f5)' }}>
+            <NavBar onBack={onBack} style={{ borderBottom: '1px solid var(--adm-color-border, #eee)' }}>
                 {t('basicSettings')}
             </NavBar>
 
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
                 {/* Logo */}
-                <Card className="rounded-xl">
-                    <div className="flex flex-col items-center gap-3">
-                        <LuImage size={20} className="text-gray-500" />
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <LuImage size={20} color="var(--adm-color-weak, #999)" />
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)' }}>
                             {t('businessLogo')}
                         </label>
                         {storeDetails.logo ? (
                             <img
                                 src={storeDetails.logo}
                                 alt={storeDetails.name}
-                                className="w-20 h-20 rounded-xl object-cover"
+                                style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover' }}
                             />
                         ) : (
-                            <div className="w-20 h-20 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                <LuBuilding2 size={32} className="text-gray-400" />
+                            <div style={{ width: '80px', height: '80px', borderRadius: '12px', backgroundColor: 'var(--adm-color-fill-content, #f5f5f5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <LuBuilding2 size={32} color="var(--adm-color-weak, #999)" />
                             </div>
                         )}
-                        <p className="text-xs text-gray-400">{t('changeLogoOnDesktop')}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--adm-color-weak, #999)', margin: 0 }}>{t('changeLogoOnDesktop')}</p>
                     </div>
                 </Card>
 
                 {/* Business Name */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <LuBuilding2 size={12} />
                             {t('businessName')}
                         </label>
@@ -109,14 +109,14 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 </Card>
 
                 {/* Business Type */}
-                <Card className="rounded-xl">
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Card style={{ borderRadius: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--adm-color-weak, #999)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <LuBriefcase size={12} />
                             {t('businessType')}
                         </label>
                         <div
-                            className="py-2.5 px-3 border border-gray-200 dark:border-gray-700 rounded-lg text-[15px] text-gray-900 dark:text-gray-100 min-h-[44px] flex items-center"
+                            style={{ padding: '10px 12px', border: '1px solid var(--adm-color-border, #eee)', borderRadius: '8px', fontSize: '15px', color: 'var(--adm-color-text, #333)', minHeight: '44px', display: 'flex', alignItems: 'center', backgroundColor: 'var(--adm-color-background, #fff)' }}
                             onClick={() => setShowTypePicker(true)}
                         >
                             {formData.businessType || t('selectBusinessType')}
@@ -134,10 +134,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 </Card>
 
                 {/* Store ID (read-only info) */}
-                <Card className="rounded-xl">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('storeId')}</span>
-                        <span className="text-sm text-gray-400">{storeDetails.storeId}</span>
+                <Card style={{ borderRadius: '12px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>{t('storeId')}</span>
+                        <span style={{ fontSize: '14px', color: 'var(--adm-color-weak, #999)' }}>{storeDetails.storeId}</span>
                     </div>
                 </Card>
 
@@ -149,7 +149,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     size="large"
                     loading={isSaving}
                     onClick={handleSave}
-                    style={{ minHeight: '44px' }}
+                    style={{ minHeight: '44px', borderRadius: '8px' }}
                 >
                     {t('saveChanges')}
                 </Button>

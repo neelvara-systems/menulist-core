@@ -100,7 +100,7 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
             onCancel={onClose}
             footer={null}
             width={480}
-            destroyOnClose
+            destroyOnHidden
         >
             {/* Account Info Header */}
             <div style={{

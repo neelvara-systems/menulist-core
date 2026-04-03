@@ -72,12 +72,14 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Item Name
                     </label>
-                    <Input
-                        value={name}
-                        onChange={setName}
-                        placeholder="Item name"
-                        style={{ '--font-size': '15px' } as React.CSSProperties}
-                    />
+                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
+                        <Input
+                            value={name}
+                            onChange={setName}
+                            placeholder="Item name"
+                            style={{ '--font-size': '15px' } as React.CSSProperties}
+                        />
+                    </div>
                 </div>
 
                 {/* Price */}
@@ -85,13 +87,15 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Price ({currencySymbol})
                     </label>
-                    <Input
-                        value={price}
-                        onChange={setPrice}
-                        placeholder="0"
-                        type="number"
-                        style={{ '--font-size': '15px' } as React.CSSProperties}
-                    />
+                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
+                        <Input
+                            value={price}
+                            onChange={setPrice}
+                            placeholder="0"
+                            type="number"
+                            style={{ '--font-size': '15px' } as React.CSSProperties}
+                        />
+                    </div>
                 </div>
 
                 {/* Image — Camera capture for mobile */}
@@ -127,6 +131,7 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                             capture="environment"
                             onChange={handleImageCapture}
                             className="hidden"
+                            style={{ display: 'none' }}
                         />
                     </div>
                 </div>
@@ -136,14 +141,16 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Description
                     </label>
-                    <TextArea
-                        value={description}
-                        onChange={setDescription}
-                        placeholder="Item description (optional)"
-                        rows={2}
-                        maxLength={200}
-                        showCount
-                    />
+                    <div className="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:border-blue-500 transition-colors">
+                        <TextArea
+                            value={description}
+                            onChange={setDescription}
+                            placeholder="Item description (optional)"
+                            rows={2}
+                            maxLength={200}
+                            showCount
+                        />
+                    </div>
                 </div>
 
                 {/* Availability */}

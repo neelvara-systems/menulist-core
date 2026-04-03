@@ -22,19 +22,21 @@ const tabs = [
 export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, isDarkMode }: MobileNavigationProps) {
     return (
         <div
-            className="fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]"
+            className="fixed bottom-0 left-0 right-0 z-50"
             style={{
                 backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-                borderTop: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`
+                borderTop: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+                paddingBottom: 'env(safe-area-inset-bottom)'
             }}
         >
             <TabBar
                 activeKey={activeTab}
                 onChange={(key) => onTabChange(key as MobileTab)}
                 style={{
-                    '--adm-color-primary': '#2563eb',
-                    '--adm-color-background': isDarkMode ? '#1e293b' : '#ffffff',
+                    '--adm-color-primary': '#1677ff',
+                    '--adm-color-background': 'transparent',
                     '--adm-color-text': isDarkMode ? '#f1f5f9' : '#0f172a',
+                    height: '50px'
                 } as React.CSSProperties}
             >
                 {tabs.map((tab) => (

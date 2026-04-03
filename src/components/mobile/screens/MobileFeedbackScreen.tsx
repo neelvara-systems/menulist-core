@@ -64,12 +64,13 @@ export default function MobileFeedbackScreen() {
     // Star rating display
     const renderStars = (rating: number) => {
         return (
-            <div className="flex items-center gap-0.5">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                 {[1, 2, 3, 4, 5].map((star) => (
                     <LuStar
                         key={star}
                         size={14}
-                        className={star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                        color={star <= rating ? '#fbbf24' : '#d1d5db'}
+                        fill={star <= rating ? '#fbbf24' : 'none'}
                     />
                 ))}
             </div>
