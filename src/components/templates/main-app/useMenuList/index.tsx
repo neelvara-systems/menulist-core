@@ -21,6 +21,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
@@ -30,7 +31,7 @@ import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Select, Spin, Tag, theme, Typography } from 'antd';
+import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import {
@@ -63,6 +64,7 @@ export default function UseMenuList() {
     const [data, setData] = useState<UseMenuListData | null>(null);
     const [generatingKit, setGeneratingKit] = useState(false);
     const [generatingAsset, setGeneratingAsset] = useState<string | null>(null);
+    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
     const labels = useMemo(() => getOfferingLabels(storeDetails?.businessType), [storeDetails?.businessType]);
 
@@ -292,11 +294,41 @@ export default function UseMenuList() {
     if (!data) return null;
 
     const shortMenuLink = data.menuLink.replace(/^https?:\/\//, '');
+    const activeProject = data.allProjects.find((project) => project.projectId === data.projectId) || data.allProjects[0] || null;
+
+    const handleSelectProject = (projectId: string) => {
+        const project = data.allProjects.find((item) => item.projectId === projectId);
+        if (!project) return;
+        setData((prev) => prev ? {
+            ...prev,
+            projectId: project.projectId,
+            projectName: project.name,
+            isDefaultProject: project.isDefault,
+            menuLink: project.url,
+            feedbackLink: project.feedbackUrl,
+        } : prev);
+        setIsProjectSelectorOpen(false);
+    };
 
     // ── Main render ──────────────────────────────────────────────
 
     return (
         <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+            {activeProject ? (
+                <div style={{ marginBottom: 16 }}>
+                    <ProjectSelectorTrigger
+                        clickable={data.allProjects.length > 1}
+                        currentProject={{
+                            id: activeProject.projectId,
+                            name: activeProject.name || 'Untitled',
+                            isDefault: activeProject.isDefault,
+                        }}
+                        helperText={data.allProjects.length > 1 ? 'Select project' : undefined}
+                        onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                    />
+                </div>
+            ) : null}
+
             {/* Header */}
             <Flex vertical gap={4} style={{ marginBottom: 24 }}>
                 <Title level={3} style={{ margin: 0 }}>Use MenuList</Title>
@@ -372,35 +404,6 @@ export default function UseMenuList() {
 
             {/* ─── Share Your {offering} ──────────────────────────── */}
             <Title level={5} style={{ marginBottom: 12 }}>Share Your {labels.offeringTitle}</Title>
-
-            {/* Multi-project selector (only if >1 project) */}
-            {data.allProjects.length > 1 && (
-                <Flex gap={8} align="center" style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>Showing links for:</Text>
-                    <Select
-                        size="small"
-                        value={data.projectId}
-                        style={{ minWidth: 180 }}
-                        onChange={(projectId) => {
-                            const proj = data.allProjects.find(p => p.projectId === projectId);
-                            if (proj) {
-                                setData(prev => prev ? {
-                                    ...prev,
-                                    projectId: proj.projectId,
-                                    projectName: proj.name,
-                                    isDefaultProject: proj.isDefault,
-                                    menuLink: proj.url,
-                                    feedbackLink: proj.feedbackUrl,
-                                } : prev);
-                            }
-                        }}
-                        options={data.allProjects.map(p => ({
-                            value: p.projectId,
-                            label: p.isDefault ? `${p.name} (Default)` : p.name,
-                        }))}
-                    />
-                </Flex>
-            )}
 
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={12}>
@@ -812,6 +815,25 @@ export default function UseMenuList() {
                 width={480}
             >
                 {guideModal?.content}
+            </Modal>
+
+            <Modal
+                title="Select Project"
+                open={isProjectSelectorOpen}
+                onCancel={() => setIsProjectSelectorOpen(false)}
+                footer={null}
+                width={520}
+            >
+                <ProjectSelectorList
+                    currentProjectId={data.projectId}
+                    onSelect={handleSelectProject}
+                    projects={data.allProjects.map((project) => ({
+                        id: project.projectId,
+                        name: project.name || 'Untitled',
+                        isDefault: project.isDefault,
+                        secondaryLabel: project.url.replace(/^https?:\/\//, ''),
+                    }))}
+                />
             </Modal>
         </div>
     );

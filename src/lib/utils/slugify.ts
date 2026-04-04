@@ -5,7 +5,8 @@
  * Used for path-based routing: joespizza.menulist.ai/food-menu
  */
 
-import { getMenuUrl } from '@constant/urls';
+import { FEATURE_FLAGS } from '@config/features';
+import { getMenuUrl, getPublicBaseUrl, normalizeBaseUrl } from '@constant/urls';
 
 /**
  * Convert a string to a URL-safe slug
@@ -57,17 +58,21 @@ export function generateProjectUrl(
     // Determine base URL
     let baseUrl: string;
     if (customDomain) {
-        baseUrl = `https://${customDomain}`;
+        baseUrl = normalizeBaseUrl(customDomain);
     } else if (subdomain) {
         baseUrl = getMenuUrl(subdomain);
     } else {
-        // Localhost fallback - use path-based routing
-        return projectName ? `/menu/${slugify(projectName)}` : '/menu';
+        const publicBaseUrl = getPublicBaseUrl();
+        const slug = projectName ? slugify(projectName) : '';
+        return (isDefault || !slug)
+            ? `${publicBaseUrl}/menu`
+            : `${publicBaseUrl}/menu/${slug}`;
     }
 
-    // If default project or no name, use root
+    // If OBP is enabled, root resolves to OBP and the default menu lives at /menu.
+    // Otherwise the root itself is the default menu.
     if (isDefault || !projectName) {
-        return baseUrl;
+        return FEATURE_FLAGS.ENABLE_OBP ? `${baseUrl}/menu` : baseUrl;
     }
 
     // Add slug path

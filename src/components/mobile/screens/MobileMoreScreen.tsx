@@ -10,7 +10,6 @@ import {
     LuAlertTriangle,
     LuBarChart3,
     LuBuilding2,
-    LuCalendarCheck,
     LuClock,
     LuCreditCard,
     LuGlobe,
@@ -20,7 +19,6 @@ import {
     LuMessageCircle,
     LuMonitor,
     LuPalette,
-    LuQrCode,
     LuReceipt,
     LuSettings,
     LuSettings2,
@@ -31,7 +29,6 @@ import {
 } from 'react-icons/lu';
 import { Avatar, Card, Dialog, Flex, List, Text, Title, Toast } from '../antd';
 
-const MobileShareScreen = dynamic(() => import('./MobileShareScreen'), { ssr: false });
 const MobilePublicInfoScreen = dynamic(() => import('./MobilePublicInfoScreen'), { ssr: false });
 const MobileBillingScreen = dynamic(() => import('./MobileBillingScreen'), { ssr: false });
 const MobileBasicSettingsScreen = dynamic(() => import('./MobileBasicSettingsScreen'), { ssr: false });
@@ -40,11 +37,11 @@ const MobileWorkingHoursEditScreen = dynamic(() => import('./MobileWorkingHoursE
 const MobileRolesScreen = dynamic(() => import('./MobileRolesScreen'), { ssr: false });
 const MobileDigitalScreensScreen = dynamic(() => import('./MobileDigitalScreensScreen'), { ssr: false });
 const MobileLocationsScreen = dynamic(() => import('./MobileLocationsScreen'), { ssr: false });
-const MobileTodayScreen = dynamic(() => import('./MobileTodayScreen'), { ssr: false });
 const MobileUsersScreen = dynamic(() => import('./MobileUsersScreen'), { ssr: false });
 const MobileDashboardScreen = dynamic(() => import('./MobileDashboardScreen'), { ssr: false });
 const MobileTransactionsScreen = dynamic(() => import('./MobileTransactionsScreen'), { ssr: false });
 const MobileHelpScreen = dynamic(() => import('./MobileHelpScreen'), { ssr: false });
+const MobileFeedbackScreen = dynamic(() => import('./MobileFeedbackScreen'), { ssr: false });
 const MobileAdvancedSettingsScreen = dynamic(() => import('./MobileAdvancedSettingsScreen'), { ssr: false });
 const MobileDesignEditorScreen = dynamic(() => import('./MobileDesignEditorScreen'), { ssr: false });
 const MobileSeoAnalyticsScreen = dynamic(() => import('./MobileSeoAnalyticsScreen'), { ssr: false });
@@ -58,7 +55,6 @@ const MobileBusinessAttributesScreen = dynamic(() => import('./MobileBusinessAtt
 
 type MoreSubScreen =
     | 'main'
-    | 'share'
     | 'publicInfo'
     | 'billing'
     | 'basicSettings'
@@ -67,9 +63,9 @@ type MoreSubScreen =
     | 'roles'
     | 'digitalScreens'
     | 'locations'
-    | 'today'
     | 'users'
     | 'dashboard'
+    | 'feedback'
     | 'transactions'
     | 'help'
     | 'advancedSettings'
@@ -88,6 +84,7 @@ type MoreSubScreen =
 export default function MobileMoreScreen() {
     const t = useTranslations('MobileMore');
     const tBusiness = useTranslations('BusinessSettings');
+    const tFeedback = useTranslations('FeedbackInbox');
     const [subScreen, setSubScreen] = useState<MoreSubScreen>('main');
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -97,7 +94,6 @@ export default function MobileMoreScreen() {
     const userEmail = session?.user?.email || '';
     const userImage = session?.user?.image || '';
 
-    if (subScreen === 'share') return <MobileShareScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'publicInfo') return <MobilePublicInfoScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'billing') return <MobileBillingScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'basicSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
@@ -106,9 +102,9 @@ export default function MobileMoreScreen() {
     if (subScreen === 'roles') return <MobileRolesScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'digitalScreens') return <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'locations') return <MobileLocationsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'today') return <MobileTodayScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'users') return <MobileUsersScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'dashboard') return <MobileDashboardScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'feedback') return <MobileFeedbackScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'transactions') return <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'help') return <MobileHelpScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'advancedSettings') return <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
@@ -126,8 +122,7 @@ export default function MobileMoreScreen() {
 
     const menuItems = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => setSubScreen('dashboard') },
-        { key: 'today', icon: <LuCalendarCheck color="#10b981" size={20} />, label: t('today'), description: t('todayDesc'), onClick: () => setSubScreen('today') },
-        { key: 'share', icon: <LuQrCode color="#2563eb" size={20} />, label: t('shareQr'), description: t('shareQrDesc'), onClick: () => setSubScreen('share') },
+        { key: 'feedback', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => setSubScreen('feedback') },
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => setSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => setSubScreen('specialMenus') }] : []),
         { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => setSubScreen('designEditor') },
@@ -183,7 +178,7 @@ export default function MobileMoreScreen() {
                 </Flex>
             </Card>
 
-            <Card title={t('dashboard')}>
+            <Card>
                 <List>
                     {menuItems.map((item) => (
                         <List.Item

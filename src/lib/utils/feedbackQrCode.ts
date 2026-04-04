@@ -7,7 +7,7 @@
  * @see __docs__/projects/internal-feedback-system/
  */
 
-import { PLATFORM_URL } from '@constant/urls';
+import { getPublicBaseUrl } from '@constant/urls';
 import QRCode from 'qrcode';
 /**
  * QR code generation options
@@ -27,10 +27,7 @@ export interface QrCodeOptions {
  * Get the base URL for the application
  */
 const getBaseUrl = (): string => {
-    if (typeof window !== 'undefined') {
-        return window.location.origin;
-    }
-    return process.env.NEXT_PUBLIC_APP_URL || PLATFORM_URL;
+    return getPublicBaseUrl();
 };
 
 /**

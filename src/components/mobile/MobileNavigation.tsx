@@ -1,31 +1,34 @@
 'use client'
 
+import { theme } from 'antd';
 import { Badge, Button, Card, Flex, Text } from './antd';
-import { LuClock, LuMessageSquare, LuMoreHorizontal, LuUtensilsCrossed } from 'react-icons/lu';
+import { LuCalendarCheck, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
 
-export type MobileTab = 'menu' | 'hours' | 'feedback' | 'more';
+export type MobileTab = 'today' | 'menu' | 'share' | 'more';
 
 interface MobileNavigationProps {
     activeTab: MobileTab;
     onTabChange: (tab: MobileTab) => void;
     feedbackCount?: number;
-    isDarkMode?: boolean;
 }
 
 const tabs = [
+    { key: 'today' as MobileTab, title: 'Today', icon: <LuCalendarCheck size={20} /> },
     { key: 'menu' as MobileTab, title: 'Menu', icon: <LuUtensilsCrossed size={20} /> },
-    { key: 'hours' as MobileTab, title: 'Hours', icon: <LuClock size={20} /> },
-    { key: 'feedback' as MobileTab, title: 'Feedback', icon: <LuMessageSquare size={20} /> },
+    { key: 'share' as MobileTab, title: 'Share', icon: <LuQrCode size={20} /> },
     { key: 'more' as MobileTab, title: 'More', icon: <LuMoreHorizontal size={20} /> },
 ];
 
-export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, isDarkMode }: MobileNavigationProps) {
+export default function MobileNavigation({ activeTab, onTabChange, feedbackCount }: MobileNavigationProps) {
+    const { token } = theme.useToken();
+
     return (
         <Card
             style={{
-                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+                backgroundColor: token.colorBgElevated,
                 borderRadius: 0,
-                borderTop: `1px solid ${isDarkMode ? '#1e293b' : '#e2e8f0'}`,
+                borderTop: `1px solid ${token.colorBorderSecondary}`,
+                boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.08)',
                 bottom: 0,
                 left: 0,
                 margin: 0,
@@ -34,10 +37,10 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                 zIndex: 50,
             }}
         >
-            <Flex align="center" justify="space-around">
+            <Flex align="center" gap={0} justify="space-between" style={{ paddingBlock: 4, width: '100%' }}>
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.key;
-                    const iconNode = tab.key === 'feedback' && feedbackCount
+                    const iconNode = tab.key === 'more' && feedbackCount
                         ? <Badge count={feedbackCount} size="small">{tab.icon}</Badge>
                         : tab.icon;
 
@@ -47,14 +50,41 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                             fill="none"
                             onClick={() => onTabChange(tab.key)}
                             style={{
-                                color: isActive ? '#1677ff' : (isDarkMode ? '#e2e8f0' : '#475569'),
-                                height: 56,
-                                minWidth: 72,
+                                borderRadius: 16,
+                                color: isActive ? token.colorPrimary : token.colorTextSecondary,
+                                flex: 1,
+                                height: 'auto',
+                                minWidth: 0,
+                                paddingBlock: 6,
+                                paddingInline: 4,
                             }}
                         >
-                            <Flex align="center" gap={4} vertical>
-                                {iconNode}
-                                <Text style={{ color: 'inherit', fontSize: 12 }}>{tab.title}</Text>
+                            <Flex
+                                align="center"
+                                gap={4}
+                                style={{
+                                    backgroundColor: isActive ? token.colorPrimaryBg : 'transparent',
+                                    borderRadius: 14,
+                                    minWidth: 0,
+                                    width: '100%',
+                                    paddingBlock: 6,
+                                    paddingInline: 6,
+                                }}
+                                vertical
+                            >
+                                <Flex align="center" justify="center" style={{ color: 'inherit', lineHeight: 1 }}>
+                                    {iconNode}
+                                </Flex>
+                                <Text
+                                    style={{
+                                        color: 'inherit',
+                                        fontSize: 12,
+                                        fontWeight: isActive ? 600 : 500,
+                                        lineHeight: 1.1,
+                                    }}
+                                >
+                                    {tab.title}
+                                </Text>
                             </Flex>
                         </Button>
                     );

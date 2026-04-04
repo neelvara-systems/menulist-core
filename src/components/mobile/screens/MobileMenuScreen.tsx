@@ -4,13 +4,14 @@ import { getProjectData, getProjectsList, updateProject } from '@database/projec
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { ProjectSelectorList, ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { removeObjRef } from '@util/utils';
-import { FloatButton, theme } from 'antd';
+import { FloatButton, InputNumber, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCamera, LuCheck, LuLayers, LuSettings2 } from 'react-icons/lu';
-import { Button, Card, Collapse, DotLoading, Empty, Flex, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { LuCamera, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
+import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
@@ -35,6 +36,22 @@ type CategorySummary = {
     timeSlotPresetIds?: string[];
 };
 
+type MobileMenuFilters = {
+    categoryIds: string[];
+    minPrice: number | null;
+    maxPrice: number | null;
+    hasImage: boolean | null;
+    activeStatus: boolean | null;
+};
+
+const DEFAULT_FILTERS: MobileMenuFilters = {
+    categoryIds: [],
+    minPrice: null,
+    maxPrice: null,
+    hasImage: null,
+    activeStatus: null,
+};
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
@@ -43,6 +60,8 @@ export default function MobileMenuScreen() {
     const labels = useOfferingLabels();
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const [searchQuery, setSearchQuery] = useState('');
+    const [filters, setFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
+    const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
@@ -160,12 +179,81 @@ export default function MobileMenuScreen() {
     }, [activeLang, menuData, t, uncategorizedLabel]);
 
     const filteredItems = useMemo(() => {
-        if (!searchQuery.trim()) return menuItems;
-        const q = searchQuery.toLowerCase();
-        return menuItems.filter(
-            (item) => item.name.toLowerCase().includes(q) || item.categoryName?.toLowerCase().includes(q)
-        );
-    }, [menuItems, searchQuery]);
+        const q = searchQuery.toLowerCase().trim();
+        return menuItems.filter((item) => {
+            if (q && !item.name.toLowerCase().includes(q) && !item.categoryName?.toLowerCase().includes(q)) {
+                return false;
+            }
+            if (filters.categoryIds.length > 0 && (!item.categoryId || !filters.categoryIds.includes(item.categoryId))) {
+                return false;
+            }
+            if (filters.minPrice !== null && item.price < filters.minPrice) {
+                return false;
+            }
+            if (filters.maxPrice !== null && item.price > filters.maxPrice) {
+                return false;
+            }
+            if (filters.hasImage !== null) {
+                const hasImage = Boolean(item.image);
+                if (hasImage !== filters.hasImage) return false;
+            }
+            if (filters.activeStatus !== null && item.active !== filters.activeStatus) {
+                return false;
+            }
+            return true;
+        });
+    }, [filters, menuItems, searchQuery]);
+
+    const appliedFilterCount = useMemo(() => {
+        return [
+            filters.categoryIds.length > 0,
+            filters.minPrice !== null || filters.maxPrice !== null,
+            filters.hasImage !== null,
+            filters.activeStatus !== null,
+        ].filter(Boolean).length;
+    }, [filters]);
+
+    const activeFilterChips = useMemo(() => {
+        const chips: { key: string; label: string; onRemove: () => void }[] = [];
+
+        filters.categoryIds.forEach((categoryId) => {
+            const categoryLabel = categoryOptions.find((option) => option.id === categoryId)?.name || t('category');
+            chips.push({
+                key: `category-${categoryId}`,
+                label: `${t('category')}: ${categoryLabel}`,
+                onRemove: () => setFilters((prev) => ({
+                    ...prev,
+                    categoryIds: prev.categoryIds.filter((id) => id !== categoryId),
+                })),
+            });
+        });
+
+        if (filters.minPrice !== null || filters.maxPrice !== null) {
+            chips.push({
+                key: 'price',
+                label: `${t('priceRange')}: ${filters.minPrice ?? 0} - ${filters.maxPrice ?? 'Any'}`,
+                onRemove: () => setFilters((prev) => ({ ...prev, minPrice: null, maxPrice: null })),
+            });
+        }
+
+        if (filters.hasImage !== null) {
+            chips.push({
+                key: 'image',
+                label: filters.hasImage ? t('hasImage') : t('noImage'),
+                onRemove: () => setFilters((prev) => ({ ...prev, hasImage: null })),
+            });
+        }
+
+        if (filters.activeStatus !== null) {
+            chips.push({
+                key: 'status',
+                label: filters.activeStatus ? t('active') : t('hidden'),
+                onRemove: () => setFilters((prev) => ({ ...prev, activeStatus: null })),
+            });
+        }
+
+        return chips;
+    }, [categoryOptions, filters, t]);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, MenuItemType[]> = {};
@@ -455,27 +543,16 @@ export default function MobileMenuScreen() {
         <Flex style={{ height: '100%' }} vertical>
             <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
                 <Flex gap={12} vertical>
-                    {projectsList.length > 1 ? (
-                        <Button fill="outline" onClick={() => setIsProjectSelectorOpen(true)} size="small">
-                            <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
-                                <Flex align="center" gap={8}>
-                                    <LuLayers size={16} />
-                                    <Text>{menuData?.name || t('currentProject')}</Text>
-                                </Flex>
-                                <Tag>{t('itemsCount', { count: menuItems.length })}</Tag>
-                            </Flex>
-                        </Button>
-                    ) : (
-                        <Card size="small">
-                            <Flex align="center" gap={8} justify="space-between">
-                                <Flex align="center" gap={8}>
-                                    <LuLayers size={16} />
-                                    <Text>{menuData?.name || t('currentProject')}</Text>
-                                </Flex>
-                                <Tag>{t('itemsCount', { count: menuItems.length })}</Tag>
-                            </Flex>
-                        </Card>
-                    )}
+                    <ProjectSelectorTrigger
+                        clickable={projectsList.length > 1}
+                        currentProject={{
+                            id: menuData?.projectId || 'current',
+                            name: menuData?.name || t('currentProject'),
+                        }}
+                        helperText={projectsList.length > 1 ? t('selectProject') : undefined}
+                        onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                        rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
+                    />
 
                     {overview ? (
                         <Card size="small" style={{ backgroundColor: statusTone.bg }}>
@@ -497,11 +574,69 @@ export default function MobileMenuScreen() {
                         </Card>
                     ) : null}
 
-                    <SearchBar
-                        onChange={setSearchQuery}
-                        placeholder={t('searchPlaceholder', { items: labels.itemsPlural })}
-                        value={searchQuery}
-                    />
+                    <Flex align="center" gap={8}>
+                        <Flex style={{ flex: 1, minWidth: 0 }}>
+                            <SearchBar
+                                onChange={setSearchQuery}
+                                placeholder={t('searchPlaceholder', { items: labels.itemsPlural })}
+                                value={searchQuery}
+                            />
+                        </Flex>
+                        <Flex style={{ flexShrink: 0 }}>
+                            <Button block fill="outline" onClick={() => setIsFilterSheetOpen(true)} style={{ justifyContent: 'flex-start' }}>
+                                <Flex align="center" gap={8}>
+                                    <LuFilter size={16} />
+                                    <Text>{t('filters')}</Text>
+                                    {appliedFilterCount > 0 ? <Tag color="processing">{appliedFilterCount}</Tag> : null}
+                                </Flex>
+                            </Button>
+                        </Flex>
+                    </Flex>
+
+                    {(activeFilterChips.length > 0 || searchQuery) ? (
+                        <Flex align="center" gap={8} wrap="wrap">
+                            {searchQuery ? (
+                                <Tag style={{ borderRadius: 999, paddingInline: 10 }}>
+                                    <Flex align="center" gap={6}>
+                                        <Text>{`"${searchQuery}"`}</Text>
+                                        <Button
+                                            fill="none"
+                                            onClick={() => setSearchQuery('')}
+                                            size="mini"
+                                            style={{ minWidth: 20, paddingInline: 0 }}
+                                        >
+                                            <LuX size={12} />
+                                        </Button>
+                                    </Flex>
+                                </Tag>
+                            ) : null}
+                            {activeFilterChips.map((chip) => (
+                                <Tag key={chip.key} style={{ borderRadius: 999, paddingInline: 10 }}>
+                                    <Flex align="center" gap={6}>
+                                        <Text>{chip.label}</Text>
+                                        <Button
+                                            fill="none"
+                                            onClick={chip.onRemove}
+                                            size="mini"
+                                            style={{ minWidth: 20, paddingInline: 0 }}
+                                        >
+                                            <LuX size={12} />
+                                        </Button>
+                                    </Flex>
+                                </Tag>
+                            ))}
+                            <Button
+                                fill="none"
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setFilters(DEFAULT_FILTERS);
+                                }}
+                                size="small"
+                            >
+                                {t('clearAll')}
+                            </Button>
+                        </Flex>
+                    ) : null}
 
                     <Flex align="center" justify="space-between">
                         <Text type="secondary">
@@ -609,6 +744,119 @@ export default function MobileMenuScreen() {
                 tooltip={{ title: labels.commandCenterLabel, color: token.colorPrimary }}
                 type="primary"
             />
+
+            <Popup
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh', overflowX: 'hidden' }}
+                onMaskClick={() => setIsFilterSheetOpen(false)}
+                visible={isFilterSheetOpen}
+            >
+                <Flex gap={16} vertical>
+                    <Title level={4} style={{ margin: 0 }}>{t('filters')}</Title>
+
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" justify="space-between">
+                                <Text strong>{t('category')}</Text>
+                                {filters.categoryIds.length > 0 ? (
+                                    <Tag color="processing" style={{ borderRadius: 999 }}>
+                                        {filters.categoryIds.length}
+                                    </Tag>
+                                ) : null}
+                            </Flex>
+                            <Flex gap={10} vertical>
+                                {categoryOptions.length === 0 ? (
+                                    <Text type="secondary">{t('allCategories')}</Text>
+                                ) : (
+                                    categoryOptions.map((option) => (
+                                        <Checkbox
+                                            checked={filters.categoryIds.includes(option.id)}
+                                            key={option.id}
+                                            onChange={(checked) => {
+                                                setFilters((prev) => ({
+                                                    ...prev,
+                                                    categoryIds: checked
+                                                        ? [...prev.categoryIds, option.id]
+                                                        : prev.categoryIds.filter((id) => id !== option.id),
+                                                }));
+                                            }}
+                                        >
+                                            {option.name}
+                                        </Checkbox>
+                                    ))
+                                )}
+                            </Flex>
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('priceRange')}</Text>
+                            <Flex gap={8}>
+                                <InputNumber
+                                    min={0}
+                                    onChange={(value) => setFilters((prev) => ({ ...prev, minPrice: typeof value === 'number' ? value : null }))}
+                                    placeholder={t('minPrice')}
+                                    style={{ width: '100%' }}
+                                    value={filters.minPrice}
+                                />
+                                <InputNumber
+                                    min={0}
+                                    onChange={(value) => setFilters((prev) => ({ ...prev, maxPrice: typeof value === 'number' ? value : null }))}
+                                    placeholder={t('maxPrice')}
+                                    style={{ width: '100%' }}
+                                    value={filters.maxPrice}
+                                />
+                            </Flex>
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('images')}</Text>
+                            <Segmented
+                                block
+                                onChange={(value) => setFilters((prev) => ({ ...prev, hasImage: value === 'all' ? null : value === 'yes' }))}
+                                options={[
+                                    { label: t('allItems'), value: 'all' },
+                                    { label: t('hasImage'), value: 'yes' },
+                                    { label: t('noImage'), value: 'no' },
+                                ]}
+                                value={filters.hasImage === null ? 'all' : filters.hasImage ? 'yes' : 'no'}
+                            />
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('status')}</Text>
+                            <Segmented
+                                block
+                                onChange={(value) => setFilters((prev) => ({ ...prev, activeStatus: value === 'all' ? null : value === 'active' }))}
+                                options={[
+                                    { label: t('allStatuses'), value: 'all' },
+                                    { label: t('active'), value: 'active' },
+                                    { label: t('hidden'), value: 'hidden' },
+                                ]}
+                                value={filters.activeStatus === null ? 'all' : filters.activeStatus ? 'active' : 'hidden'}
+                            />
+                        </Flex>
+                    </Card>
+
+                    <Flex gap={8}>
+                        <Button
+                            block
+                            fill="outline"
+                            onClick={() => setFilters(DEFAULT_FILTERS)}
+                        >
+                            {t('clearAll')}
+                        </Button>
+                        <Button block onClick={() => setIsFilterSheetOpen(false)}>
+                            {t('applyFilters')}
+                        </Button>
+                    </Flex>
+                </Flex>
+            </Popup>
+
             <MobileMenuCommandSheet
                 labels={labels}
                 onAddItem={() => launchCommandAction(() => setIsAddSheetOpen(true))}
@@ -883,23 +1131,16 @@ export default function MobileMenuScreen() {
                     <Title level={4} style={{ margin: 0 }}>
                         {t('selectProject')}
                     </Title>
-                    <List>
-                        {projectsList.map((project: any) => (
-                            <List.Item
-                                key={project.projectId}
-                                onClick={() => handleProjectSelect(project.projectId)}
-                                prefix={<LuLayers color="#1677ff" size={18} />}
-                                extra={project.projectId === menuData?.projectId ? <LuCheck color="#1677ff" size={18} /> : null}
-                                title={<Text>{project.name || t('unnamedProject')}</Text>}
-                                description={
-                                    <Text type="secondary">
-                                        {project.isDefault ? `${t('default')} • ` : ''}
-                                        {t('itemsCount', { count: project.itemCount || 0 })}
-                                    </Text>
-                                }
-                            />
-                        ))}
-                    </List>
+                    <ProjectSelectorList
+                        currentProjectId={menuData?.projectId}
+                        onSelect={handleProjectSelect}
+                        projects={projectsList.map((project: any) => ({
+                            id: project.projectId,
+                            name: project.name || t('unnamedProject'),
+                            isDefault: project.isDefault,
+                            secondaryLabel: `${project.isDefault ? `${t('default')} • ` : ''}${t('itemsCount', { count: project.itemCount || 0 })}`,
+                        }))}
+                    />
                     <Button block fill="outline" onClick={() => setIsProjectSelectorOpen(false)}>
                         {t('cancel')}
                     </Button>

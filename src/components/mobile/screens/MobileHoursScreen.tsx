@@ -4,54 +4,49 @@ import { FEATURE_FLAGS } from '@config/features';
 import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { updateStore } from '@database/stores';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
+import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
+import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
+import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName } from '@util/campaignUtils';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuClock, LuMessageCircle, LuPower, LuPowerOff, LuX } from 'react-icons/lu';
+import { LuBarChart3, LuCalendarCheck, LuClock, LuDownload, LuEye, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, Text, Title, Toast } from '../antd';
-
-type DayHours = {
-    close: string;
-    day: string;
-    isClosed: boolean;
-    open: string;
-};
 
 type TodayStatus = 'open' | 'closed_today';
 
-const DAYS: { key: string; label: string }[] = [
-    { key: 'mon', label: 'Monday' },
-    { key: 'tue', label: 'Tuesday' },
-    { key: 'wed', label: 'Wednesday' },
-    { key: 'thu', label: 'Thursday' },
-    { key: 'fri', label: 'Friday' },
-    { key: 'sat', label: 'Saturday' },
-    { key: 'sun', label: 'Sunday' },
-];
-
 const getTodayKey = () => ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
 
-const format24to12 = (time24: string): string => {
-    const [h, m] = time24.split(':').map(Number);
-    const ampm = h < 12 ? 'AM' : 'PM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-};
+interface MobileHoursScreenProps {
+    onOpenDashboard?: () => void;
+}
 
-export default function MobileHoursScreen() {
+export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreenProps) {
+    const router = useRouter();
     const t = useTranslations('MobileHours');
     const tToday = useTranslations('MobileToday');
+    const tDesign = useTranslations('MobileDesignEditor');
+    const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isUpdating, setIsUpdating] = useState(false);
     const [originalTodayHours, setOriginalTodayHours] = useState<string | null>(null);
     const todayKey = getTodayKey();
-    const { todayCampaigns, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
+    const { todayCampaigns, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
     const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
     const [isNudgeDismissed, setIsNudgeDismissed] = useState(false);
     const [nudgeInitialized, setNudgeInitialized] = useState(false);
+    const [isDownloadingTent, setIsDownloadingTent] = useState(false);
+    const [isDownloadingSticker, setIsDownloadingSticker] = useState(false);
+    const menuUrl = generateProjectUrl(
+        storeDetails?.subdomain,
+        storeDetails?.customDomain,
+        undefined,
+        true
+    );
 
     useEffect(() => {
         if (!storeDetails?.storeId) return;
@@ -70,27 +65,6 @@ export default function MobileHoursScreen() {
         const todayValue = storeDetails?.workingHours?.[todayKey];
         return !todayValue || todayValue.toLowerCase() === 'closed' ? 'closed_today' : 'open';
     }, [storeDetails?.workingHours, todayKey]);
-
-    const weeklyHours = useMemo((): DayHours[] => {
-        if (!storeDetails?.workingHours) {
-            return DAYS.map(({ label }) => ({ close: '', day: label, isClosed: false, open: '' }));
-        }
-
-        return DAYS.map(({ key, label }) => {
-            const hours = storeDetails.workingHours?.[key];
-            if (!hours || hours.toLowerCase() === 'closed') {
-                return { close: '', day: label, isClosed: true, open: '' };
-            }
-
-            const [open, close] = hours.split('-');
-            return {
-                close: close ? format24to12(close.trim()) : '',
-                day: label,
-                isClosed: false,
-                open: open ? format24to12(open.trim()) : '',
-            };
-        });
-    }, [storeDetails?.workingHours]);
 
     const handleCloseToday = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -210,13 +184,90 @@ export default function MobileHoursScreen() {
             .replace('{festivalName}', 'the occasion')
         : '';
 
+    const handleOpenPreview = () => {
+        if (!menuUrl) {
+            Toast.show({ content: t('failedToUpdate'), duration: 1500 });
+            return;
+        }
+        window.open(menuUrl, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleDownloadTentCard = async () => {
+        const tentCard = physicalSurfaces?.tentCard;
+        if (!tentCard?.eligible) return;
+        setIsDownloadingTent(true);
+        try {
+            const blob = await generateTentCardPDF({
+                itemName: tentCard.itemName || 'Item',
+                templateId: tentCard.templateId,
+                qrUrl: tentCard.qrUrl,
+                size: 'A6',
+                brandName: storeDetails?.name,
+            });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'tent-card-a6.pdf';
+            anchor.click();
+            URL.revokeObjectURL(url);
+            Toast.show({ content: 'Tent card downloaded', duration: 1500 });
+        } catch {
+            Toast.show({ content: 'Failed to download tent card', duration: 2000 });
+        } finally {
+            setIsDownloadingTent(false);
+        }
+    };
+
+    const handleDownloadSticker = async () => {
+        const sticker = physicalSurfaces?.counterSticker;
+        if (!sticker?.eligible) return;
+        setIsDownloadingSticker(true);
+        try {
+            const blob = await generateStickerPNG({
+                itemName: sticker.itemName || 'Item',
+                templateId: sticker.templateId,
+                qrUrl: sticker.qrUrl,
+            });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'counter-sticker.png';
+            anchor.click();
+            URL.revokeObjectURL(url);
+            Toast.show({ content: 'Sticker downloaded', duration: 1500 });
+        } catch {
+            Toast.show({ content: 'Failed to download sticker', duration: 2000 });
+        } finally {
+            setIsDownloadingSticker(false);
+        }
+    };
+
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
             <Card>
                 <Flex align="center" gap={8}>
-                    <LuClock size={18} />
-                    <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
+                    <LuCalendarCheck size={18} />
+                    <Title level={4} style={{ margin: 0 }}>{tToday('title')}</Title>
                 </Flex>
+            </Card>
+
+            <Card>
+                <List>
+                    <List.Item
+                        arrow
+                        description={<Text type="secondary">{tMore('dashboardDesc')}</Text>}
+                        onClick={onOpenDashboard}
+                        prefix={<LuBarChart3 size={18} />}
+                        title={<Text strong>{tMore('dashboard')}</Text>}
+                    />
+                    <List.Item
+                        arrow
+                        description={<Text type="secondary">{tMore('shareQrDesc')}</Text>}
+                        onClick={handleOpenPreview}
+                        prefix={<LuEye size={18} />}
+                        title={<Text strong>{tDesign('preview')}</Text>}
+                    />
+                </List>
             </Card>
 
             <Card>
@@ -250,6 +301,44 @@ export default function MobileHoursScreen() {
                     )}
                 </Flex>
             </Card>
+
+            {physicalSurfaces?.tentCard?.eligible ? (
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" gap={8}>
+                            <LuTent size={18} />
+                            <Text strong>Table tent is ready</Text>
+                        </Flex>
+                        <Text type="secondary">Best for walk-in customers today</Text>
+                        <Text type="secondary">Size: A6 (recommended for tables)</Text>
+                        <Button block loading={isDownloadingTent} onClick={() => void handleDownloadTentCard()}>
+                            <Flex align="center" gap={6}>
+                                <LuDownload size={14} />
+                                <Text>Download tent card</Text>
+                            </Flex>
+                        </Button>
+                    </Flex>
+                </Card>
+            ) : null}
+
+            {physicalSurfaces?.counterSticker?.eligible ? (
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" gap={8}>
+                            <LuSticker size={18} />
+                            <Text strong>Counter sticker is ready</Text>
+                        </Flex>
+                        <Text type="secondary">Recommended for billing counter</Text>
+                        <Text type="secondary">Size: 8cm x 8cm</Text>
+                        <Button block loading={isDownloadingSticker} onClick={() => void handleDownloadSticker()}>
+                            <Flex align="center" gap={6}>
+                                <LuDownload size={14} />
+                                <Text>Download sticker</Text>
+                            </Flex>
+                        </Button>
+                    </Flex>
+                </Card>
+            ) : null}
 
             {showHoursNudge ? (
                 <Card size="small" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
@@ -304,17 +393,15 @@ export default function MobileHoursScreen() {
                 </Card>
             ) : null}
 
-            <Card title={t('weeklyHours')}>
-                <List>
-                    {weeklyHours.map((day) => (
-                        <List.Item
-                            description={<Text type="secondary">{day.isClosed ? t('closed') : `${day.open} - ${day.close}`}</Text>}
-                            key={day.day}
-                            title={<Text strong>{day.day}</Text>}
-                        />
-                    ))}
-                </List>
-            </Card>
+            <Button
+                block
+                fill="none"
+                onClick={() => router.push('/today/history')}
+                style={{ justifyContent: 'center' }}
+            >
+                View past activity
+            </Button>
+
         </Flex>
     );
 }

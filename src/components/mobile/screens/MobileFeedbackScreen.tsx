@@ -8,12 +8,16 @@ import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuMessageSquare, LuQrCode, LuStar } from 'react-icons/lu';
-import { Button, Card, DotLoading, Empty, Flex, Image, List, Popup, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Empty, Flex, Image, List, NavBar, Popup, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
 
 const MobileFeedbackDetail = dynamic(() => import('./MobileFeedbackDetail'), { ssr: false });
 
-export default function MobileFeedbackScreen() {
+interface MobileFeedbackScreenProps {
+    onBack?: () => void;
+}
+
+export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
@@ -141,93 +145,99 @@ export default function MobileFeedbackScreen() {
 
     if (isLoading) {
         return (
-            <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
-                <DotLoading color="primary" />
+            <Flex style={{ minHeight: '100%' }} vertical>
+                {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
+                <Flex align="center" flex={1} justify="center">
+                    <DotLoading color="primary" />
+                </Flex>
             </Flex>
         );
     }
 
     return (
-        <Flex gap={12} style={{ padding: 16 }} vertical>
-            <Card>
-                <Flex align="center" gap={8}>
-                    <LuMessageSquare size={20} />
-                    <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
-                </Flex>
-            </Card>
-
-            <Card>
-                <Tabs activeKey={filter} onChange={(key) => { setFilter(key as any); void fetchFeedback(key as any); }}>
-                    <Tabs.Tab key="all" title={t('all')} />
-                    <Tabs.Tab key="needs_attention" title={t('needsAttention')} />
-                    <Tabs.Tab key="resolved" title={t('resolved')} />
-                </Tabs>
-            </Card>
-
-            <Card>
-                <Flex align="center" justify="space-between">
+        <Flex style={{ minHeight: '100%' }} vertical>
+            {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card>
                     <Flex align="center" gap={8}>
-                        <LuQrCode size={18} />
-                        <Text strong>{t('feedbackQrTitle')}</Text>
+                        <LuMessageSquare size={20} />
+                        <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
                     </Flex>
-                    <Flex gap={8}>
-                        <Button fill="outline" onClick={handleCopyFeedbackLink} size="small">
-                            <Flex align="center" gap={6}>
-                                <LuCopy size={14} />
-                                <Text>{t('copyLink')}</Text>
-                            </Flex>
-                        </Button>
-                        <Button onClick={handleOpenQr} size="small">{t('showQr')}</Button>
-                    </Flex>
-                </Flex>
-                <Text type="secondary">{t('feedbackQrDesc')}</Text>
-            </Card>
+                </Card>
 
-            <PullToRefresh onRefresh={() => fetchFeedback()}>
-                {feedbackList.length === 0 ? (
-                    <Card>
-                        <Empty description={t('noFeedback')} />
-                    </Card>
-                ) : (
-                    <Card>
-                        <List>
-                            {feedbackList.map((feedback) => (
-                                <List.Item
-                                    arrow
-                                    description={(
-                                        <Flex gap={6} vertical>
-                                            {stars(feedback.rating)}
-                                            <Text type="secondary">{feedback.message}</Text>
-                                            <Text type="secondary">{feedback.createdAt}</Text>
-                                        </Flex>
-                                    )}
-                                    extra={feedback.status !== 'resolved' ? (
-                                        <Button
-                                            fill="outline"
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                void handleQuickResolve(feedback.id);
-                                            }}
-                                            size="small"
-                                            style={{ borderColor: '#16a34a', color: '#16a34a' }}
-                                        >
-                                            {t('resolved')}
-                                        </Button>
-                                    ) : null}
-                                    key={feedback.id}
-                                    onClick={() => setSelectedFeedback(feedback)}
-                                    title={(
-                                        <Flex align="center" justify="space-between">
-                                            <Text strong>{feedback.customerName || 'Anonymous'}</Text>
-                                            {badge(feedback.status, feedback.needsAttention)}
-                                        </Flex>
-                                    )}
-                                />
-                            ))}
-                        </List>
-                    </Card>
-                )}
-            </PullToRefresh>
+                <Card>
+                    <Tabs activeKey={filter} onChange={(key) => { setFilter(key as any); void fetchFeedback(key as any); }}>
+                        <Tabs.Tab key="all" title={t('all')} />
+                        <Tabs.Tab key="needs_attention" title={t('needsAttention')} />
+                        <Tabs.Tab key="resolved" title={t('resolved')} />
+                    </Tabs>
+                </Card>
+
+                <Card>
+                    <Flex align="center" justify="space-between">
+                        <Flex align="center" gap={8}>
+                            <LuQrCode size={18} />
+                            <Text strong>{t('feedbackQrTitle')}</Text>
+                        </Flex>
+                        <Flex gap={8}>
+                            <Button fill="outline" onClick={handleCopyFeedbackLink} size="small">
+                                <Flex align="center" gap={6}>
+                                    <LuCopy size={14} />
+                                    <Text>{t('copyLink')}</Text>
+                                </Flex>
+                            </Button>
+                            <Button onClick={handleOpenQr} size="small">{t('showQr')}</Button>
+                        </Flex>
+                    </Flex>
+                    <Text type="secondary">{t('feedbackQrDesc')}</Text>
+                </Card>
+
+                <PullToRefresh onRefresh={() => fetchFeedback()}>
+                    {feedbackList.length === 0 ? (
+                        <Card>
+                            <Empty description={t('noFeedback')} />
+                        </Card>
+                    ) : (
+                        <Card>
+                            <List>
+                                {feedbackList.map((feedback) => (
+                                    <List.Item
+                                        arrow
+                                        description={(
+                                            <Flex gap={6} vertical>
+                                                {stars(feedback.rating)}
+                                                <Text type="secondary">{feedback.message}</Text>
+                                                <Text type="secondary">{feedback.createdAt}</Text>
+                                            </Flex>
+                                        )}
+                                        extra={feedback.status !== 'resolved' ? (
+                                            <Button
+                                                fill="outline"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void handleQuickResolve(feedback.id);
+                                                }}
+                                                size="small"
+                                                style={{ borderColor: '#16a34a', color: '#16a34a' }}
+                                            >
+                                                {t('resolved')}
+                                            </Button>
+                                        ) : null}
+                                        key={feedback.id}
+                                        onClick={() => setSelectedFeedback(feedback)}
+                                        title={(
+                                            <Flex align="center" justify="space-between">
+                                                <Text strong>{feedback.customerName || 'Anonymous'}</Text>
+                                                {badge(feedback.status, feedback.needsAttention)}
+                                            </Flex>
+                                        )}
+                                    />
+                                ))}
+                            </List>
+                        </Card>
+                    )}
+                </PullToRefresh>
+            </Flex>
 
             <Popup
                 bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }}

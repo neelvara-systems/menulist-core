@@ -43,6 +43,25 @@ export const VERCEL_URLS = [
 /** Full root URL with protocol */
 export const PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
 
+const stripTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
+
+export const normalizeBaseUrl = (value?: string | null): string => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    return stripTrailingSlashes(withProtocol);
+};
+
+export const getPublicBaseUrl = (): string => {
+    const envBaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+    if (envBaseUrl) return envBaseUrl;
+    if (typeof window !== 'undefined' && window.location?.origin) {
+        return stripTrailingSlashes(window.location.origin);
+    }
+    return PLATFORM_URL;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // Subdomains (Platform Services)
 // ═══════════════════════════════════════════════════════════════
@@ -84,7 +103,7 @@ export const POS_DOCS_URL = `https://${PLATFORM_DOMAIN}/pos-sync`;
 
 /** Build a customer-facing menu URL from subdomain */
 export const getMenuUrl = (subdomain: string): string =>
-    `https://${subdomain}.${PLATFORM_DOMAIN}`;
+    normalizeBaseUrl(`https://${subdomain}.${PLATFORM_DOMAIN}`);
 
 /** Build a generated email from phone number (messaging-onboarding) */
 export const getGeneratedEmail = (phone: string): string => {

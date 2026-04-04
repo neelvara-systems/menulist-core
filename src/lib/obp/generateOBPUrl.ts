@@ -8,7 +8,7 @@
  * @see src/constants/urls.ts — Single source of truth for platform URLs
  */
 
-import { getMenuUrl } from '@constant/urls';
+import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
 
 /**
  * Generate the OBP URL for a store
@@ -18,7 +18,7 @@ export function generateOBPUrl(
     customDomain?: string,
 ): string {
     if (customDomain) {
-        return `https://${customDomain}`;
+        return normalizeBaseUrl(customDomain);
     }
     if (subdomain) {
         return getMenuUrl(subdomain);
