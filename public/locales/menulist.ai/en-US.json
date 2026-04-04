@@ -1064,6 +1064,13 @@
         "categorySchedule": "Category schedule",
         "scheduleEmpty": "No time slots yet",
         "scheduleUpdated": "Schedule updated",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "reorderCategories": "Reorder categories",
+        "reorderCategoriesHelp": "Review the full category order here, then save when it looks right.",
+        "reorderItems": "Reorder items",
+        "reorderItemsHelp": "Review the item order for {category} here, then save when it looks right.",
+        "noItemsInCategory": "No items in this category yet.",
         "scheduleUpdateFailed": "Failed to update schedule",
         "scheduled": "Scheduled"
     },

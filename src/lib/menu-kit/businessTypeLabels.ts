@@ -12,7 +12,7 @@
 
 import { getBusinessCategory } from '@data/shared/businessTypes';
 
-interface OfferingLabels {
+export interface OfferingLabels {
     // ── Menu Kit (Print + Social assets) ──
     /** Uppercase singular: "MENU", "SERVICES", "CATALOG" */
     offeringUpper: string;
@@ -408,5 +408,3 @@ export function getOfferingLabels(businessType?: string): OfferingLabels {
     if (!category) return DEFAULT_LABELS;
     return CATEGORY_LABELS[category] || DEFAULT_LABELS;
 }
-
-export type { OfferingLabels };

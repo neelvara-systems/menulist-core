@@ -7,6 +7,12 @@ export type MobileMenuItemType = {
     id: string;
     name: string;
     price: number;
+    attributes?: {
+        id: string;
+        name: string;
+        price: number;
+        active?: boolean;
+    }[];
     available: boolean;
     active: boolean;
     categoryId?: string;

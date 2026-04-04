@@ -1,9 +1,9 @@
 'use client'
 
-import type { UploadFile, UploadProps } from 'antd';
+import { theme, type UploadFile, type UploadProps } from 'antd';
 import { useMemo, useState } from 'react';
-import { LuCamera } from 'react-icons/lu';
-import { Button, Card, Dialog, Flex, Image, Input, Picker, Popup, Switch, Text, TextArea, Title, Toast, Upload } from '../antd';
+import { LuCamera, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { Button, Card, Dialog, Flex, Image, Input, NavBar, Picker, Popup, Switch, Text, TextArea, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
 import { useTranslations } from 'next-intl';
 
@@ -18,6 +18,7 @@ interface ItemEditSheetProps {
 
 export default function ItemEditSheet({ item, categories, currencySymbol, onClose, onSave, onDelete }: ItemEditSheetProps) {
     const t = useTranslations('MobileMenu');
+    const { token } = theme.useToken();
     const [name, setName] = useState(item.name);
     const [price, setPrice] = useState(String(item.price));
     const [description, setDescription] = useState(item.description || '');
@@ -26,6 +27,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
     const [imagePreview, setImagePreview] = useState<string | null>(item.image || null);
     const [selectedCategory, setSelectedCategory] = useState(item.categoryId || categories[0]?.id || '');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+    const [attributes, setAttributes] = useState(item.attributes || []);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: 'image/*',
@@ -63,6 +65,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
             active: isActive,
             categoryId: selectedCategory,
             image: imagePreview || undefined,
+            attributes,
         });
     };
 
@@ -75,9 +78,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
             visible
         >
             <Flex gap={16} vertical>
-                <Title level={4} style={{ margin: 0 }}>
-                    {t('editItemTitle')}
-                </Title>
+                <NavBar onBack={onClose}>{t('editItemTitle')}</NavBar>
 
                 <Card size="small">
                     <Flex gap={16} vertical>
@@ -157,7 +158,92 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                             />
                         </Flex>
 
-                        <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                        <Flex gap={10} vertical>
+                            <Flex align="center" justify="space-between">
+                                <Flex gap={2} vertical>
+                                    <Text strong>Variants or add-ons</Text>
+                                    <Text type="secondary">Add item options with their own prices.</Text>
+                                </Flex>
+                                <Button
+                                    fill="outline"
+                                    onClick={() => {
+                                        setAttributes((previous) => [
+                                            ...previous,
+                                            {
+                                                id: `${item.id}-attr-${Date.now()}`,
+                                                name: '',
+                                                price: 0,
+                                                active: true,
+                                            },
+                                        ]);
+                                    }}
+                                    size="small"
+                                >
+                                    <Flex align="center" gap={6}>
+                                        <LuPlus size={14} />
+                                        <Text>Add</Text>
+                                    </Flex>
+                                </Button>
+                            </Flex>
+
+                            {attributes.length > 0 ? (
+                                <Flex gap={8} vertical>
+                                    {attributes.map((attribute, index) => (
+                                        <Card key={attribute.id} size="small">
+                                            <Flex gap={10} vertical>
+                                                <Flex align="center" justify="space-between">
+                                                    <Text strong>{`Option ${index + 1}`}</Text>
+                                                    <Button
+                                                        color="danger"
+                                                        fill="none"
+                                                        onClick={() => setAttributes((previous) => previous.filter((entry) => entry.id !== attribute.id))}
+                                                        size="small"
+                                                    >
+                                                        <LuTrash2 size={14} />
+                                                    </Button>
+                                                </Flex>
+                                                <Input
+                                                    onChange={(value) => {
+                                                        setAttributes((previous) => previous.map((entry) => (
+                                                            entry.id === attribute.id ? { ...entry, name: value } : entry
+                                                        )));
+                                                    }}
+                                                    placeholder="Variant name"
+                                                    value={attribute.name}
+                                                />
+                                                <Input
+                                                    onChange={(value) => {
+                                                        setAttributes((previous) => previous.map((entry) => (
+                                                            entry.id === attribute.id ? { ...entry, price: parseFloat(value) || 0 } : entry
+                                                        )));
+                                                    }}
+                                                    placeholder="Variant price"
+                                                    type="number"
+                                                    value={String(attribute.price || '')}
+                                                />
+                                                <Flex align="center" justify="space-between">
+                                                    <Text type="secondary">Available to order</Text>
+                                                    <Switch
+                                                        checked={attribute.active !== false}
+                                                        onChange={(checked) => {
+                                                            setAttributes((previous) => previous.map((entry) => (
+                                                                entry.id === attribute.id ? { ...entry, active: checked } : entry
+                                                            )));
+                                                        }}
+                                                    />
+                                                </Flex>
+                                            </Flex>
+                                        </Card>
+                                    ))}
+                                </Flex>
+                            ) : (
+                                <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                    <Text type="secondary">No variants added yet.</Text>
+                                </Card>
+                            )}
+                        </Flex>
+
+                        <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
                             <Flex align="center" justify="space-between">
                                 <Flex gap={2} vertical>
                                     <Text strong>{t('available')}</Text>
@@ -167,7 +253,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                             </Flex>
                         </Card>
 
-                        <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                        <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
                             <Flex align="center" justify="space-between">
                                 <Flex gap={2} vertical>
                                     <Text strong>{t('showOnMenu')}</Text>

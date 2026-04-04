@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { Button, Card, Flex, Input, Picker, Popup, Text, TextArea, Title } from '../antd';
+import { Button, Card, Flex, Input, NavBar, Picker, Popup, Text, TextArea } from '../antd';
 import { useTranslations } from 'next-intl';
 
 interface AddItemSheetProps {
@@ -36,7 +36,7 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     return (
         <Popup bodyStyle={{ maxHeight: '85vh' }} destroyOnClose onMaskClick={onClose} visible>
             <Flex gap={12} vertical>
-                <Title level={4} style={{ margin: 0 }}>{t('addItemTitle')}</Title>
+                <NavBar onBack={onClose}>{t('addItemTitle')}</NavBar>
 
                 <Card>
                     <Flex gap={8} vertical>

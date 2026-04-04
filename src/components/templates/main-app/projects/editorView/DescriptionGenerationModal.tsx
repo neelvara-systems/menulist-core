@@ -1,32 +1,23 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
-import GlobalLanguagesList from '@data/languages';
-import { updateProject } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
-import { addDescription, DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
+import { DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
 import { InheritanceState } from '@type/multiOutlet.types';
-import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Flex, Modal, Popconfirm, theme, Typography } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
-import { ExtractedDataItem, Project } from '../types';
+import { Project } from '../types';
+import {
+    DESCRIPTION_LENGTH_OPTIONS,
+    getDescriptionGenerationStats,
+    runDescriptionGeneration,
+    type DescriptionContentLength,
+} from './descriptionGeneration.shared';
 
 const { Text } = Typography;
-
-// P1.1: Simplified to 2 length options - Standard/Detailed only
-type ContentLength = "Standard" | "Detailed";
-// P1.1: Tone is now internal only - always Professional
-type ToneType = "Professional";
-const DEFAULT_TONE: ToneType = "Professional";
-
-// P1.1: Simplified length options (2 instead of 3) - Authority UX copy
-const LENGTH_OPTIONS: { value: ContentLength; label: string; description: string }[] = [
-    { value: 'Standard', label: 'Standard', description: 'One clear sentence suitable for most menus' },
-    { value: 'Detailed', label: 'Detailed', description: 'Rich, expressive descriptions for premium items' },
-];
 
 interface DescriptionGenerationModalProps {
     modalData: any;
@@ -58,108 +49,42 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
 
     const dispatch = useAppDispatch()
     const { token } = theme.useToken();
-    const [contentLength, setContentLength] = useState<ContentLength>('Standard');
+    const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
 
-    // Calculate affected items count (filtered by governance for outlets)
-    const { itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(() => {
-        let total = 0;
-        let withDesc = 0;
-        let withoutDesc = 0;
+    const { itemsCount, itemsWithDescriptions, itemsWithoutDescriptions, manualDescriptionCount, aiDescriptionCount } = useMemo(
+        () => getDescriptionGenerationStats(projectData, modalData.sourceFile, governance),
+        [governance, modalData.sourceFile, projectData]
+    );
 
-        const filesToCheck = modalData.sourceFile
-            ? projectData.files?.filter(f => f.uid === modalData.sourceFile.uid)
-            : projectData.files;
-
-        filesToCheck?.forEach(file => {
-            const items = file.extractedData?.data?.items || [];
-            items.forEach(item => {
-                // Multi-outlet: Only count local-only items for outlets
-                if (governance?.itemStates && governance.itemStates[item.id] !== 'local-only') {
-                    return; // Skip inherited/overridden items for outlets
-                }
-                total++;
-                const hasDescription = item.description &&
-                    Object.values(item.description).some(desc => desc && String(desc).trim().length > 0);
-                if (hasDescription) {
-                    withDesc++;
-                } else {
-                    withoutDesc++;
-                }
-            });
-        });
-
-        return { itemsCount: total, itemsWithDescriptions: withDesc, itemsWithoutDescriptions: withoutDesc };
-    }, [projectData, modalData.sourceFile, governance]);
-
-    // P1.4: Count items with manual descriptions (protected from refresh) - filtered by governance
-    const { manualDescriptionCount, aiDescriptionCount } = useMemo(() => {
-        let manual = 0;
-        let ai = 0;
-        const filesToCheck = modalData.sourceFile
-            ? projectData.files?.filter(f => f.uid === modalData.sourceFile.uid)
-            : projectData.files;
-
-        filesToCheck?.forEach(file => {
-            const items = file.extractedData?.data?.items || [];
-            items.forEach((item: ExtractedDataItem) => {
-                // Multi-outlet: Only count local-only items for outlets
-                if (governance?.itemStates && governance.itemStates[item.id] !== 'local-only') {
-                    return; // Skip inherited/overridden items for outlets
-                }
-                if (item.descriptionSource === 'manual') {
-                    manual++;
-                } else if (item.description && Object.values(item.description).some(d => d && String(d).trim().length > 0)) {
-                    ai++;
-                }
-            });
-        });
-        return { manualDescriptionCount: manual, aiDescriptionCount: ai };
-    }, [projectData, modalData.sourceFile, governance]);
-
-    const handleDescriptionRequest = async (action: string, contentLength: "Standard" | "Detailed") => {
+    const handleDescriptionRequest = async (action: string, nextContentLength: DescriptionContentLength) => {
         setIsProcessing(true);
         setProcessedCount(0);
         dispatch(startLoader("adding description"));
 
         try {
-            let prevData = removeObjRef(projectData);
-            const filesToProcess = prevData.files?.filter(f =>
-                f.extractedData?.data && (modalData.sourceFile ? modalData.sourceFile.uid === f.uid : true)
-            ) || [];
+            setTotalFiles(projectData.files?.filter((file) =>
+                file.extractedData?.data && (modalData.sourceFile ? modalData.sourceFile.uid === file.uid : true)
+            ).length || 0);
 
-            setTotalFiles(filesToProcess.length);
-
-            if (prevData.files) {
-                let processedFiles = 0;
-                for (const file of prevData.files) {
-                    if (file.extractedData?.data && (modalData.sourceFile ? modalData.sourceFile.uid === file.uid : true)) {
-                        setFileProcessingId(file.uid);
-                        const sourceLanguage = GlobalLanguagesList.find(gl => gl.code === (prevData.languages?.[0] || 'en'));
-                        const targetLanguages = prevData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
-                        // P1.1: Use DEFAULT_TONE internally (keywords removed per doctrine - reintroduces prompting behavior)
-                        // Multi-outlet: Pass governance to filter out inherited/overridden items
-                        const { updatedProject, message: resultMessage, messageType } = await addDescription(
-                            prevData, file, targetLanguages, sourceLanguage, action, contentLength, DEFAULT_TONE, governance
-                        );
-                        if (messageType && resultMessage) {
-                            antdMessage[messageType as 'success' | 'error' | 'info' | 'warning'](resultMessage);
-                        }
-                        prevData = updatedProject;
-                        setActiveProject(updatedProject);
-                        setFileProcessingId(null);
-                        processedFiles++;
-                        setProcessedCount(processedFiles);
-                    }
-                }
-            }
-            // Save to database immediately after generation
-            await updateProject({ ...prevData, projectId: prevData.projectId });
+            const updatedProject = await runDescriptionGeneration({
+                action,
+                contentLength: nextContentLength,
+                governance,
+                onFileProcessingIdChange: setFileProcessingId,
+                onProgress: (processedFiles, nextTotalFiles) => {
+                    setProcessedCount(processedFiles);
+                    setTotalFiles(nextTotalFiles);
+                },
+                onProjectUpdate: setActiveProject,
+                projectData,
+                sourceFile: modalData.sourceFile,
+            });
 
             dispatch(stopLoader("adding description"));
-            setActiveProject(removeObjRef(prevData));
+            setActiveProject(updatedProject);
             setHasChanges(false); // Already saved, no pending changes
             antdMessage.success('Descriptions updated.');
             onClose();
@@ -268,9 +193,9 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                     <Flex vertical gap={20}>
                         {/* Description Length - Authority UX: No word counts, no numbers */}
                         <div>
-                            <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 14 }}>Description length</Text>
+                                <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 14 }}>Description length</Text>
                             <Flex gap={8}>
-                                {LENGTH_OPTIONS.map((option) => (
+                                {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
                                     <div
                                         key={option.value}
                                         onClick={() => !isProcessing && setContentLength(option.value)}

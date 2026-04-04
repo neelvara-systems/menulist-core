@@ -5,12 +5,15 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
+import { FloatButton } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCamera, LuCheck, LuLayers, LuPlus, LuTags } from 'react-icons/lu';
-import { Button, Card, Collapse, DotLoading, Empty, Flex, FloatingBubble, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { LuCamera, LuCheck, LuGrid, LuLayers } from 'react-icons/lu';
+import { Button, Card, Collapse, DotLoading, Empty, Flex, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
+import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
+import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
 const AddItemSheet = dynamic(() => import('../sheets/AddItemSheet'), { ssr: false });
@@ -18,6 +21,8 @@ const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr
 const BulkActionsSheet = dynamic(() => import('../sheets/BulkActionsSheet'), { ssr: false });
 const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQualitySignals'), { ssr: false });
 const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerSheet'), { ssr: false });
+const ManageLanguagesSheet = dynamic(() => import('../sheets/ManageLanguagesSheet'), { ssr: false });
+const GenerateDescriptionsSheet = dynamic(() => import('../sheets/GenerateDescriptionsSheet'), { ssr: false });
 
 type CategoryOption = { id: string; name: string };
 type CategorySummary = {
@@ -40,7 +45,12 @@ export default function MobileMenuScreen() {
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
+    const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | null>(null);
     const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+    const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
+    const [isManageLanguagesOpen, setIsManageLanguagesOpen] = useState(false);
+    const [isGenerateDescriptionsOpen, setIsGenerateDescriptionsOpen] = useState(false);
+    const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
     const [menuData, setMenuData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [projectsList, setProjectsList] = useState<any[]>([]);
@@ -125,6 +135,12 @@ export default function MobileMenuScreen() {
                             id: item.id || `${categoryName}-${itemName}`,
                             name: itemName,
                             price: price,
+                            attributes: item.attributes?.map((attribute: any) => ({
+                                id: attribute.id,
+                                name: attribute.name?.[activeLang] || attribute.name?.en || attribute.name || 'Variant',
+                                price: typeof attribute.price === 'string' ? parseFloat(attribute.price) || 0 : (attribute.price || 0),
+                                active: attribute.active !== false,
+                            })),
                             available,
                             active,
                             categoryId: item.category,
@@ -184,6 +200,25 @@ export default function MobileMenuScreen() {
         });
         return Array.from(map.values());
     }, [activeLang, menuData?.files, uncategorizedLabel]);
+
+    const categoryItemMap = useMemo<Record<string, MobileCategoryReorderItem[]>>(() => {
+        if (!menuData?.files) return {};
+        const grouped: Record<string, MobileCategoryReorderItem[]> = {};
+        menuData.files.forEach((file: any) => {
+            const items = file.extractedData?.data?.items || [];
+            items.forEach((item: any) => {
+                const categoryId = item.category || 'uncategorized';
+                if (!grouped[categoryId]) grouped[categoryId] = [];
+                grouped[categoryId].push({
+                    id: item.id,
+                    name: item.name?.[activeLang] || item.name?.en || item.name || t('unnamedItem'),
+                    active: item.active !== false,
+                    price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
+                });
+            });
+        });
+        return grouped;
+    }, [activeLang, menuData?.files, t]);
 
     const handleCategoryAdd = async (name: string) => {
         if (!menuData) return;
@@ -257,26 +292,12 @@ export default function MobileMenuScreen() {
         setMenuData(updated);
     };
 
-    const handleCategoryReorder = async (categoryId: string, direction: 'up' | 'down') => {
+    const handleCategoryReorder = async (orderedCategoryIds: string[]) => {
         if (!menuData) return;
-        const ordered = [...categorySummary].sort((a, b) => {
-            const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
-            const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
-            if (aIndex !== bIndex) return aIndex - bIndex;
-            return a.name.localeCompare(b.name);
-        });
-        const currentIndex = ordered.findIndex((cat) => cat.id === categoryId);
-        if (currentIndex === -1) return;
-        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-        if (targetIndex < 0 || targetIndex >= ordered.length) return;
-        const nextOrder = [...ordered];
-        const [moved] = nextOrder.splice(currentIndex, 1);
-        nextOrder.splice(targetIndex, 0, moved);
-
         const updated = removeObjRef(menuData);
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.categories?.forEach((category: any) => {
-                const index = nextOrder.findIndex((item) => item.id === category.id);
+                const index = orderedCategoryIds.findIndex((itemId) => itemId === category.id);
                 if (index >= 0) {
                     category.orderIndex = index;
                 }
@@ -305,6 +326,39 @@ export default function MobileMenuScreen() {
                         startTime: preset.startTime,
                         endTime: preset.endTime,
                     }));
+            });
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
+
+    const handleCategoryItemReorder = async (categoryId: string, orderedItemIds: string[]) => {
+        if (!menuData) return;
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            const currentItems = file.extractedData?.data?.items || [];
+            if (!currentItems.length) return;
+
+            const categoryItems = currentItems.filter((item: any) => item.category === categoryId);
+            if (!categoryItems.length) return;
+
+            const byId = new Map(categoryItems.map((item: any) => [item.id, item]));
+            const orderedForFile = orderedItemIds
+                .map((itemId) => byId.get(itemId))
+                .filter(Boolean);
+
+            if (!orderedForFile.length) return;
+
+            const reorderedSet = new Set(orderedForFile.map((item: any) => item.id));
+            const untouchedCategoryItems = categoryItems.filter((item: any) => !reorderedSet.has(item.id));
+            const nextCategoryItems = [...orderedForFile, ...untouchedCategoryItems];
+
+            let categoryIndex = 0;
+            file.extractedData.data.items = currentItems.map((item: any) => {
+                if (item.category !== categoryId) return item;
+                const nextItem = nextCategoryItems[categoryIndex];
+                categoryIndex += 1;
+                return nextItem || item;
             });
         });
         await updateProject(updated);
@@ -350,13 +404,23 @@ export default function MobileMenuScreen() {
         Toast.show({ content: t('projectSwitched'), duration: 1000 });
     };
 
-    if (!storeDetails || isLoading) {
-        return (
-            <Flex align="center" justify="center" style={{ height: '100%' }}>
-                <DotLoading color="primary" />
-            </Flex>
-        );
-    }
+    const launchCommandAction = useCallback((action: () => void) => {
+        setReturnToCommandMenu(true);
+        setIsCommandMenuOpen(false);
+        action();
+    }, []);
+
+    const handleCommandActionBack = useCallback((closeAction: () => void) => {
+        closeAction();
+        if (returnToCommandMenu) {
+            setIsCommandMenuOpen(true);
+            setReturnToCommandMenu(false);
+        }
+    }, [returnToCommandMenu]);
+
+    const resetCommandActionFlow = useCallback(() => {
+        setReturnToCommandMenu(false);
+    }, []);
 
     const overview = dashboardData?.overview;
     const yesterday = overview?.yesterday;
@@ -374,6 +438,14 @@ export default function MobileMenuScreen() {
             : overview?.status === 'no_data'
                 ? tDashboard('waitingFirstScan')
                 : tDashboard('noDataYet');
+
+    if (!storeDetails || isLoading) {
+        return (
+            <Flex align="center" justify="center" style={{ height: '100%' }}>
+                <DotLoading color="primary" />
+            </Flex>
+        );
+    }
 
     return (
         <Flex style={{ height: '100%' }} vertical>
@@ -437,23 +509,6 @@ export default function MobileMenuScreen() {
                         {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
                     </Flex>
 
-                    <Flex gap={8} wrap>
-                        <Button fill="outline" onClick={() => setIsUploadSheetOpen(true)} size="small">
-                            {t('uploadMenuPhoto', { offering: labels.offeringTitle })}
-                        </Button>
-                        <Button fill="outline" onClick={() => setIsBulkActionsOpen(true)} size="small">
-                            {t('bulkActions')}
-                        </Button>
-                        <Button fill="outline" onClick={() => setIsCategorySheetOpen(true)} size="small">
-                            {t('categories')}
-                        </Button>
-                        <Button color="primary" onClick={() => setIsAddSheetOpen(true)} size="small">
-                            <Flex align="center" gap={6}>
-                                <LuPlus size={14} />
-                                <Text>{t('addItem')}</Text>
-                            </Flex>
-                        </Button>
-                    </Flex>
                 </Flex>
             </Card>
 
@@ -543,26 +598,74 @@ export default function MobileMenuScreen() {
                 </Flex>
             </PullToRefresh>
 
-            <FloatingBubble
-                style={{
-                    '--initial-position-bottom': '76px',
-                    '--initial-position-right': '16px',
-                    '--size': '52px',
-                    '--background': 'var(--ant-color-primary, #1677ff)',
-                } as React.CSSProperties}
-                onClick={() => setIsAddSheetOpen(true)}
-            >
-                <LuPlus size={24} color="#fff" />
-            </FloatingBubble>
+            <FloatButton
+                icon={<LuGrid size={18} />}
+                onClick={() => setIsCommandMenuOpen(true)}
+                style={{ bottom: 76, insetInlineEnd: 16 }}
+                tooltip={<Text>{labels.commandCenterLabel}</Text>}
+                type="primary"
+            />
+            <MobileMenuCommandSheet
+                labels={labels}
+                onAddItem={() => launchCommandAction(() => setIsAddSheetOpen(true))}
+                onCategories={() => launchCommandAction(() => setIsCategorySheetOpen(true))}
+                onChangeAvailability={() => launchCommandAction(() => {
+                    setBulkActionType('availability');
+                    setIsBulkActionsOpen(true);
+                })}
+                onClose={() => setIsCommandMenuOpen(false)}
+                onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
+                onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
+                onMoveCategory={() => launchCommandAction(() => {
+                    setBulkActionType('moveCategory');
+                    setIsBulkActionsOpen(true);
+                })}
+                onPricing={() => launchCommandAction(() => {
+                    setBulkActionType('pricing');
+                    setIsBulkActionsOpen(true);
+                })}
+                onShowHide={() => launchCommandAction(() => {
+                    setBulkActionType('showHide');
+                    setIsBulkActionsOpen(true);
+                })}
+                visible={isCommandMenuOpen}
+            />
+
+            {menuData ? (
+                <ManageLanguagesSheet
+                    onClose={() => handleCommandActionBack(() => setIsManageLanguagesOpen(false))}
+                    onSaved={(updatedProject) => {
+                        setMenuData(updatedProject);
+                        setIsManageLanguagesOpen(false);
+                        resetCommandActionFlow();
+                    }}
+                    projectData={menuData}
+                    visible={isManageLanguagesOpen}
+                />
+            ) : null}
+
+            {menuData ? (
+                <GenerateDescriptionsSheet
+                    onClose={() => handleCommandActionBack(() => setIsGenerateDescriptionsOpen(false))}
+                    onSaved={(updatedProject) => {
+                        setMenuData(updatedProject);
+                        resetCommandActionFlow();
+                    }}
+                    projectData={menuData}
+                    visible={isGenerateDescriptionsOpen}
+                />
+            ) : null}
 
             <CategoryManagerSheet
                 categories={categorySummary}
+                categoryItems={categoryItemMap}
                 presets={storeDetails?.timeSlotPresets || []}
                 onAdd={handleCategoryAdd}
-                onClose={() => setIsCategorySheetOpen(false)}
+                onClose={() => handleCommandActionBack(() => setIsCategorySheetOpen(false))}
                 onDelete={handleCategoryDelete}
                 onRename={handleCategoryRename}
                 onReorder={handleCategoryReorder}
+                onReorderItems={handleCategoryItemReorder}
                 onToggleActive={handleCategoryToggle}
                 onUpdateTimeSlots={handleCategoryTimeSlots}
                 visible={isCategorySheetOpen}
@@ -573,7 +676,10 @@ export default function MobileMenuScreen() {
                     categories={categoryOptions}
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
                     item={editingItem}
-                    onClose={() => setEditingItem(null)}
+                    onClose={() => {
+                        setEditingItem(null);
+                        resetCommandActionFlow();
+                    }}
                     onDelete={async (itemId) => {
                         if (!menuData) return;
                         const previous = menuData;
@@ -591,6 +697,7 @@ export default function MobileMenuScreen() {
                                 await updateProject(updated);
                             }
                             setEditingItem(null);
+                            resetCommandActionFlow();
                             Toast.show({ content: t('itemDeleted'), duration: 1000 });
                         } catch {
                             setMenuData(previous);
@@ -618,6 +725,14 @@ export default function MobileMenuScreen() {
                                     if (updatedItem.price !== undefined) {
                                         nextItem.price = String(updatedItem.price);
                                     }
+                                    if (updatedItem.attributes !== undefined) {
+                                        nextItem.attributes = updatedItem.attributes.map((attribute) => ({
+                                            id: attribute.id,
+                                            active: attribute.active !== false,
+                                            name: { [activeLang]: attribute.name },
+                                            price: String(attribute.price || 0),
+                                        }));
+                                    }
                                     if (updatedItem.available !== undefined) {
                                         nextItem.available = updatedItem.available;
                                     }
@@ -640,6 +755,7 @@ export default function MobileMenuScreen() {
                                 await updateProject(updated);
                             }
                             setEditingItem(null);
+                            resetCommandActionFlow();
                             Toast.show({ content: t('itemUpdated'), duration: 1000 });
                         } catch {
                             setMenuData(previous);
@@ -653,7 +769,7 @@ export default function MobileMenuScreen() {
                 <AddItemSheet
                     categories={categoryOptions}
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
-                    onClose={() => setIsAddSheetOpen(false)}
+                    onClose={() => handleCommandActionBack(() => setIsAddSheetOpen(false))}
                     onSave={async (newItem) => {
                         if (!menuData) return;
                         const previous = menuData;
@@ -691,6 +807,7 @@ export default function MobileMenuScreen() {
                                 await updateProject(updated);
                             }
                             setIsAddSheetOpen(false);
+                            resetCommandActionFlow();
                             Toast.show({ content: t('itemAdded'), duration: 1000 });
                         } catch {
                             setMenuData(previous);
@@ -711,9 +828,19 @@ export default function MobileMenuScreen() {
             ) : null}
 
             <BulkActionsSheet
-                projectId={menuData?.projectId || ''}
+                initialAction={bulkActionType}
+                onApply={(updatedProject) => {
+                    setMenuData(updatedProject);
+                    resetCommandActionFlow();
+                }}
+                projectData={menuData}
                 visible={isBulkActionsOpen}
-                onClose={() => { setIsBulkActionsOpen(false); fetchMenuData(menuData?.projectId); }}
+                onClose={() => {
+                    handleCommandActionBack(() => {
+                        setIsBulkActionsOpen(false);
+                        setBulkActionType(null);
+                    });
+                }}
             />
 
             <Popup

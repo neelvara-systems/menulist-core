@@ -50,7 +50,7 @@ import {
     BasicInfoTab,
     BusinessAttributesTab,
     ContactPersonTab,
-    CustomDomainTab,
+    DomainSettingsTab,
     FeedbackSettingsTab,
     IntegrationsTab,
     LocaleSettingsTab,
@@ -59,7 +59,6 @@ import {
     PosSyncTab,
     SeoTab,
     SocialMediaTab,
-    SubdomainTab,
     TimeSlotPresetsTab,
     WorkingHoursTab,
 } from "./tabs";
@@ -131,24 +130,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             tab: <BasicInfoTab scrollRef={scrollRefs.current[0]} />,
         },
         {
-            key: "subdomain",
-            label: t('subdomain'),
+            key: "domain",
+            label: t('domain'),
             icon: <LuLink />,
             tab: (
-                <SubdomainTab
+                <DomainSettingsTab
                     scrollRef={scrollRefs.current[1]}
-                    currentSubdomain={storeDetails?.subdomain}
-                    isMaster={storeDetails?.isMaster}
-                />
-            ),
-        },
-        {
-            key: "custom-domain",
-            label: t('customDomain'),
-            icon: <LuGlobe />,
-            tab: (
-                <CustomDomainTab
-                    scrollRef={scrollRefs.current[2]}
                     storeDetails={storeDetails}
                     onStoreUpdate={(updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
@@ -165,7 +152,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuGlobe />,
             tab: (
                 <OfficialPageTab
-                    scrollRef={scrollRefs.current[3]}
+                    scrollRef={scrollRefs.current[2]}
                     publicPresence={storeDetails?.publicPresence}
                     subdomain={storeDetails?.subdomain}
                     customDomain={storeDetails?.customDomain}
@@ -199,19 +186,19 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             key: "location",
             label: t('locationInformation'),
             icon: <LuMapPin />,
-            tab: <LocationInfoTab scrollRef={scrollRefs.current[4]} />,
+            tab: <LocationInfoTab scrollRef={scrollRefs.current[3]} />,
         },
         {
             key: "locale",
             label: t('localeSettings'),
             icon: <LuGlobe />,
-            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[5]} />,
+            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[4]} />,
         },
         {
             key: "contact",
             label: t('contactPerson'),
             icon: <LuUser />,
-            tab: <ContactPersonTab scrollRef={scrollRefs.current[6]} />,
+            tab: <ContactPersonTab scrollRef={scrollRefs.current[5]} />,
         },
         {
             key: "hours",
@@ -219,7 +206,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuClock />,
             tab: (
                 <WorkingHoursTab
-                    scrollRef={scrollRefs.current[7]}
+                    scrollRef={scrollRefs.current[6]}
                     workingHours={workingHours}
                     setWorkingHours={setWorkingHours}
                     form={form}
@@ -232,7 +219,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuTimer />,
             tab: (
                 <TimeSlotPresetsTab
-                    scrollRef={scrollRefs.current[8]}
+                    scrollRef={scrollRefs.current[7]}
                     tenantId={storeDetails?.tenantId}
                     storeId={storeDetails?.storeId}
                     presets={timeSlotPresets}
@@ -246,7 +233,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuLink />,
             tab: (
                 <SocialMediaTab
-                    scrollRef={scrollRefs.current[9]}
+                    scrollRef={scrollRefs.current[8]}
                     socialMedia={socialMedia}
                     setSocialMedia={setSocialMedia}
                 />
@@ -256,7 +243,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             key: "business-attributes",
             label: t('businessAttributes'),
             icon: <LuList />,
-            tab: <BusinessAttributesTab scrollRef={scrollRefs.current[10]} />,
+            tab: <BusinessAttributesTab scrollRef={scrollRefs.current[9]} />,
         }] : []),
         {
             key: "seo",

@@ -52,8 +52,7 @@ const MobileTimeSlotsScreen = dynamic(() => import('./MobileTimeSlotsScreen'), {
 const MobileTempStatusScreen = dynamic(() => import('./MobileTempStatusScreen'), { ssr: false });
 const MobileSpecialMenuScreen = dynamic(() => import('./MobileSpecialMenuScreen'), { ssr: false });
 const AppSettingsSheet = dynamic(() => import('../sheets/AppSettingsSheet'), { ssr: false });
-const MobileSubdomainScreen = dynamic(() => import('./MobileSubdomainScreen'), { ssr: false });
-const MobileCustomDomainScreen = dynamic(() => import('./MobileCustomDomainScreen'), { ssr: false });
+const MobileDomainSettingsScreen = dynamic(() => import('./MobileDomainSettingsScreen'), { ssr: false });
 const MobileOfficialPageScreen = dynamic(() => import('./MobileOfficialPageScreen'), { ssr: false });
 const MobileBusinessAttributesScreen = dynamic(() => import('./MobileBusinessAttributesScreen'), { ssr: false });
 
@@ -84,8 +83,7 @@ type MoreSubScreen =
     | 'timeSlots'
     | 'tempStatus'
     | 'specialMenus'
-    | 'subdomain'
-    | 'customDomain';
+    | 'domainSettings';
 
 export default function MobileMoreScreen() {
     const t = useTranslations('MobileMore');
@@ -124,8 +122,7 @@ export default function MobileMoreScreen() {
     if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'subdomain') return <MobileSubdomainScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'customDomain') return <MobileCustomDomainScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'domainSettings') return <MobileDomainSettingsScreen onBack={() => setSubScreen('main')} />;
 
     const menuItems = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => setSubScreen('dashboard') },
@@ -141,8 +138,7 @@ export default function MobileMoreScreen() {
 
     const settingsItems = [
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: t('basicSettings'), description: t('basicSettingsDesc'), onClick: () => setSubScreen('basicSettings') },
-        { key: 'subdomain', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('subdomain'), description: tBusiness('subdomainHelp'), onClick: () => setSubScreen('subdomain') },
-        { key: 'customDomain', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('customDomain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('customDomain') },
+        { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('domainSettings') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => setSubScreen('officialPage') }] : []),
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => setSubScreen('locale') },
         { key: 'contactSettings', icon: <LuUsers color="#2563eb" size={20} />, label: tBusiness('contactPerson'), onClick: () => setSubScreen('contactSettings') },

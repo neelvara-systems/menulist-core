@@ -1,72 +1,12 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { Badge, Button, Card, Flex, Popover, theme, Typography } from "antd";
 import { useMemo, useState } from "react";
-import { LuArrowUpDown, LuImage, LuLanguages, LuLayoutGrid, LuMoreVertical, LuSettings2, LuSparkles, LuZap } from "react-icons/lu";
+import { LuMoreVertical } from "react-icons/lu";
+import { EditorAction, getEditorActions } from "./editorActions.config";
+export type { EditorAction } from "./editorActions.config";
 
 const { Text } = Typography;
-
-export type EditorAction = 'language' | 'description' | 'images' | 'activeInactive' | 'reorder' | 'decisionBlocks' | 'storeCustomization' | 'commandCenter';
-
-type ActionConfig = {
-    key: EditorAction;
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    outletOnly?: boolean; // Only show for outlet stores (isMasterLinked = true)
-    isNew?: boolean; // Show "New" badge for discovery
-};
-
-function getActions(labels: OfferingLabels): ActionConfig[] {
-    return [
-        {
-            key: 'commandCenter',
-            icon: <LuLayoutGrid style={{ fontSize: 20 }} />,
-            title: labels.commandCenterLabel,
-            description: 'Bulk update prices, availability, and categories for many items at once',
-            isNew: true
-        },
-        {
-            key: 'language',
-            icon: <LuLanguages style={{ fontSize: 20 }} />,
-            title: 'Manage Languages',
-            description: labels.languageDesc
-        },
-        {
-            key: 'description',
-            icon: <LuSparkles style={{ fontSize: 20 }} />,
-            title: 'Generate Descriptions',
-            description: labels.descriptionDesc
-        },
-        {
-            key: 'images',
-            icon: <LuImage style={{ fontSize: 20 }} />,
-            title: 'Add Images',
-            description: labels.imagesDesc
-        },
-        {
-            key: 'reorder',
-            icon: <LuArrowUpDown style={{ fontSize: 20 }} />,
-            title: labels.rearrangeLabel,
-            description: 'Change the order of categories and items'
-        },
-        {
-            key: 'decisionBlocks',
-            icon: <LuZap style={{ fontSize: 20 }} />,
-            title: 'Smart Recommendations',
-            description: 'Configure which items appear in Popular, Quick Pick, and Best Value blocks'
-        },
-        {
-            key: 'storeCustomization',
-            icon: <LuSettings2 style={{ fontSize: 20 }} />,
-            title: 'Store Customization',
-            description: 'Manage local prices, stock status, and bestsellers for your store',
-            outletOnly: true,
-            isNew: true
-        }
-    ];
-}
 
 type EditorActionsPopoverProps = {
     onActionClick: (action: EditorAction) => void;
@@ -83,7 +23,7 @@ export default function EditorActionsPopover({
 
     // Filter actions based on store type and feature flags
     const visibleActions = useMemo(() => {
-        return getActions(labels).filter(action => {
+        return getEditorActions(labels).filter(action => {
             // Only show outlet-only actions if this is an outlet store AND feature is enabled
             if (action.outletOnly) {
                 return FEATURE_FLAGS.ENABLE_MULTI_OUTLET && isMasterLinked;
