@@ -7,8 +7,10 @@ export type MobileMenuItemType = {
     id: string;
     name: string;
     price: number;
-    isAvailable: boolean;
-    category?: string;
+    available: boolean;
+    active: boolean;
+    categoryId?: string;
+    categoryName?: string;
     description?: string;
     image?: string;
 };
@@ -20,6 +22,7 @@ export type MobileFeedbackItemType = {
     message: string;
     status: 'new' | 'read' | 'resolved';
     createdAt: string;
+    needsAttention?: boolean;
     email?: string;
     phone?: string;
 };

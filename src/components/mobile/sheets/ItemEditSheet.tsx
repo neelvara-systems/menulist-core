@@ -3,23 +3,27 @@
 import type { UploadFile, UploadProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCamera } from 'react-icons/lu';
-import { Button, Card, Dialog, Flex, Image, Input, Popup, Switch, Text, TextArea, Title, Toast, Upload } from '../antd';
+import { Button, Card, Dialog, Flex, Image, Input, Picker, Popup, Switch, Text, TextArea, Title, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
 
 interface ItemEditSheetProps {
     item: MobileMenuItemType;
+    categories: { id: string; name: string }[];
     currencySymbol: string;
     onClose: () => void;
     onSave: (updatedItem: Partial<MobileMenuItemType>) => void;
     onDelete?: (itemId: string) => void;
 }
 
-export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, onDelete }: ItemEditSheetProps) {
+export default function ItemEditSheet({ item, categories, currencySymbol, onClose, onSave, onDelete }: ItemEditSheetProps) {
     const [name, setName] = useState(item.name);
     const [price, setPrice] = useState(String(item.price));
     const [description, setDescription] = useState(item.description || '');
-    const [isAvailable, setIsAvailable] = useState(item.isAvailable);
+    const [isAvailable, setIsAvailable] = useState(item.available);
+    const [isActive, setIsActive] = useState(item.active);
     const [imagePreview, setImagePreview] = useState<string | null>(item.image || null);
+    const [selectedCategory, setSelectedCategory] = useState(item.categoryId || categories[0]?.id || '');
+    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: 'image/*',
@@ -53,7 +57,9 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
             name: name.trim(),
             price: parseFloat(price) || 0,
             description: description.trim(),
-            isAvailable,
+            available: isAvailable,
+            active: isActive,
+            categoryId: selectedCategory,
             image: imagePreview || undefined,
         });
     };
@@ -91,6 +97,22 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                                 value={price}
                             />
                         </Flex>
+
+                        {categories.length > 0 ? (
+                            <Flex gap={6} vertical>
+                                <Text strong>Category</Text>
+                                <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start' }}>
+                                    {categories.find((category) => category.id === selectedCategory)?.name || 'Select category'}
+                                </Button>
+                                <Picker
+                                    columns={[categories.map((category) => ({ label: category.name, value: category.id }))]}
+                                    onClose={() => setShowCategoryPicker(false)}
+                                    onConfirm={(value) => { if (value[0]) setSelectedCategory(value[0] as string); }}
+                                    value={[selectedCategory]}
+                                    visible={showCategoryPicker}
+                                />
+                            </Flex>
+                        ) : null}
 
                         <Flex gap={6} vertical>
                             <Text strong>Item Image</Text>
@@ -140,6 +162,16 @@ export default function ItemEditSheet({ item, currencySymbol, onClose, onSave, o
                                     <Text type="secondary">Turn this off when the item is sold out.</Text>
                                 </Flex>
                                 <Switch checked={isAvailable} onChange={setIsAvailable} />
+                            </Flex>
+                        </Card>
+
+                        <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                            <Flex align="center" justify="space-between">
+                                <Flex gap={2} vertical>
+                                    <Text strong>Show on menu</Text>
+                                    <Text type="secondary">Hide this item from customers.</Text>
+                                </Flex>
+                                <Switch checked={isActive} onChange={setIsActive} />
                             </Flex>
                         </Card>
                     </Flex>

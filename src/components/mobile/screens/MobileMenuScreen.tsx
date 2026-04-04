@@ -2,7 +2,9 @@
 
 import { getProjectData, getProjectsList, updateProject } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { removeObjRef } from '@util/utils';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -16,10 +18,14 @@ const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr
 const BulkActionsSheet = dynamic(() => import('../sheets/BulkActionsSheet'), { ssr: false });
 const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQualitySignals'), { ssr: false });
 
+type CategoryOption = { id: string; name: string };
+
 export default function MobileMenuScreen() {
     const t = useTranslations('MobileMenu');
+    const tDashboard = useTranslations('MobileDashboard');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
+    const currencySymbol = storeDetails?.currencySymbol || '₹';
     const [searchQuery, setSearchQuery] = useState('');
     const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
@@ -29,6 +35,7 @@ export default function MobileMenuScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [projectsList, setProjectsList] = useState<any[]>([]);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const { data: dashboardData } = useOwnerDashboard(menuData?.projectId ? { projectId: menuData.projectId } : undefined);
 
     const fetchMenuData = useCallback(async (projectId?: string) => {
         try {
@@ -61,76 +68,94 @@ export default function MobileMenuScreen() {
         }
     }, [storeDetails?.storeId, fetchMenuData]);
 
+    const activeLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
+
+    const categoryOptions = useMemo<CategoryOption[]>(() => {
+        if (!menuData?.files) return [];
+        const map = new Map<string, string>();
+        menuData.files.forEach((file: any) => {
+            const categories = file.extractedData?.data?.categories || [];
+            categories.forEach((category: any) => {
+                const label = category.name?.[activeLang] || category.name?.en || category.name || 'Uncategorized';
+                if (!map.has(category.id)) map.set(category.id, label);
+            });
+        });
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    }, [activeLang, menuData?.files]);
+
     const menuItems = useMemo(() => {
         if (!menuData?.files) return [];
         const items: MenuItemType[] = [];
         menuData.files.forEach((file: any) => {
             if (file.extractedData?.data?.categories && Array.isArray(file.extractedData.data.categories)) {
                 const categories = file.extractedData.data.categories;
+                const categoryMap: Record<string, string> = {};
+                categories.forEach((category: any) => {
+                    categoryMap[category.id] = category.name?.[activeLang] || category.name?.en || category.name || 'Uncategorized';
+                });
                 const menuItems = file.extractedData.data.items || [];
                 categories.forEach((category: any) => {
-                    const categoryName = category.name?.en || category.name || 'Uncategorized';
+                    const categoryName = categoryMap[category.id] || 'Uncategorized';
                     const categoryItems = menuItems.filter((item: any) => item.category === category.id);
                     categoryItems.forEach((item: any) => {
-                        const itemName = item.name?.en || item.name || 'Unnamed Item';
-                        const itemDescription = item.description?.en || item.description || '';
+                        const itemName = item.name?.[activeLang] || item.name?.en || item.name || 'Unnamed Item';
+                        const itemDescription = item.description?.[activeLang] || item.description?.en || item.description || '';
                         const price = typeof item.price === 'string' ? parseFloat(item.price) : (item.price || 0);
-                        const isAvailable = item.available !== false;
+                        const available = item.available !== false;
+                        const active = item.active !== false;
                         items.push({
                             id: item.id || `${categoryName}-${itemName}`,
                             name: itemName,
                             price: price,
-                            isAvailable: isAvailable,
-                            category: categoryName,
+                            available,
+                            active,
+                            categoryId: item.category,
+                            categoryName,
                             description: itemDescription,
-                            image: item.image || '',
+                            image: item.images?.[0]?.url || item.image || '',
                         });
                     });
                 });
             }
         });
         return items;
-    }, [menuData]);
+    }, [activeLang, menuData]);
 
     const filteredItems = useMemo(() => {
         if (!searchQuery.trim()) return menuItems;
         const q = searchQuery.toLowerCase();
         return menuItems.filter(
-            (item) => item.name.toLowerCase().includes(q) || item.category?.toLowerCase().includes(q)
+            (item) => item.name.toLowerCase().includes(q) || item.categoryName?.toLowerCase().includes(q)
         );
     }, [menuItems, searchQuery]);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, MenuItemType[]> = {};
         filteredItems.forEach((item) => {
-            const category = item.category || 'Uncategorized';
+            const category = item.categoryName || 'Uncategorized';
             if (!groups[category]) groups[category] = [];
             groups[category].push(item);
         });
         return groups;
     }, [filteredItems]);
     const categoryCount = useMemo(() => {
-        const categories = new Set(menuItems.map((item) => item.category || 'Uncategorized'));
+        const categories = new Set(menuItems.map((item) => item.categoryName || 'Uncategorized'));
         return categories.size;
     }, [menuItems]);
 
     const handleToggleAvailability = useCallback(async (item: MenuItemType) => {
-        const newAvailability = !item.isAvailable;
-
-        setMenuData((prev: any) => {
-            if (!prev?.files) return prev;
-            const updated = JSON.parse(JSON.stringify(prev));
-            updated.files.forEach((file: any) => {
-                file.extractedData?.categories?.forEach((cat: any) => {
-                    cat.items?.forEach((menuItem: any) => {
-                        if ((menuItem.id || `${cat.name}-${menuItem.name}`) === item.id) {
-                            menuItem.isAvailable = newAvailability;
-                        }
-                    });
-                });
+        if (!menuData) return;
+        const newAvailability = !item.available;
+        const previous = menuData;
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.items?.forEach((menuItem: any) => {
+                if (menuItem.id === item.id) {
+                    menuItem.available = newAvailability;
+                }
             });
-            return updated;
         });
+        setMenuData(updated);
 
         Toast.show({
             content: newAvailability ? t('available') : t('soldOut'),
@@ -138,24 +163,11 @@ export default function MobileMenuScreen() {
         });
 
         try {
-            if (menuData?.projectId) {
-                await updateProject(menuData);
+            if (updated?.projectId) {
+                await updateProject(updated);
             }
         } catch {
-            setMenuData((prev: any) => {
-                if (!prev?.files) return prev;
-                const reverted = JSON.parse(JSON.stringify(prev));
-                reverted.files.forEach((file: any) => {
-                    file.extractedData?.categories?.forEach((cat: any) => {
-                        cat.items?.forEach((menuItem: any) => {
-                            if ((menuItem.id || `${cat.name}-${menuItem.name}`) === item.id) {
-                                menuItem.isAvailable = !newAvailability;
-                            }
-                        });
-                    });
-                });
-                return reverted;
-            });
+            setMenuData(previous);
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         }
     }, [menuData]);
@@ -178,6 +190,23 @@ export default function MobileMenuScreen() {
         );
     }
 
+    const overview = dashboardData?.overview;
+    const yesterday = overview?.yesterday;
+    const statusTone = overview?.status === 'working'
+        ? { color: '#16a34a', bg: '#ecfdf5' }
+        : overview?.status === 'low_activity'
+            ? { color: '#f59e0b', bg: '#fffbeb' }
+            : overview?.status === 'no_data'
+                ? { color: '#9ca3af', bg: '#f3f4f6' }
+                : { color: '#9ca3af', bg: '#f3f4f6' };
+    const statusText = overview?.status === 'working'
+        ? tDashboard('menuWorking', { offering: labels.offeringLower })
+        : overview?.status === 'low_activity'
+            ? tDashboard('lowActivity')
+            : overview?.status === 'no_data'
+                ? tDashboard('waitingFirstScan')
+                : tDashboard('noDataYet');
+
     return (
         <Flex style={{ height: '100%' }} vertical>
             <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
@@ -192,6 +221,23 @@ export default function MobileMenuScreen() {
                                 <Tag>{t('itemsCount', { count: menuItems.length })}</Tag>
                             </Flex>
                         </Button>
+                    ) : null}
+
+                    {overview ? (
+                        <Card size="small" style={{ backgroundColor: statusTone.bg }}>
+                            <Flex gap={4} vertical>
+                                <Text strong style={{ color: statusTone.color }}>
+                                    {statusText}
+                                </Text>
+                                {yesterday ? (
+                                    <Text type="secondary">
+                                        {`Yesterday · ${yesterday.metrics?.menuVisits?.toLocaleString() || '0'} ${labels.scansLabel}`}
+                                    </Text>
+                                ) : (
+                                    <Text type="secondary">{overview.statusMessage}</Text>
+                                )}
+                            </Flex>
+                        </Card>
                     ) : null}
 
                     <SearchBar
@@ -270,7 +316,7 @@ export default function MobileMenuScreen() {
                                             onClick={() => setEditingItem(item)}
                                             extra={
                                                 <Flex align="center" gap={8} wrap>
-                                                    <Switch checked={item.isAvailable} onChange={() => handleToggleAvailability(item)} />
+                                                    <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
                                                     <Button fill="outline" onClick={(event) => {
                                                         event.stopPropagation();
                                                         setEditingItem(item);
@@ -285,10 +331,11 @@ export default function MobileMenuScreen() {
                                                 <Flex gap={6} vertical>
                                                     {item.description ? <Text type="secondary">{item.description}</Text> : null}
                                                     <Flex align="center" gap={8} wrap>
-                                                        <Tag color={item.isAvailable ? 'success' : 'warning'}>
-                                                            {item.isAvailable ? t('available') : t('soldOut')}
+                                                        <Tag color={item.available ? 'success' : 'warning'}>
+                                                            {item.available ? t('available') : t('soldOut')}
                                                         </Tag>
-                                                        <Tag>{`₹${item.price}`}</Tag>
+                                                        {!item.active ? <Tag>Hidden</Tag> : null}
+                                                        <Tag>{`${currencySymbol}${item.price}`}</Tag>
                                                     </Flex>
                                                 </Flex>
                                             }
@@ -315,90 +362,130 @@ export default function MobileMenuScreen() {
 
             {editingItem ? (
                 <ItemEditSheet
+                    categories={categoryOptions}
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
                     item={editingItem}
                     onClose={() => setEditingItem(null)}
                     onDelete={async (itemId) => {
-                        setMenuData((prev: any) => {
-                            if (!prev?.files) return prev;
-                            const updated = JSON.parse(JSON.stringify(prev));
-                            updated.files.forEach((file: any) => {
-                                file.extractedData?.categories?.forEach((cat: any) => {
-                                    if (cat.items) {
-                                        cat.items = cat.items.filter(
-                                            (menuItem: any) => (menuItem.id || `${cat.name}-${menuItem.name}`) !== itemId
-                                        );
-                                    }
-                                });
-                            });
-                            return updated;
-                        });
-                        setEditingItem(null);
-                        Toast.show({ content: t('itemDeleted'), duration: 1000 });
-                        try {
-                            if (menuData?.projectId) {
-                                await updateProject(menuData);
+                        if (!menuData) return;
+                        const previous = menuData;
+                        const updated = removeObjRef(menuData);
+                        updated.files?.forEach((file: any) => {
+                            if (file.extractedData?.data?.items) {
+                                file.extractedData.data.items = file.extractedData.data.items.filter(
+                                    (menuItem: any) => menuItem.id !== itemId
+                                );
                             }
+                        });
+                        setMenuData(updated);
+                        try {
+                            if (updated?.projectId) {
+                                await updateProject(updated);
+                            }
+                            setEditingItem(null);
+                            Toast.show({ content: t('itemDeleted'), duration: 1000 });
                         } catch {
+                            setMenuData(previous);
                             Toast.show({ content: t('failedToSync'), duration: 2000 });
                         }
                     }}
                     onSave={async (updatedItem) => {
-                        setMenuData((prev: any) => {
-                            if (!prev?.files) return prev;
-                            const updated = JSON.parse(JSON.stringify(prev));
-                            updated.files.forEach((file: any) => {
-                                file.extractedData?.categories?.forEach((cat: any) => {
-                                    cat.items?.forEach((menuItem: any, idx: number) => {
-                                        if ((menuItem.id || `${cat.name}-${menuItem.name}`) === editingItem.id) {
-                                            cat.items[idx] = { ...menuItem, ...updatedItem };
-                                        }
-                                    });
-                                });
+                        if (!menuData) return;
+                        const previous = menuData;
+                        const updated = removeObjRef(menuData);
+                        updated.files?.forEach((file: any) => {
+                            file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
+                                if (menuItem.id === editingItem.id) {
+                                    const nextItem = { ...menuItem };
+                                    if (updatedItem.name !== undefined) {
+                                        const nextName = typeof menuItem.name === 'object' && menuItem.name ? { ...menuItem.name } : {};
+                                        nextName[activeLang] = updatedItem.name;
+                                        nextItem.name = nextName;
+                                    }
+                                    if (updatedItem.description !== undefined) {
+                                        const nextDescription = typeof menuItem.description === 'object' && menuItem.description ? { ...menuItem.description } : {};
+                                        nextDescription[activeLang] = updatedItem.description;
+                                        nextItem.description = nextDescription;
+                                    }
+                                    if (updatedItem.price !== undefined) {
+                                        nextItem.price = String(updatedItem.price);
+                                    }
+                                    if (updatedItem.available !== undefined) {
+                                        nextItem.available = updatedItem.available;
+                                    }
+                                    if (updatedItem.active !== undefined) {
+                                        nextItem.active = updatedItem.active;
+                                    }
+                                    if (updatedItem.categoryId) {
+                                        nextItem.category = updatedItem.categoryId;
+                                    }
+                                    if (updatedItem.image !== undefined) {
+                                        nextItem.images = updatedItem.image ? [{ url: updatedItem.image, name: `${updatedItem.name || menuItem.id}.jpg` }] : [];
+                                    }
+                                    file.extractedData.data.items[idx] = nextItem;
+                                }
                             });
-                            return updated;
                         });
-                        setEditingItem(null);
-                        Toast.show({ content: t('itemUpdated'), duration: 1000 });
+                        setMenuData(updated);
+                        try {
+                            if (updated?.projectId) {
+                                await updateProject(updated);
+                            }
+                            setEditingItem(null);
+                            Toast.show({ content: t('itemUpdated'), duration: 1000 });
+                        } catch {
+                            setMenuData(previous);
+                            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+                        }
                     }}
                 />
             ) : null}
 
             {isAddSheetOpen ? (
                 <AddItemSheet
-                    categories={Object.keys(groupedItems)}
+                    categories={categoryOptions}
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
                     onClose={() => setIsAddSheetOpen(false)}
                     onSave={async (newItem) => {
-                        setMenuData((prev: any) => {
-                            if (!prev?.files) return prev;
-                            const updated = JSON.parse(JSON.stringify(prev));
-                            let targetFile = updated.files[0];
-                            if (!targetFile) return prev;
-                            if (!targetFile.extractedData) targetFile.extractedData = { categories: [] };
-                            if (!targetFile.extractedData.categories) targetFile.extractedData.categories = [];
-                            let targetCat = targetFile.extractedData.categories.find((cat: any) => cat.name === newItem.category);
-                            if (!targetCat) {
-                                targetCat = { name: newItem.category || 'Uncategorized', items: [] };
-                                targetFile.extractedData.categories.push(targetCat);
-                            }
-                            if (!targetCat.items) targetCat.items = [];
-                            targetCat.items.push({
-                                id: `${newItem.category}-${newItem.name}-${Date.now()}`,
-                                name: newItem.name,
-                                price: newItem.price,
-                                description: newItem.description,
-                                isAvailable: true,
+                        if (!menuData) return;
+                        const previous = menuData;
+                        const updated = removeObjRef(menuData);
+                        let targetFile = updated.files?.[0];
+                        if (!targetFile) return;
+                        if (!targetFile.extractedData) targetFile.extractedData = { data: { categories: [], items: [], languages: [] } };
+                        if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
+                        if (!targetFile.extractedData.data.categories) targetFile.extractedData.data.categories = [];
+                        if (!targetFile.extractedData.data.items) targetFile.extractedData.data.items = [];
+
+                        let categoryId = newItem.categoryId;
+                        if (!categoryId) {
+                            categoryId = `cat-${Date.now()}`;
+                            targetFile.extractedData.data.categories.push({
+                                id: categoryId,
+                                active: true,
+                                name: { [activeLang]: newItem.categoryName || 'Uncategorized' },
                             });
-                            return updated;
+                        }
+
+                        targetFile.extractedData.data.items.push({
+                            id: `item-${Date.now()}`,
+                            name: { [activeLang]: newItem.name },
+                            description: newItem.description ? { [activeLang]: newItem.description } : undefined,
+                            price: String(newItem.price || 0),
+                            category: categoryId,
+                            active: true,
+                            available: true,
                         });
-                        setIsAddSheetOpen(false);
-                        Toast.show({ content: t('itemAdded'), duration: 1000 });
+
+                        setMenuData(updated);
                         try {
-                            if (menuData?.projectId) {
-                                await updateProject(menuData);
+                            if (updated?.projectId) {
+                                await updateProject(updated);
                             }
+                            setIsAddSheetOpen(false);
+                            Toast.show({ content: t('itemAdded'), duration: 1000 });
                         } catch {
+                            setMenuData(previous);
                             Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
                         }
                     }}

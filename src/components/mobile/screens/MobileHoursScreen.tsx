@@ -1,10 +1,16 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
+import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { updateStore } from '@database/stores';
+import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
+import { getExportMethod, getMealName } from '@util/campaignUtils';
+import { getHoursConfidenceState } from '@lib/outputControl';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useMemo, useState } from 'react';
-import { LuClock, LuPower, LuPowerOff } from 'react-icons/lu';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { LuClock, LuMessageCircle, LuPower, LuPowerOff, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, Text, Title, Toast } from '../antd';
 
 type DayHours = {
@@ -37,10 +43,28 @@ const format24to12 = (time24: string): string => {
 
 export default function MobileHoursScreen() {
     const t = useTranslations('MobileHours');
+    const tToday = useTranslations('MobileToday');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isUpdating, setIsUpdating] = useState(false);
     const [originalTodayHours, setOriginalTodayHours] = useState<string | null>(null);
     const todayKey = getTodayKey();
+    const { todayCampaigns, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
+    const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
+    const [isNudgeDismissed, setIsNudgeDismissed] = useState(false);
+    const [nudgeInitialized, setNudgeInitialized] = useState(false);
+
+    useEffect(() => {
+        if (!storeDetails?.storeId) return;
+        const dismissKey = `hours_nudge_dismissed_${storeDetails.storeId}`;
+        const dismissedAt = localStorage.getItem(dismissKey);
+        if (dismissedAt) {
+            const daysSinceDismiss = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24);
+            if (daysSinceDismiss < 30) {
+                setIsNudgeDismissed(true);
+            }
+        }
+        setNudgeInitialized(true);
+    }, [storeDetails?.storeId]);
 
     const todayStatus = useMemo((): TodayStatus => {
         const todayValue = storeDetails?.workingHours?.[todayKey];
@@ -106,6 +130,33 @@ export default function MobileHoursScreen() {
         }
     }, [originalTodayHours, setStoreDetails, storeDetails, t, todayKey]);
 
+    const handleCompleteCampaign = async (campaign: TodayCampaignSummary) => {
+        setIsCampaignProcessing(true);
+        try {
+            const method = getExportMethod(campaign.primarySurface);
+            await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
+            Toast.show({ content: tToday('done'), duration: 1500 });
+            mutate();
+        } catch {
+            Toast.show({ content: tToday('failed'), duration: 2000 });
+        } finally {
+            setIsCampaignProcessing(false);
+        }
+    };
+
+    const handleSkipCampaign = async (campaignId: string, type: CampaignType) => {
+        setIsCampaignProcessing(true);
+        try {
+            await dbSkipCampaign(campaignId, type);
+            Toast.show({ content: tToday('skipped'), duration: 1500 });
+            mutate();
+        } catch {
+            Toast.show({ content: tToday('failedToSkip'), duration: 2000 });
+        } finally {
+            setIsCampaignProcessing(false);
+        }
+    };
+
     if (!storeDetails) {
         return (
             <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
@@ -117,6 +168,47 @@ export default function MobileHoursScreen() {
     const status = todayStatus === 'open'
         ? { color: '#16a34a', icon: <LuPower color="#16a34a" size={18} />, label: t('open'), sublabel: storeDetails.name || 'Your business' }
         : { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
+
+    const hoursConfidence = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
+        ? getHoursConfidenceState({
+            workingHours: storeDetails.workingHours,
+            hoursLastUpdatedAt: (storeDetails as any).hoursLastUpdatedAt || (storeDetails as any).modifiedOn,
+            timeZone: storeDetails.timeZone,
+        })
+        : 'TRUSTED';
+
+    const showHoursNudge = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
+        && nudgeInitialized
+        && !isNudgeDismissed
+        && hoursConfidence !== 'TRUSTED';
+
+    const nudgeHeading = hoursConfidence === 'RISKY' ? 'Hours may be outdated' : 'Hours need updating';
+    const nudgeMessage = hoursConfidence === 'RISKY'
+        ? 'Update your hours so customers see accurate open status.'
+        : 'Add your hours so customers know when you are open.';
+
+    const handleDismissNudge = () => {
+        if (!storeDetails?.storeId) return;
+        setIsNudgeDismissed(true);
+        const dismissKey = `hours_nudge_dismissed_${storeDetails.storeId}`;
+        localStorage.setItem(dismissKey, Date.now().toString());
+    };
+
+    const primaryCampaign = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading
+        ? (todayCampaigns?.primary as TodayCampaignSummary | undefined)
+        : undefined;
+    const mealName = primaryCampaign ? getMealName() : '';
+    const primaryTitle = primaryCampaign
+        ? (ACTION_TITLES[primaryCampaign.type] || 'Share this item')
+            .replace('{itemName}', primaryCampaign.subject?.itemName || 'Item')
+            .replace('{mealName}', mealName)
+            .replace('{festivalName}', 'the occasion')
+        : '';
+    const primaryContext = primaryCampaign
+        ? (CONTEXT_TEMPLATES[primaryCampaign.type] || '')
+            .replace('{mealName}', mealName.toLowerCase())
+            .replace('{festivalName}', 'the occasion')
+        : '';
 
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
@@ -158,6 +250,59 @@ export default function MobileHoursScreen() {
                     )}
                 </Flex>
             </Card>
+
+            {showHoursNudge ? (
+                <Card size="small" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+                    <Flex align="flex-start" justify="space-between">
+                        <Flex align="flex-start" gap={12} style={{ flex: 1 }}>
+                            <Flex
+                                align="center"
+                                justify="center"
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 8,
+                                    backgroundColor: '#fff7e6',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <LuClock color="#d48806" size={18} />
+                            </Flex>
+                            <Flex gap={4} style={{ flex: 1 }} vertical>
+                                <Text strong>{nudgeHeading}</Text>
+                                <Text type="secondary">{nudgeMessage}</Text>
+                            </Flex>
+                        </Flex>
+                        <Button fill="none" onClick={handleDismissNudge} size="small" style={{ paddingInline: 6 }}>
+                            <LuX size={14} />
+                        </Button>
+                    </Flex>
+                </Card>
+            ) : null}
+
+            {primaryCampaign ? (
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" gap={8}>
+                            <LuMessageCircle color="#2563eb" size={18} />
+                            <Text strong>Today&apos;s action</Text>
+                        </Flex>
+                        <Text strong>{primaryTitle}</Text>
+                        {primaryContext ? <Text type="secondary">{primaryContext}</Text> : null}
+                        <Button block loading={isCampaignProcessing} onClick={() => void handleCompleteCampaign(primaryCampaign)} size="large">
+                            {SURFACE_BUTTON_COPY[primaryCampaign.primarySurface] || tToday('share')}
+                        </Button>
+                        <Button
+                            block
+                            fill="none"
+                            onClick={() => void handleSkipCampaign(primaryCampaign.campaignId, primaryCampaign.type)}
+                            style={{ color: '#94a3b8' }}
+                        >
+                            <Text type="secondary">{tToday('skip')}</Text>
+                        </Button>
+                    </Flex>
+                </Card>
+            ) : null}
 
             <Card title={t('weeklyHours')}>
                 <List>

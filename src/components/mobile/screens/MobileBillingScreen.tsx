@@ -246,7 +246,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         extra={<Text>{formatDate(sub.renewsOn || sub.cycleEndDate)}</Text>}
                                     />
                                     <List.Item
-                                        title={<Text>AI credits</Text>}
+                                        title={<Text>AI capacity remaining</Text>}
                                         extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits}</Tag>}
                                     />
                                 </List>

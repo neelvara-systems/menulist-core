@@ -5,22 +5,26 @@ import { Button, Card, Flex, Input, Picker, Popup, Text, TextArea, Title } from 
 
 interface AddItemSheetProps {
     currencySymbol: string;
-    categories: string[];
+    categories: { id: string; name: string }[];
     onClose: () => void;
-    onSave: (newItem: { name: string; price: number; category: string; description: string }) => void;
+    onSave: (newItem: { name: string; price: number; categoryId: string | null; categoryName: string; description: string }) => void;
 }
 
 export default function AddItemSheet({ currencySymbol, categories, onClose, onSave }: AddItemSheetProps) {
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [description, setDescription] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState(categories[0] || '');
+    const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || '');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+    const [newCategory, setNewCategory] = useState('');
 
     const handleSave = () => {
         if (!name.trim()) return;
+        const chosenCategory = categories.find((category) => category.id === selectedCategory);
+        const categoryName = newCategory.trim() || chosenCategory?.name || 'Uncategorized';
         onSave({
-            category: selectedCategory,
+            categoryId: newCategory.trim() ? null : (selectedCategory || null),
+            categoryName,
             description: description.trim(),
             name: name.trim(),
             price: parseFloat(price) || 0,
@@ -51,10 +55,10 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
                         <Flex gap={8} vertical>
                             <Text type="secondary">Category</Text>
                             <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                {selectedCategory || 'Select category'}
+                                {categories.find((category) => category.id === selectedCategory)?.name || 'Select category'}
                             </Button>
                             <Picker
-                                columns={[categories.map((category) => ({ label: category, value: category }))]}
+                                columns={[categories.map((category) => ({ label: category.name, value: category.id }))]}
                                 onClose={() => setShowCategoryPicker(false)}
                                 onConfirm={(value) => { if (value[0]) setSelectedCategory(value[0] as string); }}
                                 value={[selectedCategory]}
@@ -63,6 +67,13 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
                         </Flex>
                     </Card>
                 ) : null}
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text type="secondary">New Category (optional)</Text>
+                        <Input onChange={setNewCategory} placeholder="Add a new category" value={newCategory} />
+                    </Flex>
+                </Card>
 
                 <Card>
                     <Flex gap={8} vertical>
