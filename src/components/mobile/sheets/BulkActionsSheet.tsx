@@ -247,7 +247,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '90vh' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '90vh', overflowX: 'hidden' }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"

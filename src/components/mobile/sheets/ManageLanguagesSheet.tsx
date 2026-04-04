@@ -122,7 +122,7 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '88vh' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '88vh', overflowX: 'hidden' }}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
             visible={visible}
@@ -190,11 +190,11 @@ export default function ManageLanguagesSheet({
                                 disabled={isSaving || addableLanguages.length === 0 || projectLanguages.length >= LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
                                 fill="outline"
                                 onClick={() => setShowAddPicker(true)}
-                                style={{ justifyContent: 'flex-start', minHeight: 44 }}
+                                style={{ justifyContent: 'flex-start', minHeight: 44, overflow: 'hidden' }}
                             >
                                 <Flex align="center" gap={8}>
                                     <LuPlus size={16} />
-                                    <Text>
+                                    <Text style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {pendingLanguageCode
                                             ? (addableLanguages.find((language) => language.code === pendingLanguageCode)?.nativeName
                                                 || addableLanguages.find((language) => language.code === pendingLanguageCode)?.name

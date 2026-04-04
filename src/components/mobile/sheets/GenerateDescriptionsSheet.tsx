@@ -76,7 +76,7 @@ export default function GenerateDescriptionsSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '88vh', overflowY: 'auto' }}
+            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto' }}
             destroyOnClose
             onMaskClick={isProcessing ? undefined : onClose}
             visible={visible}
@@ -109,20 +109,20 @@ export default function GenerateDescriptionsSheet({
                 <Card size="small" style={{ borderRadius: 16 }}>
                     <Flex gap={12} vertical>
                         <Text strong>Description length</Text>
-                        <Flex gap={8}>
+                        <Flex gap={8} vertical>
                             {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
                                 <Button
                                     key={option.value}
                                     disabled={isProcessing}
                                     fill={contentLength === option.value ? 'solid' : 'outline'}
                                     onClick={() => setContentLength(option.value)}
-                                    style={{ flex: 1, minHeight: 52 }}
+                                    style={{ minHeight: 52, width: '100%' }}
                                 >
-                                    <Flex gap={2} vertical>
+                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
                                         <Text strong style={{ color: contentLength === option.value ? '#fff' : undefined }}>
                                             {option.label}
                                         </Text>
-                                        <Text style={{ color: contentLength === option.value ? 'rgba(255,255,255,0.8)' : token.colorTextSecondary }}>
+                                        <Text style={{ color: contentLength === option.value ? 'rgba(255,255,255,0.8)' : token.colorTextSecondary, whiteSpace: 'normal' }}>
                                             {option.description}
                                         </Text>
                                     </Flex>
@@ -154,7 +154,7 @@ export default function GenerateDescriptionsSheet({
                     </Flex>
                 </Card>
 
-                <Flex gap={12}>
+                <Flex gap={12} vertical>
                     <Button
                         block
                         color="primary"

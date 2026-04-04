@@ -1,10 +1,18 @@
 import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
-import { trackOwnerControlUsage } from '@database/ownerControlUsage';
-import { removeObjRef } from '@util/utils';
 import { Alert, Button, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
-import { Project, ProjectFileType } from '../types';
+import { Project } from '../types';
+import {
+    applyDecisionBlockSettings,
+    buildAllItemOptions,
+    getCategoryName,
+    getDecisionBlockSettings,
+    getFilteredDecisionBlockOptionIds,
+    hasDecisionBlockChanges,
+    isPinnedItemUnavailable,
+    trackDecisionBlockChanges,
+} from './decisionBlocks.shared';
 
 const { Text, Title } = Typography;
 
@@ -14,90 +22,6 @@ interface DecisionBlocksSettingsModalProps {
     businessType?: string;
     onClose: () => void;
     onApply: (updatedProject: Project) => void;
-}
-
-interface ItemOption {
-    value: string;
-    label: string;
-    category: string;
-}
-
-// Build all items from all files for the dropdown
-function buildAllItemOptions(files: ProjectFileType[], activeLang: string): ItemOption[] {
-    const options: ItemOption[] = [];
-    files?.forEach(file => {
-        if (!file.extractedData?.data?.items) return;
-        file.extractedData.data.items.forEach(item => {
-            if (item.active === false) return; // Skip inactive items
-            const name = item.name?.[activeLang] || item.name?.['en'] || 'Untitled item';
-            options.push({
-                value: item.id,
-                label: name,
-                category: item.category || '',
-            });
-        });
-    });
-    return options;
-}
-
-/**
- * Check if a pinned item is currently unavailable
- * Used to show admin warning when pinned item won't be displayed to customers
- * 
- * IMPORTANT: Owner pin does NOT override availability
- * If pinned item is unavailable, system will use next candidate
- * This warning helps owner understand why their pin isn't showing
- */
-function isPinnedItemUnavailable(
-    files: ProjectFileType[],
-    pinnedId: string | undefined
-): { unavailable: boolean; itemName?: string; reason?: string } {
-    if (!pinnedId) return { unavailable: false };
-
-    for (const file of files || []) {
-        const items = file.extractedData?.data?.items || [];
-        const item = items.find(i => i.id === pinnedId);
-
-        if (item) {
-            // Check if item is unavailable
-            if (item.available === false) {
-                const name = item.name?.['en'] || 'This item';
-                return {
-                    unavailable: true,
-                    itemName: name,
-                    reason: 'marked as unavailable'
-                };
-            }
-            if (item.active === false) {
-                const name = item.name?.['en'] || 'This item';
-                return {
-                    unavailable: true,
-                    itemName: name,
-                    reason: 'disabled'
-                };
-            }
-            // Item exists and is available
-            return { unavailable: false };
-        }
-    }
-
-    // Item not found (might have been deleted)
-    return {
-        unavailable: true,
-        itemName: 'Pinned item',
-        reason: 'not found (may have been deleted)'
-    };
-}
-
-// Get category name by ID
-function getCategoryName(files: ProjectFileType[], categoryId: string, activeLang: string): string {
-    for (const file of files || []) {
-        const cat = file.extractedData?.data?.categories?.find(c => c.id === categoryId);
-        if (cat) {
-            return cat.name?.[activeLang] || cat.name?.['en'] || 'Unknown';
-        }
-    }
-    return '';
 }
 
 const DecisionBlocksSettingsModal = ({
@@ -111,12 +35,12 @@ const DecisionBlocksSettingsModal = ({
     const activeLang = projectData.languages?.[0] || 'en';
 
     // Get current settings or defaults
-    const currentSettings = projectData.menuSettings?.decisionBlocks || {};
+    const currentSettings = getDecisionBlockSettings(projectData);
 
     // Local state for settings
-    const [enablePopular, setEnablePopular] = useState(currentSettings.enablePopular !== false);
-    const [enableQuickPick, setEnableQuickPick] = useState(currentSettings.enableQuickPick !== false);
-    const [enableBestValue, setEnableBestValue] = useState(currentSettings.enableBestValue !== false);
+    const [enablePopular, setEnablePopular] = useState(currentSettings.enablePopular);
+    const [enableQuickPick, setEnableQuickPick] = useState(currentSettings.enableQuickPick);
+    const [enableBestValue, setEnableBestValue] = useState(currentSettings.enableBestValue);
     const [pinnedPopular, setPinnedPopular] = useState<string | undefined>(currentSettings.pinnedPopular);
     const [pinnedQuickPick, setPinnedQuickPick] = useState<string | undefined>(currentSettings.pinnedQuickPick);
     const [pinnedBestValue, setPinnedBestValue] = useState<string | undefined>(currentSettings.pinnedBestValue);
@@ -140,86 +64,28 @@ const DecisionBlocksSettingsModal = ({
 
     // Reset to initial state when modal opens
     const handleOpen = () => {
-        const settings = projectData.menuSettings?.decisionBlocks || {};
-        setEnablePopular(settings.enablePopular !== false);
-        setEnableQuickPick(settings.enableQuickPick !== false);
-        setEnableBestValue(settings.enableBestValue !== false);
+        const settings = getDecisionBlockSettings(projectData);
+        setEnablePopular(settings.enablePopular);
+        setEnableQuickPick(settings.enableQuickPick);
+        setEnableBestValue(settings.enableBestValue);
         setPinnedPopular(settings.pinnedPopular);
         setPinnedQuickPick(settings.pinnedQuickPick);
         setPinnedBestValue(settings.pinnedBestValue);
     };
 
     // Check if there are changes
-    const hasChanges = useMemo(() => {
-        const settings = projectData.menuSettings?.decisionBlocks || {};
-        return (
-            enablePopular !== (settings.enablePopular !== false) ||
-            enableQuickPick !== (settings.enableQuickPick !== false) ||
-            enableBestValue !== (settings.enableBestValue !== false) ||
-            pinnedPopular !== settings.pinnedPopular ||
-            pinnedQuickPick !== settings.pinnedQuickPick ||
-            pinnedBestValue !== settings.pinnedBestValue
-        );
-    }, [enablePopular, enableQuickPick, enableBestValue, pinnedPopular, pinnedQuickPick, pinnedBestValue, projectData.menuSettings?.decisionBlocks]);
+    const hasChanges = useMemo(() => hasDecisionBlockChanges(projectData, {
+        enablePopular,
+        enableQuickPick,
+        enableBestValue,
+        pinnedPopular,
+        pinnedQuickPick,
+        pinnedBestValue,
+    }), [enableBestValue, enablePopular, enableQuickPick, pinnedBestValue, pinnedPopular, pinnedQuickPick, projectData]);
 
     // Apply changes
     const handleApply = () => {
-        const updatedProject = removeObjRef(projectData) as Project;
-        const currentSettings = projectData.menuSettings?.decisionBlocks || {};
-
-        // Track Decision Block setting changes (Authority Maturation Doctrine)
-        // Track enable/disable toggles
-        if (enablePopular !== (currentSettings.enablePopular !== false)) {
-            trackOwnerControlUsage('enablePopular', {
-                previousValue: currentSettings.enablePopular !== false,
-                newValue: enablePopular,
-                projectId: projectData.projectId,
-            });
-        }
-        if (enableQuickPick !== (currentSettings.enableQuickPick !== false)) {
-            trackOwnerControlUsage('enableQuickPick', {
-                previousValue: currentSettings.enableQuickPick !== false,
-                newValue: enableQuickPick,
-                projectId: projectData.projectId,
-            });
-        }
-        if (enableBestValue !== (currentSettings.enableBestValue !== false)) {
-            trackOwnerControlUsage('enableBestValue', {
-                previousValue: currentSettings.enableBestValue !== false,
-                newValue: enableBestValue,
-                projectId: projectData.projectId,
-            });
-        }
-        // Track pinned item changes
-        if (pinnedPopular !== currentSettings.pinnedPopular) {
-            trackOwnerControlUsage('pinnedPopular', {
-                previousValue: currentSettings.pinnedPopular,
-                newValue: pinnedPopular,
-                projectId: projectData.projectId,
-            });
-        }
-        if (pinnedQuickPick !== currentSettings.pinnedQuickPick) {
-            trackOwnerControlUsage('pinnedQuickPick', {
-                previousValue: currentSettings.pinnedQuickPick,
-                newValue: pinnedQuickPick,
-                projectId: projectData.projectId,
-            });
-        }
-        if (pinnedBestValue !== currentSettings.pinnedBestValue) {
-            trackOwnerControlUsage('pinnedBestValue', {
-                previousValue: currentSettings.pinnedBestValue,
-                newValue: pinnedBestValue,
-                projectId: projectData.projectId,
-            });
-        }
-
-        // Initialize menuSettings if not exists
-        if (!updatedProject.menuSettings) {
-            updatedProject.menuSettings = {};
-        }
-
-        // Update decision blocks settings
-        updatedProject.menuSettings.decisionBlocks = {
+        const nextSettings = {
             enablePopular,
             enableQuickPick,
             enableBestValue,
@@ -227,17 +93,22 @@ const DecisionBlocksSettingsModal = ({
             pinnedQuickPick,
             pinnedBestValue,
         };
-
+        trackDecisionBlockChanges(projectData, nextSettings);
+        const updatedProject = applyDecisionBlockSettings(projectData, nextSettings);
         onApply(updatedProject);
         onClose();
     };
 
     // Filter options for select (remove already pinned items from other blocks)
     const getFilteredOptions = (currentBlock: 'popular' | 'quickPick' | 'bestValue') => {
-        const pinnedIds = new Set<string>();
-        if (currentBlock !== 'popular' && pinnedPopular) pinnedIds.add(pinnedPopular);
-        if (currentBlock !== 'quickPick' && pinnedQuickPick) pinnedIds.add(pinnedQuickPick);
-        if (currentBlock !== 'bestValue' && pinnedBestValue) pinnedIds.add(pinnedBestValue);
+        const pinnedIds = getFilteredDecisionBlockOptionIds(currentBlock, {
+            enablePopular,
+            enableQuickPick,
+            enableBestValue,
+            pinnedPopular,
+            pinnedQuickPick,
+            pinnedBestValue,
+        });
 
         return itemOptions
             .filter(opt => !pinnedIds.has(opt.value))

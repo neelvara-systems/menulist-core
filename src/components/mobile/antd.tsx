@@ -24,6 +24,7 @@ import {
     Switch as AntSwitch,
     Tabs as AntTabs,
     Tag as AntTag,
+    theme,
     Typography,
     Upload as AntUpload,
     message,
@@ -47,29 +48,29 @@ function sanitizeStyle(style?: AnyStyle) {
     return next as CSSProperties;
 }
 
-function buttonStyles(fill?: string, color?: string) {
+function buttonStyles(token: ReturnType<typeof theme.useToken>['token'], fill?: string, color?: string) {
     if (fill === 'none') {
         return { background: 'transparent', borderColor: 'transparent', boxShadow: 'none' };
     }
 
     if (fill === 'solid' && color === 'success') {
-        return { backgroundColor: '#16a34a', borderColor: '#16a34a', color: '#fff' };
+        return { backgroundColor: token.colorSuccess, borderColor: token.colorSuccess, color: token.colorTextLightSolid };
     }
 
     if (fill === 'solid' && color === 'warning') {
-        return { backgroundColor: '#faad14', borderColor: '#faad14', color: '#fff' };
+        return { backgroundColor: token.colorWarning, borderColor: token.colorWarning, color: token.colorTextLightSolid };
     }
 
     if (fill === 'outline' && color === 'success') {
-        return { backgroundColor: 'transparent', borderColor: '#16a34a', color: '#16a34a' };
+        return { backgroundColor: 'transparent', borderColor: token.colorSuccess, color: token.colorSuccess };
     }
 
     if (fill === 'outline' && color === 'primary') {
-        return { backgroundColor: 'transparent', borderColor: '#1677ff', color: '#1677ff' };
+        return { backgroundColor: 'transparent', borderColor: token.colorPrimary, color: token.colorPrimary };
     }
 
     if (fill === 'outline' && color === 'warning') {
-        return { backgroundColor: 'transparent', borderColor: '#faad14', color: '#faad14' };
+        return { backgroundColor: 'transparent', borderColor: token.colorWarning, color: token.colorWarning };
     }
 
     return undefined;
@@ -90,6 +91,7 @@ type ButtonProps = {
 };
 
 export function Button({ block, children, className, color, disabled, fill = 'solid', htmlType, loading, onClick, size, style }: ButtonProps) {
+    const { token } = theme.useToken();
     const antType = fill === 'solid' && color !== 'warning' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
 
@@ -103,7 +105,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
             loading={loading}
             onClick={onClick}
             size={antSize}
-            style={{ ...buttonStyles(fill, color), ...sanitizeStyle(style) }}
+            style={{ ...buttonStyles(token, fill, color), ...sanitizeStyle(style) }}
             type={antType}
         >
             {children}
@@ -135,6 +137,7 @@ export function DotLoading(_: { color?: string }) {
 export const Empty = AntEmpty;
 
 export function FloatingBubble({ children, onClick, style }: { children?: ReactNode; onClick?: () => void; style?: AnyStyle }) {
+    const { token } = theme.useToken();
     const bubbleStyle = style || {};
     return (
         <FloatButton
@@ -142,10 +145,10 @@ export function FloatingBubble({ children, onClick, style }: { children?: ReactN
             onClick={onClick}
             type="primary"
             style={{
-                backgroundColor: bubbleStyle['--background'] || '#1677ff',
-                borderColor: bubbleStyle['--background'] || '#1677ff',
+                backgroundColor: bubbleStyle['--background'] || token.colorPrimary,
+                borderColor: bubbleStyle['--background'] || token.colorPrimary,
                 bottom: bubbleStyle['--initial-position-bottom'] || 76,
-                color: '#fff',
+                color: token.colorTextLightSolid,
                 height: bubbleStyle['--size'] || 52,
                 insetInlineEnd: bubbleStyle['--initial-position-right'] || 16,
                 width: bubbleStyle['--size'] || 52,
@@ -180,12 +183,13 @@ function ListComponent({ children, className, style }: ListProps) {
 }
 
 function ListItem({ arrow, children, description, extra, onClick, prefix, style, title }: ListItemProps) {
+    const { token } = theme.useToken();
     return (
         <AntList.Item
             extra={(
                 <Flex align="center" gap={8}>
                     {extra}
-                    {arrow ? <LuChevronRight color="#94a3b8" size={16} /> : null}
+                    {arrow ? <LuChevronRight color={token.colorTextTertiary} size={16} /> : null}
                 </Flex>
             )}
             onClick={onClick}
@@ -267,8 +271,9 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 }
 
 export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
+    const { token } = theme.useToken();
     return (
-        <Flex align="center" className={className} justify="space-between" style={{ borderBottom: '1px solid #f0f0f0', minHeight: (style?.['--height'] || 48) as number, padding: '8px 12px', ...sanitizeStyle(style) }}>
+        <Flex align="center" className={className} justify="space-between" style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, minHeight: (style?.['--height'] || 48) as number, padding: '8px 12px', ...sanitizeStyle(style) }}>
             <Button fill="none" onClick={onBack} style={{ minWidth: 32, paddingInline: 0 }}>
                 {backIcon ?? <LuArrowLeft size={18} />}
             </Button>
@@ -299,6 +304,7 @@ export function Picker({
     value?: string[];
     visible?: boolean;
 }) {
+    const { token } = theme.useToken();
     const locale = useLocale();
     const localeText = getMobileUiLocaleText(locale);
     const options = columns[0] || [];
@@ -343,7 +349,7 @@ export function Picker({
                         <AntList.Item onClick={() => setSelectedValue(option.value)}>
                             <Flex align="center" justify="space-between" style={{ width: '100%' }}>
                                 <Text>{option.label}</Text>
-                                {selectedValue === option.value ? <LuCheck color="#1677ff" size={16} /> : null}
+                                {selectedValue === option.value ? <LuCheck color={token.colorPrimary} size={16} /> : null}
                             </Flex>
                         </AntList.Item>
                     )}

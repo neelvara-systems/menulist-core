@@ -1,12 +1,12 @@
 'use client'
 
-import { getEditorActions } from '../../templates/main-app/projects/editorView/editorActions.config';
 import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight } from 'react-icons/lu';
-import { Card, Flex, List, NavBar, Popup, Text, Title } from '../antd';
+import { LuArrowUpDown, LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight } from 'react-icons/lu';
+import { getEditorActions } from '../../templates/main-app/projects/editorView/editorActions.config';
+import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
 type CommandAction = {
     key: string;
@@ -26,6 +26,8 @@ interface MobileMenuCommandSheetProps {
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
     onPricing: () => void;
+    onReorderMenu: () => void;
+    onSmartRecommendations: () => void;
     onShowHide: () => void;
     onMoveCategory: () => void;
     visible: boolean;
@@ -40,6 +42,8 @@ export default function MobileMenuCommandSheet({
     onGenerateDescriptions,
     onManageLanguages,
     onPricing,
+    onReorderMenu,
+    onSmartRecommendations,
     onShowHide,
     onMoveCategory,
     visible,
@@ -52,6 +56,10 @@ export default function MobileMenuCommandSheet({
     );
     const descriptionAction = useMemo(
         () => getEditorActions(labels).find((action) => action.key === 'description'),
+        [labels]
+    );
+    const decisionBlocksAction = useMemo(
+        () => getEditorActions(labels).find((action) => action.key === 'decisionBlocks'),
         [labels]
     );
 
@@ -95,8 +103,15 @@ export default function MobileMenuCommandSheet({
             key: 'categories',
             icon: <LuTags style={{ fontSize: 20 }} />,
             title: t('categories'),
-            description: 'Manage categories, visibility, and category order',
+            description: 'Manage categories, visibility, schedule, and delete actions',
             onClick: onCategories,
+        },
+        {
+            key: 'reorder-menu',
+            icon: <LuArrowUpDown style={{ fontSize: 20 }} />,
+            title: t('reorderMenu'),
+            description: t('reorderMenuHelp'),
+            onClick: onReorderMenu,
         },
         {
             key: 'language',
@@ -112,26 +127,23 @@ export default function MobileMenuCommandSheet({
             description: descriptionAction?.description || labels.descriptionDesc,
             onClick: onGenerateDescriptions,
         },
-    ], [descriptionAction, labels.descriptionDesc, labels.languageDesc, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onShowHide, t]);
+        {
+            key: 'decision-blocks',
+            icon: decisionBlocksAction?.icon || null,
+            title: decisionBlocksAction?.title || t('smartRecommendationsTitle'),
+            description: decisionBlocksAction?.description || t('smartRecommendationsDesc'),
+            onClick: onSmartRecommendations,
+        },
+    ], [decisionBlocksAction, descriptionAction, labels.descriptionDesc, labels.languageDesc, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onReorderMenu, onShowHide, onSmartRecommendations, t]);
 
-    const desktopOnlyActions = useMemo<CommandAction[]>(() => {
-        const desktopActions = getEditorActions(labels).filter((action) =>
-            ['reorder', 'decisionBlocks'].includes(action.key)
-        );
-
-        return [
-            ...desktopActions,
-        ];
-    }, [labels]);
-
-    const renderIconTile = (icon: React.ReactNode, isDesktopOnly = false) => (
+    const renderIconTile = (icon: React.ReactNode) => (
         <Flex
             align="center"
             justify="center"
             style={{
-                background: isDesktopOnly ? token.colorBgTextHover : token.colorPrimaryBg,
+                background: token.colorPrimaryBg,
                 borderRadius: 12,
-                color: isDesktopOnly ? token.colorTextSecondary : token.colorPrimary,
+                color: token.colorPrimary,
                 height: 40,
                 minWidth: 40,
                 width: 40,
@@ -143,15 +155,12 @@ export default function MobileMenuCommandSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '78vh', overflowY: 'auto' }}
+            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '78vh', overflowX: 'hidden', overflowY: 'auto' }}
             onMaskClick={onClose}
             visible={visible}
         >
             <Flex gap={16} vertical>
                 <NavBar onBack={onClose}>{`Manage & Control Your ${labels.offeringTitle}`}</NavBar>
-                <Text type="secondary">
-                    Customize content and organize {labels.itemsPlural}
-                </Text>
 
                 <Card size="small" style={{ borderRadius: 16 }}>
                     <List>
@@ -178,24 +187,11 @@ export default function MobileMenuCommandSheet({
 
                 <Card size="small" style={{ backgroundColor: token.colorBgLayout, borderRadius: 16 }}>
                     <Flex gap={4} vertical>
-                        <Text strong>More advanced tools</Text>
+                        <Text strong>{t('desktopNoteTitle')}</Text>
                         <Text type="secondary">
-                            These editor actions are available in desktop mode.
+                            {t('desktopNoteDesc')}
                         </Text>
                     </Flex>
-                </Card>
-
-                <Card size="small" style={{ borderRadius: 16, opacity: 0.78 }}>
-                    <List>
-                        {desktopOnlyActions.map((action) => (
-                            <List.Item
-                                description={<Text type="secondary">{action.description}</Text>}
-                                key={`desktop-${action.key}`}
-                                prefix={renderIconTile(action.icon, true)}
-                                title={<Text strong>{action.title}</Text>}
-                            />
-                        ))}
-                    </List>
                 </Card>
             </Flex>
         </Popup>

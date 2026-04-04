@@ -2,8 +2,8 @@
 
 import type { TimeSlotPreset } from '@type/platform/store';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState } from 'react';
-import { LuArrowUpDown, LuCheck, LuChevronDown, LuChevronUp, LuClock, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { useEffect, useMemo, useState } from 'react';
+import { LuArrowUpDown, LuCheck, LuChevronDown, LuChevronUp, LuClock, LuFolderTree, LuPlus, LuTags, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Checkbox, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Toast } from '../antd';
 
 export type MobileCategoryItem = {
@@ -25,6 +25,7 @@ export type MobileCategoryReorderItem = {
 interface CategoryManagerSheetProps {
     categories: MobileCategoryItem[];
     categoryItems: Record<string, MobileCategoryReorderItem[]>;
+    initialMode?: 'manage' | 'reorder';
     presets: TimeSlotPreset[];
     visible: boolean;
     onAdd: (name: string) => Promise<void>;
@@ -40,6 +41,7 @@ interface CategoryManagerSheetProps {
 export default function CategoryManagerSheet({
     categories,
     categoryItems,
+    initialMode = 'manage',
     presets,
     visible,
     onAdd,
@@ -52,9 +54,12 @@ export default function CategoryManagerSheet({
     onClose,
 }: CategoryManagerSheetProps) {
     const t = useTranslations('MobileMenu');
+    const launchedInReorderMode = initialMode === 'reorder';
     const [newCategory, setNewCategory] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+    const [selectedReorderCategoryId, setSelectedReorderCategoryId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isReorderHubMode, setIsReorderHubMode] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
     const [isItemReorderMode, setIsItemReorderMode] = useState(false);
     const [reorderDraft, setReorderDraft] = useState<string[]>([]);
@@ -79,6 +84,11 @@ export default function CategoryManagerSheet({
         [selectedCategoryId, sorted]
     );
 
+    const selectedReorderCategory = useMemo(
+        () => sorted.find((category) => category.id === selectedReorderCategoryId) || null,
+        [selectedReorderCategoryId, sorted]
+    );
+
     const draftCategories = useMemo(() => {
         const source = reorderDraft.length ? reorderDraft : orderedIds;
         return source
@@ -87,9 +97,9 @@ export default function CategoryManagerSheet({
     }, [orderedIds, reorderDraft, sorted]);
 
     const selectedCategoryItems = useMemo(() => {
-        if (!selectedCategoryId) return [];
-        return categoryItems[selectedCategoryId] || [];
-    }, [categoryItems, selectedCategoryId]);
+        if (!selectedReorderCategoryId) return [];
+        return categoryItems[selectedReorderCategoryId] || [];
+    }, [categoryItems, selectedReorderCategoryId]);
 
     const orderedItemIds = useMemo(() => selectedCategoryItems.map((item) => item.id), [selectedCategoryItems]);
 
@@ -102,10 +112,21 @@ export default function CategoryManagerSheet({
 
     const resetCategoryEditor = () => {
         setSelectedCategoryId(null);
-        setIsItemReorderMode(false);
-        setItemReorderDraft([]);
         setDraftName('');
         setDraftPresetIds([]);
+    };
+
+    const resetItemReorder = () => {
+        setSelectedReorderCategoryId(null);
+        setIsItemReorderMode(false);
+        setItemReorderDraft([]);
+    };
+
+    const resetReorderState = () => {
+        setIsReorderHubMode(false);
+        setIsReorderMode(false);
+        setReorderDraft([]);
+        resetItemReorder();
     };
 
     const handleAdd = async () => {
@@ -127,9 +148,34 @@ export default function CategoryManagerSheet({
         setIsReorderMode(true);
     };
 
+    const openReorderHub = () => {
+        setIsReorderHubMode(true);
+        setIsReorderMode(false);
+        setIsItemReorderMode(false);
+        setSelectedReorderCategoryId(null);
+        setReorderDraft([]);
+        setItemReorderDraft([]);
+    };
+
+    useEffect(() => {
+        if (!visible) return;
+        if (initialMode === 'reorder') {
+            openReorderHub();
+            return;
+        }
+        resetReorderState();
+    }, [initialMode, visible]);
+
     const openItemReorderMode = () => {
-        setItemReorderDraft(orderedItemIds);
         setIsItemReorderMode(true);
+        setSelectedReorderCategoryId(null);
+        setItemReorderDraft([]);
+    };
+
+    const openItemReorderCategory = (categoryId: string) => {
+        const nextIds = (categoryItems[categoryId] || []).map((item) => item.id);
+        setSelectedReorderCategoryId(categoryId);
+        setItemReorderDraft(nextIds);
     };
 
     const moveDraftCategory = (categoryId: string, direction: 'up' | 'down') => {
@@ -176,13 +222,12 @@ export default function CategoryManagerSheet({
     };
 
     const handleItemReorderSave = async () => {
-        if (!selectedCategoryId) return;
+        if (!selectedReorderCategoryId) return;
         const nextOrder = itemReorderDraft.length ? itemReorderDraft : orderedItemIds;
         setIsSaving(true);
         try {
-            await onReorderItems(selectedCategoryId, nextOrder);
-            setIsItemReorderMode(false);
-            setItemReorderDraft([]);
+            await onReorderItems(selectedReorderCategoryId, nextOrder);
+            resetItemReorder();
             Toast.show({ content: t('categoryUpdated'), duration: 1200 });
         } catch {
             Toast.show({ content: t('categoryUpdateFailed'), duration: 1500 });
@@ -193,8 +238,6 @@ export default function CategoryManagerSheet({
 
     const openCategoryEditor = (category: MobileCategoryItem) => {
         setSelectedCategoryId(category.id);
-        setIsItemReorderMode(false);
-        setItemReorderDraft([]);
         setDraftName(category.name);
         setDraftActive(category.active);
         setDraftPresetIds(category.timeSlotPresetIds || []);
@@ -268,12 +311,29 @@ export default function CategoryManagerSheet({
                             ? () => {
                                 setIsReorderMode(false);
                                 setReorderDraft([]);
+                                setIsReorderHubMode(true);
                             }
                             : isItemReorderMode
                                 ? () => {
-                                    setIsItemReorderMode(false);
-                                    setItemReorderDraft([]);
+                                    if (selectedReorderCategoryId) {
+                                        setSelectedReorderCategoryId(null);
+                                        setItemReorderDraft([]);
+                                    } else {
+                                        setIsItemReorderMode(false);
+                                        setIsReorderHubMode(true);
+                                    }
                                 }
+                                : isReorderHubMode
+                                    ? () => {
+                                        if (launchedInReorderMode) {
+                                            onClose();
+                                            return;
+                                        }
+                                        setIsReorderHubMode(false);
+                                        setReorderDraft([]);
+                                        setItemReorderDraft([]);
+                                        setSelectedReorderCategoryId(null);
+                                    }
                                 : selectedCategoryId
                                     ? resetCategoryEditor
                                     : onClose
@@ -283,6 +343,8 @@ export default function CategoryManagerSheet({
                         ? t('reorderCategories')
                         : isItemReorderMode
                             ? t('reorderItems')
+                            : isReorderHubMode
+                                ? t('reorderMenu')
                             : selectedCategoryId
                                 ? (selectedCategory?.name || t('categoriesTitle'))
                                 : t('categoriesTitle')}
@@ -346,17 +408,33 @@ export default function CategoryManagerSheet({
                             </Button>
                         </Flex>
                     </>
-                ) : isItemReorderMode && selectedCategory ? (
+                ) : isItemReorderMode ? (
                     <>
                         <Card>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('reorderItems')}</Text>
-                                <Text type="secondary">{t('reorderItemsHelp', { category: selectedCategory.name })}</Text>
+                                <Text type="secondary">
+                                    {selectedReorderCategory
+                                        ? t('reorderItemsHelp', { category: selectedReorderCategory.name })
+                                        : t('reorderItemsSelectCategoryHelp')}
+                                </Text>
                             </Flex>
                         </Card>
 
                         <Card>
-                            {draftItems.length === 0 ? (
+                            {!selectedReorderCategory ? (
+                                <List>
+                                    {sorted.map((category) => (
+                                        <List.Item
+                                            arrow
+                                            description={<Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>}
+                                            key={category.id}
+                                            onClick={() => openItemReorderCategory(category.id)}
+                                            title={<Text strong>{category.name}</Text>}
+                                        />
+                                    ))}
+                                </List>
+                            ) : draftItems.length === 0 ? (
                                 <Text type="secondary">{t('noItemsInCategory')}</Text>
                             ) : (
                                 <Flex gap={8} vertical>
@@ -397,21 +475,70 @@ export default function CategoryManagerSheet({
                                 block
                                 fill="outline"
                                 onClick={() => {
+                                    if (selectedReorderCategoryId) {
+                                        setSelectedReorderCategoryId(null);
+                                        setItemReorderDraft([]);
+                                        return;
+                                    }
                                     setIsItemReorderMode(false);
-                                    setItemReorderDraft([]);
+                                    setIsReorderHubMode(true);
                                 }}
                             >
-                                {t('cancel')}
+                                {selectedReorderCategoryId ? t('back') : t('cancel')}
                             </Button>
                             <Button
                                 block
-                                disabled={draftItems.length === 0}
+                                disabled={!selectedReorderCategoryId || draftItems.length === 0}
                                 loading={isSaving}
                                 onClick={() => void handleItemReorderSave()}
                             >
                                 {t('save')}
                             </Button>
                         </Flex>
+                    </>
+                ) : isReorderHubMode ? (
+                    <>
+                        <Card>
+                            <Flex gap={6} vertical>
+                                <Text strong>{t('reorderMenu')}</Text>
+                                <Text type="secondary">{t('reorderMenuHelp')}</Text>
+                            </Flex>
+                        </Card>
+
+                        <Card>
+                            <List>
+                                <List.Item
+                                    arrow
+                                    description={<Text type="secondary">{t('reorderCategoriesHelp')}</Text>}
+                                    onClick={openReorderMode}
+                                    prefix={(
+                                        <Flex
+                                            align="center"
+                                            justify="center"
+                                            style={{ background: 'var(--ant-color-primary-bg)', borderRadius: 12, color: 'var(--ant-color-primary)', height: 40, width: 40 }}
+                                        >
+                                            <LuTags size={18} />
+                                        </Flex>
+                                    )}
+                                    title={<Text strong>{t('reorderCategories')}</Text>}
+                                />
+                                <List.Item
+                                    arrow
+                                    description={<Text type="secondary">{t('reorderItemsShortcut')}</Text>}
+                                    onClick={openItemReorderMode}
+                                    prefix={(
+                                        <Flex
+                                            align="center"
+                                            justify="center"
+                                            style={{ background: 'var(--ant-color-primary-bg)', borderRadius: 12, color: 'var(--ant-color-primary)', height: 40, width: 40 }}
+                                        >
+                                            <LuFolderTree size={18} />
+                                        </Flex>
+                                    )}
+                                    title={<Text strong>{t('reorderItems')}</Text>}
+                                />
+                            </List>
+                        </Card>
                     </>
                 ) : !selectedCategoryId ? (
                     <>
@@ -435,13 +562,9 @@ export default function CategoryManagerSheet({
                                 <Text type="secondary">{t('noCategories')}</Text>
                             ) : (
                                 <Flex gap={12} vertical>
-                                    <Button block fill="outline" onClick={openReorderMode}>
-                                        <Flex align="center" gap={8}>
-                                            <LuChevronUp size={14} />
-                                            <LuChevronDown size={14} />
-                                            <Text>{t('reorderCategories')}</Text>
-                                        </Flex>
-                                    </Button>
+                                    <Card size="small" style={{ margin: 0 }}>
+                                        <Text type="secondary">{t('categoryManagerHelp')}</Text>
+                                    </Card>
 
                                     <List>
                                         {sorted.map((category) => (
@@ -489,13 +612,6 @@ export default function CategoryManagerSheet({
                                 </Flex>
                                 <Switch checked={draftActive} onChange={setDraftActive} />
                             </Flex>
-
-                            <Button block fill="outline" onClick={openItemReorderMode}>
-                                <Flex align="center" gap={8}>
-                                    <LuArrowUpDown size={16} />
-                                    <Text>{t('reorderItems')}</Text>
-                                </Flex>
-                            </Button>
 
                             <Flex gap={8} vertical>
                                 <Flex align="center" gap={8}>

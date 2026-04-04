@@ -5,11 +5,11 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
-import { FloatButton } from 'antd';
+import { FloatButton, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCamera, LuCheck, LuGrid, LuLayers } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuLayers, LuSettings2 } from 'react-icons/lu';
 import { Button, Card, Collapse, DotLoading, Empty, Flex, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
@@ -23,6 +23,7 @@ const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQuality
 const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerSheet'), { ssr: false });
 const ManageLanguagesSheet = dynamic(() => import('../sheets/ManageLanguagesSheet'), { ssr: false });
 const GenerateDescriptionsSheet = dynamic(() => import('../sheets/GenerateDescriptionsSheet'), { ssr: false });
+const SmartRecommendationsSheet = dynamic(() => import('../sheets/SmartRecommendationsSheet'), { ssr: false });
 
 type CategoryOption = { id: string; name: string };
 type CategorySummary = {
@@ -35,6 +36,7 @@ type CategorySummary = {
 };
 
 export default function MobileMenuScreen() {
+    const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
     const tDashboard = useTranslations('MobileDashboard');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -47,9 +49,11 @@ export default function MobileMenuScreen() {
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
     const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | null>(null);
     const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+    const [categorySheetMode, setCategorySheetMode] = useState<'manage' | 'reorder'>('manage');
     const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
     const [isManageLanguagesOpen, setIsManageLanguagesOpen] = useState(false);
     const [isGenerateDescriptionsOpen, setIsGenerateDescriptionsOpen] = useState(false);
+    const [isSmartRecommendationsOpen, setIsSmartRecommendationsOpen] = useState(false);
     const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
     const [menuData, setMenuData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -599,16 +603,19 @@ export default function MobileMenuScreen() {
             </PullToRefresh>
 
             <FloatButton
-                icon={<LuGrid size={18} />}
+                icon={<LuSettings2 size={18} />}
                 onClick={() => setIsCommandMenuOpen(true)}
                 style={{ bottom: 76, insetInlineEnd: 16 }}
-                tooltip={<Text>{labels.commandCenterLabel}</Text>}
+                tooltip={{ title: labels.commandCenterLabel, color: token.colorPrimary }}
                 type="primary"
             />
             <MobileMenuCommandSheet
                 labels={labels}
                 onAddItem={() => launchCommandAction(() => setIsAddSheetOpen(true))}
-                onCategories={() => launchCommandAction(() => setIsCategorySheetOpen(true))}
+                onCategories={() => launchCommandAction(() => {
+                    setCategorySheetMode('manage');
+                    setIsCategorySheetOpen(true);
+                })}
                 onChangeAvailability={() => launchCommandAction(() => {
                     setBulkActionType('availability');
                     setIsBulkActionsOpen(true);
@@ -624,12 +631,31 @@ export default function MobileMenuScreen() {
                     setBulkActionType('pricing');
                     setIsBulkActionsOpen(true);
                 })}
+                onReorderMenu={() => launchCommandAction(() => {
+                    setCategorySheetMode('reorder');
+                    setIsCategorySheetOpen(true);
+                })}
+                onSmartRecommendations={() => launchCommandAction(() => setIsSmartRecommendationsOpen(true))}
                 onShowHide={() => launchCommandAction(() => {
                     setBulkActionType('showHide');
                     setIsBulkActionsOpen(true);
                 })}
                 visible={isCommandMenuOpen}
             />
+
+            {menuData ? (
+                <SmartRecommendationsSheet
+                    businessType={storeDetails?.businessType}
+                    onClose={() => handleCommandActionBack(() => setIsSmartRecommendationsOpen(false))}
+                    onSaved={(updatedProject) => {
+                        setMenuData(updatedProject);
+                        setIsSmartRecommendationsOpen(false);
+                        resetCommandActionFlow();
+                    }}
+                    projectData={menuData}
+                    visible={isSmartRecommendationsOpen}
+                />
+            ) : null}
 
             {menuData ? (
                 <ManageLanguagesSheet
@@ -659,9 +685,13 @@ export default function MobileMenuScreen() {
             <CategoryManagerSheet
                 categories={categorySummary}
                 categoryItems={categoryItemMap}
+                initialMode={categorySheetMode}
                 presets={storeDetails?.timeSlotPresets || []}
                 onAdd={handleCategoryAdd}
-                onClose={() => handleCommandActionBack(() => setIsCategorySheetOpen(false))}
+                onClose={() => handleCommandActionBack(() => {
+                    setIsCategorySheetOpen(false);
+                    setCategorySheetMode('manage');
+                })}
                 onDelete={handleCategoryDelete}
                 onRename={handleCategoryRename}
                 onReorder={handleCategoryReorder}
