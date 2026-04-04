@@ -84,6 +84,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 {isDev && (
                     <script dangerouslySetInnerHTML={{
                         __html: `
+                            // Suppress known development warnings
+                            const originalConsoleWarn = console.warn;
+                            console.warn = (...args) => {
+                                const message = args.join(' ');
+                                // Filter out the GenerateSW warning
+                                if (message.includes('GenerateSW has been called multiple times')) {
+                                    return;
+                                }
+                                originalConsoleWarn.apply(console, args);
+                            };
+                            
                             // Monitor CSP violations and show prominent warnings
                             document.addEventListener('securitypolicyviolation', (e) => {
                                 const isNextJsNoise = 

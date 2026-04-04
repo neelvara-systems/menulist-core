@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { LuCamera } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Image, Input, Picker, Popup, Switch, Text, TextArea, Title, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
+import { useTranslations } from 'next-intl';
 
 interface ItemEditSheetProps {
     item: MobileMenuItemType;
@@ -16,6 +17,7 @@ interface ItemEditSheetProps {
 }
 
 export default function ItemEditSheet({ item, categories, currencySymbol, onClose, onSave, onDelete }: ItemEditSheetProps) {
+    const t = useTranslations('MobileMenu');
     const [name, setName] = useState(item.name);
     const [price, setPrice] = useState(String(item.price));
     const [description, setDescription] = useState(item.description || '');
@@ -29,7 +31,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
         accept: 'image/*',
         beforeUpload: (file) => {
             if (file.size > 5 * 1024 * 1024) {
-                Toast.show({ content: 'Image must be under 5MB', duration: 2000 });
+                Toast.show({ content: t('imageTooLarge'), duration: 2000 });
                 return Upload.LIST_IGNORE;
             }
 
@@ -50,7 +52,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
             return true;
         },
         showUploadList: false,
-    }), [imagePreview, item.id, item.name]);
+    }), [imagePreview, item.id, item.name, t]);
 
     const handleSave = () => {
         onSave({
@@ -74,25 +76,25 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
         >
             <Flex gap={16} vertical>
                 <Title level={4} style={{ margin: 0 }}>
-                    Edit Item
+                    {t('editItemTitle')}
                 </Title>
 
                 <Card size="small">
                     <Flex gap={16} vertical>
                         <Flex gap={6} vertical>
-                            <Text strong>Item Name</Text>
+                            <Text strong>{t('itemNameLabel')}</Text>
                             <Input
                                 onChange={setName}
-                                placeholder="Item name"
+                                placeholder={t('itemNamePlaceholder')}
                                 value={name}
                             />
                         </Flex>
 
                         <Flex gap={6} vertical>
-                            <Text strong>{`Price (${currencySymbol})`}</Text>
+                            <Text strong>{t('priceLabel', { currency: currencySymbol })}</Text>
                             <Input
                                 onChange={setPrice}
-                                placeholder="0"
+                                placeholder={t('pricePlaceholder')}
                                 type="number"
                                 value={price}
                             />
@@ -100,9 +102,9 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
 
                         {categories.length > 0 ? (
                             <Flex gap={6} vertical>
-                                <Text strong>Category</Text>
+                                <Text strong>{t('categoryLabel')}</Text>
                                 <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start' }}>
-                                    {categories.find((category) => category.id === selectedCategory)?.name || 'Select category'}
+                                    {categories.find((category) => category.id === selectedCategory)?.name || t('selectCategory')}
                                 </Button>
                                 <Picker
                                     columns={[categories.map((category) => ({ label: category.name, value: category.id }))]}
@@ -115,7 +117,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         ) : null}
 
                         <Flex gap={6} vertical>
-                            <Text strong>Item Image</Text>
+                            <Text strong>{t('itemImageLabel')}</Text>
                             <Flex align="center" gap={12}>
                                 {imagePreview ? (
                                     <Image
@@ -136,7 +138,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                     <Button fill="outline" size="small">
                                         <Flex align="center" gap={6}>
                                             <LuCamera size={14} />
-                                            <Text>{imagePreview ? 'Change Photo' : 'Add Photo'}</Text>
+                                            <Text>{imagePreview ? t('changePhoto') : t('addPhoto')}</Text>
                                         </Flex>
                                     </Button>
                                 </Upload>
@@ -144,11 +146,11 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         </Flex>
 
                         <Flex gap={6} vertical>
-                            <Text strong>Description</Text>
+                            <Text strong>{t('descriptionLabel')}</Text>
                             <TextArea
                                 maxLength={200}
                                 onChange={setDescription}
-                                placeholder="Item description"
+                                placeholder={t('descriptionPlaceholder')}
                                 rows={3}
                                 showCount
                                 value={description}
@@ -158,8 +160,8 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         <Card size="small" style={{ backgroundColor: '#fafafa' }}>
                             <Flex align="center" justify="space-between">
                                 <Flex gap={2} vertical>
-                                    <Text strong>Available</Text>
-                                    <Text type="secondary">Turn this off when the item is sold out.</Text>
+                                    <Text strong>{t('available')}</Text>
+                                    <Text type="secondary">{t('availableHelp')}</Text>
                                 </Flex>
                                 <Switch checked={isAvailable} onChange={setIsAvailable} />
                             </Flex>
@@ -168,8 +170,8 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         <Card size="small" style={{ backgroundColor: '#fafafa' }}>
                             <Flex align="center" justify="space-between">
                                 <Flex gap={2} vertical>
-                                    <Text strong>Show on menu</Text>
-                                    <Text type="secondary">Hide this item from customers.</Text>
+                                    <Text strong>{t('showOnMenu')}</Text>
+                                    <Text type="secondary">{t('showOnMenuHelp')}</Text>
                                 </Flex>
                                 <Switch checked={isActive} onChange={setIsActive} />
                             </Flex>
@@ -179,10 +181,10 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
 
                 <Flex gap={12}>
                     <Button block fill="outline" onClick={onClose} size="large">
-                        Cancel
+                        {t('cancel')}
                     </Button>
                     <Button block color="primary" disabled={!name.trim()} onClick={handleSave} size="large">
-                        Save
+                        {t('save')}
                     </Button>
                 </Flex>
 
@@ -193,16 +195,16 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         fill="outline"
                         onClick={() => {
                             Dialog.confirm({
-                                title: 'Delete Item',
-                                content: `Are you sure you want to delete "${item.name}"?`,
-                                confirmText: 'Delete',
-                                cancelText: 'Cancel',
+                                title: t('deleteItemTitle'),
+                                content: t('deleteItemConfirm', { item: item.name }),
+                                confirmText: t('delete'),
+                                cancelText: t('cancel'),
                                 onConfirm: () => onDelete(item.id),
                             });
                         }}
                         size="large"
                     >
-                        Delete This Item
+                        {t('deleteItemAction')}
                     </Button>
                 ) : null}
             </Flex>

@@ -1,5 +1,6 @@
 'use client'
 
+import { getMobileUiLocaleText } from '@lib/localization/mobileUiLocale';
 import {
     Avatar,
     Badge,
@@ -30,6 +31,7 @@ import {
 import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
 import { Children, Fragment, isValidElement, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch } from 'react-icons/lu';
+import { useLocale } from 'next-intl';
 
 type AnyStyle = CSSProperties & Record<string, any>;
 
@@ -138,8 +140,10 @@ export function FloatingBubble({ children, onClick, style }: { children?: ReactN
         <FloatButton
             icon={children}
             onClick={onClick}
+            type="primary"
             style={{
-                background: bubbleStyle['--background'] || '#1677ff',
+                backgroundColor: bubbleStyle['--background'] || '#1677ff',
+                borderColor: bubbleStyle['--background'] || '#1677ff',
                 bottom: bubbleStyle['--initial-position-bottom'] || 76,
                 color: '#fff',
                 height: bubbleStyle['--size'] || 52,
@@ -278,25 +282,63 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
 
 type PickerOption = { label: ReactNode; value: string };
 
-export function Picker({ columns, onClose, onConfirm, value, visible }: { columns: PickerOption[][]; onClose?: () => void; onConfirm?: (value: string[]) => void; value?: string[]; visible?: boolean }) {
+export function Picker({
+    columns,
+    onClose,
+    onConfirm,
+    searchPlaceholder,
+    title,
+    value,
+    visible,
+}: {
+    columns: PickerOption[][];
+    onClose?: () => void;
+    onConfirm?: (value: string[]) => void;
+    searchPlaceholder?: string;
+    title?: ReactNode;
+    value?: string[];
+    visible?: boolean;
+}) {
+    const locale = useLocale();
+    const localeText = getMobileUiLocaleText(locale);
     const options = columns[0] || [];
     const [selectedValue, setSelectedValue] = useState(value?.[0] || options[0]?.value || '');
+    const [searchValue, setSearchValue] = useState('');
 
     useEffect(() => {
         if (!visible) return;
         setSelectedValue(value?.[0] || options[0]?.value || '');
+        setSearchValue('');
     }, [options, value, visible]);
+
+    const filteredOptions = useMemo(() => {
+        if (!searchValue.trim()) return options;
+        const term = searchValue.toLowerCase();
+        return options.filter((option) => {
+            if (typeof option.label === 'string') {
+                return option.label.toLowerCase().includes(term);
+            }
+            return String(option.value).toLowerCase().includes(term);
+        });
+    }, [options, searchValue]);
 
     return (
         <Drawer closable={false} destroyOnClose height="60vh" maskClosable onClose={onClose} open={visible} placement="bottom">
             <Flex vertical gap={16}>
                 <Flex align="center" justify="space-between">
-                    <Button fill="none" onClick={onClose}>Cancel</Button>
-                    <Title level={5} style={{ margin: 0 }}>Select</Title>
-                    <Button onClick={() => { onConfirm?.([selectedValue]); onClose?.(); }}>Confirm</Button>
+                    <Button fill="none" onClick={onClose}>{localeText.cancel}</Button>
+                    <Title level={5} style={{ margin: 0 }}>{title || localeText.select}</Title>
+                    <Button onClick={() => { onConfirm?.([selectedValue]); onClose?.(); }}>{localeText.confirm}</Button>
                 </Flex>
+                {searchPlaceholder ? (
+                    <Input
+                        onChange={setSearchValue}
+                        placeholder={searchPlaceholder}
+                        value={searchValue}
+                    />
+                ) : null}
                 <AntList
-                    dataSource={options}
+                    dataSource={filteredOptions}
                     renderItem={(option) => (
                         <AntList.Item onClick={() => setSelectedValue(option.value)}>
                             <Flex align="center" justify="space-between" style={{ width: '100%' }}>
@@ -372,11 +414,12 @@ type DialogConfig = {
 };
 
 async function confirmDialog(config: DialogConfig) {
+    const localeText = getMobileUiLocaleText();
     return new Promise<boolean>((resolve) => {
         Modal.confirm({
-            cancelText: config.cancelText,
+            cancelText: config.cancelText || localeText.cancel,
             content: config.content,
-            okText: config.confirmText || 'Confirm',
+            okText: config.confirmText || localeText.confirm,
             onCancel: () => {
                 config.onCancel?.();
                 resolve(false);
@@ -414,12 +457,12 @@ export const Upload = AntUpload;
 
 type CollapsePanelProps = { children?: ReactNode; title?: ReactNode };
 
-function CollapseComponent({ accordion, children }: { accordion?: boolean; children?: ReactNode }) {
+function CollapseComponent({ accordion, children, defaultActiveKey }: { accordion?: boolean; children?: ReactNode; defaultActiveKey?: string[] | string }) {
     const items = Children.toArray(children)
         .filter((child): child is ReactElement<CollapsePanelProps> => isValidElement(child))
         .map((child, index) => ({ key: child.key?.toString() || `${index}`, label: child.props.title, children: child.props.children }));
 
-    return <AntCollapse accordion={accordion} items={items} />;
+    return <AntCollapse accordion={accordion} defaultActiveKey={defaultActiveKey} items={items} />;
 }
 
 function CollapsePanel(_: CollapsePanelProps) {

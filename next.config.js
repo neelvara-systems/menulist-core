@@ -138,8 +138,8 @@ const nextConfig = {
 
 const withPWA = require("next-pwa")({
     dest: "public",
-    disable: process.env.NODE_ENV === "development" || isVercelPreview,
-    register: true,
+    disable: isVercelPreview || process.env.NODE_ENV === "development",
+    register: process.env.NODE_ENV !== "development",
     skipWaiting: true,
     maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
     runtimeCaching: [

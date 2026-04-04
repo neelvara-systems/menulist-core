@@ -8,8 +8,8 @@ import { removeObjRef } from '@util/utils';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCamera, LuCheck, LuLayers, LuPlus } from 'react-icons/lu';
-import { Button, Card, DotLoading, Empty, Flex, FloatingBubble, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { LuCamera, LuCheck, LuLayers, LuPlus, LuTags } from 'react-icons/lu';
+import { Button, Card, Collapse, DotLoading, Empty, Flex, FloatingBubble, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
@@ -17,6 +17,7 @@ const AddItemSheet = dynamic(() => import('../sheets/AddItemSheet'), { ssr: fals
 const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr: false });
 const BulkActionsSheet = dynamic(() => import('../sheets/BulkActionsSheet'), { ssr: false });
 const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQualitySignals'), { ssr: false });
+const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerSheet'), { ssr: false });
 
 type CategoryOption = { id: string; name: string };
 
@@ -31,11 +32,13 @@ export default function MobileMenuScreen() {
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
+    const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
     const [menuData, setMenuData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [projectsList, setProjectsList] = useState<any[]>([]);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const { data: dashboardData } = useOwnerDashboard(menuData?.projectId ? { projectId: menuData.projectId } : undefined);
+    const uncategorizedLabel = t('uncategorized');
 
     const fetchMenuData = useCallback(async (projectId?: string) => {
         try {
@@ -76,29 +79,36 @@ export default function MobileMenuScreen() {
         menuData.files.forEach((file: any) => {
             const categories = file.extractedData?.data?.categories || [];
             categories.forEach((category: any) => {
-                const label = category.name?.[activeLang] || category.name?.en || category.name || 'Uncategorized';
+                const label = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
                 if (!map.has(category.id)) map.set(category.id, label);
             });
         });
         return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-    }, [activeLang, menuData?.files]);
+    }, [activeLang, menuData?.files, uncategorizedLabel]);
 
     const menuItems = useMemo(() => {
         if (!menuData?.files) return [];
         const items: MenuItemType[] = [];
         menuData.files.forEach((file: any) => {
             if (file.extractedData?.data?.categories && Array.isArray(file.extractedData.data.categories)) {
-                const categories = file.extractedData.data.categories;
+                const categories = [...file.extractedData.data.categories].sort((a: any, b: any) => {
+                    const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
+                    const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
+                    if (aIndex !== bIndex) return aIndex - bIndex;
+                    const aName = a.name?.[activeLang] || a.name?.en || a.name || '';
+                    const bName = b.name?.[activeLang] || b.name?.en || b.name || '';
+                    return aName.localeCompare(bName);
+                });
                 const categoryMap: Record<string, string> = {};
                 categories.forEach((category: any) => {
-                    categoryMap[category.id] = category.name?.[activeLang] || category.name?.en || category.name || 'Uncategorized';
+                    categoryMap[category.id] = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
                 });
                 const menuItems = file.extractedData.data.items || [];
                 categories.forEach((category: any) => {
-                    const categoryName = categoryMap[category.id] || 'Uncategorized';
+                    const categoryName = categoryMap[category.id] || uncategorizedLabel;
                     const categoryItems = menuItems.filter((item: any) => item.category === category.id);
                     categoryItems.forEach((item: any) => {
-                        const itemName = item.name?.[activeLang] || item.name?.en || item.name || 'Unnamed Item';
+                        const itemName = item.name?.[activeLang] || item.name?.en || item.name || t('unnamedItem');
                         const itemDescription = item.description?.[activeLang] || item.description?.en || item.description || '';
                         const price = typeof item.price === 'string' ? parseFloat(item.price) : (item.price || 0);
                         const available = item.available !== false;
@@ -119,7 +129,7 @@ export default function MobileMenuScreen() {
             }
         });
         return items;
-    }, [activeLang, menuData]);
+    }, [activeLang, menuData, t, uncategorizedLabel]);
 
     const filteredItems = useMemo(() => {
         if (!searchQuery.trim()) return menuItems;
@@ -132,16 +142,166 @@ export default function MobileMenuScreen() {
     const groupedItems = useMemo(() => {
         const groups: Record<string, MenuItemType[]> = {};
         filteredItems.forEach((item) => {
-            const category = item.categoryName || 'Uncategorized';
+            const category = item.categoryName || uncategorizedLabel;
             if (!groups[category]) groups[category] = [];
             groups[category].push(item);
         });
         return groups;
-    }, [filteredItems]);
+    }, [filteredItems, uncategorizedLabel]);
     const categoryCount = useMemo(() => {
-        const categories = new Set(menuItems.map((item) => item.categoryName || 'Uncategorized'));
+        const categories = new Set(menuItems.map((item) => item.categoryName || uncategorizedLabel));
         return categories.size;
-    }, [menuItems]);
+    }, [menuItems, uncategorizedLabel]);
+
+    const categorySummary = useMemo(() => {
+        if (!menuData?.files) return [];
+        const map = new Map<string, { id: string; name: string; active: boolean; itemCount: number }>();
+        menuData.files.forEach((file: any) => {
+            const categories = file.extractedData?.data?.categories || [];
+            const items = file.extractedData?.data?.items || [];
+            categories.forEach((category: any) => {
+                const name = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
+                const count = items.filter((item: any) => item.category === category.id).length;
+                if (!map.has(category.id)) {
+                    map.set(category.id, {
+                        id: category.id,
+                        name,
+                        active: category.active !== false,
+                        itemCount: count,
+                        orderIndex: category.orderIndex,
+                        timeSlotPresetIds: (category.timeSlots || []).map((slot: any) => slot.presetId).filter(Boolean),
+                    });
+                }
+            });
+        });
+        return Array.from(map.values());
+    }, [activeLang, menuData?.files, uncategorizedLabel]);
+
+    const handleCategoryAdd = async (name: string) => {
+        if (!menuData) return;
+        const updated = removeObjRef(menuData);
+        const targetFile = updated.files?.[0];
+        if (!targetFile) return;
+        if (!targetFile.extractedData) targetFile.extractedData = { data: { categories: [], items: [], languages: [] } };
+        if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
+        if (!targetFile.extractedData.data.categories) targetFile.extractedData.data.categories = [];
+        const newId = `cat-${Date.now()}`;
+        targetFile.extractedData.data.categories.push({
+            id: newId,
+            active: true,
+            name: { [activeLang]: name },
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
+
+    const handleCategoryRename = async (categoryId: string, name: string) => {
+        if (!menuData) return;
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.categories?.forEach((category: any) => {
+                if (category.id === categoryId) {
+                    const nextName = typeof category.name === 'object' && category.name ? { ...category.name } : {};
+                    nextName[activeLang] = name;
+                    category.name = nextName;
+                }
+            });
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
+
+    const handleCategoryToggle = async (categoryId: string, active: boolean) => {
+        if (!menuData) return;
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.categories?.forEach((category: any) => {
+                if (category.id === categoryId) {
+                    category.active = active;
+                }
+            });
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
+
+    const handleCategoryDelete = async (categoryId: string) => {
+        if (!menuData) return;
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            if (!file.extractedData?.data) return;
+            const categories = file.extractedData.data.categories || [];
+            const items = file.extractedData.data.items || [];
+            let uncategorized = categories.find((cat: any) => (cat.name?.[activeLang] || cat.name?.en || cat.name) === uncategorizedLabel);
+            if (!uncategorized) {
+                uncategorized = { id: `uncat-${Date.now()}`, active: true, name: { [activeLang]: uncategorizedLabel } };
+                categories.push(uncategorized);
+            }
+            file.extractedData.data.categories = categories.filter((cat: any) => cat.id !== categoryId);
+            file.extractedData.data.items = items.map((item: any) => {
+                if (item.category === categoryId) {
+                    return { ...item, category: uncategorized.id };
+                }
+                return item;
+            });
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
+
+    const handleCategoryReorder = async (categoryId: string, direction: 'up' | 'down') => {
+        if (!menuData) return;
+        const ordered = [...categorySummary].sort((a, b) => {
+            const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
+            const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
+            if (aIndex !== bIndex) return aIndex - bIndex;
+            return a.name.localeCompare(b.name);
+        });
+        const currentIndex = ordered.findIndex((cat) => cat.id === categoryId);
+        if (currentIndex === -1) return;
+        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (targetIndex < 0 || targetIndex >= ordered.length) return;
+        const nextOrder = [...ordered];
+        const [moved] = nextOrder.splice(currentIndex, 1);
+        nextOrder.splice(targetIndex, 0, moved);
+
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.categories?.forEach((category: any) => {
+                const index = nextOrder.findIndex((item) => item.id === category.id);
+                if (index >= 0) {
+                    category.orderIndex = index;
+                }
+            });
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
+
+    const handleCategoryTimeSlots = async (categoryId: string, presetIds: string[]) => {
+        if (!menuData) return;
+        const presets = storeDetails?.timeSlotPresets || [];
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.categories?.forEach((category: any) => {
+                if (category.id !== categoryId) return;
+                if (!presetIds.length) {
+                    category.timeSlots = undefined;
+                    return;
+                }
+                category.timeSlots = presetIds
+                    .map((presetId: string) => presets.find((preset: any) => preset.id === presetId))
+                    .filter(Boolean)
+                    .map((preset: any) => ({
+                        presetId: preset.id,
+                        startTime: preset.startTime,
+                        endTime: preset.endTime,
+                    }));
+            });
+        });
+        await updateProject(updated);
+        setMenuData(updated);
+    };
 
     const handleToggleAvailability = useCallback(async (item: MenuItemType) => {
         if (!menuData) return;
@@ -170,7 +330,7 @@ export default function MobileMenuScreen() {
             setMenuData(previous);
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         }
-    }, [menuData]);
+    }, [menuData, t]);
 
     const handleRefresh = async () => {
         await fetchMenuData(menuData?.projectId);
@@ -221,7 +381,17 @@ export default function MobileMenuScreen() {
                                 <Tag>{t('itemsCount', { count: menuItems.length })}</Tag>
                             </Flex>
                         </Button>
-                    ) : null}
+                    ) : (
+                        <Card size="small">
+                            <Flex align="center" gap={8} justify="space-between">
+                                <Flex align="center" gap={8}>
+                                    <LuLayers size={16} />
+                                    <Text>{menuData?.name || t('currentProject')}</Text>
+                                </Flex>
+                                <Tag>{t('itemsCount', { count: menuItems.length })}</Tag>
+                            </Flex>
+                        </Card>
+                    )}
 
                     {overview ? (
                         <Card size="small" style={{ backgroundColor: statusTone.bg }}>
@@ -231,7 +401,10 @@ export default function MobileMenuScreen() {
                                 </Text>
                                 {yesterday ? (
                                     <Text type="secondary">
-                                        {`Yesterday · ${yesterday.metrics?.menuVisits?.toLocaleString() || '0'} ${labels.scansLabel}`}
+                                        {t('yesterdayStats', {
+                                            count: yesterday.metrics?.menuVisits?.toLocaleString() || '0',
+                                            scans: labels.scansLabel,
+                                        })}
                                     </Text>
                                 ) : (
                                     <Text type="secondary">{overview.statusMessage}</Text>
@@ -248,7 +421,10 @@ export default function MobileMenuScreen() {
 
                     <Flex align="center" justify="space-between">
                         <Text type="secondary">
-                            {`${menuItems.length} ${labels.itemsPlural} · ${categoryCount} categories`}
+                            {t('categoriesSummary', {
+                                items: `${menuItems.length} ${labels.itemsPlural}`,
+                                categories: t('categoriesCount', { count: categoryCount }),
+                            })}
                         </Text>
                         {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
                     </Flex>
@@ -258,10 +434,16 @@ export default function MobileMenuScreen() {
                             {t('uploadMenuPhoto', { offering: labels.offeringTitle })}
                         </Button>
                         <Button fill="outline" onClick={() => setIsBulkActionsOpen(true)} size="small">
-                            Bulk actions
+                            {t('bulkActions')}
+                        </Button>
+                        <Button fill="outline" onClick={() => setIsCategorySheetOpen(true)} size="small">
+                            {t('categories')}
                         </Button>
                         <Button color="primary" onClick={() => setIsAddSheetOpen(true)} size="small">
-                            Add item
+                            <Flex align="center" gap={6}>
+                                <LuPlus size={14} />
+                                <Text>{t('addItem')}</Text>
+                            </Flex>
                         </Button>
                     </Flex>
                 </Flex>
@@ -302,48 +484,53 @@ export default function MobileMenuScreen() {
                             <Empty description={searchQuery ? t('noItemsFound') : t('noMenuItemsYet', { items: labels.itemsPlural })} />
                         )
                     ) : (
-                        Object.entries(groupedItems).map(([category, items]) => (
-                            <Card key={category} size="small" title={
-                                <Flex align="center" justify="space-between">
-                                    <Text strong>{category}</Text>
-                                    <Tag>{t('itemsCount', { count: items.length })}</Tag>
-                                </Flex>
-                            }>
-                                <List>
-                                    {items.map((item) => (
-                                        <List.Item
-                                            key={item.id}
-                                            onClick={() => setEditingItem(item)}
-                                            extra={
-                                                <Flex align="center" gap={8} wrap>
-                                                    <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
-                                                    <Button fill="outline" onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        setEditingItem(item);
-                                                        setIsAddSheetOpen(true);
-                                                    }} size="small">
-                                                        {t('edit')}
-                                                    </Button>
-                                                </Flex>
-                                            }
-                                            title={<Text strong>{item.name}</Text>}
-                                            description={
-                                                <Flex gap={6} vertical>
-                                                    {item.description ? <Text type="secondary">{item.description}</Text> : null}
+                        <Collapse defaultActiveKey={Object.keys(groupedItems)[0] ? [Object.keys(groupedItems)[0]] : undefined}>
+                            {Object.entries(groupedItems).map(([category, items]) => (
+                                <Collapse.Panel
+                                    key={category}
+                                    title={(
+                                        <Flex align="center" justify="space-between">
+                                            <Text strong>{category}</Text>
+                                            <Tag>{t('itemsCount', { count: items.length })}</Tag>
+                                        </Flex>
+                                    )}
+                                >
+                                    <List>
+                                        {items.map((item) => (
+                                            <List.Item
+                                                key={item.id}
+                                                onClick={() => setEditingItem(item)}
+                                                extra={
                                                     <Flex align="center" gap={8} wrap>
-                                                        <Tag color={item.available ? 'success' : 'warning'}>
-                                                            {item.available ? t('available') : t('soldOut')}
-                                                        </Tag>
-                                                        {!item.active ? <Tag>Hidden</Tag> : null}
-                                                        <Tag>{`${currencySymbol}${item.price}`}</Tag>
+                                                        <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                        <Button fill="outline" onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            setEditingItem(item);
+                                                            setIsAddSheetOpen(true);
+                                                        }} size="small">
+                                                            {t('edit')}
+                                                        </Button>
                                                     </Flex>
-                                                </Flex>
-                                            }
-                                        />
-                                    ))}
-                                </List>
-                            </Card>
-                        ))
+                                                }
+                                                title={<Text strong>{item.name}</Text>}
+                                                description={
+                                                    <Flex gap={6} vertical>
+                                                        {item.description ? <Text type="secondary">{item.description}</Text> : null}
+                                                        <Flex align="center" gap={8} wrap>
+                                                            <Tag color={item.available ? 'success' : 'warning'}>
+                                                                {item.available ? t('available') : t('soldOut')}
+                                                            </Tag>
+                                                            {!item.active ? <Tag>{t('hidden')}</Tag> : null}
+                                                            <Tag>{`${currencySymbol}${item.price}`}</Tag>
+                                                        </Flex>
+                                                    </Flex>
+                                                }
+                                            />
+                                        ))}
+                                    </List>
+                                </Collapse.Panel>
+                            ))}
+                        </Collapse>
                     )}
                 </Flex>
             </PullToRefresh>
@@ -359,6 +546,19 @@ export default function MobileMenuScreen() {
             >
                 <LuPlus size={24} color="#fff" />
             </FloatingBubble>
+
+            <CategoryManagerSheet
+                categories={categorySummary}
+                presets={storeDetails?.timeSlotPresets || []}
+                onAdd={handleCategoryAdd}
+                onClose={() => setIsCategorySheetOpen(false)}
+                onDelete={handleCategoryDelete}
+                onRename={handleCategoryRename}
+                onReorder={handleCategoryReorder}
+                onToggleActive={handleCategoryToggle}
+                onUpdateTimeSlots={handleCategoryTimeSlots}
+                visible={isCategorySheetOpen}
+            />
 
             {editingItem ? (
                 <ItemEditSheet

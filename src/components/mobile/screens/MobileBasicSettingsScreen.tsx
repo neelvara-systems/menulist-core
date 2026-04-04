@@ -5,8 +5,8 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { LuBriefcase, LuBuilding2, LuImage } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Picker, Text, Title, Toast } from '../antd';
+import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuPhoneCall } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Picker, Text, TextArea, Title, Toast } from '../antd';
 
 interface MobileBasicSettingsScreenProps {
     onBack: () => void;
@@ -19,12 +19,18 @@ const BUSINESS_TYPE_OPTIONS = BUSINESS_TYPES.map((businessType) => ({
 
 export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
+    const tBusiness = useTranslations('BusinessSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [showTypePicker, setShowTypePicker] = useState(false);
     const [formData, setFormData] = useState({
+        businessEmail: storeDetails?.businessEmail || '',
         businessType: storeDetails?.businessType || '',
+        description: storeDetails?.description || '',
+        domain: storeDetails?.customDomain || storeDetails?.subdomain || '',
+        gstin: storeDetails?.gstin || '',
         name: storeDetails?.name || '',
+        phoneNumber: storeDetails?.phoneNumber || '',
     });
 
     const handleSave = useCallback(async () => {
@@ -34,17 +40,22 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             return;
         }
 
+        const { domain: _domain, ...updates } = formData;
         setIsSaving(true);
-        setStoreDetails((previous: any) => ({ ...previous, ...formData }));
+        setStoreDetails((previous: any) => ({ ...previous, ...updates }));
         Toast.show({ content: t('saved'), duration: 1000 });
 
         try {
-            await updateStore({ ...storeDetails, ...formData } as any);
+            await updateStore({ ...storeDetails, ...updates } as any);
         } catch {
             setStoreDetails((previous: any) => ({
                 ...previous,
                 businessType: storeDetails.businessType,
+                businessEmail: storeDetails.businessEmail,
+                description: storeDetails.description,
+                gstin: storeDetails.gstin,
                 name: storeDetails.name,
+                phoneNumber: storeDetails.phoneNumber,
             }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         } finally {
@@ -90,9 +101,9 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={6}>
                             <LuBuilding2 size={14} />
-                            <Text type="secondary">{t('businessName')}</Text>
+                            <Text type="secondary">{tBusiness('businessName')}</Text>
                         </Flex>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, name: value }))} placeholder={t('yourBusinessName')} value={formData.name} />
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, name: value }))} placeholder={tBusiness('businessNamePlaceholder')} value={formData.name} />
                     </Flex>
                 </Card>
 
@@ -100,10 +111,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={6}>
                             <LuBriefcase size={14} />
-                            <Text type="secondary">{t('businessType')}</Text>
+                            <Text type="secondary">{tBusiness('businessType')}</Text>
                         </Flex>
                         <Button block fill="outline" onClick={() => setShowTypePicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                            {formData.businessType || t('selectBusinessType')}
+                            {formData.businessType || tBusiness('selectBusinessType')}
                         </Button>
                         <Picker
                             columns={[BUSINESS_TYPE_OPTIONS]}
@@ -113,9 +124,60 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                                     setFormData((previous) => ({ ...previous, businessType: value[0] as string }));
                                 }
                             }}
+                            searchPlaceholder={tBusiness('selectBusinessType')}
+                            title={tBusiness('businessType')}
                             value={[formData.businessType]}
                             visible={showTypePicker}
                         />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuMail size={14} />
+                            <Text type="secondary">{tBusiness('businessEmail')}</Text>
+                        </Flex>
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, businessEmail: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.businessEmail} />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuPhoneCall size={14} />
+                            <Text type="secondary">{tBusiness('phoneNumber')}</Text>
+                        </Flex>
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))} placeholder={tBusiness('phonePlaceholder')} type="tel" value={formData.phoneNumber} />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text type="secondary">{tBusiness('businessDescription')}</Text>
+                        <TextArea
+                            maxLength={300}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, description: value }))}
+                            placeholder={tBusiness('businessDescPlaceholder')}
+                            rows={4}
+                            showCount
+                            value={formData.description}
+                        />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text type="secondary">{tBusiness('gstin')}</Text>
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, gstin: value }))} placeholder={tBusiness('gstPlaceholder')} value={formData.gstin} />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={4} vertical>
+                        <Text type="secondary">{tBusiness('domain')}</Text>
+                        <Text strong>{formData.domain || tBusiness('domainPlaceholder')}</Text>
+                        <Text type="secondary">{t('changeOnDesktop')}</Text>
                     </Flex>
                 </Card>
 

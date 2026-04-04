@@ -119,8 +119,6 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
 
         Dialog.confirm({
             content: `${actionLabel} for ${selectedIds.size} items?`,
-            confirmText: 'Apply',
-            cancelText: 'Cancel',
             onConfirm: async () => {
                 setApplying(true);
                 try {

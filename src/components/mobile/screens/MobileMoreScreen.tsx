@@ -51,6 +51,9 @@ const MobileSeoAnalyticsScreen = dynamic(() => import('./MobileSeoAnalyticsScree
 const MobileTimeSlotsScreen = dynamic(() => import('./MobileTimeSlotsScreen'), { ssr: false });
 const MobileTempStatusScreen = dynamic(() => import('./MobileTempStatusScreen'), { ssr: false });
 const MobileSpecialMenuScreen = dynamic(() => import('./MobileSpecialMenuScreen'), { ssr: false });
+const AppSettingsSheet = dynamic(() => import('../sheets/AppSettingsSheet'), { ssr: false });
+const MobileSubdomainScreen = dynamic(() => import('./MobileSubdomainScreen'), { ssr: false });
+const MobileCustomDomainScreen = dynamic(() => import('./MobileCustomDomainScreen'), { ssr: false });
 
 type MoreSubScreen =
     | 'main'
@@ -73,13 +76,17 @@ type MoreSubScreen =
     | 'seoAnalytics'
     | 'timeSlots'
     | 'tempStatus'
-    | 'specialMenus';
+    | 'specialMenus'
+    | 'subdomain'
+    | 'customDomain';
 
 export default function MobileMoreScreen() {
     const t = useTranslations('MobileMore');
+    const tBusiness = useTranslations('BusinessSettings');
     const [subScreen, setSubScreen] = useState<MoreSubScreen>('main');
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
 
     const userName = session?.user?.name || 'User';
     const userEmail = session?.user?.email || '';
@@ -105,6 +112,8 @@ export default function MobileMoreScreen() {
     if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'subdomain') return <MobileSubdomainScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'customDomain') return <MobileCustomDomainScreen onBack={() => setSubScreen('main')} />;
 
     const menuItems = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => setSubScreen('dashboard') },
@@ -120,6 +129,8 @@ export default function MobileMoreScreen() {
 
     const settingsItems = [
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: t('basicSettings'), description: t('basicSettingsDesc'), onClick: () => setSubScreen('basicSettings') },
+        { key: 'subdomain', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('subdomain'), description: tBusiness('subdomainHelp'), onClick: () => setSubScreen('subdomain') },
+        { key: 'customDomain', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('customDomain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('customDomain') },
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => setSubScreen('locale') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => setSubScreen('hoursEdit') },
         { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => setSubScreen('roles') },
@@ -133,7 +144,6 @@ export default function MobileMoreScreen() {
 
     const handleLogout = () => {
         void Dialog.confirm({
-            cancelText: 'Cancel',
             confirmText: t('logOut'),
             content: t('logoutConfirm'),
             onConfirm: async () => {
@@ -213,6 +223,13 @@ export default function MobileMoreScreen() {
                 <List>
                     <List.Item
                         arrow
+                        description={<Text type="secondary">{t('appSettingsDesc')}</Text>}
+                        onClick={() => setIsAppSettingsOpen(true)}
+                        prefix={<LuSettings color="#64748b" size={20} />}
+                        title={<Text strong>{t('appSettings')}</Text>}
+                    />
+                    <List.Item
+                        arrow
                         description={<Text type="secondary">{t('switchToDesktopDesc')}</Text>}
                         onClick={() => {
                             localStorage.setItem('forceDesktopMode', 'true');
@@ -228,6 +245,10 @@ export default function MobileMoreScreen() {
                     />
                 </List>
             </Card>
+            <AppSettingsSheet
+                onClose={() => setIsAppSettingsOpen(false)}
+                visible={isAppSettingsOpen}
+            />
         </Flex>
     );
 }

@@ -9,16 +9,24 @@ import antdComponentTheme from "./componentTheme";
 
 // Import all locales statically
 import ar_EG from 'antd/es/locale/ar_EG';
+import bn_BD from 'antd/es/locale/bn_BD';
 import es_ES from 'antd/es/locale/es_ES';
 import fr_FR from 'antd/es/locale/fr_FR';
+import hi_IN from 'antd/es/locale/hi_IN';
+import ta_IN from 'antd/es/locale/ta_IN';
+import en_GB from 'antd/locale/en_GB';
 import en_US from 'antd/locale/en_US';
 
 // Map of supported locales
 const localeMap = {
+    'ar-SA': ar_EG,
     'en-US': en_US,
-    'ar-EG': ar_EG,
+    'en-GB': en_GB,
     'fr-FR': fr_FR,
     'es-ES': es_ES,
+    'hi-IN': hi_IN,
+    'ta-IN': ta_IN,
+    'bn-IN': bn_BD,
 };
 
 const AntdClient = ({ children, removeComponent }: any) => {

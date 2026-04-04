@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Card, Flex, Input, Picker, Popup, Text, TextArea, Title } from '../antd';
+import { useTranslations } from 'next-intl';
 
 interface AddItemSheetProps {
     currencySymbol: string;
@@ -11,6 +12,7 @@ interface AddItemSheetProps {
 }
 
 export default function AddItemSheet({ currencySymbol, categories, onClose, onSave }: AddItemSheetProps) {
+    const t = useTranslations('MobileMenu');
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [description, setDescription] = useState('');
@@ -21,7 +23,7 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     const handleSave = () => {
         if (!name.trim()) return;
         const chosenCategory = categories.find((category) => category.id === selectedCategory);
-        const categoryName = newCategory.trim() || chosenCategory?.name || 'Uncategorized';
+        const categoryName = newCategory.trim() || chosenCategory?.name || t('uncategorized');
         onSave({
             categoryId: newCategory.trim() ? null : (selectedCategory || null),
             categoryName,
@@ -34,28 +36,28 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     return (
         <Popup bodyStyle={{ maxHeight: '85vh' }} destroyOnClose onMaskClick={onClose} visible>
             <Flex gap={12} vertical>
-                <Title level={4} style={{ margin: 0 }}>Add item</Title>
+                <Title level={4} style={{ margin: 0 }}>{t('addItemTitle')}</Title>
 
                 <Card>
                     <Flex gap={8} vertical>
-                        <Text type="secondary">Item Name</Text>
-                        <Input autoFocus onChange={setName} placeholder="Item name" value={name} />
+                        <Text type="secondary">{t('itemNameLabel')}</Text>
+                        <Input autoFocus onChange={setName} placeholder={t('itemNamePlaceholder')} value={name} />
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={8} vertical>
-                        <Text type="secondary">Price ({currencySymbol})</Text>
-                        <Input onChange={setPrice} placeholder="0" type="number" value={price} />
+                        <Text type="secondary">{t('priceLabel', { currency: currencySymbol })}</Text>
+                        <Input onChange={setPrice} placeholder={t('pricePlaceholder')} type="number" value={price} />
                     </Flex>
                 </Card>
 
                 {categories.length > 0 ? (
                     <Card>
                         <Flex gap={8} vertical>
-                            <Text type="secondary">Category</Text>
+                            <Text type="secondary">{t('categoryLabel')}</Text>
                             <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                {categories.find((category) => category.id === selectedCategory)?.name || 'Select category'}
+                                {categories.find((category) => category.id === selectedCategory)?.name || t('selectCategory')}
                             </Button>
                             <Picker
                                 columns={[categories.map((category) => ({ label: category.name, value: category.id }))]}
@@ -70,21 +72,21 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
 
                 <Card>
                     <Flex gap={8} vertical>
-                        <Text type="secondary">New Category (optional)</Text>
-                        <Input onChange={setNewCategory} placeholder="Add a new category" value={newCategory} />
+                        <Text type="secondary">{t('newCategoryLabel')}</Text>
+                        <Input onChange={setNewCategory} placeholder={t('newCategoryPlaceholder')} value={newCategory} />
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={8} vertical>
-                        <Text type="secondary">Description (optional)</Text>
-                        <TextArea maxLength={200} onChange={setDescription} placeholder="Item description" rows={2} showCount value={description} />
+                        <Text type="secondary">{t('descriptionOptionalLabel')}</Text>
+                        <TextArea maxLength={200} onChange={setDescription} placeholder={t('descriptionPlaceholder')} rows={2} showCount value={description} />
                     </Flex>
                 </Card>
 
                 <Flex gap={8}>
-                    <Button block fill="outline" onClick={onClose} size="large">Cancel</Button>
-                    <Button block disabled={!name.trim()} onClick={handleSave} size="large">Add item</Button>
+                    <Button block fill="outline" onClick={onClose} size="large">{t('cancel')}</Button>
+                    <Button block disabled={!name.trim()} onClick={handleSave} size="large">{t('addItem')}</Button>
                 </Flex>
             </Flex>
         </Popup>
