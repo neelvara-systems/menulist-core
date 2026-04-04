@@ -54,6 +54,8 @@ const MobileSpecialMenuScreen = dynamic(() => import('./MobileSpecialMenuScreen'
 const AppSettingsSheet = dynamic(() => import('../sheets/AppSettingsSheet'), { ssr: false });
 const MobileSubdomainScreen = dynamic(() => import('./MobileSubdomainScreen'), { ssr: false });
 const MobileCustomDomainScreen = dynamic(() => import('./MobileCustomDomainScreen'), { ssr: false });
+const MobileOfficialPageScreen = dynamic(() => import('./MobileOfficialPageScreen'), { ssr: false });
+const MobileBusinessAttributesScreen = dynamic(() => import('./MobileBusinessAttributesScreen'), { ssr: false });
 
 type MoreSubScreen =
     | 'main'
@@ -72,8 +74,13 @@ type MoreSubScreen =
     | 'transactions'
     | 'help'
     | 'advancedSettings'
+    | 'contactSettings'
     | 'designEditor'
+    | 'businessAttributes'
+    | 'feedbackSettings'
+    | 'officialPage'
     | 'seoAnalytics'
+    | 'socialSettings'
     | 'timeSlots'
     | 'tempStatus'
     | 'specialMenus'
@@ -107,8 +114,13 @@ export default function MobileMoreScreen() {
     if (subScreen === 'transactions') return <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'help') return <MobileHelpScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'advancedSettings') return <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'contactSettings') return <MobileAdvancedSettingsScreen mode="contact" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'designEditor') return <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'businessAttributes') return <MobileBusinessAttributesScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'feedbackSettings') return <MobileAdvancedSettingsScreen mode="feedback" onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'officialPage') return <MobileOfficialPageScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'seoAnalytics') return <MobileSeoAnalyticsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'socialSettings') return <MobileAdvancedSettingsScreen mode="social" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} />;
@@ -131,14 +143,19 @@ export default function MobileMoreScreen() {
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: t('basicSettings'), description: t('basicSettingsDesc'), onClick: () => setSubScreen('basicSettings') },
         { key: 'subdomain', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('subdomain'), description: tBusiness('subdomainHelp'), onClick: () => setSubScreen('subdomain') },
         { key: 'customDomain', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('customDomain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('customDomain') },
+        ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => setSubScreen('officialPage') }] : []),
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => setSubScreen('locale') },
+        { key: 'contactSettings', icon: <LuUsers color="#2563eb" size={20} />, label: tBusiness('contactPerson'), onClick: () => setSubScreen('contactSettings') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => setSubScreen('hoursEdit') },
         { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => setSubScreen('roles') },
         { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => setSubScreen('digitalScreens') },
         { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: t('locations'), description: t('locationsDesc'), onClick: () => setSubScreen('locations') },
         { key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, label: t('staff'), description: t('staffDesc'), onClick: () => setSubScreen('users') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => setSubScreen('timeSlots') },
+        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), onClick: () => setSubScreen('socialSettings') },
+        ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => setSubScreen('businessAttributes') }] : []),
         { key: 'seoAnalytics', icon: <LuGlobe color="#0ea5e9" size={20} />, label: t('seoAnalytics'), description: t('seoAnalyticsDesc'), onClick: () => setSubScreen('seoAnalytics') },
+        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), onClick: () => setSubScreen('feedbackSettings') },
         { key: 'advancedSettings', icon: <LuSettings2 color="#6b7280" size={20} />, label: t('advancedSettings'), description: t('advancedSettingsDesc'), onClick: () => setSubScreen('advancedSettings') },
     ];
 

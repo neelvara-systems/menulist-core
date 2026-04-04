@@ -24,11 +24,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const [isSaving, setIsSaving] = useState(false);
     const [showTypePicker, setShowTypePicker] = useState(false);
     const [formData, setFormData] = useState({
-        businessEmail: storeDetails?.businessEmail || '',
+        email: storeDetails?.email || '',
         businessType: storeDetails?.businessType || '',
         description: storeDetails?.description || '',
         domain: storeDetails?.customDomain || storeDetails?.subdomain || '',
-        gstin: storeDetails?.gstin || '',
+        gstn: storeDetails?.gstn || '',
         name: storeDetails?.name || '',
         phoneNumber: storeDetails?.phoneNumber || '',
     });
@@ -51,9 +51,9 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             setStoreDetails((previous: any) => ({
                 ...previous,
                 businessType: storeDetails.businessType,
-                businessEmail: storeDetails.businessEmail,
+                email: storeDetails.email,
                 description: storeDetails.description,
-                gstin: storeDetails.gstin,
+                gstn: storeDetails.gstn,
                 name: storeDetails.name,
                 phoneNumber: storeDetails.phoneNumber,
             }));
@@ -138,7 +138,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuMail size={14} />
                             <Text type="secondary">{tBusiness('businessEmail')}</Text>
                         </Flex>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, businessEmail: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.businessEmail} />
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, email: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.email} />
                     </Flex>
                 </Card>
 
@@ -169,7 +169,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('gstin')}</Text>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, gstin: value }))} placeholder={tBusiness('gstPlaceholder')} value={formData.gstin} />
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, gstn: value }))} placeholder={tBusiness('gstPlaceholder')} value={formData.gstn} />
                     </Flex>
                 </Card>
 

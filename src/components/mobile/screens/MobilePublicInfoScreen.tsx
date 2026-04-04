@@ -18,25 +18,58 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
     const [formData, setFormData] = useState({
         addressLine: storeDetails?.addressLine || '',
         city: storeDetails?.city || '',
+        country: storeDetails?.country || '',
         description: storeDetails?.description || '',
+        latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
         phoneNumber: storeDetails?.phoneNumber || '',
+        postalCode: storeDetails?.postalCode || '',
+        longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
+        state: storeDetails?.state || '',
     });
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
-        setStoreDetails((previous: any) => ({ ...previous, ...formData }));
+
+        const latitude = formData.latitude.trim() ? Number(formData.latitude) : undefined;
+        const longitude = formData.longitude.trim() ? Number(formData.longitude) : undefined;
+        const locationUpdates = {
+            addressLine: formData.addressLine,
+            city: formData.city,
+            country: formData.country,
+            description: formData.description,
+            phoneNumber: formData.phoneNumber,
+            postalCode: formData.postalCode,
+            state: formData.state,
+        };
+        const nextStore = {
+            ...storeDetails,
+            ...locationUpdates,
+            geo: latitude !== undefined && longitude !== undefined
+                ? { latitude, longitude }
+                : storeDetails.geo,
+        };
+
+        setStoreDetails((previous: any) => ({
+            ...previous,
+            ...locationUpdates,
+            geo: nextStore.geo,
+        }));
         Toast.show({ content: t('saved'), duration: 1000 });
 
         try {
-            await updateStore({ ...storeDetails, ...formData } as any);
+            await updateStore(nextStore as any);
         } catch {
             setStoreDetails((previous: any) => ({
                 ...previous,
                 addressLine: storeDetails.addressLine,
                 city: storeDetails.city,
+                country: storeDetails.country,
                 description: storeDetails.description,
+                geo: storeDetails.geo,
                 phoneNumber: storeDetails.phoneNumber,
+                postalCode: storeDetails.postalCode,
+                state: storeDetails.state,
             }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         } finally {
@@ -97,6 +130,40 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                             onChange={(value) => setFormData((previous) => ({ ...previous, city: value }))}
                             placeholder={t('city')}
                             value={formData.city}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, state: value }))}
+                            placeholder={t('state')}
+                            value={formData.state}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, country: value }))}
+                            placeholder={t('country')}
+                            value={formData.country}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, postalCode: value }))}
+                            placeholder={t('postalCode')}
+                            value={formData.postalCode}
+                        />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuMapPin size={14} />
+                            <Text type="secondary">{`${t('latitude')} / ${t('longitude')}`}</Text>
+                        </Flex>
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, latitude: value }))}
+                            placeholder={t('latitude')}
+                            value={formData.latitude}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, longitude: value }))}
+                            placeholder={t('longitude')}
+                            value={formData.longitude}
                         />
                     </Flex>
                 </Card>

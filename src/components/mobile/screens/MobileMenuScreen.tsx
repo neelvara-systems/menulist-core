@@ -20,6 +20,14 @@ const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQuality
 const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerSheet'), { ssr: false });
 
 type CategoryOption = { id: string; name: string };
+type CategorySummary = {
+    active: boolean;
+    id: string;
+    itemCount: number;
+    name: string;
+    orderIndex?: number;
+    timeSlotPresetIds?: string[];
+};
 
 export default function MobileMenuScreen() {
     const t = useTranslations('MobileMenu');
@@ -155,7 +163,7 @@ export default function MobileMenuScreen() {
 
     const categorySummary = useMemo(() => {
         if (!menuData?.files) return [];
-        const map = new Map<string, { id: string; name: string; active: boolean; itemCount: number }>();
+        const map = new Map<string, CategorySummary>();
         menuData.files.forEach((file: any) => {
             const categories = file.extractedData?.data?.categories || [];
             const items = file.extractedData?.data?.items || [];

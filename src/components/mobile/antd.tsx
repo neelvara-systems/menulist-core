@@ -438,8 +438,8 @@ export const Dialog = {
     confirm: confirmDialog,
 };
 
-export function Checkbox({ checked, children, indeterminate, onChange, style }: { checked?: boolean; children?: ReactNode; indeterminate?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
-    return <AntCheckbox checked={checked} indeterminate={indeterminate} onChange={(event) => onChange?.(event.target.checked)} style={sanitizeStyle(style)}>{children}</AntCheckbox>;
+export function Checkbox({ checked, children, disabled, indeterminate, onChange, style }: { checked?: boolean; children?: ReactNode; disabled?: boolean; indeterminate?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
+    return <AntCheckbox checked={checked} disabled={disabled} indeterminate={indeterminate} onChange={(event) => onChange?.(event.target.checked)} style={sanitizeStyle(style)}>{children}</AntCheckbox>;
 }
 
 export function InfiniteScroll({ hasMore, loadMore }: { hasMore?: boolean; loadMore?: () => Promise<void> | void }) {

@@ -9,10 +9,12 @@ import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Titl
 
 interface MobileAdvancedSettingsScreenProps {
     onBack: () => void;
+    mode?: 'all' | 'contact' | 'social' | 'feedback';
 }
 
-export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedSettingsScreenProps) {
+export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
+    const tBusiness = useTranslations('BusinessSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -29,6 +31,18 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
     const [reviewUrl, setReviewUrl] = useState(storeDetails?.reviewUrl || '');
 
     const [showSocialEdit, setShowSocialEdit] = useState(false);
+
+    const showContact = mode === 'all' || mode === 'contact';
+    const showSocial = mode === 'all' || mode === 'social';
+    const showFeedback = mode === 'all' || mode === 'feedback';
+
+    const pageTitle = mode === 'contact'
+        ? tBusiness('contactPerson')
+        : mode === 'social'
+            ? tBusiness('socialMedia')
+            : mode === 'feedback'
+                ? tBusiness('feedback')
+                : t('title');
 
     const SOCIAL_PLATFORMS = [
         { key: 'facebook', label: 'Facebook', placeholder: 'Facebook profile URL' },
@@ -98,21 +112,25 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                 onBack={onBack}
                 right={isSaving ? <Tag color="processing">Saving</Tag> : null}
             >
-                {t('title')}
+                {pageTitle}
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <Card size="small">
-                    <Flex gap={4} vertical>
-                        <Text strong>Settings overview</Text>
-                        <Text type="secondary">
-                            Contact details and feedback preferences are used on your menu and in support.
-                            Changes save automatically.
-                        </Text>
-                    </Flex>
-                </Card>
+                {mode === 'all' ? (
+                    <Card size="small">
+                        <Flex gap={4} vertical>
+                            <Text strong>Settings overview</Text>
+                            <Text type="secondary">
+                                Contact details and feedback preferences are used on your menu and in support.
+                                Changes save automatically.
+                            </Text>
+                        </Flex>
+                    </Card>
+                ) : null}
 
-                <Card size="small" title={<Text strong>{t('contactPerson')}</Text>}>
+                {showContact ? (
+                    <Flex gap={4} vertical>
+                        <Card size="small" title={<Text strong>{t('contactPerson')}</Text>}>
                     <List>
                         <List.Item
                             prefix={<LuUser color="#1677ff" size={18} />}
@@ -151,9 +169,12 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                             title={<Text>{t('phone')}</Text>}
                         />
                     </List>
-                </Card>
+                        </Card>
+                    </Flex>
+                ) : null}
 
-                <Card size="small" title={<Text strong>{t('socialMedia')}</Text>}>
+                {showSocial ? (
+                    <Card size="small" title={<Text strong>{t('socialMedia')}</Text>}>
                     <List>
                         <List.Item
                             arrow
@@ -163,9 +184,11 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                             title={<Text>{t('socialProfiles')}</Text>}
                         />
                     </List>
-                </Card>
+                    </Card>
+                ) : null}
 
-                <Card size="small" title={<Text strong>{t('guestFeedback')}</Text>}>
+                {showFeedback ? (
+                    <Card size="small" title={<Text strong>{t('guestFeedback')}</Text>}>
                     <List>
                         <List.Item
                             prefix={<LuMessageSquare color="#16a34a" size={18} />}
@@ -173,9 +196,10 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                             title={<Text>{t('enableFeedback')}</Text>}
                         />
                     </List>
-                </Card>
+                    </Card>
+                ) : null}
 
-                {feedbackEnabled ? (
+                {showFeedback && feedbackEnabled ? (
                     <>
                         <Card
                             size="small"
@@ -215,9 +239,11 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                     </>
                 ) : null}
 
-                <Text style={{ textAlign: 'center' }} type="secondary">
+                {mode === 'all' ? (
+                    <Text style={{ textAlign: 'center' }} type="secondary">
                     {t('desktopOnlyNote')}
-                </Text>
+                    </Text>
+                ) : null}
             </Flex>
 
             <Popup
