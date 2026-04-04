@@ -62,7 +62,7 @@ export default function MobileFeedbackScreen() {
     const badge = (status: string) => {
         if (status === 'new') return <Tag color="primary">{t('new')}</Tag>;
         if (status === 'resolved') return <Tag color="success">{t('resolved')}</Tag>;
-        return <Tag color="default">Read</Tag>;
+        return <Tag color="default">Seen</Tag>;
     };
 
     if (selectedFeedback) {

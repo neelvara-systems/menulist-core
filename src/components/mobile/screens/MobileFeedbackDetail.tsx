@@ -51,7 +51,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">
                             <Title level={4} style={{ margin: 0 }}>{feedback.customerName || t('anonymous')}</Title>
-                            {feedback.status === 'resolved' ? <Tag color="success">{t('resolve')}</Tag> : <Tag color="primary">{feedback.status === 'new' ? 'New' : 'Read'}</Tag>}
+                            {feedback.status === 'resolved' ? <Tag color="success">{t('resolve')}</Tag> : <Tag color="primary">{feedback.status === 'new' ? 'New' : 'Seen'}</Tag>}
                         </Flex>
 
                         <Flex align="center" gap={4}>

@@ -262,6 +262,30 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 128px' }} vertical>
+                <Card size="small" title={<Text strong>Current style</Text>}>
+                    <List>
+                        <List.Item
+                            title={<Text>{t('homePageStyle')}</Text>}
+                            extra={<Text>{HOME_STYLES[homeStyle]?.label || homeStyle}</Text>}
+                        />
+                        <List.Item
+                            title={<Text>{t('menuMood')}</Text>}
+                            extra={<Text>{MENU_MOODS[menuMood]?.label || menuMood}</Text>}
+                        />
+                        <List.Item
+                            title={<Text>{t('menuLayout')}</Text>}
+                            extra={<Text>{MENU_LAYOUTS[menuLayout]?.label || menuLayout}</Text>}
+                        />
+                        <List.Item
+                            title={<Text>{t('showItemImages')}</Text>}
+                            extra={<Tag color={showImages ? 'success' : 'default'}>{showImages ? 'On' : 'Off'}</Tag>}
+                        />
+                        <List.Item
+                            title={<Text>{t('categoryTabs')}</Text>}
+                            extra={<Tag color={showCategoryTabs ? 'success' : 'default'}>{showCategoryTabs ? 'On' : 'Off'}</Tag>}
+                        />
+                    </List>
+                </Card>
                 <SectionCard title={t('quickStart')} subtitle={t('quickStartSubtitle')}>
                     <Flex gap={8} wrap>
                         {QUICK_PRESETS.map((preset) => {

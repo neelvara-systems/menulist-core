@@ -236,16 +236,20 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             </Flex>
 
                             <Card size="small">
-                                <Flex justify="space-between">
-                                    <Flex gap={2} vertical>
-                                        <Text type="secondary">{t('billingCycle')}</Text>
-                                        <Text>{`${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>
-                                    </Flex>
-                                    <Flex gap={2} vertical>
-                                        <Text type="secondary">{sub.status === 'active' ? t('renews') : t('expires')}</Text>
-                                        <Text>{formatDate(sub.renewsOn || sub.cycleEndDate)}</Text>
-                                    </Flex>
-                                </Flex>
+                                <List>
+                                    <List.Item
+                                        title={<Text>{t('billingCycle')}</Text>}
+                                        extra={<Text>{`${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>}
+                                    />
+                                    <List.Item
+                                        title={<Text>{sub.status === 'active' ? t('renews') : t('expires')}</Text>}
+                                        extra={<Text>{formatDate(sub.renewsOn || sub.cycleEndDate)}</Text>}
+                                    />
+                                    <List.Item
+                                        title={<Text>AI credits</Text>}
+                                        extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits}</Tag>}
+                                    />
+                                </List>
                             </Card>
 
                             {sub.status === 'past_due' ? (
@@ -296,6 +300,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             <Flex align="center" gap={6}>
                                                 <LuXCircle size={14} />
                                                 <Text>{t('cancel')}</Text>
+                                            </Flex>
+                                        </Button>
+                                        <Button fill="outline" onClick={fetchHistory} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuReceipt size={14} />
+                                                <Text>{t('billingHistory')}</Text>
                                             </Flex>
                                         </Button>
                                     </>

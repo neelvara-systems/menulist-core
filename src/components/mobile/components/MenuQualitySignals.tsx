@@ -51,7 +51,7 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
                     <LuCheckCircle color="#16a34a" size={24} />
                     <Flex gap={2} vertical>
                         <Text strong>Your menu looks great</Text>
-                        <Text type="secondary">Descriptions, images, and prices are in good shape.</Text>
+                        <Text type="secondary">Descriptions, photos, and prices look good.</Text>
                     </Flex>
                 </Flex>
             ) : (

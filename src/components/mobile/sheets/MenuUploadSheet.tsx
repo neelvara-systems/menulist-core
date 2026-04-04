@@ -158,7 +158,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                             <Title level={4} style={{ margin: 0 }}>
                                 {labels.uploadLabel}
                             </Title>
-                            <Text type="secondary">Upload a menu photo from your phone. The device picker can use camera or gallery.</Text>
+                            <Text type="secondary">Upload a menu photo from your phone. Use camera or gallery.</Text>
                         </Flex>
 
                         <Flex gap={12}>
@@ -181,7 +181,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                         </Flex>
 
                         <Card size="small" style={{ backgroundColor: '#fafafa' }}>
-                            <Text type="secondary">Supports JPG, PNG, WebP, HEIC, and HEIF. Max 20MB.</Text>
+                            <Text type="secondary">JPG, PNG, WebP, HEIC, HEIF. Max 20MB.</Text>
                         </Card>
                     </Flex>
                 ) : null}
@@ -192,7 +192,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                             <Title level={4} style={{ margin: 0 }}>
                                 Preview
                             </Title>
-                            <Text type="secondary">Check the image before we upload and process it.</Text>
+                        <Text type="secondary">Check the image before we process it.</Text>
                         </Flex>
 
                         <Card size="small">
@@ -238,7 +238,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                     <Result
                         status="success"
                         subTitle={`Your ${labels.offeringLower} is being processed. ${labels.itemsPlural.charAt(0).toUpperCase() + labels.itemsPlural.slice(1)} will appear shortly.`}
-                        title="Uploaded"
+                        title="Upload complete"
                     />
                 ) : null}
 
@@ -254,7 +254,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                         ]}
                         status="error"
                         subTitle={errorMessage}
-                        title="Upload Failed"
+                        title="Upload failed"
                     />
                 ) : null}
             </Flex>

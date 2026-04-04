@@ -43,7 +43,7 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
                     </Flex>
                 </Card>
 
-                <Card title="Presets">
+                <Card title="Preset colors">
                     <Flex gap={8} wrap>
                         {BRAND_COLOR_PRESETS.map((preset) => {
                             const isSelected = value === preset.color;
@@ -61,16 +61,16 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
                     </Flex>
                 </Card>
 
-                <Card title="Custom Color">
+                <Card title="Custom color">
                     <Flex gap={8}>
                         <Input onChange={setHexInput} placeholder="#FF5500" style={{ flex: 1 }} value={hexInput} />
-                        <Button onClick={handleHexSubmit} size="small">Apply</Button>
+                        <Button onClick={handleHexSubmit} size="small">Apply color</Button>
                     </Flex>
                 </Card>
 
                 {value ? (
                     <Button block fill="outline" onClick={() => { onChange(undefined); setHexInput(''); onClose(); }}>
-                        Use mood default color instead
+                        Use mood default
                     </Button>
                 ) : null}
             </Flex>

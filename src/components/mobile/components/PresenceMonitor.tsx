@@ -174,7 +174,7 @@ export default function MobilePresenceMonitor({
                         <Title level={5} style={{ margin: 0 }}>
                             Make your menu easy to find
                         </Title>
-                        <Text type="secondary">Add your menu to the places customers already use.</Text>
+                        <Text type="secondary">Add your menu to places customers already use.</Text>
                     </Flex>
                     <Tag color={allDone ? 'success' : 'default'}>
                         {allDone ? 'All set' : `${totalActive} places active`}
@@ -184,7 +184,7 @@ export default function MobilePresenceMonitor({
                 <Card size="small" style={{ backgroundColor: '#fafafa' }}>
                     <Flex gap={4} vertical>
                         <Text strong>Online discovery</Text>
-                        <Text type="secondary">Manual places where your team pastes the live menu link once.</Text>
+                        <Text type="secondary">Manual steps to paste your menu link once.</Text>
                     </Flex>
                 </Card>
 

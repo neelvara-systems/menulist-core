@@ -167,7 +167,7 @@ export default function BulkActionsSheet({ visible, onClose, projectId }: BulkAc
                 <Flex gap={16} style={{ height: '100%' }} vertical>
                     <Flex gap={4} vertical>
                         <Title level={4} style={{ margin: 0 }}>
-                            Bulk Actions
+                            Bulk actions
                         </Title>
                         <Text type="secondary">Make changes to multiple items at once for {storeDetails?.name || 'your menu'}.</Text>
                     </Flex>

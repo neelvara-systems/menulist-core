@@ -30,7 +30,7 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     return (
         <Popup bodyStyle={{ maxHeight: '85vh' }} destroyOnClose onMaskClick={onClose} visible>
             <Flex gap={12} vertical>
-                <Title level={4} style={{ margin: 0 }}>Add Item</Title>
+                <Title level={4} style={{ margin: 0 }}>Add item</Title>
 
                 <Card>
                     <Flex gap={8} vertical>
@@ -73,7 +73,7 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
 
                 <Flex gap={8}>
                     <Button block fill="outline" onClick={onClose} size="large">Cancel</Button>
-                    <Button block disabled={!name.trim()} onClick={handleSave} size="large">Add Item</Button>
+                    <Button block disabled={!name.trim()} onClick={handleSave} size="large">Add item</Button>
                 </Flex>
             </Flex>
         </Popup>

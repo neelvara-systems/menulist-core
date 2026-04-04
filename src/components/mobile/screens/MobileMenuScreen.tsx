@@ -212,10 +212,10 @@ export default function MobileMenuScreen() {
                             {t('uploadMenuPhoto', { offering: labels.offeringTitle })}
                         </Button>
                         <Button fill="outline" onClick={() => setIsBulkActionsOpen(true)} size="small">
-                            Bulk Actions
+                            Bulk actions
                         </Button>
                         <Button color="primary" onClick={() => setIsAddSheetOpen(true)} size="small">
-                            Add Item
+                            Add item
                         </Button>
                     </Flex>
                 </Flex>

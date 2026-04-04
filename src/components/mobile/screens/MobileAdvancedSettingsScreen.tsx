@@ -102,6 +102,16 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <Card size="small">
+                    <Flex gap={4} vertical>
+                        <Text strong>Settings overview</Text>
+                        <Text type="secondary">
+                            Contact details and feedback preferences are used on your menu and in support.
+                            Changes save automatically.
+                        </Text>
+                    </Flex>
+                </Card>
+
                 <Card size="small" title={<Text strong>{t('contactPerson')}</Text>}>
                     <List>
                         <List.Item
@@ -223,6 +233,7 @@ export default function MobileAdvancedSettingsScreen({ onBack }: MobileAdvancedS
                         </Title>
                         <Tag color="processing">{filledSocialCount}</Tag>
                     </Flex>
+                    <Text type="secondary">Leave a field empty to hide that link.</Text>
 
                     <Flex gap={12} vertical>
                         {SOCIAL_PLATFORMS.map((platform) => (

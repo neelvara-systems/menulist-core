@@ -44,7 +44,7 @@ export default function MobileCommunicationKit({
                 <LuMessageSquare size={16} />
                 <Title level={5} style={{ margin: 0 }}>Customer Messages</Title>
             </Flex>
-            <Text type="secondary">Ready-to-send replies for WhatsApp or copy/paste.</Text>
+            <Text type="secondary">Ready-to-send replies for WhatsApp or copy and paste.</Text>
             <Flex gap={12} vertical>
                 {templates.map((template) => (
                     <MobileMessageCard key={template.id} template={template} />

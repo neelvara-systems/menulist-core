@@ -151,9 +151,15 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                 prefix={store.isMaster ? <LuStar color="#eab308" size={18} /> : <LuMapPin color="#60a5fa" size={18} />}
                                 extra={
                                     store.isMaster ? (
-                                        <Tag color="warning">HQ</Tag>
+                                        <Flex align="center" gap={6}>
+                                            <Tag color="warning">HQ</Tag>
+                                            {store.storeId === storeDetails?.storeId ? <Tag color="processing">Current</Tag> : null}
+                                        </Flex>
                                     ) : (
-                                        <Tag>View</Tag>
+                                        <Flex align="center" gap={6}>
+                                            <Tag>View</Tag>
+                                            {store.storeId === storeDetails?.storeId ? <Tag color="processing">Current</Tag> : null}
+                                        </Flex>
                                     )
                                 }
                                 title={<Text strong>{store.name || `Store ${store.storeId}`}</Text>}
@@ -163,12 +169,20 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 </Card>
 
                 {FEATURE_FLAGS.ENABLE_OUTLET_CREATION && userPermissions?.canManageOutlets ? (
-                    <Button block color="primary" fill="outline" onClick={() => setShowAddOutlet(true)} size="large">
-                        <Flex align="center" gap={6} justify="center">
-                            <LuPlus size={16} />
-                            <Text>{t('addOutlet')}</Text>
+                    <Card size="small">
+                        <Flex align="center" justify="space-between">
+                            <Flex gap={4} vertical>
+                                <Text strong>{t('addOutlet')}</Text>
+                                <Text type="secondary">Add a new location under this account.</Text>
+                            </Flex>
+                            <Button color="primary" fill="outline" onClick={() => setShowAddOutlet(true)} size="small">
+                                <Flex align="center" gap={6}>
+                                    <LuPlus size={16} />
+                                    <Text>{t('addOutlet')}</Text>
+                                </Flex>
+                            </Button>
                         </Flex>
-                    </Button>
+                    </Card>
                 ) : null}
 
                 {outletCount > 0 ? (
