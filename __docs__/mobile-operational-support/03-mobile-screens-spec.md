@@ -8,17 +8,17 @@
 
 ---
 
-## Screen Inventory (Updated Feb 15, 2026 — from codebase truth)
+## Screen Inventory (Updated April 5, 2026 — from codebase truth)
 
-**30 files total:** 23 screens + 5 sheets + 2 shell/nav
+**35 files total:** 28 screens + 5 sheets + 2 shell/nav
 
 ### Tab Bar Screens (4)
 
 | #   | Screen         | Tab      | File                       | Frequency          |
 | --- | -------------- | -------- | -------------------------- | ------------------ |
-| 1   | Menu Screen    | Menu     | `MobileMenuScreen.tsx`     | Multiple times/day |
-| 2   | Hours & Status | Hours    | `MobileHoursScreen.tsx`    | Daily              |
-| 3   | Feedback Inbox | Feedback | `MobileFeedbackScreen.tsx` | Daily              |
+| 1   | Today Screen   | Today    | `MobileTodayScreen.tsx`    | Daily              |
+| 2   | Menu Screen    | Menu     | `MobileMenuScreen.tsx`     | Multiple times/day |
+| 3   | Share Hub      | Share    | `MobileShareScreen.tsx`    | Daily              |
 | 4   | More Hub       | More     | `MobileMoreScreen.tsx`     | As needed          |
 
 ### Bottom Sheets (5)
@@ -31,46 +31,49 @@
 | 8   | Bulk Actions | Menu          | `BulkActionsSheet.tsx` | Filter icon       |
 | 9   | Color Picker | Design Editor | `ColorPickerSheet.tsx` | Tap brand color   |
 
-### Drill-In Screens from More (19)
+### Drill-In Screens from More (24)
 
 | #   | Screen              | File                               | Desktop Equivalent          | Frequency |
 | --- | ------------------- | ---------------------------------- | --------------------------- | --------- |
 | 10  | Feedback Detail     | `MobileFeedbackDetail.tsx`         | Feedback detail modal       | Daily     |
-| 11  | Share & QR          | `MobileShareScreen.tsx`            | ShareModal                  | Daily     |
-| 12  | Public Info         | `MobilePublicInfoScreen.tsx`       | BusinessSettings > Location | Monthly   |
-| 13  | Billing             | `MobileBillingScreen.tsx`          | BillingPage                 | Monthly   |
-| 14  | Dashboard           | `MobileDashboardScreen.tsx`        | OwnerDashboard              | Weekly    |
-| 15  | Today Campaigns     | `MobileTodayScreen.tsx`            | TodayScreen                 | Daily     |
-| 16  | Staff               | `MobileUsersScreen.tsx`            | UsersListPage               | Monthly   |
-| 17  | Transactions        | `MobileTransactionsScreen.tsx`     | TransactionPage             | Monthly   |
-| 18  | Help Center         | `MobileHelpScreen.tsx`             | HelpCenter                  | As needed |
-| 19  | Basic Settings      | `MobileBasicSettingsScreen.tsx`    | BusinessSettings > Basic    | Monthly   |
-| 20  | Locale Settings     | `MobileLocaleSettingsScreen.tsx`   | BusinessSettings > Locale   | Rare      |
-| 21  | Working Hours Edit  | `MobileWorkingHoursEditScreen.tsx` | BusinessSettings > Hours    | Weekly    |
-| 22  | Roles & Permissions | `MobileRolesScreen.tsx`            | UserPermissionsPage         | Rare      |
-| 23  | Digital Screens     | `MobileDigitalScreensScreen.tsx`   | DigitalScreenSettings       | Rare      |
-| 24  | Locations           | `MobileLocationsScreen.tsx`        | LocationsPage               | Rare      |
-| 25  | Advanced Settings   | `MobileAdvancedSettingsScreen.tsx` | BusinessSettings (3 tabs)   | Monthly   |
-| 26  | **Design Editor**   | `MobileDesignEditorScreen.tsx`     | B2CView sidebar             | Monthly   |
-| 27  | **SEO & Analytics** | `MobileSeoAnalyticsScreen.tsx`     | SeoTab + AnalyticsTab       | Rare      |
-| 28  | **Time Slots**      | `MobileTimeSlotsScreen.tsx`        | TimeSlotPresetsTab          | Monthly   |
+| 11  | Public Info         | `MobilePublicInfoScreen.tsx`       | BusinessSettings > Location | Monthly   |
+| 12  | Billing             | `MobileBillingScreen.tsx`          | BillingPage                 | Monthly   |
+| 13  | Dashboard           | `MobileDashboardScreen.tsx`        | OwnerDashboard              | Weekly    |
+| 14  | Staff               | `MobileUsersScreen.tsx`            | UsersListPage               | Monthly   |
+| 15  | Transactions        | `MobileTransactionsScreen.tsx`     | TransactionPage             | Monthly   |
+| 16  | Help Center         | `MobileHelpScreen.tsx`             | HelpCenter                  | As needed |
+| 17  | Basic Settings      | `MobileBasicSettingsScreen.tsx`    | BusinessSettings > Basic    | Monthly   |
+| 18  | Locale Settings     | `MobileLocaleSettingsScreen.tsx`   | BusinessSettings > Locale   | Rare      |
+| 19  | Working Hours Edit  | `MobileWorkingHoursEditScreen.tsx` | BusinessSettings > Hours    | Weekly    |
+| 20  | Roles & Permissions | `MobileRolesScreen.tsx`            | UserPermissionsPage         | Rare      |
+| 21  | Digital Screens     | `MobileDigitalScreensScreen.tsx`   | DigitalScreenSettings       | Rare      |
+| 22  | Locations           | `MobileLocationsScreen.tsx`        | LocationsPage               | Rare      |
+| 23  | Advanced Settings   | `MobileAdvancedSettingsScreen.tsx` | BusinessSettings (3 tabs)   | Monthly   |
+| 24  | Design Editor       | `MobileDesignEditorScreen.tsx`     | B2CView sidebar             | Monthly   |
+| 25  | SEO & Analytics     | `MobileSeoAnalyticsScreen.tsx`     | SeoTab + AnalyticsTab       | Rare      |
+| 26  | Time Slots          | `MobileTimeSlotsScreen.tsx`        | TimeSlotPresetsTab          | Monthly   |
+| 27  | Official Page       | `MobileOfficialPageScreen.tsx`     | OfficialPageTab             | Rare      |
+| 28  | Business Attributes | `MobileBusinessAttributesScreen.tsx` | BusinessAttributesTab     | Rare      |
+| 29  | Domain Settings     | `MobileDomainSettingsScreen.tsx`   | DomainSettingsTab           | Rare      |
+| 30  | Integrations        | `MobileIntegrationsScreen.tsx`     | IntegrationsTab             | Rare      |
+| 31  | POS Sync            | `MobilePosSyncScreen.tsx`          | PosSyncTab                  | Rare      |
 
 ### Shell (2)
 
 | #   | Component        | File                   | Purpose                   |
 | --- | ---------------- | ---------------------- | ------------------------- |
-| 29  | MobileShell      | `MobileShell.tsx`      | Root wrapper, tab routing |
-| 30  | MobileNavigation | `MobileNavigation.tsx` | Bottom TabBar             |
+| 34  | MobileShell      | `MobileShell.tsx`      | Root wrapper, tab routing |
+| 35  | MobileNavigation | `MobileNavigation.tsx` | Bottom TabBar             |
 
-**Desktop-only (2 remaining):** Bulk Pricing (complex math + preview grid), Category Moves (multi-step bulk selection). All other features have mobile equivalents.
+**Desktop-only remainder:** platform/ops workflows, complex editor precision tasks, and any feature explicitly rejected by its mobile support gate. Core owner operations have mobile equivalents.
 
 ---
 
-## Screen 1 — Menu Screen (Default Home)
+## Screen 1 — Menu Screen
 
 ### Purpose
 
-The most-used screen in the entire mobile app. Owner opens app → lands here → searches item → edits/toggles → closes app. All in under 10 seconds.
+The most-used editing screen in the mobile app. Owner opens app → switches to Menu → searches item → edits/toggles → closes app. All in under 10 seconds.
 
 ### Layout
 
@@ -93,7 +96,7 @@ The most-used screen in the entire mobile app. Owner opens app → lands here �
 │                             │
 │                         [+] │  ← FloatingBubble (add item)
 ├─────────────────────────────┤
-│ [Menu] [Hours] [Feed] [More]│  ← TabBar (bottom nav)
+│ [Today] [Menu] [Share] [More]│ ← TabBar (bottom nav)
 └─────────────────────────────┘
 ```
 

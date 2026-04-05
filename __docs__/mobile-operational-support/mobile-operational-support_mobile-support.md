@@ -1,7 +1,7 @@
 # Mobile Operational Support — Mobile Support
 
 **Created:** February 15, 2026  
-**Last Updated:** February 16, 2026 (v2 — full feature audit)  
+**Last Updated:** April 5, 2026 (v3 — current navigation contract)  
 **Status:** ✅ PWA END-TO-END — Full mobile-only operation supported  
 **Feature Flag:** `ENABLE_MOBILE_UI`
 
@@ -24,13 +24,13 @@
 
 | Screen                         | Tab                 | DAL Functions Used                                                                | Desktop Counterpart                    |
 | ------------------------------ | ------------------- | --------------------------------------------------------------------------------- | -------------------------------------- |
+| `MobileTodayScreen`            | Today               | `getTodayCampaigns`, `completeCampaign`, `skipCampaign`                           | `TodayScreen`                          |
 | `MobileMenuScreen`             | Menu                | `getProjectsList`, `getProjectData`, `updateProject`                              | `ProjectsPage`                         |
 | `MenuUploadSheet`              | Menu (sheet)        | `addProject`, `uploadFile`, `createMenuProcessingJob`                             | Upload flow in `ProjectsPage`          |
-| `MobileHoursScreen`            | Hours               | `updateStore`                                                                     | `BusinessSettings > WorkingHoursTab`   |
-| `MobileFeedbackScreen`         | Feedback            | `getFeedbackList`, `getFeedbackCount`                                             | `FeedbackInbox`                        |
+| `MobileShareScreen`            | Share               | `getProjectsList`, `generateProjectUrl`, `generateOBPUrl`, `getScreenState`       | `UseMenuList`                          |
 | `MobileFeedbackDetail`         | (sub)               | `updateFeedbackStatus`                                                            | `FeedbackCard`                         |
 | `MobileMoreScreen`             | More                | `signOutSession`                                                                  | `ProfileActionsModal`                  |
-| `MobileShareScreen`            | More > Share        | `generateProjectUrl`                                                              | `ShareModal > QRCodeView`              |
+| `MobileFeedbackScreen`         | More > Feedback     | `getFeedbackList`, `getFeedbackCount`                                             | `FeedbackInbox`                        |
 | `MobilePublicInfoScreen`       | More > Public Info  | `updateStore`                                                                     | `BusinessSettings > LocationInfoTab`   |
 | `MobileBillingScreen`          | More > Billing      | `usePaymentHandler`, `getActiveSubscriptionForStore`, `getBillingHistoryForStore` | `BillingPage`                          |
 | `MobileBasicSettingsScreen`    | More > Basic        | `updateStore`, `BUSINESS_TYPES`                                                   | `BusinessSettings > BasicInfoTab`      |
@@ -40,7 +40,6 @@
 | `MobileDigitalScreensScreen`   | More > Screens      | `getScreenState`, `initializeScreenState`, `updateScreenSettings`                 | `DigitalScreenSettings`                |
 | `MobileLocationsScreen`        | More > Locations    | `updateOutletPolicy`, `/api/outlets/create`, `/api/auth/switch-store`             | `LocationsPage`                        |
 | `MobileDashboardScreen`        | More > Dashboard    | `useOwnerDashboard`, `getProjectsList`                                            | `OwnerDashboard`                       |
-| `MobileTodayScreen`            | More > Today        | `getTodayCampaigns`, `completeCampaign`, `skipCampaign`                           | `TodayScreen`                          |
 | `MobileUsersScreen`            | More > Staff        | `addPlatformUser`, `updatePlatformUser`                                           | `UsersListPage`                        |
 | `MobileTransactionsScreen`     | More > Transactions | `getPaginatedAiOperations`                                                        | `TransactionPage`                      |
 | `MobileHelpScreen`             | More > Help         | (external links + FAQ)                                                            | `HelpCenter`                           |
@@ -50,6 +49,11 @@
 | `ColorPickerSheet`             | Design (sheet)      | (local state → parent)                                                            | `BrandColorPicker`                     |
 | `MobileSeoAnalyticsScreen`     | More > SEO          | `updateStore` (tagline, meta, analytics)                                          | `SeoTab` + `AnalyticsTab`              |
 | `MobileTimeSlotsScreen`        | More > Time Slots   | `updateTimeSlotPresets`, `removePresetFromAllCategories`, `generatePresetId`      | `TimeSlotPresetsTab`                   |
+| `MobileOfficialPageScreen`     | More > Official     | `updateStore`, `uploadOBPPhoto`                                                   | `OfficialPageTab`                      |
+| `MobileBusinessAttributesScreen` | More > Attributes | `updateStore`                                                                     | `BusinessAttributesTab`                |
+| `MobileDomainSettingsScreen`   | More > Domain       | `updateStore`, `/api/domain`, `/api/subdomain/check`                              | `DomainSettingsTab`                    |
+| `MobileIntegrationsScreen`     | More > Integrations | read-only store GBP state                                                         | `IntegrationsTab`                      |
+| `MobilePosSyncScreen`          | More > POS Sync     | `updateStore`, `/api/pos-sync/test`                                               | `PosSyncTab`                           |
 
 ---
 
@@ -58,12 +62,12 @@
 ```
 AntdLayoutWrapper (src/components/antdComponent/layoutWrapper/index.tsx)
   └─ if isMobile && ENABLE_MOBILE_UI && !forceDesktop → MobileShell
-     ├─ MobileNavigation (TabBar: Menu, Hours, Feedback, More)
+     ├─ MobileNavigation (TabBar: Today, Menu, Share, More)
+     ├─ MobileTodayScreen
      ├─ MobileMenuScreen
-     ├─ MobileHoursScreen
-     ├─ MobileFeedbackScreen
+     ├─ MobileShareScreen
      └─ MobileMoreScreen
-         ├─ MobileShareScreen
+         ├─ MobileFeedbackScreen
          ├─ MobilePublicInfoScreen
          ├─ MobileBillingScreen
          ├─ MobileBasicSettingsScreen
@@ -73,7 +77,6 @@ AntdLayoutWrapper (src/components/antdComponent/layoutWrapper/index.tsx)
          ├─ MobileDigitalScreensScreen
          ├─ MobileLocationsScreen
          ├─ MobileDashboardScreen
-         ├─ MobileTodayScreen
          ├─ MobileUsersScreen
          ├─ MobileTransactionsScreen
          ├─ MobileHelpScreen
@@ -81,7 +84,12 @@ AntdLayoutWrapper (src/components/antdComponent/layoutWrapper/index.tsx)
          ├─ MobileDesignEditorScreen
          │   └─ ColorPickerSheet (bottom sheet)
          ├─ MobileSeoAnalyticsScreen
-         └─ MobileTimeSlotsScreen
+         ├─ MobileTimeSlotsScreen
+         ├─ MobileOfficialPageScreen
+         ├─ MobileBusinessAttributesScreen
+         ├─ MobileDomainSettingsScreen
+         ├─ MobileIntegrationsScreen
+         └─ MobilePosSyncScreen
      MobileMenuScreen
          └─ BulkActionsSheet (bottom sheet)
 ```
@@ -157,7 +165,7 @@ All mobile screens write data in **identical format** to desktop:
 - **Subscription gate:** MobileShell checks `hasValidSubscriptionAccess` — no-sub users see upgrade prompt
 - **Menu upload:** `MenuUploadSheet` enables camera/gallery → optimize → upload → AI extraction from mobile
 - **Add item persistence:** `AddItemSheet` saves to Firestore via optimistic update + background sync
-- **Feedback badge:** Fixed `getFeedbackCount` return type (was `.count`, now direct number)
+- **More badge:** `getFeedbackCount` unread count shown on More tab
 
 ---
 
@@ -173,7 +181,7 @@ All mobile screens write data in **identical format** to desktop:
 | 6. Edit item           | `ItemEditSheet`                                                                     | ✅     |
 | 7. Add item            | `AddItemSheet` → Firestore persist                                                  | ✅     |
 | 8. Working hours       | `MobileHoursScreen` / `MobileWorkingHoursEditScreen`                                | ✅     |
-| 9. Share QR            | `MobileShareScreen`                                                                 | ✅     |
+| 9. Share links/screens | `MobileShareScreen`                                                                 | ✅     |
 | 10. View feedback      | `MobileFeedbackScreen` / `MobileFeedbackDetail`                                     | ✅     |
 | 11. Business settings  | `MobileBasicSettingsScreen`, `MobileLocaleSettingsScreen`, `MobilePublicInfoScreen` | ✅     |
 | 12. Billing            | `MobileBillingScreen` (redirects to desktop for plan changes)                       | ✅     |

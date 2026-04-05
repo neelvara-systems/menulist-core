@@ -15,9 +15,9 @@
 
 ## Mobile Architecture
 
-- Desktop: antd components + responsive layout
-- Mobile: Same page, responsive design (not separate mobile screen)
-- The page is inherently mobile-friendly (large buttons, simple cards, vertical stack)
+- Desktop: full `UseMenuList` page with asset generation, guides, and broader distribution tooling
+- Mobile: dedicated `MobileShareScreen.tsx` optimized for fast in-service actions
+- Shared logic: same DAL/data sources for project links, OBP links, feedback links, and screen URLs
 
 ## Mobile UX Requirements
 
@@ -28,12 +28,15 @@
 5. Preview modals scale to viewport
 6. No horizontal scrolling
 
-## Why Not a Separate Mobile Screen
+## Current Mobile Contract
 
-This page is already designed mobile-first:
-- Large tap targets
-- One-column layout on mobile
-- Simple copy/download actions
-- No complex interactions
+Mobile prioritizes the highest-frequency sharing actions:
+- copy/open main menu link
+- copy/open direct project link
+- copy/open feedback link
+- digital screen links
+- menu presence monitor
+- customer communication kit
+- project switching for multi-project stores
 
-A separate `MobileUseMenuListScreen.tsx` would duplicate logic without benefit.
+Desktop remains the richer distribution workspace for print assets, full guides, and bulk download flows.

@@ -11,7 +11,7 @@ import { LuCalendarOff, LuCheck, LuMessageCircle, LuSkipForward } from 'react-ic
 import { Button, Card, DotLoading, Flex, NavBar, Text, Title, Toast } from '../antd';
 
 interface MobileTodayScreenProps {
-    onBack: () => void;
+    onBack?: () => void;
 }
 
 export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
@@ -49,7 +49,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     if (!FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
                 <Flex align="center" flex={1} gap={12} justify="center" style={{ padding: 24 }} vertical>
                     <LuCalendarOff color="#d1d5db" size={36} />
                     <Text type="secondary">{t('comingSoon')}</Text>
@@ -61,7 +61,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     if (isLoading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
                 <Flex align="center" flex={1} justify="center">
                     <DotLoading color="primary" />
                 </Flex>
@@ -72,7 +72,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     if (postAction) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
                 <Flex align="center" flex={1} gap={12} justify="center" vertical>
                     <Card style={{ borderRadius: '50%' }}>
                         <LuCheck color="#16a34a" size={32} />
@@ -86,7 +86,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     if (!todayCampaigns || todayCampaigns.isEmpty || (!todayCampaigns.primary && (!todayCampaigns.operational || todayCampaigns.operational.length === 0))) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
                 <Flex align="center" flex={1} gap={12} justify="center" style={{ padding: 24 }} vertical>
                     <LuCheck color="#4ade80" size={36} />
                     <Title level={4} style={{ margin: 0 }}>{t('allDoneForToday')}</Title>
@@ -102,7 +102,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 {primary ? (
                     <Card>

@@ -97,7 +97,7 @@ export const FEATURE_FLAGS = {
      *
      * Documentation: FIREBASE_APP_CHECK_SETUP_GUIDE.md
      */
-    ENABLE_APP_CHECK: false, // Toggle this for dev/prod
+    ENABLE_APP_CHECK: true, // Toggle this for dev/prod
 
     /**
      * Enable Keyboard Shortcuts in Editor
@@ -659,7 +659,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready for outlet awareness
      * Development: Enable to test the feature
      */
-    ENABLE_MASTER_UPDATE_AWARENESS: false, // Default OFF until implementation complete
+    ENABLE_MASTER_UPDATE_AWARENESS: true, // Default OFF until implementation complete
 
     // ─────────────────────────────────────────────────────────────
     // GUEST FEEDBACK (Internal Feedback System)
@@ -751,7 +751,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready for POS sync
      * Development: Enable to test the feature
      */
-    ENABLE_POS_SYNC: false,
+    ENABLE_POS_SYNC: true,
 
     // ═══════════════════════════════════════════════════════════════
     // MENU COMMAND CENTER (Bulk Operations)
@@ -857,7 +857,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable after testing with real menu data
      * Development: Enable to test naming normalization
      */
-    ENABLE_NAMING_STANDARDIZATION: false,
+    ENABLE_NAMING_STANDARDIZATION: true,
 
     // ═══════════════════════════════════════════════════════════════
     // MENU QUALITY SIGNALS
@@ -881,7 +881,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable after internal testing
      * Development: Enable to test quality signals
      */
-    ENABLE_MENU_QUALITY_SIGNALS: false,
+    ENABLE_MENU_QUALITY_SIGNALS: true,
 
     // ═══════════════════════════════════════════════════════════════
     // URL ROUTING ARCHITECTURE — Stored Slugs + Reserved Namespace
@@ -924,7 +924,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/official-business-page/official-business-page_impl.md
      */
-    ENABLE_OBP: false,
+    ENABLE_OBP: true,
 
     // ═══════════════════════════════════════════════════════════════
     // MOBILE UI (Operational Mobile Support)
@@ -975,7 +975,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/messaging-onboarding/messaging-onboarding_impl.md
      */
-    ENABLE_MESSAGING_ONBOARDING: false,
+    ENABLE_MESSAGING_ONBOARDING: true,
 
     /**
      * List of enabled messaging providers.
@@ -1027,7 +1027,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when stores have real traffic
      * Development: Keep false — no data to test against
      */
-    ENABLE_TRUST_HEALTH_SIGNAL: false,
+    ENABLE_TRUST_HEALTH_SIGNAL: true,
 
     /**
      * Loyalty Health Signal (Pillar 5)
@@ -1042,7 +1042,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when stores have real traffic
      * Development: Keep false — no data to test against
      */
-    ENABLE_LOYALTY_HEALTH_SIGNAL: false,
+    ENABLE_LOYALTY_HEALTH_SIGNAL: true,
 
     /**
      * Risk / Decline Detection (Pillar 6)
@@ -1058,7 +1058,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable after Pillars 4+5 have been active for 4+ weeks
      * Development: Keep false
      */
-    ENABLE_RISK_DECLINE_DETECTION: false,
+    ENABLE_RISK_DECLINE_DETECTION: true,
 
     // ─────────────────────────────────────────────────────────────
     // REVIEWS & REPUTATION (Pillar 3 — Reputation Protection)
@@ -1086,7 +1086,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when GBP API access is granted
      * Development: Keep false — no data without GBP API
      */
-    ENABLE_REVIEWS_REPUTATION: false,
+    ENABLE_REVIEWS_REPUTATION: true,
 
     /**
      * AI Reply Assist — Gemini-powered reply suggestions
@@ -1096,7 +1096,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/reputation-protection/reputation-protection_impl.md
      */
-    ENABLE_AI_REPLY_ASSIST: false,
+    ENABLE_AI_REPLY_ASSIST: true,
 
     // ─────────────────────────────────────────────────────────────
     // COMPLIANCE PAGES (Domain Activation Infrastructure)
@@ -1121,7 +1121,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when custom domain feature is actively used
      * Development: Enable for testing compliance page rendering
      */
-    ENABLE_COMPLIANCE_PAGES: false,
+    ENABLE_COMPLIANCE_PAGES: true,
 
     // ─────────────────────────────────────────────────────────────
     // TEMPORARY STATUS LAYER (Real-Time Status Banners)
@@ -1145,7 +1145,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready
      * Development: Enable to test the feature
      */
-    ENABLE_TEMP_STATUS: false,
+    ENABLE_TEMP_STATUS: true,
 
     // ─────────────────────────────────────────────────────────────
     // MENU TRUST SIGNALS (Customer-Facing Trust Cues)
@@ -1172,7 +1172,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready
      * Development: Enable to test trust signal display
      */
-    ENABLE_MENU_TRUST_SIGNALS: false,
+    ENABLE_MENU_TRUST_SIGNALS: true,
 
     // ─────────────────────────────────────────────────────────────
     // SPECIAL MENU SWITCHING (Temporary Menu Override)
@@ -1204,7 +1204,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready
      * Development: Enable to test the feature
      */
-    ENABLE_SPECIAL_MENU_SWITCHING: false,
+    ENABLE_SPECIAL_MENU_SWITCHING: true,
 
     // ─────────────────────────────────────────────────────────────
     // BEHAVIOR ENGINEERING (Presence Dominance Activation)
@@ -1261,7 +1261,7 @@ export const FEATURE_FLAGS = {
      * Production: Keep false until agent API demand is proven
      * Development: Keep false — no code to test
      */
-    ENABLE_AGENT_DISCOVERY: false,
+    ENABLE_AGENT_DISCOVERY: true,
 
     // ═══════════════════════════════════════════════════════════════
     // AUTH & USER FLOW (Auth Audit — Feb 19, 2026)
@@ -1331,7 +1331,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/cost-self-protection/cost-self-protection_impl.md
      */
-    ENABLE_COST_PROTECTION: false,
+    ENABLE_COST_PROTECTION: true,
 
     /**
      * Ops Alert Delivery — Telegram notifications for system alerts.
@@ -1352,7 +1352,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/ops-alerting-delivery/ops-alerting-delivery_impl.md
      */
-    ENABLE_OPS_ALERTS: false,
+    ENABLE_OPS_ALERTS: true,
 
     /**
      * Menu Health Monitor — Post-publish verification.
@@ -1370,7 +1370,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/menu-health-monitor/menu-health-monitor_impl.md
      */
-    ENABLE_MENU_HEALTH_MONITOR: false,
+    ENABLE_MENU_HEALTH_MONITOR: true,
 
     /**
      * Lifecycle Messaging — Event-driven operational emails to store owners.
@@ -1395,7 +1395,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/lifecycle-messaging/lifecycle-messaging_impl.md
      */
-    ENABLE_LIFECYCLE_MESSAGING: false,
+    ENABLE_LIFECYCLE_MESSAGING: true,
 
     // ═══════════════════════════════════════════════════════════════
     // PDF SURFACE (Enhanced Menu PDF Generation)
@@ -1508,7 +1508,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/menu-presence-monitor/README.md
      */
-    ENABLE_MENU_PRESENCE_MONITOR: false,
+    ENABLE_MENU_PRESENCE_MONITOR: true,
 
     /**
      * Customer Communication Kit — Pre-generated message templates
@@ -1525,7 +1525,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/customer-communication-kit/README.md
      */
-    ENABLE_CUSTOMER_COMMUNICATION_KIT: false,
+    ENABLE_CUSTOMER_COMMUNICATION_KIT: true,
 
     // ═══════════════════════════════════════════════════════════════
     // BUSINESS TRUTH GRAPH — Accepted Improvements
@@ -1550,7 +1550,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/business-truth-graph/_archive/chatgpt-review-session13.md §Layer 12
      */
-    ENABLE_BUSINESS_ATTRIBUTES: false,
+    ENABLE_BUSINESS_ATTRIBUTES: true,
 
     /**
      * Platform Pull API — Public read-only APIs for external systems
@@ -1569,7 +1569,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/platform-pull-api/
      */
-    ENABLE_PUBLIC_API: false,
+    ENABLE_PUBLIC_API: true,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE COMPOUNDING (MenuList Truth Engine)
@@ -1610,7 +1610,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/reseller-dashboard/reseller-dashboard_impl.md
      */
-    ENABLE_RESELLER_DASHBOARD: false,
+    ENABLE_RESELLER_DASHBOARD: true,
 
     // ═══════════════════════════════════════════════════════════════
     // AI EXTRACTION MONITORING (Internal Ops Dashboard)
@@ -1630,7 +1630,7 @@ export const FEATURE_FLAGS = {
      * Zero Firebase cost when disabled.
      * When enabled: ~100-200 reads per dashboard visit (read-only).
      */
-    ENABLE_EXTRACTION_MONITORING_DASHBOARD: false,
+    ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,
 
     // ═══════════════════════════════════════════════════════════════
     // CANONICA — Support Knowledge Control Plane
@@ -2020,7 +2020,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/discovery-infrastructure/provenance-metadata.md
      */
-    ENABLE_INFRASTRUCTURE_PROVENANCE: false,
+    ENABLE_INFRASTRUCTURE_PROVENANCE: true,
 
     /**
      * Semantic Attribute Registry — Phase 1C
@@ -2072,7 +2072,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */
-    ENABLE_PUBLIC_MENU_ENTRY: false,
+    ENABLE_PUBLIC_MENU_ENTRY: true,
 } as const;
 
 /**

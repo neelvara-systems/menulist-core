@@ -22,23 +22,23 @@ The mobile navigation is designed so that an owner who has never used the mobile
 
 | Position | Tab | Icon | Route | Default |
 | --- | --- | --- | --- | --- |
-| 1 (left) | **Menu** | `LuFolderHeart` | `/projects` | ✅ Active on open |
-| 2 | **Hours** | `LuClock` | `/today` | |
-| 3 | **Feedback** | `LuTicket` | `/feedback` | |
-| 4 (right) | **More** | `LuMenu` | internal | |
+| 1 (left) | **Today** | `LuCalendarCheck` | internal | ✅ Active on open |
+| 2 | **Menu** | `LuUtensilsCrossed` | `/projects` | |
+| 3 | **Share** | `LuQrCode` | internal | |
+| 4 (right) | **More** | `LuMoreHorizontal` | internal | |
 
 ### Tab Behavior
 
 - **Active tab**: Highlighted with primary color + filled icon
 - **Inactive tabs**: Grey icon + label
-- **Badge on Feedback**: Show dot when new unread feedback exists
+- **Badge on More**: Show unread feedback count on More tab
 - **Tab tap**: Switch content instantly (no page navigation, no loading)
 - **Double-tap active tab**: Scroll to top of current content
 
 ### Why Exactly 4 Tabs
 
-- **3 tabs**: Not enough. Hours needs its own tab (used daily).
-- **4 tabs**: Perfect. Covers all high-frequency features + "More" for rest.
+- **3 tabs**: Not enough. Today, editing, and sharing are all high-frequency on mobile.
+- **4 tabs**: Covers daily action, editing, distribution, and settings cleanly.
 - **5 tabs**: Too many. Creates decision fatigue. "More" handles overflow cleanly.
 
 ### TabBar Visual Specs
@@ -64,20 +64,20 @@ The mobile navigation is designed so that an owner who has never used the mobile
 │                                          │
 │  ┌──── TabBar ─────────────────────┐    │
 │  │                                  │    │
-│  │  [Menu]   [Hours]  [Feed]  [More]│    │
+│  │ [Today]   [Menu] [Share] [More] │    │
 │  │    │         │        │       │  │    │
 │  └────┼─────────┼────────┼───────┼──┘    │
 │       │         │        │       │       │
 │       ▼         ▼        ▼       ▼       │
 │                                          │
-│  ┌─ Menu ─┐ ┌─ Hours ─┐ ┌ Feed ┐ ┌More┐│
-│  │        │ │         │ │      │ │    ││
-│  │ Search │ │ Today   │ │ List │ │List││
-│  │ Items  │ │ Status  │ │      │ │    ││
-│  │        │ │         │ │      │ │    ││
-│  │  [+]   │ │ Weekly  │ │      │ │    ││
-│  │  FAB   │ │ Hours   │ │      │ │    ││
-│  └───┬────┘ └────┬────┘ └──┬───┘ └─┬──┘│
+│  ┌ Today ┐ ┌─ Menu ─┐ ┌Share┐ ┌More┐│
+│  │       │ │        │ │     │ │    ││
+│  │ Daily │ │ Search │ │ Live│ │List││
+│  │ Action│ │ Items  │ │links│ │    ││
+│  │       │ │        │ │     │ │    ││
+│  │Prompt │ │  [+]   │ │ TV  │ │    ││
+│  │       │ │  FAB   │ │ QR  │ │    ││
+│  └───┬───┘ └───┬────┘ └──┬──┘ └─┬──┘│
 │      │           │         │        │    │
 │      ▼           ▼         ▼        ▼    │
 │                                          │
@@ -99,15 +99,32 @@ The mobile navigation is designed so that an owner who has never used the mobile
 
 | Level | What | Example |
 | --- | --- | --- |
-| **Level 0** | TabBar | Menu, Hours, Feedback, More |
-| **Level 1** | Screen content | Item list, hours card, feedback inbox, more list |
-| **Level 2** | Overlay/drill-in | Edit sheet, add sheet, feedback detail, sub-screens |
+| **Level 0** | TabBar | Today, Menu, Share, More |
+| **Level 1** | Screen content | campaign view, item list, share hub, more list |
+| **Level 2** | Overlay/drill-in | edit sheet, add sheet, project picker, sub-screens |
 
 **Maximum depth: 2.** No Level 3 exists on mobile. If a feature needs Level 3, it belongs on desktop.
 
 ---
 
-## Tab: Menu (Default)
+## Tab: Today
+
+### Internal Navigation
+
+```
+Today Tab
+├── MobileTodayScreen (default)
+│   └── → Dashboard drill-in (Level 2, optional)
+```
+
+### Behavior
+- **Default open**: Today screen
+- **Primary use**: daily campaign/action, staff prompt, quick completion
+- **Dashboard access**: opens only as a drill-in when needed
+
+---
+
+## Tab: Menu
 
 ### Internal Navigation
 
@@ -125,40 +142,22 @@ Menu Tab
 
 ---
 
-## Tab: Hours
+## Tab: Share
 
 ### Internal Navigation
 
 ```
-Hours Tab
-├── Hours & Status Screen (default)
-│   ├── → Edit Day Hours Sheet (Popup, Level 2)
-│   └── → Temp Close Duration Picker (Popup, Level 2)
+Share Tab
+├── MobileShareScreen (default)
+│   ├── → Project selector (Popup, Level 2)
+│   ├── → Presence monitor confirmations
+│   └── → Customer communication kit actions
 ```
 
 ### Behavior
-- **Default open**: Today status card at top
-- **Edit day**: Tap day row → bottom sheet with time pickers
-- **Temp close**: Tap "Temporarily close" → duration picker sheet
-
----
-
-## Tab: Feedback
-
-### Internal Navigation
-
-```
-Feedback Tab
-├── Feedback Inbox (default)
-│   └── → Feedback Detail (Level 2, separate view)
-│       └── Reply + Resolve actions
-```
-
-### Behavior
-- **Default open**: Feedback list with filters
-- **Tap feedback**: Navigate to detail view (within same tab)
-- **Back from detail**: NavBar back button → return to inbox
-- **Swipe resolve**: Swipe right on card → resolve directly
+- **Default open**: share hub with project selector, links, screens, and communication tools
+- **Project switch**: inline popup selector
+- **Copy/open actions**: single tap, no extra confirmation screens
 
 ---
 
@@ -169,10 +168,14 @@ Feedback Tab
 ```
 More Tab
 ├── More Screen (default, list of options)
-│   ├── → Share & QR Screen (Level 2)
+│   ├── → Feedback Inbox (Level 2)
+│   ├── → Dashboard (Level 2)
+│   ├── → Digital Screens (Level 2)
+│   ├── → Locations (Level 2)
+│   ├── → Staff (Level 2)
 │   ├── → Public Info Screen (Level 2)
 │   ├── → Billing Screen (Level 2)
-│   ├── → Switch Outlet (Picker, Level 2)
+│   ├── → Business settings screens (Level 2)
 │   └── → Logout (Dialog, Level 2)
 ```
 
@@ -188,17 +191,17 @@ More Tab
 
 | Desktop Route | Desktop Page | Mobile Screen | Mobile Tab |
 | --- | --- | --- | --- |
-| `/dashboard` | DashboardPage | → Redirect to Menu Screen | Menu |
+| `/dashboard` | DashboardPage | MobileDashboardScreen | More |
 | `/projects` | ProjectsPage (Editor) | MobileMenuScreen | Menu |
-| `/today` | TodayPage | MobileHoursScreen | Hours |
+| `/today` | TodayPage | MobileTodayScreen | Today |
 | `/feedback` | FeedbackPage | MobileFeedbackScreen | Feedback |
-| `/qr-code` | QrCodePage | MobileShareScreen | More → Share |
+| `/qr-code` | QrCodePage | MobileShareScreen | Share |
 | `/business-settings` | BusinessSettings | MobilePublicInfoScreen | More → Info |
 | `/billing` | BillingPage | MobileBillingScreen | More → Billing |
-| `/users` | UsersPage | NOT on mobile | Desktop only |
-| `/transactions` | TransactionsPage | NOT on mobile | Desktop only |
-| `/locations` | LocationsPage | NOT on mobile | Desktop only |
-| `/help-center` | HelpCenter | NOT on mobile | Desktop only |
+| `/users` | UsersPage | MobileUsersScreen | More |
+| `/transactions` | TransactionsPage | MobileTransactionsScreen | More |
+| `/locations` | LocationsPage | MobileLocationsScreen | More |
+| `/help-center` | HelpCenter | MobileHelpScreen | More |
 | `/platform/*` | PlatformPages | NOT on mobile | Desktop only |
 
 ### Desktop-Only Routes on Mobile
@@ -255,7 +258,8 @@ When `prefers-reduced-motion` is set:
 | URL | Mobile Behavior |
 | --- | --- |
 | `menulist.app/projects` | Open Menu tab |
-| `menulist.app/feedback` | Open Feedback tab |
+| `menulist.app/today` | Open Today tab |
+| `menulist.app/share` | Open Share tab |
 | `menulist.app/billing` | Open More → Billing |
 | `menulist.app/business-settings` | Open More → Public Info |
 
@@ -264,9 +268,9 @@ When `prefers-reduced-motion` is set:
 ```json
 {
     "shortcuts": [
+        { "name": "Today", "url": "/today" },
         { "name": "Menu", "url": "/projects" },
-        { "name": "Share QR", "url": "/qr-code" },
-        { "name": "Feedback", "url": "/feedback" }
+        { "name": "Share", "url": "/share" }
     ]
 }
 ```
@@ -277,14 +281,14 @@ When `prefers-reduced-motion` is set:
 
 ### Location
 
-More tab → "Switch Outlet" option (visible only for multi-outlet users).
+More tab → "Locations" screen (visible only for multi-outlet users).
 
 ### Behavior
 
-1. Tap "Switch Outlet"
-2. `Picker` opens with list of outlets
-3. Select outlet
-4. All screens reload with new outlet data
+1. Tap "Locations"
+2. Outlet list opens
+3. Tap target outlet
+4. Store context switches and screens reload
 5. Toast: "Switched to [Outlet Name]"
 
 ### State Persistence
@@ -312,7 +316,7 @@ Sometimes mobile users need to access desktop-only features (rare but possible).
 
 ### Implementation
 
-In More screen: "Open Desktop View" option.
+In More screen: "Switch to Desktop" option.
 
 Behavior:
 1. Tap "Open Desktop View"
@@ -384,7 +388,7 @@ Redirect to sign-in page. After sign-in, return to last screen.
 | --- | --- |
 | Menu | "No items yet. Tap + to add your first item." |
 | Feedback | "No feedback yet. Customer feedback will appear here." |
-| Hours | (Never empty — always shows today + weekly) |
+| Today | "All done for today." |
 | Share | (Never empty — always shows link + QR) |
 
 ---

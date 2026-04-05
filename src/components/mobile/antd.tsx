@@ -272,8 +272,23 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 
 export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
     const { token } = theme.useToken();
+    const navHeight = (style?.['--height'] || 48) as number;
     return (
-        <Flex align="center" className={className} justify="space-between" style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, minHeight: (style?.['--height'] || 48) as number, padding: '8px 12px', ...sanitizeStyle(style) }}>
+        <Flex
+            align="center"
+            className={className}
+            justify="space-between"
+            style={{
+                backgroundColor: token.colorBgContainer,
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                minHeight: navHeight + 16,
+                padding: `calc(env(safe-area-inset-top) + 8px) 12px 8px`,
+                position: 'sticky',
+                top: 0,
+                zIndex: 5,
+                ...sanitizeStyle(style),
+            }}
+        >
             <Button fill="none" onClick={onBack} style={{ minWidth: 32, paddingInline: 0 }}>
                 {backIcon ?? <LuArrowLeft size={18} />}
             </Button>

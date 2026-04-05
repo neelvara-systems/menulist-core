@@ -1,7 +1,7 @@
 # POS Webhook Sync — Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ❌ DESKTOP-ONLY — Feature-flagged backend sync, no operational mobile UI needed
+**Last Updated:** April 5, 2026
+**Decision:** ⚠️ LIMITED MOBILE SUPPORT — Status and light configuration supported
 
 ---
 
@@ -9,9 +9,16 @@
 
 | Gate | Result | Reasoning |
 |------|--------|-----------|
-| **Frequency** | ❌ FAIL | POS sync is automatic after setup |
-| **Speed** | ❌ FAIL | Webhook URL configuration is a setup task |
-| **Touch** | ❌ FAIL | URL input and testing needs precision |
-| **Value** | ❌ FAIL | Integration setup done at desk |
+| **Frequency** | ⚠️ MIXED | Full setup is rare, but status checks happen on phone |
+| **Speed** | ⚠️ MIXED | Light edits and test ping are acceptable on mobile |
+| **Touch** | ⚠️ MIXED | URL input is not ideal, but manageable for urgent fixes |
+| **Value** | ✅ PASS | Owners may need to verify sync health away from desk |
 
-**Decision:** Desktop-only. POS sync triggers automatically on menu data changes. Mobile edits (via `updateProject`) trigger `triggerPosSyncDebounced` server-side — no separate mobile UI needed.
+**Decision:** Mobile supports operational visibility and light-touch edits:
+- enable/disable sync
+- view status
+- edit webhook URL
+- regenerate/copy signing secret
+- send test ping
+
+Heavy integration setup and provider coordination are still desktop-preferred.

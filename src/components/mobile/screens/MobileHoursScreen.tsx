@@ -35,7 +35,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const [isUpdating, setIsUpdating] = useState(false);
     const [originalTodayHours, setOriginalTodayHours] = useState<string | null>(null);
     const todayKey = getTodayKey();
-    const { todayCampaigns, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
+    const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
     const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
     const [isNudgeDismissed, setIsNudgeDismissed] = useState(false);
     const [nudgeInitialized, setNudgeInitialized] = useState(false);
@@ -389,6 +389,50 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                         >
                             <Text type="secondary">{tToday('skip')}</Text>
                         </Button>
+                    </Flex>
+                </Card>
+            ) : null}
+
+            {staffPrompt?.eligible ? (
+                <Card>
+                    <Flex gap={12}>
+                        <LuMessageCircle color="#3b82f6" size={18} />
+                        <Flex gap={4} vertical>
+                            <Text type="secondary">{tToday('staffPromptForToday')}</Text>
+                            <Text strong>{tToday('sayThisWhenCustomersAsk')}</Text>
+                            <Text>&quot;{staffPrompt.text}&quot;</Text>
+                            <Text type="secondary">{tToday('appliesToday')}</Text>
+                        </Flex>
+                    </Flex>
+                </Card>
+            ) : null}
+
+            {todayCampaigns?.operational?.length ? (
+                <Card title={tToday('alsoToday')}>
+                    <Flex gap={8} vertical>
+                        {todayCampaigns.operational.slice(0, 2).map((campaign) => {
+                            const title = campaign.type === 'now_available'
+                                ? `Now Available: ${campaign.subject?.itemName || 'Item'}`
+                                : (ACTION_TITLES[campaign.type] || 'Share')
+                                    .replace('{itemName}', campaign.subject?.itemName || 'Item')
+                                    .replace('{mealName}', mealName);
+
+                            return (
+                                <Card key={campaign.campaignId}>
+                                    <Flex align="center" justify="space-between">
+                                        <Text strong>{title}</Text>
+                                        <Button
+                                            fill="outline"
+                                            loading={isCampaignProcessing}
+                                            onClick={() => void handleCompleteCampaign(campaign as TodayCampaignSummary)}
+                                            size="small"
+                                        >
+                                            {tToday('share')}
+                                        </Button>
+                                    </Flex>
+                                </Card>
+                            );
+                        })}
                     </Flex>
                 </Card>
             ) : null}
