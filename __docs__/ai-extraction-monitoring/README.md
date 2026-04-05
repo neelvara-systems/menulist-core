@@ -4,7 +4,7 @@
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** March 12, 2026
+**Last Updated:** April 5, 2026
 
 ---
 
@@ -29,6 +29,7 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 | `_website.md`        | Public            | N/A — internal tool                             |
 | `_helpdoc.md`        | Public            | N/A — internal tool                             |
 | `_mobile-support.md` | Internal          | Mobile relevance assessment                     |
+| `_release-validation.md` | QA, Engineering | Manual release signoff for extraction lifecycle |
 
 ---
 
@@ -56,6 +57,7 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 3. **Job Feed** — Recent jobs with status, scores, timing
 4. **Job Inspector** — Drill into any job: raw AI output, combined data, file results
 5. **Cost Monitor** — Gemini calls/day, cost/extraction, daily spend
+6. **Ops Alerts** — Scheduler-driven alerts for stuck jobs, failure spikes, and quality drops
 
 ---
 
@@ -82,4 +84,4 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 
 ---
 
-_Last Updated: March 12, 2026_
+_Last Updated: April 5, 2026_

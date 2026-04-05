@@ -13,7 +13,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { Timestamp, addDoc, collection, doc, getDoc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
+import { Timestamp, addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firebaseClient } from './firebaseClient';
 
@@ -286,15 +286,33 @@ export async function checkExistingActiveJob(projectId: string): Promise<string 
         collection(firebaseClient, COLLECTION),
         where('projectId', '==', projectId),
         where('uId', '==', session.uId),
-        where('status', 'in', ['pending', 'processing', 'preview_ready']),
-        limit(1)
+        where('status', 'in', ['pending', 'processing', 'preview_ready'])
     );
 
     const snapshot = await getDocs(q);
 
-    if (!snapshot.empty) {
-        return snapshot.docs[0].id;
+    if (snapshot.empty) {
+        return null;
     }
 
-    return null;
+    const activeDocs = snapshot.docs
+        .map((docSnap) => ({
+            id: docSnap.id,
+            createdAt: docSnap.data()?.createdAt,
+            status: docSnap.data()?.status,
+        }))
+        .sort((left, right) => {
+            const leftTime = typeof left.createdAt?.toMillis === 'function' ? left.createdAt.toMillis() : 0;
+            const rightTime = typeof right.createdAt?.toMillis === 'function' ? right.createdAt.toMillis() : 0;
+            return rightTime - leftTime;
+        });
+
+    if (activeDocs.length > 1) {
+        console.warn('[checkExistingActiveJob] Multiple active jobs detected for project. Reusing the latest one.', {
+            projectId,
+            jobIds: activeDocs.map((job) => `${job.id}:${job.status}`),
+        });
+    }
+
+    return activeDocs[0]?.id || null;
 }

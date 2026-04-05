@@ -16,6 +16,12 @@ import type {
     PreviewCategoryRow,
     PreviewItemRow
 } from '@lib/extraction/comparisonEngine.types';
+import {
+    countApprovedChanges,
+    hasAnyPreviewChanges,
+    setAllPreviewApprovals,
+    setSafePreviewApprovals,
+} from '@lib/extraction/reviewPreview';
 import { Button, Card, Checkbox, Divider, Empty, Flex, message, Space, Tag, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
@@ -231,13 +237,7 @@ export function ExtractionJobReviewScreen({
 
     // Calculate totals
     const totalChanges = useMemo(() => {
-        return (
-            preview.newCategories.filter(c => c.approved).length +
-            preview.updatedCategories.filter(c => c.approved).length +
-            preview.newItems.filter(i => i.approved).length +
-            preview.updatedItems.filter(i => i.approved).length +
-            preview.overrideSuggestions.filter(i => i.approved).length
-        );
+        return countApprovedChanges(preview);
     }, [preview]);
 
     // Toggle handlers
@@ -266,25 +266,15 @@ export function ExtractionJobReviewScreen({
 
     // Select all / deselect all
     const selectAll = useCallback(() => {
-        setPreview(prev => ({
-            ...prev,
-            newCategories: prev.newCategories.map(c => ({ ...c, approved: true })),
-            updatedCategories: prev.updatedCategories.map(c => ({ ...c, approved: true })),
-            newItems: prev.newItems.map(i => ({ ...i, approved: true })),
-            updatedItems: prev.updatedItems.map(i => ({ ...i, approved: true })),
-            overrideSuggestions: prev.overrideSuggestions.map(i => ({ ...i, approved: true })),
-        }));
+        setPreview(prev => setAllPreviewApprovals(prev, true));
     }, []);
 
     const deselectAll = useCallback(() => {
-        setPreview(prev => ({
-            ...prev,
-            newCategories: prev.newCategories.map(c => ({ ...c, approved: false })),
-            updatedCategories: prev.updatedCategories.map(c => ({ ...c, approved: false })),
-            newItems: prev.newItems.map(i => ({ ...i, approved: false })),
-            updatedItems: prev.updatedItems.map(i => ({ ...i, approved: false })),
-            overrideSuggestions: prev.overrideSuggestions.map(i => ({ ...i, approved: false })),
-        }));
+        setPreview(prev => setAllPreviewApprovals(prev, false));
+    }, []);
+
+    const selectSafeOnly = useCallback(() => {
+        setPreview(prev => setSafePreviewApprovals(prev));
     }, []);
 
     // Save handler
@@ -340,12 +330,7 @@ export function ExtractionJobReviewScreen({
     }, [jobId, onDiscard]);
 
     // Check if there are any changes to show
-    const hasAnyChanges =
-        preview.newCategories.length > 0 ||
-        preview.updatedCategories.length > 0 ||
-        preview.newItems.length > 0 ||
-        preview.updatedItems.length > 0 ||
-        preview.overrideSuggestions.length > 0;
+    const hasAnyChanges = hasAnyPreviewChanges(preview);
 
     if (!hasAnyChanges) {
         return (
@@ -372,6 +357,7 @@ export function ExtractionJobReviewScreen({
                     </Text>
                 </div>
                 <Space>
+                    <Button size="small" onClick={selectSafeOnly}>Approve Safe Only</Button>
                     <Button size="small" onClick={selectAll}>Select All</Button>
                     <Button size="small" onClick={deselectAll}>Deselect All</Button>
                 </Space>

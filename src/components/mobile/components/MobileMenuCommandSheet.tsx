@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight } from 'react-icons/lu';
 import { getEditorActions } from '../../templates/main-app/projects/editorView/editorActions.config';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
@@ -27,6 +27,7 @@ interface MobileMenuCommandSheetProps {
     onClose: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
+    onUploadMenu: () => void;
     onPricing: () => void;
     onReorderMenu: () => void;
     onSmartRecommendations: () => void;
@@ -44,6 +45,7 @@ export default function MobileMenuCommandSheet({
     onClose,
     onGenerateDescriptions,
     onManageLanguages,
+    onUploadMenu,
     onPricing,
     onReorderMenu,
     onSmartRecommendations,
@@ -68,6 +70,13 @@ export default function MobileMenuCommandSheet({
     );
 
     const commandActions = useMemo<CommandAction[]>(() => [
+        {
+            key: 'upload-menu',
+            icon: <LuCamera style={{ fontSize: 20 }} />,
+            title: t('uploadMenuPhoto', { offering: labels.offeringTitle }),
+            description: t('createYourMenuDesc', { offering: labels.offeringLower }),
+            onClick: onUploadMenu,
+        },
         {
             key: 'add-item',
             icon: <LuPlus style={{ fontSize: 20 }} />,
@@ -141,7 +150,7 @@ export default function MobileMenuCommandSheet({
             description: decisionBlocksAction?.description || t('smartRecommendationsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [availabilityLabels.available, availabilityLabels.unavailable, decisionBlocksAction, descriptionAction, labels.descriptionDesc, labels.languageDesc, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onReorderMenu, onShowHide, onSmartRecommendations, t]);
+    ], [availabilityLabels.available, availabilityLabels.unavailable, decisionBlocksAction, descriptionAction, labels.descriptionDesc, labels.languageDesc, labels.offeringLower, labels.offeringTitle, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onReorderMenu, onShowHide, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex

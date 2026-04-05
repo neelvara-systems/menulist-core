@@ -176,10 +176,10 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     <div>
                         <Text strong style={{ marginBottom: 8, display: 'block' }}>Quality Breakdown</Text>
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                            <Statistic title="Category" value={job.result.qualityDetails.categoryQuality} suffix="/ 100" />
-                            <Statistic title="Item" value={job.result.qualityDetails.itemQuality} suffix="/ 100" />
-                            <Statistic title="Price" value={job.result.qualityDetails.priceQuality} suffix="/ 100" />
-                            <Statistic title="Description" value={job.result.qualityDetails.descriptionQuality} suffix="/ 100" />
+                            <Statistic title="Category" value={job.result.qualityDetails.categoryQuality} suffix="/ 25" />
+                            <Statistic title="Item" value={job.result.qualityDetails.itemQuality} suffix="/ 10" />
+                            <Statistic title="Price" value={job.result.qualityDetails.priceQuality} suffix="/ 50" />
+                            <Statistic title="Description" value={job.result.qualityDetails.descriptionQuality} suffix="/ 25" />
                         </div>
                     </div>
                 )}

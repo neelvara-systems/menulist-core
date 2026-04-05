@@ -53,8 +53,8 @@ export default function ExtractionJobSuccessModal({
 
     const qualityBreakdown = qualityDetails ? [
         { label: 'Categories', value: qualityDetails.categoryQuality, max: 25, icon: <LuLayoutGrid size={14} /> },
-        { label: 'Items', value: qualityDetails.itemQuality, max: 25, icon: <LuList size={14} /> },
-        { label: 'Prices', value: qualityDetails.priceQuality, max: 25, icon: <LuDollarSign size={14} /> },
+        { label: 'Items', value: qualityDetails.itemQuality, max: 10, icon: <LuList size={14} /> },
+        { label: 'Prices', value: qualityDetails.priceQuality, max: 50, icon: <LuDollarSign size={14} /> },
         { label: 'Descriptions', value: qualityDetails.descriptionQuality, max: 25, icon: <LuFileText size={14} /> },
     ] : [];
 

@@ -10,11 +10,60 @@
 
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
+import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
+import { createAlert } from "../monitoring/alerts";
 import {
     MENU_IMAGE_PROCESSING_JOBS_COLLECTION,
     MENU_PROCESSING_STATUS,
 } from "../types";
+
+const EXTRACTION_ALERT_SCOPE = {
+    tId: 'system',
+    sId: 'system',
+} as const;
+
+const EXTRACTION_ALERT_TITLES = {
+    failureSpike: 'Extraction Failure Rate Spike',
+    qualityDrop: 'Extraction Quality Degraded',
+    stuckJob: 'Extraction Job Stuck',
+} as const;
+
+async function shouldCreateExtractionAlert(title: string, cooldownMinutes: number): Promise<boolean> {
+    const cooldownDate = new Date();
+    cooldownDate.setMinutes(cooldownDate.getMinutes() - cooldownMinutes);
+
+    const existing = await firestoreAdmin
+        .collection(DB_COLLECTIONS.SYSTEM_ALERTS)
+        .where('tId', '==', EXTRACTION_ALERT_SCOPE.tId)
+        .where('sId', '==', EXTRACTION_ALERT_SCOPE.sId)
+        .where('title', '==', title)
+        .where('timestamp', '>=', Timestamp.fromDate(cooldownDate))
+        .limit(1)
+        .get();
+
+    return existing.empty;
+}
+
+async function createExtractionAlert(params: {
+    title: string;
+    severity: 'warning' | 'critical';
+    message: string;
+    metadata?: Record<string, unknown>;
+}): Promise<void> {
+    await createAlert({
+        ...EXTRACTION_ALERT_SCOPE,
+        type: 'health',
+        severity: params.severity,
+        title: params.title,
+        message: params.message,
+        metadata: {
+            subsystem: 'ai-extraction',
+            ...params.metadata,
+        },
+        actionRequired: true,
+    });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLEANUP STUCK JOBS (Section 8.2)
@@ -25,7 +74,7 @@ import {
  * Find jobs that are stuck in "processing" state past their timeout
  * and mark them as failed with retryable error.
  */
-export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number }> {
+export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number; jobIds: string[] }> {
     const logger = functions.logger;
 
     logger.info('[cleanupStuckJobs] Starting cleanup');
@@ -39,10 +88,11 @@ export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number }> {
 
     if (stuckJobs.empty) {
         logger.info('[cleanupStuckJobs] No stuck jobs found');
-        return { cleaned: 0 };
+        return { cleaned: 0, jobIds: [] };
     }
 
     const batch = firestoreAdmin.batch();
+    const jobIds = stuckJobs.docs.map((doc) => doc.id);
 
     stuckJobs.docs.forEach((doc) => {
         batch.update(doc.ref, {
@@ -61,7 +111,7 @@ export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number }> {
 
     logger.info(`[cleanupStuckJobs] Marked ${stuckJobs.size} stuck jobs as failed`);
 
-    return { cleaned: stuckJobs.size };
+    return { cleaned: stuckJobs.size, jobIds };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -196,3 +246,75 @@ export async function cleanupOldJobsLogic(): Promise<{ deleted: number }> {
     return { deleted: oldJobs.size };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTRACTION HEALTH ALERTING
+// Piggybacks on the same 15-minute scheduler as cleanup.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function monitorExtractionHealthLogic(): Promise<void> {
+    const logger = functions.logger;
+    const jobsRef = firestoreAdmin.collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION);
+
+    const oneHourAgo = Timestamp.fromMillis(Date.now() - 60 * 60 * 1000);
+    const last50CompletedQuery = jobsRef
+        .where('status', 'in', [MENU_PROCESSING_STATUS.COMPLETED, MENU_PROCESSING_STATUS.PREVIEW_READY])
+        .orderBy('createdAt', 'desc')
+        .limit(50);
+    const lastHourJobsQuery = jobsRef
+        .where('createdAt', '>=', oneHourAgo)
+        .orderBy('createdAt', 'desc')
+        .limit(200);
+
+    const [recentCompletedSnap, lastHourSnap] = await Promise.all([
+        last50CompletedQuery.get(),
+        lastHourJobsQuery.get(),
+    ]);
+
+    const recentCompleted = recentCompletedSnap.docs.map((doc) => doc.data());
+    const recentJobs = lastHourSnap.docs.map((doc) => doc.data());
+
+    const qualityScores = recentCompleted
+        .map((job) => job.result?.qualityScore)
+        .filter((score): score is number => typeof score === 'number');
+
+    if (qualityScores.length >= 10) {
+        const avgQualityScore = Math.round(
+            qualityScores.reduce((sum, score) => sum + score, 0) / qualityScores.length
+        );
+
+        if (avgQualityScore < 55 && await shouldCreateExtractionAlert(EXTRACTION_ALERT_TITLES.qualityDrop, 60)) {
+            await createExtractionAlert({
+                title: EXTRACTION_ALERT_TITLES.qualityDrop,
+                severity: avgQualityScore < 40 ? 'critical' : 'warning',
+                message: `Average extraction quality dropped to ${avgQualityScore}/100 across the last ${qualityScores.length} completed jobs.`,
+                metadata: {
+                    avgQualityScore,
+                    sampledJobs: qualityScores.length,
+                },
+            });
+        }
+    }
+
+    const totalJobs = recentJobs.length;
+    const failedJobs = recentJobs.filter((job) => job.status === MENU_PROCESSING_STATUS.FAILED).length;
+    const failureRate = totalJobs > 0 ? Math.round((failedJobs / totalJobs) * 100) : 0;
+
+    if (totalJobs >= 5 && failureRate > 5 && await shouldCreateExtractionAlert(EXTRACTION_ALERT_TITLES.failureSpike, 60)) {
+        await createExtractionAlert({
+            title: EXTRACTION_ALERT_TITLES.failureSpike,
+            severity: failureRate >= 20 ? 'critical' : 'warning',
+            message: `Extraction failure rate reached ${failureRate}% in the last hour (${failedJobs} failed out of ${totalJobs} jobs).`,
+            metadata: {
+                failureRate,
+                failedJobs,
+                totalJobs,
+            },
+        });
+    }
+
+    logger.info('[monitorExtractionHealth] Completed', {
+        recentCompletedJobs: recentCompleted.length,
+        recentJobsLastHour: totalJobs,
+        failureRate,
+    });
+}

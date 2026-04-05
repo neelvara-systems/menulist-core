@@ -3,7 +3,7 @@
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** March 12, 2026
+**Last Updated:** April 5, 2026
 
 ---
 
@@ -243,7 +243,7 @@ Uses existing `sendTelegramAlert()` from `functions/src/monitoring/telegramAlert
 | Quality Drop     | avg quality score < 55 in last 50 jobs | "🟡 Extraction quality degraded: avg {score}/100 (last 50 jobs)"                    |
 | Processing Stuck | jobs in 'processing' for > 10 minutes  | "🟡 Extraction job stuck: {jobId} processing for {minutes}min"                      |
 
-**Where to trigger:** Piggybacked on nightly scheduler OR lightweight periodic Cloud Function (every 15 min, matching existing job cleanup scheduler).
+**Where to trigger:** Piggybacked on the existing 15-minute cleanup scheduler in Firebase Functions.
 
 ---
 

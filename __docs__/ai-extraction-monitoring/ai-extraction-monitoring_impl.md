@@ -3,7 +3,7 @@
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** March 12, 2026
+**Last Updated:** April 5, 2026
 
 ---
 
@@ -154,6 +154,20 @@ Stat cards + simple indicators:
 - Confidence Distribution (high/medium/low counts from last 50 jobs)
 - Anomaly Count (jobs flagged with items > 300 or categories > 50)
 - Low Quality Rate (jobs with score < 40, percentage)
+
+### 7. Scheduler-Based Alerts
+
+The extraction monitor now reuses the shared ops alerting pipeline instead of a custom notification path.
+
+- Source scheduler: `functions/src/triggers/schedulers.ts`
+- Alert logic: `functions/src/schedulers/menuJobCleanup.ts`
+- Delivery path: `functions/src/monitoring/alerts.ts` → `functions/src/monitoring/telegramAlert.ts`
+
+Triggered conditions:
+
+- stuck processing jobs cleaned by scheduler
+- failure rate spike in the last hour
+- quality degradation across recent completed jobs
 
 ---
 

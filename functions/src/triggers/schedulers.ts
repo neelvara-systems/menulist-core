@@ -9,7 +9,8 @@
 import * as functions from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { SECRET_GROUPS } from '../config/secrets';
-import { cleanupExpiredPreviewJobsLogic, cleanupOldJobsLogic, cleanupStuckCancellingJobsLogic, cleanupStuckJobsLogic } from '../schedulers/menuJobCleanup';
+import { cleanupExpiredPreviewJobsLogic, cleanupOldJobsLogic, cleanupStuckCancellingJobsLogic, cleanupStuckJobsLogic, monitorExtractionHealthLogic } from '../schedulers/menuJobCleanup';
+import { createAlert } from '../monitoring/alerts';
 
 // ═══════════════════════════════════════════════════════════════
 // MENU JOB CLEANUP
@@ -26,6 +27,24 @@ export const cleanupStuckMenuJobs = onSchedule({
         const stuckResult = await cleanupStuckJobsLogic();
         const expiredResult = await cleanupExpiredPreviewJobsLogic();
         const cancellingResult = await cleanupStuckCancellingJobsLogic();
+        await monitorExtractionHealthLogic();
+
+        if (stuckResult.cleaned > 0) {
+            await createAlert({
+                tId: 'system',
+                sId: 'system',
+                type: 'health',
+                severity: 'warning',
+                title: 'Extraction Job Stuck',
+                message: `Marked ${stuckResult.cleaned} extraction job(s) as failed after processing timeout.`,
+                metadata: {
+                    subsystem: 'ai-extraction',
+                    cleanedJobs: stuckResult.cleaned,
+                    sampleJobIds: stuckResult.jobIds.slice(0, 5),
+                },
+                actionRequired: true,
+            });
+        }
 
         const totalCleaned = stuckResult.cleaned + expiredResult.cleaned + cancellingResult.cleaned;
         if (totalCleaned > 0) {

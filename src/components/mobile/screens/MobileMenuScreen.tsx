@@ -3,6 +3,10 @@
 import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectData, getProjectsList, updateProject } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import useMenuProcessingJob from '@hook/useMenuProcessingJob';
+import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
+import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
@@ -12,7 +16,7 @@ import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuCamera, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -21,6 +25,7 @@ import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
 const AddItemSheet = dynamic(() => import('../sheets/AddItemSheet'), { ssr: false });
 const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr: false });
+const ExtractionReviewSheet = dynamic(() => import('../sheets/ExtractionReviewSheet'), { ssr: false });
 const BulkActionsSheet = dynamic(() => import('../sheets/BulkActionsSheet'), { ssr: false });
 const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQualitySignals'), { ssr: false });
 const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerSheet'), { ssr: false });
@@ -82,8 +87,40 @@ export default function MobileMenuScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [projectsList, setProjectsList] = useState<any[]>([]);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(() => {
+        if (typeof window === 'undefined') return null;
+        const raw = window.sessionStorage.getItem('mobileMenuActiveProcessingJob');
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch {
+            window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+            return null;
+        }
+    });
+    const [showReviewSheet, setShowReviewSheet] = useState(false);
+    const [comparisonResult, setComparisonResult] = useState<ComparisonEngineOutput | null>(null);
+    const [showSuccessState, setShowSuccessState] = useState(false);
+    const [showFailureState, setShowFailureState] = useState(false);
+    const [failureMessage, setFailureMessage] = useState('');
+    const [extractionStats, setExtractionStats] = useState<{
+        qualityScore?: number;
+        qualityDetails?: { categoryQuality: number; itemQuality: number; priceQuality: number; descriptionQuality: number };
+        categoriesCount?: number;
+        itemsCount?: number;
+    } | null>(null);
     const { data: dashboardData } = useOwnerDashboard(menuData?.projectId ? { projectId: menuData.projectId } : undefined);
     const uncategorizedLabel = t('uncategorized');
+
+    const setActiveProcessingState = useCallback((value: { jobId: string; projectId: string } | null) => {
+        setActiveProcessingStateState(value);
+        if (typeof window === 'undefined') return;
+        if (value) {
+            window.sessionStorage.setItem('mobileMenuActiveProcessingJob', JSON.stringify(value));
+        } else {
+            window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+        }
+    }, []);
 
     const fetchMenuData = useCallback(async (projectId?: string) => {
         try {
@@ -112,9 +149,144 @@ export default function MobileMenuScreen() {
 
     useEffect(() => {
         if (storeDetails?.storeId) {
-            fetchMenuData();
+            fetchMenuData(activeProcessingState?.projectId || undefined);
         }
-    }, [storeDetails?.storeId, fetchMenuData]);
+    }, [activeProcessingState?.projectId, storeDetails?.storeId, fetchMenuData]);
+
+    useEffect(() => {
+        if (!menuData?.projectId || activeProcessingState) return;
+
+        const checkExistingJob = async () => {
+            try {
+                const activeJobId = await checkExistingActiveJob(menuData.projectId);
+                if (activeJobId) {
+                    setActiveProcessingState({
+                        jobId: activeJobId,
+                        projectId: menuData.projectId,
+                    });
+                }
+            } catch (error) {
+                console.error('[MobileMenu] Failed to restore active job:', error);
+            }
+        };
+
+        void checkExistingJob();
+    }, [activeProcessingState, menuData?.projectId, setActiveProcessingState]);
+
+    const activeProcessingJobId = activeProcessingState?.jobId || null;
+    const {
+        job: activeJob,
+        isProcessing: jobIsProcessing,
+        isPending: jobIsPending,
+        isCancelling: jobIsCancelling,
+        isCompleted: jobIsCompleted,
+        isFailed: jobIsFailed,
+        isCancelled: jobIsCancelled,
+        isPreviewReady: jobIsPreviewReady,
+        progress: jobProgress,
+        currentStep: jobCurrentStep,
+        error: jobError,
+        cancel: cancelJob,
+    } = useMenuProcessingJob(activeProcessingJobId);
+
+    const isJobBlocking = Boolean(activeProcessingJobId) && !showReviewSheet && (jobIsPending || jobIsProcessing || jobIsCancelling);
+    const isBusy = Boolean(activeProcessingJobId);
+
+    useEffect(() => {
+        if (!activeProcessingJobId) return;
+
+        if (jobIsCompleted) {
+            const result = activeJob?.result;
+            if (result) {
+                setExtractionStats({
+                    qualityScore: result.qualityScore,
+                    qualityDetails: result.qualityDetails,
+                    categoriesCount: result.combinedData?.categories?.length || 0,
+                    itemsCount: result.combinedData?.items?.length || 0,
+                });
+            }
+            setActiveProcessingState(null);
+            setShowReviewSheet(false);
+            setComparisonResult(null);
+            void fetchMenuData(activeProcessingState?.projectId || menuData?.projectId);
+            setShowSuccessState(true);
+        }
+
+        if (jobIsPreviewReady && !showReviewSheet && activeJob?.result && menuData?.projectId) {
+            try {
+                const existingItems = menuData.files?.flatMap((file: any) => (file.extractedData?.data?.items || []).map((item: any) => ({
+                    ...item,
+                    fileUid: file.uid,
+                }))) || [];
+                const existingCategories = menuData.files?.flatMap((file: any) => (file.extractedData?.data?.categories || []).map((category: any) => ({
+                    ...category,
+                    fileUid: file.uid,
+                }))) || [];
+                const extractedItems = activeJob.result.combinedData?.items || [];
+                const extractedCategories = activeJob.result.combinedData?.categories || [];
+                const comparisonMode: ComparisonMode = menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE';
+                const primaryLang = menuData?.languages?.[0] || 'en';
+
+                const comparison = runComparisonEngine({
+                    extracted: {
+                        categories: extractedCategories,
+                        items: extractedItems,
+                    },
+                    storeProject: {
+                        categories: existingCategories,
+                        items: existingItems,
+                    },
+                    mode: comparisonMode,
+                    primaryLang,
+                });
+
+                setExtractionStats({
+                    qualityScore: activeJob.result.qualityScore,
+                    qualityDetails: activeJob.result.qualityDetails,
+                    categoriesCount: activeJob.result.combinedData?.categories?.length || 0,
+                    itemsCount: activeJob.result.combinedData?.items?.length || 0,
+                });
+                setComparisonResult(comparison);
+                setShowReviewSheet(true);
+            } catch (error) {
+                console.error('[MobileMenu] Comparison engine failed:', error);
+                setFailureMessage(t('comparisonFailed'));
+                setShowFailureState(true);
+                setShowReviewSheet(false);
+                setComparisonResult(null);
+                setActiveProcessingState(null);
+            }
+        }
+
+        if (jobIsFailed) {
+            setFailureMessage(jobError?.message || t('processingFailedMessage'));
+            setShowFailureState(true);
+            setShowReviewSheet(false);
+            setComparisonResult(null);
+            setActiveProcessingState(null);
+        }
+
+        if (jobIsCancelled) {
+            Toast.show({ content: t('processingCancelled'), duration: 1800 });
+            setShowReviewSheet(false);
+            setComparisonResult(null);
+            setActiveProcessingState(null);
+        }
+    }, [
+        activeJob,
+        activeProcessingJobId,
+        activeProcessingState?.projectId,
+        fetchMenuData,
+        jobError?.message,
+        jobIsCancelled,
+        jobIsCompleted,
+        jobIsFailed,
+        jobIsPreviewReady,
+        menuData,
+        setActiveProcessingState,
+        showReviewSheet,
+        t,
+    ]);
 
     const activeLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
 
@@ -498,6 +670,15 @@ export default function MobileMenuScreen() {
         await fetchMenuData(menuData?.projectId);
     };
 
+    const handleOpenUploadSheet = useCallback(() => {
+        if (isBusy) {
+            Toast.show({ content: t('menuUploadProcessingInProgress'), duration: 1800 });
+            return;
+        }
+
+        setIsUploadSheetOpen(true);
+    }, [isBusy, t]);
+
     const launchCommandAction = useCallback((action: () => void) => {
         setReturnToCommandMenu(true);
         setIsCommandMenuOpen(false);
@@ -555,14 +736,18 @@ export default function MobileMenuScreen() {
                     </Card>
 
                     <ProjectSelectorTrigger
-                        clickable={projectsList.length > 1}
+                        clickable={projectsList.length > 1 && !isBusy}
                         currentProject={{
                             id: menuData?.projectId || 'current',
                             isDefault: activeProjectSummary?.isDefault,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
                         }}
-                        helperText={projectsList.length > 1 ? tProjectSelector('manageCatalogsHelper') : undefined}
-                        onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                        helperText={isBusy
+                            ? t('processingLocksProjectSwitch')
+                            : projectsList.length > 1
+                                ? tProjectSelector('manageCatalogsHelper')
+                                : undefined}
+                        onClick={projectsList.length > 1 && !isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
                         rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
 
@@ -689,7 +874,7 @@ export default function MobileMenuScreen() {
                                     <Text type="secondary" style={{ textAlign: 'center' }}>
                                         {t('createYourMenuDesc', { offering: labels.offeringLower })}
                                     </Text>
-                                    <Button color="primary" onClick={() => setIsUploadSheetOpen(true)} size="large">
+                                    <Button color="primary" onClick={handleOpenUploadSheet} size="large">
                                         {t('uploadMenuPhoto', { offering: labels.offeringTitle })}
                                     </Button>
                                 </Flex>
@@ -756,6 +941,68 @@ export default function MobileMenuScreen() {
                 tooltip={{ title: labels.commandCenterLabel, color: token.colorPrimary }}
                 type="primary"
             />
+
+            <Popup
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '60vh' }}
+                visible={isJobBlocking}
+            >
+                <Flex align="center" gap={16} vertical>
+                    <DotLoading color="primary" />
+                    <Title level={4} style={{ margin: 0 }}>
+                        {t('processingStatusTitle')}
+                    </Title>
+                    <Text style={{ textAlign: 'center' }} type="secondary">
+                        {jobCurrentStep || t('processingOfferingDesc', { items: labels.itemsPlural })}
+                    </Text>
+                    <ProgressBar percent={jobProgress || (jobIsPending ? 5 : 15)} style={{ width: '100%' }} />
+                    <Button block fill="outline" loading={jobIsCancelling} onClick={() => void cancelJob()}>
+                        {t('cancelProcessing')}
+                    </Button>
+                </Flex>
+            </Popup>
+
+            <Popup
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                onMaskClick={() => setShowSuccessState(false)}
+                visible={showSuccessState}
+            >
+                <Result
+                    extra={[
+                        <Button
+                            block
+                            color="primary"
+                            key="view-menu"
+                            onClick={() => setShowSuccessState(false)}
+                            size="large"
+                        >
+                            {t('viewUpdatedMenu')}
+                        </Button>,
+                    ]}
+                    status="success"
+                    subTitle={t('processingSuccessDesc', {
+                        categories: extractionStats?.categoriesCount || 0,
+                        items: extractionStats?.itemsCount || 0,
+                    })}
+                    title={t('processingSuccessTitle')}
+                />
+            </Popup>
+
+            <Popup
+                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                onMaskClick={() => setShowFailureState(false)}
+                visible={showFailureState}
+            >
+                <Result
+                    extra={[
+                        <Button block color="primary" key="retry" onClick={() => setShowFailureState(false)} size="large">
+                            {t('tryAgain')}
+                        </Button>,
+                    ]}
+                    status="error"
+                    subTitle={failureMessage}
+                    title={t('processingFailedTitle')}
+                />
+            </Popup>
 
             <Popup
                 bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh', overflowX: 'hidden' }}
@@ -888,6 +1135,7 @@ export default function MobileMenuScreen() {
                     setBulkActionType('moveCategory');
                     setIsBulkActionsOpen(true);
                 })}
+                onUploadMenu={() => launchCommandAction(handleOpenUploadSheet)}
                 onPricing={() => launchCommandAction(() => {
                     setBulkActionType('pricing');
                     setIsBulkActionsOpen(true);
@@ -1110,11 +1358,37 @@ export default function MobileMenuScreen() {
 
             {isUploadSheetOpen ? (
                 <MenuUploadSheet
+                    currentProjectId={menuData?.projectId || null}
+                    currentProjectLanguages={menuData?.languages || null}
+                    existingFiles={menuData?.files || []}
                     onClose={() => setIsUploadSheetOpen(false)}
-                    onComplete={() => {
+                    onJobCreated={({ jobId, projectId }) => {
                         setIsUploadSheetOpen(false);
-                        fetchMenuData();
+                        setActiveProcessingState({ jobId, projectId });
+                        void fetchMenuData(projectId);
                     }}
+                />
+            ) : null}
+
+            {showReviewSheet && comparisonResult && activeProcessingJobId && menuData?.projectId ? (
+                <ExtractionReviewSheet
+                    comparisonResult={comparisonResult}
+                    jobId={activeProcessingJobId}
+                    onDiscard={() => {
+                        setShowReviewSheet(false);
+                        setComparisonResult(null);
+                        setActiveProcessingState(null);
+                    }}
+                    onSaveComplete={() => {
+                        setShowReviewSheet(false);
+                        setComparisonResult(null);
+                        setActiveProcessingState(null);
+                        void fetchMenuData(menuData.projectId);
+                        setShowSuccessState(true);
+                    }}
+                    primaryLang={menuData?.languages?.[0] || 'en'}
+                    projectId={menuData.projectId}
+                    visible={showReviewSheet}
                 />
             ) : null}
 
