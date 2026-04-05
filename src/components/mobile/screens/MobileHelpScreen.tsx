@@ -23,10 +23,10 @@ export default function MobileHelpScreen({ onBack }: MobileHelpScreenProps) {
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Find quick answers, contact support, and open the help resources you need."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 <Flex gap={12}>

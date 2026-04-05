@@ -305,7 +305,7 @@ export default function MobileProjectSelectorSheet({
                                 id: project.projectId,
                                 isDefault: project.isDefault,
                                 name: project.name,
-                                secondaryLabel: project.active === false ? 'Inactive catalog' : (project.description || undefined),
+                                secondaryLabel: project.active === false ? t('inactiveCatalog') : (project.description || undefined),
                             }))}
                         />
                     )}

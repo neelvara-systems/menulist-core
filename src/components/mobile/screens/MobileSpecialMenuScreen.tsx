@@ -163,16 +163,11 @@ export default function MobileSpecialMenuScreen({ onBack }: MobileSpecialMenuScr
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack}>
-                <Flex align="center" gap={6}>
-                    <LuSparkles size={16} />
-                    <Text strong>{t('title')}</Text>
-                </Flex>
-            </NavBar>
+            <NavBar onBack={onBack} />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Review active and scheduled special menus and end them early when needed."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 {isLoading ? (

@@ -100,7 +100,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             setAvailability(data);
             if (data?.normalized) setSubdomainValue(data.normalized);
         } catch {
-            setAvailability({ available: false, reason: 'Could not check availability' });
+            setAvailability({ available: false, reason: t('checkAvailabilityFailed') });
         } finally {
             setCheckingSubdomain(false);
         }
@@ -160,10 +160,10 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('domain')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Manage your MenuList subdomain and connect a custom domain when you are ready."
+                    subtitle={t('domainSettingsSubtitle')}
                     title={t('domain')}
                 />
                 <Card>

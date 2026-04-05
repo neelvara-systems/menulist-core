@@ -187,12 +187,10 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} right={isSaving ? <Tag color="processing">Saving</Tag> : null}>
-                {t('title')}
-            </NavBar>
+            <NavBar onBack={onBack} right={isSaving ? <Tag color="processing">Saving</Tag> : null} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Connect your POS endpoint and monitor sync health for menu updates."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 <Card>

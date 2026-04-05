@@ -177,15 +177,6 @@ export default function MobileMoreScreen() {
 
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
-            <Card size="small">
-                <Flex gap={4} vertical>
-                    <Title level={4} style={{ margin: 0 }}>{t('more')}</Title>
-                    <Text type="secondary">
-                        Business modules, settings, and account controls in one place.
-                    </Text>
-                </Flex>
-            </Card>
-
             <Card>
                 <Flex align="center" gap={12}>
                     {userImage ? <Avatar size={48} src={userImage} /> : <Avatar size={48}>{userName.charAt(0).toUpperCase()}</Avatar>}

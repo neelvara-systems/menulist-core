@@ -7,6 +7,7 @@
         "edit": "Edit",
         "close": "Close",
         "back": "Back",
+        "open": "Open",
         "next": "Next",
         "submit": "Submit",
         "confirm": "Confirm",
@@ -125,6 +126,8 @@
     },
     "BusinessSettings": {
         "title": "Business Settings",
+        "domainSettingsSubtitle": "Manage your MenuList subdomain and connect a custom domain when you are ready.",
+        "officialPageSubtitle": "Control the public business page details customers see across your official presence.",
         "saveChanges": "Save Changes",
         "basicInformation": "Basic Information",
         "subdomain": "Subdomain",
@@ -214,6 +217,7 @@
         "subdomainPattern": "Only lowercase letters, numbers, and hyphens. Cannot start or end with a hyphen.",
         "isAvailable": "{name} is available",
         "checkAvailability": "Check Availability",
+        "checkAvailabilityFailed": "Could not check availability",
         "noSubdomainSet": "No subdomain set",
         "noSubdomainDesc": "Set a subdomain so customers can access your menu at yourname.menulist.ai. Your QR code will point to this link.",
         "customDomainDesc": "Connect your own domain (like yourbusiness.com) to your MenuList page. Customers will see your domain instead of menulist.ai.",
@@ -342,6 +346,7 @@
     },
     "PosSync": {
         "title": "POS Sync",
+        "subtitle": "Connect your POS endpoint and monitor sync health for menu updates.",
         "connectionIssue": "Menu updates are not reaching your POS",
         "connectionIssueDesc": "Check your webhook URL or contact your POS provider. Click 'Send Test' after fixing the issue.",
         "connectedStatus": "Connected — Menu updates are being sent automatically",
@@ -385,7 +390,7 @@
     },
     "Billing": {
         "title": "Plans & Billing",
-        "subtitle": "Manage your plan and billing history",
+        "subtitle": "Review your plan, billing history, credits, and payment actions in one place.",
         "activeSubscription": "Active Subscription",
         "billingHistory": "Billing History",
         "noBillingHistory": "No billing history found",
@@ -456,6 +461,7 @@
     },
     "Transactions": {
         "title": "Transactions History",
+        "subtitle": "Track AI processing usage, timestamps, and billing charges for recent operations.",
         "noTransactions": "No transactions found",
         "noMoreTransactions": "No more transactions to load",
         "failedToLoad": "Failed to load transactions",
@@ -483,6 +489,7 @@
     },
     "FeedbackInbox": {
         "title": "Feedback",
+        "subtitle": "Review guest feedback, resolve issues quickly, and access the feedback QR link.",
         "all": "All",
         "feedbackQrTitle": "Feedback QR",
         "feedbackQrDesc": "Collect feedback with a simple QR.",
@@ -538,6 +545,7 @@
         "selectCatalogDesc": "Choose a catalog to work with, or create a new one.",
         "currentCatalog": "Current: {name}",
         "catalogActions": "Catalog actions",
+        "inactiveCatalog": "Inactive catalog",
         "close": "Close",
         "createCatalog": "Create Catalog",
         "catalogName": "Catalog Name",
@@ -549,7 +557,18 @@
         "duplicate": "Duplicate",
         "save": "Save",
         "saveChanges": "Save Changes",
-        "continue": "Continue"
+        "continue": "Continue",
+        "untitled": "Untitled",
+        "default": "Default",
+        "add": "Add",
+        "manageCatalogsHelper": "Tap to switch or manage catalogs"
+    },
+    "MobileMenuQualitySignals": {
+        "title": "Menu Quality",
+        "allClearTitle": "Your menu looks great",
+        "allClearDesc": "Descriptions, photos, and prices look good.",
+        "openDesktopGenerate": "Open MenuList on desktop to generate content",
+        "openDesktopReview": "Open the editor on desktop to review"
     },
     "MobileFeedbackDetail": {
         "title": "Feedback",
@@ -692,6 +711,7 @@
     },
     "MobileTempStatus": {
         "title": "Temporary Status",
+        "subtitle": "Set a temporary public status and automatically clear it when the timing ends.",
         "statusSet": "Status set",
         "failedToSet": "Failed to set status. Please retry.",
         "statusCleared": "Status cleared",
@@ -710,6 +730,7 @@
     },
     "MobileSpecialMenu": {
         "title": "Special Menus",
+        "subtitle": "Review active and scheduled special menus and end them early when needed.",
         "active": "Active",
         "scheduled": "Scheduled",
         "ended": "Ended",
@@ -762,6 +783,7 @@
     },
     "MobileUsers": {
         "title": "Staff",
+        "subtitle": "Manage staff access, invite team members, and review their current role assignments.",
         "emailRequired": "Email is required",
         "emailExists": "Email already used",
         "invalidEmail": "Invalid email address",
@@ -828,6 +850,7 @@
     },
     "MobileLocations": {
         "title": "Locations",
+        "subtitle": "Review your locations, switch store context, and control outlet policies.",
         "notAvailable": "Chain Control Panel is not available for your account.",
         "switchedStore": "Switched store",
         "failedToSwitch": "Failed to switch store",
@@ -853,9 +876,12 @@
     },
     "MobileDesignEditor": {
         "title": "Menu Design",
+        "subtitle": "Adjust your menu look, layout, and brand presentation before you publish.",
         "failedToLoad": "Failed to load design settings",
         "noMenuFound": "No menu found. Create a menu first from the Menu tab.",
         "preview": "Preview",
+        "on": "On",
+        "off": "Off",
         "quickStart": "Quick Start",
         "quickStartSubtitle": "One tap to set everything",
         "appliedStyle": "Applied \"{name}\" style",
@@ -890,6 +916,7 @@
     },
     "MobileSeoAnalytics": {
         "title": "SEO & Analytics",
+        "subtitle": "Control search appearance and analytics tracking for your public pages.",
         "saved": "Saved",
         "failedToSave": "Failed to save",
         "seoSettings": "SEO Settings",
@@ -984,6 +1011,7 @@
     },
     "MobileHelp": {
         "title": "Help Center",
+        "subtitle": "Find quick answers, contact support, and open the help resources you need.",
         "whatsapp": "WhatsApp",
         "chatWithUs": "Chat with us",
         "email": "Email",
@@ -998,6 +1026,10 @@
         "saved": "Saved",
         "failedToSave": "Failed to save. Please retry.",
         "saveChanges": "Save Changes",
+        "basicSettingsSubtitle": "Update your business identity, contact details, and category information.",
+        "publicInfoSubtitle": "Manage the public contact, address, and location details customers can rely on.",
+        "localeSubtitle": "Set language, time zone, date, and time defaults for your business.",
+        "customDomainSubtitle": "Connect and verify a custom domain so customers can reach your menu on your own web address.",
         "publicInfo": "Public Info",
         "businessName": "Business Name",
         "changeOnDesktop": "Change on desktop",
@@ -1020,7 +1052,8 @@
         "language": "Language",
         "timezone": "Timezone",
         "currency": "Currency",
-        "currencyDesktopNote": "Currency is set at account level. Change on desktop."
+        "currencyDesktopNote": "Currency is set at account level. Change on desktop.",
+        "subdomainIntro": "Manage the MenuList web address customers use to reach your public menu."
     },
     "MobileToday": {
         "title": "Today",
@@ -1037,7 +1070,8 @@
         "appliesToday": "Applies today",
         "alsoToday": "Also today",
         "share": "Share",
-        "nowAvailable": "Now Available: {item}"
+        "nowAvailable": "Now Available: {item}",
+        "todaysAction": "Today's action"
     },
     "MobileMenu": {
         "searchPlaceholder": "Search {items}...",
@@ -1064,6 +1098,16 @@
         "categoriesTitle": "Categories",
         "categories": "Categories",
         "bulkActions": "Bulk actions",
+        "changeAvailability": "Change Availability",
+        "changeAvailabilityDesc": "Mark selected items as {available} or {unavailable}",
+        "updatePricesDesc": "Increase, reduce, or set prices for selected items",
+        "moveToCategoryDesc": "Move selected items into another category in one step",
+        "showAndHideItems": "Show or Hide Items",
+        "showAndHideItemsDesc": "Control whether customers can see selected items",
+        "categoriesManageDesc": "Manage categories, visibility, schedule, and delete actions",
+        "manageAndControl": "Manage & Control Your {offering}",
+        "manageLanguages": "Manage Languages",
+        "generateDescriptions": "Generate Descriptions",
         "addItem": "Add item",
         "addItemTitle": "Add item",
         "editItemTitle": "Edit item",
@@ -1088,6 +1132,13 @@
         "descriptionOptionalLabel": "Description (optional)",
         "descriptionPlaceholder": "Item description",
         "itemImageLabel": "Item image",
+        "variantsAddOns": "Variants or add-ons",
+        "variantsAddOnsDesc": "Add item options with their own prices.",
+        "optionNumber": "Option {number}",
+        "variantName": "Variant name",
+        "variantPrice": "Variant price",
+        "availableToOrder": "Available to order",
+        "noVariantsAdded": "No variants added yet.",
         "addPhoto": "Add photo",
         "changePhoto": "Change photo",
         "imageTooLarge": "Image must be under 5MB",
@@ -1294,10 +1345,72 @@
         "insideStore": "Inside your store",
         "insideStoreDesc": "These surfaces are detected automatically from your setup.",
         "auto": "Auto",
-        "allDoneMessage": "Your menu is easy to find everywhere customers look."
+        "allDoneMessage": "Your menu is easy to find everywhere customers look.",
+        "surfaces": {
+            "googleBusiness": {
+                "label": "Google Business",
+                "explanation": "Customers searching on Google can see your menu.",
+                "steps": {
+                    "open": "Open Google Business Profile",
+                    "edit": "Select Edit profile",
+                    "paste": "Paste your menu link into the website field"
+                }
+            },
+            "instagramBio": {
+                "label": "Instagram Bio",
+                "explanation": "Add the menu link to your bio so followers can open it fast.",
+                "steps": {
+                    "open": "Open Instagram and go to your profile",
+                    "edit": "Select Edit Profile",
+                    "paste": "Paste your menu link into the website field"
+                }
+            },
+            "whatsappProfile": {
+                "label": "WhatsApp Profile",
+                "explanation": "Customers messaging you can open your menu from your business profile.",
+                "steps": {
+                    "open": "Open WhatsApp Business settings",
+                    "edit": "Select Business Profile",
+                    "paste": "Paste your menu link into the description"
+                }
+            }
+        },
+        "autoSurfaces": {
+            "tableQr": {
+                "label": "Table QR",
+                "ready": "QR is ready to print.",
+                "pending": "Publish the menu first."
+            },
+            "digitalScreens": {
+                "label": "Digital screens",
+                "ready": "Digital screen is connected.",
+                "pending": "Not set up yet."
+            },
+            "feedbackQr": {
+                "label": "Feedback",
+                "ready": "Feedback is available.",
+                "pending": "Not enabled yet."
+            }
+        }
+    },
+    "MobileIntegrations": {
+        "subtitle": "Review your external integrations and make sure your public business data stays aligned.",
+        "googleBusinessProfile": "Google Business Profile",
+        "googleBusinessProfileDesc": "Keep your menu link and hours aligned with Google.",
+        "connection": "Connection",
+        "connected": "Connected",
+        "notConnected": "Not connected",
+        "menuLink": "Menu link",
+        "managed": "Managed",
+        "hoursSync": "Hours sync",
+        "synced": "Synced",
+        "needsReview": "Needs review",
+        "notAvailable": "Google Business Profile sync is not available on this account yet.",
+        "off": "Off"
     },
     "MobileDashboard": {
         "title": "Dashboard",
+        "subtitle": "Quick status and performance for your selected {offering}.",
         "noProjects": "No projects yet. Upload your {offering} to see analytics.",
         "failedToLoad": "Failed to load",
         "refreshed": "Refreshed",
@@ -1341,7 +1454,25 @@
         "quickShare": "Quick Share",
         "shareStatusWhatsApp": "Share today's status on WhatsApp",
         "weeklyHours": "Weekly Hours",
-        "closed": "Closed"
+        "closed": "Closed",
+        "introDesc": "Check today's hours, status, and actions for your business.",
+        "hoursRiskyHeading": "Hours may be outdated",
+        "hoursNeedUpdatingHeading": "Hours need updating",
+        "hoursRiskyMessage": "Update your hours so customers see accurate open status.",
+        "hoursNeedUpdatingMessage": "Add your hours so customers know when you are open.",
+        "tentCardDownloaded": "Tent card downloaded",
+        "tentCardDownloadFailed": "Failed to download tent card",
+        "stickerDownloaded": "Sticker downloaded",
+        "stickerDownloadFailed": "Failed to download sticker",
+        "tableTentReady": "Table tent is ready",
+        "tableTentReadyDesc": "Best for walk-in customers today",
+        "tableTentSize": "Size: A6 (recommended for tables)",
+        "downloadTentCard": "Download tent card",
+        "counterStickerReady": "Counter sticker is ready",
+        "counterStickerReadyDesc": "Recommended for billing counter",
+        "counterStickerSize": "Size: 8cm x 8cm",
+        "downloadSticker": "Download sticker",
+        "itemFallback": "Item"
     },
     "MobileShare": {
         "title": "Share & QR Code",
@@ -1365,7 +1496,34 @@
         "copyLink": "Copy Link",
         "shareWhatsApp": "Share on WhatsApp",
         "moreOptions": "More Options",
-        "shareMessageCopied": "Share message copied!"
+        "shareMessageCopied": "Share message copied!",
+        "copiedLabel": "{label} copied",
+        "copyFailedLabel": "Could not copy {label}",
+        "noMenuYet": "No menu yet",
+        "noMenuYetDesc": "Create your first {offering} to start sharing.",
+        "shareYourOffering": "Share Your {offering}",
+        "shareYourOfferingDesc": "Your live links, screens, and customer-ready sharing tools.",
+        "yourBusiness": "Your Business",
+        "yourOfferingPage": "Your {offering} Page",
+        "offeringPageDesc": "Share this when you want customers to land on your main {offering} page.",
+        "offeringPageCopyLabel": "{offering} page link",
+        "directOfferingLink": "Direct {offering} Link",
+        "directOfferingLinkDesc": "Opens the active {offering} directly.",
+        "directOfferingLinkCopyLabel": "Direct {offering} link",
+        "feedbackLink": "Feedback Link",
+        "feedbackLinkDesc": "Use this QR/link when you want private guest feedback.",
+        "digitalScreens": "Digital Screens",
+        "menuBoard": "Menu Board",
+        "menuBoardDesc": "Full {offering} board for your main TV.",
+        "menuBoardLink": "Menu board link",
+        "highlightsScreen": "Highlights Screen",
+        "highlightsScreenDesc": "Rotating highlights for promo screens.",
+        "highlightsLink": "Highlights link",
+        "notSetUpYet": "Not set up yet.",
+        "posSync": "POS Sync",
+        "posIntegration": "POS integration",
+        "active": "active",
+        "posSyncDesc": "Your {offering} can sync to the connected POS system after publish."
     },
     "MobileMore": {
         "dashboard": "Dashboard",

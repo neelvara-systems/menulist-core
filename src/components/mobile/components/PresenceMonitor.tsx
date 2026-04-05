@@ -42,10 +42,10 @@ interface MobilePresenceMonitorProps {
 interface ManualSurfaceConfig {
     id: ManualSurfaceId;
     dalKey: MenuPresenceSurface;
-    label: string;
-    explanation: string;
     icon: React.ReactNode;
-    guideSteps: string[];
+    labelKey: string;
+    explanationKey: string;
+    guideStepKeys: string[];
     openUrl?: string;
 }
 
@@ -53,28 +53,40 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
     {
         id: 'googleBusiness',
         dalKey: 'googleBusiness',
-        label: 'Google Business',
-        explanation: 'Customers searching on Google can see your menu.',
+        labelKey: 'surfaces.googleBusiness.label',
+        explanationKey: 'surfaces.googleBusiness.explanation',
         icon: <LuGlobe size={16} />,
-        guideSteps: ['Open Google Business profile', 'Click "Edit profile"', 'Paste menu link in Website field'],
+        guideStepKeys: [
+            'surfaces.googleBusiness.steps.open',
+            'surfaces.googleBusiness.steps.edit',
+            'surfaces.googleBusiness.steps.paste',
+        ],
         openUrl: 'https://business.google.com',
     },
     {
         id: 'instagramBio',
         dalKey: 'instagramBio',
-        label: 'Instagram Bio',
-        explanation: 'Add the menu link to your bio for followers.',
+        labelKey: 'surfaces.instagramBio.label',
+        explanationKey: 'surfaces.instagramBio.explanation',
         icon: <FaInstagram size={16} />,
-        guideSteps: ['Open Instagram and go to your profile', 'Tap "Edit Profile"', 'Paste menu link in Website field'],
+        guideStepKeys: [
+            'surfaces.instagramBio.steps.open',
+            'surfaces.instagramBio.steps.edit',
+            'surfaces.instagramBio.steps.paste',
+        ],
         openUrl: 'https://instagram.com',
     },
     {
         id: 'whatsappProfile',
         dalKey: 'whatsappProfile',
-        label: 'WhatsApp Profile',
-        explanation: 'Customers messaging you can open your menu.',
+        labelKey: 'surfaces.whatsappProfile.label',
+        explanationKey: 'surfaces.whatsappProfile.explanation',
         icon: <LuMessageCircle size={16} />,
-        guideSteps: ['Open WhatsApp Business settings', 'Tap "Business Profile"', 'Paste menu link in description'],
+        guideStepKeys: [
+            'surfaces.whatsappProfile.steps.open',
+            'surfaces.whatsappProfile.steps.edit',
+            'surfaces.whatsappProfile.steps.paste',
+        ],
     },
 ];
 
@@ -99,23 +111,23 @@ export default function MobilePresenceMonitor({
     const autoSurfaces = [
         {
             id: 'tableQr',
-            label: 'Table QR',
+            label: t('autoSurfaces.tableQr.label'),
             active: hasPublishedMenu,
-            desc: hasPublishedMenu ? 'QR is ready to print.' : 'Publish the menu first.',
+            desc: hasPublishedMenu ? t('autoSurfaces.tableQr.ready') : t('autoSurfaces.tableQr.pending'),
             icon: <LuQrCode size={16} />,
         },
         {
             id: 'digitalScreens',
-            label: 'Screens',
+            label: t('autoSurfaces.digitalScreens.label'),
             active: hasScreen,
-            desc: hasScreen ? 'Digital screen is connected.' : 'Not set up yet.',
+            desc: hasScreen ? t('autoSurfaces.digitalScreens.ready') : t('autoSurfaces.digitalScreens.pending'),
             icon: <LuMonitor size={16} />,
         },
         {
             id: 'feedbackQr',
-            label: 'Feedback',
+            label: t('autoSurfaces.feedbackQr.label'),
             active: hasFeedbackEnabled,
-            desc: hasFeedbackEnabled ? 'Feedback is available.' : 'Not enabled yet.',
+            desc: hasFeedbackEnabled ? t('autoSurfaces.feedbackQr.ready') : t('autoSurfaces.feedbackQr.pending'),
             icon: <LuMessageCircle size={16} />,
         },
     ];
@@ -142,7 +154,7 @@ export default function MobilePresenceMonitor({
         try {
             await updateMenuPresence(storeDetails.storeId, surface.dalKey, true);
             setLocalPresence((previous) => ({ ...previous, [surface.id]: new Date().toISOString() }));
-            Toast.show({ content: t('surfaceUpdated', { surface: surface.label }), duration: 1500 });
+            Toast.show({ content: t('surfaceUpdated', { surface: t(surface.labelKey) }), duration: 1500 });
             setExpandedGuide(null);
         } catch {
             Toast.show({ content: t('updateFailed'), duration: 1500 });
@@ -160,7 +172,7 @@ export default function MobilePresenceMonitor({
                 delete next[surface.id];
                 return next;
             });
-            Toast.show({ content: t('surfaceRemoved', { surface: surface.label }), duration: 1500 });
+            Toast.show({ content: t('surfaceRemoved', { surface: t(surface.labelKey) }), duration: 1500 });
         } catch {
             Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
@@ -203,7 +215,7 @@ export default function MobilePresenceMonitor({
                                     <Flex gap={8} vertical>
                                         <Flex gap={8} wrap="wrap">
                                             <Text type="secondary">
-                                                {active ? t('menuLinkAdded') : surface.explanation}
+                                                {active ? t('menuLinkAdded') : t(surface.explanationKey)}
                                             </Text>
                                             {isNext ? <Tag color="processing">{manualActiveCount === 0 ? t('startHere') : t('next')}</Tag> : null}
                                         </Flex>
@@ -213,9 +225,9 @@ export default function MobilePresenceMonitor({
                                                     <Flex gap={4} vertical>
                                                         <Text strong>{t('howToAdd')}</Text>
                                                         <List>
-                                                            {surface.guideSteps.map((step, index) => (
+                                                            {surface.guideStepKeys.map((stepKey, index) => (
                                                                 <List.Item key={`${surface.id}-${index}`}>
-                                                                    <Text>{`${index + 1}. ${step}`}</Text>
+                                                                    <Text>{`${index + 1}. ${t(stepKey)}`}</Text>
                                                                 </List.Item>
                                                             ))}
                                                         </List>
@@ -280,7 +292,7 @@ export default function MobilePresenceMonitor({
                                 }
                                 title={
                                     <Flex gap={8} wrap="wrap">
-                                        <Text strong>{surface.label}</Text>
+                                        <Text strong>{t(surface.labelKey)}</Text>
                                         {active ? <Tag color="success">{t('added')}</Tag> : null}
                                     </Flex>
                                 }

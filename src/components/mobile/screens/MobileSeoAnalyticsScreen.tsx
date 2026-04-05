@@ -60,10 +60,10 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Control search appearance and analytics tracking for your public pages."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 <Card title={<Flex align="center" gap={8}><LuSearch color="#1677ff" size={18} /><Text strong>{t('seoSettings')}</Text></Flex>}>

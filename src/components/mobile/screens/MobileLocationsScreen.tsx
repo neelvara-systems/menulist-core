@@ -38,7 +38,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" justify="center" style={{ flex: 1 }}>
                     <Text type="secondary">{t('notAvailable')}</Text>
                 </Flex>
@@ -117,11 +117,11 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <NavBar onBack={onBack} />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Review your locations, switch store context, and control outlet policies."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 <Card>

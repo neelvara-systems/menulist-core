@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { computeQualitySignals, getVisibleSignals, isAllClear, QualitySignal } from '@lib/mce/qualitySignals';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
+import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
 import { Button, Card, Flex, List, Text, Toast } from '../antd';
@@ -20,6 +21,7 @@ interface MobileMenuQualitySignalsProps {
 }
 
 export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySignalsProps) {
+    const t = useTranslations('MobileMenuQualitySignals');
     const allSignals = useMemo(() => computeQualitySignals(files), [files]);
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
@@ -31,8 +33,8 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
     const handleAction = (signal: QualitySignal) => {
         Toast.show({
             content: signal.actionRoute === 'descriptions' || signal.actionRoute === 'images'
-                ? 'Open MenuList on desktop to generate content'
-                : 'Open the editor on desktop to review',
+                ? t('openDesktopGenerate')
+                : t('openDesktopReview'),
             duration: 2000,
         });
     };
@@ -42,7 +44,7 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
             title={(
                 <Flex align="center" gap={8}>
                     <LuSparkles color={allClear ? '#16a34a' : '#d97706'} size={16} />
-                    <Text strong>Menu Quality</Text>
+                    <Text strong>{t('title')}</Text>
                 </Flex>
             )}
         >
@@ -50,8 +52,8 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
                 <Flex align="center" gap={12}>
                     <LuCheckCircle color="#16a34a" size={24} />
                     <Flex gap={2} vertical>
-                        <Text strong>Your menu looks great</Text>
-                        <Text type="secondary">Descriptions, photos, and prices look good.</Text>
+                        <Text strong>{t('allClearTitle')}</Text>
+                        <Text type="secondary">{t('allClearDesc')}</Text>
                     </Flex>
                 </Flex>
             ) : (

@@ -83,10 +83,10 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('customDomain')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Connect and verify a custom domain so customers can reach your menu on your own web address."
+                    subtitle={t('customDomainSubtitle')}
                     title={t('customDomain')}
                 />
 

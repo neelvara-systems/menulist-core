@@ -1,7 +1,9 @@
 'use client'
 
+import { getOwnerLabels } from '@config/businessLabels';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme, type UploadFile, type UploadProps } from 'antd';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useContext } from 'react';
 import { LuCamera, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Image, Input, NavBar, Picker, Popup, Switch, Text, TextArea, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
@@ -18,7 +20,9 @@ interface ItemEditSheetProps {
 
 export default function ItemEditSheet({ item, categories, currencySymbol, onClose, onSave, onDelete }: ItemEditSheetProps) {
     const t = useTranslations('MobileMenu');
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
+    const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
     const [name, setName] = useState(item.name);
     const [price, setPrice] = useState(String(item.price));
     const [description, setDescription] = useState(item.description || '');
@@ -161,8 +165,8 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         <Flex gap={10} vertical>
                             <Flex align="center" justify="space-between">
                                 <Flex gap={2} vertical>
-                                    <Text strong>Variants or add-ons</Text>
-                                    <Text type="secondary">Add item options with their own prices.</Text>
+                                    <Text strong>{t('variantsAddOns')}</Text>
+                                    <Text type="secondary">{t('variantsAddOnsDesc')}</Text>
                                 </Flex>
                                 <Button
                                     fill="outline"
@@ -181,7 +185,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                 >
                                     <Flex align="center" gap={6}>
                                         <LuPlus size={14} />
-                                        <Text>Add</Text>
+                                        <Text>{t('add')}</Text>
                                     </Flex>
                                 </Button>
                             </Flex>
@@ -192,7 +196,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                         <Card key={attribute.id} size="small">
                                             <Flex gap={10} vertical>
                                                 <Flex align="center" justify="space-between">
-                                                    <Text strong>{`Option ${index + 1}`}</Text>
+                                                    <Text strong>{t('optionNumber', { number: index + 1 })}</Text>
                                                     <Button
                                                         color="danger"
                                                         fill="none"
@@ -208,7 +212,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                                             entry.id === attribute.id ? { ...entry, name: value } : entry
                                                         )));
                                                     }}
-                                                    placeholder="Variant name"
+                                                    placeholder={t('variantName')}
                                                     value={attribute.name}
                                                 />
                                                 <Input
@@ -217,12 +221,12 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                                             entry.id === attribute.id ? { ...entry, price: parseFloat(value) || 0 } : entry
                                                         )));
                                                     }}
-                                                    placeholder="Variant price"
+                                                    placeholder={t('variantPrice')}
                                                     type="number"
                                                     value={String(attribute.price || '')}
                                                 />
                                                 <Flex align="center" justify="space-between">
-                                                    <Text type="secondary">Available to order</Text>
+                                                    <Text type="secondary">{t('availableToOrder')}</Text>
                                                     <Switch
                                                         checked={attribute.active !== false}
                                                         onChange={(checked) => {
@@ -238,7 +242,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                 </Flex>
                             ) : (
                                 <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
-                                    <Text type="secondary">No variants added yet.</Text>
+                                    <Text type="secondary">{t('noVariantsAdded')}</Text>
                                 </Card>
                             )}
                         </Flex>
@@ -246,7 +250,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
                             <Flex align="center" justify="space-between">
                                 <Flex gap={2} vertical>
-                                    <Text strong>{t('available')}</Text>
+                                    <Text strong>{availabilityLabels.available}</Text>
                                     <Text type="secondary">{t('availableHelp')}</Text>
                                 </Flex>
                                 <Switch checked={isAvailable} onChange={setIsAvailable} />

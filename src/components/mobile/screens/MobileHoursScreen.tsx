@@ -156,10 +156,10 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
         && !isNudgeDismissed
         && hoursConfidence !== 'TRUSTED';
 
-    const nudgeHeading = hoursConfidence === 'RISKY' ? 'Hours may be outdated' : 'Hours need updating';
+    const nudgeHeading = hoursConfidence === 'RISKY' ? t('hoursRiskyHeading') : t('hoursNeedUpdatingHeading');
     const nudgeMessage = hoursConfidence === 'RISKY'
-        ? 'Update your hours so customers see accurate open status.'
-        : 'Add your hours so customers know when you are open.';
+        ? t('hoursRiskyMessage')
+        : t('hoursNeedUpdatingMessage');
 
     const handleDismissNudge = () => {
         if (!storeDetails?.storeId) return;
@@ -210,9 +210,9 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
             anchor.download = 'tent-card-a6.pdf';
             anchor.click();
             URL.revokeObjectURL(url);
-            Toast.show({ content: 'Tent card downloaded', duration: 1500 });
+            Toast.show({ content: t('tentCardDownloaded'), duration: 1500 });
         } catch {
-            Toast.show({ content: 'Failed to download tent card', duration: 2000 });
+            Toast.show({ content: t('tentCardDownloadFailed'), duration: 2000 });
         } finally {
             setIsDownloadingTent(false);
         }
@@ -234,9 +234,9 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
             anchor.download = 'counter-sticker.png';
             anchor.click();
             URL.revokeObjectURL(url);
-            Toast.show({ content: 'Sticker downloaded', duration: 1500 });
+            Toast.show({ content: t('stickerDownloaded'), duration: 1500 });
         } catch {
-            Toast.show({ content: 'Failed to download sticker', duration: 2000 });
+            Toast.show({ content: t('stickerDownloadFailed'), duration: 2000 });
         } finally {
             setIsDownloadingSticker(false);
         }
@@ -248,7 +248,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                 <Flex gap={4} vertical>
                     <Title level={4} style={{ margin: 0 }}>{tToday('title')}</Title>
                     <Text type="secondary">
-                        Check today&apos;s hours, status, and actions for your business.
+                        {t('introDesc')}
                     </Text>
                 </Flex>
             </Card>
@@ -309,14 +309,14 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     <Flex gap={12} vertical>
                         <Flex align="center" gap={8}>
                             <LuTent size={18} />
-                            <Text strong>Table tent is ready</Text>
+                            <Text strong>{t('tableTentReady')}</Text>
                         </Flex>
-                        <Text type="secondary">Best for walk-in customers today</Text>
-                        <Text type="secondary">Size: A6 (recommended for tables)</Text>
+                        <Text type="secondary">{t('tableTentReadyDesc')}</Text>
+                        <Text type="secondary">{t('tableTentSize')}</Text>
                         <Button block loading={isDownloadingTent} onClick={() => void handleDownloadTentCard()}>
                             <Flex align="center" gap={6}>
                                 <LuDownload size={14} />
-                                <Text>Download tent card</Text>
+                                <Text>{t('downloadTentCard')}</Text>
                             </Flex>
                         </Button>
                     </Flex>
@@ -328,14 +328,14 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     <Flex gap={12} vertical>
                         <Flex align="center" gap={8}>
                             <LuSticker size={18} />
-                            <Text strong>Counter sticker is ready</Text>
+                            <Text strong>{t('counterStickerReady')}</Text>
                         </Flex>
-                        <Text type="secondary">Recommended for billing counter</Text>
-                        <Text type="secondary">Size: 8cm x 8cm</Text>
+                        <Text type="secondary">{t('counterStickerReadyDesc')}</Text>
+                        <Text type="secondary">{t('counterStickerSize')}</Text>
                         <Button block loading={isDownloadingSticker} onClick={() => void handleDownloadSticker()}>
                             <Flex align="center" gap={6}>
                                 <LuDownload size={14} />
-                                <Text>Download sticker</Text>
+                                <Text>{t('downloadSticker')}</Text>
                             </Flex>
                         </Button>
                     </Flex>
@@ -376,7 +376,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     <Flex gap={12} vertical>
                         <Flex align="center" gap={8}>
                             <LuMessageCircle color="#2563eb" size={18} />
-                            <Text strong>Today&apos;s action</Text>
+                            <Text strong>{tToday('todaysAction')}</Text>
                         </Flex>
                         <Text strong>{primaryTitle}</Text>
                         {primaryContext ? <Text type="secondary">{primaryContext}</Text> : null}
@@ -414,9 +414,9 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     <Flex gap={8} vertical>
                         {todayCampaigns.operational.slice(0, 2).map((campaign) => {
                             const title = campaign.type === 'now_available'
-                                ? `Now Available: ${campaign.subject?.itemName || 'Item'}`
+                                ? tToday('nowAvailable', { item: campaign.subject?.itemName || t('itemFallback') })
                                 : (ACTION_TITLES[campaign.type] || 'Share')
-                                    .replace('{itemName}', campaign.subject?.itemName || 'Item')
+                                    .replace('{itemName}', campaign.subject?.itemName || t('itemFallback'))
                                     .replace('{mealName}', mealName);
 
                             return (

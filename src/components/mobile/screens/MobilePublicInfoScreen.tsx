@@ -88,10 +88,10 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('publicInfo')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Manage the public contact, address, and location details customers can rely on."
+                    subtitle={t('publicInfoSubtitle')}
                     title={t('publicInfo')}
                 />
                 <Card>

@@ -1,6 +1,7 @@
 'use client'
 
 import { Button, Card, Flex, Tag, theme, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import { LuCheck, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -49,8 +50,9 @@ export function ProjectSelectorTrigger({
     rightContent,
     clickable = false,
 }: ProjectSelectorTriggerProps) {
+    const t = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
-    const projectName = currentProject?.name || 'Untitled';
+    const projectName = currentProject?.name || t('untitled');
     const avatarColors = getAvatarColor(projectName);
 
     const content = (
@@ -78,7 +80,7 @@ export function ProjectSelectorTrigger({
                 </Flex>
             </Flex>
             <Flex align="center" gap={8}>
-                {currentProject?.isDefault ? <Tag color="processing">Default</Tag> : null}
+                {currentProject?.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
                 {rightContent}
                 {clickable ? <LuChevronDown color={token.colorTextSecondary} size={14} /> : null}
             </Flex>
@@ -121,12 +123,13 @@ interface ProjectSelectorListProps {
 }
 
 export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSelect, projects }: ProjectSelectorListProps) {
+    const t = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
 
     return (
         <Flex gap={12} justify="flex-start" wrap="wrap">
             {projects.map((project) => {
-                const avatarColors = getAvatarColor(project.name || 'Untitled');
+                const avatarColors = getAvatarColor(project.name || t('untitled'));
                 const isSelected = project.id === currentProjectId;
 
                 return (
@@ -196,13 +199,13 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     flexShrink: 0,
                                 }}
                             >
-                                {getInitials(project.name || 'Untitled')}
+                                {getInitials(project.name || t('untitled'))}
                             </Flex>
                             <Flex align="center" gap={6} justify="center" wrap="wrap">
                                 <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
-                                    {project.name || 'Untitled'}
+                                    {project.name || t('untitled')}
                                 </Text>
-                                {project.isDefault ? <Tag color="processing">Default</Tag> : null}
+                                {project.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
                             </Flex>
                             {project.secondaryLabel ? (
                                 <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
@@ -248,7 +251,7 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                             <LuPlus size={32} />
                         </Flex>
                         <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
-                            Add
+                            {t('add')}
                         </Text>
                     </Flex>
                 </Card>

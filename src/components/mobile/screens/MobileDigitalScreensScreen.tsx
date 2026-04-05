@@ -66,7 +66,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     if (loading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" flex={1} justify="center">
                     <DotLoading color="primary" />
                 </Flex>
@@ -78,7 +78,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
                     subtitle={`${t('setup')} ${t('setupTip')}`}

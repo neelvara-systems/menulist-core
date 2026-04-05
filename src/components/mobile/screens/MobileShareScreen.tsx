@@ -10,6 +10,7 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield } from 'react-icons/lu';
 import MobileCommunicationKit from '../components/CommunicationKit';
@@ -45,6 +46,9 @@ type ShareData = {
 
 export default function MobileShareScreen() {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const t = useTranslations('MobileShare');
+    const common = useTranslations('Common');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
     const [data, setData] = useState<ShareData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +96,7 @@ export default function MobileShareScreen() {
                 const allProjects: ProjectLink[] = projects.map((project: any) => ({
                     feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId) : '',
                     isDefault: project.isDefault || false,
-                    name: project.name || 'Untitled',
+                    name: project.name || tProjectSelector('untitled'),
                     projectId: project.projectId,
                     url: generateProjectUrl(subdomain, customDomain, project.isDefault ? undefined : project.name, project.isDefault),
                 }));
@@ -115,12 +119,12 @@ export default function MobileShareScreen() {
                     posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
                     projectId: defaultProject.projectId || null,
                     projectName: defaultProject.name || null,
-                    storeName: storeDetails.name || 'Your Business',
+                    storeName: storeDetails.name || t('yourBusiness'),
                 });
             } finally {
                 setIsLoading(false);
             }
-    }, [storeDetails]);
+    }, [storeDetails, t, tProjectSelector]);
 
     useEffect(() => {
         if (!storeDetails) return;
@@ -135,9 +139,9 @@ export default function MobileShareScreen() {
     const handleCopy = async (value: string, label: string) => {
         try {
             await navigator.clipboard.writeText(value);
-            Toast.show({ content: `${label} copied`, duration: 1200 });
+            Toast.show({ content: t('copiedLabel', { label }), duration: 1200 });
         } catch {
-            Toast.show({ content: `Could not copy ${label.toLowerCase()}`, duration: 1500 });
+            Toast.show({ content: t('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
         }
     };
 
@@ -153,9 +157,9 @@ export default function MobileShareScreen() {
         return (
             <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24 }} vertical>
                 <LuBookOpen color="#d1d5db" size={36} />
-                <Title level={4} style={{ margin: 0 }}>No menu yet</Title>
+                <Title level={4} style={{ margin: 0 }}>{t('noMenuYet')}</Title>
                 <Text type="secondary" style={{ textAlign: 'center' }}>
-                    Create your first {labels.offeringLower} to start sharing.
+                    {t('noMenuYetDesc', { offering: labels.offeringLower })}
                 </Text>
             </Flex>
         );
@@ -165,8 +169,8 @@ export default function MobileShareScreen() {
         <Flex gap={16} style={{ padding: 16 }} vertical>
             <Card size="small">
                 <Flex gap={4} vertical>
-                    <Title level={4} style={{ margin: 0 }}>Share Your {labels.offeringTitle}</Title>
-                    <Text type="secondary">Your live links, screens, and customer-ready sharing tools.</Text>
+                    <Title level={4} style={{ margin: 0 }}>{t('shareYourOffering', { offering: labels.offeringTitle })}</Title>
+                    <Text type="secondary">{t('shareYourOfferingDesc')}</Text>
                 </Flex>
             </Card>
 
@@ -176,37 +180,37 @@ export default function MobileShareScreen() {
                     currentProject={{
                         id: activeProject.projectId,
                         isDefault: activeProject.isDefault,
-                        name: activeProject.name || 'Untitled',
+                        name: activeProject.name || tProjectSelector('untitled'),
                     }}
-                    helperText={data.allProjects.length > 1 ? 'Tap to switch or manage catalogs' : undefined}
+                    helperText={data.allProjects.length > 1 ? tProjectSelector('manageCatalogsHelper') : undefined}
                     onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
             ) : null}
 
             <LinkCard
-                description={`Share this when you want customers to land on your main ${labels.offeringLower} page.`}
+                description={t('offeringPageDesc', { offering: labels.offeringLower })}
                 icon={<LuExternalLink color="#2563eb" size={18} />}
-                label={`Your ${labels.offeringTitle} Page`}
-                onCopy={() => void handleCopy(data.obpLink, `${labels.offeringTitle} page link`)}
+                label={t('yourOfferingPage', { offering: labels.offeringTitle })}
+                onCopy={() => void handleCopy(data.obpLink, t('offeringPageCopyLabel', { offering: labels.offeringTitle }))}
                 onOpen={() => window.open(data.obpLink, '_blank')}
                 value={data.obpLink}
             />
 
             <LinkCard
-                description={`Opens the active ${labels.offeringLower} directly.`}
+                description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
                 icon={<LuCopy color="#16a34a" size={18} />}
-                label={`Direct ${labels.offeringTitle} Link`}
-                onCopy={() => void handleCopy(data.menuLink, `Direct ${labels.offeringLower} link`)}
+                label={t('directOfferingLink', { offering: labels.offeringTitle })}
+                onCopy={() => void handleCopy(data.menuLink, t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
                 onOpen={() => window.open(data.menuLink, '_blank')}
                 value={data.menuLink}
             />
 
             {data.hasFeedbackEnabled && data.feedbackLink ? (
                 <LinkCard
-                    description="Use this QR/link when you want private guest feedback."
+                    description={t('feedbackLinkDesc')}
                     icon={<LuMessageSquare color="#16a34a" size={18} />}
-                    label="Feedback Link"
-                    onCopy={() => void handleCopy(data.feedbackLink, 'Feedback link')}
+                    label={t('feedbackLink')}
+                    onCopy={() => void handleCopy(data.feedbackLink, t('feedbackLink'))}
                     onOpen={() => window.open(data.feedbackLink, '_blank')}
                     value={data.feedbackLink}
                 />
@@ -222,22 +226,24 @@ export default function MobileShareScreen() {
                 />
             ) : null}
 
-            <Card title={<Text strong>Digital Screens</Text>}>
+            <Card title={<Text strong>{t('digitalScreens')}</Text>}>
                 <Flex gap={12} vertical>
                     <ScreenCard
-                        description={`Full ${labels.offeringLower} board for your main TV.`}
+                        description={t('menuBoardDesc', { offering: labels.offeringLower })}
                         icon={<LuMonitor color="#2563eb" size={18} />}
-                        label="Menu Board"
-                        onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, 'Menu board link') : undefined}
+                        label={t('menuBoard')}
+                        onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
                         onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
+                        pendingLabel={t('notSetUpYet')}
                         value={data.menuBoardLink}
                     />
                     <ScreenCard
-                        description="Rotating highlights for promo screens."
+                        description={t('highlightsScreenDesc')}
                         icon={<LuQrCode color="#9333ea" size={18} />}
-                        label="Highlights Screen"
-                        onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, 'Highlights link') : undefined}
+                        label={t('highlightsScreen')}
+                        onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
                         onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
+                        pendingLabel={t('notSetUpYet')}
                         value={data.highlightsLink}
                     />
                 </Flex>
@@ -258,17 +264,17 @@ export default function MobileShareScreen() {
             ) : null}
 
             {data.hasPosSync ? (
-                <Card title={<Text strong>POS Sync</Text>}>
+                <Card title={<Text strong>{t('posSync')}</Text>}>
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={8}>
                             <LuShield color="#475569" size={18} />
-                            <Text strong>POS integration</Text>
+                            <Text strong>{t('posIntegration')}</Text>
                             <Tag color={data.posSyncStatus === 'healthy' ? 'success' : data.posSyncStatus === 'connection_issue' ? 'warning' : 'default'}>
-                                {data.posSyncStatus || 'active'}
+                                {data.posSyncStatus || t('active')}
                             </Tag>
                         </Flex>
                         <Text type="secondary">
-                            Your {labels.offeringLower} can sync to the connected POS system after publish.
+                            {t('posSyncDesc', { offering: labels.offeringLower })}
                         </Text>
                     </Flex>
                 </Card>
@@ -303,6 +309,7 @@ function LinkCard({
     onOpen: () => void;
     value: string;
 }) {
+    const common = useTranslations('Common');
     return (
         <Card>
             <Flex gap={10} vertical>
@@ -316,10 +323,10 @@ function LinkCard({
                 </Card>
                 <Flex gap={8}>
                     <Button block fill="outline" onClick={onCopy} size="small">
-                        Copy
+                        {common('copy')}
                     </Button>
                     <Button block onClick={onOpen} size="small">
-                        Open
+                        {common('open')}
                     </Button>
                 </Flex>
             </Flex>
@@ -333,6 +340,7 @@ function ScreenCard({
     label,
     onCopy,
     onOpen,
+    pendingLabel,
     value,
 }: {
     description: string;
@@ -340,8 +348,10 @@ function ScreenCard({
     label: string;
     onCopy?: () => void;
     onOpen?: () => void;
+    pendingLabel: string;
     value: string | null;
 }) {
+    const common = useTranslations('Common');
     if (!value) {
         return (
             <Card size="small">
@@ -349,7 +359,7 @@ function ScreenCard({
                     {icon}
                     <Flex gap={2} vertical>
                         <Text strong>{label}</Text>
-                        <Text type="secondary">Not set up yet.</Text>
+                        <Text type="secondary">{pendingLabel}</Text>
                     </Flex>
                 </Flex>
             </Card>
@@ -367,10 +377,10 @@ function ScreenCard({
                 <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
                 <Flex gap={8}>
                     <Button block fill="outline" onClick={onCopy} size="small">
-                        Copy
+                        {common('copy')}
                     </Button>
                     <Button block onClick={onOpen} size="small">
-                        Open
+                        {common('open')}
                     </Button>
                 </Flex>
             </Flex>

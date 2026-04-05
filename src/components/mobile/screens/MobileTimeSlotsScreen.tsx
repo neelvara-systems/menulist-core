@@ -94,7 +94,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
     if (isLoading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" flex={1} justify="center"><DotLoading /></Flex>
             </Flex>
         );
@@ -105,9 +105,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             <NavBar
                 onBack={onBack}
                 right={<Button fill="none" onClick={openAdd}><Flex align="center" gap={4}><LuPlus size={16} /><Text>{t('add')}</Text></Flex></Button>}
-            >
-                {t('title')}
-            </NavBar>
+            />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro

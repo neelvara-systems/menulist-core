@@ -86,13 +86,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         <LuRefreshCw color="#64748b" size={18} />
                     </Button>
                 )}
-            >
-                Transactions
-            </NavBar>
+            />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Track AI processing usage, timestamps, and billing charges for recent operations."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 {loading && transactions.length === 0 ? (

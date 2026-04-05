@@ -18,6 +18,7 @@ import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuExternalLink, LuPalette } from 'react-icons/lu';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
@@ -221,9 +222,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     if (isLoading) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />}>
-                    {t('title')}
-                </NavBar>
+                <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />} />
                 <Flex align="center" justify="center" style={{ flex: 1 }}>
                     <DotLoading />
                 </Flex>
@@ -234,9 +233,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     if (!projectData) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />}>
-                    {t('title')}
-                </NavBar>
+                <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />} />
                 <Flex align="center" justify="center" style={{ flex: 1, padding: '0 24px' }}>
                     <Text type="secondary" style={{ textAlign: 'center' }}>{t('noMenuFound')}</Text>
                 </Flex>
@@ -257,11 +254,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         </Flex>
                     </Button>
                 }
-            >
-                {t('title')}
-            </NavBar>
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 128px' }} vertical>
+                <MobileScreenIntro
+                    subtitle={t('subtitle')}
+                    title={t('title')}
+                />
                 <Card size="small" title={<Text strong>Current style</Text>}>
                     <List>
                         <List.Item
@@ -278,11 +277,11 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         />
                         <List.Item
                             title={<Text>{t('showItemImages')}</Text>}
-                            extra={<Tag color={showImages ? 'success' : 'default'}>{showImages ? 'On' : 'Off'}</Tag>}
+                            extra={<Tag color={showImages ? 'success' : 'default'}>{showImages ? t('on') : t('off')}</Tag>}
                         />
                         <List.Item
                             title={<Text>{t('categoryTabs')}</Text>}
-                            extra={<Tag color={showCategoryTabs ? 'success' : 'default'}>{showCategoryTabs ? 'On' : 'Off'}</Tag>}
+                            extra={<Tag color={showCategoryTabs ? 'success' : 'default'}>{showCategoryTabs ? t('on') : t('off')}</Tag>}
                         />
                     </List>
                 </Card>

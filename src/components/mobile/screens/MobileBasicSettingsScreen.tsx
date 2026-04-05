@@ -74,10 +74,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('basicSettings')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Update your business identity, contact details, and category information."
+                    subtitle={t('basicSettingsSubtitle')}
                     title={t('basicSettings')}
                 />
                 <Card>

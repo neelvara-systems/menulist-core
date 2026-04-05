@@ -273,6 +273,7 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
     const { token } = theme.useToken();
     const navHeight = (style?.['--height'] || 48) as number;
+    const hasTitle = Children.count(children) > 0;
     return (
         <Flex
             align="center"
@@ -292,7 +293,9 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
             <Button fill="none" onClick={onBack} style={{ minWidth: 32, paddingInline: 0 }}>
                 {backIcon ?? <LuArrowLeft size={18} />}
             </Button>
-            <Title level={5} style={{ margin: 0, flex: 1, textAlign: 'center' }}>{children}</Title>
+            <Flex align="center" justify="center" style={{ flex: 1, minWidth: 0 }}>
+                {hasTitle ? <Title level={5} style={{ margin: 0, textAlign: 'center' }}>{children}</Title> : null}
+            </Flex>
             <Flex align="center" justify="flex-end" style={{ minWidth: 32 }}>
                 {right}
             </Flex>

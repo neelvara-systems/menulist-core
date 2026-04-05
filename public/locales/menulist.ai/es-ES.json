@@ -38,7 +38,8 @@
         "off": "Apagado",
         "notifications": "Notificaciones",
         "markAllRead": "Marcar todo como leído",
-        "noNotifications": "Sin notificaciones"
+        "noNotifications": "Sin notificaciones",
+        "open": "Abrir"
     },
     "Navigation": {
         "Dashboard": "Panel",
@@ -66,7 +67,8 @@
         "Changelog": "Registro de cambios",
         "App Appearance": "Apariencia",
         "Dark Mode": "Modo oscuro",
-        "Support": "Soporte"
+        "Support": "Soporte",
+        "Use MenuList": "Usar MenuList"
     },
     "Settings": {
         "language": "Idioma",
@@ -291,7 +293,10 @@
         "timeSlotCreated": "Time slot created",
         "failedToSaveTimeSlot": "Failed to save time slot",
         "timeSlotDeleted": "Time slot deleted from all categories",
-        "failedToDeleteTimeSlot": "Failed to delete time slot"
+        "failedToDeleteTimeSlot": "Failed to delete time slot",
+        "domainSettingsSubtitle": "Gestiona tu subdominio de MenuList y conecta un dominio personalizado cuando estés listo.",
+        "officialPageSubtitle": "Controla los detalles de la página pública que ven los clientes en tu presencia oficial.",
+        "checkAvailabilityFailed": "No se pudo comprobar la disponibilidad"
     },
     "SEO": {
         "title": "SEO Settings",
@@ -364,7 +369,8 @@
         "setupTools": "Setup Tools",
         "sendInstructions": "Send setup instructions to your POS provider",
         "downloadSamplePayload": "Download Sample Payload",
-        "copyTechnicalSummary": "Copy Technical Summary"
+        "copyTechnicalSummary": "Copy Technical Summary",
+        "subtitle": "Conecta tu endpoint de POS y supervisa el estado de sincronización de las actualizaciones del menú."
     },
     "FeedbackSettings": {
         "title": "Guest Feedback Settings",
@@ -468,7 +474,8 @@
         "filterByAction": "Filter by action",
         "reset": "Reset",
         "refresh": "Refresh",
-        "totalItems": "Total {total} items"
+        "totalItems": "Total {total} items",
+        "subtitle": "Haz seguimiento del uso del procesamiento de IA, las marcas de tiempo y los cargos de facturación de las operaciones recientes."
     },
     "Users": {
         "title": "Users",
@@ -503,7 +510,8 @@
         "failedToUpdate": "Failed to update status",
         "note": "Note",
         "viaQr": "via QR Code",
-        "viaMenu": "via Menu"
+        "viaMenu": "via Menu",
+        "subtitle": "Revisa los comentarios de los clientes, resuelve problemas rápido y accede al enlace QR de comentarios."
     },
     "MobileFeedbackDetail": {
         "title": "Feedback",
@@ -655,7 +663,8 @@
         "expiresAfter": "Expires After",
         "preview": "Preview",
         "temporaryNotice": "Temporary notice",
-        "setStatus": "Set Status"
+        "setStatus": "Set Status",
+        "subtitle": "Configura un estado público temporal y elimínalo automáticamente cuando termine el tiempo."
     },
     "MobileSpecialMenu": {
         "title": "Special Menus",
@@ -680,7 +689,8 @@
         "createFromDesktop": "Create special menus for festivals, events, or seasonal items from the desktop dashboard.",
         "hidePastMenus": "Hide past menus",
         "showPastMenus": "Show {count} past menu(s)",
-        "desktopOnlyNotice": "Create and edit special menus on the desktop dashboard."
+        "desktopOnlyNotice": "Create and edit special menus on the desktop dashboard.",
+        "subtitle": "Revisa los menús especiales activos y programados y termínalos antes si es necesario."
     },
     "MobileTimeSlots": {
         "title": "Time Slots",
@@ -743,7 +753,8 @@
         "phonePlaceholder": "Phone number",
         "role": "Role",
         "cancel": "Cancel",
-        "add": "Add"
+        "add": "Add",
+        "subtitle": "Gestiona el acceso del personal, invita a miembros del equipo y revisa sus roles actuales."
     },
     "MobileRoles": {
         "title": "Roles & Permissions",
@@ -798,7 +809,8 @@
         "proratedCharge": "Prorated charge today:",
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
-        "chainWideRules": "Set chain-wide rules for all outlets."
+        "chainWideRules": "Set chain-wide rules for all outlets.",
+        "subtitle": "Revisa tus ubicaciones, cambia el contexto de la tienda y controla las políticas de sucursal."
     },
     "MobileDesignEditor": {
         "title": "Menu Design",
@@ -829,7 +841,16 @@
         "publishChanges": "Publish Changes",
         "noChanges": "No Changes",
         "designPublished": "Design published!",
-        "failedToPublish": "Failed to publish. Please retry."
+        "failedToPublish": "Failed to publish. Please retry.",
+        "subtitle": "Ajusta el aspecto de tu menú, la disposición y la presentación de marca antes de publicar.",
+        "on": "Activado",
+        "off": "Desactivado",
+        "brandColorInvalidHex": "Introduce un color hexadecimal válido (p. ej. #FF5500)",
+        "customBrandColor": "Color de marca personalizado",
+        "presetColors": "Colores predefinidos",
+        "customColor": "Color personalizado",
+        "applyColor": "Aplicar color",
+        "useMoodDefault": "Usar el color predeterminado del estilo"
     },
     "MobileSeoAnalytics": {
         "title": "SEO & Analytics",
@@ -858,7 +879,8 @@
         "menuItemViews": "Menu Item Views",
         "menuItemViewsDesc": "See which items customers view most",
         "customerLocations": "Customer Locations",
-        "customerLocationsDesc": "Where your customers are from"
+        "customerLocationsDesc": "Where your customers are from",
+        "subtitle": "Controla la apariencia en búsquedas y el seguimiento analítico de tus páginas públicas."
     },
     "MobileDigitalScreens": {
         "title": "Digital Screens",
@@ -935,7 +957,8 @@
         "submitTicket": "Submit a Ticket",
         "ticketDesktopNote": "For detailed tickets, use desktop",
         "ticketDesktopToast": "For ticket submission with attachments, please use the desktop dashboard.",
-        "businessHours": "Business hours: Mon-Fri, 9:00 AM - 5:00 PM IST"
+        "businessHours": "Business hours: Mon-Fri, 9:00 AM - 5:00 PM IST",
+        "subtitle": "Encuentra respuestas rápidas, contacta con soporte y abre los recursos de ayuda que necesites."
     },
     "MobileSettings": {
         "saved": "Saved",
@@ -963,7 +986,12 @@
         "language": "Language",
         "timezone": "Timezone",
         "currency": "Currency",
-        "currencyDesktopNote": "Currency is set at account level. Change on desktop."
+        "currencyDesktopNote": "Currency is set at account level. Change on desktop.",
+        "basicSettingsSubtitle": "Actualiza la identidad de tu negocio, los datos de contacto y la categoría.",
+        "publicInfoSubtitle": "Gestiona los datos públicos de contacto, dirección y ubicación en los que los clientes confían.",
+        "localeSubtitle": "Configura el idioma, la zona horaria y los formatos de fecha y hora de tu negocio.",
+        "customDomainSubtitle": "Conecta y verifica un dominio personalizado para que los clientes lleguen a tu menú con tu propia dirección web.",
+        "subdomainIntro": "Gestiona la dirección web de MenuList que usan los clientes para abrir tu menú público."
     },
     "MobileToday": {
         "title": "Today",
@@ -980,7 +1008,8 @@
         "appliesToday": "Applies today",
         "alsoToday": "Also today",
         "share": "Share",
-        "nowAvailable": "Now Available: {item}"
+        "nowAvailable": "Now Available: {item}",
+        "todaysAction": "Acción de hoy"
     },
     "MobileMenu": {
         "searchPlaceholder": "Search {items}...",
@@ -1105,7 +1134,120 @@
         "allStatuses": "All statuses",
         "applyFilters": "Apply filters",
         "scheduleUpdateFailed": "Failed to update schedule",
-        "scheduled": "Scheduled"
+        "scheduled": "Scheduled",
+        "changeAvailability": "Change Availability",
+        "changeAvailabilityDesc": "Mark selected items as {available} or {unavailable}",
+        "updatePricesDesc": "Increase, reduce, or set prices for selected items",
+        "moveToCategoryDesc": "Move selected items into another category in one step",
+        "showAndHideItems": "Show or Hide Items",
+        "showAndHideItemsDesc": "Control whether customers can see selected items",
+        "categoriesManageDesc": "Manage categories, visibility, schedule, and delete actions",
+        "manageAndControl": "Manage & Control Your {offering}",
+        "manageLanguages": "Manage Languages",
+        "generateDescriptions": "Generate Descriptions",
+        "variantsAddOns": "Variants or add-ons",
+        "variantsAddOnsDesc": "Add item options with their own prices.",
+        "optionNumber": "Option {number}",
+        "variantName": "Variant name",
+        "variantPrice": "Variant price",
+        "availableToOrder": "Available to order",
+        "noVariantsAdded": "No variants added yet.",
+        "atLeastOneLanguageRequired": "At least one language is required.",
+        "keep": "Keep",
+        "remove": "Remove",
+        "removeLanguage": "Remove language",
+        "removeLanguageConfirm": "Remove {language} from this menu? Existing translations stay saved and can be restored later.",
+        "languageRemoved": "Language removed",
+        "languageUpdateFailed": "Failed to update languages",
+        "languageAdded": "{language} added",
+        "translationCreditsRequired": "AI translation credits are needed to continue.",
+        "languageAddFailed": "Failed to add language",
+        "updating": "Updating...",
+        "menuLanguages": "Menu languages",
+        "menuLanguagesDesc": "The first language is your source language. New languages are translated from it automatically.",
+        "primaryLanguage": "Primary language",
+        "languageActive": "{code} active",
+        "primary": "Primary",
+        "addLanguage": "Add language",
+        "chooseLanguage": "Choose language",
+        "languagesLimit": "You can keep up to {max} languages on one menu.",
+        "addLanguageAction": "Add Language",
+        "searchLanguages": "Search languages",
+        "menuUploadInvalidFormat": "Please select a photo in JPG, PNG, or WebP format",
+        "menuUploadTooLarge": "Photo is too large. Max 20MB.",
+        "myMenu": "My Menu",
+        "menuUploadCreateProjectFailed": "Failed to create project",
+        "menuUploadFailed": "Upload failed",
+        "menuUploadRetry": "Upload failed. Please try again.",
+        "menuUploadSubtitle": "Upload a menu photo from your phone. Use camera or gallery.",
+        "takePhoto": "Take Photo",
+        "choosePhoto": "Choose Photo",
+        "menuUploadFormats": "JPG, PNG, WebP, HEIC, HEIF. Max 20MB.",
+        "menuUploadPreviewDesc": "Check the image before we process it.",
+        "retake": "Retake",
+        "uploadAndProcess": "Upload and Process",
+        "uploading": "Uploading...",
+        "uploadingDesc": "Optimizing and uploading your photo.",
+        "processingOffering": "Processing your {offering}...",
+        "processingOfferingDesc": "AI is extracting {items}. This may take a minute.",
+        "uploadComplete": "Upload complete",
+        "uploadCompleteDesc": "Your {offering} is being processed. {items} will appear shortly.",
+        "tryAgain": "Try Again",
+        "menuUploadFailedTitle": "Upload failed",
+        "descriptionsUpdated": "Descriptions updated",
+        "descriptionGenerationFailed": "Description generation failed",
+        "menuDescriptions": "Menu descriptions",
+        "menuDescriptionsDesc": "Create clear, professional descriptions for your menu items.",
+        "descriptionsReady": "Your menu descriptions are ready.",
+        "refreshDescriptionsAnytime": "You can refresh AI descriptions anytime.",
+        "itemsCountLabel": "{count} items",
+        "itemsNeedDescriptions": "{count} need descriptions",
+        "descriptionLength": "Description length",
+        "menuStatus": "Menu status",
+        "itemsDescribed": "{count} described",
+        "itemsMissing": "{count} missing",
+        "aiCreatedCount": "{count} AI-created",
+        "processingFileProgress": "Processing file {current} of {total}",
+        "workingOnMenu": "Working on your menu...",
+        "descriptionsAutoSaved": "Descriptions are saved automatically after generation.",
+        "generateMissing": "Generate missing",
+        "refresh": "Refresh",
+        "refreshDescriptionsConfirm": "This refreshes AI-created descriptions and keeps manual edits unchanged.",
+        "refreshDescriptionsTitle": "Refresh descriptions?",
+        "refreshAiText": "Refresh AI text",
+        "selectedCategory": "Selected category",
+        "updateItems": "Update items",
+        "markAvailable": "Mark available",
+        "markSoldOut": "Mark sold out",
+        "hideFromMenu": "Hide from menu",
+        "updatePrices": "Update prices",
+        "moveItems": "Move items",
+        "bulkActionConfirm": "{action} for {count} items?",
+        "itemsUpdated": "{count} items updated",
+        "bulkApplyFailed": "Failed to apply changes",
+        "availability": "Availability",
+        "showAndHide": "Show and Hide",
+        "moveToCategory": "Move to Category",
+        "selectedCount": "{count} selected",
+        "pricingRule": "Pricing Rule",
+        "enterPercentage": "Enter percentage",
+        "enterAmount": "Enter amount",
+        "setPrice": "Set Price",
+        "destinationCategory": "Destination Category",
+        "chooseCategory": "Choose category",
+        "destinationCategoryHelp": "Selected items will be moved into this category.",
+        "selectAllCount": "Select all ({count})",
+        "loadingItems": "Loading items...",
+        "noMatchingItems": "No matching items",
+        "variantsCount": "{count} variants",
+        "show": "Show",
+        "hide": "Hide",
+        "applyPriceUpdate": "Apply Price Update",
+        "moveSelectedItems": "Move Selected Items",
+        "searchCategories": "Search categories",
+        "itemsAffected": "{count} items affected",
+        "itemsSkipped": "{count} skipped",
+        "pricingRuleHelp": "Choose a pricing rule, then select the items to update."
     },
     "MobileDashboard": {
         "title": "Dashboard",
@@ -1134,7 +1276,8 @@
         "totalScans": "Total Scans",
         "totalClicks": "Total Clicks",
         "since": "Since {date}",
-        "noAnalyticsYet": "No analytics data yet. Your {offering} analytics will appear once customers start scanning."
+        "noAnalyticsYet": "No analytics data yet. Your {offering} analytics will appear once customers start scanning.",
+        "subtitle": "Estado rápido y rendimiento de tu {offering} seleccionado."
     },
     "MobileHours": {
         "title": "Hours & Status",
@@ -1152,7 +1295,25 @@
         "quickShare": "Quick Share",
         "shareStatusWhatsApp": "Share today's status on WhatsApp",
         "weeklyHours": "Weekly Hours",
-        "closed": "Closed"
+        "closed": "Closed",
+        "introDesc": "Check today's hours, status, and actions for your business.",
+        "hoursRiskyHeading": "Hours may be outdated",
+        "hoursNeedUpdatingHeading": "Hours need updating",
+        "hoursRiskyMessage": "Update your hours so customers see accurate open status.",
+        "hoursNeedUpdatingMessage": "Add your hours so customers know when you are open.",
+        "tentCardDownloaded": "Tent card downloaded",
+        "tentCardDownloadFailed": "Failed to download tent card",
+        "stickerDownloaded": "Sticker downloaded",
+        "stickerDownloadFailed": "Failed to download sticker",
+        "tableTentReady": "Table tent is ready",
+        "tableTentReadyDesc": "Best for walk-in customers today",
+        "tableTentSize": "Size: A6 (recommended for tables)",
+        "downloadTentCard": "Download tent card",
+        "counterStickerReady": "Counter sticker is ready",
+        "counterStickerReadyDesc": "Recommended for billing counter",
+        "counterStickerSize": "Size: 8cm x 8cm",
+        "downloadSticker": "Download sticker",
+        "itemFallback": "Item"
     },
     "MobileShare": {
         "title": "Share & QR Code",
@@ -1175,7 +1336,35 @@
         "download": "Download",
         "copyLink": "Copy Link",
         "shareWhatsApp": "Share on WhatsApp",
-        "moreOptions": "More Options"
+        "moreOptions": "More Options",
+        "shareMessageCopied": "Share message copied!",
+        "copiedLabel": "{label} copied",
+        "copyFailedLabel": "Could not copy {label}",
+        "noMenuYet": "No menu yet",
+        "noMenuYetDesc": "Create your first {offering} to start sharing.",
+        "shareYourOffering": "Share Your {offering}",
+        "shareYourOfferingDesc": "Your live links, screens, and customer-ready sharing tools.",
+        "yourBusiness": "Your Business",
+        "yourOfferingPage": "Your {offering} Page",
+        "offeringPageDesc": "Share this when you want customers to land on your main {offering} page.",
+        "offeringPageCopyLabel": "{offering} page link",
+        "directOfferingLink": "Direct {offering} Link",
+        "directOfferingLinkDesc": "Opens the active {offering} directly.",
+        "directOfferingLinkCopyLabel": "Direct {offering} link",
+        "feedbackLink": "Feedback Link",
+        "feedbackLinkDesc": "Use this QR/link when you want private guest feedback.",
+        "digitalScreens": "Digital Screens",
+        "menuBoard": "Menu Board",
+        "menuBoardDesc": "Full {offering} board for your main TV.",
+        "menuBoardLink": "Menu board link",
+        "highlightsScreen": "Highlights Screen",
+        "highlightsScreenDesc": "Rotating highlights for promo screens.",
+        "highlightsLink": "Highlights link",
+        "notSetUpYet": "Not set up yet.",
+        "posSync": "POS Sync",
+        "posIntegration": "POS integration",
+        "active": "active",
+        "posSyncDesc": "Your {offering} can sync to the connected POS system after publish."
     },
     "MobileMore": {
         "dashboard": "Dashboard",
@@ -1359,7 +1548,20 @@
             "title": "Tu menú se mantiene correcto después de publicar.",
             "highlight": "se mantiene correcto",
             "outcome0": "Precios, artículos y disponibilidad se mantienen precisos en QR, pantallas, web e impresión — sin esfuerzo manual.",
-            "outcome1": "Tu personal siempre ve la versión actual — precios, disponibilidad y detalles coinciden con lo que ven los clientes."
+            "outcome1": "Tu personal siempre ve la versión actual — precios, disponibilidad y detalles coinciden con lo que ven los clientes.",
+            "subtitle": "Accuracy, trust, quality, visibility, and customer replies — all taken care of. You focus on your business.",
+            "outcome0Title": "Stays accurate everywhere",
+            "outcome0Desc": "Prices, items, and availability stay in sync across QR, screens, web, and print — without manual effort.",
+            "outcome1Title": "Customers trust it instantly",
+            "outcome1Desc": "Your location, hours, and freshness date appear right on your menu page. Customers know it's real and current.",
+            "outcome2Title": "Your menu keeps improving",
+            "outcome2Desc": "Simple signals show what's missing — descriptions, images, prices. One tap to generate what's needed.",
+            "outcome3Title": "You see where it's visible",
+            "outcome3Desc": "A simple checklist shows which surfaces have your menu — Google, Instagram, WhatsApp, QR — and which still need setup.",
+            "outcome4Title": "Ready replies for customers",
+            "outcome4Desc": "\"Send menu\", \"Where are you?\", \"Are you open?\" — pre-written messages with your link and details. One tap to send.",
+            "outcome5Title": "Your team stays aligned",
+            "outcome5Desc": "Staff always sees the same version customers see. Prices, availability, and details match everywhere."
         },
         "Surfaces": {
             "title": "Tu menú oficial aparece donde sea que los clientes miren.",
@@ -1564,7 +1766,11 @@
             "group5F1Desc": "Cada guardado se verifica automáticamente. Precios faltantes o categorías vacías se marcan antes de publicar.",
             "ctaTitle": "Tu menú debería tener una versión oficial.",
             "ctaSubtitle": "Toma minutos. Sin diseño ni configuración técnica.",
-            "ctaCta": "Crea tu MenuList →"
+            "ctaCta": "Crea tu MenuList →",
+            "group3F3Title": "Menu quality signals",
+            "group3F3Desc": "Simple signals show what's missing — descriptions, images, prices. Each signal connects to the tool that fixes it. Your menu improves every time you open MenuList.",
+            "group5F2Title": "Customer trust indicators",
+            "group5F2Desc": "Location, operational status, offering type, and freshness date appear on your menu page. Customers see evidence that your menu is real and current."
         },
         "HowItWorks": {
             "heroTitle": "Cómo funciona ",
@@ -1735,5 +1941,154 @@
         "LanguageSwitcher": {
             "label": "Idioma"
         }
+    },
+    "MobileProjectSelector": {
+        "loadFailed": "No se pudieron cargar los catálogos",
+        "activateBeforeUsing": "Activa este catálogo antes de usarlo",
+        "catalogSwitched": "Catálogo cambiado",
+        "catalogNameRequired": "El nombre del catálogo es obligatorio",
+        "catalogCreated": "Catálogo creado",
+        "catalogDuplicated": "Catálogo duplicado",
+        "catalogUpdated": "Catálogo actualizado",
+        "saveFailed": "No se pudo guardar el catálogo",
+        "catalogInactive": "Catálogo inactivo",
+        "catalogActive": "Catálogo activo",
+        "catalogReset": "Catálogo restablecido",
+        "catalogDeleted": "Catálogo eliminado",
+        "editCatalog": "Editar catálogo",
+        "duplicateCatalog": "Duplicar catálogo",
+        "activateCatalog": "Activar catálogo",
+        "makeInactive": "Marcar como inactivo",
+        "cancel": "Cancelar",
+        "activate": "Activar",
+        "inactivate": "Desactivar",
+        "activateCatalogConfirm": "Este catálogo volverá a aparecer en las selecciones de proyecto.",
+        "inactivateCatalogConfirm": "Este catálogo se ocultará de las selecciones activas hasta que lo vuelvas a activar.",
+        "resetCatalog": "Restablecer catálogo",
+        "reset": "Restablecer",
+        "resetCatalogConfirm": "Esto elimina todos los archivos del catálogo. Esta acción no se puede deshacer.",
+        "deleteCatalog": "Eliminar catálogo",
+        "delete": "Eliminar",
+        "deleteCatalogConfirm": "¿Eliminar {name}? Esta acción no se puede deshacer.",
+        "selectCatalog": "Selecciona un catálogo",
+        "selectCatalogSubtitle": "Elige un catálogo para trabajar o crea uno nuevo.",
+        "untitledCatalog": "Catálogo sin título",
+        "inactiveCatalog": "Catálogo inactivo",
+        "addCatalog": "Añadir catálogo",
+        "tapToSwitchOrManage": "Toca para cambiar o gestionar catálogos",
+        "actions": "Acciones",
+        "catalogName": "Nombre del catálogo",
+        "catalogDescription": "Descripción del catálogo",
+        "catalogDescriptionPlaceholder": "Opcional",
+        "guestFeedback": "Comentarios de clientes",
+        "guestFeedbackEnabled": "Activa la recogida de comentarios de clientes para este catálogo.",
+        "createCatalog": "Crear catálogo",
+        "saveChanges": "Guardar cambios",
+        "catalog": "Catálogo",
+        "current": "Actual",
+        "default": "Predeterminado"
+    },
+    "MobileMenuQualitySignals": {
+        "title": "Calidad del menú",
+        "allClearTitle": "Tu menú se ve muy bien",
+        "allClearDesc": "Las descripciones, fotos y precios se ven bien.",
+        "openDesktopGenerate": "Abre MenuList en escritorio para generar contenido",
+        "openDesktopReview": "Abre el editor en escritorio para revisar"
+    },
+    "MobileCommunicationKit": {
+        "title": "Customer Messages",
+        "subtitle": "Ready-to-send replies for WhatsApp or copy and paste.",
+        "messageCopied": "Message copied",
+        "copyFailed": "Could not copy",
+        "whatsApp": "WhatsApp",
+        "copied": "Copied",
+        "copy": "Copy"
+    },
+    "MobilePresenceMonitor": {
+        "title": "Make your menu easy to find",
+        "subtitle": "Add your menu to places customers already use.",
+        "allSet": "All set",
+        "placesActive": "{count} places active",
+        "onlineDiscovery": "Online discovery",
+        "onlineDiscoveryDesc": "Manual steps to paste your menu link once.",
+        "menuLinkCopied": "Menu link copied",
+        "menuLinkCopyFailed": "Could not copy the menu link",
+        "surfaceUpdated": "{surface} updated",
+        "surfaceRemoved": "{surface} removed",
+        "updateFailed": "Failed to update",
+        "menuLinkAdded": "Menu link added.",
+        "startHere": "Start here",
+        "next": "Next",
+        "howToAdd": "How to add it",
+        "open": "Open",
+        "markAsAdded": "Mark as Added",
+        "remove": "Remove",
+        "add": "Add",
+        "added": "Added",
+        "insideStore": "Inside your store",
+        "insideStoreDesc": "These surfaces are detected automatically from your setup.",
+        "auto": "Auto",
+        "allDoneMessage": "Your menu is easy to find everywhere customers look.",
+        "surfaces": {
+            "googleBusiness": {
+                "label": "Google Business",
+                "explanation": "Customers searching on Google can see your menu.",
+                "steps": {
+                    "open": "Open Google Business Profile",
+                    "edit": "Select Edit profile",
+                    "paste": "Paste your menu link into the website field"
+                }
+            },
+            "instagramBio": {
+                "label": "Instagram Bio",
+                "explanation": "Add the menu link to your bio so followers can open it fast.",
+                "steps": {
+                    "open": "Open Instagram and go to your profile",
+                    "edit": "Select Edit Profile",
+                    "paste": "Paste your menu link into the website field"
+                }
+            },
+            "whatsappProfile": {
+                "label": "WhatsApp Profile",
+                "explanation": "Customers messaging you can open your menu from your business profile.",
+                "steps": {
+                    "open": "Open WhatsApp Business settings",
+                    "edit": "Select Business Profile",
+                    "paste": "Paste your menu link into the description"
+                }
+            }
+        },
+        "autoSurfaces": {
+            "tableQr": {
+                "label": "Table QR",
+                "ready": "QR is ready to print.",
+                "pending": "Publish the menu first."
+            },
+            "digitalScreens": {
+                "label": "Digital screens",
+                "ready": "Digital screen is connected.",
+                "pending": "Not set up yet."
+            },
+            "feedbackQr": {
+                "label": "Feedback",
+                "ready": "Feedback is available.",
+                "pending": "Not enabled yet."
+            }
+        }
+    },
+    "MobileIntegrations": {
+        "subtitle": "Review your external integrations and make sure your public business data stays aligned.",
+        "googleBusinessProfile": "Google Business Profile",
+        "googleBusinessProfileDesc": "Keep your menu link and hours aligned with Google.",
+        "connection": "Connection",
+        "connected": "Connected",
+        "notConnected": "Not connected",
+        "menuLink": "Menu link",
+        "managed": "Managed",
+        "hoursSync": "Hours sync",
+        "synced": "Synced",
+        "needsReview": "Needs review",
+        "notAvailable": "Google Business Profile sync is not available on this account yet.",
+        "off": "Off"
     }
 }

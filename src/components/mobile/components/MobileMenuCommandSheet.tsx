@@ -1,5 +1,6 @@
 'use client'
 
+import { getOwnerLabels } from '@config/businessLabels';
 import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -18,6 +19,7 @@ type CommandAction = {
 };
 
 interface MobileMenuCommandSheetProps {
+    businessType?: string;
     labels: OfferingLabels;
     onAddItem: () => void;
     onCategories: () => void;
@@ -34,6 +36,7 @@ interface MobileMenuCommandSheetProps {
 }
 
 export default function MobileMenuCommandSheet({
+    businessType,
     labels,
     onAddItem,
     onCategories,
@@ -50,6 +53,7 @@ export default function MobileMenuCommandSheet({
 }: MobileMenuCommandSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const availabilityLabels = getOwnerLabels(businessType);
     const languageAction = useMemo(
         () => getEditorActions(labels).find((action) => action.key === 'language'),
         [labels]
@@ -74,36 +78,39 @@ export default function MobileMenuCommandSheet({
         {
             key: 'availability',
             icon: <LuToggleRight style={{ fontSize: 20 }} />,
-            title: 'Change Availability',
-            description: 'Mark selected items as available or sold out',
+            title: t('changeAvailability'),
+            description: t('changeAvailabilityDesc', {
+                available: availabilityLabels.available.toLowerCase(),
+                unavailable: availabilityLabels.unavailable.toLowerCase(),
+            }),
             onClick: onChangeAvailability,
         },
         {
             key: 'pricing',
             icon: <LuDollarSign style={{ fontSize: 20 }} />,
-            title: 'Update Prices',
-            description: 'Increase, reduce, or set prices for selected items',
+            title: t('updatePrices'),
+            description: t('updatePricesDesc'),
             onClick: onPricing,
         },
         {
             key: 'move-category',
             icon: <LuFolderInput style={{ fontSize: 20 }} />,
-            title: 'Move Items to Category',
-            description: 'Move selected items into another category in one step',
+            title: t('moveToCategory'),
+            description: t('moveToCategoryDesc'),
             onClick: onMoveCategory,
         },
         {
             key: 'show-hide',
             icon: <LuEyeOff style={{ fontSize: 20 }} />,
-            title: 'Show or Hide Items',
-            description: 'Control whether customers can see selected items',
+            title: t('showAndHideItems'),
+            description: t('showAndHideItemsDesc'),
             onClick: onShowHide,
         },
         {
             key: 'categories',
             icon: <LuTags style={{ fontSize: 20 }} />,
             title: t('categories'),
-            description: 'Manage categories, visibility, schedule, and delete actions',
+            description: t('categoriesManageDesc'),
             onClick: onCategories,
         },
         {
@@ -116,14 +123,14 @@ export default function MobileMenuCommandSheet({
         {
             key: 'language',
             icon: languageAction?.icon || null,
-            title: languageAction?.title || 'Manage Languages',
+            title: languageAction?.title || t('manageLanguages'),
             description: languageAction?.description || labels.languageDesc,
             onClick: onManageLanguages,
         },
         {
             key: 'description',
             icon: descriptionAction?.icon || null,
-            title: descriptionAction?.title || 'Generate Descriptions',
+            title: descriptionAction?.title || t('generateDescriptions'),
             description: descriptionAction?.description || labels.descriptionDesc,
             onClick: onGenerateDescriptions,
         },
@@ -134,7 +141,7 @@ export default function MobileMenuCommandSheet({
             description: decisionBlocksAction?.description || t('smartRecommendationsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [decisionBlocksAction, descriptionAction, labels.descriptionDesc, labels.languageDesc, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onReorderMenu, onShowHide, onSmartRecommendations, t]);
+    ], [availabilityLabels.available, availabilityLabels.unavailable, decisionBlocksAction, descriptionAction, labels.descriptionDesc, labels.languageDesc, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onReorderMenu, onShowHide, onSmartRecommendations, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex
@@ -160,7 +167,7 @@ export default function MobileMenuCommandSheet({
             visible={visible}
         >
             <Flex gap={16} vertical>
-                <NavBar onBack={onClose}>{`Manage & Control Your ${labels.offeringTitle}`}</NavBar>
+                <NavBar onBack={onClose}>{t('manageAndControl', { offering: labels.offeringTitle })}</NavBar>
 
                 <Card size="small" style={{ borderRadius: 16 }}>
                     <List>

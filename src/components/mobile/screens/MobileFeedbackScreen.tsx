@@ -147,7 +147,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     if (isLoading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
+                {onBack ? <NavBar onBack={onBack} /> : null}
                 <Flex align="center" flex={1} justify="center">
                     <DotLoading color="primary" />
                 </Flex>
@@ -157,10 +157,10 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
+            {onBack ? <NavBar onBack={onBack} /> : null}
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Review guest feedback, resolve issues quickly, and access the feedback QR link."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
 

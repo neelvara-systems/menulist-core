@@ -151,7 +151,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                         <Flex gap={8} vertical>
                             {operational.map((campaign) => {
                                 const title = campaign.type === 'now_available'
-                                    ? `Now Available: ${campaign.subject?.itemName || 'Item'}`
+                                    ? t('nowAvailable', { item: campaign.subject?.itemName || 'Item' })
                                     : (ACTION_TITLES[campaign.type] || 'Share')
                                         .replace('{itemName}', campaign.subject?.itemName || 'Item')
                                         .replace('{mealName}', mealName);

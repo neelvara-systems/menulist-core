@@ -119,9 +119,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             <NavBar
                 onBack={onBack}
                 right={isSaving ? <Tag color="processing">Saving</Tag> : null}
-            >
-                {pageTitle}
-            </NavBar>
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro

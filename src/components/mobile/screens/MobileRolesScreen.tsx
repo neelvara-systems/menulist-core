@@ -157,9 +157,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack}>
-                {t('title')}
-            </NavBar>
+            <NavBar onBack={onBack} />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro

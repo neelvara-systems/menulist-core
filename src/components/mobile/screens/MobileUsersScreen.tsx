@@ -105,7 +105,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     if (!storeDetails) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" flex={1} justify="center"><DotLoading color="primary" /></Flex>
             </Flex>
         );
@@ -113,10 +113,10 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Manage staff access, invite team members, and review their current role assignments."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 <Text>{t('staffMembers', { count: users.length })}</Text>

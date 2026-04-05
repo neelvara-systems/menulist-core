@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuBarChart3, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuLayers, LuRefreshCw, LuShield, LuTrendingDown, LuZap } from 'react-icons/lu';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileDashboardScreenProps {
@@ -22,6 +23,7 @@ const RISK_LABELS: Record<string, string> = { stable: 'Stable', watch: 'Watch', 
 
 export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
     const [projectId, setProjectId] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
     if (loadingProjects || (!projectId && loadingProjects)) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" justify="center" style={{ flex: 1 }}>
                     <DotLoading color="primary" />
                 </Flex>
@@ -84,7 +86,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
     if (!projectId) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" gap={12} justify="center" style={{ flex: 1 }} vertical>
                     <LuBarChart3 color="#d1d5db" size={36} />
                     <Text type="secondary" style={{ textAlign: 'center' }}>
@@ -125,34 +127,24 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         </Button>
                     </Flex>
                 }
-            >
-                {t('title')}
-            </NavBar>
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Card size="small">
-                            <Flex gap={4} vertical>
-                                <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
-                                <Text type="secondary">
-                                    Quick status and performance for your selected {labels.offeringLower}.
-                                </Text>
-                            </Flex>
-                        </Card>
-                        <ProjectSelectorTrigger
-                            clickable={projectsList.length > 1}
-                            currentProject={{
-                                id: projectId,
-                                isDefault: projectsList.find((project: any) => project.projectId === projectId)?.isDefault,
-                                name: projectName || t('unnamedProject'),
-                            }}
-                            helperText={projectsList.length > 1 ? 'Tap to switch or manage catalogs' : undefined}
-                            onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
-                            rightContent={<Tag>{viewModeLabel}</Tag>}
-                        />
-                    </Flex>
-                </Card>
+                <MobileScreenIntro
+                    subtitle={t('subtitle', { offering: labels.offeringLower })}
+                    title={t('title')}
+                />
+                <ProjectSelectorTrigger
+                    clickable={projectsList.length > 1}
+                    currentProject={{
+                        id: projectId,
+                        isDefault: projectsList.find((project: any) => project.projectId === projectId)?.isDefault,
+                        name: projectName || t('unnamedProject'),
+                    }}
+                    helperText={projectsList.length > 1 ? tProjectSelector('manageCatalogsHelper') : undefined}
+                    onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                    rightContent={<Tag>{viewModeLabel}</Tag>}
+                />
 
                 <Card size="small">
                     <Tabs activeKey={viewMode} onChange={(key) => setViewMode(key as any)}>

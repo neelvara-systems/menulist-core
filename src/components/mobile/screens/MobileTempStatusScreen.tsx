@@ -134,13 +134,11 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack}>
-                {t('title')}
-            </NavBar>
+            <NavBar onBack={onBack} />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Set a temporary public status and automatically clear it when the timing ends."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 {isActive ? (

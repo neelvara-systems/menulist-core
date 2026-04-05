@@ -37,7 +37,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     if (!storeDetails) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack}>{t('title')}</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" justify="center" style={{ flex: 1 }}>
                     <DotLoading color="primary" />
                 </Flex>
@@ -207,11 +207,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('title')}</NavBar>
+            <NavBar onBack={onBack} />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle="Review your plan, billing history, credits, and payment actions in one place."
+                    subtitle={t('subtitle')}
                     title={t('title')}
                 />
                 {isLoading ? (

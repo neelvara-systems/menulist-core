@@ -1,5 +1,6 @@
 'use client'
 
+import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectData, getProjectsList, updateProject } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
@@ -57,8 +58,10 @@ export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
     const tDashboard = useTranslations('MobileDashboard');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
+    const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
@@ -477,7 +480,7 @@ export default function MobileMenuScreen() {
         setMenuData(updated);
 
         Toast.show({
-            content: newAvailability ? t('available') : t('soldOut'),
+            content: newAvailability ? availabilityLabels.available : availabilityLabels.unavailable,
             duration: 1000,
         });
 
@@ -489,7 +492,7 @@ export default function MobileMenuScreen() {
             setMenuData(previous);
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         }
-    }, [menuData, t]);
+    }, [availabilityLabels.available, availabilityLabels.unavailable, menuData, t]);
 
     const handleRefresh = async () => {
         await fetchMenuData(menuData?.projectId);
@@ -558,7 +561,7 @@ export default function MobileMenuScreen() {
                             isDefault: activeProjectSummary?.isDefault,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
                         }}
-                        helperText={projectsList.length > 1 ? 'Tap to switch or manage catalogs' : undefined}
+                        helperText={projectsList.length > 1 ? tProjectSelector('manageCatalogsHelper') : undefined}
                         onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                         rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
@@ -729,7 +732,7 @@ export default function MobileMenuScreen() {
                                                         {item.description ? <Text type="secondary">{item.description}</Text> : null}
                                                         <Flex align="center" gap={8} wrap>
                                                             <Tag color={item.available ? 'success' : 'warning'}>
-                                                                {item.available ? t('available') : t('soldOut')}
+                                                                {item.available ? availabilityLabels.available : availabilityLabels.unavailable}
                                                             </Tag>
                                                             {!item.active ? <Tag>{t('hidden')}</Tag> : null}
                                                             <Tag>{`${currencySymbol}${item.price}`}</Tag>
@@ -867,6 +870,7 @@ export default function MobileMenuScreen() {
             </Popup>
 
             <MobileMenuCommandSheet
+                businessType={storeDetails?.businessType}
                 labels={labels}
                 onAddItem={() => launchCommandAction(() => setIsAddSheetOpen(true))}
                 onCategories={() => launchCommandAction(() => {

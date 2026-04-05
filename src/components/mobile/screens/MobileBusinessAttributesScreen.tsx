@@ -73,7 +73,7 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack}>{t('businessAttributes')}</NavBar>
+            <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
                     subtitle={t('businessAttributesDesc')}
