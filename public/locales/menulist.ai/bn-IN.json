@@ -1986,7 +1986,22 @@
         "saveChanges": "পরিবর্তন সংরক্ষণ করুন",
         "catalog": "ক্যাটালগ",
         "current": "বর্তমান",
-        "default": "ডিফল্ট"
+        "default": "ডিফল্ট",
+        "add": "যোগ করুন",
+        "catalogActions": "ক্যাটালগ অ্যাকশন",
+        "catalogNamePlaceholder": "ক্যাটালগের নাম লিখুন",
+        "close": "বন্ধ করুন",
+        "continue": "চালিয়ে যান",
+        "create": "তৈরি করুন",
+        "currentCatalog": "বর্তমান: {name}",
+        "description": "বিবরণ",
+        "descriptionPlaceholder": "ক্যাটালগের বিবরণ লিখুন",
+        "duplicate": "ডুপ্লিকেট করুন",
+        "duplicateCatalogHelp": "সব ক্যাটাগরি, আইটেম, ছবি এবং ডিজাইন সেটিংস কপি করা হবে।",
+        "manageCatalogsHelper": "ক্যাটালগ বদলাতে বা পরিচালনা করতে ট্যাপ করুন",
+        "save": "সংরক্ষণ করুন",
+        "selectCatalogDesc": "কাজ করার জন্য একটি ক্যাটালগ বেছে নিন, অথবা নতুন একটি তৈরি করুন।",
+        "untitled": "শিরোনামহীন"
     },
     "MobileMenuQualitySignals": {
         "title": "মেনুর মান",

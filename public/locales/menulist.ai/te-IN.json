@@ -1986,7 +1986,22 @@
         "saveChanges": "మార్పులను సేవ్ చేయండి",
         "catalog": "క్యాటలాగ్",
         "current": "ప్రస్తుత",
-        "default": "డిఫాల్ట్"
+        "default": "డిఫాల్ట్",
+        "add": "జోడించండి",
+        "catalogActions": "క్యాటలాగ్ చర్యలు",
+        "catalogNamePlaceholder": "క్యాటలాగ్ పేరు నమోదు చేయండి",
+        "close": "మూసివేయండి",
+        "continue": "కొనసాగించండి",
+        "create": "సృష్టించండి",
+        "currentCatalog": "ప్రస్తుతది: {name}",
+        "description": "వివరణ",
+        "descriptionPlaceholder": "క్యాటలాగ్ వివరణ నమోదు చేయండి",
+        "duplicate": "నకలు చేయండి",
+        "duplicateCatalogHelp": "అన్ని వర్గాలు, అంశాలు, చిత్రాలు మరియు డిజైన్ సెట్టింగ్‌లు నకలు చేయబడతాయి.",
+        "manageCatalogsHelper": "క్యాటలాగ్‌లను మార్చడానికి లేదా నిర్వహించడానికి నొక్కండి",
+        "save": "సేవ్ చేయండి",
+        "selectCatalogDesc": "పని చేయడానికి ఒక క్యాటలాగ్‌ను ఎంచుకోండి లేదా కొత్తదాన్ని సృష్టించండి.",
+        "untitled": "శీర్షిక లేదు"
     },
     "MobileMenuQualitySignals": {
         "title": "మెనూ నాణ్యత",

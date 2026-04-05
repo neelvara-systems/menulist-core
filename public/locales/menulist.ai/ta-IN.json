@@ -850,7 +850,7 @@
         "presetColors": "முன்னமைக்கப்பட்ட நிறங்கள்",
         "customColor": "தனிப்பயன் நிறம்",
         "applyColor": "நிறத்தைப் பயன்படுத்து",
-        "useMoodDefault": "mood இயல்புநிலையைப் பயன்படுத்து"
+        "useMoodDefault": "மூட் இயல்புநிலையைப் பயன்படுத்து"
     },
     "MobileSeoAnalytics": {
         "title": "SEO & Analytics",
@@ -1986,7 +1986,22 @@
         "saveChanges": "மாற்றங்களை சேமி",
         "catalog": "கேட்டலாக்",
         "current": "தற்போது",
-        "default": "இயல்புநிலை"
+        "default": "இயல்புநிலை",
+        "add": "சேர்",
+        "catalogActions": "கேட்டலாக் செயல்கள்",
+        "catalogNamePlaceholder": "கேட்டலாக் பெயரை உள்ளிடவும்",
+        "close": "மூடு",
+        "continue": "தொடரவும்",
+        "create": "உருவாக்கு",
+        "currentCatalog": "தற்போது: {name}",
+        "description": "விளக்கம்",
+        "descriptionPlaceholder": "கேட்டலாக் விளக்கத்தை உள்ளிடவும்",
+        "duplicate": "நகலெடு",
+        "duplicateCatalogHelp": "அனைத்து வகைகள், உருப்படிகள், படங்கள் மற்றும் வடிவமைப்பு அமைப்புகள் நகலெடுக்கப்படும்.",
+        "manageCatalogsHelper": "கேட்டலாக்களை மாற்ற அல்லது நிர்வகிக்க தட்டவும்",
+        "save": "சேமி",
+        "selectCatalogDesc": "பணிக்காக ஒரு கேட்டலாகைத் தேர்ந்தெடுக்கவும் அல்லது புதிய ஒன்றை உருவாக்கவும்.",
+        "untitled": "தலைப்பில்லா"
     },
     "MobileMenuQualitySignals": {
         "title": "மெனு தரம்",

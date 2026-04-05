@@ -1986,7 +1986,22 @@
         "saveChanges": "حفظ التغييرات",
         "catalog": "كتالوج",
         "current": "الحالي",
-        "default": "الافتراضي"
+        "default": "الافتراضي",
+        "add": "إضافة",
+        "catalogActions": "إجراءات الكتالوج",
+        "catalogNamePlaceholder": "أدخل اسم الكتالوج",
+        "close": "إغلاق",
+        "continue": "متابعة",
+        "create": "إنشاء",
+        "currentCatalog": "الحالي: {name}",
+        "description": "الوصف",
+        "descriptionPlaceholder": "أدخل وصف الكتالوج",
+        "duplicate": "نسخ",
+        "duplicateCatalogHelp": "سيتم نسخ جميع الفئات والعناصر والصور وإعدادات التصميم.",
+        "manageCatalogsHelper": "اضغط لتبديل الكتالوجات أو إدارتها",
+        "save": "حفظ",
+        "selectCatalogDesc": "اختر كتالوجًا للعمل عليه أو أنشئ كتالوجًا جديدًا.",
+        "untitled": "بدون عنوان"
     },
     "MobileMenuQualitySignals": {
         "title": "جودة القائمة",

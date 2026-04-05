@@ -1986,7 +1986,22 @@
         "saveChanges": "Guardar cambios",
         "catalog": "Catálogo",
         "current": "Actual",
-        "default": "Predeterminado"
+        "default": "Predeterminado",
+        "add": "Añadir",
+        "catalogActions": "Acciones del catálogo",
+        "catalogNamePlaceholder": "Introduce el nombre del catálogo",
+        "close": "Cerrar",
+        "continue": "Continuar",
+        "create": "Crear",
+        "currentCatalog": "Actual: {name}",
+        "description": "Descripción",
+        "descriptionPlaceholder": "Introduce la descripción del catálogo",
+        "duplicate": "Duplicar",
+        "duplicateCatalogHelp": "Se copiarán todas las categorías, elementos, imágenes y ajustes de diseño.",
+        "manageCatalogsHelper": "Toca para cambiar o gestionar catálogos",
+        "save": "Guardar",
+        "selectCatalogDesc": "Elige un catálogo para trabajar o crea uno nuevo.",
+        "untitled": "Sin título"
     },
     "MobileMenuQualitySignals": {
         "title": "Calidad del menú",

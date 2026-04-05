@@ -690,7 +690,7 @@
         "hidePastMenus": "Hide past menus",
         "showPastMenus": "Show {count} past menu(s)",
         "desktopOnlyNotice": "Create and edit special menus on the desktop dashboard.",
-        "subtitle": "सक्रिय और निर्धारित special menu देखें और ज़रूरत होने पर उन्हें पहले समाप्त करें।"
+        "subtitle": "सक्रिय और निर्धारित विशेष मेनू देखें और ज़रूरत होने पर उन्हें पहले समाप्त करें।"
     },
     "MobileTimeSlots": {
         "title": "Time Slots",
@@ -810,7 +810,7 @@
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
         "chainWideRules": "Set chain-wide rules for all outlets.",
-        "subtitle": "अपनी locations देखें, store context बदलें और outlet policies नियंत्रित करें।"
+        "subtitle": "अपनी लोकेशन देखें, स्टोर संदर्भ बदलें और आउटलेट नीतियाँ नियंत्रित करें।"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",
@@ -842,15 +842,15 @@
         "noChanges": "No Changes",
         "designPublished": "Design published!",
         "failedToPublish": "Failed to publish. Please retry.",
-        "subtitle": "प्रकाशित करने से पहले अपने menu का look, layout और brand presentation समायोजित करें।",
+        "subtitle": "प्रकाशित करने से पहले अपने मेनू का रूप, लेआउट और ब्रांड प्रस्तुति समायोजित करें।",
         "on": "चालू",
         "off": "बंद",
         "brandColorInvalidHex": "वैध hex color दर्ज करें (जैसे #FF5500)",
-        "customBrandColor": "कस्टम brand color",
+        "customBrandColor": "कस्टम ब्रांड रंग",
         "presetColors": "प्रीसेट रंग",
         "customColor": "कस्टम रंग",
         "applyColor": "रंग लागू करें",
-        "useMoodDefault": "mood default का उपयोग करें"
+        "useMoodDefault": "मूड डिफ़ॉल्ट का उपयोग करें"
     },
     "MobileSeoAnalytics": {
         "title": "SEO & Analytics",
@@ -880,7 +880,7 @@
         "menuItemViewsDesc": "See which items customers view most",
         "customerLocations": "Customer Locations",
         "customerLocationsDesc": "Where your customers are from",
-        "subtitle": "अपने public pages के लिए search appearance और analytics tracking नियंत्रित करें।"
+        "subtitle": "अपने सार्वजनिक पृष्ठों के लिए खोज दृश्यता और विश्लेषण ट्रैकिंग नियंत्रित करें।"
     },
     "MobileDigitalScreens": {
         "title": "Digital Screens",
@@ -958,7 +958,7 @@
         "ticketDesktopNote": "For detailed tickets, use desktop",
         "ticketDesktopToast": "For ticket submission with attachments, please use the desktop dashboard.",
         "businessHours": "Business hours: Mon-Fri, 9:00 AM - 5:00 PM IST",
-        "subtitle": "जल्दी जवाब पाएँ, support से संपर्क करें और ज़रूरी help resources खोलें।"
+        "subtitle": "जल्दी जवाब पाएँ, सहायता से संपर्क करें और ज़रूरी मदद संसाधन खोलें।"
     },
     "MobileSettings": {
         "saved": "Saved",
@@ -987,10 +987,10 @@
         "timezone": "Timezone",
         "currency": "Currency",
         "currencyDesktopNote": "Currency is set at account level. Change on desktop.",
-        "basicSettingsSubtitle": "अपनी business identity, contact details और category information अपडेट करें।",
-        "publicInfoSubtitle": "वह public contact, address और location details मैनेज करें जिन पर ग्राहक भरोसा करते हैं।",
-        "localeSubtitle": "अपने business के लिए language, time zone, date और time defaults सेट करें।",
-        "customDomainSubtitle": "कस्टम domain जोड़ें और verify करें ताकि ग्राहक आपकी अपनी web address पर आपका menu खोल सकें।",
+        "basicSettingsSubtitle": "अपनी व्यावसायिक पहचान, संपर्क विवरण और श्रेणी जानकारी अपडेट करें।",
+        "publicInfoSubtitle": "वे सार्वजनिक संपर्क, पता और स्थान विवरण मैनेज करें जिन पर ग्राहक भरोसा करते हैं।",
+        "localeSubtitle": "अपने व्यवसाय के लिए भाषा, समय क्षेत्र, तारीख और समय की डिफ़ॉल्ट सेटिंग्स तय करें।",
+        "customDomainSubtitle": "कस्टम डोमेन जोड़ें और सत्यापित करें ताकि ग्राहक आपके अपने वेब पते पर आपका मेनू खोल सकें।",
         "subdomainIntro": "वह MenuList web address मैनेज करें जिसका इस्तेमाल ग्राहक आपका public menu खोलने के लिए करते हैं।"
     },
     "MobileToday": {
@@ -1960,11 +1960,11 @@
         "cancel": "रद्द करें",
         "activate": "सक्रिय करें",
         "inactivate": "निष्क्रिय करें",
-        "activateCatalogConfirm": "यह कैटलॉग फिर से project selections में दिखाई देगा।",
-        "inactivateCatalogConfirm": "जब तक आप इसे फिर से सक्रिय नहीं करते, यह कैटलॉग सक्रिय selections से छिपा रहेगा।",
+        "activateCatalogConfirm": "यह कैटलॉग फिर से प्रोजेक्ट चयन में दिखाई देगा।",
+        "inactivateCatalogConfirm": "जब तक आप इसे फिर से सक्रिय नहीं करते, यह कैटलॉग सक्रिय चयन से छिपा रहेगा।",
         "resetCatalog": "कैटलॉग रीसेट करें",
         "reset": "रीसेट करें",
-        "resetCatalogConfirm": "इससे कैटलॉग की सभी files हट जाएँगी। इसे वापस नहीं किया जा सकता।",
+        "resetCatalogConfirm": "इससे कैटलॉग की सभी फ़ाइलें हट जाएँगी। इसे वापस नहीं किया जा सकता।",
         "deleteCatalog": "कैटलॉग हटाएँ",
         "delete": "हटाएँ",
         "deleteCatalogConfirm": "क्या {name} हटाना है? इसे वापस नहीं किया जा सकता।",
@@ -1984,7 +1984,22 @@
         "saveChanges": "परिवर्तन सहेजें",
         "catalog": "कैटलॉग",
         "current": "वर्तमान",
-        "default": "डिफ़ॉल्ट"
+        "default": "डिफ़ॉल्ट",
+        "add": "जोड़ें",
+        "catalogActions": "कैटलॉग कार्रवाइयाँ",
+        "catalogNamePlaceholder": "कैटलॉग का नाम दर्ज करें",
+        "close": "बंद करें",
+        "continue": "जारी रखें",
+        "create": "बनाएँ",
+        "currentCatalog": "वर्तमान: {name}",
+        "description": "विवरण",
+        "descriptionPlaceholder": "कैटलॉग का विवरण दर्ज करें",
+        "duplicate": "प्रतिलिपि बनाएँ",
+        "duplicateCatalogHelp": "सभी श्रेणियाँ, आइटम, चित्र और डिज़ाइन सेटिंग्स कॉपी की जाएँगी।",
+        "manageCatalogsHelper": "कैटलॉग बदलने या मैनेज करने के लिए टैप करें",
+        "save": "सहेजें",
+        "selectCatalogDesc": "काम करने के लिए एक कैटलॉग चुनें या नया बनाएँ।",
+        "untitled": "बिना शीर्षक"
     },
     "MobileMenuQualitySignals": {
         "title": "मेन्यू गुणवत्ता",
