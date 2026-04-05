@@ -1,12 +1,9 @@
-import { Button, Collapse, Flex, Form, FormInstance, Input, Modal, Switch, Typography } from "antd";
+import { Button, Flex, Form, FormInstance, Input, Modal } from "antd";
 import { ProjectMetadata } from '../types';
-
-const { Text } = Typography;
 
 export interface ProjectFormData {
     name: string;
     description?: string;
-    feedbackEnabled?: boolean;
 }
 
 
@@ -81,32 +78,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         showCount
                     />
                 </Form.Item>
-
-                {/* Advanced Settings - Collapsed by default */}
-                <Collapse
-                    ghost
-                    size="small"
-                    items={[
-                        {
-                            key: 'advanced',
-                            label: <Text type="secondary">Advanced Settings</Text>,
-                            children: (
-                                <Form.Item
-                                    name="feedbackEnabled"
-                                    label="Guest Feedback"
-                                    valuePropName="checked"
-                                    initialValue={true}
-                                    extra="Allow guests to submit feedback for this menu"
-                                >
-                                    <Switch
-                                        checkedChildren="On"
-                                        unCheckedChildren="Off"
-                                    />
-                                </Form.Item>
-                            ),
-                        },
-                    ]}
-                />
             </Form>
         </Modal>
     );

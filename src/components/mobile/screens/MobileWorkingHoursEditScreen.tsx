@@ -4,8 +4,8 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { LuClock } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Picker, Switch, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileWorkingHoursEditScreenProps {
     onBack: () => void;
@@ -108,12 +108,10 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('title')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex align="center" gap={8}>
-                        <LuClock size={16} />
-                        <Text type="secondary">{t('subtitle')}</Text>
-                    </Flex>
-                </Card>
+                <MobileScreenIntro
+                    subtitle={t('subtitle')}
+                    title={t('title')}
+                />
 
                 {DAYS.map(({ key, label }) => {
                     const day = schedule[key];

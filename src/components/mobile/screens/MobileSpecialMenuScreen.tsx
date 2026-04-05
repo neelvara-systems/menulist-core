@@ -22,6 +22,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, NavBar, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileSpecialMenuScreenProps {
     onBack: () => void;
@@ -170,6 +171,10 @@ export default function MobileSpecialMenuScreen({ onBack }: MobileSpecialMenuScr
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Review active and scheduled special menus and end them early when needed."
+                    title={t('title')}
+                />
                 {isLoading ? (
                     <Card>
                         <Flex align="center" gap={12} justify="center" vertical>

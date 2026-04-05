@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuSearch, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileSubdomainScreenProps {
     onBack: () => void;
@@ -61,6 +62,10 @@ export default function MobileSubdomainScreen({ onBack }: MobileSubdomainScreenP
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('subdomain')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Manage the MenuList web address customers use to reach your public menu."
+                    title={t('subdomain')}
+                />
                 {storeDetails?.isMaster === false ? (
                     <Card>
                         <Flex gap={6} vertical>

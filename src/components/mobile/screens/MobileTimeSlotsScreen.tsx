@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuClock, LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 const PRESET_COLORS = ['#f50', '#2db7f5', '#87d068', '#108ee9', '#531dab', '#c41d7f', '#d4380d', '#096dd9', '#7cb305', '#cf1322', '#08979c', '#d46b08'];
 
@@ -109,7 +110,10 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             </NavBar>
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Text type="secondary">{t('subtitle')}</Text>
+                <MobileScreenIntro
+                    subtitle={t('subtitle')}
+                    title={t('title')}
+                />
                 {presets.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>

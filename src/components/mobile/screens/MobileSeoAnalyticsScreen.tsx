@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuBarChart2, LuSearch } from 'react-icons/lu';
 import { Card, Flex, Input, NavBar, Switch, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileSeoAnalyticsScreenProps {
     onBack: () => void;
@@ -61,6 +62,10 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('title')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Control search appearance and analytics tracking for your public pages."
+                    title={t('title')}
+                />
                 <Card title={<Flex align="center" gap={8}><LuSearch color="#1677ff" size={18} /><Text strong>{t('seoSettings')}</Text></Flex>}>
                     <Flex gap={12} vertical>
                         <FieldGroup hint={t('taglineHint')} label={t('tagline')}>

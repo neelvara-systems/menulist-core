@@ -5,10 +5,12 @@ import { getProjectsList } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuBarChart3, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuLayers, LuRefreshCw, LuShield, LuTrendingDown, LuZap } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, List, NavBar, Popup, Tabs, Tag, Text, Title, Toast } from '../antd';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileDashboardScreenProps {
     onBack: () => void;
@@ -36,30 +38,26 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 ? t('weekly')
                 : t('monthly');
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const result = await getProjectsList();
-                const projects = result?.projects || [];
-                setProjectsList(projects);
-                if (projects.length > 0) {
-                    setProjectId(projects[0].projectId);
-                    setProjectName(projects[0].name || 'Menu');
-                }
-            } catch {
-                Toast.show({ content: t('failedToLoad'), duration: 2000 });
-            } finally {
-                setLoadingProjects(false);
-            }
-        })();
-    }, []);
+    const loadProjects = useCallback(async (preferredProjectId?: string | null) => {
+        try {
+            const result = await getProjectsList();
+            const projects = result?.projects || [];
+            setProjectsList(projects);
+            const nextProject = preferredProjectId
+                ? projects.find((project: any) => project.projectId === preferredProjectId)
+                : projects[0];
+            setProjectId(nextProject?.projectId || null);
+            setProjectName(nextProject?.name || '');
+        } catch {
+            Toast.show({ content: t('failedToLoad'), duration: 2000 });
+        } finally {
+            setLoadingProjects(false);
+        }
+    }, [t]);
 
-    const handleProjectSelect = async (selectedProjectId: string, selectedProjectName: string) => {
-        setProjectId(selectedProjectId);
-        setProjectName(selectedProjectName);
-        setIsProjectSelectorOpen(false);
-        Toast.show({ content: t('projectSwitched'), duration: 1000 });
-    };
+    useEffect(() => {
+        void loadProjects();
+    }, [loadProjects]);
 
     const { data, loading, refetch } = useOwnerDashboard(projectId ? { projectId } : undefined);
 
@@ -133,16 +131,30 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <Card>
-                    <Flex align="center" justify="space-between">
-                        <Text type="secondary">
-                            {t('viewing')} {projectName}
-                        </Text>
-                        {projectsList.length > 1 ? (
-                            <Button fill="none" onClick={() => setIsProjectSelectorOpen(true)}>
-                                <Text type="secondary">{t('changeProject')}</Text>
-                            </Button>
-                        ) : null}
+                    <Flex gap={12} vertical>
+                        <Card size="small">
+                            <Flex gap={4} vertical>
+                                <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
+                                <Text type="secondary">
+                                    Quick status and performance for your selected {labels.offeringLower}.
+                                </Text>
+                            </Flex>
+                        </Card>
+                        <ProjectSelectorTrigger
+                            clickable={projectsList.length > 1}
+                            currentProject={{
+                                id: projectId,
+                                isDefault: projectsList.find((project: any) => project.projectId === projectId)?.isDefault,
+                                name: projectName || t('unnamedProject'),
+                            }}
+                            helperText={projectsList.length > 1 ? 'Tap to switch or manage catalogs' : undefined}
+                            onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                            rightContent={<Tag>{viewModeLabel}</Tag>}
+                        />
                     </Flex>
+                </Card>
+
+                <Card size="small">
                     <Tabs activeKey={viewMode} onChange={(key) => setViewMode(key as any)}>
                         <Tabs.Tab title={t('overview')} key="overview" />
                         <Tabs.Tab title={t('daily')} key="daily" />
@@ -322,38 +334,16 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 )}
             </Flex>
 
-            <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }}
-                onMaskClick={() => setIsProjectSelectorOpen(false)}
-                position="bottom"
+            <MobileProjectSelectorSheet
+                currentProjectId={projectId}
+                currentProjectName={projectName}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    setIsProjectSelectorOpen(false);
+                    await loadProjects(preferredProjectId || projectId);
+                }}
                 visible={isProjectSelectorOpen}
-            >
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
-                        {t('selectProject')}
-                    </Title>
-                    <List>
-                        {projectsList.map((project: any) => (
-                            <List.Item
-                                key={project.projectId}
-                                onClick={() => handleProjectSelect(project.projectId, project.name || 'Menu')}
-                                prefix={<LuLayers color="#1677ff" size={18} />}
-                                extra={project.projectId === projectId ? <LuCheck color="#1677ff" size={18} /> : null}
-                                title={<Text>{project.name || t('unnamedProject')}</Text>}
-                                description={
-                                    <Text type="secondary">
-                                        {project.isDefault ? `${t('default')} • ` : ''}
-                                        {t('itemsCount', { count: project.itemCount || 0 })}
-                                    </Text>
-                                }
-                            />
-                        ))}
-                    </List>
-                    <Button block fill="outline" onClick={() => setIsProjectSelectorOpen(false)}>
-                        {t('cancel')}
-                    </Button>
-                </Flex>
-            </Popup>
+            />
         </Flex>
     );
 }

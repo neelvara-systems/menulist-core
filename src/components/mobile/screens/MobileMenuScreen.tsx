@@ -4,7 +4,7 @@ import { getProjectData, getProjectsList, updateProject } from '@database/projec
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ProjectSelectorList, ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { removeObjRef } from '@util/utils';
 import { FloatButton, InputNumber, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -14,6 +14,7 @@ import { LuCamera, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, List, Popup, PullToRefresh, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
@@ -268,6 +269,10 @@ export default function MobileMenuScreen() {
         const categories = new Set(menuItems.map((item) => item.categoryName || uncategorizedLabel));
         return categories.size;
     }, [menuItems, uncategorizedLabel]);
+    const activeProjectSummary = useMemo(
+        () => projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
+        [menuData?.projectId, projectsList]
+    );
 
     const categorySummary = useMemo(() => {
         if (!menuData?.files) return [];
@@ -490,12 +495,6 @@ export default function MobileMenuScreen() {
         await fetchMenuData(menuData?.projectId);
     };
 
-    const handleProjectSelect = async (projectId: string) => {
-        setIsProjectSelectorOpen(false);
-        await fetchMenuData(projectId);
-        Toast.show({ content: t('projectSwitched'), duration: 1000 });
-    };
-
     const launchCommandAction = useCallback((action: () => void) => {
         setReturnToCommandMenu(true);
         setIsCommandMenuOpen(false);
@@ -543,13 +542,23 @@ export default function MobileMenuScreen() {
         <Flex style={{ height: '100%' }} vertical>
             <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
                 <Flex gap={12} vertical>
+                    <Card size="small">
+                        <Flex gap={4} vertical>
+                            <Title level={4} style={{ margin: 0 }}>Manage Your {labels.offeringTitle}</Title>
+                            <Text type="secondary">
+                                Search, edit, and organize your live {labels.offeringLower} in one place.
+                            </Text>
+                        </Flex>
+                    </Card>
+
                     <ProjectSelectorTrigger
                         clickable={projectsList.length > 1}
                         currentProject={{
                             id: menuData?.projectId || 'current',
-                            name: menuData?.name || t('currentProject'),
+                            isDefault: activeProjectSummary?.isDefault,
+                            name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
                         }}
-                        helperText={projectsList.length > 1 ? t('selectProject') : undefined}
+                        helperText={projectsList.length > 1 ? 'Tap to switch or manage catalogs' : undefined}
                         onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                         rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
@@ -1121,31 +1130,16 @@ export default function MobileMenuScreen() {
                 }}
             />
 
-            <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }}
-                onMaskClick={() => setIsProjectSelectorOpen(false)}
-                position="bottom"
+            <MobileProjectSelectorSheet
+                currentProjectId={menuData?.projectId}
+                currentProjectName={activeProjectSummary?.name || menuData?.name || null}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    setIsProjectSelectorOpen(false);
+                    await fetchMenuData(preferredProjectId || menuData?.projectId);
+                }}
                 visible={isProjectSelectorOpen}
-            >
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
-                        {t('selectProject')}
-                    </Title>
-                    <ProjectSelectorList
-                        currentProjectId={menuData?.projectId}
-                        onSelect={handleProjectSelect}
-                        projects={projectsList.map((project: any) => ({
-                            id: project.projectId,
-                            name: project.name || t('unnamedProject'),
-                            isDefault: project.isDefault,
-                            secondaryLabel: `${project.isDefault ? `${t('default')} • ` : ''}${t('itemsCount', { count: project.itemCount || 0 })}`,
-                        }))}
-                    />
-                    <Button block fill="outline" onClick={() => setIsProjectSelectorOpen(false)}>
-                        {t('cancel')}
-                    </Button>
-                </Flex>
-            </Popup>
+            />
         </Flex>
     );
 }

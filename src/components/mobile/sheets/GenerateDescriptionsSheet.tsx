@@ -3,6 +3,7 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { AICapacityError } from '@services/ai/capacityError';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw, LuSparkles } from 'react-icons/lu';
 import type { Project } from '../../templates/main-app/projects/types';
@@ -27,6 +28,7 @@ export default function GenerateDescriptionsSheet({
     projectData,
     visible,
 }: GenerateDescriptionsSheetProps) {
+    const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -55,13 +57,13 @@ export default function GenerateDescriptionsSheet({
             });
 
             onSaved(updatedProject);
-            Toast.show({ content: 'Descriptions updated', duration: 1500 });
+            Toast.show({ content: t('descriptionsUpdated'), duration: 1500 });
             onClose();
         } catch (error) {
             if (error instanceof AICapacityError) {
-                Toast.show({ content: 'AI translation credits are needed to continue.', duration: 2200 });
+                Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
             } else {
-                Toast.show({ content: 'Description generation failed', duration: 2000 });
+                Toast.show({ content: t('descriptionGenerationFailed'), duration: 2000 });
             }
         } finally {
             setIsProcessing(false);
@@ -82,9 +84,9 @@ export default function GenerateDescriptionsSheet({
             visible={visible}
         >
             <Flex gap={16} vertical>
-                <NavBar onBack={isProcessing ? undefined : onClose}>Menu descriptions</NavBar>
+                <NavBar onBack={isProcessing ? undefined : onClose}>{t('menuDescriptions')}</NavBar>
                 <Text type="secondary">
-                    Create clear, professional descriptions for your menu items.
+                    {t('menuDescriptionsDesc')}
                 </Text>
 
                 {allDescriptionsReady ? (
@@ -92,23 +94,23 @@ export default function GenerateDescriptionsSheet({
                         <Flex align="center" gap={12}>
                             <LuCheck color={token.colorSuccess} size={22} />
                             <Flex gap={2} vertical>
-                                <Text strong>Your menu descriptions are ready.</Text>
-                                <Text type="secondary">You can refresh AI descriptions anytime.</Text>
+                                <Text strong>{t('descriptionsReady')}</Text>
+                                <Text type="secondary">{t('refreshDescriptionsAnytime')}</Text>
                             </Flex>
                         </Flex>
                     </Card>
                 ) : (
                     <Card size="small" style={{ borderRadius: 16 }}>
                         <Flex gap={6} vertical>
-                            <Text strong>{itemsCount} items</Text>
-                            <Text type="secondary">{itemsWithoutDescriptions} need descriptions</Text>
+                            <Text strong>{t('itemsCountLabel', { count: itemsCount })}</Text>
+                            <Text type="secondary">{t('itemsNeedDescriptions', { count: itemsWithoutDescriptions })}</Text>
                         </Flex>
                     </Card>
                 )}
 
                 <Card size="small" style={{ borderRadius: 16 }}>
                     <Flex gap={12} vertical>
-                        <Text strong>Description length</Text>
+                        <Text strong>{t('descriptionLength')}</Text>
                         <Flex gap={8} vertical>
                             {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
                                 <Button
@@ -135,21 +137,21 @@ export default function GenerateDescriptionsSheet({
                 <Card size="small" style={{ borderRadius: 16 }}>
                     <Flex gap={10} vertical>
                         <Flex align="center" justify="space-between">
-                            <Text strong>Menu status</Text>
-                            <Text type="secondary">{itemsWithDescriptions} described</Text>
+                            <Text strong>{t('menuStatus')}</Text>
+                            <Text type="secondary">{t('itemsDescribed', { count: itemsWithDescriptions })}</Text>
                         </Flex>
                         <Flex gap={8} wrap="wrap">
-                            <Text>{itemsWithoutDescriptions} missing</Text>
-                            <Text>{aiDescriptionCount} AI-created</Text>
+                            <Text>{t('itemsMissing', { count: itemsWithoutDescriptions })}</Text>
+                            <Text>{t('aiCreatedCount', { count: aiDescriptionCount })}</Text>
                         </Flex>
                         {isProcessing ? (
                             <Text type="secondary">
                                 {totalFiles > 1
-                                    ? `Processing file ${Math.min(processedCount + 1, totalFiles)} of ${totalFiles}`
-                                    : 'Working on your menu...'}
+                                    ? t('processingFileProgress', { current: Math.min(processedCount + 1, totalFiles), total: totalFiles })
+                                    : t('workingOnMenu')}
                             </Text>
                         ) : (
-                            <Text type="secondary">Descriptions are saved automatically after generation.</Text>
+                            <Text type="secondary">{t('descriptionsAutoSaved')}</Text>
                         )}
                     </Flex>
                 </Card>
@@ -165,7 +167,7 @@ export default function GenerateDescriptionsSheet({
                     >
                         <Flex align="center" gap={6}>
                             <LuSparkles size={16} />
-                            <Text>Generate missing</Text>
+                            <Text>{t('generateMissing')}</Text>
                         </Flex>
                     </Button>
 
@@ -176,18 +178,18 @@ export default function GenerateDescriptionsSheet({
                             fill="outline"
                             onClick={() => {
                                 void Dialog.confirm({
-                                    cancelText: 'Cancel',
-                                    confirmText: 'Refresh',
-                                    content: 'This refreshes AI-created descriptions and keeps manual edits unchanged.',
+                                    cancelText: t('cancel'),
+                                    confirmText: t('refresh'),
+                                    content: t('refreshDescriptionsConfirm'),
                                     onConfirm: () => handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION),
-                                    title: 'Refresh descriptions?',
+                                    title: t('refreshDescriptionsTitle'),
                                 });
                             }}
                             size="large"
                         >
                             <Flex align="center" gap={6}>
                                 <LuRefreshCcw size={16} />
-                                <Text>Refresh AI text</Text>
+                                <Text>{t('refreshAiText')}</Text>
                             </Flex>
                         </Button>
                     ) : null}

@@ -901,7 +901,7 @@ export const publishProject = async (data: Partial<Project>) => {
  * Get projects list using Summary Document Pattern (1 read)
  * Returns projects from platformSummary/projects_{sId}
  */
-export const getProjectsList = async () => {
+export const getProjectsList = async (includeInactive = false) => {
     return await apiCallComposer(
         async () => {
             // Get all projects from summary (1 read)
@@ -935,7 +935,7 @@ export const getProjectsList = async () => {
                     projectId,
                     ...(data as ProjectSummaryData),
                 }))
-                .filter((p) => p.active !== false); // Show active projects only
+                .filter((p) => includeInactive || p.active !== false); // Show active projects by default
 
             console.log(
                 `✅ [getProjectsList] Found ${projects.length} active projects (1 read)`,
@@ -967,7 +967,7 @@ export const getProjectsList = async () => {
 
             return { projects };
         },
-        null,
+        { includeInactive },
         "getProjectsList",
     );
 };

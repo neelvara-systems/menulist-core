@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileBillingScreenProps {
     onBack: () => void;
@@ -209,6 +210,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             <NavBar onBack={onBack}>{t('title')}</NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Review your plan, billing history, credits, and payment actions in one place."
+                    title={t('title')}
+                />
                 {isLoading ? (
                     <Card>
                         <Flex align="center" gap={8} justify="center">

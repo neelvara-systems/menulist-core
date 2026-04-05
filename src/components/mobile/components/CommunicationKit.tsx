@@ -1,6 +1,7 @@
 'use client';
 
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageSquare } from 'react-icons/lu';
 import { Button, Card, Flex, Text, Title, Toast } from '../antd';
@@ -24,6 +25,7 @@ export default function MobileCommunicationKit({
     timeZone,
     workingHours,
 }: MobileCommunicationKitProps) {
+    const t = useTranslations('MobileCommunicationKit');
     const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
 
     const input: MessageTemplateInput = useMemo(() => ({
@@ -42,9 +44,9 @@ export default function MobileCommunicationKit({
         <Flex gap={12} vertical>
             <Flex align="center" gap={8}>
                 <LuMessageSquare size={16} />
-                <Title level={5} style={{ margin: 0 }}>Customer Messages</Title>
+                <Title level={5} style={{ margin: 0 }}>{t('title')}</Title>
             </Flex>
-            <Text type="secondary">Ready-to-send replies for WhatsApp or copy and paste.</Text>
+            <Text type="secondary">{t('subtitle')}</Text>
             <Flex gap={12} vertical>
                 {templates.map((template) => (
                     <MobileMessageCard key={template.id} template={template} />
@@ -55,16 +57,17 @@ export default function MobileCommunicationKit({
 }
 
 function MobileMessageCard({ template }: { template: MessageTemplate }) {
+    const t = useTranslations('MobileCommunicationKit');
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(template.message);
             setCopied(true);
-            Toast.show({ content: 'Message copied', duration: 1500 });
+            Toast.show({ content: t('messageCopied'), duration: 1500 });
             setTimeout(() => setCopied(false), 2000);
         } catch {
-            Toast.show({ content: 'Could not copy', duration: 1500 });
+            Toast.show({ content: t('copyFailed'), duration: 1500 });
         }
     };
 
@@ -87,13 +90,13 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                     >
                         <Flex align="center" gap={6}>
                             <LuMessageSquare size={14} />
-                            <Text style={{ color: '#fff' }}>WhatsApp</Text>
+                            <Text style={{ color: '#fff' }}>{t('whatsApp')}</Text>
                         </Flex>
                     </Button>
                     <Button block fill="outline" onClick={() => void handleCopy()} size="small">
                         <Flex align="center" gap={6}>
                             {copied ? <LuCheck size={14} /> : <LuCopy size={14} />}
-                            <Text>{copied ? 'Copied' : 'Copy'}</Text>
+                            <Text>{copied ? t('copied') : t('copy')}</Text>
                         </Flex>
                     </Button>
                 </Flex>

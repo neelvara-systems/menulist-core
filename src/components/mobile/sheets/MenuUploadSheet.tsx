@@ -7,6 +7,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { checkExistingActiveJob, createMenuProcessingJob } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import type { UploadFile, UploadProps } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState } from 'react';
 import { LuCamera, LuImage, LuUpload } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Popup, ProgressBar, Result, Text, Title, Toast, Upload } from '../antd';
@@ -20,6 +21,7 @@ type UploadStep = 'select' | 'preview' | 'uploading' | 'processing' | 'done' | '
 
 export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheetProps) {
     const labels = useOfferingLabels();
+    const t = useTranslations('MobileMenu');
     const [step, setStep] = useState<UploadStep>('select');
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,12 +31,12 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
     const handleSelectedFile = useCallback((file: File) => {
         const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
         if (!validTypes.includes(file.type)) {
-            Toast.show({ content: 'Please select a photo in JPG, PNG, or WebP format', duration: 2000 });
+            Toast.show({ content: t('menuUploadInvalidFormat'), duration: 2000 });
             return false;
         }
 
         if (file.size > 20 * 1024 * 1024) {
-            Toast.show({ content: 'Photo is too large. Max 20MB.', duration: 2000 });
+            Toast.show({ content: t('menuUploadTooLarge'), duration: 2000 });
             return false;
         }
 
@@ -70,8 +72,8 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
             let projectId: string;
 
             if (projects.length === 0) {
-                const newProject = await addProject({ name: 'My Menu' });
-                if (!newProject?.projectId) throw new Error('Failed to create project');
+                const newProject = await addProject({ name: t('myMenu') });
+                if (!newProject?.projectId) throw new Error(t('menuUploadCreateProjectFailed'));
                 projectId = newProject.projectId;
             } else {
                 const defaultProject = projects.find((project: any) => project.isDefault) || projects[0];
@@ -88,7 +90,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                 size: optimized.optimizedSize,
             });
 
-            if (!uploadedUrl) throw new Error('Upload failed');
+            if (!uploadedUrl) throw new Error(t('menuUploadFailed'));
             setProgress(70);
 
             await updateProject({
@@ -129,10 +131,10 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
             }, 1500);
         } catch (error: any) {
             console.error('[MobileUpload] Failed:', error);
-            setErrorMessage(error?.message || 'Upload failed. Please try again.');
+            setErrorMessage(error?.message || t('menuUploadRetry'));
             setStep('error');
         }
-    }, [onComplete, selectedFile]);
+    }, [onComplete, selectedFile, t]);
 
     const handleRetry = () => {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -158,7 +160,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                             <Title level={4} style={{ margin: 0 }}>
                                 {labels.uploadLabel}
                             </Title>
-                            <Text type="secondary">Upload a menu photo from your phone. Use camera or gallery.</Text>
+                            <Text type="secondary">{t('menuUploadSubtitle')}</Text>
                         </Flex>
 
                         <Flex gap={12}>
@@ -166,7 +168,7 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                                 <Button block color="primary" size="large">
                                     <Flex align="center" gap={8}>
                                         <LuCamera size={18} />
-                                        <Text>Take Photo</Text>
+                                        <Text>{t('takePhoto')}</Text>
                                     </Flex>
                                 </Button>
                             </Upload>
@@ -174,14 +176,14 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                                 <Button block fill="outline" size="large">
                                     <Flex align="center" gap={8}>
                                         <LuImage size={18} />
-                                        <Text>Choose Photo</Text>
+                                        <Text>{t('choosePhoto')}</Text>
                                     </Flex>
                                 </Button>
                             </Upload>
                         </Flex>
 
                         <Card size="small" style={{ backgroundColor: '#fafafa' }}>
-                            <Text type="secondary">JPG, PNG, WebP, HEIC, HEIF. Max 20MB.</Text>
+                            <Text type="secondary">{t('menuUploadFormats')}</Text>
                         </Card>
                     </Flex>
                 ) : null}
@@ -190,9 +192,9 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                     <Flex gap={16} vertical>
                         <Flex gap={4} vertical>
                             <Title level={4} style={{ margin: 0 }}>
-                                Preview
+                                {t('preview')}
                             </Title>
-                        <Text type="secondary">Check the image before we process it.</Text>
+                        <Text type="secondary">{t('menuUploadPreviewDesc')}</Text>
                         </Flex>
 
                         <Card size="small">
@@ -205,12 +207,12 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
 
                         <Flex gap={12}>
                             <Button block fill="outline" onClick={handleRetry} size="large">
-                                Retake
+                                {t('retake')}
                             </Button>
                             <Button block color="primary" onClick={handleUploadAndProcess} size="large">
                                 <Flex align="center" gap={6}>
                                     <LuUpload size={16} />
-                                    <Text>Upload and Process</Text>
+                                    <Text>{t('uploadAndProcess')}</Text>
                                 </Flex>
                             </Button>
                         </Flex>
@@ -222,12 +224,12 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                         <Flex align="center" gap={16} vertical>
                             <DotLoading color="primary" />
                             <Title level={4} style={{ margin: 0 }}>
-                                {step === 'uploading' ? 'Uploading...' : `Processing your ${labels.offeringLower}...`}
+                                {step === 'uploading' ? t('uploading') : t('processingOffering', { offering: labels.offeringLower })}
                             </Title>
                             <Text type="secondary" style={{ textAlign: 'center' }}>
                                 {step === 'uploading'
-                                    ? 'Optimizing and uploading your photo.'
-                                    : `AI is extracting ${labels.itemsPlural}. This may take a minute.`}
+                                    ? t('uploadingDesc')
+                                    : t('processingOfferingDesc', { items: labels.itemsPlural })}
                             </Text>
                             <ProgressBar percent={progress} />
                         </Flex>
@@ -237,8 +239,8 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                 {step === 'done' ? (
                     <Result
                         status="success"
-                        subTitle={`Your ${labels.offeringLower} is being processed. ${labels.itemsPlural.charAt(0).toUpperCase() + labels.itemsPlural.slice(1)} will appear shortly.`}
-                        title="Upload complete"
+                        subTitle={t('uploadCompleteDesc', { offering: labels.offeringLower, items: labels.itemsPlural })}
+                        title={t('uploadComplete')}
                     />
                 ) : null}
 
@@ -246,15 +248,15 @@ export default function MenuUploadSheet({ onClose, onComplete }: MenuUploadSheet
                     <Result
                         extra={[
                             <Button key="cancel" block fill="outline" onClick={onClose} size="large">
-                                Cancel
+                                {t('cancel')}
                             </Button>,
                             <Button key="retry" block color="primary" onClick={handleRetry} size="large">
-                                Try Again
+                                {t('tryAgain')}
                             </Button>,
                         ]}
                         status="error"
                         subTitle={errorMessage}
-                        title="Upload failed"
+                        title={t('menuUploadFailedTitle')}
                     />
                 ) : null}
             </Flex>

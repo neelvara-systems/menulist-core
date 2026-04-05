@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMessageSquare, LuShare2, LuUser } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileAdvancedSettingsScreenProps {
     onBack: () => void;
@@ -43,6 +44,13 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             : mode === 'feedback'
                 ? tBusiness('feedback')
                 : t('title');
+    const pageSubtitle = mode === 'contact'
+        ? 'Set the primary contact details your team and support flows rely on.'
+        : mode === 'social'
+            ? 'Keep your public social links accurate across your business presence.'
+            : mode === 'feedback'
+                ? 'Control guest feedback collection and where review requests should go.'
+                : 'Manage contact details, social links, and guest feedback defaults in one place.';
 
     const SOCIAL_PLATFORMS = [
         { key: 'facebook', label: 'Facebook', placeholder: 'Facebook profile URL' },
@@ -116,17 +124,10 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                {mode === 'all' ? (
-                    <Card size="small">
-                        <Flex gap={4} vertical>
-                            <Text strong>Settings overview</Text>
-                            <Text type="secondary">
-                                Contact details and feedback preferences are used on your menu and in support.
-                                Changes save automatically.
-                            </Text>
-                        </Flex>
-                    </Card>
-                ) : null}
+                <MobileScreenIntro
+                    subtitle={mode === 'all' ? t('subtitle') : pageSubtitle}
+                    title={pageTitle}
+                />
 
                 {showContact ? (
                     <Flex gap={4} vertical>

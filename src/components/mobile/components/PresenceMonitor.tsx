@@ -14,6 +14,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { StoreDataType } from '@type/platform/store';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { FaInstagram } from 'react-icons/fa6';
 import {
@@ -84,6 +85,7 @@ export default function MobilePresenceMonitor({
     storeDetails,
     menuLink,
 }: MobilePresenceMonitorProps) {
+    const t = useTranslations('MobilePresenceMonitor');
     const [updating, setUpdating] = useState<string | null>(null);
     const [localPresence, setLocalPresence] = useState<Record<string, string | undefined>>(
         storeDetails.menuPresence || {}
@@ -128,9 +130,9 @@ export default function MobilePresenceMonitor({
     const handleCopyAndExpand = async (surface: ManualSurfaceConfig) => {
         try {
             await navigator.clipboard.writeText(menuLink);
-            Toast.show({ content: 'Menu link copied', duration: 1000 });
+            Toast.show({ content: t('menuLinkCopied'), duration: 1000 });
         } catch {
-            Toast.show({ content: 'Could not copy the menu link', duration: 1000 });
+            Toast.show({ content: t('menuLinkCopyFailed'), duration: 1000 });
         }
         setExpandedGuide(surface.id);
     };
@@ -140,10 +142,10 @@ export default function MobilePresenceMonitor({
         try {
             await updateMenuPresence(storeDetails.storeId, surface.dalKey, true);
             setLocalPresence((previous) => ({ ...previous, [surface.id]: new Date().toISOString() }));
-            Toast.show({ content: `${surface.label} updated`, duration: 1500 });
+            Toast.show({ content: t('surfaceUpdated', { surface: surface.label }), duration: 1500 });
             setExpandedGuide(null);
         } catch {
-            Toast.show({ content: 'Failed to update', duration: 1500 });
+            Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
             setUpdating(null);
         }
@@ -158,9 +160,9 @@ export default function MobilePresenceMonitor({
                 delete next[surface.id];
                 return next;
             });
-            Toast.show({ content: `${surface.label} removed`, duration: 1500 });
+            Toast.show({ content: t('surfaceRemoved', { surface: surface.label }), duration: 1500 });
         } catch {
-            Toast.show({ content: 'Failed to update', duration: 1500 });
+            Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
             setUpdating(null);
         }
@@ -172,19 +174,19 @@ export default function MobilePresenceMonitor({
                 <Flex align="center" justify="space-between">
                     <Flex gap={2} vertical>
                         <Title level={5} style={{ margin: 0 }}>
-                            Make your menu easy to find
+                            {t('title')}
                         </Title>
-                        <Text type="secondary">Add your menu to places customers already use.</Text>
+                        <Text type="secondary">{t('subtitle')}</Text>
                     </Flex>
                     <Tag color={allDone ? 'success' : 'default'}>
-                        {allDone ? 'All set' : `${totalActive} places active`}
+                        {allDone ? t('allSet') : t('placesActive', { count: totalActive })}
                     </Tag>
                 </Flex>
 
                 <Card size="small" style={{ backgroundColor: '#fafafa' }}>
                     <Flex gap={4} vertical>
-                        <Text strong>Online discovery</Text>
-                        <Text type="secondary">Manual steps to paste your menu link once.</Text>
+                        <Text strong>{t('onlineDiscovery')}</Text>
+                        <Text type="secondary">{t('onlineDiscoveryDesc')}</Text>
                     </Flex>
                 </Card>
 
@@ -201,15 +203,15 @@ export default function MobilePresenceMonitor({
                                     <Flex gap={8} vertical>
                                         <Flex gap={8} wrap="wrap">
                                             <Text type="secondary">
-                                                {active ? 'Menu link added.' : surface.explanation}
+                                                {active ? t('menuLinkAdded') : surface.explanation}
                                             </Text>
-                                            {isNext ? <Tag color="processing">{manualActiveCount === 0 ? 'Start here' : 'Next'}</Tag> : null}
+                                            {isNext ? <Tag color="processing">{manualActiveCount === 0 ? t('startHere') : t('next')}</Tag> : null}
                                         </Flex>
                                         {guideOpen && !active ? (
                                             <Card size="small" style={{ backgroundColor: '#fafafa' }}>
                                                 <Flex gap={12} vertical>
                                                     <Flex gap={4} vertical>
-                                                        <Text strong>How to add it</Text>
+                                                        <Text strong>{t('howToAdd')}</Text>
                                                         <List>
                                                             {surface.guideSteps.map((step, index) => (
                                                                 <List.Item key={`${surface.id}-${index}`}>
@@ -227,7 +229,7 @@ export default function MobilePresenceMonitor({
                                                             >
                                                                 <Flex align="center" gap={6}>
                                                                     <LuExternalLink size={14} />
-                                                                    <Text>Open</Text>
+                                                                    <Text>{t('open')}</Text>
                                                                 </Flex>
                                                             </Button>
                                                         ) : null}
@@ -237,7 +239,7 @@ export default function MobilePresenceMonitor({
                                                             onClick={() => handleConfirm(surface)}
                                                             size="small"
                                                         >
-                                                            Mark as Added
+                                                            {t('markAsAdded')}
                                                         </Button>
                                                     </Flex>
                                                 </Flex>
@@ -253,7 +255,7 @@ export default function MobilePresenceMonitor({
                                             onClick={() => handleRemove(surface)}
                                             size="small"
                                         >
-                                            Remove
+                                            {t('remove')}
                                         </Button>
                                     ) : (
                                         <Button
@@ -265,7 +267,7 @@ export default function MobilePresenceMonitor({
                                         >
                                             <Flex align="center" gap={6}>
                                                 <LuClipboard size={14} />
-                                                <Text>Add</Text>
+                                                <Text>{t('add')}</Text>
                                             </Flex>
                                         </Button>
                                     )
@@ -279,7 +281,7 @@ export default function MobilePresenceMonitor({
                                 title={
                                     <Flex gap={8} wrap="wrap">
                                         <Text strong>{surface.label}</Text>
-                                        {active ? <Tag color="success">Added</Tag> : null}
+                                        {active ? <Tag color="success">{t('added')}</Tag> : null}
                                     </Flex>
                                 }
                             />
@@ -289,8 +291,8 @@ export default function MobilePresenceMonitor({
 
                 <Card size="small" style={{ backgroundColor: '#fafafa' }}>
                     <Flex gap={4} vertical>
-                        <Text strong>Inside your store</Text>
-                        <Text type="secondary">These surfaces are detected automatically from your setup.</Text>
+                        <Text strong>{t('insideStore')}</Text>
+                        <Text type="secondary">{t('insideStoreDesc')}</Text>
                     </Flex>
                 </Card>
 
@@ -299,7 +301,7 @@ export default function MobilePresenceMonitor({
                         <List.Item
                             key={surface.id}
                             description={<Text type="secondary">{surface.desc}</Text>}
-                            extra={surface.active ? <Tag color="processing">Auto</Tag> : null}
+                            extra={surface.active ? <Tag color="processing">{t('auto')}</Tag> : null}
                             prefix={
                                 <Flex align="center" gap={8}>
                                     {surface.active ? <LuCheck color="#16a34a" size={16} /> : <LuAlertTriangle color="#d97706" size={16} />}
@@ -315,7 +317,7 @@ export default function MobilePresenceMonitor({
                     <Card size="small" style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
                         <Flex align="center" gap={8}>
                             <LuCheck color="#16a34a" size={16} />
-                            <Text>Your menu is easy to find everywhere customers look.</Text>
+                            <Text>{t('allDoneMessage')}</Text>
                         </Flex>
                     </Card>
                 ) : null}

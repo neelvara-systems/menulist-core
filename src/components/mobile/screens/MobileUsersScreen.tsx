@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMail, LuPhone, LuPlus, LuUser, LuUserCheck, LuUserX } from 'react-icons/lu';
 import { Avatar, Button, Card, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileUsersScreenProps {
     onBack: () => void;
@@ -114,6 +115,10 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('title')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Manage staff access, invite team members, and review their current role assignments."
+                    title={t('title')}
+                />
                 <Text>{t('staffMembers', { count: users.length })}</Text>
 
                 {users.length === 0 ? (

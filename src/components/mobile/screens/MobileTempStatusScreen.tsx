@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Space, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
@@ -138,6 +139,10 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Set a temporary public status and automatically clear it when the timing ends."
+                    title={t('title')}
+                />
                 {isActive ? (
                     <Card>
                         <Flex gap={16} vertical>

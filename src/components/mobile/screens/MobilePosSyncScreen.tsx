@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Switch, Tag, Text, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobilePosSyncScreenProps {
     onBack: () => void;
@@ -190,6 +191,10 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 {t('title')}
             </NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Connect your POS endpoint and monitor sync health for menu updates."
+                    title={t('title')}
+                />
                 <Card>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={10}>

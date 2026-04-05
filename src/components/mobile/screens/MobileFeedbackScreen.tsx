@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuMessageSquare, LuQrCode, LuStar } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, Image, List, NavBar, Popup, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
 
 const MobileFeedbackDetail = dynamic(() => import('./MobileFeedbackDetail'), { ssr: false });
@@ -158,12 +159,10 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         <Flex style={{ minHeight: '100%' }} vertical>
             {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex align="center" gap={8}>
-                        <LuMessageSquare size={20} />
-                        <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
-                    </Flex>
-                </Card>
+                <MobileScreenIntro
+                    subtitle="Review guest feedback, resolve issues quickly, and access the feedback QR link."
+                    title={t('title')}
+                />
 
                 <Card>
                     <Tabs activeKey={filter} onChange={(key) => { setFilter(key as any); void fetchFeedback(key as any); }}>

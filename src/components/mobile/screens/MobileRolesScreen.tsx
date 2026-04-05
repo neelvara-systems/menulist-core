@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuCheck, LuPencil, LuPlus, LuShield, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Dialog, Empty, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileRolesScreenProps {
     onBack: () => void;
@@ -161,7 +162,10 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             </NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <Text type="secondary">{t('subtitle')}</Text>
+                <MobileScreenIntro
+                    subtitle={t('subtitle')}
+                    title={t('title')}
+                />
 
                 {roles.length === 0 ? (
                     <Card>

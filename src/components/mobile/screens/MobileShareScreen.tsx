@@ -9,12 +9,13 @@ import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ProjectSelectorList, ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuBookOpen, LuCopy, LuExternalLink, LuLayers, LuMessageSquare, LuMonitor, LuQrCode, LuShield } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield } from 'react-icons/lu';
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobilePresenceMonitor from '../components/PresenceMonitor';
-import { Button, Card, DotLoading, Flex, List, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import { Button, Card, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
 
 type ProjectLink = {
     feedbackUrl: string;
@@ -49,15 +50,16 @@ export default function MobileShareScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
-    useEffect(() => {
+    const loadData = useCallback(async (preferredProjectId?: string | null) => {
         if (!storeDetails) return;
 
-        const loadData = async () => {
             setIsLoading(true);
             try {
                 const result = await getProjectsList();
                 const projects = result?.projects || [];
-                const defaultProject = projects.find((project: any) => project.isDefault) || projects[0];
+                const defaultProject = preferredProjectId
+                    ? projects.find((project: any) => project.projectId === preferredProjectId)
+                    : projects.find((project: any) => project.isDefault) || projects[0];
 
                 if (!defaultProject) {
                     setData(null);
@@ -118,30 +120,17 @@ export default function MobileShareScreen() {
             } finally {
                 setIsLoading(false);
             }
-        };
-
-        void loadData();
     }, [storeDetails]);
+
+    useEffect(() => {
+        if (!storeDetails) return;
+        void loadData();
+    }, [loadData, storeDetails]);
 
     const activeProject = useMemo(
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
     );
-
-    const handleSelectProject = (projectId: string) => {
-        if (!data) return;
-        const project = data.allProjects.find((item) => item.projectId === projectId);
-        if (!project) return;
-
-        setData({
-            ...data,
-            feedbackLink: project.feedbackUrl,
-            menuLink: project.url,
-            projectId: project.projectId,
-            projectName: project.name,
-        });
-        setIsProjectSelectorOpen(false);
-    };
 
     const handleCopy = async (value: string, label: string) => {
         try {
@@ -174,6 +163,13 @@ export default function MobileShareScreen() {
 
     return (
         <Flex gap={16} style={{ padding: 16 }} vertical>
+            <Card size="small">
+                <Flex gap={4} vertical>
+                    <Title level={4} style={{ margin: 0 }}>Share Your {labels.offeringTitle}</Title>
+                    <Text type="secondary">Your live links, screens, and customer-ready sharing tools.</Text>
+                </Flex>
+            </Card>
+
             {activeProject ? (
                 <ProjectSelectorTrigger
                     clickable={data.allProjects.length > 1}
@@ -182,17 +178,10 @@ export default function MobileShareScreen() {
                         isDefault: activeProject.isDefault,
                         name: activeProject.name || 'Untitled',
                     }}
-                    helperText={data.allProjects.length > 1 ? 'Select project' : undefined}
+                    helperText={data.allProjects.length > 1 ? 'Tap to switch or manage catalogs' : undefined}
                     onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
             ) : null}
-
-            <Card>
-                <Flex gap={4} vertical>
-                    <Title level={4} style={{ margin: 0 }}>Share Your {labels.offeringTitle}</Title>
-                    <Text type="secondary">Your live links, screens, and customer-ready sharing tools.</Text>
-                </Flex>
-            </Card>
 
             <LinkCard
                 description={`Share this when you want customers to land on your main ${labels.offeringLower} page.`}
@@ -285,25 +274,16 @@ export default function MobileShareScreen() {
                 </Card>
             ) : null}
 
-            <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }}
-                onMaskClick={() => setIsProjectSelectorOpen(false)}
-                position="bottom"
+            <MobileProjectSelectorSheet
+                currentProjectId={data.projectId}
+                currentProjectName={activeProject?.name || data.projectName}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    setIsProjectSelectorOpen(false);
+                    await loadData(preferredProjectId);
+                }}
                 visible={isProjectSelectorOpen}
-            >
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>Select Project</Title>
-                    <ProjectSelectorList
-                        currentProjectId={data.projectId}
-                        onSelect={handleSelectProject}
-                        projects={data.allProjects.map((project) => ({
-                            id: project.projectId,
-                            isDefault: project.isDefault,
-                            name: project.name || 'Untitled',
-                        }))}
-                    />
-                </Flex>
-            </Popup>
+            />
         </Flex>
     );
 }

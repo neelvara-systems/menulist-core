@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuBuilding2, LuFileText, LuMapPin, LuPhone } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Text, TextArea, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobilePublicInfoScreenProps {
     onBack: () => void;
@@ -89,6 +90,10 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('publicInfo')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Manage the public contact, address, and location details customers can rely on."
+                    title={t('publicInfo')}
+                />
                 <Card>
                     <Flex gap={4} vertical>
                         <Flex align="center" gap={6}>

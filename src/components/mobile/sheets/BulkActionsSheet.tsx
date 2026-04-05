@@ -15,6 +15,7 @@ import {
     getAllCategories,
 } from '../../templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations';
 import { removeObjRef } from '@util/utils';
+import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { InputNumber, Segmented } from 'antd';
 import { LuCheck, LuDollarSign, LuEye, LuEyeOff, LuFolderInput, LuToggleRight } from 'react-icons/lu';
@@ -43,6 +44,7 @@ type ItemEntry = {
 };
 
 export default function BulkActionsSheet({ visible, onApply, onClose, projectData, initialAction = null }: BulkActionsSheetProps) {
+    const t = useTranslations('MobileMenu');
     useContext(PlatformGlobalDataContext);
     const [workingProject, setWorkingProject] = useState<Project | null>(projectData);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -144,11 +146,11 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         if (action === 'showHide') return computeActiveInactivePreview(selectedItems, 'show');
         if (action === 'pricing' && pricingConfig) return computePricingPreview(selectedItems, pricingConfig);
         if (action === 'moveCategory' && destinationCategoryId) {
-            const destinationName = destinationCategories.find((category) => category.value === destinationCategoryId)?.label || 'Selected category';
+            const destinationName = destinationCategories.find((category) => category.value === destinationCategoryId)?.label || t('selectedCategory');
             return computeMoveCategoryPreview(selectedItems, destinationCategoryId, destinationName);
         }
         return null;
-    }, [action, destinationCategories, destinationCategoryId, pricingConfig, selectedItems]);
+    }, [action, destinationCategories, destinationCategoryId, pricingConfig, selectedItems, t]);
 
     const toggleItem = (id: string) => {
         const next = new Set(selectedIds);
@@ -178,19 +180,19 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     const handleApply = async (target?: string) => {
         if (selectedIds.size === 0) return;
 
-        let actionLabel = 'Update items';
+        let actionLabel = t('updateItems');
         if (action === 'availability') {
-            actionLabel = target === 'available' ? 'Mark available' : 'Mark sold out';
+            actionLabel = target === 'available' ? t('markAvailable') : t('markSoldOut');
         } else if (action === 'showHide') {
-            actionLabel = target === 'show' ? 'Show on menu' : 'Hide from menu';
+            actionLabel = target === 'show' ? t('showOnMenu') : t('hideFromMenu');
         } else if (action === 'pricing') {
-            actionLabel = 'Update prices';
+            actionLabel = t('updatePrices');
         } else if (action === 'moveCategory') {
-            actionLabel = 'Move items';
+            actionLabel = t('moveItems');
         }
 
         Dialog.confirm({
-            content: `${actionLabel} for ${selectedIds.size} items?`,
+            content: t('bulkActionConfirm', { action: actionLabel, count: selectedIds.size }),
             onConfirm: async () => {
                 if (!workingProject) return;
                 setApplying(true);
@@ -215,9 +217,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     setSelectedIds(new Set());
                     setAction(null);
                     onClose();
-                    Toast.show({ content: `${selectedIds.size} items updated`, duration: 1500 });
+                    Toast.show({ content: t('itemsUpdated', { count: selectedIds.size }), duration: 1500 });
                 } catch {
-                    Toast.show({ content: 'Failed to apply changes', duration: 2000 });
+                    Toast.show({ content: t('bulkApplyFailed'), duration: 2000 });
                 } finally {
                     setApplying(false);
                 }
@@ -230,19 +232,19 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     if (!action) return null;
 
     const actionTitle = action === 'availability'
-        ? 'Availability'
+        ? t('availability')
         : action === 'showHide'
-            ? 'Show and Hide'
+            ? t('showAndHide')
             : action === 'pricing'
-                ? 'Update Prices'
-                : 'Move to Category';
+                ? t('updatePrices')
+                : t('moveToCategory');
 
     const pricingMethodOptions = [
         { label: '+ %', value: 'increasePercent' },
         { label: '- %', value: 'decreasePercent' },
         { label: '+ Flat', value: 'addFlat' },
         { label: '- Flat', value: 'reduceFlat' },
-        { label: 'Set Price', value: 'setFixed' },
+        { label: t('setPrice'), value: 'setFixed' },
     ] satisfies { label: string; value: PricingMethod }[];
 
     return (
@@ -256,7 +258,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar
                     onBack={onClose}
-                    right={<Tag color="processing">{selectedIds.size} selected</Tag>}
+                    right={<Tag color="processing">{t('selectedCount', { count: selectedIds.size })}</Tag>}
                     style={{ '--height': '48px' } as React.CSSProperties}
                 >
                     {actionTitle}
@@ -268,7 +270,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                             <Flex gap={12} vertical>
                                 <Flex align="center" gap={8}>
                                     <LuDollarSign size={16} />
-                                    <Text strong>Pricing Rule</Text>
+                                    <Text strong>{t('pricingRule')}</Text>
                                 </Flex>
                                 <Segmented
                                     block
@@ -279,20 +281,20 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 <InputNumber
                                     min={0}
                                     onChange={(value) => setPricingValue(typeof value === 'number' ? value : null)}
-                                    placeholder={pricingMethod.includes('Percent') ? 'Enter percentage' : 'Enter amount'}
+                                    placeholder={pricingMethod.includes('Percent') ? t('enterPercentage') : t('enterAmount')}
                                     style={{ width: '100%' }}
                                     value={pricingValue}
                                 />
                                 {pricingConfig && preview && 'itemsAffected' in preview ? (
                                     <Flex gap={8} wrap="wrap">
-                                        <Tag color="processing">{preview.itemsAffected} items affected</Tag>
-                                        <Tag>{preview.itemsSkipped} skipped</Tag>
+                                        <Tag color="processing">{t('itemsAffected', { count: preview.itemsAffected })}</Tag>
+                                        <Tag>{t('itemsSkipped', { count: preview.itemsSkipped })}</Tag>
                                         <Tag color={preview.netChangePercent >= 0 ? 'success' : 'warning'}>
                                             {preview.netChangePercent >= 0 ? '+' : ''}{preview.netChangePercent}%
                                         </Tag>
                                     </Flex>
                                 ) : (
-                                    <Text type="secondary">Choose a pricing rule, then select the items to update.</Text>
+                                    <Text type="secondary">{t('pricingRuleHelp')}</Text>
                                 )}
                             </Flex>
                         </Card>
@@ -303,12 +305,12 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                             <Flex gap={12} vertical>
                                 <Flex align="center" gap={8}>
                                     <LuFolderInput size={16} />
-                                    <Text strong>Destination Category</Text>
+                                    <Text strong>{t('destinationCategory')}</Text>
                                 </Flex>
                                 <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                    {destinationCategories.find((category) => category.value === destinationCategoryId)?.label || 'Choose category'}
+                                    {destinationCategories.find((category) => category.value === destinationCategoryId)?.label || t('chooseCategory')}
                                 </Button>
-                                <Text type="secondary">Selected items will be moved into this category.</Text>
+                                <Text type="secondary">{t('destinationCategoryHelp')}</Text>
                             </Flex>
                         </Card>
                     ) : null}
@@ -317,7 +319,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                         <Flex style={{ flex: 1, minWidth: 180 }}>
                             <SearchBar
                                 onChange={setSearch}
-                                placeholder="Search items"
+                                placeholder={t('smartRecommendationsSearchItems')}
                                 value={search}
                             />
                         </Flex>
@@ -326,7 +328,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                             indeterminate={selectedIds.size > 0 && selectedIds.size < filteredItems.length}
                             onChange={toggleAll}
                         >
-                            <Text style={{ whiteSpace: 'nowrap' }}>{`Select all (${filteredItems.length})`}</Text>
+                            <Text style={{ whiteSpace: 'nowrap' }}>{t('selectAllCount', { count: filteredItems.length })}</Text>
                         </Checkbox>
                     </Flex>
                 </Flex>
@@ -334,10 +336,10 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                 <Flex style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }} vertical>
                     {!workingProject ? (
                         <Card>
-                            <Text type="secondary">Loading items...</Text>
+                            <Text type="secondary">{t('loadingItems')}</Text>
                         </Card>
                     ) : categories.size === 0 ? (
-                        <Empty description="No matching items" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                        <Empty description={t('noMatchingItems')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     ) : (
                         <Card size="small">
                             <Collapse
@@ -386,9 +388,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                                                     <Text>{item.name}</Text>
                                                                     <Flex gap={8} wrap="wrap">
                                                                         {item.price ? <Text type="secondary">{item.price}</Text> : null}
-                                                                        {!item.available ? <Tag color="warning">Sold Out</Tag> : null}
-                                                                        {!item.active ? <Tag>Hidden</Tag> : null}
-                                                                        {item.attributes?.length ? <Tag>{`${item.attributes.length} variants`}</Tag> : null}
+                                                                        {!item.available ? <Tag color="warning">{t('soldOut')}</Tag> : null}
+                                                                        {!item.active ? <Tag>{t('hidden')}</Tag> : null}
+                                                                        {item.attributes?.length ? <Tag>{t('variantsCount', { count: item.attributes.length })}</Tag> : null}
                                                                     </Flex>
                                                                 </Flex>
                                                             </Flex>
@@ -411,11 +413,11 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 <Button block color="primary" loading={applying} onClick={() => handleApply('available')} size="large">
                                     <Flex align="center" gap={6}>
                                         <LuCheck size={16} />
-                                        <Text>Available</Text>
+                                        <Text>{t('available')}</Text>
                                     </Flex>
                                 </Button>
                                 <Button block color="warning" loading={applying} onClick={() => handleApply('unavailable')} size="large">
-                                    Sold Out
+                                    {t('soldOut')}
                                 </Button>
                             </Flex>
                         ) : action === 'showHide' ? (
@@ -423,13 +425,13 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 <Button block color="primary" loading={applying} onClick={() => handleApply('show')} size="large">
                                     <Flex align="center" gap={6}>
                                         <LuEye size={16} />
-                                        <Text>Show</Text>
+                                        <Text>{t('show')}</Text>
                                     </Flex>
                                 </Button>
                                 <Button block color="danger" loading={applying} onClick={() => handleApply('hide')} size="large">
                                     <Flex align="center" gap={6}>
                                         <LuEyeOff size={16} />
-                                        <Text>Hide</Text>
+                                        <Text>{t('hide')}</Text>
                                     </Flex>
                                 </Button>
                             </Flex>
@@ -442,7 +444,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 onClick={() => handleApply()}
                                 size="large"
                             >
-                                {action === 'pricing' ? 'Apply Price Update' : 'Move Selected Items'}
+                                {action === 'pricing' ? t('applyPriceUpdate') : t('moveSelectedItems')}
                             </Button>
                         )}
                     </Card>
@@ -454,8 +456,8 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     columns={[destinationCategories]}
                     onClose={() => setShowCategoryPicker(false)}
                     onConfirm={(value) => value[0] && setDestinationCategoryId(value[0] as string)}
-                    searchPlaceholder="Search categories"
-                    title="Move to Category"
+                    searchPlaceholder={t('searchCategories')}
+                    title={t('moveToCategory')}
                     value={destinationCategoryId ? [destinationCategoryId] : []}
                     visible={showCategoryPicker}
                 />

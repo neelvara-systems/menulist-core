@@ -8,6 +8,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuReceipt, LuRefreshCw } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, InfiniteScroll, List, NavBar, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileTransactionsScreenProps {
     onBack: () => void;
@@ -90,6 +91,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
             </NavBar>
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Track AI processing usage, timestamps, and billing charges for recent operations."
+                    title={t('title')}
+                />
                 {loading && transactions.length === 0 ? (
                     <Flex align="center" justify="center" style={{ padding: 48 }}>
                         <DotLoading color="primary" />

@@ -19,6 +19,7 @@ import {
     LuUpload,
 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileOfficialPageScreenProps {
     onBack: () => void;
@@ -138,12 +139,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('officialPage')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex gap={4} vertical>
-                        <Text strong>{t('officialPageSettings')}</Text>
-                        <Text type="secondary">{t('officialPageDesc')}</Text>
-                    </Flex>
-                </Card>
+                <MobileScreenIntro
+                    subtitle="Control the public business page details customers see across your official presence."
+                    title={t('officialPage')}
+                />
 
                 <Card>
                     <Flex gap={10} vertical>

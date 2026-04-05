@@ -16,6 +16,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
 import { Button, Card, Checkbox, DotLoading, Flex, NavBar, Picker, Text, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileLocaleSettingsScreenProps {
     onBack: () => void;
@@ -117,6 +118,10 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{tBusiness('localeSettings')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Set language, time zone, date, and time defaults for your business."
+                    title={tBusiness('localeSettings')}
+                />
                 <Card>
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={6}>

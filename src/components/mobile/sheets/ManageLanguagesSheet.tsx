@@ -8,6 +8,7 @@ import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
+import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuCheck, LuLanguages, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import type { Project } from '../../templates/main-app/projects/types';
@@ -27,6 +28,7 @@ export default function ManageLanguagesSheet({
     onClose,
     onSaved,
 }: ManageLanguagesSheetProps) {
+    const t = useTranslations('MobileMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [showAddPicker, setShowAddPicker] = useState(false);
@@ -52,7 +54,7 @@ export default function ManageLanguagesSheet({
 
     const handleRemove = async (languageCode: string) => {
         if (projectLanguages.length <= 1) {
-            Toast.show({ content: 'At least one language is required.', duration: 1500 });
+            Toast.show({ content: t('atLeastOneLanguageRequired'), duration: 1500 });
             return;
         }
 
@@ -60,9 +62,9 @@ export default function ManageLanguagesSheet({
         if (!language) return;
 
         void Dialog.confirm({
-            cancelText: 'Keep',
-            confirmText: 'Remove',
-            content: `Remove ${language.nativeName || language.name} from this menu? Existing translations stay saved and can be restored later.`,
+            cancelText: t('keep'),
+            confirmText: t('remove'),
+            content: t('removeLanguageConfirm', { language: language.nativeName || language.name }),
             onConfirm: async () => {
                 setIsSaving(true);
                 try {
@@ -70,14 +72,14 @@ export default function ManageLanguagesSheet({
                     updated.languages = projectLanguages.filter((code) => code !== languageCode);
                     await updateProject(updated);
                     onSaved(updated);
-                    Toast.show({ content: 'Language removed', duration: 1200 });
+                    Toast.show({ content: t('languageRemoved'), duration: 1200 });
                 } catch {
-                    Toast.show({ content: 'Failed to update languages', duration: 2000 });
+                    Toast.show({ content: t('languageUpdateFailed'), duration: 2000 });
                 } finally {
                     setIsSaving(false);
                 }
             },
-            title: 'Remove language',
+            title: t('removeLanguage'),
         });
     };
 
@@ -106,12 +108,12 @@ export default function ManageLanguagesSheet({
             onSaved(updated);
             setPendingLanguageCode('');
             setShowAddPicker(false);
-            Toast.show({ content: `${targetLang.name} added`, duration: 1200 });
+            Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
         } catch (error) {
             if (error instanceof AICapacityError) {
-                Toast.show({ content: 'AI translation credits are needed to add a new language.', duration: 2200 });
+                Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
             } else {
-                Toast.show({ content: 'Failed to add language', duration: 2000 });
+                Toast.show({ content: t('languageAddFailed'), duration: 2000 });
             }
         } finally {
             setIsSaving(false);
@@ -130,10 +132,10 @@ export default function ManageLanguagesSheet({
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar
                     onBack={isSaving ? undefined : onClose}
-                    right={isSaving ? <Text type="secondary">Updating...</Text> : undefined}
+                    right={isSaving ? <Text type="secondary">{t('updating')}</Text> : undefined}
                     style={{ '--height': '48px' } as React.CSSProperties}
                 >
-                    Manage Languages
+                    {t('manageLanguages')}
                 </NavBar>
 
                 <Flex gap={12} style={{ overflowY: 'auto', padding: 16 }} vertical>
@@ -141,10 +143,10 @@ export default function ManageLanguagesSheet({
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>
                                 <LuLanguages size={16} />
-                                <Text strong>Menu languages</Text>
+                                <Text strong>{t('menuLanguages')}</Text>
                             </Flex>
                             <Text type="secondary">
-                                The first language is your source language. New languages are translated from it automatically.
+                                {t('menuLanguagesDesc')}
                             </Text>
                         </Flex>
                     </Card>
@@ -158,13 +160,13 @@ export default function ManageLanguagesSheet({
                                             {language!.name} {language!.nativeName !== language!.name ? `(${language!.nativeName})` : ''}
                                         </Text>
                                         <Text type="secondary">
-                                            {index === 0 ? 'Primary language' : `${language!.code.toUpperCase()} active`}
+                                            {index === 0 ? t('primaryLanguage') : t('languageActive', { code: language!.code.toUpperCase() })}
                                         </Text>
                                     </Flex>
                                     {index === 0 ? (
                                         <Flex align="center" gap={6}>
                                             <LuCheck size={16} />
-                                            <Text type="secondary">Primary</Text>
+                                            <Text type="secondary">{t('primary')}</Text>
                                         </Flex>
                                     ) : (
                                         <Button
@@ -184,7 +186,7 @@ export default function ManageLanguagesSheet({
 
                     <Card size="small">
                         <Flex gap={10} vertical>
-                            <Text strong>Add language</Text>
+                            <Text strong>{t('addLanguage')}</Text>
                             <Button
                                 block
                                 disabled={isSaving || addableLanguages.length === 0 || projectLanguages.length >= LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
@@ -198,13 +200,13 @@ export default function ManageLanguagesSheet({
                                         {pendingLanguageCode
                                             ? (addableLanguages.find((language) => language.code === pendingLanguageCode)?.nativeName
                                                 || addableLanguages.find((language) => language.code === pendingLanguageCode)?.name
-                                                || 'Choose language')
-                                            : 'Choose language'}
+                                                || t('chooseLanguage'))
+                                            : t('chooseLanguage')}
                                     </Text>
                                 </Flex>
                             </Button>
                             <Text type="secondary">
-                                You can keep up to {LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT} languages on one menu.
+                                {t('languagesLimit', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}
                             </Text>
                             <Button
                                 block
@@ -214,7 +216,7 @@ export default function ManageLanguagesSheet({
                                 onClick={() => void handleAdd()}
                                 size="large"
                             >
-                                Add Language
+                                {t('addLanguageAction')}
                             </Button>
                         </Flex>
                     </Card>
@@ -228,8 +230,8 @@ export default function ManageLanguagesSheet({
                 }))]}
                 onClose={() => setShowAddPicker(false)}
                 onConfirm={(value) => value[0] && setPendingLanguageCode(value[0] as string)}
-                searchPlaceholder="Search languages"
-                title="Add language"
+                searchPlaceholder={t('searchLanguages')}
+                title={t('addLanguage')}
                 value={pendingLanguageCode ? [pendingLanguageCode] : []}
                 visible={showAddPicker}
             />

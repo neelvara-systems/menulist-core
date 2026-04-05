@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuPhoneCall } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Picker, Text, TextArea, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileBasicSettingsScreenProps {
     onBack: () => void;
@@ -75,6 +76,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('basicSettings')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Update your business identity, contact details, and category information."
+                    title={t('basicSettings')}
+                />
                 <Card>
                     <Flex align="center" gap={12} vertical>
                         <LuImage color="#64748b" size={20} />

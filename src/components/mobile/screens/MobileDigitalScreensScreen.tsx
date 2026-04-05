@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Switch, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileDigitalScreensScreenProps {
     onBack: () => void;
@@ -79,9 +80,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('title')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Text>{t('setup')} {t('setupTip')}</Text>
-                </Card>
+                <MobileScreenIntro
+                    subtitle={`${t('setup')} ${t('setupTip')}`}
+                    title={t('title')}
+                />
 
                 <Card>
                     <Flex gap={12} vertical>

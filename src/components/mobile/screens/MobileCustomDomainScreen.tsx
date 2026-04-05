@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCheckCircle2, LuCopy, LuExternalLink, LuGlobe, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileCustomDomainScreenProps {
     onBack: () => void;
@@ -84,12 +85,10 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('customDomain')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex gap={6} vertical>
-                        <Text strong>{t('customDomainDesc')}</Text>
-                        <Text type="secondary">{t('dnsOwnershipNote')}</Text>
-                    </Flex>
-                </Card>
+                <MobileScreenIntro
+                    subtitle="Connect and verify a custom domain so customers can reach your menu on your own web address."
+                    title={t('customDomain')}
+                />
 
                 {activeDomain ? (
                     <Card>

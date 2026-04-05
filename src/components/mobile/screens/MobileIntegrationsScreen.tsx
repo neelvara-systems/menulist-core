@@ -7,6 +7,7 @@ import { useContext } from 'react';
 import { LuLink, LuMapPin } from 'react-icons/lu';
 import { SiGooglemybusiness } from 'react-icons/si';
 import { Card, Flex, NavBar, Tag, Text, Title } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileIntegrationsScreenProps {
     onBack: () => void;
@@ -30,6 +31,10 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{tBusiness('integrations')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Review your external integrations and make sure your public business data stays aligned."
+                    title={tBusiness('integrations')}
+                />
                 <Card>
                     <Flex align="center" gap={10}>
                         <SiGooglemybusiness color="#4285F4" size={22} />

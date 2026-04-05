@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMapPin, LuPlus, LuStar } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
+import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileLocationsScreenProps {
     onBack: () => void;
@@ -119,6 +120,10 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
             <NavBar onBack={onBack}>{t('title')}</NavBar>
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <MobileScreenIntro
+                    subtitle="Review your locations, switch store context, and control outlet policies."
+                    title={t('title')}
+                />
                 <Card>
                     <Flex justify="space-between">
                         <Flex gap={2} vertical>
