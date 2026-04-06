@@ -243,53 +243,54 @@ export default function SmartRecommendationsSheet({
     return (
         <>
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', overflowX: 'hidden' }}
+                bodyStyle={{ maxHeight: '85vh', overflowX: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={onClose}
                 position="bottom"
                 visible={visible}
             >
-                <Flex gap={16} vertical>
+                <Flex style={{ height: '100%' }} vertical>
                     <NavBar onBack={onClose}>{t('smartRecommendationsTitle')}</NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                        <Card>
+                            <Flex gap={4} vertical>
+                                <Title level={5} style={{ margin: 0 }}>{t('smartRecommendationsHeading')}</Title>
+                                <Text type="secondary">{t('smartRecommendationsDesc')}</Text>
+                            </Flex>
+                        </Card>
 
-                    <Card>
-                        <Flex gap={4} vertical>
-                            <Title level={5} style={{ margin: 0 }}>{t('smartRecommendationsHeading')}</Title>
-                            <Text type="secondary">{t('smartRecommendationsDesc')}</Text>
-                        </Flex>
-                    </Card>
-
-                    <Alert
-                        description={t('smartRecommendationsInfoDesc')}
-                        message={t('smartRecommendationsInfoTitle')}
-                        showIcon
-                        style={{ borderRadius: 8 }}
-                        type="info"
-                    />
-
-                    <Flex gap={12} vertical>
-                        {renderBlock('popular')}
-                        {renderBlock('quickPick')}
-                        {renderBlock('bestValue')}
-                    </Flex>
-
-                    {enabledBlockTypes.length === 0 ? (
                         <Alert
-                            description={t('smartRecommendationsEmptyDesc')}
-                            message={t('smartRecommendationsEmptyTitle')}
+                            description={t('smartRecommendationsInfoDesc')}
+                            message={t('smartRecommendationsInfoTitle')}
                             showIcon
                             style={{ borderRadius: 8 }}
-                            type="warning"
+                            type="info"
                         />
-                    ) : null}
 
-                    <Flex gap={8}>
-                        <Button block fill="outline" onClick={onClose}>
-                            {t('cancel')}
-                        </Button>
-                        <Button block disabled={!hasChanges} loading={isSaving} onClick={() => void handleSave()}>
-                            {t('save')}
-                        </Button>
+                        <Flex gap={12} vertical>
+                            {renderBlock('popular')}
+                            {renderBlock('quickPick')}
+                            {renderBlock('bestValue')}
+                        </Flex>
+
+                        {enabledBlockTypes.length === 0 ? (
+                            <Alert
+                                description={t('smartRecommendationsEmptyDesc')}
+                                message={t('smartRecommendationsEmptyTitle')}
+                                showIcon
+                                style={{ borderRadius: 8 }}
+                                type="warning"
+                            />
+                        ) : null}
+
+                        <Flex gap={8}>
+                            <Button block fill="outline" onClick={onClose}>
+                                {t('cancel')}
+                            </Button>
+                            <Button block disabled={!hasChanges} loading={isSaving} onClick={() => void handleSave()}>
+                                {t('save')}
+                            </Button>
+                        </Flex>
                     </Flex>
                 </Flex>
             </Popup>

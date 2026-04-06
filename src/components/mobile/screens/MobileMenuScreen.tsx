@@ -478,6 +478,7 @@ export default function MobileMenuScreen() {
                 const categoryId = item.category || 'uncategorized';
                 if (!grouped[categoryId]) grouped[categoryId] = [];
                 grouped[categoryId].push({
+                    available: item.available !== false,
                     id: item.id,
                     name: item.name?.[activeLang] || item.name?.en || item.name || t('unnamedItem'),
                     active: item.active !== false,
@@ -488,8 +489,9 @@ export default function MobileMenuScreen() {
         return grouped;
     }, [activeLang, menuData?.files, t]);
 
-    const handleCategoryAdd = async (name: string) => {
+    const handleCategoryAdd = async ({ name, active, presetIds }: { name: string; active: boolean; presetIds: string[] }) => {
         if (!menuData) return;
+        const presets = storeDetails?.timeSlotPresets || [];
         const updated = removeObjRef(menuData);
         const targetFile = updated.files?.[0];
         if (!targetFile) return;
@@ -499,15 +501,26 @@ export default function MobileMenuScreen() {
         const newId = `cat-${Date.now()}`;
         targetFile.extractedData.data.categories.push({
             id: newId,
-            active: true,
+            active,
             name: { [activeLang]: name },
+            timeSlots: presetIds.length
+                ? presetIds
+                    .map((presetId) => presets.find((preset: any) => preset.id === presetId))
+                    .filter(Boolean)
+                    .map((preset: any) => ({
+                        presetId: preset.id,
+                        startTime: preset.startTime,
+                        endTime: preset.endTime,
+                    }))
+                : undefined,
         });
         await updateProject(updated);
         setMenuData(updated);
     };
 
-    const handleCategoryRename = async (categoryId: string, name: string) => {
+    const handleCategoryUpdate = async ({ id: categoryId, name, active, presetIds }: { id: string; name: string; active: boolean; presetIds: string[] }) => {
         if (!menuData) return;
+        const presets = storeDetails?.timeSlotPresets || [];
         const updated = removeObjRef(menuData);
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.categories?.forEach((category: any) => {
@@ -515,20 +528,17 @@ export default function MobileMenuScreen() {
                     const nextName = typeof category.name === 'object' && category.name ? { ...category.name } : {};
                     nextName[activeLang] = name;
                     category.name = nextName;
-                }
-            });
-        });
-        await updateProject(updated);
-        setMenuData(updated);
-    };
-
-    const handleCategoryToggle = async (categoryId: string, active: boolean) => {
-        if (!menuData) return;
-        const updated = removeObjRef(menuData);
-        updated.files?.forEach((file: any) => {
-            file.extractedData?.data?.categories?.forEach((category: any) => {
-                if (category.id === categoryId) {
                     category.active = active;
+                    category.timeSlots = presetIds.length
+                        ? presetIds
+                            .map((presetId) => presets.find((preset: any) => preset.id === presetId))
+                            .filter(Boolean)
+                            .map((preset: any) => ({
+                                presetId: preset.id,
+                                startTime: preset.startTime,
+                                endTime: preset.endTime,
+                            }))
+                        : undefined;
                 }
             });
         });
@@ -569,31 +579,6 @@ export default function MobileMenuScreen() {
                 if (index >= 0) {
                     category.orderIndex = index;
                 }
-            });
-        });
-        await updateProject(updated);
-        setMenuData(updated);
-    };
-
-    const handleCategoryTimeSlots = async (categoryId: string, presetIds: string[]) => {
-        if (!menuData) return;
-        const presets = storeDetails?.timeSlotPresets || [];
-        const updated = removeObjRef(menuData);
-        updated.files?.forEach((file: any) => {
-            file.extractedData?.data?.categories?.forEach((category: any) => {
-                if (category.id !== categoryId) return;
-                if (!presetIds.length) {
-                    category.timeSlots = undefined;
-                    return;
-                }
-                category.timeSlots = presetIds
-                    .map((presetId: string) => presets.find((preset: any) => preset.id === presetId))
-                    .filter(Boolean)
-                    .map((preset: any) => ({
-                        presetId: preset.id,
-                        startTime: preset.startTime,
-                        endTime: preset.endTime,
-                    }));
             });
         });
         await updateProject(updated);
@@ -1146,11 +1131,9 @@ export default function MobileMenuScreen() {
                     setCategorySheetMode('manage');
                 })}
                 onDelete={handleCategoryDelete}
-                onRename={handleCategoryRename}
+                onUpdate={handleCategoryUpdate}
                 onReorder={handleCategoryReorder}
                 onReorderItems={handleCategoryItemReorder}
-                onToggleActive={handleCategoryToggle}
-                onUpdateTimeSlots={handleCategoryTimeSlots}
                 visible={isCategorySheetOpen}
             />
 

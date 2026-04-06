@@ -304,6 +304,7 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
     const { token } = theme.useToken();
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
+    const showBackButton = Boolean(onBack) || backIcon !== undefined;
     return (
         <Flex
             align="center"
@@ -320,9 +321,13 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
                 ...sanitizeStyle(style),
             }}
         >
-            <Button fill="none" onClick={onBack} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
-                {backIcon ?? <LuArrowLeft size={18} />}
-            </Button>
+            {showBackButton ? (
+                <Button fill="none" onClick={onBack} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                    {backIcon ?? <LuArrowLeft size={18} />}
+                </Button>
+            ) : (
+                <div style={{ minHeight: 40, minWidth: 40 }} />
+            )}
             <Flex align="center" justify="center" style={{ flex: 1, minWidth: 0 }}>
                 {hasTitle ? (
                     <Title

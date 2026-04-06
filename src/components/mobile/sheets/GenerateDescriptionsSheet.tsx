@@ -78,121 +78,123 @@ export default function GenerateDescriptionsSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto' }}
+            bodyStyle={{ maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
             destroyOnClose
             onMaskClick={isProcessing ? undefined : onClose}
             visible={visible}
         >
-            <Flex gap={16} vertical>
+            <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={isProcessing ? undefined : onClose}>{t('menuDescriptions')}</NavBar>
-                <Text type="secondary">
-                    {t('menuDescriptionsDesc')}
-                </Text>
+                <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Text type="secondary">
+                        {t('menuDescriptionsDesc')}
+                    </Text>
 
-                {allDescriptionsReady ? (
-                    <Card size="small" style={{ backgroundColor: token.colorSuccessBg, borderRadius: 16 }}>
-                        <Flex align="center" gap={12}>
-                            <LuCheck color={token.colorSuccess} size={22} />
-                            <Flex gap={2} vertical>
-                                <Text strong>{t('descriptionsReady')}</Text>
-                                <Text type="secondary">{t('refreshDescriptionsAnytime')}</Text>
+                    {allDescriptionsReady ? (
+                        <Card size="small" style={{ backgroundColor: token.colorSuccessBg, borderRadius: 16 }}>
+                            <Flex align="center" gap={12}>
+                                <LuCheck color={token.colorSuccess} size={22} />
+                                <Flex gap={2} vertical>
+                                    <Text strong>{t('descriptionsReady')}</Text>
+                                    <Text type="secondary">{t('refreshDescriptionsAnytime')}</Text>
+                                </Flex>
+                            </Flex>
+                        </Card>
+                    ) : (
+                        <Card size="small" style={{ borderRadius: 16 }}>
+                            <Flex gap={6} vertical>
+                                <Text strong>{t('itemsCountLabel', { count: itemsCount })}</Text>
+                                <Text type="secondary">{t('itemsNeedDescriptions', { count: itemsWithoutDescriptions })}</Text>
+                            </Flex>
+                        </Card>
+                    )}
+
+                    <Card size="small" style={{ borderRadius: 16 }}>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('descriptionLength')}</Text>
+                            <Flex gap={8} vertical>
+                                {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
+                                    <Button
+                                        key={option.value}
+                                        disabled={isProcessing}
+                                        fill={contentLength === option.value ? 'solid' : 'outline'}
+                                        onClick={() => setContentLength(option.value)}
+                                        style={{ minHeight: 52, width: '100%' }}
+                                    >
+                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                            <Text strong style={{ color: contentLength === option.value ? '#fff' : undefined }}>
+                                                {option.label}
+                                            </Text>
+                                            <Text style={{ color: contentLength === option.value ? 'rgba(255,255,255,0.8)' : token.colorTextSecondary, whiteSpace: 'normal' }}>
+                                                {option.description}
+                                            </Text>
+                                        </Flex>
+                                    </Button>
+                                ))}
                             </Flex>
                         </Flex>
                     </Card>
-                ) : (
+
                     <Card size="small" style={{ borderRadius: 16 }}>
-                        <Flex gap={6} vertical>
-                            <Text strong>{t('itemsCountLabel', { count: itemsCount })}</Text>
-                            <Text type="secondary">{t('itemsNeedDescriptions', { count: itemsWithoutDescriptions })}</Text>
+                        <Flex gap={10} vertical>
+                            <Flex align="center" justify="space-between">
+                                <Text strong>{t('menuStatus')}</Text>
+                                <Text type="secondary">{t('itemsDescribed', { count: itemsWithDescriptions })}</Text>
+                            </Flex>
+                            <Flex gap={8} wrap="wrap">
+                                <Text>{t('itemsMissing', { count: itemsWithoutDescriptions })}</Text>
+                                <Text>{t('aiCreatedCount', { count: aiDescriptionCount })}</Text>
+                            </Flex>
+                            {isProcessing ? (
+                                <Text type="secondary">
+                                    {totalFiles > 1
+                                        ? t('processingFileProgress', { current: Math.min(processedCount + 1, totalFiles), total: totalFiles })
+                                        : t('workingOnMenu')}
+                                </Text>
+                            ) : (
+                                <Text type="secondary">{t('descriptionsAutoSaved')}</Text>
+                            )}
                         </Flex>
                     </Card>
-                )}
 
-                <Card size="small" style={{ borderRadius: 16 }}>
                     <Flex gap={12} vertical>
-                        <Text strong>{t('descriptionLength')}</Text>
-                        <Flex gap={8} vertical>
-                            {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
-                                <Button
-                                    key={option.value}
-                                    disabled={isProcessing}
-                                    fill={contentLength === option.value ? 'solid' : 'outline'}
-                                    onClick={() => setContentLength(option.value)}
-                                    style={{ minHeight: 52, width: '100%' }}
-                                >
-                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                        <Text strong style={{ color: contentLength === option.value ? '#fff' : undefined }}>
-                                            {option.label}
-                                        </Text>
-                                        <Text style={{ color: contentLength === option.value ? 'rgba(255,255,255,0.8)' : token.colorTextSecondary, whiteSpace: 'normal' }}>
-                                            {option.description}
-                                        </Text>
-                                    </Flex>
-                                </Button>
-                            ))}
-                        </Flex>
-                    </Flex>
-                </Card>
-
-                <Card size="small" style={{ borderRadius: 16 }}>
-                    <Flex gap={10} vertical>
-                        <Flex align="center" justify="space-between">
-                            <Text strong>{t('menuStatus')}</Text>
-                            <Text type="secondary">{t('itemsDescribed', { count: itemsWithDescriptions })}</Text>
-                        </Flex>
-                        <Flex gap={8} wrap="wrap">
-                            <Text>{t('itemsMissing', { count: itemsWithoutDescriptions })}</Text>
-                            <Text>{t('aiCreatedCount', { count: aiDescriptionCount })}</Text>
-                        </Flex>
-                        {isProcessing ? (
-                            <Text type="secondary">
-                                {totalFiles > 1
-                                    ? t('processingFileProgress', { current: Math.min(processedCount + 1, totalFiles), total: totalFiles })
-                                    : t('workingOnMenu')}
-                            </Text>
-                        ) : (
-                            <Text type="secondary">{t('descriptionsAutoSaved')}</Text>
-                        )}
-                    </Flex>
-                </Card>
-
-                <Flex gap={12} vertical>
-                    <Button
-                        block
-                        color="primary"
-                        disabled={isProcessing || itemsWithoutDescriptions === 0}
-                        loading={isProcessing}
-                        onClick={() => void handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION)}
-                        size="large"
-                    >
-                        <Flex align="center" gap={6}>
-                            <LuSparkles size={16} />
-                            <Text>{t('generateMissing')}</Text>
-                        </Flex>
-                    </Button>
-
-                    {itemsWithDescriptions > 0 ? (
                         <Button
                             block
-                            disabled={isProcessing}
-                            fill="outline"
-                            onClick={() => {
-                                void Dialog.confirm({
-                                    cancelText: t('cancel'),
-                                    confirmText: t('refresh'),
-                                    content: t('refreshDescriptionsConfirm'),
-                                    onConfirm: () => handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION),
-                                    title: t('refreshDescriptionsTitle'),
-                                });
-                            }}
+                            color="primary"
+                            disabled={isProcessing || itemsWithoutDescriptions === 0}
+                            loading={isProcessing}
+                            onClick={() => void handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION)}
                             size="large"
                         >
                             <Flex align="center" gap={6}>
-                                <LuRefreshCcw size={16} />
-                                <Text>{t('refreshAiText')}</Text>
+                                <LuSparkles size={16} />
+                                <Text>{t('generateMissing')}</Text>
                             </Flex>
                         </Button>
-                    ) : null}
+
+                        {itemsWithDescriptions > 0 ? (
+                            <Button
+                                block
+                                disabled={isProcessing}
+                                fill="outline"
+                                onClick={() => {
+                                    void Dialog.confirm({
+                                        cancelText: t('cancel'),
+                                        confirmText: t('refresh'),
+                                        content: t('refreshDescriptionsConfirm'),
+                                        onConfirm: () => handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION),
+                                        title: t('refreshDescriptionsTitle'),
+                                    });
+                                }}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6}>
+                                    <LuRefreshCcw size={16} />
+                                    <Text>{t('refreshAiText')}</Text>
+                                </Flex>
+                            </Button>
+                        ) : null}
+                    </Flex>
                 </Flex>
             </Flex>
         </Popup>

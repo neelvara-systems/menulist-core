@@ -3,8 +3,9 @@
 import type { TimeSlotPreset } from '@type/platform/store';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
-import { LuArrowUpDown, LuCheck, LuChevronDown, LuChevronUp, LuClock, LuFolderTree, LuPlus, LuTags, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Checkbox, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Toast } from '../antd';
+import { LuChevronDown, LuChevronUp, LuFolderTree, LuPlus, LuTags } from 'react-icons/lu';
+import { Button, Card, Dialog, Flex, List, NavBar, Popup, Tag, Text, Toast } from '../antd';
+import MobileCategoryEditSheet from './MobileCategoryEditSheet';
 
 export type MobileCategoryItem = {
     id: string;
@@ -16,6 +17,7 @@ export type MobileCategoryItem = {
 };
 
 export type MobileCategoryReorderItem = {
+    available?: boolean;
     id: string;
     name: string;
     active: boolean;
@@ -28,13 +30,11 @@ interface CategoryManagerSheetProps {
     initialMode?: 'manage' | 'reorder';
     presets: TimeSlotPreset[];
     visible: boolean;
-    onAdd: (name: string) => Promise<void>;
-    onRename: (id: string, name: string) => Promise<void>;
-    onToggleActive: (id: string, active: boolean) => Promise<void>;
+    onAdd: (payload: { name: string; active: boolean; presetIds: string[] }) => Promise<void>;
+    onUpdate: (payload: { id: string; name: string; active: boolean; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onReorder: (orderedIds: string[]) => Promise<void>;
     onReorderItems: (categoryId: string, orderedItemIds: string[]) => Promise<void>;
-    onUpdateTimeSlots: (id: string, presetIds: string[]) => Promise<void>;
     onClose: () => void;
 }
 
@@ -45,17 +45,19 @@ export default function CategoryManagerSheet({
     presets,
     visible,
     onAdd,
-    onRename,
-    onToggleActive,
+    onUpdate,
     onDelete,
     onReorder,
     onReorderItems,
-    onUpdateTimeSlots,
     onClose,
 }: CategoryManagerSheetProps) {
     const t = useTranslations('MobileMenu');
+    const STATUS_COLORS = {
+        active: '#22c55e',
+        inactive: '#94a3b8',
+        soldOut: '#f59e0b',
+    };
     const launchedInReorderMode = initialMode === 'reorder';
-    const [newCategory, setNewCategory] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [selectedReorderCategoryId, setSelectedReorderCategoryId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -64,9 +66,7 @@ export default function CategoryManagerSheet({
     const [isItemReorderMode, setIsItemReorderMode] = useState(false);
     const [reorderDraft, setReorderDraft] = useState<string[]>([]);
     const [itemReorderDraft, setItemReorderDraft] = useState<string[]>([]);
-    const [draftName, setDraftName] = useState('');
-    const [draftActive, setDraftActive] = useState(true);
-    const [draftPresetIds, setDraftPresetIds] = useState<string[]>([]);
+    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
 
     const sorted = useMemo(() => {
         return [...categories].sort((a, b) => {
@@ -110,10 +110,24 @@ export default function CategoryManagerSheet({
             .filter(Boolean) as MobileCategoryReorderItem[];
     }, [itemReorderDraft, orderedItemIds, selectedCategoryItems]);
 
+    const renderStatusBadge = (label: string, color: string) => (
+        <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+            <span
+                style={{
+                    background: color,
+                    borderRadius: '999px',
+                    display: 'inline-block',
+                    flex: '0 0 auto',
+                    height: 8,
+                    width: 8,
+                }}
+            />
+            <Text style={{ fontSize: 12, lineHeight: 1.2 }}>{label}</Text>
+        </Flex>
+    );
+
     const resetCategoryEditor = () => {
         setSelectedCategoryId(null);
-        setDraftName('');
-        setDraftPresetIds([]);
     };
 
     const resetItemReorder = () => {
@@ -127,20 +141,6 @@ export default function CategoryManagerSheet({
         setIsReorderMode(false);
         setReorderDraft([]);
         resetItemReorder();
-    };
-
-    const handleAdd = async () => {
-        if (!newCategory.trim()) return;
-        setIsSaving(true);
-        try {
-            await onAdd(newCategory.trim());
-            setNewCategory('');
-            Toast.show({ content: t('categoryAdded'), duration: 1200 });
-        } catch {
-            Toast.show({ content: t('categoryAddFailed'), duration: 1500 });
-        } finally {
-            setIsSaving(false);
-        }
     };
 
     const openReorderMode = () => {
@@ -238,39 +238,6 @@ export default function CategoryManagerSheet({
 
     const openCategoryEditor = (category: MobileCategoryItem) => {
         setSelectedCategoryId(category.id);
-        setDraftName(category.name);
-        setDraftActive(category.active);
-        setDraftPresetIds(category.timeSlotPresetIds || []);
-    };
-
-    const handleCategorySave = async () => {
-        if (!selectedCategoryId || !draftName.trim()) return;
-        setIsSaving(true);
-        try {
-            const selected = sorted.find((category) => category.id === selectedCategoryId);
-            if (!selected) return;
-
-            if (draftName.trim() !== selected.name) {
-                await onRename(selectedCategoryId, draftName.trim());
-            }
-            if (draftActive !== selected.active) {
-                await onToggleActive(selectedCategoryId, draftActive);
-            }
-
-            const prevPresetIds = selected.timeSlotPresetIds || [];
-            const nextPresetIds = [...draftPresetIds].sort();
-            const prevSorted = [...prevPresetIds].sort();
-            if (JSON.stringify(nextPresetIds) !== JSON.stringify(prevSorted)) {
-                await onUpdateTimeSlots(selectedCategoryId, draftPresetIds);
-            }
-
-            Toast.show({ content: t('categoryUpdated'), duration: 1200 });
-            resetCategoryEditor();
-        } catch {
-            Toast.show({ content: t('categoryUpdateFailed'), duration: 1500 });
-        } finally {
-            setIsSaving(false);
-        }
     };
 
     const handleDelete = async (categoryId: string) => {
@@ -298,13 +265,13 @@ export default function CategoryManagerSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh' }}
+            bodyStyle={{ maxHeight: '85vh', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex gap={16} vertical>
+            <Flex gap={0} vertical>
                 <NavBar
                     onBack={
                         isReorderMode
@@ -351,7 +318,7 @@ export default function CategoryManagerSheet({
                 </NavBar>
 
                 {isReorderMode ? (
-                    <>
+                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
                         <Card>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('reorderCategories')}</Text>
@@ -407,9 +374,9 @@ export default function CategoryManagerSheet({
                                 {t('save')}
                             </Button>
                         </Flex>
-                    </>
+                    </Flex>
                 ) : isItemReorderMode ? (
-                    <>
+                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
                         <Card>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('reorderItems')}</Text>
@@ -437,35 +404,55 @@ export default function CategoryManagerSheet({
                             ) : draftItems.length === 0 ? (
                                 <Text type="secondary">{t('noItemsInCategory')}</Text>
                             ) : (
-                                <Flex gap={8} vertical>
-                                    {draftItems.map((item, index) => (
-                                        <Card key={item.id} size="small" style={{ margin: 0 }}>
-                                            <Flex align="center" gap={12} justify="space-between">
-                                                <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                    <Text strong>{item.name}</Text>
-                                                    {!item.active ? <Tag>{t('hidden')}</Tag> : null}
-                                                </Flex>
-                                                <Flex gap={8}>
-                                                    <Button
-                                                        disabled={index === 0}
-                                                        fill="outline"
-                                                        onClick={() => moveDraftItem(item.id, 'up')}
-                                                        size="small"
-                                                    >
-                                                        <LuChevronUp size={14} />
-                                                    </Button>
-                                                    <Button
-                                                        disabled={index === draftItems.length - 1}
-                                                        fill="outline"
-                                                        onClick={() => moveDraftItem(item.id, 'down')}
-                                                        size="small"
-                                                    >
-                                                        <LuChevronDown size={14} />
-                                                    </Button>
-                                                </Flex>
-                                            </Flex>
-                                        </Card>
-                                    ))}
+                                <Flex gap={10} vertical>
+                                    <Flex align="center" gap={10} wrap="wrap">
+                                        {renderStatusBadge(t('active'), STATUS_COLORS.active)}
+                                        {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
+                                        {renderStatusBadge(t('soldOut'), STATUS_COLORS.soldOut)}
+                                    </Flex>
+
+                                    <List>
+                                        {draftItems.map((item, index) => {
+                                            const statusBits = [];
+                                            if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
+                                            if (item.available === false) statusBits.push(renderStatusBadge(t('soldOut'), STATUS_COLORS.soldOut));
+                                            if (item.active !== false && item.available !== false) statusBits.push(renderStatusBadge(t('active'), STATUS_COLORS.active));
+
+                                            return (
+                                                <List.Item
+                                                    extra={(
+                                                        <Flex gap={6}>
+                                                            <Button
+                                                                disabled={index === 0}
+                                                                fill="outline"
+                                                                onClick={() => moveDraftItem(item.id, 'up')}
+                                                                size="small"
+                                                            >
+                                                                <LuChevronUp size={14} />
+                                                            </Button>
+                                                            <Button
+                                                                disabled={index === draftItems.length - 1}
+                                                                fill="outline"
+                                                                onClick={() => moveDraftItem(item.id, 'down')}
+                                                                size="small"
+                                                            >
+                                                                <LuChevronDown size={14} />
+                                                            </Button>
+                                                        </Flex>
+                                                    )}
+                                                    key={item.id}
+                                                    title={(
+                                                        <Flex gap={4} vertical>
+                                                            <Text strong>{item.name}</Text>
+                                                            <Flex align="center" gap={12} wrap="wrap">
+                                                                {statusBits}
+                                                            </Flex>
+                                                        </Flex>
+                                                    )}
+                                                />
+                                            );
+                                        })}
+                                    </List>
                                 </Flex>
                             )}
                         </Card>
@@ -495,9 +482,9 @@ export default function CategoryManagerSheet({
                                 {t('save')}
                             </Button>
                         </Flex>
-                    </>
+                    </Flex>
                 ) : isReorderHubMode ? (
-                    <>
+                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
                         <Card>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('reorderMenu')}</Text>
@@ -539,32 +526,22 @@ export default function CategoryManagerSheet({
                                 />
                             </List>
                         </Card>
-                    </>
+                    </Flex>
                 ) : !selectedCategoryId ? (
-                    <>
-                        <Card>
-                            <Flex gap={8} vertical>
-                                <Text type="secondary">{t('addCategoryLabel')}</Text>
-                                <Flex gap={8}>
-                                    <Input onChange={setNewCategory} placeholder={t('categoryNamePlaceholder')} value={newCategory} />
-                                    <Button disabled={!newCategory.trim()} loading={isSaving} onClick={() => void handleAdd()}>
-                                        <Flex align="center" gap={6}>
-                                            <LuPlus size={14} />
-                                            <Text>{t('add')}</Text>
-                                        </Flex>
-                                    </Button>
-                                </Flex>
+                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
+                        <Button block onClick={() => setIsAddCategoryOpen(true)}>
+                            <Flex align="center" gap={6}>
+                                <LuPlus size={14} />
+                                <Text>{t('addCategoryLabel')}</Text>
                             </Flex>
-                        </Card>
+                        </Button>
 
                         <Card>
                             {sorted.length === 0 ? (
                                 <Text type="secondary">{t('noCategories')}</Text>
                             ) : (
                                 <Flex gap={12} vertical>
-                                    <Card size="small" style={{ margin: 0 }}>
-                                        <Text type="secondary">{t('categoryManagerHelp')}</Text>
-                                    </Card>
+                                    <Text type="secondary">{t('categoryManagerHelp')}</Text>
 
                                     <List>
                                         {sorted.map((category) => (
@@ -573,14 +550,9 @@ export default function CategoryManagerSheet({
                                                 description={(
                                                     <Flex align="center" gap={8} wrap="wrap">
                                                         <Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>
+                                                        {!category.active ? <Tag>{t('inactive')}</Tag> : null}
                                                         {category.timeSlotPresetIds?.length ? <Tag color="processing">{t('scheduled')}</Tag> : null}
                                                     </Flex>
-                                                )}
-                                                extra={(
-                                                    <Switch
-                                                        checked={category.active}
-                                                        onChange={(checked) => void onToggleActive(category.id, checked)}
-                                                    />
                                                 )}
                                                 key={category.id}
                                                 onClick={() => openCategoryEditor(category)}
@@ -591,91 +563,57 @@ export default function CategoryManagerSheet({
                                 </Flex>
                             )}
                         </Card>
-                    </>
-                ) : selectedCategory ? (
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Flex align="center" justify="space-between">
-                                <Text strong>{t('itemsCount', { count: selectedCategory.itemCount })}</Text>
-                                {draftPresetIds.length ? <Tag color="processing">{t('scheduled')}</Tag> : null}
-                            </Flex>
-
-                            <Flex gap={6} vertical>
-                                <Text type="secondary">{t('renameCategoryLabel')}</Text>
-                                <Input onChange={setDraftName} value={draftName} />
-                            </Flex>
-
-                            <Flex align="center" justify="space-between">
-                                <Flex gap={2} vertical>
-                                    <Text strong>{t('showOnMenu')}</Text>
-                                    <Text type="secondary">Control whether this category appears in the menu.</Text>
-                                </Flex>
-                                <Switch checked={draftActive} onChange={setDraftActive} />
-                            </Flex>
-
-                            <Flex gap={8} vertical>
-                                <Flex align="center" gap={8}>
-                                    <LuClock size={16} />
-                                    <Text strong>{t('categorySchedule')}</Text>
-                                </Flex>
-                                {presets.length === 0 ? (
-                                    <Text type="secondary">{t('scheduleEmpty')}</Text>
-                                ) : (
-                                    <Flex gap={8} vertical>
-                                        {presets.map((preset) => (
-                                            <Checkbox
-                                                checked={draftPresetIds.includes(preset.id)}
-                                                key={preset.id}
-                                                onChange={(checked) => {
-                                                    setDraftPresetIds((prev) => {
-                                                        if (checked) return [...prev, preset.id];
-                                                        return prev.filter((id) => id !== preset.id);
-                                                    });
-                                                }}
-                                            >
-                                                <Flex align="center" gap={8}>
-                                                    <Tag color={preset.color || 'processing'}>{preset.label}</Tag>
-                                                    <Text type="secondary">{`${preset.startTime} - ${preset.endTime}`}</Text>
-                                                </Flex>
-                                            </Checkbox>
-                                        ))}
-                                    </Flex>
-                                )}
-                            </Flex>
-
-                            <Flex gap={8}>
-                                <Button block fill="outline" onClick={resetCategoryEditor}>
-                                    {t('cancel')}
-                                </Button>
-                                <Button
-                                    block
-                                    disabled={!draftName.trim()}
-                                    loading={isSaving}
-                                    onClick={() => void handleCategorySave()}
-                                >
-                                    <Flex align="center" gap={6}>
-                                        <LuCheck size={14} />
-                                        <Text>{t('save')}</Text>
-                                    </Flex>
-                                </Button>
-                            </Flex>
-
-                            <Button
-                                block
-                                color="danger"
-                                fill="outline"
-                                onClick={() => void handleDelete(selectedCategory.id)}
-                                size="large"
-                            >
-                                <Flex align="center" gap={8}>
-                                    <LuTrash2 size={16} />
-                                    <Text>{t('delete')}</Text>
-                                </Flex>
-                            </Button>
-                        </Flex>
-                    </Card>
+                    </Flex>
                 ) : null}
             </Flex>
+
+            <MobileCategoryEditSheet
+                mode="add"
+                onClose={() => setIsAddCategoryOpen(false)}
+                onSave={async (payload) => {
+                    setIsSaving(true);
+                    try {
+                        await onAdd(payload);
+                        setIsAddCategoryOpen(false);
+                        Toast.show({ content: t('categoryAdded'), duration: 1200 });
+                    } catch {
+                        Toast.show({ content: t('categoryAddFailed'), duration: 1500 });
+                    } finally {
+                        setIsSaving(false);
+                    }
+                }}
+                presets={presets}
+                visible={isAddCategoryOpen}
+            />
+
+            <MobileCategoryEditSheet
+                category={selectedCategory}
+                mode="edit"
+                onClose={resetCategoryEditor}
+                onDelete={async (categoryId) => {
+                    await handleDelete(categoryId);
+                }}
+                onSave={async (payload) => {
+                    if (!payload.id) return;
+                    setIsSaving(true);
+                    try {
+                        await onUpdate({
+                            active: payload.active,
+                            id: payload.id,
+                            name: payload.name,
+                            presetIds: payload.presetIds,
+                        });
+                        Toast.show({ content: t('categoryUpdated'), duration: 1200 });
+                        resetCategoryEditor();
+                    } catch {
+                        Toast.show({ content: t('categoryUpdateFailed'), duration: 1500 });
+                    } finally {
+                        setIsSaving(false);
+                    }
+                }}
+                presets={presets}
+                visible={Boolean(selectedCategory)}
+            />
         </Popup>
     );
 }

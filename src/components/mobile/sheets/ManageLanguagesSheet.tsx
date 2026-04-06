@@ -124,7 +124,7 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '64vh', maxHeight: '88vh', overflowX: 'hidden' }}
+            bodyStyle={{ minHeight: '64vh', maxHeight: '88vh', overflowX: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
             visible={visible}
@@ -137,7 +137,7 @@ export default function ManageLanguagesSheet({
                     {t('manageLanguages')}
                 </NavBar>
 
-                <Flex gap={12} style={{ overflowY: 'auto', padding: 16 }} vertical>
+                <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     <Card size="small">
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>

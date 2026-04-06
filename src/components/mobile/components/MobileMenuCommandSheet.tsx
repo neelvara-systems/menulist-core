@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight, LuX } from 'react-icons/lu';
 import { getEditorActions } from '../../templates/main-app/projects/editorView/editorActions.config';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
@@ -171,44 +171,56 @@ export default function MobileMenuCommandSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, minHeight: '60vh', maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto' }}
+            bodyStyle={{ minHeight: '60vh', maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
             onMaskClick={onClose}
             visible={visible}
         >
-            <Flex gap={16} vertical>
-                <NavBar onBack={onClose}>{t('manageAndControl', { offering: labels.offeringTitle })}</NavBar>
-
-                <Card size="small" style={{ borderRadius: 16 }}>
-                    <List>
-                        {commandActions.map((action) => (
-                            <List.Item
-                                arrow
-                                description={<Text type="secondary">{action.description}</Text>}
-                                key={action.key}
-                                onClick={() => {
-                                    onClose();
-                                    action.onClick?.();
-                                }}
-                                prefix={renderIconTile(action.icon)}
-                                title={(
-                                    <Flex align="center" gap={8}>
-                                        <Text strong>{action.title}</Text>
-                                        {action.isNew ? <Text style={{ color: token.colorSuccess }}>New</Text> : null}
-                                    </Flex>
-                                )}
-                            />
-                        ))}
-                    </List>
-                </Card>
-
-                <Card size="small" style={{ backgroundColor: token.colorBgLayout, borderRadius: 16 }}>
-                    <Flex gap={4} vertical>
-                        <Text strong>{t('desktopNoteTitle')}</Text>
-                        <Text type="secondary">
-                            {t('desktopNoteDesc')}
+            <Flex style={{ height: '100%' }} vertical>
+                <NavBar
+                    right={(
+                        <Text
+                            onClick={onClose}
+                            style={{ alignItems: 'center', color: token.colorText, cursor: 'pointer', display: 'flex', justifyContent: 'center', minHeight: 40, minWidth: 40 }}
+                        >
+                            <LuX size={18} />
                         </Text>
-                    </Flex>
-                </Card>
+                    )}
+                >
+                    {t('manageAndControl', { offering: labels.offeringTitle })}
+                </NavBar>
+                <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Card size="small" style={{ borderRadius: 16 }}>
+                        <List>
+                            {commandActions.map((action) => (
+                                <List.Item
+                                    arrow
+                                    description={<Text type="secondary">{action.description}</Text>}
+                                    key={action.key}
+                                    onClick={() => {
+                                        onClose();
+                                        action.onClick?.();
+                                    }}
+                                    prefix={renderIconTile(action.icon)}
+                                    title={(
+                                        <Flex align="center" gap={8}>
+                                            <Text strong>{action.title}</Text>
+                                            {action.isNew ? <Text style={{ color: token.colorSuccess }}>New</Text> : null}
+                                        </Flex>
+                                    )}
+                                />
+                            ))}
+                        </List>
+                    </Card>
+
+                    <Card size="small" style={{ backgroundColor: token.colorBgLayout, borderRadius: 16 }}>
+                        <Flex gap={4} vertical>
+                            <Text strong>{t('desktopNoteTitle')}</Text>
+                            <Text type="secondary">
+                                {t('desktopNoteDesc')}
+                            </Text>
+                        </Flex>
+                    </Card>
+                </Flex>
             </Flex>
         </Popup>
     );
