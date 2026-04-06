@@ -7,7 +7,6 @@ import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
-import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { removeObjRef } from '@util/utils';
@@ -62,8 +61,6 @@ const DEFAULT_FILTERS: MobileMenuFilters = {
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
-    const tDashboard = useTranslations('MobileDashboard');
-    const tProjectSelector = useTranslations('MobileProjectSelector');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
     const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
@@ -109,7 +106,6 @@ export default function MobileMenuScreen() {
         categoriesCount?: number;
         itemsCount?: number;
     } | null>(null);
-    const { data: dashboardData } = useOwnerDashboard(menuData?.projectId ? { projectId: menuData.projectId } : undefined);
     const uncategorizedLabel = t('uncategorized');
 
     const setActiveProcessingState = useCallback((value: { jobId: string; projectId: string } | null) => {
@@ -697,23 +693,6 @@ export default function MobileMenuScreen() {
         setReturnToCommandMenu(false);
     }, []);
 
-    const overview = dashboardData?.overview;
-    const yesterday = overview?.yesterday;
-    const statusTone = overview?.status === 'working'
-        ? { color: '#16a34a', bg: '#ecfdf5' }
-        : overview?.status === 'low_activity'
-            ? { color: '#f59e0b', bg: '#fffbeb' }
-            : overview?.status === 'no_data'
-                ? { color: '#9ca3af', bg: '#f3f4f6' }
-                : { color: '#9ca3af', bg: '#f3f4f6' };
-    const statusText = overview?.status === 'working'
-        ? tDashboard('menuWorking', { offering: labels.offeringLower })
-        : overview?.status === 'low_activity'
-            ? tDashboard('lowActivity')
-            : overview?.status === 'no_data'
-                ? tDashboard('waitingFirstScan')
-                : tDashboard('noDataYet');
-
     if (!storeDetails || isLoading) {
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
@@ -726,15 +705,6 @@ export default function MobileMenuScreen() {
         <Flex style={{ height: '100%' }} vertical>
             <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
                 <Flex gap={12} vertical>
-                    <Card size="small">
-                        <Flex gap={4} vertical>
-                            <Title level={4} style={{ margin: 0 }}>Manage Your {labels.offeringTitle}</Title>
-                            <Text type="secondary">
-                                Search, edit, and organize your live {labels.offeringLower} in one place.
-                            </Text>
-                        </Flex>
-                    </Card>
-
                     <ProjectSelectorTrigger
                         clickable={projectsList.length > 1 && !isBusy}
                         currentProject={{
@@ -742,34 +712,9 @@ export default function MobileMenuScreen() {
                             isDefault: activeProjectSummary?.isDefault,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
                         }}
-                        helperText={isBusy
-                            ? t('processingLocksProjectSwitch')
-                            : projectsList.length > 1
-                                ? tProjectSelector('manageCatalogsHelper')
-                                : undefined}
                         onClick={projectsList.length > 1 && !isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
                         rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
-
-                    {overview ? (
-                        <Card size="small" style={{ backgroundColor: statusTone.bg }}>
-                            <Flex gap={4} vertical>
-                                <Text strong style={{ color: statusTone.color }}>
-                                    {statusText}
-                                </Text>
-                                {yesterday ? (
-                                    <Text type="secondary">
-                                        {t('yesterdayStats', {
-                                            count: yesterday.metrics?.menuVisits?.toLocaleString() || '0',
-                                            scans: labels.scansLabel,
-                                        })}
-                                    </Text>
-                                ) : (
-                                    <Text type="secondary">{overview.statusMessage}</Text>
-                                )}
-                            </Flex>
-                        </Card>
-                    ) : null}
 
                     <Flex align="center" gap={8}>
                         <Flex style={{ flex: 1, minWidth: 0 }}>
@@ -938,7 +883,6 @@ export default function MobileMenuScreen() {
                 icon={<LuSettings2 size={18} />}
                 onClick={() => setIsCommandMenuOpen(true)}
                 style={{ bottom: 76, insetInlineEnd: 16 }}
-                tooltip={{ title: labels.commandCenterLabel, color: token.colorPrimary }}
                 type="primary"
             />
 

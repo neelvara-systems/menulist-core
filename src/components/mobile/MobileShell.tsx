@@ -21,6 +21,7 @@ export default function MobileShell() {
     const { token } = theme.useToken();
     const [activeTab, setActiveTab] = useState<MobileTab>('today');
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard'>('main');
+    const [isMoreRootScreen, setIsMoreRootScreen] = useState(true);
     const [feedbackBadgeCount, setFeedbackBadgeCount] = useState<number>(0);
     const [isOffline, setIsOffline] = useState(false);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
@@ -54,6 +55,9 @@ export default function MobileShell() {
         if (tab !== 'today') {
             setTodayScreen('main');
         }
+        if (tab !== 'more') {
+            setIsMoreRootScreen(true);
+        }
         if (tab === 'more') {
             setFeedbackBadgeCount(0);
         }
@@ -68,13 +72,20 @@ export default function MobileShell() {
         : activeTab === 'share'
             ? <MobileShareScreen />
             : activeTab === 'more'
-                ? <MobileMoreScreen />
+                ? <MobileMoreScreen onRootStateChange={setIsMoreRootScreen} />
                 : <MobileMenuScreen />;
 
     if (!hasSubscription) {
         return (
-            <Flex style={{ background: token.colorBgLayout, minHeight: '100dvh', padding: 16 }} vertical>
-                <SafeArea position="top" />
+            <Flex
+                style={{
+                    background: token.colorBgLayout,
+                    minHeight: '100dvh',
+                    padding: 16,
+                    paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
+                }}
+                vertical
+            >
                 <Flex align="center" flex={1} justify="center" vertical>
                     <Card style={{ maxWidth: 420, width: '100%' }}>
                         <Flex align="center" gap={16} vertical>
@@ -102,14 +113,33 @@ export default function MobileShell() {
     }
 
     return (
-        <Flex style={{ background: token.colorBgLayout, minHeight: '100dvh' }} vertical>
-            <SafeArea position="top" />
+        <Flex
+            style={{
+                background: token.colorBgLayout,
+                minHeight: '100dvh',
+            }}
+            vertical
+        >
             {isOffline ? (
                 <Card style={{ background: token.colorWarning, borderRadius: 0, color: token.colorTextLightSolid, margin: 0 }}>
                     <Text style={{ color: token.colorTextLightSolid }}>You&apos;re offline. Some features may be limited.</Text>
                 </Card>
             ) : null}
-            <Flex flex={1} style={{ overflowY: 'auto', paddingBottom: 88 }} vertical>
+            <Flex
+                flex={1}
+                style={{
+                    overflowY: 'auto',
+                    paddingBottom: 88,
+                    paddingTop:
+                        activeTab === 'menu' ||
+                        activeTab === 'share' ||
+                        (activeTab === 'today' && todayScreen === 'main') ||
+                        (activeTab === 'more' && isMoreRootScreen)
+                            ? 'calc(env(safe-area-inset-top) + 8px)'
+                            : 0,
+                }}
+                vertical
+            >
                 {screen}
             </Flex>
             <MobileNavigation

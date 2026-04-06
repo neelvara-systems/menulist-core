@@ -5,7 +5,7 @@ import { signOutSession } from '@lib/auth/client';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBarChart3,
@@ -85,7 +85,11 @@ type MoreSubScreen =
     | 'integrations'
     | 'posSync';
 
-export default function MobileMoreScreen() {
+interface MobileMoreScreenProps {
+    onRootStateChange?: (isRoot: boolean) => void;
+}
+
+export default function MobileMoreScreen({ onRootStateChange }: MobileMoreScreenProps) {
     const t = useTranslations('MobileMore');
     const tBusiness = useTranslations('BusinessSettings');
     const tFeedback = useTranslations('FeedbackInbox');
@@ -98,6 +102,10 @@ export default function MobileMoreScreen() {
     const userName = session?.user?.name || 'User';
     const userEmail = session?.user?.email || '';
     const userImage = session?.user?.image || '';
+
+    useEffect(() => {
+        onRootStateChange?.(subScreen === 'main');
+    }, [onRootStateChange, subScreen]);
 
     if (subScreen === 'publicInfo') return <MobilePublicInfoScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'billing') return <MobileBillingScreen onBack={() => setSubScreen('main')} />;

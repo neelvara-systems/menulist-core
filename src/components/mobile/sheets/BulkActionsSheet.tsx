@@ -249,7 +249,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '90vh', overflowX: 'hidden' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '68vh', maxHeight: '90vh', overflowX: 'hidden' }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
@@ -259,7 +259,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                 <NavBar
                     onBack={onClose}
                     right={<Tag color="processing">{t('selectedCount', { count: selectedIds.size })}</Tag>}
-                    style={{ '--height': '48px' } as React.CSSProperties}
                 >
                     {actionTitle}
                 </NavBar>

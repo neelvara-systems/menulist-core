@@ -8,7 +8,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuBarChart3, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuLayers, LuRefreshCw, LuShield, LuTrendingDown, LuZap } from 'react-icons/lu';
+import { LuBarChart3, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuZap } from 'react-icons/lu';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
@@ -117,11 +117,6 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 onBack={onBack}
                 right={
                     <Flex align="center" gap={8}>
-                        {projectsList.length > 1 ? (
-                            <Button fill="none" onClick={() => setIsProjectSelectorOpen(true)} style={{ paddingInline: 8 }}>
-                                <LuLayers size={18} color="#9ca3af" />
-                            </Button>
-                        ) : null}
                         <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
                             <LuRefreshCw size={18} color="#9ca3af" />
                         </Button>
@@ -141,7 +136,6 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         isDefault: projectsList.find((project: any) => project.projectId === projectId)?.isDefault,
                         name: projectName || t('unnamedProject'),
                     }}
-                    helperText={projectsList.length > 1 ? tProjectSelector('manageCatalogsHelper') : undefined}
                     onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                     rightContent={<Tag>{viewModeLabel}</Tag>}
                 />

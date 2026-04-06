@@ -215,18 +215,48 @@ type PopupProps = {
     visible?: boolean;
 };
 
+function containsElementType(node: ReactNode, targetType: unknown): boolean {
+    return Children.toArray(node).some((child) => {
+        if (!isValidElement(child)) return false;
+        if (child.type === targetType) return true;
+        return containsElementType((child.props as { children?: ReactNode }).children, targetType);
+    });
+}
+
 export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visible }: PopupProps) {
     const drawerStyle = sanitizeStyle(bodyStyle);
+    const hasNavBar = containsElementType(children, NavBar);
+    const popupBodyPadding = hasNavBar
+        ? { paddingBottom: 16, paddingInline: 16, paddingTop: 8 }
+        : { padding: 16 };
+    const popupHeight = (drawerStyle?.height as string | number | undefined) ?? 'auto';
+    const popupContentStyle = {
+        height: popupHeight,
+        maxHeight: drawerStyle?.maxHeight ?? '88vh',
+        minHeight: drawerStyle?.minHeight,
+    };
+    const popupBodyStyle = {
+        ...popupBodyPadding,
+        ...drawerStyle,
+        height: undefined,
+        maxHeight: undefined,
+        minHeight: undefined,
+        overflowX: drawerStyle?.overflowX ?? 'hidden',
+        overflowY: drawerStyle?.overflowY ?? 'auto',
+    };
     return (
         <Drawer
             closable={false}
             destroyOnClose={destroyOnClose}
-            height={(drawerStyle?.height || drawerStyle?.maxHeight || 'auto') as string | number}
+            height={popupHeight}
             maskClosable={Boolean(onMaskClick)}
             onClose={onMaskClick}
             open={visible}
             placement="bottom"
-            styles={{ body: { ...drawerStyle, padding: 16 } }}
+            styles={{
+                body: popupBodyStyle,
+                content: popupContentStyle,
+            }}
         >
             {children}
         </Drawer>
@@ -272,7 +302,7 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 
 export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
     const { token } = theme.useToken();
-    const navHeight = (style?.['--height'] || 48) as number;
+    const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     return (
         <Flex
@@ -282,21 +312,28 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
             style={{
                 backgroundColor: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                minHeight: navHeight + 16,
-                padding: `calc(env(safe-area-inset-top) + 8px) 12px 8px`,
+                minHeight: navHeight,
+                padding: `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 zIndex: 5,
                 ...sanitizeStyle(style),
             }}
         >
-            <Button fill="none" onClick={onBack} style={{ minWidth: 32, paddingInline: 0 }}>
+            <Button fill="none" onClick={onBack} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
                 {backIcon ?? <LuArrowLeft size={18} />}
             </Button>
             <Flex align="center" justify="center" style={{ flex: 1, minWidth: 0 }}>
-                {hasTitle ? <Title level={5} style={{ margin: 0, textAlign: 'center' }}>{children}</Title> : null}
+                {hasTitle ? (
+                    <Title
+                        level={5}
+                        style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}
+                    >
+                        {children}
+                    </Title>
+                ) : null}
             </Flex>
-            <Flex align="center" justify="flex-end" style={{ minWidth: 32 }}>
+            <Flex align="center" justify="flex-end" style={{ minHeight: 40, minWidth: 40 }}>
                 {right}
             </Flex>
         </Flex>

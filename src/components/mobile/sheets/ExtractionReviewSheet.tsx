@@ -228,7 +228,7 @@ export default function ExtractionReviewSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '88vh', overflowY: 'auto' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '68vh', maxHeight: '88vh', overflowY: 'auto' }}
             visible={visible}
         >
             <Flex gap={16} vertical>

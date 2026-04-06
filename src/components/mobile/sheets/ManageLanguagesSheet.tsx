@@ -124,7 +124,7 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '88vh', overflowX: 'hidden' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '64vh', maxHeight: '88vh', overflowX: 'hidden' }}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
             visible={visible}
@@ -133,7 +133,6 @@ export default function ManageLanguagesSheet({
                 <NavBar
                     onBack={isSaving ? undefined : onClose}
                     right={isSaving ? <Text type="secondary">{t('updating')}</Text> : undefined}
-                    style={{ '--height': '48px' } as React.CSSProperties}
                 >
                     {t('manageLanguages')}
                 </NavBar>

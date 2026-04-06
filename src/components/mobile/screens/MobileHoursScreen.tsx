@@ -244,15 +244,6 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
 
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
-            <Card size="small">
-                <Flex gap={4} vertical>
-                    <Title level={4} style={{ margin: 0 }}>{tToday('title')}</Title>
-                    <Text type="secondary">
-                        {t('introDesc')}
-                    </Text>
-                </Flex>
-            </Card>
-
             <Card>
                 <List>
                     <List.Item

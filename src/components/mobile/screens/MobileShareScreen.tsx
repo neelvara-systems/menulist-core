@@ -167,13 +167,6 @@ export default function MobileShareScreen() {
 
     return (
         <Flex gap={16} style={{ padding: 16 }} vertical>
-            <Card size="small">
-                <Flex gap={4} vertical>
-                    <Title level={4} style={{ margin: 0 }}>{t('shareYourOffering', { offering: labels.offeringTitle })}</Title>
-                    <Text type="secondary">{t('shareYourOfferingDesc')}</Text>
-                </Flex>
-            </Card>
-
             {activeProject ? (
                 <ProjectSelectorTrigger
                     clickable={data.allProjects.length > 1}
@@ -182,7 +175,6 @@ export default function MobileShareScreen() {
                         isDefault: activeProject.isDefault,
                         name: activeProject.name || tProjectSelector('untitled'),
                     }}
-                    helperText={data.allProjects.length > 1 ? tProjectSelector('manageCatalogsHelper') : undefined}
                     onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
             ) : null}

@@ -174,7 +174,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '60vh', maxHeight: '80vh', overflowY: 'auto' }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
