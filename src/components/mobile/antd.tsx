@@ -30,13 +30,46 @@ import {
     message,
 } from 'antd';
 import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
-import { Children, Fragment, isValidElement, useEffect, useMemo, useState } from 'react';
+import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch } from 'react-icons/lu';
 import { useLocale } from 'next-intl';
 
 type AnyStyle = CSSProperties & Record<string, any>;
 
 const { Text, Title } = Typography;
+const MobileSheetContext = createContext(false);
+let activePopupScrollLocks = 0;
+let lockedScrollY = 0;
+
+function lockMobileBackgroundScroll() {
+    if (typeof document === 'undefined') return;
+    if (activePopupScrollLocks === 0) {
+        lockedScrollY = window.scrollY;
+        document.documentElement.style.overflow = 'hidden';
+        document.documentElement.style.overscrollBehavior = 'none';
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${lockedScrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overscrollBehavior = 'none';
+    }
+    activePopupScrollLocks += 1;
+}
+
+function unlockMobileBackgroundScroll() {
+    if (typeof document === 'undefined' || activePopupScrollLocks === 0) return;
+    activePopupScrollLocks -= 1;
+    if (activePopupScrollLocks === 0) {
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.overscrollBehavior = '';
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overscrollBehavior = '';
+        window.scrollTo(0, lockedScrollY);
+    }
+}
 
 function sanitizeStyle(style?: AnyStyle) {
     if (!style) return undefined;
@@ -244,6 +277,15 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
         overflowX: drawerStyle?.overflowX ?? 'hidden',
         overflowY: drawerStyle?.overflowY ?? 'auto',
     };
+
+    useEffect(() => {
+        if (!visible) return;
+        lockMobileBackgroundScroll();
+        return () => {
+            unlockMobileBackgroundScroll();
+        };
+    }, [visible]);
+
     return (
         <Drawer
             closable={false}
@@ -258,7 +300,9 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
                 content: popupContentStyle,
             }}
         >
-            {children}
+            <MobileSheetContext.Provider value>
+                {children}
+            </MobileSheetContext.Provider>
         </Drawer>
     );
 }
@@ -288,11 +332,14 @@ export const Toast = {
     show: ({ content, duration, icon }: { content?: ReactNode; duration?: number; icon?: string }) => {
         if (!content) return;
         const seconds = typeof duration === 'number' ? duration / 1000 : 1.5;
+        const toastStyle = {
+            marginTop: 'calc(env(safe-area-inset-top) + 12px)',
+        };
         if (icon === 'success') {
-            void message.success({ content, duration: seconds });
+            void message.success({ content, duration: seconds, style: toastStyle });
             return;
         }
-        void message.info({ content, duration: seconds });
+        void message.info({ content, duration: seconds, style: toastStyle });
     },
 };
 
@@ -302,6 +349,7 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 
 export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
     const { token } = theme.useToken();
+    const isInsideSheet = useContext(MobileSheetContext);
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
@@ -314,7 +362,7 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
                 backgroundColor: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 minHeight: navHeight,
-                padding: `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
+                padding: isInsideSheet ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 zIndex: 5,

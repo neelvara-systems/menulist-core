@@ -78,7 +78,7 @@ export default function GenerateDescriptionsSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
+            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
             destroyOnClose
             onMaskClick={isProcessing ? undefined : onClose}
             visible={visible}
@@ -119,13 +119,13 @@ export default function GenerateDescriptionsSheet({
                                         disabled={isProcessing}
                                         fill={contentLength === option.value ? 'solid' : 'outline'}
                                         onClick={() => setContentLength(option.value)}
-                                        style={{ minHeight: 52, width: '100%' }}
+                                        style={{ height: 'auto', justifyContent: 'flex-start', paddingBlock: 12, paddingInline: 12, width: '100%' }}
                                     >
-                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                            <Text strong style={{ color: contentLength === option.value ? '#fff' : undefined }}>
+                                        <Flex gap={4} style={{ minWidth: 0, textAlign: 'left', width: '100%' }} vertical>
+                                            <Text strong style={{ color: contentLength === option.value ? token.colorTextLightSolid : undefined, lineHeight: 1.3 }}>
                                                 {option.label}
                                             </Text>
-                                            <Text style={{ color: contentLength === option.value ? 'rgba(255,255,255,0.8)' : token.colorTextSecondary, whiteSpace: 'normal' }}>
+                                            <Text style={{ color: contentLength === option.value ? token.colorTextLightSolid : token.colorTextSecondary, lineHeight: 1.35, opacity: contentLength === option.value ? 0.85 : 1, whiteSpace: 'normal' }}>
                                                 {option.description}
                                             </Text>
                                         </Flex>

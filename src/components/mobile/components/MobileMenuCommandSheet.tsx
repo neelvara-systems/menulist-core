@@ -171,7 +171,7 @@ export default function MobileMenuCommandSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '60vh', maxHeight: '88vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
+            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
             onMaskClick={onClose}
             visible={visible}
         >

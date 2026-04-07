@@ -124,7 +124,7 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '64vh', maxHeight: '88vh', overflowX: 'hidden', padding: 0 }}
+            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
             visible={visible}

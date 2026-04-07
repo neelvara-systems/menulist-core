@@ -14,6 +14,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { StoreDataType } from '@type/platform/store';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { FaInstagram } from 'react-icons/fa6';
@@ -97,6 +98,7 @@ export default function MobilePresenceMonitor({
     storeDetails,
     menuLink,
 }: MobilePresenceMonitorProps) {
+    const { token } = theme.useToken();
     const t = useTranslations('MobilePresenceMonitor');
     const [updating, setUpdating] = useState<string | null>(null);
     const [localPresence, setLocalPresence] = useState<Record<string, string | undefined>>(
@@ -195,7 +197,7 @@ export default function MobilePresenceMonitor({
                     </Tag>
                 </Flex>
 
-                <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Flex gap={4} vertical>
                         <Text strong>{t('onlineDiscovery')}</Text>
                         <Text type="secondary">{t('onlineDiscoveryDesc')}</Text>
@@ -220,7 +222,7 @@ export default function MobilePresenceMonitor({
                                             {isNext ? <Tag color="processing">{manualActiveCount === 0 ? t('startHere') : t('next')}</Tag> : null}
                                         </Flex>
                                         {guideOpen && !active ? (
-                                            <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                                            <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                                                 <Flex gap={12} vertical>
                                                     <Flex gap={4} vertical>
                                                         <Text strong>{t('howToAdd')}</Text>
@@ -286,7 +288,7 @@ export default function MobilePresenceMonitor({
                                 }
                                 prefix={
                                     <Flex align="center" gap={8}>
-                                        {active ? <LuCheck color="#16a34a" size={16} /> : <LuAlertTriangle color="#d97706" size={16} />}
+                                        {active ? <LuCheck color={token.colorSuccess} size={16} /> : <LuAlertTriangle color={token.colorWarning} size={16} />}
                                         {surface.icon}
                                     </Flex>
                                 }
@@ -301,7 +303,7 @@ export default function MobilePresenceMonitor({
                     })}
                 </List>
 
-                <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Flex gap={4} vertical>
                         <Text strong>{t('insideStore')}</Text>
                         <Text type="secondary">{t('insideStoreDesc')}</Text>
@@ -316,7 +318,7 @@ export default function MobilePresenceMonitor({
                             extra={surface.active ? <Tag color="processing">{t('auto')}</Tag> : null}
                             prefix={
                                 <Flex align="center" gap={8}>
-                                    {surface.active ? <LuCheck color="#16a34a" size={16} /> : <LuAlertTriangle color="#d97706" size={16} />}
+                                    {surface.active ? <LuCheck color={token.colorSuccess} size={16} /> : <LuAlertTriangle color={token.colorWarning} size={16} />}
                                     {surface.icon}
                                 </Flex>
                             }
@@ -326,9 +328,9 @@ export default function MobilePresenceMonitor({
                 </List>
 
                 {allDone ? (
-                    <Card size="small" style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                    <Card size="small" style={{ backgroundColor: token.colorSuccessBg, borderColor: token.colorSuccessBorder }}>
                         <Flex align="center" gap={8}>
-                            <LuCheck color="#16a34a" size={16} />
+                            <LuCheck color={token.colorSuccess} size={16} />
                             <Text>{t('allDoneMessage')}</Text>
                         </Flex>
                     </Card>

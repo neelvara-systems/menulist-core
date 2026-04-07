@@ -1,6 +1,7 @@
 'use client';
 
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageSquare } from 'react-icons/lu';
@@ -58,6 +59,7 @@ export default function MobileCommunicationKit({
 
 function MobileMessageCard({ template }: { template: MessageTemplate }) {
     const t = useTranslations('MobileCommunicationKit');
+    const { token } = theme.useToken();
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -78,19 +80,19 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                     <Text strong>{template.title}</Text>
                     <Text type="secondary">{template.description}</Text>
                 </Flex>
-                <Card style={{ backgroundColor: '#fafafa' }}>
+                <Card style={{ backgroundColor: token.colorFillAlter }}>
                     <Text>{template.message}</Text>
                 </Card>
                 <Flex gap={8}>
                     <Button
                         block
+                        color="success"
                         onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank')}
                         size="small"
-                        style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
                     >
                         <Flex align="center" gap={6}>
                             <LuMessageSquare size={14} />
-                            <Text style={{ color: '#fff' }}>{t('whatsApp')}</Text>
+                            <Text>{t('whatsApp')}</Text>
                         </Flex>
                     </Button>
                     <Button block fill="outline" onClick={() => void handleCopy()} size="small">

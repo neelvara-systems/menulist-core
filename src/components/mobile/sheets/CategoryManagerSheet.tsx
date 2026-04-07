@@ -265,7 +265,7 @@ export default function CategoryManagerSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '85vh', padding: 0 }}
+            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
@@ -312,18 +312,15 @@ export default function CategoryManagerSheet({
                             ? t('reorderItems')
                             : isReorderHubMode
                                 ? t('reorderMenu')
-                            : selectedCategoryId
-                                ? (selectedCategory?.name || t('categoriesTitle'))
+                                : selectedCategoryId
+                                    ? (selectedCategory?.name || t('categoriesTitle'))
                                 : t('categoriesTitle')}
                 </NavBar>
 
                 {isReorderMode ? (
                     <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
                         <Card>
-                            <Flex gap={6} vertical>
-                                <Text strong>{t('reorderCategories')}</Text>
-                                <Text type="secondary">{t('reorderCategoriesHelp')}</Text>
-                            </Flex>
+                            <Text type="secondary">{t('reorderCategoriesHelp')}</Text>
                         </Card>
 
                         <Card>
@@ -379,12 +376,14 @@ export default function CategoryManagerSheet({
                     <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
                         <Card>
                             <Flex gap={6} vertical>
-                                <Text strong>{t('reorderItems')}</Text>
-                                <Text type="secondary">
-                                    {selectedReorderCategory
-                                        ? t('reorderItemsHelp', { category: selectedReorderCategory.name })
-                                        : t('reorderItemsSelectCategoryHelp')}
-                                </Text>
+                                {selectedReorderCategory ? (
+                                    <>
+                                        <Text strong>{selectedReorderCategory.name}</Text>
+                                        <Text type="secondary">{t('reorderItemsHelp', { category: selectedReorderCategory.name })}</Text>
+                                    </>
+                                ) : (
+                                    <Text type="secondary">{t('reorderItemsSelectCategoryHelp')}</Text>
+                                )}
                             </Flex>
                         </Card>
 

@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { computeQualitySignals, getVisibleSignals, isAllClear, QualitySignal } from '@lib/mce/qualitySignals';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
@@ -22,6 +23,7 @@ interface MobileMenuQualitySignalsProps {
 
 export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
+    const { token } = theme.useToken();
     const allSignals = useMemo(() => computeQualitySignals(files), [files]);
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
@@ -43,14 +45,14 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
         <Card
             title={(
                 <Flex align="center" gap={8}>
-                    <LuSparkles color={allClear ? '#16a34a' : '#d97706'} size={16} />
+                    <LuSparkles color={allClear ? token.colorSuccess : token.colorWarning} size={16} />
                     <Text strong>{t('title')}</Text>
                 </Flex>
             )}
         >
             {allClear ? (
                 <Flex align="center" gap={12}>
-                    <LuCheckCircle color="#16a34a" size={24} />
+                    <LuCheckCircle color={token.colorSuccess} size={24} />
                     <Flex gap={2} vertical>
                         <Text strong>{t('allClearTitle')}</Text>
                         <Text type="secondary">{t('allClearDesc')}</Text>
@@ -75,7 +77,7 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
                                     {signal.actionLabel}
                                 </Button>
                             ) : null}
-                            prefix={signal.status === 'ok' ? <LuCheckCircle color="#16a34a" size={16} /> : <LuAlertCircle color="#d97706" size={16} />}
+                            prefix={signal.status === 'ok' ? <LuCheckCircle color={token.colorSuccess} size={16} /> : <LuAlertCircle color={token.colorWarning} size={16} />}
                         />
                     ))}
                 </List>

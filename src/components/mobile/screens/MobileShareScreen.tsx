@@ -10,6 +10,7 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield } from 'react-icons/lu';
@@ -45,6 +46,7 @@ type ShareData = {
 };
 
 export default function MobileShareScreen() {
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const common = useTranslations('Common');
@@ -156,7 +158,7 @@ export default function MobileShareScreen() {
     if (!data) {
         return (
             <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24 }} vertical>
-                <LuBookOpen color="#d1d5db" size={36} />
+                <LuBookOpen color={token.colorTextQuaternary} size={36} />
                 <Title level={4} style={{ margin: 0 }}>{t('noMenuYet')}</Title>
                 <Text type="secondary" style={{ textAlign: 'center' }}>
                     {t('noMenuYetDesc', { offering: labels.offeringLower })}
@@ -181,7 +183,7 @@ export default function MobileShareScreen() {
 
             <LinkCard
                 description={t('offeringPageDesc', { offering: labels.offeringLower })}
-                icon={<LuExternalLink color="#2563eb" size={18} />}
+                icon={<LuExternalLink color={token.colorPrimary} size={18} />}
                 label={t('yourOfferingPage', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(data.obpLink, t('offeringPageCopyLabel', { offering: labels.offeringTitle }))}
                 onOpen={() => window.open(data.obpLink, '_blank')}
@@ -190,7 +192,7 @@ export default function MobileShareScreen() {
 
             <LinkCard
                 description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
-                icon={<LuCopy color="#16a34a" size={18} />}
+                icon={<LuCopy color={token.colorSuccess} size={18} />}
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(data.menuLink, t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
                 onOpen={() => window.open(data.menuLink, '_blank')}
@@ -200,7 +202,7 @@ export default function MobileShareScreen() {
             {data.hasFeedbackEnabled && data.feedbackLink ? (
                 <LinkCard
                     description={t('feedbackLinkDesc')}
-                    icon={<LuMessageSquare color="#16a34a" size={18} />}
+                    icon={<LuMessageSquare color={token.colorSuccess} size={18} />}
                     label={t('feedbackLink')}
                     onCopy={() => void handleCopy(data.feedbackLink, t('feedbackLink'))}
                     onOpen={() => window.open(data.feedbackLink, '_blank')}
@@ -222,7 +224,7 @@ export default function MobileShareScreen() {
                 <Flex gap={12} vertical>
                     <ScreenCard
                         description={t('menuBoardDesc', { offering: labels.offeringLower })}
-                        icon={<LuMonitor color="#2563eb" size={18} />}
+                        icon={<LuMonitor color={token.colorPrimary} size={18} />}
                         label={t('menuBoard')}
                         onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
                         onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
@@ -231,7 +233,7 @@ export default function MobileShareScreen() {
                     />
                     <ScreenCard
                         description={t('highlightsScreenDesc')}
-                        icon={<LuQrCode color="#9333ea" size={18} />}
+                        icon={<LuQrCode color={token.colorInfo} size={18} />}
                         label={t('highlightsScreen')}
                         onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
                         onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
@@ -259,7 +261,7 @@ export default function MobileShareScreen() {
                 <Card title={<Text strong>{t('posSync')}</Text>}>
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={8}>
-                            <LuShield color="#475569" size={18} />
+                            <LuShield color={token.colorTextSecondary} size={18} />
                             <Text strong>{t('posIntegration')}</Text>
                             <Tag color={data.posSyncStatus === 'healthy' ? 'success' : data.posSyncStatus === 'connection_issue' ? 'warning' : 'default'}>
                                 {data.posSyncStatus || t('active')}
@@ -302,6 +304,7 @@ function LinkCard({
     value: string;
 }) {
     const common = useTranslations('Common');
+    const { token } = theme.useToken();
     return (
         <Card>
             <Flex gap={10} vertical>
@@ -310,7 +313,7 @@ function LinkCard({
                     <Text strong>{label}</Text>
                 </Flex>
                 <Text type="secondary">{description}</Text>
-                <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
                 </Card>
                 <Flex gap={8}>

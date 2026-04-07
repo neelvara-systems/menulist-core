@@ -243,7 +243,7 @@ export default function SmartRecommendationsSheet({
     return (
         <>
             <Popup
-                bodyStyle={{ maxHeight: '85vh', overflowX: 'hidden', padding: 0 }}
+                bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={onClose}
                 position="bottom"
