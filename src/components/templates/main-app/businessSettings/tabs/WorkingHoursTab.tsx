@@ -1,5 +1,6 @@
 import { Button, Card, Divider, Flex, Space, TimePicker, Typography } from 'antd';
 import { FormInstance } from 'antd/lib';
+import { getClockTimeInputFormat } from '@util/dateTime';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
 const { Title, Text } = Typography;
@@ -19,6 +20,7 @@ interface WorkingHoursTabProps {
 
 const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHours, setWorkingHours, form }) => {
     const t = useTranslations('BusinessSettings');
+    const timePickerFormat = getClockTimeInputFormat();
     return (
         <Card size='small' ref={scrollRef}>
             <Title level={5} style={{ margin: "unset" }}>{t('workingHours')}</Title>
@@ -53,7 +55,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
                     <Flex key={timeSlot.day} align="center" gap={8} style={{ marginBottom: 16 }}>
                         <Text style={{ minWidth: 120, textTransform: 'capitalize' }}>{timeSlot.day}</Text>
                         <TimePicker.RangePicker
-                            format="HH:mm"
+                            format={timePickerFormat}
                             placeholder={[t('startTime'), t('endTime')]}
                             value={timeSlot.start && timeSlot.end ? [timeSlot.start, timeSlot.end] : null}
                             onChange={(times) => {

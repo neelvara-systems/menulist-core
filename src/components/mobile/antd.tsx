@@ -19,6 +19,7 @@ import {
     Modal,
     Progress,
     Result as AntResult,
+    Select as AntSelect,
     Space as AntSpace,
     Spin,
     Switch as AntSwitch,
@@ -31,7 +32,7 @@ import {
 } from 'antd';
 import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
 import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 import { useLocale } from 'next-intl';
 
 type AnyStyle = CSSProperties & Record<string, any>;
@@ -319,6 +320,42 @@ export function SearchBar({ onChange, placeholder, style, value }: { onChange?: 
     );
 }
 
+type SelectOption = { label: ReactNode; value: string };
+
+export function Select({
+    onChange,
+    options,
+    placeholder,
+    style,
+    value,
+}: {
+    onChange?: (value: string) => void;
+    options: SelectOption[];
+    placeholder?: string;
+    style?: AnyStyle;
+    value?: string;
+}) {
+    return (
+        <AntSelect
+            allowClear={false}
+            filterOption={(input, option) => {
+                const label = option?.label;
+                if (typeof label === 'string') return label.toLowerCase().includes(input.toLowerCase());
+                return String(option?.value || '').toLowerCase().includes(input.toLowerCase());
+            }}
+            onChange={onChange}
+            optionFilterProp="label"
+            options={options}
+            placeholder={placeholder}
+            popupMatchSelectWidth
+            showSearch
+            size="large"
+            style={{ width: '100%', ...sanitizeStyle(style) }}
+            value={value}
+        />
+    );
+}
+
 export function Switch({ checked, loading, onChange }: { checked?: boolean; loading?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
     return <AntSwitch checked={checked} loading={loading} onChange={onChange} size="small" />;
 }
@@ -432,33 +469,90 @@ export function Picker({
     }, [options, searchValue]);
 
     return (
-        <Drawer closable={false} destroyOnClose height="60vh" maskClosable onClose={onClose} open={visible} placement="bottom">
-            <Flex vertical gap={16}>
-                <Flex align="center" justify="space-between">
-                    <Button fill="none" onClick={onClose}>{localeText.cancel}</Button>
-                    <Title level={5} style={{ margin: 0 }}>{title || localeText.select}</Title>
-                    <Button onClick={() => { onConfirm?.([selectedValue]); onClose?.(); }}>{localeText.confirm}</Button>
+        <Popup
+            bodyStyle={{
+                maxHeight: '92vh',
+                minHeight: filteredOptions.length > 0 ? '34vh' : '28vh',
+                overflow: 'hidden',
+                padding: 0,
+            }}
+            destroyOnClose
+            onMaskClick={onClose}
+            visible={visible}
+        >
+            <Flex style={{ height: '100%' }} vertical>
+                <Flex
+                    style={{
+                        backgroundColor: token.colorBgContainer,
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                        padding: '8px 12px 10px',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 2,
+                    }}
+                    vertical
+                >
+                    <Flex align="center" justify="space-between" style={{ minHeight: 40 }}>
+                        <Button
+                            fill="none"
+                            onClick={onClose}
+                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                        >
+                            <LuX size={18} />
+                        </Button>
+                        <Title level={5} style={{ flex: 1, lineHeight: 1.2, margin: 0, paddingInline: 8, textAlign: 'center' }}>
+                            {title || localeText.select}
+                        </Title>
+                        <Button
+                            fill="none"
+                            onClick={() => {
+                                onConfirm?.([selectedValue]);
+                                onClose?.();
+                            }}
+                            style={{
+                                color: token.colorPrimary,
+                                minHeight: 40,
+                                minWidth: 64,
+                            }}
+                        >
+                            {localeText.confirm}
+                        </Button>
+                    </Flex>
+                    {searchPlaceholder ? (
+                        <Input
+                            onChange={setSearchValue}
+                            placeholder={searchPlaceholder}
+                            style={{ marginTop: 8 }}
+                            value={searchValue}
+                        />
+                    ) : null}
                 </Flex>
-                {searchPlaceholder ? (
-                    <Input
-                        onChange={setSearchValue}
-                        placeholder={searchPlaceholder}
-                        value={searchValue}
-                    />
-                ) : null}
-                <AntList
-                    dataSource={filteredOptions}
-                    renderItem={(option) => (
-                        <AntList.Item onClick={() => setSelectedValue(option.value)}>
-                            <Flex align="center" justify="space-between" style={{ width: '100%' }}>
-                                <Text>{option.label}</Text>
-                                {selectedValue === option.value ? <LuCheck color={token.colorPrimary} size={16} /> : null}
-                            </Flex>
-                        </AntList.Item>
+
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px 12px' }}>
+                    {filteredOptions.length > 0 ? (
+                        <AntList
+                            dataSource={filteredOptions}
+                            renderItem={(option) => (
+                                <AntList.Item onClick={() => setSelectedValue(option.value)}>
+                                    <Flex align="center" justify="space-between" style={{ width: '100%' }}>
+                                        <Text>{option.label}</Text>
+                                        {selectedValue === option.value ? <LuCheck color={token.colorPrimary} size={16} /> : null}
+                                    </Flex>
+                                </AntList.Item>
+                            )}
+                        />
+                    ) : (
+                        <Flex align="center" justify="center" style={{ minHeight: 180, paddingBlock: 12 }}>
+                            <AntEmpty
+                                description={<Text type="secondary">No results found</Text>}
+                                image={AntEmpty.PRESENTED_IMAGE_SIMPLE}
+                                style={{ margin: 0 }}
+                            />
+                        </Flex>
                     )}
-                />
+                </div>
             </Flex>
-        </Drawer>
+        </Popup>
     );
 }
 

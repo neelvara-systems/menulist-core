@@ -1,4 +1,5 @@
 import { antdTagsColorCodes } from '@data/common';
+import { getClockTimeInputFormat } from '@util/dateTime';
 import { Flex, Input, TimePicker, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { LuCheck } from 'react-icons/lu';
@@ -30,6 +31,8 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
     showLabels = true,
     showCharCount = false
 }) => {
+    const timePickerFormat = getClockTimeInputFormat();
+
     const handleChange = (field: keyof TimeSlotFormData, value: string) => {
         onChange({ ...formData, [field]: value });
     };
@@ -45,7 +48,7 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                 />
                 <Flex gap={8}>
                     <TimePicker
-                        format="HH:mm"
+                        format={timePickerFormat}
                         minuteStep={15}
                         value={dayjs(formData.startTime, 'HH:mm')}
                         onChange={t => handleChange('startTime', t?.format('HH:mm') || '09:00')}
@@ -53,7 +56,7 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                         style={{ flex: 1 }}
                     />
                     <TimePicker
-                        format="HH:mm"
+                        format={timePickerFormat}
                         minuteStep={15}
                         value={dayjs(formData.endTime, 'HH:mm')}
                         onChange={t => handleChange('endTime', t?.format('HH:mm') || '17:00')}
@@ -103,7 +106,7 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                 <div style={{ flex: 1 }}>
                     {showLabels && <Text strong style={{ display: 'block', marginBottom: 8 }}>Start Time *</Text>}
                     <TimePicker
-                        format="HH:mm"
+                        format={timePickerFormat}
                         minuteStep={15}
                         value={dayjs(formData.startTime, 'HH:mm')}
                         onChange={time => handleChange('startTime', time?.format('HH:mm') || '09:00')}
@@ -113,7 +116,7 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                 <div style={{ flex: 1 }}>
                     {showLabels && <Text strong style={{ display: 'block', marginBottom: 8 }}>End Time *</Text>}
                     <TimePicker
-                        format="HH:mm"
+                        format={timePickerFormat}
                         minuteStep={15}
                         value={dayjs(formData.endTime, 'HH:mm')}
                         onChange={time => handleChange('endTime', time?.format('HH:mm') || '17:00')}

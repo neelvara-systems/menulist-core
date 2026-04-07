@@ -4,10 +4,12 @@ import { removePresetFromAllCategories } from '@database/projects';
 import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { TimeSlotPreset } from '@type/platform/store';
+import { buildClockTimeOptions, formatClockTime } from '@util/dateTime';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuClock, LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 const PRESET_COLORS = ['#f50', '#2db7f5', '#87d068', '#108ee9', '#531dab', '#c41d7f', '#d4380d', '#096dd9', '#7cb305', '#cf1322', '#08979c', '#d46b08'];
@@ -18,6 +20,7 @@ interface MobileTimeSlotsScreenProps {
 
 export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenProps) {
     const t = useTranslations('MobileTimeSlots');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [presets, setPresets] = useState<TimeSlotPreset[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +31,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
     const [formStart, setFormStart] = useState('09:00');
     const [formEnd, setFormEnd] = useState('17:00');
     const [formColor, setFormColor] = useState(PRESET_COLORS[0]);
+    const pickerOptions = buildClockTimeOptions();
 
     useEffect(() => {
         if (storeDetails) {
@@ -84,13 +88,6 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
         }
     };
 
-    const formatTime = (time: string) => {
-        const [h, m] = time.split(':').map(Number);
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-        return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-    };
-
     if (isLoading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
@@ -128,7 +125,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                         <Card style={{ backgroundColor: preset.color || PRESET_COLORS[0], borderRadius: 999, height: 40, minWidth: 8, padding: 0, width: 8 }} />
                                         <Flex gap={2} vertical>
                                             <Text strong>{preset.label}</Text>
-                                            <Text type="secondary">{formatTime(preset.startTime)} - {formatTime(preset.endTime)}</Text>
+                                            <Text type="secondary">{formatClockTime(preset.startTime)} - {formatClockTime(preset.endTime)}</Text>
                                         </Flex>
                                     </Flex>
                                     <Flex gap={4}>
@@ -179,14 +176,24 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                     <Card>
                         <Flex gap={8} vertical>
                             <Text strong>{t('startTime')}</Text>
-                            <Input onChange={setFormStart} type="time" value={formStart} />
+                            <Select
+                                onChange={setFormStart}
+                                options={pickerOptions}
+                                placeholder={t('selectStartTime')}
+                                value={formStart}
+                            />
                         </Flex>
                     </Card>
 
                     <Card>
                         <Flex gap={8} vertical>
                             <Text strong>{t('endTime')}</Text>
-                            <Input onChange={setFormEnd} type="time" value={formEnd} />
+                            <Select
+                                onChange={setFormEnd}
+                                options={pickerOptions}
+                                placeholder={t('selectEndTime')}
+                                value={formEnd}
+                            />
                         </Flex>
                     </Card>
 

@@ -5,9 +5,9 @@ import { validateTimeSlots } from '@hook/useTimedCategories';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { InheritanceState } from '@type/multiOutlet.types';
 import { TimeSlotPreset } from '@type/platform/store';
+import { formatClockTime } from '@util/dateTime';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Flex, Input, Modal, Popover, Switch, Tag, theme, Tooltip, Typography } from 'antd';
-import { useFormatter } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuLock, LuPlus, LuX } from 'react-icons/lu';
 import { CategoryTimeSlot, ExtractedDataCategory, ProjectFileType } from '../types';
@@ -37,20 +37,10 @@ const EditCategoryModal = ({
     isMasterLinked
 }: EditCategoryModalProps) => {
     const { token } = theme.useToken();
-    const format = useFormatter();
-
     // Multi-outlet governance: Determine if fields should be locked
     // Inherited/overridden categories have locked brand-critical fields (name, images)
     const isInheritedCategory = inheritanceState === 'inherited' || inheritanceState === 'overridden';
     const isNameLocked = FEATURE_FLAGS.ENABLE_MULTI_OUTLET && isMasterLinked && isInheritedCategory;
-
-    // Format time string (HH:mm) to user's preferred format
-    const formatTime = useCallback((timeStr: string) => {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-        return format.dateTime(date, 'time');
-    }, [format]);
 
     // Get store details from context
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
@@ -381,7 +371,7 @@ const EditCategoryModal = ({
                                                 onClick={() => handleTogglePreset(preset)}
                                             >
                                                 {isPresetAssigned(preset.id) && <LuCheck size={14} style={{ marginRight: 6 }} />}
-                                                {preset.label} ({formatTime(preset.startTime)} - {formatTime(preset.endTime)})
+                                                {preset.label} ({formatClockTime(preset.startTime)} - {formatClockTime(preset.endTime)})
                                             </Tag>
                                         ))}
 

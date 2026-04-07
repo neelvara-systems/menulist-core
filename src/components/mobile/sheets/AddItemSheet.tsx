@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { Button, Card, Flex, Input, NavBar, Picker, Popup, Text, TextArea } from '../antd';
+import { Button, Card, Flex, Input, NavBar, Popup, Select, Text, TextArea } from '../antd';
 import { useTranslations } from 'next-intl';
 
 interface AddItemSheetProps {
@@ -17,7 +17,6 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     const [price, setPrice] = useState('');
     const [description, setDescription] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || '');
-    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [newCategory, setNewCategory] = useState('');
 
     const handleSave = () => {
@@ -56,15 +55,11 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
                     <Card>
                         <Flex gap={8} vertical>
                             <Text type="secondary">{t('categoryLabel')}</Text>
-                            <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                {categories.find((category) => category.id === selectedCategory)?.name || t('selectCategory')}
-                            </Button>
-                            <Picker
-                                columns={[categories.map((category) => ({ label: category.name, value: category.id }))]}
-                                onClose={() => setShowCategoryPicker(false)}
-                                onConfirm={(value) => { if (value[0]) setSelectedCategory(value[0] as string); }}
-                                value={[selectedCategory]}
-                                visible={showCategoryPicker}
+                            <Select
+                                onChange={setSelectedCategory}
+                                options={categories.map((category) => ({ label: category.name, value: category.id }))}
+                                placeholder={t('selectCategory')}
+                                value={selectedCategory || undefined}
                             />
                         </Flex>
                     </Card>

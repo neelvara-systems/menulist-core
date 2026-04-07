@@ -18,7 +18,7 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
-import { Button, Card, Flex, NavBar, Picker, Popup, Switch, Text, Title, Toast } from '../antd';
+import { Button, Card, Flex, NavBar, Popup, Select, Switch, Text, Title, Toast } from '../antd';
 
 type BlockType = 'popular' | 'quickPick' | 'bestValue';
 
@@ -52,7 +52,6 @@ export default function SmartRecommendationsSheet({
     const [pinnedPopular, setPinnedPopular] = useState<string | undefined>(initialSettings.pinnedPopular);
     const [pinnedQuickPick, setPinnedQuickPick] = useState<string | undefined>(initialSettings.pinnedQuickPick);
     const [pinnedBestValue, setPinnedBestValue] = useState<string | undefined>(initialSettings.pinnedBestValue);
-    const [pickerBlock, setPickerBlock] = useState<BlockType | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -64,7 +63,6 @@ export default function SmartRecommendationsSheet({
         setPinnedPopular(settings.pinnedPopular);
         setPinnedQuickPick(settings.pinnedQuickPick);
         setPinnedBestValue(settings.pinnedBestValue);
-        setPickerBlock(null);
     }, [projectData, visible]);
 
     const itemOptions = useMemo(() => {
@@ -197,18 +195,12 @@ export default function SmartRecommendationsSheet({
                                 <LuHelpCircle size={14} style={{ color: token.colorTextSecondary }} />
                             </Flex>
 
-                            <Button
-                                block
-                                fill="outline"
-                                onClick={() => setPickerBlock(blockType)}
-                                style={{ justifyContent: 'flex-start', minHeight: 44, overflow: 'hidden' }}
-                            >
-                                <Text style={{ overflow: 'hidden', textAlign: 'left', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-                                    {getPickerOptions(blockType).length === 0
-                                        ? t('smartRecommendationsNoEligibleItems')
-                                        : getPinnedLabel(pinnedId)}
-                                </Text>
-                            </Button>
+                            <Select
+                                onChange={(value) => handlePinChange(blockType, value || undefined)}
+                                options={getPickerOptions(blockType)}
+                                placeholder={t('smartRecommendationsChooseItem')}
+                                value={pinnedId}
+                            />
 
                             {pinnedId ? (
                                 <Button
@@ -294,19 +286,6 @@ export default function SmartRecommendationsSheet({
                     </Flex>
                 </Flex>
             </Popup>
-
-            <Picker
-                columns={[pickerBlock ? getPickerOptions(pickerBlock) : []]}
-                onClose={() => setPickerBlock(null)}
-                onConfirm={(value) => {
-                    if (!pickerBlock) return;
-                    handlePinChange(pickerBlock, value[0] || undefined);
-                }}
-                searchPlaceholder={t('smartRecommendationsSearchItems')}
-                title={t('smartRecommendationsPinPickerTitle')}
-                value={pickerBlock ? [blockPickerValueMap[pickerBlock] || ''] : undefined}
-                visible={Boolean(pickerBlock)}
-            />
         </>
     );
 }

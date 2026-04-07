@@ -10,6 +10,7 @@
  */
 
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import { formatClockTime } from '@util/dateTime';
 
 export interface MessageTemplateInput {
     storeName: string;
@@ -187,20 +188,9 @@ export function getTodayHours(
 
     return {
         hours: {
-            open: formatTime12h(openRaw),
-            close: formatTime12h(closeRaw),
+            open: formatClockTime(openRaw),
+            close: formatClockTime(closeRaw),
         },
         isClosed: false,
     };
-}
-
-/**
- * Convert "09:00" to "9:00 AM", "23:00" to "11:00 PM"
- */
-function formatTime12h(time: string): string {
-    const [hours, minutes] = time.split(':').map(Number);
-    if (isNaN(hours) || isNaN(minutes)) return time;
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }

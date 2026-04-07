@@ -31,7 +31,7 @@ import {
 import { getCookie } from 'cookies-next';
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { LuCalendarRange, LuClock3, LuGlobe, LuMoon, LuPalette, LuSun, LuType, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Picker, Popup, Switch, Text, Title } from '../antd';
+import { Button, Card, Flex, Popup, Select, Switch, Text, Title } from '../antd';
 import { useFormatter, useLocale, useTimeZone, useTranslations } from 'next-intl';
 
 interface AppSettingsSheetProps {
@@ -52,10 +52,6 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
     const format = useFormatter();
     const locale = useLocale();
     const activeTimeZone = useTimeZone();
-    const [isLocalePickerOpen, setIsLocalePickerOpen] = useState(false);
-    const [isTimezonePickerOpen, setIsTimezonePickerOpen] = useState(false);
-    const [isDateFormatPickerOpen, setIsDateFormatPickerOpen] = useState(false);
-    const [isTimeFormatPickerOpen, setIsTimeFormatPickerOpen] = useState(false);
     const [isLocalePending, startLocaleTransition] = useTransition();
     const [selectedDateFormat, setSelectedDateFormat] = useState(defaultDateFormatString);
     const [selectedTimeFormat, setSelectedTimeFormat] = useState(defaultTimeFormatString);
@@ -231,23 +227,11 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                             <LuGlobe size={16} />
                             <Text strong>{`Language (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
                         </Flex>
-                        <Button
-                            block
-                            fill="outline"
-                            loading={isLocalePending}
-                            onClick={() => setIsLocalePickerOpen(true)}
-                            style={{ justifyContent: 'flex-start', minHeight: 44 }}
-                        >
-                            {selectedLanguageLabel}
-                        </Button>
-                        <Picker
-                            columns={[languageOptions.map((option) => ({ label: option.label, value: option.value }))]}
-                            onClose={() => setIsLocalePickerOpen(false)}
-                            onConfirm={handleLocaleChange}
-                            searchPlaceholder={tSettings('selectLanguage')}
-                            title={tSettings('language')}
-                            value={[locale]}
-                            visible={isLocalePickerOpen}
+                        <Select
+                            onChange={(value) => handleLocaleChange([value])}
+                            options={languageOptions.map((option) => ({ label: option.label, value: option.value }))}
+                            placeholder={tSettings('selectLanguage')}
+                            value={locale}
                         />
                     </Flex>
                 </Card>
@@ -258,23 +242,11 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                             <LuGlobe size={16} />
                             <Text strong>{`${tSettings('timezone')} (${selectedTimezonePreview || selectedTimezoneLabel})`}</Text>
                         </Flex>
-                        <Button
-                            block
-                            fill="outline"
-                            loading={isLocalePending}
-                            onClick={() => setIsTimezonePickerOpen(true)}
-                            style={{ justifyContent: 'flex-start', minHeight: 44 }}
-                        >
-                            {selectedTimezoneLabel}
-                        </Button>
-                        <Picker
-                            columns={[TIMEZONES_LIST.map((option) => ({ label: option.label, value: option.tzCode }))]}
-                            onClose={() => setIsTimezonePickerOpen(false)}
-                            onConfirm={handleTimezoneChange}
-                            searchPlaceholder={tSettings('selectTimezone')}
-                            title={tSettings('timezone')}
-                            value={[activeTimeZone || defaultTimezone]}
-                            visible={isTimezonePickerOpen}
+                        <Select
+                            onChange={(value) => handleTimezoneChange([value])}
+                            options={TIMEZONES_LIST.map((option) => ({ label: option.label, value: option.tzCode }))}
+                            placeholder={tSettings('selectTimezone')}
+                            value={activeTimeZone || defaultTimezone}
                         />
                     </Flex>
                 </Card>
@@ -285,26 +257,14 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                             <LuCalendarRange size={16} />
                             <Text strong>{`${tSettings('dateFormat')} (${selectedDateFormatLabel})`}</Text>
                         </Flex>
-                        <Button
-                            block
-                            fill="outline"
-                            loading={isLocalePending}
-                            onClick={() => setIsDateFormatPickerOpen(true)}
-                            style={{ justifyContent: 'flex-start', minHeight: 44 }}
-                        >
-                            {selectedDateFormatLabel}
-                        </Button>
-                        <Picker
-                            columns={[DATE_FORMATS.map((option) => ({
+                        <Select
+                            onChange={(value) => handleDateFormatChange([value])}
+                            options={DATE_FORMATS.map((option) => ({
                                 label: format.dateTime(previewDate, option.value),
                                 value: option.label,
-                            }))]}
-                            onClose={() => setIsDateFormatPickerOpen(false)}
-                            onConfirm={handleDateFormatChange}
-                            searchPlaceholder={tSettings('selectDateFormat')}
-                            title={tSettings('dateFormat')}
-                            value={[selectedDateFormat]}
-                            visible={isDateFormatPickerOpen}
+                            }))}
+                            placeholder={tSettings('selectDateFormat')}
+                            value={selectedDateFormat}
                         />
                     </Flex>
                 </Card>
@@ -315,26 +275,14 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                             <LuClock3 size={16} />
                             <Text strong>{`${tSettings('timeFormat')} (${selectedTimeFormatLabel})`}</Text>
                         </Flex>
-                        <Button
-                            block
-                            fill="outline"
-                            loading={isLocalePending}
-                            onClick={() => setIsTimeFormatPickerOpen(true)}
-                            style={{ justifyContent: 'flex-start', minHeight: 44 }}
-                        >
-                            {selectedTimeFormatLabel}
-                        </Button>
-                        <Picker
-                            columns={[TIME_FORMATS.map((option) => ({
+                        <Select
+                            onChange={(value) => handleTimeFormatChange([value])}
+                            options={TIME_FORMATS.map((option) => ({
                                 label: `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`,
                                 value: option.label,
-                            }))]}
-                            onClose={() => setIsTimeFormatPickerOpen(false)}
-                            onConfirm={handleTimeFormatChange}
-                            searchPlaceholder={tSettings('selectTimeFormat')}
-                            title={tSettings('timeFormat')}
-                            value={[selectedTimeFormat]}
-                            visible={isTimeFormatPickerOpen}
+                            }))}
+                            placeholder={tSettings('selectTimeFormat')}
+                            value={selectedTimeFormat}
                         />
                     </Flex>
                 </Card>

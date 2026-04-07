@@ -1,3 +1,5 @@
+import { formatClockTime } from '@util/dateTime';
+
 /**
  * Hours Engine - Compute store open/closed status from workingHours
  *
@@ -70,23 +72,6 @@ function getCurrentTime(timeZone?: string): string {
 function parseTimeToMinutes(time: string): number {
     const [hours, minutes] = time.split(":").map(Number);
     return hours * 60 + minutes;
-}
-
-/**
- * Format time for display (e.g., "09:00" → "9:00 AM")
- */
-function formatTimeForDisplay(time: string, timeFormat?: string): string {
-    const [hours, minutes] = time.split(":").map(Number);
-
-    // If 24-hour format preference, return as-is with slight formatting
-    if (timeFormat === "24h") {
-        return time;
-    }
-
-    // Convert to 12-hour format
-    const period = hours >= 12 ? "PM" : "AM";
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
 /**
@@ -164,23 +149,23 @@ export function getStoreStatus(
 
     if (isCurrentlyOpen) {
         // Store is open - show when it closes
-        const closesAt = formatTimeForDisplay(closeTime, timeFormat);
+        const closesAt = formatClockTime(closeTime, timeFormat);
         return {
             isOpen: true,
             statusText: "Open",
             nextChange: `Closes at ${closesAt}`,
-            currentDayHours: `${openTime} - ${closeTime}`,
+            currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
         };
     } else {
         // Store is closed
         // Check if it opens later today
         if (currentMinutes < openMinutes) {
-            const opensAt = formatTimeForDisplay(openTime, timeFormat);
+            const opensAt = formatClockTime(openTime, timeFormat);
             return {
                 isOpen: false,
                 statusText: "Closed",
                 nextChange: `Opens at ${opensAt}`,
-                currentDayHours: `${openTime} - ${closeTime}`,
+                currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
             };
         }
 
@@ -190,7 +175,7 @@ export function getStoreStatus(
             isOpen: false,
             statusText: "Closed",
             nextChange: nextOpen,
-            currentDayHours: `${openTime} - ${closeTime}`,
+            currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
         };
     }
 }
@@ -210,7 +195,7 @@ function findNextOpenTime(
         const hours = workingHours[checkDay];
         if (hours && hours.includes("-")) {
             const [openTime] = hours.split("-").map((t) => t.trim());
-            const opensAt = formatTimeForDisplay(openTime, timeFormat);
+            const opensAt = formatClockTime(openTime, timeFormat);
             const dayName = getDayDisplayName(checkDay);
 
             // If it's tomorrow, just say "tomorrow"

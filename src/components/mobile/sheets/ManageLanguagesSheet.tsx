@@ -13,7 +13,7 @@ import { useContext, useMemo, useState } from 'react';
 import { LuCheck, LuLanguages, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import type { Project } from '../../templates/main-app/projects/types';
 import { translateFile } from '../../templates/main-app/projects/utils/translationsUtils';
-import { Button, Card, Dialog, Flex, NavBar, Picker, Popup, Text, Toast } from '../antd';
+import { Button, Card, Dialog, Flex, NavBar, Popup, Select, Text, Toast } from '../antd';
 
 interface ManageLanguagesSheetProps {
     projectData: Project;
@@ -31,7 +31,6 @@ export default function ManageLanguagesSheet({
     const t = useTranslations('MobileMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const [showAddPicker, setShowAddPicker] = useState(false);
     const [pendingLanguageCode, setPendingLanguageCode] = useState<string>('');
 
     const projectLanguages = projectData.languages || ['en'];
@@ -107,7 +106,6 @@ export default function ManageLanguagesSheet({
             await updateProject(updated);
             onSaved(updated);
             setPendingLanguageCode('');
-            setShowAddPicker(false);
             Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
         } catch (error) {
             if (error instanceof AICapacityError) {
@@ -186,24 +184,15 @@ export default function ManageLanguagesSheet({
                     <Card size="small">
                         <Flex gap={10} vertical>
                             <Text strong>{t('addLanguage')}</Text>
-                            <Button
-                                block
-                                disabled={isSaving || addableLanguages.length === 0 || projectLanguages.length >= LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
-                                fill="outline"
-                                onClick={() => setShowAddPicker(true)}
-                                style={{ justifyContent: 'flex-start', minHeight: 44, overflow: 'hidden' }}
-                            >
-                                <Flex align="center" gap={8}>
-                                    <LuPlus size={16} />
-                                    <Text style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {pendingLanguageCode
-                                            ? (addableLanguages.find((language) => language.code === pendingLanguageCode)?.nativeName
-                                                || addableLanguages.find((language) => language.code === pendingLanguageCode)?.name
-                                                || t('chooseLanguage'))
-                                            : t('chooseLanguage')}
-                                    </Text>
-                                </Flex>
-                            </Button>
+                            <Select
+                                onChange={setPendingLanguageCode}
+                                options={addableLanguages.map((language) => ({
+                                    label: language.nativeName !== language.name ? `${language.name} (${language.nativeName})` : language.name,
+                                    value: language.code,
+                                }))}
+                                placeholder={t('chooseLanguage')}
+                                value={pendingLanguageCode || undefined}
+                            />
                             <Text type="secondary">
                                 {t('languagesLimit', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}
                             </Text>
@@ -222,18 +211,6 @@ export default function ManageLanguagesSheet({
                 </Flex>
             </Flex>
 
-            <Picker
-                columns={[addableLanguages.map((language) => ({
-                    label: language.nativeName !== language.name ? `${language.name} (${language.nativeName})` : language.name,
-                    value: language.code,
-                }))]}
-                onClose={() => setShowAddPicker(false)}
-                onConfirm={(value) => value[0] && setPendingLanguageCode(value[0] as string)}
-                searchPlaceholder={t('searchLanguages')}
-                title={t('addLanguage')}
-                value={pendingLanguageCode ? [pendingLanguageCode] : []}
-                visible={showAddPicker}
-            />
         </Popup>
     );
 }

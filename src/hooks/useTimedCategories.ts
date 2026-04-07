@@ -13,6 +13,7 @@
  */
 
 import { CategoryTimeSlot, ExtractedDataCategory } from '@template/main-app/projects/types';
+import { formatClockTime } from '@util/dateTime';
 import { useEffect, useMemo, useState } from 'react';
 
 /**
@@ -22,18 +23,7 @@ import { useEffect, useMemo, useState } from 'react';
  */
 export function formatTimeForDisplay(time: string): string {
     if (!time) return '';
-
-    const [hours, minutes] = time.split(':').map(Number);
-    if (isNaN(hours) || isNaN(minutes)) return time;
-
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-
-    // Use browser's locale for formatting
-    return date.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
+    return formatClockTime(time);
 }
 
 /**

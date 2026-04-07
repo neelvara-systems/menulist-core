@@ -19,7 +19,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { InputNumber, Popover, Segmented, theme } from 'antd';
 import { LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuToggleRight } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, NavBar, Picker, Popup, SearchBar, Tag, Text, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 import type { Project } from '../../templates/main-app/projects/types';
 
 interface BulkActionsSheetProps {
@@ -64,7 +64,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     const [pricingMethod, setPricingMethod] = useState<PricingMethod>('increasePercent');
     const [pricingValue, setPricingValue] = useState<number | null>(null);
     const [destinationCategoryId, setDestinationCategoryId] = useState<string | null>(null);
-    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
 
@@ -77,7 +76,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         setPricingMethod('increasePercent');
         setPricingValue(null);
         setDestinationCategoryId(null);
-        setShowCategoryPicker(false);
         setStatusFilter('all');
         setIsStatusFilterOpen(false);
     }, [initialAction, projectData, visible]);
@@ -566,12 +564,12 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                         <Text type="secondary">{t('destinationCategoryHelp')}</Text>
                                     </Flex>
                                 </Flex>
-                                <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                    <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
-                                        <Text>{selectedDestinationCategory?.label || t('chooseCategory')}</Text>
-                                        {selectedDestinationCategory ? <Tag>{t('itemsCount', { count: selectedDestinationCategory.itemCount })}</Tag> : null}
-                                    </Flex>
-                                </Button>
+                                <Select
+                                    onChange={setDestinationCategoryId}
+                                    options={destinationCategories}
+                                    placeholder={t('chooseCategory')}
+                                    value={destinationCategoryId || undefined}
+                                />
                                 {preview && 'itemsToMove' in preview && destinationCategoryId ? (
                                     <Flex gap={8} wrap="wrap">
                                         <Tag color="processing">{t('itemsAffected', { count: preview.itemsToMove })}</Tag>
@@ -796,18 +794,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     </Card>
                 ) : null}
             </Flex>
-
-            {action === 'moveCategory' ? (
-                <Picker
-                    columns={[destinationCategories]}
-                    onClose={() => setShowCategoryPicker(false)}
-                    onConfirm={(value) => value[0] && setDestinationCategoryId(value[0] as string)}
-                    searchPlaceholder={t('searchCategories')}
-                    title={t('moveToCategory')}
-                    value={destinationCategoryId ? [destinationCategoryId] : []}
-                    visible={showCategoryPicker}
-                />
-            ) : null}
         </Popup>
     );
 }

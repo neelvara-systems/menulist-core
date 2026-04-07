@@ -6,7 +6,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuPhoneCall } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Picker, Text, TextArea, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileBasicSettingsScreenProps {
@@ -23,7 +23,6 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const tBusiness = useTranslations('BusinessSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const [showTypePicker, setShowTypePicker] = useState(false);
     const [formData, setFormData] = useState({
         email: storeDetails?.email || '',
         businessType: storeDetails?.businessType || '',
@@ -118,21 +117,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuBriefcase size={14} />
                             <Text type="secondary">{tBusiness('businessType')}</Text>
                         </Flex>
-                        <Button block fill="outline" onClick={() => setShowTypePicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                            {formData.businessType || tBusiness('selectBusinessType')}
-                        </Button>
-                        <Picker
-                            columns={[BUSINESS_TYPE_OPTIONS]}
-                            onClose={() => setShowTypePicker(false)}
-                            onConfirm={(value) => {
-                                if (value[0]) {
-                                    setFormData((previous) => ({ ...previous, businessType: value[0] as string }));
-                                }
-                            }}
-                            searchPlaceholder={tBusiness('selectBusinessType')}
-                            title={tBusiness('businessType')}
-                            value={[formData.businessType]}
-                            visible={showTypePicker}
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({ ...previous, businessType: value }))}
+                            options={BUSINESS_TYPE_OPTIONS}
+                            placeholder={tBusiness('selectBusinessType')}
+                            value={formData.businessType || undefined}
                         />
                     </Flex>
                 </Card>

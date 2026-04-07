@@ -8,6 +8,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry } from '@type/changelog';
+import { getClockTimeInputFormat } from '@util/dateTime';
 import { getBase64, getYouTubeID } from '@util/utils';
 import { Button, DatePicker, Drawer, Flex, Form, Input, Select, Switch, TimePicker, Typography, message } from 'antd';
 import { RcFile } from 'antd/es/upload';
@@ -27,6 +28,7 @@ interface AddEditChangelogProps {
 
 const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSave, initialData }) => {
     const [form] = Form.useForm();
+    const timePickerFormat = getClockTimeInputFormat();
     const dispatch = useAppDispatch();
     const [isSaving, setIsSaving] = useState(false);
     const [attachments, setAttachments] = useState<any[]>([]);
@@ -257,7 +259,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                         <DatePicker style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name="releaseTime" label="Release Time" rules={[{ required: true, message: 'Please select a time' }]} style={{ flex: 1 }}>
-                        <TimePicker style={{ width: '100%' }} format="HH:mm" />
+                        <TimePicker style={{ width: '100%' }} format={timePickerFormat} />
                     </Form.Item>
                 </Flex>
 

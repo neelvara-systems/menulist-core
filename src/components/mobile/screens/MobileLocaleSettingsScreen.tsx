@@ -15,7 +15,7 @@ import { getUTCDate } from '@util/dateTime';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
-import { Button, Card, Checkbox, DotLoading, Flex, NavBar, Picker, Text, Toast } from '../antd';
+import { Button, Card, Checkbox, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileLocaleSettingsScreenProps {
@@ -29,10 +29,6 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
     const now = useMemo(() => getUTCDate().newDate, []);
     const { storeDetails, setStoreDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const [showTzPicker, setShowTzPicker] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [showTimePicker, setShowTimePicker] = useState(false);
-    const [showDefaultLanguagePicker, setShowDefaultLanguagePicker] = useState(false);
     const [formData, setFormData] = useState({
         activeLanguages: storeDetails?.activeLanguages || [],
         currencyCode: tenantDetails?.currencyCode || 'INR',
@@ -128,17 +124,11 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuClock size={14} />
                             <Text type="secondary">{tBusiness('timeZone')}</Text>
                         </Flex>
-                        <Button block fill="outline" onClick={() => setShowTzPicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                            {getLabel(TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode })), formData.timeZone)}
-                        </Button>
-                        <Picker
-                            columns={[TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))]}
-                            onClose={() => setShowTzPicker(false)}
-                            onConfirm={(value) => value[0] && setFormData((previous) => ({ ...previous, timeZone: value[0] as string }))}
-                            searchPlaceholder={tBusiness('selectTimeZone')}
-                            title={tBusiness('timeZone')}
-                            value={[formData.timeZone]}
-                            visible={showTzPicker}
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({ ...previous, timeZone: value }))}
+                            options={TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))}
+                            placeholder={tBusiness('selectTimeZone')}
+                            value={formData.timeZone}
                         />
                     </Flex>
                 </Card>
@@ -146,17 +136,11 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('dateFormat')}</Text>
-                        <Button block fill="outline" onClick={() => setShowDatePicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                            {getLabel(DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label })), formData.dateFormat)}
-                        </Button>
-                        <Picker
-                            columns={[DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))]}
-                            onClose={() => setShowDatePicker(false)}
-                            onConfirm={(value) => value[0] && setFormData((previous) => ({ ...previous, dateFormat: value[0] as string }))}
-                            searchPlaceholder={tBusiness('selectDateFormat')}
-                            title={tBusiness('dateFormat')}
-                            value={[formData.dateFormat]}
-                            visible={showDatePicker}
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
+                            options={DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))}
+                            placeholder={tBusiness('selectDateFormat')}
+                            value={formData.dateFormat}
                         />
                     </Flex>
                 </Card>
@@ -164,17 +148,11 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('timeFormat')}</Text>
-                        <Button block fill="outline" onClick={() => setShowTimePicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                            {getLabel(TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label })), formData.timeFormat)}
-                        </Button>
-                        <Picker
-                            columns={[TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))]}
-                            onClose={() => setShowTimePicker(false)}
-                            onConfirm={(value) => value[0] && setFormData((previous) => ({ ...previous, timeFormat: value[0] as string }))}
-                            searchPlaceholder={tBusiness('selectTimeFormat')}
-                            title={tBusiness('timeFormat')}
-                            value={[formData.timeFormat]}
-                            visible={showTimePicker}
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({ ...previous, timeFormat: value }))}
+                            options={TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))}
+                            placeholder={tBusiness('selectTimeFormat')}
+                            value={formData.timeFormat}
                         />
                     </Flex>
                 </Card>
@@ -208,17 +186,11 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuGlobe size={14} />
                             <Text type="secondary">{tBusiness('defaultLanguage')}</Text>
                         </Flex>
-                        <Button block fill="outline" onClick={() => setShowDefaultLanguagePicker(true)} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                            {getLabel(availableDefaultLanguages, formData.defaultLanguage)}
-                        </Button>
-                        <Picker
-                            columns={[availableDefaultLanguages]}
-                            onClose={() => setShowDefaultLanguagePicker(false)}
-                            onConfirm={(value) => value[0] && setFormData((previous) => ({ ...previous, defaultLanguage: value[0] as string }))}
-                            searchPlaceholder={tBusiness('selectDefaultLanguage')}
-                            title={tBusiness('defaultLanguage')}
-                            value={[formData.defaultLanguage]}
-                            visible={showDefaultLanguagePicker}
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({ ...previous, defaultLanguage: value }))}
+                            options={availableDefaultLanguages}
+                            placeholder={tBusiness('selectDefaultLanguage')}
+                            value={formData.defaultLanguage}
                         />
                     </Flex>
                 </Card>

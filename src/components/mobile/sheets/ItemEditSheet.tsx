@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme, type UploadFile, type UploadProps } from 'antd';
 import { useMemo, useState, useContext } from 'react';
 import { LuCamera, LuPlus, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Dialog, Flex, Image, Input, NavBar, Picker, Popup, Switch, Text, TextArea, Toast, Upload } from '../antd';
+import { Button, Card, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
 import { useTranslations } from 'next-intl';
 
@@ -30,7 +30,6 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
     const [isActive, setIsActive] = useState(item.active);
     const [imagePreview, setImagePreview] = useState<string | null>(item.image || null);
     const [selectedCategory, setSelectedCategory] = useState(item.categoryId || categories[0]?.id || '');
-    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [attributes, setAttributes] = useState(item.attributes || []);
 
     const uploadProps: UploadProps = useMemo(() => ({
@@ -108,15 +107,11 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         {categories.length > 0 ? (
                             <Flex gap={6} vertical>
                                 <Text strong>{t('categoryLabel')}</Text>
-                                <Button block fill="outline" onClick={() => setShowCategoryPicker(true)} style={{ justifyContent: 'flex-start' }}>
-                                    {categories.find((category) => category.id === selectedCategory)?.name || t('selectCategory')}
-                                </Button>
-                                <Picker
-                                    columns={[categories.map((category) => ({ label: category.name, value: category.id }))]}
-                                    onClose={() => setShowCategoryPicker(false)}
-                                    onConfirm={(value) => { if (value[0]) setSelectedCategory(value[0] as string); }}
-                                    value={[selectedCategory]}
-                                    visible={showCategoryPicker}
+                                <Select
+                                    onChange={setSelectedCategory}
+                                    options={categories.map((category) => ({ label: category.name, value: category.id }))}
+                                    placeholder={t('selectCategory')}
+                                    value={selectedCategory || undefined}
                                 />
                             </Flex>
                         ) : null}

@@ -2,8 +2,9 @@ import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPreset
 import { removePresetFromAllCategories } from '@database/projects';
 import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { TimeSlotPreset } from '@type/platform/store';
+import { formatClockTime } from '@util/dateTime';
 import { Button, Card, Divider, Empty, Flex, message, Modal, Popconfirm, Typography } from 'antd';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuClock, LuPen, LuPlus, LuTrash2 } from 'react-icons/lu';
 
@@ -25,7 +26,6 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
     onPresetsChange
 }) => {
     const t = useTranslations('BusinessSettings');
-    const format = useFormatter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPreset, setEditingPreset] = useState<TimeSlotPreset | null>(null);
     const [formData, setFormData] = useState({
@@ -148,14 +148,6 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
         }
     };
 
-    // Format time string (HH:mm) to user's preferred format
-    const formatTime = useCallback((timeStr: string) => {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-        return format.dateTime(date, 'time');
-    }, [format]);
-
     return (
         <Card size='small' ref={scrollRef}>
             <Flex justify="space-between" align="center">
@@ -209,7 +201,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                                     <Flex align="center" gap={4}>
                                         <LuClock size={12} style={{ opacity: 0.5 }} />
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            {formatTime(preset.startTime)} - {formatTime(preset.endTime)}
+                                            {formatClockTime(preset.startTime)} - {formatClockTime(preset.endTime)}
                                         </Text>
                                     </Flex>
                                 </Flex>

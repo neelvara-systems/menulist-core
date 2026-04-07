@@ -10,6 +10,7 @@
 import { getSpecialMenuCapabilities } from "@config/specialMenuConfig";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import type { SpecialMenuMode } from "@template/main-app/projects/types";
+import { getClockTimeInputFormat } from "@util/dateTime";
 import { DatePicker, Form, Input, Modal, Radio, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { useContext, useState } from "react";
@@ -41,6 +42,7 @@ export default function CreateSpecialMenuModal({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const dateTimePickerFormat = `YYYY-MM-DD ${getClockTimeInputFormat()}`;
 
     const capabilities = getSpecialMenuCapabilities(storeDetails?.businessType);
 
@@ -161,7 +163,7 @@ export default function CreateSpecialMenuModal({
                 >
                     <DatePicker
                         showTime={capabilities.allowTimeScheduling}
-                        format={capabilities.allowTimeScheduling ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD"}
+                        format={capabilities.allowTimeScheduling ? dateTimePickerFormat : "YYYY-MM-DD"}
                         disabledDate={(current) => current && current < dayjs().startOf("day")}
                         style={{ width: "100%" }}
                         placeholder="Select start date"
@@ -189,7 +191,7 @@ export default function CreateSpecialMenuModal({
                 >
                     <DatePicker
                         showTime={capabilities.allowTimeScheduling}
-                        format={capabilities.allowTimeScheduling ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD"}
+                        format={capabilities.allowTimeScheduling ? dateTimePickerFormat : "YYYY-MM-DD"}
                         disabledDate={(current) => current && current < dayjs().startOf("day")}
                         style={{ width: "100%" }}
                         placeholder="Select end date"

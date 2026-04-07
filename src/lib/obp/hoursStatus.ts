@@ -1,3 +1,5 @@
+import { formatClockTime } from '@util/dateTime';
+
 /**
  * OBP Hours Status Calculator
  * 
@@ -90,7 +92,7 @@ export function getStoreOpenStatus(
             return {
                 isOpen: true,
                 statusText: 'Open now',
-                nextChange: `Closes ${formatTime(closeMinutes)}`,
+                nextChange: `Closes ${formatClockTime(minutesToTimeString(closeMinutes))}`,
             };
         }
     }
@@ -102,7 +104,7 @@ export function getStoreOpenStatus(
         return {
             isOpen: false,
             statusText: 'Closed',
-            nextChange: `Opens ${formatTime(openMinutes)}`,
+            nextChange: `Opens ${formatClockTime(minutesToTimeString(openMinutes))}`,
         };
     }
 
@@ -123,13 +125,11 @@ function parseTimeToMinutes(time: string): number | null {
     return hours * 60 + minutes;
 }
 
-function formatTime(minutes: number): string {
+function minutesToTimeString(minutes: number): string {
     const normalizedMinutes = minutes % 1440;
     const h = Math.floor(normalizedMinutes / 60);
     const m = normalizedMinutes % 60;
-    const period = h >= 12 ? 'pm' : 'am';
-    const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return m === 0 ? `${displayH}${period}` : `${displayH}:${String(m).padStart(2, '0')}${period}`;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 function findNextOpenDay(

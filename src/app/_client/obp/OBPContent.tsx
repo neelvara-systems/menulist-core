@@ -25,6 +25,7 @@ import {
     where,
 } from "firebase/firestore";
 import { unstable_cache } from "next/cache";
+import { formatClockTime } from '@util/dateTime';
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -183,7 +184,9 @@ function getTodayHoursDisplay(workingHours?: Record<string, string>, timeZone?: 
 
     if (!todayHours || todayHours.toLowerCase() === 'closed') return 'Closed today';
 
-    return `Open today: ${todayHours.replace('-', ' – ')}`;
+    const [openTime, closeTime] = todayHours.split('-').map((time) => time.trim());
+    if (!openTime || !closeTime) return `Open today: ${todayHours.replace('-', ' – ')}`;
+    return `Open today: ${formatClockTime(openTime)} – ${formatClockTime(closeTime)}`;
 }
 
 // ── Freshness signal text ──
@@ -229,7 +232,13 @@ function getAllHoursDisplay(workingHours?: Record<string, string>): React.ReactN
 
     const rows = DAY_ORDER.map(day => {
         const hours = workingHours[day];
-        const display = hours ? hours.replace('-', ' – ') : 'Closed';
+        const display = hours
+            ? (() => {
+                const [openTime, closeTime] = hours.split('-').map((time) => time.trim());
+                if (!openTime || !closeTime) return hours.replace('-', ' – ');
+                return `${formatClockTime(openTime)} – ${formatClockTime(closeTime)}`;
+            })()
+            : 'Closed';
         return (
             <div key={day} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <span style={{ fontWeight: 500, minWidth: 80 }}>{DAY_LABELS[day]}</span>

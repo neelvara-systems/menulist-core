@@ -1,6 +1,7 @@
 'use client'
 
 import type { TimeSlotPreset } from '@type/platform/store';
+import { formatClockTime } from '@util/dateTime';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuClock, LuPlus, LuTrash2 } from 'react-icons/lu';
@@ -120,7 +121,7 @@ export default function MobileCategoryEditSheet({
                                             >
                                                 <Flex align="center" gap={8} wrap="wrap">
                                                     <Tag color={preset.color || 'processing'}>{preset.label}</Tag>
-                                                    <Text type="secondary">{`${preset.startTime} - ${preset.endTime}`}</Text>
+                                                    <Text type="secondary">{`${formatClockTime(preset.startTime)} - ${formatClockTime(preset.endTime)}`}</Text>
                                                 </Flex>
                                             </Checkbox>
                                         );

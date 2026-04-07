@@ -1,6 +1,15 @@
-import { APP_TIMEZONE_COOKIES_KEY, defaultTimezone } from '@lib/localization/config';
+import {
+    APP_LOCALE_COOKIES_KEY,
+    APP_TIMEZONE_COOKIES_KEY,
+    TIME_FORMATS,
+    defaultLocale,
+    defaultTimeFormat,
+    defaultTimezone
+} from '@lib/localization/config';
 import { getCookie } from 'cookies-next';
 import { Timestamp } from 'firebase/firestore';
+import { DateTimeFormatOptions } from 'next-intl';
+import { getUserTimeFormatOptions } from '../formatters';
 
 // ═══════════════════════════════════════════════════════════════
 // TIMEZONE
@@ -138,6 +147,65 @@ export const formatInUserTimezone = (
 ): string => {
     const tz = specificTimezone || getUserTimezone();
     return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: tz }).format(d);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CLOCK-TIME HELPERS (HH:mm stored values, display by user preference)
+// ═══════════════════════════════════════════════════════════════
+
+const resolveClockTimeFormatOptions = (timeFormat?: string): DateTimeFormatOptions => {
+    if (!timeFormat) return getUserTimeFormatOptions();
+    return TIME_FORMATS.find((format) => format.label === timeFormat)?.value || defaultTimeFormat;
+};
+
+const resolveLocalePreference = (locale?: string): string => {
+    if (locale) return locale;
+    try {
+        const cookieValue = getCookie(APP_LOCALE_COOKIES_KEY) as string;
+        if (cookieValue) return cookieValue;
+    } catch {
+        // Cookie access may fail outside browser contexts.
+    }
+    return defaultLocale;
+};
+
+const buildUtcReferenceDate = (time24: string): Date | null => {
+    const [hours, minutes] = time24.split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return new Date(Date.UTC(2000, 0, 1, hours, minutes, 0));
+};
+
+export const formatClockTime = (time24: string, timeFormat?: string, locale?: string): string => {
+    const referenceDate = buildUtcReferenceDate(time24);
+    if (!referenceDate) return time24;
+
+    return new Intl.DateTimeFormat(resolveLocalePreference(locale), {
+        ...resolveClockTimeFormatOptions(timeFormat),
+        timeZone: 'UTC',
+    }).format(referenceDate);
+};
+
+export const buildClockTimeOptions = (timeFormat?: string, locale?: string): { label: string; value: string }[] => {
+    const options: { label: string; value: string }[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+        for (const minute of [0, 15, 30, 45]) {
+            const value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            options.push({
+                label: formatClockTime(value, timeFormat, locale),
+                value,
+            });
+        }
+    }
+    return options;
+};
+
+export const getClockTimeInputFormat = (timeFormat?: string): string => {
+    const options = resolveClockTimeFormatOptions(timeFormat);
+    const is24Hour = options.hour12 === false;
+    const usesDoubleDigitHour = options.hour === '2-digit';
+    return is24Hour
+        ? (usesDoubleDigitHour ? 'HH:mm' : 'H:mm')
+        : (usesDoubleDigitHour ? 'hh:mm A' : 'h:mm A');
 };
 
 // ═══════════════════════════════════════════════════════════════
