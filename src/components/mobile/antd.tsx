@@ -39,19 +39,16 @@ type AnyStyle = CSSProperties & Record<string, any>;
 const { Text, Title } = Typography;
 const MobileSheetContext = createContext(false);
 let activePopupScrollLocks = 0;
-let lockedScrollY = 0;
 
 function lockMobileBackgroundScroll() {
     if (typeof document === 'undefined') return;
     if (activePopupScrollLocks === 0) {
-        lockedScrollY = window.scrollY;
         document.documentElement.style.overflow = 'hidden';
         document.documentElement.style.overscrollBehavior = 'none';
+        document.documentElement.style.touchAction = 'none';
         document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${lockedScrollY}px`;
-        document.body.style.width = '100%';
         document.body.style.overscrollBehavior = 'none';
+        document.body.style.touchAction = 'none';
     }
     activePopupScrollLocks += 1;
 }
@@ -62,12 +59,10 @@ function unlockMobileBackgroundScroll() {
     if (activePopupScrollLocks === 0) {
         document.documentElement.style.overflow = '';
         document.documentElement.style.overscrollBehavior = '';
+        document.documentElement.style.touchAction = '';
         document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
         document.body.style.overscrollBehavior = '';
-        window.scrollTo(0, lockedScrollY);
+        document.body.style.touchAction = '';
     }
 }
 

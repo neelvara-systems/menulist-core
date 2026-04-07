@@ -47,6 +47,9 @@ type MobileMenuFilters = {
     minPrice: number | null;
     maxPrice: number | null;
     hasImage: boolean | null;
+    hasDescription: boolean | null;
+    hasPrice: boolean | null;
+    availability: boolean | null;
     activeStatus: boolean | null;
 };
 
@@ -55,6 +58,9 @@ const DEFAULT_FILTERS: MobileMenuFilters = {
     minPrice: null,
     maxPrice: null,
     hasImage: null,
+    hasDescription: null,
+    hasPrice: null,
+    availability: null,
     activeStatus: null,
 };
 
@@ -369,6 +375,17 @@ export default function MobileMenuScreen() {
                 const hasImage = Boolean(item.image);
                 if (hasImage !== filters.hasImage) return false;
             }
+            if (filters.hasDescription !== null) {
+                const hasDescription = Boolean(item.description?.trim());
+                if (hasDescription !== filters.hasDescription) return false;
+            }
+            if (filters.hasPrice !== null) {
+                const hasPrice = item.price > 0;
+                if (hasPrice !== filters.hasPrice) return false;
+            }
+            if (filters.availability !== null && item.available !== filters.availability) {
+                return false;
+            }
             if (filters.activeStatus !== null && item.active !== filters.activeStatus) {
                 return false;
             }
@@ -381,6 +398,9 @@ export default function MobileMenuScreen() {
             filters.categoryIds.length > 0,
             filters.minPrice !== null || filters.maxPrice !== null,
             filters.hasImage !== null,
+            filters.hasDescription !== null,
+            filters.hasPrice !== null,
+            filters.availability !== null,
             filters.activeStatus !== null,
         ].filter(Boolean).length;
     }, [filters]);
@@ -413,6 +433,30 @@ export default function MobileMenuScreen() {
                 key: 'image',
                 label: filters.hasImage ? t('hasImage') : t('noImage'),
                 onRemove: () => setFilters((prev) => ({ ...prev, hasImage: null })),
+            });
+        }
+
+        if (filters.hasDescription !== null) {
+            chips.push({
+                key: 'description',
+                label: filters.hasDescription ? t('hasDescription') : t('noDescription'),
+                onRemove: () => setFilters((prev) => ({ ...prev, hasDescription: null })),
+            });
+        }
+
+        if (filters.hasPrice !== null) {
+            chips.push({
+                key: 'price-presence',
+                label: filters.hasPrice ? t('hasPrice') : t('noPrice'),
+                onRemove: () => setFilters((prev) => ({ ...prev, hasPrice: null })),
+            });
+        }
+
+        if (filters.availability !== null) {
+            chips.push({
+                key: 'availability',
+                label: filters.availability ? t('available') : t('soldOut'),
+                onRemove: () => setFilters((prev) => ({ ...prev, availability: null })),
             });
         }
 
@@ -701,6 +745,10 @@ export default function MobileMenuScreen() {
                         rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
 
+                    {menuData?.files ? (
+                        <MobileMenuQualitySignals files={menuData.files} />
+                    ) : null}
+
                     <Flex align="center" gap={8}>
                         <Flex style={{ flex: 1, minWidth: 0 }}>
                             <SearchBar
@@ -753,6 +801,7 @@ export default function MobileMenuScreen() {
                                 </Tag>
                             ))}
                             <Button
+                                color="danger"
                                 fill="none"
                                 onClick={() => {
                                     setSearchQuery('');
@@ -777,12 +826,6 @@ export default function MobileMenuScreen() {
 
                 </Flex>
             </Card>
-
-            {menuData?.files ? (
-                <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
-                    <MobileMenuQualitySignals files={menuData.files} />
-                </Card>
-            ) : null}
 
             <PullToRefresh onRefresh={handleRefresh}>
                 <Flex gap={16} style={{ padding: 16 }} vertical>
@@ -810,7 +853,7 @@ export default function MobileMenuScreen() {
                                 </Flex>
                             </Card>
                         ) : (
-                            <Empty description={searchQuery ? t('noItemsFound') : t('noMenuItemsYet', { items: labels.itemsPlural })} />
+                            <Empty description={searchQuery || appliedFilterCount > 0 ? t('noItemsToShow') : t('noMenuItemsYet', { items: labels.itemsPlural })} />
                         )
                     ) : (
                         <Collapse defaultActiveKey={Object.keys(groupedItems)[0] ? [Object.keys(groupedItems)[0]] : undefined}>
@@ -934,12 +977,32 @@ export default function MobileMenuScreen() {
             </Popup>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh', overflowX: 'hidden' }}
+                bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsFilterSheetOpen(false)}
                 visible={isFilterSheetOpen}
             >
-                <Flex gap={16} vertical>
-                    <Title level={4} style={{ margin: 0 }}>{t('filters')}</Title>
+                <Flex style={{ height: '100%' }} vertical>
+                    <Flex
+                        align="center"
+                        justify="space-between"
+                        style={{
+                            backgroundColor: token.colorBgContainer,
+                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                            minHeight: 52,
+                            padding: '6px 12px',
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 5,
+                        }}
+                    >
+                        <div style={{ minHeight: 40, minWidth: 40 }} />
+                        <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>{t('filters')}</Title>
+                        <Button fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                            <LuX size={18} />
+                        </Button>
+                    </Flex>
+
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
 
                     <Card>
                         <Flex gap={12} vertical>
@@ -1016,6 +1079,54 @@ export default function MobileMenuScreen() {
 
                     <Card>
                         <Flex gap={12} vertical>
+                            <Text strong>{t('descriptions')}</Text>
+                            <Segmented
+                                block
+                                onChange={(value) => setFilters((prev) => ({ ...prev, hasDescription: value === 'all' ? null : value === 'yes' }))}
+                                options={[
+                                    { label: t('allItems'), value: 'all' },
+                                    { label: t('hasDescription'), value: 'yes' },
+                                    { label: t('noDescription'), value: 'no' },
+                                ]}
+                                value={filters.hasDescription === null ? 'all' : filters.hasDescription ? 'yes' : 'no'}
+                            />
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('pricing')}</Text>
+                            <Segmented
+                                block
+                                onChange={(value) => setFilters((prev) => ({ ...prev, hasPrice: value === 'all' ? null : value === 'yes' }))}
+                                options={[
+                                    { label: t('allItems'), value: 'all' },
+                                    { label: t('hasPrice'), value: 'yes' },
+                                    { label: t('noPrice'), value: 'no' },
+                                ]}
+                                value={filters.hasPrice === null ? 'all' : filters.hasPrice ? 'yes' : 'no'}
+                            />
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('availability')}</Text>
+                            <Segmented
+                                block
+                                onChange={(value) => setFilters((prev) => ({ ...prev, availability: value === 'all' ? null : value === 'available' }))}
+                                options={[
+                                    { label: t('allItems'), value: 'all' },
+                                    { label: t('available'), value: 'available' },
+                                    { label: t('soldOut'), value: 'soldOut' },
+                                ]}
+                                value={filters.availability === null ? 'all' : filters.availability ? 'available' : 'soldOut'}
+                            />
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={12} vertical>
                             <Text strong>{t('status')}</Text>
                             <Segmented
                                 block
@@ -1033,6 +1144,7 @@ export default function MobileMenuScreen() {
                     <Flex gap={8}>
                         <Button
                             block
+                            color="danger"
                             fill="outline"
                             onClick={() => setFilters(DEFAULT_FILTERS)}
                         >
@@ -1041,6 +1153,7 @@ export default function MobileMenuScreen() {
                         <Button block onClick={() => setIsFilterSheetOpen(false)}>
                             {t('applyFilters')}
                         </Button>
+                    </Flex>
                     </Flex>
                 </Flex>
             </Popup>

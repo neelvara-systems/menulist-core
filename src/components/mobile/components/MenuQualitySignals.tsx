@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
-import { Button, Card, Flex, List, Text, Toast } from '../antd';
+import { Button, Card, Flex, List, Tag, Text, Toast } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
@@ -42,19 +42,22 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
     };
 
     return (
-        <Card
-            title={(
-                <Flex align="center" gap={8}>
-                    <LuSparkles color={allClear ? token.colorSuccess : token.colorWarning} size={16} />
-                    <Text strong>{t('title')}</Text>
+        <Card size="small" style={{ backgroundColor: allClear ? token.colorSuccessBg : token.colorFillAlter }}>
+            <Flex gap={12} vertical>
+                <Flex align="center" justify="space-between">
+                    <Flex align="center" gap={8}>
+                        <LuSparkles color={allClear ? token.colorSuccess : token.colorWarning} size={16} />
+                        <Text strong>{t('title')}</Text>
+                    </Flex>
+                    <Tag color={allClear ? 'success' : 'warning'}>
+                        {allClear ? t('allClearTitle') : signals.length}
+                    </Tag>
                 </Flex>
-            )}
-        >
+
             {allClear ? (
                 <Flex align="center" gap={12}>
                     <LuCheckCircle color={token.colorSuccess} size={24} />
                     <Flex gap={2} vertical>
-                        <Text strong>{t('allClearTitle')}</Text>
                         <Text type="secondary">{t('allClearDesc')}</Text>
                     </Flex>
                 </Flex>
@@ -82,6 +85,7 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
                     ))}
                 </List>
             )}
+            </Flex>
         </Card>
     );
 }
