@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2072,8 +2073,7 @@
         "title": "Calidad del menú",
         "allClearTitle": "Tu menú se ve muy bien",
         "allClearDesc": "Las descripciones, fotos y precios se ven bien.",
-        "openDesktopGenerate": "Abre MenuList en escritorio para generar contenido",
-        "openDesktopReview": "Abre el editor en escritorio para revisar"
+        "review": "Revisar"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",

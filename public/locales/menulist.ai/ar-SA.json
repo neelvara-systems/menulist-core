@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2072,8 +2073,7 @@
         "title": "جودة القائمة",
         "allClearTitle": "قائمتك تبدو رائعة",
         "allClearDesc": "الأوصاف والصور والأسعار تبدو جيدة.",
-        "openDesktopGenerate": "افتح MenuList على سطح المكتب لإنشاء المحتوى",
-        "openDesktopReview": "افتح المحرر على سطح المكتب للمراجعة"
+        "review": "مراجعة"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",

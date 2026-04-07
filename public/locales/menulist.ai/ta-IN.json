@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2072,8 +2073,7 @@
         "title": "மெனு தரம்",
         "allClearTitle": "உங்கள் மெனு சிறப்பாக உள்ளது",
         "allClearDesc": "விளக்கங்கள், படங்கள் மற்றும் விலைகள் நன்றாக உள்ளன.",
-        "openDesktopGenerate": "உள்ளடக்கம் உருவாக்க டெஸ்க்டாப்பில் MenuList திறக்கவும்",
-        "openDesktopReview": "மதிப்பாய்வு செய்ய டெஸ்க்டாப்பில் எடிட்டரை திறக்கவும்"
+        "review": "மதிப்பாய்வு"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",

@@ -51,6 +51,7 @@ type MobileMenuFilters = {
     hasPrice: boolean | null;
     availability: boolean | null;
     activeStatus: boolean | null;
+    qualityIssue: 'priceOutliers' | null;
 };
 
 const DEFAULT_FILTERS: MobileMenuFilters = {
@@ -62,6 +63,7 @@ const DEFAULT_FILTERS: MobileMenuFilters = {
     hasPrice: null,
     availability: null,
     activeStatus: null,
+    qualityIssue: null,
 };
 
 export default function MobileMenuScreen() {
@@ -356,6 +358,41 @@ export default function MobileMenuScreen() {
         return items;
     }, [activeLang, menuData, t, uncategorizedLabel]);
 
+    const priceOutlierItemIds = useMemo(() => {
+        const LOW_FACTOR = 0.35;
+        const HIGH_FACTOR = 3;
+        const MIN_ITEMS = 4;
+        const groupedPrices = new Map<string, { id: string; price: number }[]>();
+
+        menuItems.forEach((item) => {
+            if (!item.active || item.attributes?.length) return;
+            if (!item.categoryId || !(item.price > 0)) return;
+            const items = groupedPrices.get(item.categoryId) || [];
+            items.push({ id: item.id, price: item.price });
+            groupedPrices.set(item.categoryId, items);
+        });
+
+        const outliers = new Set<string>();
+        groupedPrices.forEach((items) => {
+            if (items.length < MIN_ITEMS) return;
+            const sortedPrices = items.map((item) => item.price).sort((a, b) => a - b);
+            const mid = Math.floor(sortedPrices.length / 2);
+            const median = sortedPrices.length % 2 !== 0
+                ? sortedPrices[mid]
+                : (sortedPrices[mid - 1] + sortedPrices[mid]) / 2;
+
+            if (!(median > 0)) return;
+
+            items.forEach((item) => {
+                if (item.price < median * LOW_FACTOR || item.price > median * HIGH_FACTOR) {
+                    outliers.add(item.id);
+                }
+            });
+        });
+
+        return outliers;
+    }, [menuItems]);
+
     const filteredItems = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
         return menuItems.filter((item) => {
@@ -389,9 +426,12 @@ export default function MobileMenuScreen() {
             if (filters.activeStatus !== null && item.active !== filters.activeStatus) {
                 return false;
             }
+            if (filters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
+                return false;
+            }
             return true;
         });
-    }, [filters, menuItems, searchQuery]);
+    }, [filters, menuItems, priceOutlierItemIds, searchQuery]);
 
     const appliedFilterCount = useMemo(() => {
         return [
@@ -402,6 +442,7 @@ export default function MobileMenuScreen() {
             filters.hasPrice !== null,
             filters.availability !== null,
             filters.activeStatus !== null,
+            filters.qualityIssue !== null,
         ].filter(Boolean).length;
     }, [filters]);
 
@@ -468,8 +509,36 @@ export default function MobileMenuScreen() {
             });
         }
 
+        if (filters.qualityIssue === 'priceOutliers') {
+            chips.push({
+                key: 'quality-price-outliers',
+                label: t('unusualPrices'),
+                onRemove: () => setFilters((prev) => ({ ...prev, qualityIssue: null })),
+            });
+        }
+
         return chips;
     }, [categoryOptions, filters, t]);
+
+    const handleReviewQualitySignal = useCallback((signal: { id: string }) => {
+        setSearchQuery('');
+        setFilters(() => {
+            switch (signal.id) {
+            case 'descriptions':
+                return { ...DEFAULT_FILTERS, hasDescription: false };
+            case 'images':
+                return { ...DEFAULT_FILTERS, hasImage: false };
+            case 'prices':
+                return { ...DEFAULT_FILTERS, hasPrice: false };
+            case 'hidden':
+                return { ...DEFAULT_FILTERS, activeStatus: false };
+            case 'priceOutliers':
+                return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
+            default:
+                return DEFAULT_FILTERS;
+            }
+        });
+    }, []);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, MenuItemType[]> = {};
@@ -746,7 +815,7 @@ export default function MobileMenuScreen() {
                     />
 
                     {menuData?.files ? (
-                        <MobileMenuQualitySignals files={menuData.files} />
+                        <MobileMenuQualitySignals files={menuData.files} onReviewSignal={handleReviewQualitySignal} />
                     ) : null}
 
                     <Flex align="center" gap={8}>

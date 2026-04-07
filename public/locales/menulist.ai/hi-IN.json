@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2070,8 +2071,7 @@
         "title": "मेन्यू गुणवत्ता",
         "allClearTitle": "आपका मेन्यू बहुत अच्छा दिख रहा है",
         "allClearDesc": "विवरण, फ़ोटो और कीमतें अच्छी दिख रही हैं।",
-        "openDesktopGenerate": "सामग्री बनाने के लिए डेस्कटॉप पर MenuList खोलें",
-        "openDesktopReview": "समीक्षा के लिए डेस्कटॉप पर एडिटर खोलें"
+        "review": "समीक्षा करें"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",

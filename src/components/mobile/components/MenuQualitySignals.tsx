@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
-import { Button, Card, Flex, List, Tag, Text, Toast } from '../antd';
+import { Card, Flex, List, Tag, Text } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
@@ -19,9 +19,10 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
 
 interface MobileMenuQualitySignalsProps {
     files: ProjectFileType[] | undefined;
+    onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ files, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
     const { token } = theme.useToken();
     const allSignals = useMemo(() => computeQualitySignals(files), [files]);
@@ -31,15 +32,6 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
     if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || signals.length === 0) {
         return null;
     }
-
-    const handleAction = (signal: QualitySignal) => {
-        Toast.show({
-            content: signal.actionRoute === 'descriptions' || signal.actionRoute === 'images'
-                ? t('openDesktopGenerate')
-                : t('openDesktopReview'),
-            duration: 2000,
-        });
-    };
 
     return (
         <Card size="small" style={{ backgroundColor: allClear ? token.colorSuccessBg : token.colorFillAlter }}>
@@ -65,7 +57,9 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
                 <List>
                     {signals.map((signal) => (
                         <List.Item
+                            arrow={signal.status === 'warning'}
                             key={signal.id}
+                            onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
                             description={(
                                 <Flex gap={8} vertical>
                                     <Flex align="center" gap={8}>
@@ -75,11 +69,7 @@ export default function MobileMenuQualitySignals({ files }: MobileMenuQualitySig
                                     {signal.helpText ? <Text type="secondary">{signal.helpText}</Text> : null}
                                 </Flex>
                             )}
-                            extra={signal.actionLabel && signal.actionRoute ? (
-                                <Button fill="outline" onClick={() => handleAction(signal)} size="small">
-                                    {signal.actionLabel}
-                                </Button>
-                            ) : null}
+                            extra={signal.status === 'warning' ? <Tag color="processing">{t('review')}</Tag> : null}
                             prefix={signal.status === 'ok' ? <LuCheckCircle color={token.colorSuccess} size={16} /> : <LuAlertCircle color={token.colorWarning} size={16} />}
                         />
                     ))}

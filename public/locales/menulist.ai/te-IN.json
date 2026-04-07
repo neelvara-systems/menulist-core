@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2072,8 +2073,7 @@
         "title": "మెనూ నాణ్యత",
         "allClearTitle": "మీ మెనూ చాలా బాగుంది",
         "allClearDesc": "వివరణలు, ఫోటోలు మరియు ధరలు బాగున్నాయి.",
-        "openDesktopGenerate": "కంటెంట్ సృష్టించడానికి డెస్క్‌టాప్‌లో MenuList తెరవండి",
-        "openDesktopReview": "పరిశీలించడానికి డెస్క్‌టాప్‌లో ఎడిటర్ తెరవండి"
+        "review": "పరిశీలించండి"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",

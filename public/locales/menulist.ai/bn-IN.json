@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2072,8 +2073,7 @@
         "title": "মেনুর মান",
         "allClearTitle": "আপনার মেনু দারুণ দেখাচ্ছে",
         "allClearDesc": "বর্ণনা, ছবি এবং দাম ঠিক আছে।",
-        "openDesktopGenerate": "কনটেন্ট তৈরি করতে ডেস্কটপে MenuList খুলুন",
-        "openDesktopReview": "রিভিউ করতে ডেস্কটপে এডিটর খুলুন"
+        "review": "রিভিউ"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",

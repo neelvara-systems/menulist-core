@@ -1021,6 +1021,7 @@
         "uploadMenuPhoto": "Upload {offering} Photo",
         "noItemsFound": "No items found",
         "noItemsToShow": "No items to show",
+        "unusualPrices": "Unusual prices",
         "noMenuItemsYet": "No {items} yet",
         "itemUpdated": "Item updated",
         "itemDeleted": "Item deleted",
@@ -2059,8 +2060,7 @@
         "title": "Menu Quality",
         "allClearTitle": "Your menu looks great",
         "allClearDesc": "Descriptions, photos, and prices look good.",
-        "openDesktopGenerate": "Open MenuList on desktop to generate content",
-        "openDesktopReview": "Open the editor on desktop to review"
+        "review": "Review"
     },
     "MobileCommunicationKit": {
         "title": "Customer Messages",
