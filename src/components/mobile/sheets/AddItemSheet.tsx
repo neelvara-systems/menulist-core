@@ -33,55 +33,57 @@ export default function AddItemSheet({ currencySymbol, categories, onClose, onSa
     };
 
     return (
-        <Popup bodyStyle={{ maxHeight: '85vh' }} destroyOnClose onMaskClick={onClose} visible>
-            <Flex gap={12} vertical>
+        <Popup bodyStyle={{ maxHeight: '85vh', padding: 0 }} destroyOnClose onMaskClick={onClose} visible>
+            <Flex style={{ maxHeight: '85vh', overflowY: 'auto' }} vertical>
                 <NavBar onBack={onClose}>{t('addItemTitle')}</NavBar>
 
-                <Card>
-                    <Flex gap={8} vertical>
-                        <Text type="secondary">{t('itemNameLabel')}</Text>
-                        <Input autoFocus onChange={setName} placeholder={t('itemNamePlaceholder')} value={name} />
-                    </Flex>
-                </Card>
-
-                <Card>
-                    <Flex gap={8} vertical>
-                        <Text type="secondary">{t('priceLabel', { currency: currencySymbol })}</Text>
-                        <Input onChange={setPrice} placeholder={t('pricePlaceholder')} type="number" value={price} />
-                    </Flex>
-                </Card>
-
-                {categories.length > 0 ? (
+                <Flex gap={12} style={{ padding: '0 12px 12px' }} vertical>
                     <Card>
                         <Flex gap={8} vertical>
-                            <Text type="secondary">{t('categoryLabel')}</Text>
-                            <Select
-                                onChange={setSelectedCategory}
-                                options={categories.map((category) => ({ label: category.name, value: category.id }))}
-                                placeholder={t('selectCategory')}
-                                value={selectedCategory || undefined}
-                            />
+                            <Text type="secondary">{t('itemNameLabel')}</Text>
+                            <Input autoFocus onChange={setName} placeholder={t('itemNamePlaceholder')} value={name} />
                         </Flex>
                     </Card>
-                ) : null}
 
-                <Card>
-                    <Flex gap={8} vertical>
-                        <Text type="secondary">{t('newCategoryLabel')}</Text>
-                        <Input onChange={setNewCategory} placeholder={t('newCategoryPlaceholder')} value={newCategory} />
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text type="secondary">{t('priceLabel', { currency: currencySymbol })}</Text>
+                            <Input onChange={setPrice} placeholder={t('pricePlaceholder')} type="number" value={price} />
+                        </Flex>
+                    </Card>
+
+                    {categories.length > 0 ? (
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">{t('categoryLabel')}</Text>
+                                <Select
+                                    onChange={setSelectedCategory}
+                                    options={categories.map((category) => ({ label: category.name, value: category.id }))}
+                                    placeholder={t('selectCategory')}
+                                    value={selectedCategory || undefined}
+                                />
+                            </Flex>
+                        </Card>
+                    ) : null}
+
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text type="secondary">{t('newCategoryLabel')}</Text>
+                            <Input onChange={setNewCategory} placeholder={t('newCategoryPlaceholder')} value={newCategory} />
+                        </Flex>
+                    </Card>
+
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text type="secondary">{t('descriptionOptionalLabel')}</Text>
+                            <TextArea maxLength={200} onChange={setDescription} placeholder={t('descriptionPlaceholder')} rows={2} showCount value={description} />
+                        </Flex>
+                    </Card>
+
+                    <Flex gap={8}>
+                        <Button block fill="outline" onClick={onClose} size="large">{t('cancel')}</Button>
+                        <Button block disabled={!name.trim()} onClick={handleSave} size="large">{t('addItem')}</Button>
                     </Flex>
-                </Card>
-
-                <Card>
-                    <Flex gap={8} vertical>
-                        <Text type="secondary">{t('descriptionOptionalLabel')}</Text>
-                        <TextArea maxLength={200} onChange={setDescription} placeholder={t('descriptionPlaceholder')} rows={2} showCount value={description} />
-                    </Flex>
-                </Card>
-
-                <Flex gap={8}>
-                    <Button block fill="outline" onClick={onClose} size="large">{t('cancel')}</Button>
-                    <Button block disabled={!name.trim()} onClick={handleSave} size="large">{t('addItem')}</Button>
                 </Flex>
             </Flex>
         </Popup>

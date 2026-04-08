@@ -74,17 +74,18 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible
         >
-            <Flex gap={16} vertical>
+            <Flex style={{ maxHeight: '85vh', overflowY: 'auto' }} vertical>
                 <NavBar onBack={onClose}>{t('editItemTitle')}</NavBar>
 
-                <Card size="small">
-                    <Flex gap={16} vertical>
+                <Flex gap={16} style={{ padding: '0 12px 12px' }} vertical>
+                    <Card size="small">
+                        <Flex gap={16} vertical>
                         <Flex gap={6} vertical>
                             <Text strong>{t('itemNameLabel')}</Text>
                             <Input
@@ -242,56 +243,57 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                             )}
                         </Flex>
 
-                        <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
-                            <Flex align="center" justify="space-between">
-                                <Flex gap={2} vertical>
-                                    <Text strong>{availabilityLabels.available}</Text>
-                                    <Text type="secondary">{t('availableHelp')}</Text>
+                            <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                <Flex align="center" justify="space-between">
+                                    <Flex gap={2} vertical>
+                                        <Text strong>{availabilityLabels.available}</Text>
+                                        <Text type="secondary">{t('availableHelp')}</Text>
+                                    </Flex>
+                                    <Switch checked={isAvailable} onChange={setIsAvailable} />
                                 </Flex>
-                                <Switch checked={isAvailable} onChange={setIsAvailable} />
-                            </Flex>
-                        </Card>
+                            </Card>
 
-                        <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
-                            <Flex align="center" justify="space-between">
-                                <Flex gap={2} vertical>
-                                    <Text strong>{t('showOnMenu')}</Text>
-                                    <Text type="secondary">{t('showOnMenuHelp')}</Text>
+                            <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                <Flex align="center" justify="space-between">
+                                    <Flex gap={2} vertical>
+                                        <Text strong>{t('showOnMenu')}</Text>
+                                        <Text type="secondary">{t('showOnMenuHelp')}</Text>
+                                    </Flex>
+                                    <Switch checked={isActive} onChange={setIsActive} />
                                 </Flex>
-                                <Switch checked={isActive} onChange={setIsActive} />
-                            </Flex>
-                        </Card>
+                            </Card>
+                        </Flex>
+                    </Card>
+
+                    <Flex gap={12}>
+                        <Button block fill="outline" onClick={onClose} size="large">
+                            {t('cancel')}
+                        </Button>
+                        <Button block color="primary" disabled={!name.trim()} onClick={handleSave} size="large">
+                            {t('save')}
+                        </Button>
                     </Flex>
-                </Card>
 
-                <Flex gap={12}>
-                    <Button block fill="outline" onClick={onClose} size="large">
-                        {t('cancel')}
-                    </Button>
-                    <Button block color="primary" disabled={!name.trim()} onClick={handleSave} size="large">
-                        {t('save')}
-                    </Button>
+                    {onDelete ? (
+                        <Button
+                            block
+                            color="danger"
+                            fill="outline"
+                            onClick={() => {
+                                Dialog.confirm({
+                                    title: t('deleteItemTitle'),
+                                    content: t('deleteItemConfirm', { item: item.name }),
+                                    confirmText: t('delete'),
+                                    cancelText: t('cancel'),
+                                    onConfirm: () => onDelete(item.id),
+                                });
+                            }}
+                            size="large"
+                        >
+                            {t('deleteItemAction')}
+                        </Button>
+                    ) : null}
                 </Flex>
-
-                {onDelete ? (
-                    <Button
-                        block
-                        color="danger"
-                        fill="outline"
-                        onClick={() => {
-                            Dialog.confirm({
-                                title: t('deleteItemTitle'),
-                                content: t('deleteItemConfirm', { item: item.name }),
-                                confirmText: t('delete'),
-                                cancelText: t('cancel'),
-                                onConfirm: () => onDelete(item.id),
-                            });
-                        }}
-                        size="large"
-                    >
-                        {t('deleteItemAction')}
-                    </Button>
-                ) : null}
             </Flex>
         </Popup>
     );
