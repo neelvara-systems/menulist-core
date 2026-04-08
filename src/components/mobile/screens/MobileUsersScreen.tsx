@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { UserDataType } from '@type/platform/user';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
-import { LuMail, LuPhone, LuPlus, LuUser, LuUserCheck, LuUserX } from 'react-icons/lu';
+import { LuMail, LuPhone, LuPlus, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 

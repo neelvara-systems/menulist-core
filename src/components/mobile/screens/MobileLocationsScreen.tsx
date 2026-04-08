@@ -8,7 +8,7 @@ import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
-import { LuMapPin, LuPlus, LuStar } from 'react-icons/lu';
+import { LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 

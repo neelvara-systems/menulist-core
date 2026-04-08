@@ -7,7 +7,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCopy, LuDownload, LuMessageSquare, LuQrCode, LuStar } from 'react-icons/lu';
+import { LuCopy, LuDownload, LuMessageSquare, LuQrCode, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, Image, List, NavBar, Popup, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';

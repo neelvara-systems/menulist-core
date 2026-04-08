@@ -4,7 +4,7 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
-import { LuMessageSquare, LuShare2, LuUser } from 'react-icons/lu';
+import { LuMessageSquare, LuShare2, LuUser, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 

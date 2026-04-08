@@ -11,7 +11,7 @@ import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
-import { LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuXCircle, LuZap } from 'react-icons/lu';
+import { LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
