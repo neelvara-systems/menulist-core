@@ -11,7 +11,7 @@ import {
     MenuLayout,
     MenuMood,
 } from '@config/designSystem';
-import { getProjectData, getProjectsList, publishProject } from '@database/projects';
+import { publishProject } from '@database/projects';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
@@ -19,6 +19,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuExternalLink, LuPalette } from 'react-icons/lu';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
@@ -76,10 +77,10 @@ interface MobileDesignEditorScreenProps {
 export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { isLoading: loadingProjects, selectedProject, upsertCachedProject } = useMobileProjects();
 
     const [projectData, setProjectData] = useState<any>(null);
     const [originalData, setOriginalData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
@@ -104,28 +105,17 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         undefined,
     ), [storeDetails?.subdomain, storeDetails?.customDomain]);
 
-    const fetchProject = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const result = await getProjectsList();
-            const projects = result?.projects || [];
-            const defaultProject = projects.find((project: any) => project.isDefault) || projects[0];
-            if (defaultProject?.projectId) {
-                const fullProject = await getProjectData(defaultProject.projectId);
-                setProjectData(JSON.parse(JSON.stringify(fullProject)));
-                setOriginalData(JSON.parse(JSON.stringify(fullProject)));
-            }
-        } catch (err) {
-            console.error('Failed to load project:', err);
-            Toast.show({ content: t('failedToLoad'), duration: 2000 });
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        if (storeDetails?.storeId) fetchProject();
-    }, [storeDetails?.storeId, fetchProject]);
+        if (!selectedProject) {
+            setProjectData(null);
+            setOriginalData(null);
+            return;
+        }
+
+        const cloned = JSON.parse(JSON.stringify(selectedProject));
+        setProjectData(cloned);
+        setOriginalData(cloned);
+    }, [selectedProject]);
 
     const updateDesign = useCallback((path: string[], value: any) => {
         setProjectData((prev: any) => {
@@ -196,6 +186,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             const updatedCopy = JSON.parse(JSON.stringify(updated));
             setProjectData(updatedCopy);
             setOriginalData(updatedCopy);
+            upsertCachedProject(updatedCopy);
             Toast.show({ content: t('designPublished'), icon: 'success', duration: 2000 });
 
             try {
@@ -219,7 +210,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         }
     };
 
-    if (isLoading) {
+    if (loadingProjects) {
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />} />

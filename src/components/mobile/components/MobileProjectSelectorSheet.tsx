@@ -1,11 +1,11 @@
 'use client'
 
-import { addProject, deleteProject, duplicateProject, getProjectsList, setProjectActive, updateProject, updateProjectMetadata } from '@database/projects';
+import { addProject, deleteProject, duplicateProject, setProjectActive, updateProject, updateProjectMetadata } from '@database/projects';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { LuArchiveRestore, LuCopy, LuPen, LuPower, LuRotateCcw, LuTrash2 } from 'react-icons/lu';
-import useSWR from 'swr';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Text, TextArea, Title, Toast } from '../antd';
 
 type ProjectSheetProject = {
@@ -34,7 +34,7 @@ export default function MobileProjectSelectorSheet({
     visible,
 }: MobileProjectSelectorSheetProps) {
     const t = useTranslations('MobileProjectSelector');
-    const [hasRequestedProjects, setHasRequestedProjects] = useState(false);
+    const { isLoading, projectsList, refreshProjects, selectProject, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
@@ -42,39 +42,7 @@ export default function MobileProjectSelectorSheet({
     const [formDescription, setFormDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (visible) {
-            setHasRequestedProjects(true);
-        }
-    }, [visible]);
-
-    const projectsCacheKey = hasRequestedProjects ? 'mobile-project-selector-all-projects' : null;
-    const {
-        data: projectsData,
-        error: projectsError,
-        isLoading,
-        mutate: mutateProjects,
-    } = useSWR(
-        projectsCacheKey,
-        async () => {
-            const result = await getProjectsList(true);
-            return (result?.projects || []) as ProjectSheetProject[];
-        },
-        {
-            dedupingInterval: 60000,
-            revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-            revalidateIfStale: false,
-        }
-    );
-
-    const projects = projectsData || [];
-
-    useEffect(() => {
-        if (visible && projectsError) {
-            Toast.show({ content: t('loadFailed'), duration: 1800 });
-        }
-    }, [projectsError, t, visible]);
+    const projects = projectsList as ProjectSheetProject[];
 
     const managingProject = useMemo(
         () => projects.find((project) => project.projectId === managingProjectId) || null,
@@ -114,7 +82,11 @@ export default function MobileProjectSelectorSheet({
     };
 
     const refreshAndSync = async (preferredProjectId?: string | null) => {
-        await mutateProjects();
+        await refreshProjects({
+            force: true,
+            preferredProjectId: preferredProjectId || null,
+            showLoader: false,
+        });
         await onProjectsChanged(preferredProjectId);
     };
 
@@ -126,6 +98,7 @@ export default function MobileProjectSelectorSheet({
         }
 
         onClose();
+        selectProject(projectId);
         await onProjectsChanged(projectId);
         Toast.show({ content: t('catalogSwitched'), duration: 1200 });
     };
@@ -193,6 +166,7 @@ export default function MobileProjectSelectorSheet({
         }
 
         await setProjectActive(project.projectId, nextActive);
+        upsertCachedProject({ ...project, active: nextActive });
         setManagingProjectId(null);
         await refreshAndSync(nextActive ? project.projectId : currentProjectId || null);
         Toast.show({ content: nextActive ? t('catalogActive') : t('catalogInactive'), duration: 1400 });
@@ -201,6 +175,7 @@ export default function MobileProjectSelectorSheet({
     const handleResetProject = async (project: ProjectSheetProject) => {
         setManagingProjectId(null);
         await updateProject({ files: [], projectId: project.projectId });
+        upsertCachedProject({ ...project, files: [] });
         await refreshAndSync(project.projectId);
         Toast.show({ content: t('catalogReset'), duration: 1400 });
     };

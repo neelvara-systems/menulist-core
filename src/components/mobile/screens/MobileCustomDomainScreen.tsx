@@ -4,7 +4,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCheckCircle2, LuCopy, LuExternalLink, LuGlobe, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
+import { Button, Card, Dialog, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileCustomDomainScreenProps {
@@ -111,7 +111,23 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                                 <Button fill="outline" loading={statusLoading} onClick={() => void refreshStatus()} size="small">{t('checkVerification')}</Button>
                                 <Button fill="none" onClick={() => navigator.clipboard.writeText(`https://${activeDomain}`)} size="small"><LuCopy size={16} /></Button>
                                 <Button fill="none" onClick={() => window.open(`https://${activeDomain}`, '_blank')} size="small"><LuExternalLink size={16} /></Button>
-                                <Button color="danger" fill="none" loading={loading} onClick={() => void removeDomain()} size="small"><LuTrash2 size={16} /></Button>
+                                <Button
+                                    color="danger"
+                                    fill="none"
+                                    loading={loading}
+                                    onClick={() => {
+                                        void Dialog.confirm({
+                                            cancelText: common('cancel'),
+                                            confirmText: t('removeDomain'),
+                                            content: t('removeDomainConfirmDesc', { domain: activeDomain }),
+                                            onConfirm: removeDomain,
+                                            title: t('removeDomainConfirmTitle'),
+                                        });
+                                    }}
+                                    size="small"
+                                >
+                                    <LuTrash2 size={16} />
+                                </Button>
                             </Flex>
                         </Flex>
                     </Card>

@@ -6,7 +6,7 @@ import { UserDataType } from '@type/platform/user';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMail, LuPhone, LuPlus, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
-import { Avatar, Button, Card, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileUsersScreenProps {
@@ -178,7 +178,26 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                 </List>
                             </Card>
 
-                            <Button block fill="outline" onClick={() => { void handleToggleActive(selectedUser); setSelectedUser(null); }} size="large" style={(selectedUser as any).active ? { borderColor: '#dc2626', color: '#dc2626' } : undefined}>
+                            <Button
+                                block
+                                fill="outline"
+                                onClick={() => {
+                                    void Dialog.confirm({
+                                        cancelText: t('cancel'),
+                                        confirmText: (selectedUser as any).active ? t('deactivate') : t('activate'),
+                                        content: (selectedUser as any).active
+                                            ? t('deactivateUserConfirmDesc', { name: (selectedUser as any).name || (selectedUser as any).email || t('unnamed') })
+                                            : t('activateUserConfirmDesc', { name: (selectedUser as any).name || (selectedUser as any).email || t('unnamed') }),
+                                        onConfirm: async () => {
+                                            await handleToggleActive(selectedUser);
+                                            setSelectedUser(null);
+                                        },
+                                        title: (selectedUser as any).active ? t('deactivateUserConfirmTitle') : t('activateUserConfirmTitle'),
+                                    });
+                                }}
+                                size="large"
+                                style={(selectedUser as any).active ? { borderColor: '#dc2626', color: '#dc2626' } : undefined}
+                            >
                                 {(selectedUser as any).active ? t('deactivate') : t('activate')}
                             </Button>
                         </Flex>

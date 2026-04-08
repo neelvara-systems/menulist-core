@@ -1,16 +1,16 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { getProjectsList } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { LuBarChart3, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuZap } from 'react-icons/lu';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileDashboardScreenProps {
@@ -26,11 +26,8 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
-    const [projectId, setProjectId] = useState<string | null>(null);
-    const [projectName, setProjectName] = useState<string>('');
-    const [loadingProjects, setLoadingProjects] = useState(true);
+    const { isLoading: loadingProjects, projectsList, selectedProjectId, selectedProjectSummary, selectProject } = useMobileProjects();
     const [viewMode, setViewMode] = useState<'overview' | 'daily' | 'weekly' | 'monthly'>('overview');
-    const [projectsList, setProjectsList] = useState<any[]>([]);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const viewModeLabel = viewMode === 'overview'
         ? t('overview')
@@ -40,28 +37,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 ? t('weekly')
                 : t('monthly');
 
-    const loadProjects = useCallback(async (preferredProjectId?: string | null) => {
-        try {
-            const result = await getProjectsList();
-            const projects = result?.projects || [];
-            setProjectsList(projects);
-            const nextProject = preferredProjectId
-                ? projects.find((project: any) => project.projectId === preferredProjectId)
-                : projects[0];
-            setProjectId(nextProject?.projectId || null);
-            setProjectName(nextProject?.name || '');
-        } catch {
-            Toast.show({ content: t('failedToLoad'), duration: 2000 });
-        } finally {
-            setLoadingProjects(false);
-        }
-    }, [t]);
-
-    useEffect(() => {
-        void loadProjects();
-    }, [loadProjects]);
-
-    const { data, loading, refetch } = useOwnerDashboard(projectId ? { projectId } : undefined);
+    const { data, loading, refetch } = useOwnerDashboard(selectedProjectId ? { projectId: selectedProjectId } : undefined);
 
     const handleRefresh = useCallback(async () => {
         try {
@@ -72,7 +48,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
         }
     }, [refetch]);
 
-    if (loadingProjects || (!projectId && loadingProjects)) {
+    if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={onBack} />
@@ -83,7 +59,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
         );
     }
 
-    if (!projectId) {
+    if (!selectedProjectId) {
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={onBack} />
@@ -132,9 +108,9 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 <ProjectSelectorTrigger
                     clickable={projectsList.length > 1}
                     currentProject={{
-                        id: projectId,
-                        isDefault: projectsList.find((project: any) => project.projectId === projectId)?.isDefault,
-                        name: projectName || t('unnamedProject'),
+                        id: selectedProjectId,
+                        isDefault: selectedProjectSummary?.isDefault,
+                        name: selectedProjectSummary?.name || t('unnamedProject'),
                     }}
                     onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                     rightContent={<Tag>{viewModeLabel}</Tag>}
@@ -321,12 +297,12 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
             </Flex>
 
             <MobileProjectSelectorSheet
-                currentProjectId={projectId}
-                currentProjectName={projectName}
+                currentProjectId={selectedProjectId}
+                currentProjectName={selectedProjectSummary?.name || null}
                 onClose={() => setIsProjectSelectorOpen(false)}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
-                    await loadProjects(preferredProjectId || projectId);
+                    selectProject(preferredProjectId || null);
                 }}
                 visible={isProjectSelectorOpen}
             />

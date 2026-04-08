@@ -2,7 +2,11 @@
 
 import { updateProject } from '@database/projects';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
+import { removeObjRef } from '@util/utils';
+import { InputNumber, Popover, Segmented, theme } from 'antd';
+import { useTranslations } from 'next-intl';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuX } from 'react-icons/lu';
 import {
     applyBulkActiveInactive,
     applyBulkAvailability,
@@ -14,13 +18,9 @@ import {
     computePricingPreview,
     getAllCategories,
 } from '../../templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations';
-import { removeObjRef } from '@util/utils';
-import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { InputNumber, Popover, Segmented, theme } from 'antd';
-import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuToggleRight } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 import type { Project } from '../../templates/main-app/projects/types';
+import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
+import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 
 interface BulkActionsSheetProps {
     visible: boolean;
@@ -674,11 +674,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                         <Flex align="center" gap={10} style={{ flex: 1, minWidth: 0 }} wrap>
                             {renderLegend()}
                         </Flex>
-                        {selectedIds.size > 0 ? (
-                            <Button fill="none" onClick={clearSelection} size="small">
-                                Clear selection
-                            </Button>
-                        ) : null}
                         <Checkbox
                             checked={filteredItems.length > 0 && effectiveSelectedCount === filteredItems.length}
                             indeterminate={effectiveSelectedCount > 0 && effectiveSelectedCount < filteredItems.length}
@@ -689,24 +684,45 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     </Flex>
 
                     {selectedIds.size > 0 && action === 'availability' ? (
-                        <Flex gap={8} wrap="wrap">
-                            <Tag color="success">
-                                {selectedAvailabilitySummary.availableCount} {t('available')}
-                            </Tag>
-                            <Tag color="warning">
-                                {selectedAvailabilitySummary.unavailableCount} {t('soldOut')}
-                            </Tag>
+                        <Flex align="center" gap={10} justify="space-between" wrap>
+                            <Flex gap={8} wrap="wrap">
+                                <Tag color="success">
+                                    {selectedAvailabilitySummary.availableCount} {t('available')}
+                                </Tag>
+                                <Tag color="warning">
+                                    {selectedAvailabilitySummary.unavailableCount} {t('soldOut')}
+                                </Tag>
+                            </Flex>
+                            <Button
+                                color="danger"
+                                fill="none"
+                                onClick={clearSelection}
+                                size="small"
+                                icon={<LuX />}
+                            >
+                                Clear selection
+                            </Button>
                         </Flex>
                     ) : null}
 
                     {selectedIds.size > 0 && action === 'showHide' ? (
-                        <Flex gap={8} wrap="wrap">
-                            <Tag color="success">
-                                {selectedVisibilitySummary.visibleCount} {t('active')}
-                            </Tag>
-                            <Tag>
-                                {selectedVisibilitySummary.hiddenCount} {t('inactive')}
-                            </Tag>
+                        <Flex align="center" gap={10} justify="space-between" wrap>
+                            <Flex gap={8} wrap="wrap">
+                                <Tag color="success">
+                                    {selectedVisibilitySummary.visibleCount} {t('active')}
+                                </Tag>
+                                <Tag>
+                                    {selectedVisibilitySummary.hiddenCount} {t('inactive')}
+                                </Tag>
+                            </Flex>
+                            <Button
+                                color="danger"
+                                fill="outline"
+                                onClick={clearSelection}
+                                size="small"
+                            >
+                                Clear selection
+                            </Button>
                         </Flex>
                     ) : null}
 

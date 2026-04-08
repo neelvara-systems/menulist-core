@@ -17,7 +17,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, Divider, Empty, Flex, Popup, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, Divider, Empty, Flex, Popup, Tag, Text, Title, Toast } from '../antd';
 
 interface ExtractionReviewSheetProps {
     comparisonResult: ComparisonEngineOutput;
@@ -211,6 +211,15 @@ export default function ExtractionReviewSheet({
     }, [comparisonResult, jobId, onSaveComplete, preview, primaryLang, projectId, t, totalChanges]);
 
     const handleDiscard = useCallback(async () => {
+        const confirmed = await Dialog.confirm({
+            cancelText: t('cancel'),
+            confirmText: t('discardAll'),
+            content: t('discardChangesConfirmDesc'),
+            title: t('discardChangesConfirmTitle'),
+        });
+
+        if (!confirmed) return;
+
         setIsDiscarding(true);
         try {
             await discardExtractionChanges(jobId);

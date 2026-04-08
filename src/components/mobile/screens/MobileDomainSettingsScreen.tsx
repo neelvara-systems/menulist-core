@@ -16,7 +16,7 @@ import {
     LuTrash2,
     LuX,
 } from 'react-icons/lu';
-import { Button, Card, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
+import { Button, Card, Dialog, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileDomainSettingsScreenProps {
@@ -260,7 +260,21 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                     <Button fill="outline" onClick={() => window.open(`https://${activeDomain}`, '_blank')} size="small">
                                         <Flex align="center" gap={6}><LuExternalLink size={16} /><Text>{t('open')}</Text></Flex>
                                     </Button>
-                                    <Button color="danger" fill="outline" loading={domainLoading} onClick={() => void removeDomain()} size="small">
+                                    <Button
+                                        color="danger"
+                                        fill="outline"
+                                        loading={domainLoading}
+                                        onClick={() => {
+                                            void Dialog.confirm({
+                                                cancelText: common('cancel'),
+                                                confirmText: t('removeDomain'),
+                                                content: t('removeDomainConfirmDesc', { domain: activeDomain }),
+                                                onConfirm: removeDomain,
+                                                title: t('removeDomainConfirmTitle'),
+                                            });
+                                        }}
+                                        size="small"
+                                    >
                                         <Flex align="center" gap={6}><LuTrash2 size={16} /><Text>Remove</Text></Flex>
                                     </Button>
                                 </Flex>

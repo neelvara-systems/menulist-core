@@ -7,17 +7,58 @@
 
 import { message } from 'antd';
 
-// Lazy load pdfjs-dist only when needed
-let pdfjsLib: typeof import('pdfjs-dist') | null = null;
-let GlobalWorkerOptions: typeof import('pdfjs-dist').GlobalWorkerOptions | null = null;
+const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfjsLoadPromise: Promise<any> | null = null;
 
 const ensurePdfLibLoaded = async () => {
-    if (!pdfjsLib) {
-        pdfjsLib = await import('pdfjs-dist');
-        GlobalWorkerOptions = pdfjsLib.GlobalWorkerOptions;
-        GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    if (typeof window === 'undefined') {
+        throw new Error('PDF conversion is only available in the browser.');
     }
-    return pdfjsLib;
+
+    const existingLib = (window as any).pdfjsLib;
+    if (existingLib) {
+        existingLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+        return existingLib;
+    }
+
+    if (!pdfjsLoadPromise) {
+        pdfjsLoadPromise = new Promise((resolve, reject) => {
+            const existingScript = document.querySelector(`script[src="${PDFJS_CDN_SRC}"]`) as HTMLScriptElement | null;
+
+            if (existingScript) {
+                existingScript.addEventListener('load', () => {
+                    const loadedLib = (window as any).pdfjsLib;
+                    if (!loadedLib) {
+                        reject(new Error('PDF library loaded but pdfjsLib was unavailable.'));
+                        return;
+                    }
+                    loadedLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+                    resolve(loadedLib);
+                }, { once: true });
+                existingScript.addEventListener('error', () => reject(new Error('Failed to load PDF library.')), { once: true });
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = PDFJS_CDN_SRC;
+            script.async = true;
+            script.onload = () => {
+                const loadedLib = (window as any).pdfjsLib;
+                if (!loadedLib) {
+                    reject(new Error('PDF library loaded but pdfjsLib was unavailable.'));
+                    return;
+                }
+                loadedLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+                resolve(loadedLib);
+            };
+            script.onerror = () => reject(new Error('Failed to load PDF library.'));
+            document.head.appendChild(script);
+        });
+    }
+
+    return pdfjsLoadPromise;
 };
 
 let processedFiles: string[] = [];

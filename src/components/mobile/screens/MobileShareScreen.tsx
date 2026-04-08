@@ -2,7 +2,6 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
-import { getProjectsList } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
@@ -17,6 +16,7 @@ import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCod
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobilePresenceMonitor from '../components/PresenceMonitor';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
 
 type ProjectLink = {
@@ -52,20 +52,18 @@ export default function MobileShareScreen() {
     const common = useTranslations('Common');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
+    const { isLoading: loadingProjects, projectsList, selectedProjectId, selectProject } = useMobileProjects();
     const [data, setData] = useState<ShareData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
-    const loadData = useCallback(async (preferredProjectId?: string | null) => {
+    const loadData = useCallback(async () => {
         if (!storeDetails) return;
 
             setIsLoading(true);
             try {
-                const result = await getProjectsList();
-                const projects = result?.projects || [];
-                const defaultProject = preferredProjectId
-                    ? projects.find((project: any) => project.projectId === preferredProjectId)
-                    : projects.find((project: any) => project.isDefault) || projects[0];
+                const projects = projectsList;
+                const defaultProject = projects.find((project: any) => project.projectId === selectedProjectId) || null;
 
                 if (!defaultProject) {
                     setData(null);
@@ -126,12 +124,12 @@ export default function MobileShareScreen() {
             } finally {
                 setIsLoading(false);
             }
-    }, [storeDetails, t, tProjectSelector]);
+    }, [projectsList, selectedProjectId, storeDetails, t, tProjectSelector]);
 
     useEffect(() => {
-        if (!storeDetails) return;
+        if (!storeDetails || loadingProjects) return;
         void loadData();
-    }, [loadData, storeDetails]);
+    }, [loadData, loadingProjects, storeDetails]);
 
     const activeProject = useMemo(
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
@@ -147,7 +145,7 @@ export default function MobileShareScreen() {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || loadingProjects) {
         return (
             <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
                 <DotLoading color="primary" />
@@ -280,7 +278,7 @@ export default function MobileShareScreen() {
                 onClose={() => setIsProjectSelectorOpen(false)}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
-                    await loadData(preferredProjectId);
+                    selectProject(preferredProjectId || null);
                 }}
                 visible={isProjectSelectorOpen}
             />

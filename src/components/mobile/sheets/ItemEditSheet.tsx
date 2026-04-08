@@ -10,27 +10,38 @@ import type { MobileMenuItemType } from '../types';
 import { useTranslations } from 'next-intl';
 
 interface ItemEditSheetProps {
-    item: MobileMenuItemType;
+    item?: MobileMenuItemType | null;
     categories: { id: string; name: string }[];
     currencySymbol: string;
+    mode?: 'add' | 'edit';
     onClose: () => void;
-    onSave: (updatedItem: Partial<MobileMenuItemType>) => void;
+    onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null }) => void;
     onDelete?: (itemId: string) => void;
 }
 
-export default function ItemEditSheet({ item, categories, currencySymbol, onClose, onSave, onDelete }: ItemEditSheetProps) {
+export default function ItemEditSheet({
+    item,
+    categories,
+    currencySymbol,
+    mode = 'edit',
+    onClose,
+    onSave,
+    onDelete,
+}: ItemEditSheetProps) {
     const t = useTranslations('MobileMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
-    const [name, setName] = useState(item.name);
-    const [price, setPrice] = useState(String(item.price));
-    const [description, setDescription] = useState(item.description || '');
-    const [isAvailable, setIsAvailable] = useState(item.available);
-    const [isActive, setIsActive] = useState(item.active);
-    const [imagePreview, setImagePreview] = useState<string | null>(item.image || null);
-    const [selectedCategory, setSelectedCategory] = useState(item.categoryId || categories[0]?.id || '');
-    const [attributes, setAttributes] = useState(item.attributes || []);
+    const isAddMode = mode === 'add';
+    const [name, setName] = useState(item?.name || '');
+    const [price, setPrice] = useState(item ? String(item.price) : '');
+    const [description, setDescription] = useState(item?.description || '');
+    const [isAvailable, setIsAvailable] = useState(item?.available ?? true);
+    const [isActive, setIsActive] = useState(item?.active ?? true);
+    const [imagePreview, setImagePreview] = useState<string | null>(item?.image || null);
+    const [selectedCategory, setSelectedCategory] = useState(item?.categoryId || categories[0]?.id || '');
+    const [newCategory, setNewCategory] = useState('');
+    const [attributes, setAttributes] = useState(item?.attributes || []);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: 'image/*',
@@ -47,8 +58,8 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
             reader.readAsDataURL(file);
             return false;
         },
-        fileList: imagePreview
-            ? [{ uid: item.id, name: `${item.name || 'item'}.jpg`, status: 'done', url: imagePreview } as UploadFile]
+            fileList: imagePreview
+            ? [{ uid: item?.id || 'draft-item', name: `${item?.name || 'item'}.jpg`, status: 'done', url: imagePreview } as UploadFile]
             : [],
         listType: 'picture',
         maxCount: 1,
@@ -57,17 +68,20 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
             return true;
         },
         showUploadList: false,
-    }), [imagePreview, item.id, item.name, t]);
+    }), [imagePreview, item?.id, item?.name, t]);
 
     const handleSave = () => {
+        const chosenCategory = categories.find((category) => category.id === selectedCategory);
+        const categoryName = newCategory.trim() || chosenCategory?.name || item?.categoryName || t('uncategorized');
         onSave({
             name: name.trim(),
             price: parseFloat(price) || 0,
             description: description.trim(),
             available: isAvailable,
             active: isActive,
-            categoryId: selectedCategory,
-            image: imagePreview || undefined,
+            categoryId: newCategory.trim() ? undefined : (selectedCategory || undefined),
+            categoryName,
+            image: imagePreview || (item?.image ? null : undefined),
             attributes,
         });
     };
@@ -81,7 +95,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
             visible
         >
             <Flex style={{ maxHeight: '85vh', overflowY: 'auto' }} vertical>
-                <NavBar onBack={onClose}>{t('editItemTitle')}</NavBar>
+                <NavBar onBack={onClose}>{isAddMode ? t('addItemTitle') : t('editItemTitle')}</NavBar>
 
                 <Flex gap={16} style={{ padding: '0 12px 12px' }} vertical>
                     <Card size="small">
@@ -89,6 +103,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                         <Flex gap={6} vertical>
                             <Text strong>{t('itemNameLabel')}</Text>
                             <Input
+                                autoFocus={isAddMode}
                                 onChange={setName}
                                 placeholder={t('itemNamePlaceholder')}
                                 value={name}
@@ -113,6 +128,17 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                     options={categories.map((category) => ({ label: category.name, value: category.id }))}
                                     placeholder={t('selectCategory')}
                                     value={selectedCategory || undefined}
+                                />
+                            </Flex>
+                        ) : null}
+
+                        {isAddMode ? (
+                            <Flex gap={6} vertical>
+                                <Text strong>{t('newCategoryLabel')}</Text>
+                                <Input
+                                    onChange={setNewCategory}
+                                    placeholder={t('newCategoryPlaceholder')}
+                                    value={newCategory}
                                 />
                             </Flex>
                         ) : null}
@@ -170,7 +196,7 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                                         setAttributes((previous) => [
                                             ...previous,
                                             {
-                                                id: `${item.id}-attr-${Date.now()}`,
+                                                id: `${item?.id || 'draft-item'}-attr-${Date.now()}`,
                                                 name: '',
                                                 price: 0,
                                                 active: true,
@@ -270,11 +296,11 @@ export default function ItemEditSheet({ item, categories, currencySymbol, onClos
                             {t('cancel')}
                         </Button>
                         <Button block color="primary" disabled={!name.trim()} onClick={handleSave} size="large">
-                            {t('save')}
+                            {isAddMode ? t('addItem') : t('save')}
                         </Button>
                     </Flex>
 
-                    {onDelete ? (
+                    {!isAddMode && onDelete && item?.id ? (
                         <Button
                             block
                             color="danger"

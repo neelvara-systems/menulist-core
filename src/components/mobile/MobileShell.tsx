@@ -9,6 +9,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, SafeArea, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
+import MobileProjectsProvider from './providers/MobileProjectsProvider';
 
 const MobileMenuScreen = dynamic(() => import('./screens/MobileMenuScreen'), { ssr: false });
 const MobileHoursScreen = dynamic(() => import('./screens/MobileHoursScreen'), { ssr: false });
@@ -113,41 +114,43 @@ export default function MobileShell() {
     }
 
     return (
-        <Flex
-            style={{
-                background: token.colorBgLayout,
-                minHeight: '100dvh',
-            }}
-            vertical
-        >
-            {isOffline ? (
-                <Card style={{ background: token.colorWarning, borderRadius: 0, color: token.colorTextLightSolid, margin: 0 }}>
-                    <Text style={{ color: token.colorTextLightSolid }}>You&apos;re offline. Some features may be limited.</Text>
-                </Card>
-            ) : null}
+        <MobileProjectsProvider>
             <Flex
-                flex={1}
                 style={{
-                    overflowY: 'auto',
-                    paddingBottom: 88,
-                    paddingTop:
-                        activeTab === 'menu' ||
-                        activeTab === 'share' ||
-                        (activeTab === 'today' && todayScreen === 'main') ||
-                        (activeTab === 'more' && isMoreRootScreen)
-                            ? 'calc(env(safe-area-inset-top) + 8px)'
-                            : 0,
+                    background: token.colorBgLayout,
+                    minHeight: '100dvh',
                 }}
                 vertical
             >
-                {screen}
+                {isOffline ? (
+                    <Card style={{ background: token.colorWarning, borderRadius: 0, color: token.colorTextLightSolid, margin: 0 }}>
+                        <Text style={{ color: token.colorTextLightSolid }}>You&apos;re offline. Some features may be limited.</Text>
+                    </Card>
+                ) : null}
+                <Flex
+                    flex={1}
+                    style={{
+                        overflowY: 'auto',
+                        paddingBottom: 88,
+                        paddingTop:
+                            activeTab === 'menu' ||
+                            activeTab === 'share' ||
+                            (activeTab === 'today' && todayScreen === 'main') ||
+                            (activeTab === 'more' && isMoreRootScreen)
+                                ? 'calc(env(safe-area-inset-top) + 8px)'
+                                : 0,
+                    }}
+                    vertical
+                >
+                    {screen}
+                </Flex>
+                <MobileNavigation
+                    activeTab={activeTab}
+                    feedbackCount={feedbackBadgeCount}
+                    onTabChange={handleTabChange}
+                />
+                <SafeArea position="bottom" />
             </Flex>
-            <MobileNavigation
-                activeTab={activeTab}
-                feedbackCount={feedbackBadgeCount}
-                onTabChange={handleTabChange}
-            />
-            <SafeArea position="bottom" />
-        </Flex>
+        </MobileProjectsProvider>
     );
 }

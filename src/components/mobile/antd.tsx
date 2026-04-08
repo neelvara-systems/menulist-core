@@ -40,13 +40,20 @@ type AnyStyle = CSSProperties & Record<string, any>;
 const { Text, Title } = Typography;
 const MobileSheetContext = createContext(false);
 let activePopupScrollLocks = 0;
+let lockedScrollY = 0;
 
 function lockMobileBackgroundScroll() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
     if (activePopupScrollLocks === 0) {
+        lockedScrollY = window.scrollY || window.pageYOffset || 0;
         document.documentElement.style.overflow = 'hidden';
         document.documentElement.style.overscrollBehavior = 'none';
         document.documentElement.style.touchAction = 'none';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${lockedScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
         document.body.style.overflow = 'hidden';
         document.body.style.overscrollBehavior = 'none';
         document.body.style.touchAction = 'none';
@@ -55,15 +62,22 @@ function lockMobileBackgroundScroll() {
 }
 
 function unlockMobileBackgroundScroll() {
-    if (typeof document === 'undefined' || activePopupScrollLocks === 0) return;
+    if (typeof document === 'undefined' || typeof window === 'undefined' || activePopupScrollLocks === 0) return;
     activePopupScrollLocks -= 1;
     if (activePopupScrollLocks === 0) {
         document.documentElement.style.overflow = '';
         document.documentElement.style.overscrollBehavior = '';
         document.documentElement.style.touchAction = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
         document.body.style.overflow = '';
         document.body.style.overscrollBehavior = '';
         document.body.style.touchAction = '';
+        window.scrollTo(0, lockedScrollY);
+        lockedScrollY = 0;
     }
 }
 
@@ -113,13 +127,14 @@ type ButtonProps = {
     disabled?: boolean;
     fill?: 'solid' | 'outline' | 'none';
     htmlType?: 'button' | 'submit' | 'reset';
+    icon?: ReactNode;
     loading?: boolean;
     onClick?: (event: MouseEvent<HTMLElement>) => void;
     size?: 'mini' | 'small' | 'middle' | 'large';
     style?: AnyStyle;
 };
 
-export function Button({ block, children, className, color, disabled, fill = 'solid', htmlType, loading, onClick, size, style }: ButtonProps) {
+export function Button({ block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style }: ButtonProps) {
     const { token } = theme.useToken();
     const antType = fill === 'solid' && color !== 'warning' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
@@ -131,6 +146,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
             danger={color === 'danger'}
             disabled={disabled}
             htmlType={htmlType}
+            icon={icon}
             loading={loading}
             onClick={onClick}
             size={antSize}
@@ -259,23 +275,60 @@ function containsElementType(node: ReactNode, targetType: unknown): boolean {
 export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visible }: PopupProps) {
     const drawerStyle = sanitizeStyle(bodyStyle);
     const hasNavBar = containsElementType(children, NavBar);
+    const {
+        height,
+        maxHeight,
+        minHeight,
+        overflowX,
+        overflowY,
+        padding,
+        paddingBottom,
+        paddingInline,
+        paddingInlineEnd,
+        paddingInlineStart,
+        paddingLeft,
+        paddingRight,
+        paddingTop,
+        ...restDrawerStyle
+    } = drawerStyle ?? {};
+
     const popupBodyPadding = hasNavBar
-        ? { paddingBottom: 16, paddingInline: 16, paddingTop: 8 }
-        : { padding: 16 };
-    const popupHeight = (drawerStyle?.height as string | number | undefined) ?? 'auto';
+        ? { paddingTop: 8, paddingRight: 16, paddingBottom: 16, paddingLeft: 16 }
+        : { paddingTop: 16, paddingRight: 16, paddingBottom: 16, paddingLeft: 16 };
+
+    const normalizedPadding = {
+        paddingTop: padding ?? popupBodyPadding.paddingTop,
+        paddingRight: padding ?? popupBodyPadding.paddingRight,
+        paddingBottom: padding ?? popupBodyPadding.paddingBottom,
+        paddingLeft: padding ?? popupBodyPadding.paddingLeft,
+    };
+
+    if (paddingInline !== undefined) {
+        normalizedPadding.paddingLeft = paddingInline;
+        normalizedPadding.paddingRight = paddingInline;
+    }
+
+    if (paddingInlineStart !== undefined) normalizedPadding.paddingLeft = paddingInlineStart;
+    if (paddingInlineEnd !== undefined) normalizedPadding.paddingRight = paddingInlineEnd;
+    if (paddingTop !== undefined) normalizedPadding.paddingTop = paddingTop;
+    if (paddingRight !== undefined) normalizedPadding.paddingRight = paddingRight;
+    if (paddingBottom !== undefined) normalizedPadding.paddingBottom = paddingBottom;
+    if (paddingLeft !== undefined) normalizedPadding.paddingLeft = paddingLeft;
+
+    const popupHeight = (height as string | number | undefined) ?? 'auto';
     const popupContentStyle = {
         height: popupHeight,
-        maxHeight: drawerStyle?.maxHeight ?? '88vh',
-        minHeight: drawerStyle?.minHeight,
+        maxHeight: maxHeight ?? '88vh',
+        minHeight,
     };
     const popupBodyStyle = {
-        ...popupBodyPadding,
-        ...drawerStyle,
+        ...normalizedPadding,
+        ...restDrawerStyle,
         height: undefined,
         maxHeight: undefined,
         minHeight: undefined,
-        overflowX: drawerStyle?.overflowX ?? 'hidden',
-        overflowY: drawerStyle?.overflowY ?? 'auto',
+        overflowX: overflowX ?? 'hidden',
+        overflowY: overflowY ?? 'auto',
     };
 
     useEffect(() => {

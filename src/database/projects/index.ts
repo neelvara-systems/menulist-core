@@ -26,6 +26,7 @@ import {
 } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { apiCallComposerClientWithoutLoader } from "@lib/apiHelper/apiCallComposerClientWithoutLoader";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logger } from "@lib/monitoring/logger";
@@ -901,74 +902,83 @@ export const publishProject = async (data: Partial<Project>) => {
  * Get projects list using Summary Document Pattern (1 read)
  * Returns projects from platformSummary/projects_{sId}
  */
+const getProjectsListCore = async (includeInactive = false) => {
+    // Get all projects from summary (1 read)
+    const session = await getActiveSession();
+    const summaryDocRef = await getProjectsSummaryDocRef();
+    console.log(`[getProjectsList] Session: tId=${session.tId}, sId=${session.sId}`);
+    console.log(`[getProjectsList] Reading summary document: ${summaryDocRef.path}`);
+    const summaryDoc = await getDoc(summaryDocRef);
+    const projectsMap = summaryDoc.exists()
+        ? Object.fromEntries(
+            Object.entries(summaryDoc.data() || {})
+                .filter(([key]) => key.startsWith('projects.'))
+                .map(([key, value]) => [key.replace('projects.', ''), value])
+        ) || {}
+        : {};
+
+    if (Object.keys(projectsMap).length > 0) {
+        const firstProjectId = Object.keys(projectsMap)[0];
+        console.log(`[getProjectsList] First project data:`, projectsMap[firstProjectId]);
+    }
+
+    console.log(`[getProjectsList] Summary exists: ${summaryDoc.exists()}, projects count: ${Object.keys(projectsMap).length}`);
+    if (summaryDoc.exists()) {
+        console.log(`[getProjectsList] Summary data keys:`, Object.keys(summaryDoc.data()));
+    }
+
+    const projects = Object.entries(projectsMap)
+        .map(([projectId, data]) => ({
+            projectId,
+            ...(data as ProjectSummaryData),
+        }))
+        .filter((p) => includeInactive || p.active !== false);
+
+    console.log(
+        `✅ [getProjectsList] Found ${projects.length} active projects (1 read)`,
+    );
+
+    if (projects.length === 0) {
+        const sess = await getActiveSession();
+        const projectId = `${sess.tId}-default-${sess.sId}`;
+        const defaultProject: ProjectMetadata = {
+            projectId,
+            name: "Menu",
+            description: "Your digital menu",
+            isDefault: true,
+        };
+        await addProject(defaultProject);
+        return {
+            projects: [
+                {
+                    projectId,
+                    name: defaultProject.name,
+                    description: defaultProject.description,
+                    active: true,
+                    isDefault: true,
+                },
+            ],
+        };
+    }
+
+    return { projects };
+};
+
 export const getProjectsList = async (includeInactive = false) => {
     return await apiCallComposer(
         async () => {
-            // Get all projects from summary (1 read)
-            const session = await getActiveSession();
-            const summaryDocRef = await getProjectsSummaryDocRef();
-            console.log(`[getProjectsList] Session: tId=${session.tId}, sId=${session.sId}`);
-            console.log(`[getProjectsList] Reading summary document: ${summaryDocRef.path}`);
-            const summaryDoc = await getDoc(summaryDocRef);
-            const projectsMap = summaryDoc.exists()
-                ? Object.fromEntries(
-                    Object.entries(summaryDoc.data() || {})
-                        .filter(([key]) => key.startsWith('projects.'))
-                        .map(([key, value]) => [key.replace('projects.', ''), value])
-                ) || {}
-                : {};
-
-            // Debug: Log first project data to see what's in the summary
-            if (Object.keys(projectsMap).length > 0) {
-                const firstProjectId = Object.keys(projectsMap)[0];
-                console.log(`[getProjectsList] First project data:`, projectsMap[firstProjectId]);
-            }
-
-            console.log(`[getProjectsList] Summary exists: ${summaryDoc.exists()}, projects count: ${Object.keys(projectsMap).length}`);
-            if (summaryDoc.exists()) {
-                console.log(`[getProjectsList] Summary data keys:`, Object.keys(summaryDoc.data()));
-            }
-
-            // Convert to array and filter active projects
-            const projects = Object.entries(projectsMap)
-                .map(([projectId, data]) => ({
-                    projectId,
-                    ...(data as ProjectSummaryData),
-                }))
-                .filter((p) => includeInactive || p.active !== false); // Show active projects by default
-
-            console.log(
-                `✅ [getProjectsList] Found ${projects.length} active projects (1 read)`,
-            );
-
-            // If no projects in summary, create default project
-            if (projects.length === 0) {
-                const sess = await getActiveSession();
-                const projectId = `${sess.tId}-default-${sess.sId}`;
-                const defaultProject: ProjectMetadata = {
-                    projectId,
-                    name: "Menu",
-                    description: "Your digital menu",
-                    isDefault: true,
-                };
-                const result = await addProject(defaultProject);
-                return {
-                    projects: [
-                        {
-                            projectId,
-                            name: defaultProject.name,
-                            description: defaultProject.description,
-                            active: true,
-                            isDefault: true,
-                        },
-                    ],
-                };
-            }
-
-            return { projects };
+            return await getProjectsListCore(includeInactive);
         },
         { includeInactive },
         "getProjectsList",
+    );
+};
+
+export const getProjectsListWithoutLoader = async (includeInactive = false) => {
+    return await apiCallComposerClientWithoutLoader(
+        async () => await getProjectsListCore(includeInactive),
+        { includeInactive },
+        "getProjectsListWithoutLoader",
     );
 };
 
@@ -1008,18 +1018,30 @@ export const getDeletedProjectsList = async () => {
     );
 };
 
+const getProjectDataCore = async (projectId: string): Promise<Project> => {
+    const docRef = await getDataDocRef(projectId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+        throw new Error("Project not found");
+    }
+    return docSnap.data() as Project;
+};
+
 export const getProjectData = async (projectId: string): Promise<Project> => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDataDocRef(projectId);
-            const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) {
-                throw new Error("Project not found");
-            }
-            return docSnap.data() as Project;
+            return await getProjectDataCore(projectId);
         },
         { projectId },
         "getProjectData",
+    );
+};
+
+export const getProjectDataWithoutLoader = async (projectId: string): Promise<Project> => {
+    return await apiCallComposerClientWithoutLoader(
+        async () => await getProjectDataCore(projectId),
+        { projectId },
+        "getProjectDataWithoutLoader",
     );
 };
 

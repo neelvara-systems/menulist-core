@@ -1,7 +1,6 @@
 'use client'
 
 import { getFeedbackList, updateFeedbackStatus } from '@database/guestFeedback';
-import { getProjectsList } from '@database/projects';
 import { downloadQrCode, generateFeedbackQrCode, getFeedbackUrl, getQrCodeFilename } from '@lib/utils/feedbackQrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
@@ -10,6 +9,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuMessageSquare, LuQrCode, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, Image, List, NavBar, Popup, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
 
 const MobileFeedbackDetail = dynamic(() => import('./MobileFeedbackDetail'), { ssr: false });
@@ -21,11 +21,11 @@ interface MobileFeedbackScreenProps {
 export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { selectedProjectId } = useMobileProjects();
     const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>('all');
-    const [feedbackProjectId, setFeedbackProjectId] = useState<string | null>(null);
     const [isQrOpen, setIsQrOpen] = useState(false);
     const [isQrLoading, setIsQrLoading] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -59,20 +59,6 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         }
     }, [fetchFeedback, storeDetails?.storeId]);
 
-    useEffect(() => {
-        if (!storeDetails?.storeId) return;
-        (async () => {
-            try {
-                const result = await getProjectsList();
-                const projects = result?.projects || [];
-                const defaultProject = projects.find((project: any) => project.isDefault) || projects[0];
-                setFeedbackProjectId(defaultProject?.projectId || null);
-            } catch {
-                setFeedbackProjectId(null);
-            }
-        })();
-    }, [storeDetails?.storeId]);
-
     const handleStatusUpdate = useCallback((feedbackId: string, newStatus: 'new' | 'resolved') => {
         setFeedbackList((previous) => previous.map((item) => item.id === feedbackId ? { ...item, status: newStatus } : item));
         Toast.show({ content: newStatus === 'resolved' ? t('resolved') : t('new'), duration: 1000 });
@@ -88,7 +74,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     }, [handleStatusUpdate, t]);
 
     const handleOpenQr = async () => {
-        if (!feedbackProjectId) {
+        if (!selectedProjectId) {
             Toast.show({ content: t('noFeedback'), duration: 1500 });
             return;
         }
@@ -96,7 +82,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         if (qrDataUrl || isQrLoading) return;
         setIsQrLoading(true);
         try {
-            const dataUrl = await generateFeedbackQrCode(feedbackProjectId);
+            const dataUrl = await generateFeedbackQrCode(selectedProjectId);
             setQrDataUrl(dataUrl);
         } catch {
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
@@ -106,7 +92,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         }
     };
 
-    const feedbackUrl = feedbackProjectId ? getFeedbackUrl(feedbackProjectId) : '';
+    const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId) : '';
 
     const handleCopyFeedbackLink = async () => {
         if (!feedbackUrl) return;

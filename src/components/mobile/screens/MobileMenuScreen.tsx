@@ -1,7 +1,7 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
-import { getProjectData, getProjectsList, updateProject } from '@database/projects';
+import { updateProject } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
@@ -9,20 +9,21 @@ import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { createNewCategory, createNewItem } from '../../templates/main-app/projects/editorView/utils/editorOperations';
 import { removeObjRef } from '@util/utils';
 import { InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCamera, LuCheck, LuFileText, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
-const AddItemSheet = dynamic(() => import('../sheets/AddItemSheet'), { ssr: false });
 const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr: false });
 const ExtractionReviewSheet = dynamic(() => import('../sheets/ExtractionReviewSheet'), { ssr: false });
 const BulkActionsSheet = dynamic(() => import('../sheets/BulkActionsSheet'), { ssr: false });
@@ -66,10 +67,23 @@ const DEFAULT_FILTERS: MobileMenuFilters = {
     qualityIssue: null,
 };
 
+const MOBILE_MENU_PERSIST_DEBOUNCE_MS = 700;
+const MOBILE_MENU_PERSIST_RETRY_MS = 2500;
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const {
+        isLoading: loadingProjects,
+        projectsList,
+        refreshProjects,
+        selectedProject,
+        selectedProjectId,
+        selectedProjectSummary,
+        selectProject,
+        upsertCachedProject,
+    } = useMobileProjects();
     const labels = useOfferingLabels();
     const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
@@ -89,8 +103,6 @@ export default function MobileMenuScreen() {
     const [isSmartRecommendationsOpen, setIsSmartRecommendationsOpen] = useState(false);
     const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
     const [menuData, setMenuData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [projectsList, setProjectsList] = useState<any[]>([]);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(() => {
         if (typeof window === 'undefined') return null;
@@ -115,6 +127,28 @@ export default function MobileMenuScreen() {
         itemsCount?: number;
     } | null>(null);
     const uncategorizedLabel = t('uncategorized');
+    const menuContentTopRef = useRef<HTMLDivElement | null>(null);
+    const persistedMenuRef = useRef<any>(null);
+    const pendingMenuRef = useRef<any>(null);
+    const persistTimerRef = useRef<number | null>(null);
+    const retryTimerRef = useRef<number | null>(null);
+    const isPersistingRef = useRef(false);
+
+    const replaceProjectInList = useCallback((updatedProject: any) => {
+        if (!updatedProject?.projectId) return;
+        upsertCachedProject(updatedProject);
+    }, [upsertCachedProject]);
+
+    const clearPersistTimers = useCallback(() => {
+        if (persistTimerRef.current) {
+            window.clearTimeout(persistTimerRef.current);
+            persistTimerRef.current = null;
+        }
+        if (retryTimerRef.current) {
+            window.clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = null;
+        }
+    }, []);
 
     const setActiveProcessingState = useCallback((value: { jobId: string; projectId: string } | null) => {
         setActiveProcessingStateState(value);
@@ -126,36 +160,88 @@ export default function MobileMenuScreen() {
         }
     }, []);
 
-    const fetchMenuData = useCallback(async (projectId?: string) => {
-        try {
-            setIsLoading(true);
-            const result = await getProjectsList();
-            const projects = result?.projects || [];
-            setProjectsList(projects);
-
-            let targetProject: any;
-            if (projectId) {
-                targetProject = projects.find((project: any) => project.projectId === projectId);
-            } else {
-                targetProject = projects.find((project: any) => project.isDefault) || projects[0];
-            }
-
-            if (targetProject?.projectId) {
-                const fullProject = await getProjectData(targetProject.projectId);
-                setMenuData(fullProject);
-            }
-        } catch (err) {
-            console.error('Failed to load menu data:', err);
-        } finally {
-            setIsLoading(false);
+    const flushPendingMenuPersist = useCallback(async () => {
+        if (isPersistingRef.current || !pendingMenuRef.current?.projectId) {
+            return;
         }
-    }, []);
+
+        const snapshot = removeObjRef(pendingMenuRef.current);
+        isPersistingRef.current = true;
+
+        try {
+            const savedProject = await updateProject(snapshot);
+            const nextProject = savedProject || snapshot;
+            persistedMenuRef.current = removeObjRef(nextProject);
+
+            if (pendingMenuRef.current?.projectId === snapshot.projectId) {
+                const pendingSnapshot = JSON.stringify(pendingMenuRef.current);
+                const savedSnapshot = JSON.stringify(snapshot);
+                if (pendingSnapshot === savedSnapshot) {
+                    pendingMenuRef.current = null;
+                    setMenuData((current: any) => (
+                        current?.projectId === nextProject.projectId ? nextProject : current
+                    ));
+                    replaceProjectInList(nextProject);
+                }
+            }
+        } catch (error) {
+            console.error('[MobileMenu] Failed to persist project update:', error);
+            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+
+            if (!retryTimerRef.current) {
+                retryTimerRef.current = window.setTimeout(() => {
+                    retryTimerRef.current = null;
+                    void flushPendingMenuPersist();
+                }, MOBILE_MENU_PERSIST_RETRY_MS);
+            }
+        } finally {
+            isPersistingRef.current = false;
+
+            if (pendingMenuRef.current && JSON.stringify(pendingMenuRef.current) !== JSON.stringify(persistedMenuRef.current)) {
+                if (!persistTimerRef.current) {
+                    persistTimerRef.current = window.setTimeout(() => {
+                        persistTimerRef.current = null;
+                        void flushPendingMenuPersist();
+                    }, MOBILE_MENU_PERSIST_DEBOUNCE_MS);
+                }
+            }
+        }
+    }, [replaceProjectInList, t]);
+
+    const queueMenuPersist = useCallback((updatedProject: any) => {
+        if (!updatedProject?.projectId) return;
+
+        pendingMenuRef.current = removeObjRef(updatedProject);
+
+        if (retryTimerRef.current) {
+            window.clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = null;
+        }
+        if (persistTimerRef.current) {
+            window.clearTimeout(persistTimerRef.current);
+        }
+
+        persistTimerRef.current = window.setTimeout(() => {
+            persistTimerRef.current = null;
+            void flushPendingMenuPersist();
+        }, MOBILE_MENU_PERSIST_DEBOUNCE_MS);
+    }, [flushPendingMenuPersist]);
+
+    const applyLocalMenuUpdate = useCallback((updatedProject: any) => {
+        setMenuData(updatedProject);
+        replaceProjectInList(updatedProject);
+        queueMenuPersist(updatedProject);
+    }, [queueMenuPersist, replaceProjectInList]);
 
     useEffect(() => {
-        if (storeDetails?.storeId) {
-            fetchMenuData(activeProcessingState?.projectId || undefined);
-        }
-    }, [activeProcessingState?.projectId, storeDetails?.storeId, fetchMenuData]);
+        const nextProject = activeProcessingState?.projectId
+            ? null
+            : selectedProject || null;
+
+        setMenuData(nextProject ? removeObjRef(nextProject) : null);
+        persistedMenuRef.current = nextProject ? removeObjRef(nextProject) : null;
+        pendingMenuRef.current = null;
+    }, [activeProcessingState?.projectId, selectedProject]);
 
     useEffect(() => {
         if (!menuData?.projectId || activeProcessingState) return;
@@ -177,6 +263,23 @@ export default function MobileMenuScreen() {
         void checkExistingJob();
     }, [activeProcessingState, menuData?.projectId, setActiveProcessingState]);
 
+    useEffect(() => {
+        const handlePageHide = () => {
+            if (pendingMenuRef.current?.projectId && !isPersistingRef.current) {
+                void flushPendingMenuPersist();
+            }
+        };
+
+        window.addEventListener('pagehide', handlePageHide);
+        return () => {
+            window.removeEventListener('pagehide', handlePageHide);
+            clearPersistTimers();
+            if (pendingMenuRef.current?.projectId && !isPersistingRef.current) {
+                void flushPendingMenuPersist();
+            }
+        };
+    }, [clearPersistTimers, flushPendingMenuPersist]);
+
     const activeProcessingJobId = activeProcessingState?.jobId || null;
     const {
         job: activeJob,
@@ -196,6 +299,18 @@ export default function MobileMenuScreen() {
     const isJobBlocking = Boolean(activeProcessingJobId) && !showReviewSheet && (jobIsPending || jobIsProcessing || jobIsCancelling);
     const isBusy = Boolean(activeProcessingJobId);
 
+    const handleCancelProcessing = useCallback(async () => {
+        const confirmed = await Dialog.confirm({
+            cancelText: t('cancel'),
+            confirmText: t('cancelProcessingConfirmAction'),
+            content: t('cancelProcessingConfirmDesc'),
+            title: t('cancelProcessingConfirmTitle'),
+        });
+
+        if (!confirmed) return;
+        await cancelJob();
+    }, [cancelJob, t]);
+
     useEffect(() => {
         if (!activeProcessingJobId) return;
 
@@ -212,7 +327,11 @@ export default function MobileMenuScreen() {
             setActiveProcessingState(null);
             setShowReviewSheet(false);
             setComparisonResult(null);
-            void fetchMenuData(activeProcessingState?.projectId || menuData?.projectId);
+            void refreshProjects({
+                force: true,
+                preferredProjectId: activeProcessingState?.projectId || menuData?.projectId,
+                showLoader: false,
+            });
             setShowSuccessState(true);
         }
 
@@ -280,13 +399,13 @@ export default function MobileMenuScreen() {
         activeJob,
         activeProcessingJobId,
         activeProcessingState?.projectId,
-        fetchMenuData,
         jobError?.message,
         jobIsCancelled,
         jobIsCompleted,
         jobIsFailed,
         jobIsPreviewReady,
         menuData,
+        refreshProjects,
         setActiveProcessingState,
         showReviewSheet,
         t,
@@ -538,6 +657,9 @@ export default function MobileMenuScreen() {
                 return DEFAULT_FILTERS;
             }
         });
+        requestAnimationFrame(() => {
+            menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
     }, []);
 
     const renderSingleChoiceFilter = useCallback((
@@ -607,8 +729,8 @@ export default function MobileMenuScreen() {
         return categories.size;
     }, [menuItems, uncategorizedLabel]);
     const activeProjectSummary = useMemo(
-        () => projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
-        [menuData?.projectId, projectsList]
+        () => selectedProjectSummary || projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
+        [menuData?.projectId, projectsList, selectedProjectSummary]
     );
     const isFirstRunProject = Boolean(menuData?.projectId) && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
     const categorySummary = useMemo(() => {
@@ -659,30 +781,34 @@ export default function MobileMenuScreen() {
     const handleCategoryAdd = async ({ name, active, presetIds }: { name: string; active: boolean; presetIds: string[] }) => {
         if (!menuData) return;
         const presets = storeDetails?.timeSlotPresets || [];
+        const previous = menuData;
         const updated = removeObjRef(menuData);
         const targetFile = updated.files?.[0];
         if (!targetFile) return;
         if (!targetFile.extractedData) targetFile.extractedData = { data: { categories: [], items: [], languages: [] } };
         if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
         if (!targetFile.extractedData.data.categories) targetFile.extractedData.data.categories = [];
-        const newId = `cat-${Date.now()}`;
-        targetFile.extractedData.data.categories.push({
-            id: newId,
-            active,
-            name: { [activeLang]: name },
-            timeSlots: presetIds.length
-                ? presetIds
-                    .map((presetId) => presets.find((preset: any) => preset.id === presetId))
-                    .filter(Boolean)
-                    .map((preset: any) => ({
-                        presetId: preset.id,
-                        startTime: preset.startTime,
-                        endTime: preset.endTime,
-                    }))
-                : undefined,
-        });
-        await updateProject(updated);
-        setMenuData(updated);
+        const languageCodes = menuData.languages?.length
+            ? menuData.languages
+            : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
+        const nextCategory = createNewCategory(targetFile, languageCodes.length ? languageCodes : ['en'], menuData.masterProjectId);
+        nextCategory.active = active;
+        nextCategory.name = {
+            ...nextCategory.name,
+            [activeLang]: name,
+        };
+        nextCategory.timeSlots = presetIds.length
+            ? presetIds
+                .map((presetId) => presets.find((preset: any) => preset.id === presetId))
+                .filter(Boolean)
+                .map((preset: any) => ({
+                    presetId: preset.id,
+                    startTime: preset.startTime,
+                    endTime: preset.endTime,
+                }))
+            : undefined;
+        targetFile.extractedData.data.categories.push(nextCategory);
+        applyLocalMenuUpdate(updated);
     };
 
     const handleCategoryUpdate = async ({ id: categoryId, name, active, presetIds }: { id: string; name: string; active: boolean; presetIds: string[] }) => {
@@ -709,8 +835,7 @@ export default function MobileMenuScreen() {
                 }
             });
         });
-        await updateProject(updated);
-        setMenuData(updated);
+        applyLocalMenuUpdate(updated);
     };
 
     const handleCategoryDelete = async (categoryId: string) => {
@@ -733,8 +858,7 @@ export default function MobileMenuScreen() {
                 return item;
             });
         });
-        await updateProject(updated);
-        setMenuData(updated);
+        applyLocalMenuUpdate(updated);
     };
 
     const handleCategoryReorder = async (orderedCategoryIds: string[]) => {
@@ -748,8 +872,7 @@ export default function MobileMenuScreen() {
                 }
             });
         });
-        await updateProject(updated);
-        setMenuData(updated);
+        applyLocalMenuUpdate(updated);
     };
 
     const handleCategoryItemReorder = async (categoryId: string, orderedItemIds: string[]) => {
@@ -781,14 +904,12 @@ export default function MobileMenuScreen() {
                 return nextItem || item;
             });
         });
-        await updateProject(updated);
-        setMenuData(updated);
+        applyLocalMenuUpdate(updated);
     };
 
     const handleToggleAvailability = useCallback(async (item: MenuItemType) => {
         if (!menuData) return;
         const newAvailability = !item.available;
-        const previous = menuData;
         const updated = removeObjRef(menuData);
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.items?.forEach((menuItem: any) => {
@@ -797,25 +918,21 @@ export default function MobileMenuScreen() {
                 }
             });
         });
-        setMenuData(updated);
+        applyLocalMenuUpdate(updated);
 
         Toast.show({
             content: newAvailability ? availabilityLabels.available : availabilityLabels.unavailable,
             duration: 1000,
         });
-
-        try {
-            if (updated?.projectId) {
-                await updateProject(updated);
-            }
-        } catch {
-            setMenuData(previous);
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
-        }
-    }, [availabilityLabels.available, availabilityLabels.unavailable, menuData, t]);
+    }, [applyLocalMenuUpdate, availabilityLabels.available, availabilityLabels.unavailable, menuData]);
 
     const handleRefresh = async () => {
-        await fetchMenuData(menuData?.projectId);
+        await flushPendingMenuPersist();
+        await refreshProjects({
+            force: true,
+            preferredProjectId: menuData?.projectId || selectedProjectId,
+            showLoader: false,
+        });
     };
 
     const handleOpenUploadSheet = useCallback(() => {
@@ -845,7 +962,7 @@ export default function MobileMenuScreen() {
         setReturnToCommandMenu(false);
     }, []);
 
-    if (!storeDetails || isLoading) {
+    if (!storeDetails || (loadingProjects && !menuData)) {
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
                 <DotLoading color="primary" />
@@ -956,6 +1073,7 @@ export default function MobileMenuScreen() {
 
             <PullToRefresh onRefresh={handleRefresh}>
                 <Flex gap={16} style={{ padding: 16 }} vertical>
+                    <div ref={menuContentTopRef} />
                     {isFirstRunProject ? (
                         <Card
                             style={{
@@ -1076,11 +1194,16 @@ export default function MobileMenuScreen() {
                                                 onClick={() => setEditingItem(item)}
                                                 extra={
                                                     <Flex align="center" gap={8} wrap>
-                                                        <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                        <div
+                                                            onClick={(event) => event.stopPropagation()}
+                                                            onMouseDown={(event) => event.stopPropagation()}
+                                                            onPointerDown={(event) => event.stopPropagation()}
+                                                        >
+                                                            <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                        </div>
                                                         <Button fill="outline" onClick={(event) => {
                                                             event.stopPropagation();
                                                             setEditingItem(item);
-                                                            setIsAddSheetOpen(true);
                                                         }} size="small">
                                                             {t('edit')}
                                                         </Button>
@@ -1131,7 +1254,7 @@ export default function MobileMenuScreen() {
                         {jobCurrentStep || t('processingOfferingDesc', { items: labels.itemsPlural })}
                     </Text>
                     <ProgressBar percent={jobProgress || (jobIsPending ? 5 : 15)} style={{ width: '100%' }} />
-                    <Button block fill="outline" loading={jobIsCancelling} onClick={() => void cancelJob()}>
+                    <Button block fill="outline" loading={jobIsCancelling} onClick={() => void handleCancelProcessing()}>
                         {t('cancelProcessing')}
                     </Button>
                 </Flex>
@@ -1379,6 +1502,7 @@ export default function MobileMenuScreen() {
                     onClose={() => handleCommandActionBack(() => setIsSmartRecommendationsOpen(false))}
                     onSaved={(updatedProject) => {
                         setMenuData(updatedProject);
+                        replaceProjectInList(updatedProject);
                         setIsSmartRecommendationsOpen(false);
                         resetCommandActionFlow();
                     }}
@@ -1392,6 +1516,7 @@ export default function MobileMenuScreen() {
                     onClose={() => handleCommandActionBack(() => setIsManageLanguagesOpen(false))}
                     onSaved={(updatedProject) => {
                         setMenuData(updatedProject);
+                        replaceProjectInList(updatedProject);
                         setIsManageLanguagesOpen(false);
                         resetCommandActionFlow();
                     }}
@@ -1405,6 +1530,7 @@ export default function MobileMenuScreen() {
                     onClose={() => handleCommandActionBack(() => setIsGenerateDescriptionsOpen(false))}
                     onSaved={(updatedProject) => {
                         setMenuData(updatedProject);
+                        replaceProjectInList(updatedProject);
                         resetCommandActionFlow();
                     }}
                     projectData={menuData}
@@ -1449,22 +1575,13 @@ export default function MobileMenuScreen() {
                                 );
                             }
                         });
-                        setMenuData(updated);
-                        try {
-                            if (updated?.projectId) {
-                                await updateProject(updated);
-                            }
-                            setEditingItem(null);
-                            resetCommandActionFlow();
-                            Toast.show({ content: t('itemDeleted'), duration: 1000 });
-                        } catch {
-                            setMenuData(previous);
-                            Toast.show({ content: t('failedToSync'), duration: 2000 });
-                        }
+                        applyLocalMenuUpdate(updated);
+                        Toast.show({ content: t('itemDeleted'), duration: 1000 });
+                        setEditingItem(null);
+                        resetCommandActionFlow();
                     }}
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
-                        const previous = menuData;
                         const updated = removeObjRef(menuData);
                         updated.files?.forEach((file: any) => {
                             file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
@@ -1479,6 +1596,7 @@ export default function MobileMenuScreen() {
                                         const nextDescription = typeof menuItem.description === 'object' && menuItem.description ? { ...menuItem.description } : {};
                                         nextDescription[activeLang] = updatedItem.description;
                                         nextItem.description = nextDescription;
+                                        nextItem.descriptionSource = 'manual';
                                     }
                                     if (updatedItem.price !== undefined) {
                                         nextItem.price = String(updatedItem.price);
@@ -1507,30 +1625,22 @@ export default function MobileMenuScreen() {
                                 }
                             });
                         });
-                        setMenuData(updated);
-                        try {
-                            if (updated?.projectId) {
-                                await updateProject(updated);
-                            }
-                            setEditingItem(null);
-                            resetCommandActionFlow();
-                            Toast.show({ content: t('itemUpdated'), duration: 1000 });
-                        } catch {
-                            setMenuData(previous);
-                            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
-                        }
+                        applyLocalMenuUpdate(updated);
+                        Toast.show({ content: t('itemUpdated'), duration: 1000 });
+                        setEditingItem(null);
+                        resetCommandActionFlow();
                     }}
                 />
             ) : null}
 
             {isAddSheetOpen ? (
-                <AddItemSheet
+                <ItemEditSheet
                     categories={categoryOptions}
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
+                    mode="add"
                     onClose={() => handleCommandActionBack(() => setIsAddSheetOpen(false))}
                     onSave={async (newItem) => {
                         if (!menuData) return;
-                        const previous = menuData;
                         const updated = removeObjRef(menuData);
                         let targetFile = updated.files?.[0];
                         if (!targetFile) return;
@@ -1538,39 +1648,62 @@ export default function MobileMenuScreen() {
                         if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
                         if (!targetFile.extractedData.data.categories) targetFile.extractedData.data.categories = [];
                         if (!targetFile.extractedData.data.items) targetFile.extractedData.data.items = [];
+                        const languageCodes = menuData.languages?.length
+                            ? menuData.languages
+                            : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
 
                         let categoryId = newItem.categoryId;
                         if (!categoryId) {
-                            categoryId = `cat-${Date.now()}`;
-                            targetFile.extractedData.data.categories.push({
-                                id: categoryId,
-                                active: true,
-                                name: { [activeLang]: newItem.categoryName || 'Uncategorized' },
-                            });
+                            const createdCategory = createNewCategory(
+                                targetFile,
+                                languageCodes.length ? languageCodes : ['en'],
+                                menuData.masterProjectId,
+                            );
+                            createdCategory.active = true;
+                            createdCategory.name = {
+                                ...createdCategory.name,
+                                [activeLang]: newItem.categoryName || 'Uncategorized',
+                            };
+                            targetFile.extractedData.data.categories.push(createdCategory);
+                            categoryId = createdCategory.id;
                         }
 
-                        targetFile.extractedData.data.items.push({
-                            id: `item-${Date.now()}`,
-                            name: { [activeLang]: newItem.name },
-                            description: newItem.description ? { [activeLang]: newItem.description } : undefined,
-                            price: String(newItem.price || 0),
-                            category: categoryId,
-                            active: true,
-                            available: true,
-                        });
-
-                        setMenuData(updated);
-                        try {
-                            if (updated?.projectId) {
-                                await updateProject(updated);
+                        const createdItem = createNewItem(
+                            targetFile,
+                            categoryId,
+                            languageCodes.length ? languageCodes : ['en'],
+                            menuData.masterProjectId,
+                        );
+                        createdItem.name = {
+                            ...createdItem.name,
+                            [activeLang]: newItem.name || '',
+                        };
+                        createdItem.description = newItem.description
+                            ? {
+                                ...createdItem.description,
+                                [activeLang]: newItem.description,
                             }
-                            setIsAddSheetOpen(false);
-                            resetCommandActionFlow();
-                            Toast.show({ content: t('itemAdded'), duration: 1000 });
-                        } catch {
-                            setMenuData(previous);
-                            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+                            : createdItem.description;
+                        if (newItem.description) {
+                            createdItem.descriptionSource = 'manual';
                         }
+                        createdItem.price = String(newItem.price || 0);
+                        createdItem.active = newItem.active !== false;
+                        createdItem.available = newItem.available !== false;
+                        createdItem.attributes = (newItem.attributes || []).map((attribute) => ({
+                            id: attribute.id,
+                            active: attribute.active !== false,
+                            name: { [activeLang]: attribute.name },
+                            price: String(attribute.price || 0),
+                        }));
+                        createdItem.images = newItem.image ? [{ url: newItem.image, name: `${newItem.name || createdItem.id}.jpg` }] : [];
+
+                        targetFile.extractedData.data.items.push(createdItem);
+
+                        applyLocalMenuUpdate(updated);
+                        Toast.show({ content: t('itemAdded'), duration: 1000 });
+                        setIsAddSheetOpen(false);
+                        resetCommandActionFlow();
                     }}
                 />
             ) : null}
@@ -1585,7 +1718,6 @@ export default function MobileMenuScreen() {
                         setIsUploadSheetOpen(false);
                         resetCommandActionFlow();
                         setActiveProcessingState({ jobId, projectId });
-                        void fetchMenuData(projectId);
                     }}
                 />
             ) : null}
@@ -1603,7 +1735,11 @@ export default function MobileMenuScreen() {
                         setShowReviewSheet(false);
                         setComparisonResult(null);
                         setActiveProcessingState(null);
-                        void fetchMenuData(menuData.projectId);
+                        void refreshProjects({
+                            force: true,
+                            preferredProjectId: menuData.projectId,
+                            showLoader: false,
+                        });
                         setShowSuccessState(true);
                     }}
                     primaryLang={menuData?.languages?.[0] || 'en'}
@@ -1616,6 +1752,7 @@ export default function MobileMenuScreen() {
                 initialAction={bulkActionType}
                 onApply={(updatedProject) => {
                     setMenuData(updatedProject);
+                    upsertCachedProject(updatedProject);
                     resetCommandActionFlow();
                 }}
                 projectData={menuData}
@@ -1634,7 +1771,8 @@ export default function MobileMenuScreen() {
                 onClose={() => setIsProjectSelectorOpen(false)}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
-                    await fetchMenuData(preferredProjectId || menuData?.projectId);
+                    await flushPendingMenuPersist();
+                    selectProject(preferredProjectId || null);
                 }}
                 visible={isProjectSelectorOpen}
             />

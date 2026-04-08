@@ -66,7 +66,7 @@ export default function CategoryManagerSheet({
     const [isItemReorderMode, setIsItemReorderMode] = useState(false);
     const [reorderDraft, setReorderDraft] = useState<string[]>([]);
     const [itemReorderDraft, setItemReorderDraft] = useState<string[]>([]);
-    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+    const [categoryEditorMode, setCategoryEditorMode] = useState<'add' | 'edit' | null>(null);
 
     const sorted = useMemo(() => {
         return [...categories].sort((a, b) => {
@@ -128,6 +128,7 @@ export default function CategoryManagerSheet({
 
     const resetCategoryEditor = () => {
         setSelectedCategoryId(null);
+        setCategoryEditorMode(null);
     };
 
     const resetItemReorder = () => {
@@ -238,6 +239,12 @@ export default function CategoryManagerSheet({
 
     const openCategoryEditor = (category: MobileCategoryItem) => {
         setSelectedCategoryId(category.id);
+        setCategoryEditorMode('edit');
+    };
+
+    const openAddCategoryEditor = () => {
+        setSelectedCategoryId(null);
+        setCategoryEditorMode('add');
     };
 
     const handleDelete = async (categoryId: string) => {
@@ -526,9 +533,9 @@ export default function CategoryManagerSheet({
                             </List>
                         </Card>
                     </Flex>
-                ) : !selectedCategoryId ? (
+                ) : categoryEditorMode !== 'edit' ? (
                     <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
-                        <Button block onClick={() => setIsAddCategoryOpen(true)}>
+                        <Button block onClick={openAddCategoryEditor}>
                             <Flex align="center" gap={6}>
                                 <LuPlus size={14} />
                                 <Text>{t('addCategoryLabel')}</Text>
@@ -567,51 +574,41 @@ export default function CategoryManagerSheet({
             </Flex>
 
             <MobileCategoryEditSheet
-                mode="add"
-                onClose={() => setIsAddCategoryOpen(false)}
-                onSave={async (payload) => {
-                    setIsSaving(true);
-                    try {
-                        await onAdd(payload);
-                        setIsAddCategoryOpen(false);
-                        Toast.show({ content: t('categoryAdded'), duration: 1200 });
-                    } catch {
-                        Toast.show({ content: t('categoryAddFailed'), duration: 1500 });
-                    } finally {
-                        setIsSaving(false);
-                    }
-                }}
-                presets={presets}
-                visible={isAddCategoryOpen}
-            />
-
-            <MobileCategoryEditSheet
-                category={selectedCategory}
-                mode="edit"
+                category={categoryEditorMode === 'edit' ? selectedCategory : null}
+                mode={categoryEditorMode === 'edit' ? 'edit' : 'add'}
                 onClose={resetCategoryEditor}
                 onDelete={async (categoryId) => {
                     await handleDelete(categoryId);
                 }}
                 onSave={async (payload) => {
-                    if (!payload.id) return;
                     setIsSaving(true);
                     try {
-                        await onUpdate({
-                            active: payload.active,
-                            id: payload.id,
-                            name: payload.name,
-                            presetIds: payload.presetIds,
-                        });
-                        Toast.show({ content: t('categoryUpdated'), duration: 1200 });
+                        if (categoryEditorMode === 'add') {
+                            await onAdd({
+                                active: payload.active,
+                                name: payload.name,
+                                presetIds: payload.presetIds,
+                            });
+                            Toast.show({ content: t('categoryAdded'), duration: 1200 });
+                        } else {
+                            if (!payload.id) return;
+                            await onUpdate({
+                                active: payload.active,
+                                id: payload.id,
+                                name: payload.name,
+                                presetIds: payload.presetIds,
+                            });
+                            Toast.show({ content: t('categoryUpdated'), duration: 1200 });
+                        }
                         resetCategoryEditor();
                     } catch {
-                        Toast.show({ content: t('categoryUpdateFailed'), duration: 1500 });
+                        Toast.show({ content: categoryEditorMode === 'add' ? t('categoryAddFailed') : t('categoryUpdateFailed'), duration: 1500 });
                     } finally {
                         setIsSaving(false);
                     }
                 }}
                 presets={presets}
-                visible={Boolean(selectedCategory)}
+                visible={categoryEditorMode !== null}
             />
         </Popup>
     );

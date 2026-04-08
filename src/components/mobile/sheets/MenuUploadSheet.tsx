@@ -11,8 +11,8 @@ import type { UploadProps } from 'antd';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuFileText, LuUpload } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Text, Title, Toast, Upload } from '../antd';
+import { LuFileText, LuTrash2, LuUpload } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
 
 interface MenuUploadSheetProps {
     currentProjectId?: string | null;
@@ -28,8 +28,9 @@ type SelectedUploadFile = {
     id: string;
     name: string;
     previewUrl?: string;
+    preparedUrl?: string;
     size: number;
-    sourceFile: File;
+    sourceFile?: File;
     type: string;
 };
 
@@ -91,6 +92,49 @@ export default function MenuUploadSheet({
             return validationResult;
         }
 
+        if (file.type === 'application/pdf') {
+            try {
+                setProgress(0);
+                setStatusText(t('uploadConvertingPdf'));
+                setStep('uploading');
+
+                const { convertPdfToImages } = await import('@template/main-app/projects/utils/pdfUtils');
+                const convertedPdfImages = await convertPdfToImages([
+                    {
+                        uid: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        arrayBuffer: () => file.arrayBuffer(),
+                    },
+                ], 'mobile', 'mobile') as any[];
+
+                if (!convertedPdfImages.length) {
+                    throw new Error(t('menuUploadNoFilesPrepared'));
+                }
+
+                updateSelectedFiles((current) => [
+                    ...current,
+                    ...convertedPdfImages.map((page: any) => ({
+                        id: page.uid,
+                        name: page.name,
+                        previewUrl: page.url,
+                        preparedUrl: page.url,
+                        size: page.size,
+                        type: page.type,
+                    })),
+                ]);
+                setStatusText('');
+                setStep('review');
+                return false;
+            } catch (error: any) {
+                console.error('[MobileMenuUpload] PDF conversion failed:', error);
+                setErrorMessage(error?.message || t('menuUploadRetry'));
+                setStep('error');
+                return false;
+            }
+        }
+
         const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
         const nextFile: SelectedUploadFile = {
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -137,17 +181,29 @@ export default function MenuUploadSheet({
     }, [updateSelectedFiles]);
 
     const prepareFilesForUpload = useCallback(async () => {
-        const imageCandidates = selectedFiles.filter((file) => file.type !== 'application/pdf');
-        const pdfCandidates = selectedFiles.filter((file) => file.type === 'application/pdf');
         const preparedFiles: PreparedFile[] = [];
 
-        if (imageCandidates.length > 0) {
-            for (let index = 0; index < imageCandidates.length; index += 1) {
-                const candidate = imageCandidates[index];
+        if (selectedFiles.length > 0) {
+            for (let index = 0; index < selectedFiles.length; index += 1) {
+                const candidate = selectedFiles[index];
                 setStatusText(t('uploadPreparingImages', {
                     current: index + 1,
-                    total: imageCandidates.length,
+                    total: selectedFiles.length,
                 }));
+
+                if (candidate.preparedUrl) {
+                    preparedFiles.push({
+                        uid: `mobile-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+                        name: candidate.name,
+                        size: candidate.size,
+                        type: candidate.type,
+                        url: candidate.preparedUrl,
+                    });
+                    continue;
+                }
+
+                if (!candidate.sourceFile) continue;
+
                 const optimized = await optimizeImage(candidate.sourceFile, MENU_IMAGE_CONFIG);
                 preparedFiles.push({
                     uid: `mobile-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
@@ -157,28 +213,6 @@ export default function MenuUploadSheet({
                     url: optimized.dataUrl,
                 });
             }
-        }
-
-        if (pdfCandidates.length > 0) {
-            setStatusText(t('uploadConvertingPdf'));
-            const { convertPdfToImages } = await import('@template/main-app/projects/utils/pdfUtils');
-            const pdfFilesForConversion = pdfCandidates.map((file) => ({
-                uid: file.id,
-                name: file.sourceFile.name,
-                size: file.sourceFile.size,
-                type: file.sourceFile.type,
-                arrayBuffer: () => file.sourceFile.arrayBuffer(),
-            }));
-            const convertedPdfImages = await convertPdfToImages(pdfFilesForConversion, 'mobile', 'mobile') as any[];
-            convertedPdfImages.forEach((file: any) => {
-                preparedFiles.push({
-                    uid: file.uid,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    url: file.url,
-                });
-            });
         }
 
         return preparedFiles;
@@ -266,7 +300,7 @@ export default function MenuUploadSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '82vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={step === 'select' || step === 'review' || step === 'error' ? onClose : undefined}
             position="bottom"
@@ -274,24 +308,24 @@ export default function MenuUploadSheet({
         >
             <Flex
                 gap={16}
-                style={{ maxHeight: 'calc(82vh - 16px)', overflowY: 'auto', paddingBottom: 8 }}
+                style={{ maxHeight: 'calc(82vh - 16px)', overflowY: 'auto' }}
                 vertical
             >
                 {(step === 'select' || step === 'review') ? (
                     <NavBar onBack={onClose}>{t('uploadAndProcess')}</NavBar>
                 ) : null}
 
-                {step === 'select' ? (
-                    <>
+                <Flex gap={16} style={{ padding: '0 12px 12px' }} vertical>
+                    {step === 'select' ? (
                         <Card
                             style={{
                                 background: `linear-gradient(165deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 55%, ${token.colorBgElevated} 100%)`,
                                 border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 24,
+                                borderRadius: 22,
                                 overflow: 'hidden',
                             }}
                         >
-                            <Flex gap={18} vertical>
+                            <Flex gap={16} vertical>
                                 <Flex align="center" gap={14}>
                                     <Flex
                                         align="center"
@@ -322,155 +356,194 @@ export default function MenuUploadSheet({
                                             border: `1px solid ${token.colorBorderSecondary}`,
                                             borderRadius: 999,
                                             color: token.colorTextSecondary,
-                                            padding: '6px 12px',
+                                            lineHeight: 1.4,
+                                            padding: '8px 12px',
                                         }}
                                     >
                                         {t('menuUploadFormatsDetailed')}
                                     </Text>
                                 </Flex>
 
-                                <Flex align="center" justify="center" style={{ width: '100%' }}>
+                                <Flex style={{ width: '100%' }} align='center' justify='center'>
                                     <Upload {...uploadProps}>
                                         <Button
                                             block
                                             color="primary"
+                                            icon={<LuUpload size={18} />}
                                             size="large"
                                             style={{
                                                 borderRadius: 16,
-                                                display: 'flex',
-                                                justifyContent: 'center',
                                                 minHeight: 52,
                                                 paddingInline: 16,
                                                 width: '100%',
                                             }}
                                         >
-                                            <Flex align="center" gap={8} justify="center" style={{ width: '100%' }}>
-                                                <LuUpload size={18} />
-                                                <Text style={{ color: 'inherit' }}>{t('chooseFiles')}</Text>
-                                            </Flex>
+                                            {t('chooseFiles')}
                                         </Button>
                                     </Upload>
                                 </Flex>
                             </Flex>
                         </Card>
-                    </>
-                ) : null}
+                    ) : null}
 
-                {step === 'review' ? (
-                    <>
+                    {step === 'review' ? (
+                        <>
                         <Card
                             size="small"
                             style={{
-                                background: 'linear-gradient(135deg, #f8fafc 0%, #f3f4f6 100%)',
+                                background: `linear-gradient(165deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 55%, ${token.colorBgElevated} 100%)`,
+                                border: `1px solid ${token.colorBorderSecondary}`,
                                 borderRadius: 18,
                             }}
                         >
                             <Flex gap={8} vertical>
-                                <Title level={4} style={{ margin: 0 }}>
+                                <Title level={4} style={{ color: token.colorTextHeading, margin: 0 }}>
                                     {t('menuUploadReadyTitle')}
                                 </Title>
-                                <Text type="secondary">
+                                <Text style={{ color: token.colorTextSecondary }}>
                                     {t('menuUploadReadyDesc', { count: selectedFiles.length })}
                                 </Text>
-                                <Text strong>
+                                <Text strong style={{ color: token.colorText }}>
                                     {t('menuUploadSelectedSummary', {
                                         count: selectedFiles.length,
                                         size: `${totalSelectedMb}MB`,
-                                    })}
-                                </Text>
-                            </Flex>
-                        </Card>
+                                        })}
+                                    </Text>
+                                </Flex>
+                            </Card>
 
-                        <Flex gap={10} vertical>
-                            {selectedFiles.map((file) => (
-                                <Card key={file.id} size="small" style={{ borderRadius: 16 }}>
-                                    <Flex align="center" gap={12}>
-                                        {file.previewUrl ? (
-                                            <Image
-                                                preview={false}
-                                                src={file.previewUrl}
-                                                style={{ borderRadius: 12, height: 72, objectFit: 'cover', width: 72 }}
-                                            />
-                                        ) : (
-                                            <Flex align="center" gap={12}>
-                                                <Flex
-                                                    align="center"
-                                                    justify="center"
+                            <Flex gap={10} vertical>
+                                {selectedFiles.map((file) => (
+                                    <Card key={file.id} size="small" style={{ borderRadius: 16, position: 'relative' }}>
+                                        <Button
+                                            color="danger"
+                                            fill="none"
+                                            icon={<LuTrash2 size={16} />}
+                                            onClick={() => handleRemoveFile(file.id)}
+                                            size="small"
+                                            style={{
+                                                minHeight: 28,
+                                                minWidth: 28,
+                                                paddingInline: 0,
+                                                position: 'absolute',
+                                                right: 10,
+                                                bottom: 10,
+                                                zIndex: 1,
+                                            }}
+                                        />
+
+                                        <Flex align="center" gap={12}>
+                                            {file.previewUrl ? (
+                                                <Image
+                                                    preview
+                                                    src={file.previewUrl}
+                                                    style={{ borderRadius: 12, height: 72, objectFit: 'cover', width: 72 }}
+                                                />
+                                            ) : (
+                                                <Flex align="center" gap={12}>
+                                                    <Flex
+                                                        align="center"
+                                                        justify="center"
+                                                        style={{
+                                                            backgroundColor: token.colorBgElevated,
+                                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                                            borderRadius: 12,
+                                                            height: 72,
+                                                            width: 72,
+                                                        }}
+                                                    >
+                                                        <LuFileText size={28} />
+                                                    </Flex>
+                                                </Flex>
+                                            )}
+                                            <Flex gap={8} style={{ flex: 1, minWidth: 0, paddingRight: 32 }} vertical>
+                                                <Flex gap={8} wrap="wrap">
+                                                    <Tag>{file.type === 'application/pdf' ? t('pdfDocument') : t('imageFile')}</Tag>
+                                                    <Tag>{(file.size / (1024 * 1024)).toFixed(1)}MB</Tag>
+                                                </Flex>
+                                                <Text
+                                                    strong
                                                     style={{
-                                                        backgroundColor: '#f5f5f5',
-                                                        borderRadius: 12,
-                                                        height: 72,
-                                                        width: 72,
+                                                        color: token.colorText,
+                                                        lineHeight: 1.35,
+                                                        wordBreak: 'break-word',
                                                     }}
                                                 >
-                                                    <LuFileText size={28} />
-                                                </Flex>
+                                                    {file.name}
+                                                </Text>
                                             </Flex>
-                                        )}
-                                        <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                            <Text strong>{file.name}</Text>
-                                            <Text type="secondary">
-                                                {file.type === 'application/pdf' ? t('pdfDocument') : t('imageFile')}
-                                            </Text>
-                                            <Text type="secondary">
-                                                {(file.size / (1024 * 1024)).toFixed(1)}MB
-                                            </Text>
                                         </Flex>
-                                        <Button fill="outline" onClick={() => handleRemoveFile(file.id)} size="small">
-                                            {t('remove')}
-                                        </Button>
-                                    </Flex>
-                                </Card>
-                            ))}
-                        </Flex>
-
-                        <Button block color="primary" onClick={handleUploadAndProcess} size="large" style={{ borderRadius: 16, minHeight: 52 }}>
-                            <Flex align="center" gap={6}>
-                                <LuUpload size={16} />
-                                <Text style={{ color: 'inherit' }}>{t('uploadAndProcess')}</Text>
+                                    </Card>
+                                ))}
                             </Flex>
-                        </Button>
 
-                        {hasSelectedFiles ? (
-                            <Button block fill="none" onClick={handleReset} size="small">
-                                <Flex align="center" gap={6}>
-                                    <Text>{t('clearAll')}</Text>
-                                </Flex>
-                            </Button>
-                        ) : null}
-                    </>
-                ) : null}
+                            <Flex gap={10}>
+                                <Upload {...uploadProps}>
+                                    <Button
+                                        block
+                                        fill="outline"
+                                        icon={<LuUpload size={16} />}
+                                        size="large"
+                                        style={{ borderRadius: 16, minHeight: 52, width: '100%' }}
+                                    >
+                                        {t('addMoreFiles')}
+                                    </Button>
+                                </Upload>
 
-                {step === 'uploading' ? (
-                    <Card style={{ borderRadius: 18 }}>
-                        <Flex align="center" gap={16} vertical>
-                            <DotLoading color="primary" />
-                            <Title level={4} style={{ margin: 0 }}>
-                                {t('workingOnUpload')}
-                            </Title>
-                            <Text style={{ textAlign: 'center' }} type="secondary">
-                                {statusText || t('uploadingDesc')}
-                            </Text>
-                            <ProgressBar percent={progress} />
-                        </Flex>
-                    </Card>
-                ) : null}
+                                <Button
+                                    block
+                                    color="primary"
+                                    icon={<LuUpload size={16} />}
+                                    onClick={handleUploadAndProcess}
+                                    size="large"
+                                    style={{ borderRadius: 16, minHeight: 52 }}
+                                >
+                                    {t('uploadAndProcess')}
+                                </Button>
+                            </Flex>
 
-                {step === 'error' ? (
-                    <Result
-                        extra={[
-                            <Button key="cancel" block fill="outline" onClick={onClose} size="large">
-                                {t('cancel')}
-                            </Button>,
-                            <Button key="retry" block color="primary" onClick={handleReset} size="large">
-                                {t('tryAgain')}
-                            </Button>,
-                        ]}
-                        status="error"
-                        subTitle={errorMessage}
-                        title={t('menuUploadFailedTitle')}
-                    />
-                ) : null}
+                            {hasSelectedFiles ? (
+                                <Button block fill="none" onClick={handleReset} size="small">
+                                    {t('clearAll')}
+                                </Button>
+                            ) : null}
+                        </>
+                    ) : null}
+
+                    {step === 'uploading' ? (
+                        <Card style={{ borderRadius: 18 }}>
+                            <Flex align="center" gap={16} vertical>
+                                <DotLoading color="primary" />
+                                <Title level={4} style={{ margin: 0 }}>
+                                    {t('workingOnUpload')}
+                                </Title>
+                                <Text style={{ textAlign: 'center' }} type="secondary">
+                                    {statusText || t('uploadingDesc')}
+                                </Text>
+                                <ProgressBar percent={progress} />
+                                <Button block fill="outline" onClick={onClose} size="large">
+                                    {t('cancel')}
+                                </Button>
+                            </Flex>
+                        </Card>
+                    ) : null}
+
+                    {step === 'error' ? (
+                        <Result
+                            extra={[
+                                <Button key="cancel" block fill="outline" onClick={onClose} size="large">
+                                    {t('cancel')}
+                                </Button>,
+                                <Button key="retry" block color="primary" onClick={handleReset} size="large">
+                                    {t('tryAgain')}
+                                </Button>,
+                            ]}
+                            status="error"
+                            subTitle={errorMessage}
+                            title={t('menuUploadFailedTitle')}
+                        />
+                    ) : null}
+                </Flex>
             </Flex>
         </Popup>
     );
