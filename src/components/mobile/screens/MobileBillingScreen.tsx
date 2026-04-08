@@ -398,96 +398,102 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </Card>
             </Flex>
 
-            <Popup bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh' }} onMaskClick={() => setShowPlans(false)} position="bottom" visible={showPlans}>
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
+            <Popup bodyStyle={{ maxHeight: '85vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowPlans(false)} position="bottom" visible={showPlans}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowPlans(false)}>
                         {t('chooseAPlan')}
-                    </Title>
-                    <Flex gap={12} vertical>
-                        {plans.filter((plan) => plan.planId !== sub?.planId).map((plan) => {
-                            const price = (plan as any)[`price${currency}`]?.price;
-                            const credits = (plan as any)[`price${currency}`]?.monthlyCredits;
-                            return (
-                                <Card key={plan.planId} onClick={() => handleUpgrade(plan)}>
-                                    <Flex align="center" justify="space-between">
-                                        <Flex gap={4} vertical>
-                                            <Text strong>{`${plan.planId} Plan`}</Text>
-                                            <Text type="secondary">{`${credits} credits/mo · ${plan.description}`}</Text>
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Flex gap={12} vertical>
+                            {plans.filter((plan) => plan.planId !== sub?.planId).map((plan) => {
+                                const price = (plan as any)[`price${currency}`]?.price;
+                                const credits = (plan as any)[`price${currency}`]?.monthlyCredits;
+                                return (
+                                    <Card key={plan.planId} onClick={() => handleUpgrade(plan)}>
+                                        <Flex align="center" justify="space-between">
+                                            <Flex gap={4} vertical>
+                                                <Text strong>{`${plan.planId} Plan`}</Text>
+                                                <Text type="secondary">{`${credits} credits/mo · ${plan.description}`}</Text>
+                                            </Flex>
+                                            <Flex gap={2} vertical>
+                                                <Text>{price ? formatCurrency(price, currency) : t('contactUs')}</Text>
+                                                <Text type="secondary">{t('perMonth')}</Text>
+                                            </Flex>
                                         </Flex>
-                                        <Flex gap={2} vertical>
-                                            <Text>{price ? formatCurrency(price, currency) : t('contactUs')}</Text>
-                                            <Text type="secondary">{t('perMonth')}</Text>
-                                        </Flex>
-                                    </Flex>
-                                </Card>
-                            );
-                        })}
-                    </Flex>
-                    <Text type="secondary" style={{ textAlign: 'center' }}>
-                        {t('yearlyAvailable')}
-                    </Text>
-                </Flex>
-            </Popup>
-
-            <Popup bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }} onMaskClick={() => setShowCredits(false)} position="bottom" visible={showCredits}>
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
-                        {t('getMoreAiEnhancements')}
-                    </Title>
-                    <Text type="secondary">{t('moreAiDesc')}</Text>
-                    <Flex gap={12} vertical>
-                        {aiEnhancementPacksList.map((pack: AIEnhancementPack) => {
-                            const price = (pack as any)[`price${currency}`]?.price;
-                            return (
-                                <Card key={pack.packId} onClick={() => handleBuyCredits(pack.packId)}>
-                                    <Flex align="center" justify="space-between">
-                                        <Flex gap={4} vertical>
-                                            <Text strong>{pack.name}</Text>
-                                            <Text type="secondary">{pack.description || 'AI Enhancement Pack'}</Text>
-                                        </Flex>
-                                        <Text>{price ? formatCurrency(price, currency) : 'N/A'}</Text>
-                                    </Flex>
-                                </Card>
-                            );
-                        })}
-                    </Flex>
-                </Flex>
-            </Popup>
-
-            <Popup bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh' }} onMaskClick={() => setShowHistory(false)} position="bottom" visible={showHistory}>
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
-                        {t('billingHistory')}
-                    </Title>
-                    {billingHistory.length === 0 ? (
+                                    </Card>
+                                );
+                            })}
+                        </Flex>
                         <Text type="secondary" style={{ textAlign: 'center' }}>
-                            {t('noBillingHistoryYet')}
+                            {t('yearlyAvailable')}
                         </Text>
-                    ) : (
-                        <List>
-                            {billingHistory.map((item: any, index: number) => (
-                                <List.Item
-                                    key={item.id || index}
-                                    extra={
-                                        <Flex align="center" gap={8}>
-                                            <Text>{formatCurrency(item.amount, item.currency)}</Text>
-                                            {item.invoiceUrl ? (
-                                                <Button onClick={() => window.open(item.invoiceUrl, '_blank')} size="small">
-                                                    <LuExternalLink size={16} color="#3b82f6" />
-                                                </Button>
-                                            ) : null}
+                    </Flex>
+                </Flex>
+            </Popup>
+
+            <Popup bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCredits(false)} position="bottom" visible={showCredits}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowCredits(false)}>
+                        {t('getMoreAiEnhancements')}
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Text type="secondary">{t('moreAiDesc')}</Text>
+                        <Flex gap={12} vertical>
+                            {aiEnhancementPacksList.map((pack: AIEnhancementPack) => {
+                                const price = (pack as any)[`price${currency}`]?.price;
+                                return (
+                                    <Card key={pack.packId} onClick={() => handleBuyCredits(pack.packId)}>
+                                        <Flex align="center" justify="space-between">
+                                            <Flex gap={4} vertical>
+                                                <Text strong>{pack.name}</Text>
+                                                <Text type="secondary">{pack.description || 'AI Enhancement Pack'}</Text>
+                                            </Flex>
+                                            <Text>{price ? formatCurrency(price, currency) : 'N/A'}</Text>
                                         </Flex>
-                                    }
-                                    title={<Text>{item.type}</Text>}
-                                    description={
-                                        <Text type="secondary">
-                                            {new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                        </Text>
-                                    }
-                                />
-                            ))}
-                        </List>
-                    )}
+                                    </Card>
+                                );
+                            })}
+                        </Flex>
+                    </Flex>
+                </Flex>
+            </Popup>
+
+            <Popup bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowHistory(false)} position="bottom" visible={showHistory}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowHistory(false)}>
+                        {t('billingHistory')}
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        {billingHistory.length === 0 ? (
+                            <Text type="secondary" style={{ textAlign: 'center' }}>
+                                {t('noBillingHistoryYet')}
+                            </Text>
+                        ) : (
+                            <List>
+                                {billingHistory.map((item: any, index: number) => (
+                                    <List.Item
+                                        key={item.id || index}
+                                        extra={
+                                            <Flex align="center" gap={8}>
+                                                <Text>{formatCurrency(item.amount, item.currency)}</Text>
+                                                {item.invoiceUrl ? (
+                                                    <Button onClick={() => window.open(item.invoiceUrl, '_blank')} size="small">
+                                                        <LuExternalLink size={16} color="#3b82f6" />
+                                                    </Button>
+                                                ) : null}
+                                            </Flex>
+                                        }
+                                        title={<Text>{item.type}</Text>}
+                                        description={
+                                            <Text type="secondary">
+                                                {new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                            </Text>
+                                        }
+                                    />
+                                ))}
+                            </List>
+                        )}
+                    </Flex>
                 </Flex>
             </Popup>
         </Flex>

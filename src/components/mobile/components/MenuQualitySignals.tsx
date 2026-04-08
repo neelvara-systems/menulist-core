@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
-import { Card, Flex, List, Tag, Text } from '../antd';
+import { Card, Collapse, Flex, List, Tag, Text } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
@@ -35,47 +35,52 @@ export default function MobileMenuQualitySignals({ files, onReviewSignal }: Mobi
 
     return (
         <Card size="small" style={{ backgroundColor: allClear ? token.colorSuccessBg : token.colorFillAlter }}>
-            <Flex gap={12} vertical>
-                <Flex align="center" justify="space-between">
-                    <Flex align="center" gap={8}>
-                        <LuSparkles color={allClear ? token.colorSuccess : token.colorWarning} size={16} />
-                        <Text strong>{t('title')}</Text>
-                    </Flex>
-                    <Tag color={allClear ? 'success' : 'warning'}>
-                        {allClear ? t('allClearTitle') : signals.length}
-                    </Tag>
-                </Flex>
-
-            {allClear ? (
-                <Flex align="center" gap={12}>
-                    <LuCheckCircle color={token.colorSuccess} size={24} />
-                    <Flex gap={2} vertical>
-                        <Text type="secondary">{t('allClearDesc')}</Text>
-                    </Flex>
-                </Flex>
-            ) : (
-                <List>
-                    {signals.map((signal) => (
-                        <List.Item
-                            arrow={signal.status === 'warning'}
-                            key={signal.id}
-                            onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
-                            description={(
-                                <Flex gap={8} vertical>
-                                    <Flex align="center" gap={8}>
-                                        {SIGNAL_ICONS[signal.id]}
-                                        <Text>{signal.label}</Text>
-                                    </Flex>
-                                    {signal.helpText ? <Text type="secondary">{signal.helpText}</Text> : null}
-                                </Flex>
-                            )}
-                            extra={signal.status === 'warning' ? <Tag color="processing">{t('review')}</Tag> : null}
-                            prefix={signal.status === 'ok' ? <LuCheckCircle color={token.colorSuccess} size={16} /> : <LuAlertCircle color={token.colorWarning} size={16} />}
-                        />
-                    ))}
-                </List>
-            )}
-            </Flex>
+            <Collapse accordion defaultActiveKey={['menu-quality']}>
+                <Collapse.Panel
+                    key="menu-quality"
+                    title={(
+                        <Flex align="center" justify="space-between" style={{ width: '100%' }}>
+                            <Flex align="center" gap={8}>
+                                <LuSparkles color={allClear ? token.colorSuccess : token.colorWarning} size={16} />
+                                <Text strong>{t('title')}</Text>
+                            </Flex>
+                            <Tag color={allClear ? 'success' : 'warning'}>
+                                {allClear ? t('allClearTitle') : signals.length}
+                            </Tag>
+                        </Flex>
+                    )}
+                >
+                    {allClear ? (
+                        <Flex align="center" gap={12}>
+                            <LuCheckCircle color={token.colorSuccess} size={24} />
+                            <Flex gap={2} vertical>
+                                <Text type="secondary">{t('allClearDesc')}</Text>
+                            </Flex>
+                        </Flex>
+                    ) : (
+                        <List>
+                            {signals.map((signal) => (
+                                <List.Item
+                                    arrow={signal.status === 'warning'}
+                                    key={signal.id}
+                                    onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
+                                    description={(
+                                        <Flex gap={8} vertical>
+                                            <Flex align="center" gap={8}>
+                                                {SIGNAL_ICONS[signal.id]}
+                                                <Text>{signal.label}</Text>
+                                            </Flex>
+                                            {signal.helpText ? <Text type="secondary">{signal.helpText}</Text> : null}
+                                        </Flex>
+                                    )}
+                                    extra={signal.status === 'warning' ? <Tag color="processing">{t('review')}</Tag> : null}
+                                    prefix={signal.status === 'ok' ? <LuCheckCircle color={token.colorSuccess} size={16} /> : <LuAlertCircle color={token.colorWarning} size={16} />}
+                                />
+                            ))}
+                        </List>
+                    )}
+                </Collapse.Panel>
+            </Collapse>
         </Card>
     );
 }

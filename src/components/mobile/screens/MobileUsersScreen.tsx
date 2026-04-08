@@ -155,67 +155,76 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 <Text type="secondary">{t('desktopNote')}</Text>
             </Flex>
 
-            <Popup bodyStyle={{ maxHeight: '70vh' }} destroyOnClose onMaskClick={() => setSelectedUser(null)} visible={!!selectedUser}>
+            <Popup bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedUser(null)} visible={!!selectedUser}>
                 {selectedUser ? (
-                    <Flex gap={12} vertical>
-                        <Flex align="center" gap={12}>
-                            {(selectedUser as any).profileImage ? <Avatar size={48} src={(selectedUser as any).profileImage} /> : <Avatar icon={<LuUser size={20} />} size={48} />}
-                            <Flex gap={2} vertical>
-                                <Title level={4} style={{ margin: 0 }}>{(selectedUser as any).name || t('unnamed')}</Title>
-                                <Text type="secondary">{(selectedUser as any).email}</Text>
+                    <Flex style={{ height: '100%' }} vertical>
+                        <NavBar backIcon={<LuX size={20} />} onBack={() => setSelectedUser(null)}>
+                            {(selectedUser as any).name || t('unnamed')}
+                        </NavBar>
+                        <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                            <Flex align="center" gap={12}>
+                                {(selectedUser as any).profileImage ? <Avatar size={48} src={(selectedUser as any).profileImage} /> : <Avatar icon={<LuUser size={20} />} size={48} />}
+                                <Flex gap={2} vertical>
+                                    <Title level={4} style={{ margin: 0 }}>{(selectedUser as any).name || t('unnamed')}</Title>
+                                    <Text type="secondary">{(selectedUser as any).email}</Text>
+                                </Flex>
                             </Flex>
+
+                            <Card>
+                                <List>
+                                    <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).email || 'No email'}</Text>} />
+                                    <List.Item prefix={<LuPhone color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</Text>} />
+                                    <List.Item prefix={(selectedUser as any).active ? <LuUserCheck color="#22c55e" size={16} /> : <LuUserX color="#f87171" size={16} />} title={<Text>{(selectedUser as any).active ? t('active') : t('deactivated')}</Text>} />
+                                </List>
+                            </Card>
+
+                            <Button block fill="outline" onClick={() => { void handleToggleActive(selectedUser); setSelectedUser(null); }} size="large" style={(selectedUser as any).active ? { borderColor: '#dc2626', color: '#dc2626' } : undefined}>
+                                {(selectedUser as any).active ? t('deactivate') : t('activate')}
+                            </Button>
                         </Flex>
-
-                        <Card>
-                            <List>
-                                <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).email || 'No email'}</Text>} />
-                                <List.Item prefix={<LuPhone color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</Text>} />
-                                <List.Item prefix={(selectedUser as any).active ? <LuUserCheck color="#22c55e" size={16} /> : <LuUserX color="#f87171" size={16} />} title={<Text>{(selectedUser as any).active ? t('active') : t('deactivated')}</Text>} />
-                            </List>
-                        </Card>
-
-                        <Button block fill="outline" onClick={() => { void handleToggleActive(selectedUser); setSelectedUser(null); }} size="large" style={(selectedUser as any).active ? { borderColor: '#dc2626', color: '#dc2626' } : undefined}>
-                            {(selectedUser as any).active ? t('deactivate') : t('activate')}
-                        </Button>
                     </Flex>
                 ) : null}
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '80vh' }} destroyOnClose onMaskClick={isAdding ? undefined : () => setShowAddUser(false)} visible={showAddUser}>
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>{t('addStaffMember')}</Title>
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text type="secondary">{t('name')}</Text>
-                            <Input onChange={setNewUserName} placeholder={t('staffName')} value={newUserName} />
-                        </Flex>
-                    </Card>
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text type="secondary">{t('emailLabel')}</Text>
-                            <Input onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" value={newUserEmail} />
-                        </Flex>
-                    </Card>
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text type="secondary">{t('phone')}</Text>
-                            <Input onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" value={newUserPhone} />
-                        </Flex>
-                    </Card>
-                    {roles.length > 0 ? (
-                        <Card title={t('role')}>
-                            <Flex gap={8} wrap>
-                                {roles.map((role: any) => (
-                                    <Button key={role.id} fill={newUserRole === role.id ? 'solid' : 'outline'} onClick={() => setNewUserRole(role.id)} size="small">
-                                        {role.name}
-                                    </Button>
-                                ))}
+            <Popup bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={isAdding ? undefined : () => setShowAddUser(false)} visible={showAddUser}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowAddUser(false)}>
+                        {t('addStaffMember')}
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">{t('name')}</Text>
+                                <Input onChange={setNewUserName} placeholder={t('staffName')} value={newUserName} />
                             </Flex>
                         </Card>
-                    ) : null}
-                    <Flex gap={8}>
-                        <Button block fill="outline" onClick={() => setShowAddUser(false)} size="large">{t('cancel')}</Button>
-                        <Button block disabled={!newUserEmail.trim()} loading={isAdding} onClick={() => void handleAddUser()} size="large">{t('add')}</Button>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">{t('emailLabel')}</Text>
+                                <Input onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" value={newUserEmail} />
+                            </Flex>
+                        </Card>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">{t('phone')}</Text>
+                                <Input onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" value={newUserPhone} />
+                            </Flex>
+                        </Card>
+                        {roles.length > 0 ? (
+                            <Card title={t('role')}>
+                                <Flex gap={8} wrap>
+                                    {roles.map((role: any) => (
+                                        <Button key={role.id} fill={newUserRole === role.id ? 'solid' : 'outline'} onClick={() => setNewUserRole(role.id)} size="small">
+                                            {role.name}
+                                        </Button>
+                                    ))}
+                                </Flex>
+                            </Card>
+                        ) : null}
+                        <Flex gap={8}>
+                            <Button block fill="outline" onClick={() => setShowAddUser(false)} size="large">{t('cancel')}</Button>
+                            <Button block disabled={!newUserEmail.trim()} loading={isAdding} onClick={() => void handleAddUser()} size="large">{t('add')}</Button>
+                        </Flex>
                     </Flex>
                 </Flex>
             </Popup>

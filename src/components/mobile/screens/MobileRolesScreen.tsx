@@ -207,24 +207,27 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             </Flex>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '92vh' }}
+                bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={isSaving ? undefined : () => setIsEditSheetOpen(false)}
                 position="bottom"
                 visible={isEditSheetOpen}
             >
                 {editingRole ? (
-                    <Flex style={{ maxHeight: '92vh' }} vertical>
-                        <Flex align="center" justify="space-between" style={{ marginBottom: 16 }}>
-                            <Title level={4} style={{ margin: 0 }}>
-                                {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? t('editRole') : t('newRole')}
-                            </Title>
-                            <Button color="primary" loading={isSaving} onClick={handleSaveRole} size="small">
-                                {t('save')}
-                            </Button>
-                        </Flex>
+                    <Flex style={{ height: '100%' }} vertical>
+                        <NavBar
+                            backIcon={<LuX size={20} />}
+                            onBack={() => setIsEditSheetOpen(false)}
+                            right={(
+                                <Button color="primary" loading={isSaving} onClick={handleSaveRole} size="small">
+                                    {t('save')}
+                                </Button>
+                            )}
+                        >
+                            {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? t('editRole') : t('newRole')}
+                        </NavBar>
 
-                        <Flex gap={16} style={{ overflowY: 'auto' }} vertical>
+                        <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
                             <Card>
                                 <Flex gap={16} vertical>
                                     <Flex gap={6} vertical>

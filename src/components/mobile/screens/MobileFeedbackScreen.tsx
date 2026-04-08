@@ -239,45 +239,48 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             </Flex>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' }}
+                bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsQrOpen(false)}
                 position="bottom"
                 visible={isQrOpen}
             >
-                <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setIsQrOpen(false)}>
                         {t('feedbackQrTitle')}
-                    </Title>
-                    {isQrLoading ? (
-                        <Flex align="center" gap={8} justify="center">
+                    </NavBar>
+
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        {isQrLoading ? (
+                            <Flex align="center" gap={8} justify="center">
                             <DotLoading color="primary" />
                             <Text type="secondary">{t('generatingQr')}</Text>
-                        </Flex>
-                    ) : qrDataUrl ? (
-                        <Flex align="center" gap={12} vertical>
-                            <Card size="small">
-                                <Image alt="Feedback QR" preview={false} src={qrDataUrl} width={180} />
-                            </Card>
-                            <Flex gap={6} vertical>
-                                <Text type="secondary">{t('feedbackQrTip')}</Text>
                             </Flex>
-                            {feedbackUrl ? <Text type="secondary">{feedbackUrl}</Text> : null}
-                            <Flex gap={8}>
-                                <Button block fill="outline" onClick={handleCopyFeedbackLink}>
-                                    <Flex align="center" gap={6}>
-                                        <LuCopy size={14} />
-                                        <Text>{t('copyLink')}</Text>
-                                    </Flex>
-                                </Button>
-                                <Button block onClick={handleDownloadQr}>
-                                    <Flex align="center" gap={6}>
-                                        <LuDownload size={14} />
-                                        <Text>{t('download')}</Text>
-                                    </Flex>
-                                </Button>
+                        ) : qrDataUrl ? (
+                            <Flex align="center" gap={12} vertical>
+                                <Card size="small">
+                                    <Image alt="Feedback QR" preview={false} src={qrDataUrl} width={180} />
+                                </Card>
+                                <Flex gap={6} vertical>
+                                    <Text type="secondary">{t('feedbackQrTip')}</Text>
+                                </Flex>
+                                {feedbackUrl ? <Text type="secondary">{feedbackUrl}</Text> : null}
+                                <Flex gap={8}>
+                                    <Button block fill="outline" onClick={handleCopyFeedbackLink}>
+                                        <Flex align="center" gap={6}>
+                                            <LuCopy size={14} />
+                                            <Text>{t('copyLink')}</Text>
+                                        </Flex>
+                                    </Button>
+                                    <Button block onClick={handleDownloadQr}>
+                                        <Flex align="center" gap={6}>
+                                            <LuDownload size={14} />
+                                            <Text>{t('download')}</Text>
+                                        </Flex>
+                                    </Button>
+                                </Flex>
                             </Flex>
-                        </Flex>
-                    ) : null}
+                        ) : null}
+                    </Flex>
                 </Flex>
             </Popup>
         </Flex>

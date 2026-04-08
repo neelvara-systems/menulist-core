@@ -246,42 +246,46 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             </Flex>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80vh' }}
+                bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setShowSocialEdit(false)}
                 position="bottom"
                 visible={showSocialEdit}
             >
-                <Flex gap={16} vertical>
-                    <Flex align="center" justify="space-between">
-                        <Title level={4} style={{ margin: 0 }}>
-                            {t('socialMedia')}
-                        </Title>
-                        <Tag color="processing">{filledSocialCount}</Tag>
-                    </Flex>
-                    <Text type="secondary">Leave a field empty to hide that link.</Text>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar
+                        backIcon={<LuX size={20} />}
+                        onBack={() => setShowSocialEdit(false)}
+                        right={<Tag color="processing">{filledSocialCount}</Tag>}
+                    >
+                        {t('socialMedia')}
+                    </NavBar>
 
-                    <Flex gap={12} vertical>
-                        {SOCIAL_PLATFORMS.map((platform) => (
-                            <Card key={platform.key} size="small">
-                                <Flex gap={6} vertical>
-                                    <Text strong>{platform.label}</Text>
-                                    <Input
-                                        onChange={(value) => setSocialMedia({ ...socialMedia, [platform.key]: value })}
-                                        placeholder={platform.placeholder}
-                                        value={socialMedia[platform.key] || ''}
-                                    />
-                                </Flex>
-                            </Card>
-                        ))}
-                    </Flex>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Text type="secondary">Leave a field empty to hide that link.</Text>
 
-                    <Flex gap={12}>
-                        <Button block fill="outline" onClick={() => setShowSocialEdit(false)} size="large">
-                            {t('cancel')}
-                        </Button>
-                        <Button block color="primary" loading={isSaving} onClick={handleSaveSocialMedia} size="large">
-                            {t('save')}
-                        </Button>
+                        <Flex gap={12} vertical>
+                            {SOCIAL_PLATFORMS.map((platform) => (
+                                <Card key={platform.key} size="small">
+                                    <Flex gap={6} vertical>
+                                        <Text strong>{platform.label}</Text>
+                                        <Input
+                                            onChange={(value) => setSocialMedia({ ...socialMedia, [platform.key]: value })}
+                                            placeholder={platform.placeholder}
+                                            value={socialMedia[platform.key] || ''}
+                                        />
+                                    </Flex>
+                                </Card>
+                            ))}
+                        </Flex>
+
+                        <Flex gap={12}>
+                            <Button block fill="outline" onClick={() => setShowSocialEdit(false)} size="large">
+                                {t('cancel')}
+                            </Button>
+                            <Button block color="primary" loading={isSaving} onClick={handleSaveSocialMedia} size="large">
+                                {t('save')}
+                            </Button>
+                        </Flex>
                     </Flex>
                 </Flex>
             </Popup>

@@ -18,7 +18,7 @@ import { removeObjRef } from '@util/utils';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { InputNumber, Popover, Segmented, theme } from 'antd';
-import { LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuToggleRight } from 'react-icons/lu';
+import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuToggleRight } from 'react-icons/lu';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 import type { Project } from '../../templates/main-app/projects/types';
 
@@ -197,6 +197,24 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         };
     }, [action, pricingMethod, pricingValue]);
 
+    const pricingPreviewByItemId = useMemo(() => {
+        if (action !== 'pricing' || !pricingConfig) {
+            return new Map<string, { oldPrice: number; newPrice: number; changePercent: number }>();
+        }
+
+        const pricingPreview = computePricingPreview(selectedItems, pricingConfig);
+
+        return pricingPreview.allChanges.reduce((acc, change) => {
+            if (change.isAttribute) return acc;
+            acc.set(change.itemId, {
+                oldPrice: change.oldPrice,
+                newPrice: change.newPrice,
+                changePercent: change.changePercent,
+            });
+            return acc;
+        }, new Map<string, { oldPrice: number; newPrice: number; changePercent: number }>());
+    }, [action, pricingConfig, selectedItems]);
+
     const preview = useMemo(() => {
         if (selectedItems.length === 0 || !action) return null;
         if (action === 'availability') return computeAvailabilityPreview(selectedItems, 'available');
@@ -216,8 +234,34 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         setSelectedIds(next);
     };
 
+    const clearSelection = () => {
+        setSelectedIds(new Set());
+    };
+
+    const handleSearchChange = (value: string) => {
+        if (selectedIds.size > 0 && value !== search) {
+            clearSelection();
+        }
+        setSearch(value);
+    };
+
+    const handleStatusFilterChange = (nextFilter: StatusFilter) => {
+        if (selectedIds.size > 0 && nextFilter !== statusFilter) {
+            clearSelection();
+        }
+        setStatusFilter(nextFilter);
+        setIsStatusFilterOpen(false);
+    };
+
+    const handleDestinationCategoryChange = (value: string | null) => {
+        if (selectedIds.size > 0 && value !== destinationCategoryId) {
+            clearSelection();
+        }
+        setDestinationCategoryId(value);
+    };
+
     const toggleAll = () => {
-        if (selectedIds.size === filteredItems.length) {
+        if (effectiveSelectedCount === filteredItems.length) {
             setSelectedIds(new Set());
             return;
         }
@@ -284,12 +328,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         });
     };
 
-    useEffect(() => {
-        if (!visible) return;
-        if (action !== 'moveCategory') return;
-        setSelectedIds(new Set());
-    }, [action, destinationCategoryId, visible]);
-
     if (!visible) return null;
 
     if (!action) return null;
@@ -352,7 +390,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         if (action === 'availability') {
             return (
                 <Flex gap={10} wrap="wrap">
-                    {renderStatusBadge(t('available'), STATUS_COLORS.available)}
                     {renderStatusBadge(t('soldOut'), STATUS_COLORS.unavailable)}
                     {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
                 </Flex>
@@ -362,7 +399,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         if (action === 'showHide') {
             return (
                 <Flex gap={10} wrap="wrap">
-                    {renderStatusBadge(t('active'), STATUS_COLORS.available)}
                     {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
                     {renderStatusBadge(t('soldOut'), STATUS_COLORS.unavailable)}
                 </Flex>
@@ -372,7 +408,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         if (action === 'pricing' || action === 'moveCategory') {
             return (
                 <Flex gap={10} wrap="wrap">
-                    {renderStatusBadge(t('active'), STATUS_COLORS.available)}
                     {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
                     {renderStatusBadge(t('soldOut'), STATUS_COLORS.unavailable)}
                 </Flex>
@@ -427,6 +462,33 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         );
     };
 
+    const renderPricingChange = (item: ItemEntry) => {
+        const change = pricingPreviewByItemId.get(item.id);
+
+        if (!selectedIds.has(item.id)) {
+            return item.price ? <Text type="secondary">{item.price}</Text> : null;
+        }
+
+        if (!change) {
+            return (
+                <Tag>
+                    No price change
+                </Tag>
+            );
+        }
+
+        return (
+            <Flex align="center" gap={6} wrap="wrap">
+                <Text type="secondary">{currencySymbol}{change.oldPrice}</Text>
+                <LuArrowRight size={12} style={{ color: token.colorTextQuaternary }} />
+                <Text strong>{currencySymbol}{change.newPrice}</Text>
+                <Tag color={change.changePercent >= 0 ? 'success' : 'warning'}>
+                    {change.changePercent >= 0 ? '+' : ''}{Math.round(change.changePercent * 10) / 10}%
+                </Tag>
+            </Flex>
+        );
+    };
+
     const activeFilterCount = statusFilter === 'all' ? 0 : 1;
     const statusFilterLabel = statusFilter === 'active'
         ? t('active')
@@ -448,10 +510,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     align="center"
                     gap={10}
                     key={option.key}
-                    onClick={() => {
-                        setStatusFilter(option.key);
-                        setIsStatusFilterOpen(false);
-                    }}
+                    onClick={() => handleStatusFilterChange(option.key)}
                     style={{
                         borderRadius: 10,
                         cursor: 'pointer',
@@ -565,7 +624,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                     </Flex>
                                 </Flex>
                                 <Select
-                                    onChange={setDestinationCategoryId}
+                                    onChange={handleDestinationCategoryChange}
                                     options={destinationCategories}
                                     placeholder={t('chooseCategory')}
                                     value={destinationCategoryId || undefined}
@@ -604,7 +663,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
                         <Flex style={{ flex: 1, minWidth: 0 }}>
                             <SearchBar
-                                onChange={setSearch}
+                                onChange={handleSearchChange}
                                 placeholder={t('smartRecommendationsSearchItems')}
                                 value={search}
                             />
@@ -615,9 +674,14 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                         <Flex align="center" gap={10} style={{ flex: 1, minWidth: 0 }} wrap>
                             {renderLegend()}
                         </Flex>
+                        {selectedIds.size > 0 ? (
+                            <Button fill="none" onClick={clearSelection} size="small">
+                                Clear selection
+                            </Button>
+                        ) : null}
                         <Checkbox
-                            checked={filteredItems.length > 0 && selectedIds.size === filteredItems.length}
-                            indeterminate={selectedIds.size > 0 && selectedIds.size < filteredItems.length}
+                            checked={filteredItems.length > 0 && effectiveSelectedCount === filteredItems.length}
+                            indeterminate={effectiveSelectedCount > 0 && effectiveSelectedCount < filteredItems.length}
                             onChange={toggleAll}
                         >
                             <Text style={{ whiteSpace: 'nowrap' }}>{t('selectAllCount', { count: filteredItems.length })}</Text>
@@ -645,6 +709,13 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                             </Tag>
                         </Flex>
                     ) : null}
+
+                    {action === 'pricing' && preview && 'itemsAffected' in preview ? (
+                        <Flex gap={8} wrap="wrap">
+                            <Tag>{currencySymbol}{preview.avgPriceBefore} before</Tag>
+                            <Tag color="processing">{currencySymbol}{preview.avgPriceAfter} after</Tag>
+                        </Flex>
+                    ) : null}
                 </Flex>
 
                 <Flex style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }} vertical>
@@ -670,11 +741,13 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                             title={(
                                                 <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
                                                     <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
-                                                        <Checkbox
-                                                            checked={allCategorySelected}
-                                                            indeterminate={someCategorySelected}
-                                                            onChange={(checked) => toggleCategory(categoryName, checked)}
-                                                        />
+                                                        <div onClick={(event) => event.stopPropagation()}>
+                                                            <Checkbox
+                                                                checked={allCategorySelected}
+                                                                indeterminate={someCategorySelected}
+                                                                onChange={(checked) => toggleCategory(categoryName, checked)}
+                                                            />
+                                                        </div>
                                                         <Text strong>{categoryName}</Text>
                                                     </Flex>
                                                     <Tag color={selectedCount > 0 ? 'processing' : undefined}>
@@ -694,14 +767,16 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                                             style={{ cursor: 'pointer' }}
                                                         >
                                                             <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
-                                                                <Checkbox
-                                                                    checked={selectedIds.has(item.id)}
-                                                                    onChange={() => toggleItem(item.id)}
-                                                                />
+                                                                <div onClick={(event) => event.stopPropagation()}>
+                                                                    <Checkbox
+                                                                        checked={selectedIds.has(item.id)}
+                                                                        onChange={() => toggleItem(item.id)}
+                                                                    />
+                                                                </div>
                                                                 <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                                                                     <Text>{item.name}</Text>
                                                                     <Flex gap={8} wrap="wrap">
-                                                                        {item.price ? <Text type="secondary">{item.price}</Text> : null}
+                                                                        {action === 'pricing' ? renderPricingChange(item) : (item.price ? <Text type="secondary">{item.price}</Text> : null)}
                                                                         {renderItemStatus(item)}
                                                                         {item.attributes?.length ? <Tag>{t('variantsCount', { count: item.attributes.length })}</Tag> : null}
                                                                     </Flex>

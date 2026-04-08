@@ -156,8 +156,8 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                 )}
             </Flex>
 
-            <Popup bodyStyle={{ borderTopLeftRadius: 12, borderTopRightRadius: 12 }} onMaskClick={() => setIsFormOpen(false)} visible={isFormOpen}>
-                <Flex gap={16} vertical>
+            <Popup bodyStyle={{ maxHeight: '84vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setIsFormOpen(false)} visible={isFormOpen}>
+                <Flex style={{ height: '100%' }} vertical>
                     <NavBar
                         backIcon={<LuX size={20} />}
                         onBack={() => setIsFormOpen(false)}
@@ -166,48 +166,50 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                         {editingPreset ? t('editTimeSlot') : t('newTimeSlot')}
                     </NavBar>
 
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text strong>{t('name')}</Text>
-                            <Input maxLength={30} onChange={setFormLabel} placeholder={t('namePlaceholder')} value={formLabel} />
-                        </Flex>
-                    </Card>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text strong>{t('name')}</Text>
+                                <Input maxLength={30} onChange={setFormLabel} placeholder={t('namePlaceholder')} value={formLabel} />
+                            </Flex>
+                        </Card>
 
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text strong>{t('startTime')}</Text>
-                            <Select
-                                onChange={setFormStart}
-                                options={pickerOptions}
-                                placeholder={t('selectStartTime')}
-                                value={formStart}
-                            />
-                        </Flex>
-                    </Card>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text strong>{t('startTime')}</Text>
+                                <Select
+                                    onChange={setFormStart}
+                                    options={pickerOptions}
+                                    placeholder={t('selectStartTime')}
+                                    value={formStart}
+                                />
+                            </Flex>
+                        </Card>
 
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text strong>{t('endTime')}</Text>
-                            <Select
-                                onChange={setFormEnd}
-                                options={pickerOptions}
-                                placeholder={t('selectEndTime')}
-                                value={formEnd}
-                            />
-                        </Flex>
-                    </Card>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text strong>{t('endTime')}</Text>
+                                <Select
+                                    onChange={setFormEnd}
+                                    options={pickerOptions}
+                                    placeholder={t('selectEndTime')}
+                                    value={formEnd}
+                                />
+                            </Flex>
+                        </Card>
 
-                    <Card title={t('color')}>
-                        <Flex gap={8} wrap>
-                            {PRESET_COLORS.map((color) => (
-                                <Button key={color} fill="none" onClick={() => setFormColor(color)} style={{ height: 'auto', padding: 2 }}>
-                                    <Card style={{ alignItems: 'center', backgroundColor: color, borderRadius: 999, display: 'flex', height: 32, justifyContent: 'center', width: 32 }}>
-                                        {formColor === color ? <LuCheck color="#fff" size={14} /> : null}
-                                    </Card>
-                                </Button>
-                            ))}
-                        </Flex>
-                    </Card>
+                        <Card title={t('color')}>
+                            <Flex gap={8} wrap>
+                                {PRESET_COLORS.map((color) => (
+                                    <Button key={color} fill="none" onClick={() => setFormColor(color)} style={{ height: 'auto', padding: 2 }}>
+                                        <Card style={{ alignItems: 'center', backgroundColor: color, borderRadius: 999, display: 'flex', height: 32, justifyContent: 'center', width: 32 }}>
+                                            {formColor === color ? <LuCheck color="#fff" size={14} /> : null}
+                                        </Card>
+                                    </Button>
+                                ))}
+                            </Flex>
+                        </Card>
+                    </Flex>
                 </Flex>
             </Popup>
         </Flex>

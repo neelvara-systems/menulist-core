@@ -31,7 +31,7 @@ import {
 import { getCookie } from 'cookies-next';
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { LuCalendarRange, LuClock3, LuGlobe, LuMoon, LuPalette, LuSun, LuType, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Popup, Select, Switch, Text, Title } from '../antd';
+import { Button, Card, Flex, NavBar, Popup, Select, Switch, Text, Title } from '../antd';
 import { useFormatter, useLocale, useTimeZone, useTranslations } from 'next-intl';
 
 interface AppSettingsSheetProps {
@@ -170,20 +170,24 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '60vh', maxHeight: '80vh', overflowY: 'auto' }}
+            bodyStyle={{ maxHeight: '80vh', minHeight: '60vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex gap={16} vertical>
-                <Flex align="center" justify="space-between">
-                    <Title level={4} style={{ margin: 0 }}>{t('title')}</Title>
-                    <Button fill="none" onClick={onClose} size="small" style={{ paddingInline: 4 }}>
-                        <LuX size={18} />
-                    </Button>
-                </Flex>
+            <Flex style={{ height: '100%' }} vertical>
+                <NavBar
+                    right={(
+                        <Button fill="none" onClick={onClose} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                            <LuX size={18} />
+                        </Button>
+                    )}
+                >
+                    {t('title')}
+                </NavBar>
 
+                <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
                 <Card>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={8}>
@@ -303,6 +307,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                         <Switch checked={isFullscreen} onChange={() => void toggleFullscreen()} />
                     </Flex>
                 </Card>
+                </Flex>
             </Flex>
         </Popup>
     );

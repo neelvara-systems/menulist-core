@@ -343,10 +343,20 @@ export function Select({
                 if (typeof label === 'string') return label.toLowerCase().includes(input.toLowerCase());
                 return String(option?.value || '').toLowerCase().includes(input.toLowerCase());
             }}
+            getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
             onChange={onChange}
             optionFilterProp="label"
             options={options}
             placeholder={placeholder}
+            popupRender={(menu) => (
+                <div
+                    onTouchMove={(event) => event.stopPropagation()}
+                    onWheel={(event) => event.stopPropagation()}
+                    style={{ overscrollBehavior: 'contain' }}
+                >
+                    {menu}
+                </div>
+            )}
             popupMatchSelectWidth
             showSearch
             size="large"

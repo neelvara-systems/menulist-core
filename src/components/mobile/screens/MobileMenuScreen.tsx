@@ -10,11 +10,11 @@ import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/com
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { removeObjRef } from '@util/utils';
-import { FloatButton, InputNumber, Segmented, theme } from 'antd';
+import { FloatButton, InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCamera, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
@@ -539,6 +539,59 @@ export default function MobileMenuScreen() {
             }
         });
     }, []);
+
+    const renderSingleChoiceFilter = useCallback((
+        title: string,
+        value: string,
+        options: Array<{ label: string; value: string }>,
+        onChange: (value: string) => void
+    ) => (
+        <Card>
+            <Flex gap={12} vertical>
+                <Text strong>{title}</Text>
+                <Flex gap={8} vertical>
+                    {options.map((option) => {
+                        const selected = value === option.value;
+
+                        return (
+                            <div
+                                key={option.value}
+                                onClick={() => onChange(option.value)}
+                                style={{
+                                    backgroundColor: selected ? token.colorPrimaryBg : token.colorBgContainer,
+                                    border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+                                    borderRadius: 12,
+                                    cursor: 'pointer',
+                                    padding: '12px 14px',
+                                }}
+                            >
+                                <Flex align="center" gap={12} justify="space-between">
+                                    <Text style={{ color: selected ? token.colorPrimary : undefined }}>
+                                        {option.label}
+                                    </Text>
+                                    <Flex
+                                        align="center"
+                                        justify="center"
+                                        style={{
+                                            backgroundColor: selected ? token.colorPrimary : 'transparent',
+                                            border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+                                            borderRadius: '999px',
+                                            color: selected ? token.colorTextLightSolid : token.colorTextQuaternary,
+                                            flexShrink: 0,
+                                            height: 20,
+                                            width: 20,
+                                        }}
+                                    >
+                                        {selected ? <LuCheck size={12} /> : null}
+                                    </Flex>
+                                </Flex>
+                            </div>
+                        );
+                    })}
+                </Flex>
+            </Flex>
+        </Card>
+    ), [token]);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, MenuItemType[]> = {};
@@ -1130,85 +1183,60 @@ export default function MobileMenuScreen() {
                         </Flex>
                     </Card>
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Text strong>{t('images')}</Text>
-                            <Segmented
-                                block
-                                onChange={(value) => setFilters((prev) => ({ ...prev, hasImage: value === 'all' ? null : value === 'yes' }))}
-                                options={[
-                                    { label: t('allItems'), value: 'all' },
-                                    { label: t('hasImage'), value: 'yes' },
-                                    { label: t('noImage'), value: 'no' },
-                                ]}
-                                value={filters.hasImage === null ? 'all' : filters.hasImage ? 'yes' : 'no'}
-                            />
-                        </Flex>
-                    </Card>
+                    {renderSingleChoiceFilter(
+                        t('images'),
+                        filters.hasImage === null ? 'all' : filters.hasImage ? 'yes' : 'no',
+                        [
+                            { label: t('allItems'), value: 'all' },
+                            { label: t('hasImage'), value: 'yes' },
+                            { label: t('noImage'), value: 'no' },
+                        ],
+                        (value) => setFilters((prev) => ({ ...prev, hasImage: value === 'all' ? null : value === 'yes' }))
+                    )}
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Text strong>{t('descriptions')}</Text>
-                            <Segmented
-                                block
-                                onChange={(value) => setFilters((prev) => ({ ...prev, hasDescription: value === 'all' ? null : value === 'yes' }))}
-                                options={[
-                                    { label: t('allItems'), value: 'all' },
-                                    { label: t('hasDescription'), value: 'yes' },
-                                    { label: t('noDescription'), value: 'no' },
-                                ]}
-                                value={filters.hasDescription === null ? 'all' : filters.hasDescription ? 'yes' : 'no'}
-                            />
-                        </Flex>
-                    </Card>
+                    {renderSingleChoiceFilter(
+                        t('descriptions'),
+                        filters.hasDescription === null ? 'all' : filters.hasDescription ? 'yes' : 'no',
+                        [
+                            { label: t('allItems'), value: 'all' },
+                            { label: t('hasDescription'), value: 'yes' },
+                            { label: t('noDescription'), value: 'no' },
+                        ],
+                        (value) => setFilters((prev) => ({ ...prev, hasDescription: value === 'all' ? null : value === 'yes' }))
+                    )}
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Text strong>{t('pricing')}</Text>
-                            <Segmented
-                                block
-                                onChange={(value) => setFilters((prev) => ({ ...prev, hasPrice: value === 'all' ? null : value === 'yes' }))}
-                                options={[
-                                    { label: t('allItems'), value: 'all' },
-                                    { label: t('hasPrice'), value: 'yes' },
-                                    { label: t('noPrice'), value: 'no' },
-                                ]}
-                                value={filters.hasPrice === null ? 'all' : filters.hasPrice ? 'yes' : 'no'}
-                            />
-                        </Flex>
-                    </Card>
+                    {renderSingleChoiceFilter(
+                        t('pricing'),
+                        filters.hasPrice === null ? 'all' : filters.hasPrice ? 'yes' : 'no',
+                        [
+                            { label: t('allItems'), value: 'all' },
+                            { label: t('hasPrice'), value: 'yes' },
+                            { label: t('noPrice'), value: 'no' },
+                        ],
+                        (value) => setFilters((prev) => ({ ...prev, hasPrice: value === 'all' ? null : value === 'yes' }))
+                    )}
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Text strong>{t('availability')}</Text>
-                            <Segmented
-                                block
-                                onChange={(value) => setFilters((prev) => ({ ...prev, availability: value === 'all' ? null : value === 'available' }))}
-                                options={[
-                                    { label: t('allItems'), value: 'all' },
-                                    { label: t('available'), value: 'available' },
-                                    { label: t('soldOut'), value: 'soldOut' },
-                                ]}
-                                value={filters.availability === null ? 'all' : filters.availability ? 'available' : 'soldOut'}
-                            />
-                        </Flex>
-                    </Card>
+                    {renderSingleChoiceFilter(
+                        t('availability'),
+                        filters.availability === null ? 'all' : filters.availability ? 'available' : 'soldOut',
+                        [
+                            { label: t('allItems'), value: 'all' },
+                            { label: t('available'), value: 'available' },
+                            { label: t('soldOut'), value: 'soldOut' },
+                        ],
+                        (value) => setFilters((prev) => ({ ...prev, availability: value === 'all' ? null : value === 'available' }))
+                    )}
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Text strong>{t('status')}</Text>
-                            <Segmented
-                                block
-                                onChange={(value) => setFilters((prev) => ({ ...prev, activeStatus: value === 'all' ? null : value === 'active' }))}
-                                options={[
-                                    { label: t('allStatuses'), value: 'all' },
-                                    { label: t('active'), value: 'active' },
-                                    { label: t('hidden'), value: 'hidden' },
-                                ]}
-                                value={filters.activeStatus === null ? 'all' : filters.activeStatus ? 'active' : 'hidden'}
-                            />
-                        </Flex>
-                    </Card>
+                    {renderSingleChoiceFilter(
+                        t('status'),
+                        filters.activeStatus === null ? 'all' : filters.activeStatus ? 'active' : 'hidden',
+                        [
+                            { label: t('allStatuses'), value: 'all' },
+                            { label: t('active'), value: 'active' },
+                            { label: t('hidden'), value: 'hidden' },
+                        ],
+                        (value) => setFilters((prev) => ({ ...prev, activeStatus: value === 'all' ? null : value === 'active' }))
+                    )}
 
                     <Flex gap={8}>
                         <Button

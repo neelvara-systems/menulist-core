@@ -204,94 +204,98 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
             </Flex>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '60vh' }}
+                bodyStyle={{ maxHeight: '60vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={isCreating ? undefined : () => setShowAddOutlet(false)}
                 position="bottom"
                 visible={showAddOutlet}
             >
-                <Flex gap={16} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowAddOutlet(false)}>
                         {t('addNewOutlet')}
-                    </Title>
-                    <Flex gap={6} vertical>
-                        <Text strong>{t('outletName')}</Text>
-                        <Input
-                            onChange={setOutletName}
-                            placeholder={t('outletNamePlaceholder')}
-                            value={outletName}
-                        />
-                    </Flex>
+                    </NavBar>
 
-                    {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription ? (
-                        (() => {
-                            const proration = calculateProration(activeSubscription);
-                            return (
-                                <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
-                                    <Flex gap={4} vertical>
-                                        <Text>{`Prorated charge today: ${currency} ${proration.proratedAmount}`}</Text>
-                                        <Text type="secondary">{`${proration.daysRemaining} days left in cycle`}</Text>
-                                    </Flex>
-                                </Card>
-                            );
-                        })()
-                    ) : null}
+                    <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Flex gap={6} vertical>
+                            <Text strong>{t('outletName')}</Text>
+                            <Input
+                                onChange={setOutletName}
+                                placeholder={t('outletNamePlaceholder')}
+                                value={outletName}
+                            />
+                        </Flex>
 
-                    <Flex gap={12}>
-                        <Button block fill="outline" onClick={() => setShowAddOutlet(false)} size="large">
-                            {t('cancel')}
-                        </Button>
-                        <Button
-                            block
-                            color="primary"
-                            disabled={!outletName.trim()}
-                            loading={isCreating}
-                            onClick={handleCreateOutlet}
-                            size="large"
-                        >
-                            {t('addOutlet')}
-                        </Button>
+                        {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription ? (
+                            (() => {
+                                const proration = calculateProration(activeSubscription);
+                                return (
+                                    <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                                        <Flex gap={4} vertical>
+                                            <Text>{`Prorated charge today: ${currency} ${proration.proratedAmount}`}</Text>
+                                            <Text type="secondary">{`${proration.daysRemaining} days left in cycle`}</Text>
+                                        </Flex>
+                                    </Card>
+                                );
+                            })()
+                        ) : null}
+
+                        <Flex gap={12}>
+                            <Button block fill="outline" onClick={() => setShowAddOutlet(false)} size="large">
+                                {t('cancel')}
+                            </Button>
+                            <Button
+                                block
+                                color="primary"
+                                disabled={!outletName.trim()}
+                                loading={isCreating}
+                                onClick={handleCreateOutlet}
+                                size="large"
+                            >
+                                {t('addOutlet')}
+                            </Button>
+                        </Flex>
                     </Flex>
                 </Flex>
             </Popup>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '90vh' }}
+                bodyStyle={{ maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setShowPolicy(false)}
                 position="bottom"
                 visible={showPolicy}
             >
-                <Flex gap={12} style={{ maxHeight: '90vh' }} vertical>
-                    <Flex gap={4} vertical>
-                        <Title level={4} style={{ margin: 0 }}>
-                            {t('outletPolicy')}
-                        </Title>
-                        <Text type="secondary">{t('chainWideRules')}</Text>
-                    </Flex>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowPolicy(false)}>
+                        {t('outletPolicy')}
+                    </NavBar>
 
-                    <Flex gap={16} style={{ overflowY: 'auto' }} vertical>
-                        {OUTLET_POLICY_CATEGORIES.map((category, index) => (
-                            <Card
-                                key={`${category.label}-${index}`}
-                                size="small"
-                                title={<Text strong>{category.label}</Text>}
-                            >
-                                <List>
-                                    {category.items.map((item) => (
-                                        <List.Item
-                                            key={item.key}
-                                            extra={
-                                                <Switch
-                                                    checked={policy[item.key]}
-                                                    loading={savingKey === item.key}
-                                                    onChange={(checked) => handleTogglePolicy(item.key, checked)}
-                                                />
-                                            }
-                                            title={<Text>{item.label}</Text>}
-                                        />
-                                    ))}
-                                </List>
-                            </Card>
-                        ))}
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Text type="secondary">{t('chainWideRules')}</Text>
+
+                        <Flex gap={16} vertical>
+                            {OUTLET_POLICY_CATEGORIES.map((category, index) => (
+                                <Card
+                                    key={`${category.label}-${index}`}
+                                    size="small"
+                                    title={<Text strong>{category.label}</Text>}
+                                >
+                                    <List>
+                                        {category.items.map((item) => (
+                                            <List.Item
+                                                key={item.key}
+                                                extra={
+                                                    <Switch
+                                                        checked={policy[item.key]}
+                                                        loading={savingKey === item.key}
+                                                        onChange={(checked) => handleTogglePolicy(item.key, checked)}
+                                                    />
+                                                }
+                                                title={<Text>{item.label}</Text>}
+                                            />
+                                        ))}
+                                    </List>
+                                </Card>
+                            ))}
+                        </Flex>
                     </Flex>
                 </Flex>
             </Popup>

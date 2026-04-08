@@ -112,9 +112,21 @@ export default function SelectionContext({
             >
                 <Flex align="center" justify="space-between">
                     <Text strong style={{ fontSize: 13 }}>Selection</Text>
-                    <Tag color={selectedIds.size > 0 ? 'blue' : undefined}>
-                        {selectedIds.size} selected
-                    </Tag>
+                    <Flex align="center" gap={8}>
+                        {selectedIds.size > 0 && (
+                            <Button
+                                size="small"
+                                type="link"
+                                onClick={() => onSelectionChange(new Set())}
+                                style={{ height: 'auto', padding: 0, fontSize: 11 }}
+                            >
+                                Clear selection
+                            </Button>
+                        )}
+                        <Tag color={selectedIds.size > 0 ? 'blue' : undefined}>
+                            {selectedIds.size} selected
+                        </Tag>
+                    </Flex>
                 </Flex>
 
                 {/* Summary info */}
@@ -234,6 +246,7 @@ export default function SelectionContext({
                                                 <Checkbox
                                                     checked={selectedIds.has(item.id)}
                                                     onChange={(e) => handleToggleItem(item.id, e.target.checked)}
+                                                    onClick={(e) => e.stopPropagation()}
                                                 />
                                                 <Flex vertical style={{ flex: 1, minWidth: 0 }}>
                                                     <Flex align="center" gap={4}>
