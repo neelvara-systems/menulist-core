@@ -170,7 +170,11 @@ export function FloatingBubble({ children, onClick, style }: { children?: ReactN
     const bubbleStyle = style || {};
     return (
         <FloatButton
-            icon={children}
+            icon={(
+                <Flex align="center" justify="center" style={{ color: 'inherit', height: '100%', width: '100%' }}>
+                    {children}
+                </Flex>
+            )}
             onClick={onClick}
             type="primary"
             style={{

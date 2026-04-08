@@ -10,12 +10,12 @@ import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/com
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { removeObjRef } from '@util/utils';
-import { FloatButton, InputNumber, theme } from 'antd';
+import { InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCamera, LuCheck, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { LuCamera, LuCheck, LuFileText, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
+import { Button, Card, Checkbox, Collapse, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -610,7 +610,7 @@ export default function MobileMenuScreen() {
         () => projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
         [menuData?.projectId, projectsList]
     );
-
+    const isFirstRunProject = Boolean(menuData?.projectId) && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
     const categorySummary = useMemo(() => {
         if (!menuData?.files) return [];
         const map = new Map<string, CategorySummary>();
@@ -634,6 +634,7 @@ export default function MobileMenuScreen() {
         });
         return Array.from(map.values());
     }, [activeLang, menuData?.files, uncategorizedLabel]);
+    const hasCategories = categorySummary.length > 0;
 
     const categoryItemMap = useMemo<Record<string, MobileCategoryReorderItem[]>>(() => {
         if (!menuData?.files) return {};
@@ -867,30 +868,32 @@ export default function MobileMenuScreen() {
                         rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
 
-                    {menuData?.files ? (
+                    {menuData?.files && !isFirstRunProject ? (
                         <MobileMenuQualitySignals files={menuData.files} onReviewSignal={handleReviewQualitySignal} />
                     ) : null}
 
-                    <Flex align="center" gap={8}>
-                        <Flex style={{ flex: 1, minWidth: 0 }}>
-                            <SearchBar
-                                onChange={setSearchQuery}
-                                placeholder={t('searchPlaceholder', { items: labels.itemsPlural })}
-                                value={searchQuery}
-                            />
+                    {!isFirstRunProject ? (
+                        <Flex align="center" gap={8}>
+                            <Flex style={{ flex: 1, minWidth: 0 }}>
+                                <SearchBar
+                                    onChange={setSearchQuery}
+                                    placeholder={t('searchPlaceholder', { items: labels.itemsPlural })}
+                                    value={searchQuery}
+                                />
+                            </Flex>
+                            <Flex style={{ flexShrink: 0 }}>
+                                <Button block fill="outline" onClick={() => setIsFilterSheetOpen(true)} style={{ justifyContent: 'flex-start' }}>
+                                    <Flex align="center" gap={8}>
+                                        <LuFilter size={16} />
+                                        <Text>{t('filters')}</Text>
+                                        {appliedFilterCount > 0 ? <Tag color="processing">{appliedFilterCount}</Tag> : null}
+                                    </Flex>
+                                </Button>
+                            </Flex>
                         </Flex>
-                        <Flex style={{ flexShrink: 0 }}>
-                            <Button block fill="outline" onClick={() => setIsFilterSheetOpen(true)} style={{ justifyContent: 'flex-start' }}>
-                                <Flex align="center" gap={8}>
-                                    <LuFilter size={16} />
-                                    <Text>{t('filters')}</Text>
-                                    {appliedFilterCount > 0 ? <Tag color="processing">{appliedFilterCount}</Tag> : null}
-                                </Flex>
-                            </Button>
-                        </Flex>
-                    </Flex>
+                    ) : null}
 
-                    {(activeFilterChips.length > 0 || searchQuery) ? (
+                    {!isFirstRunProject && (activeFilterChips.length > 0 || searchQuery) ? (
                         <Flex align="center" gap={8} wrap="wrap">
                             {searchQuery ? (
                                 <Tag style={{ borderRadius: 999, paddingInline: 10 }}>
@@ -936,22 +939,99 @@ export default function MobileMenuScreen() {
                         </Flex>
                     ) : null}
 
-                    <Flex align="center" justify="space-between">
-                        <Text type="secondary">
-                            {t('categoriesSummary', {
-                                items: `${menuItems.length} ${labels.itemsPlural}`,
-                                categories: t('categoriesCount', { count: categoryCount }),
-                            })}
-                        </Text>
-                        {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
-                    </Flex>
+                    {!isFirstRunProject ? (
+                        <Flex align="center" justify="space-between">
+                            <Text type="secondary">
+                                {t('categoriesSummary', {
+                                    items: `${menuItems.length} ${labels.itemsPlural}`,
+                                    categories: t('categoriesCount', { count: categoryCount }),
+                                })}
+                            </Text>
+                            {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
+                        </Flex>
+                    ) : null}
 
                 </Flex>
             </Card>
 
             <PullToRefresh onRefresh={handleRefresh}>
                 <Flex gap={16} style={{ padding: 16 }} vertical>
-                    {Object.keys(groupedItems).length === 0 ? (
+                    {isFirstRunProject ? (
+                        <Card
+                            style={{
+                                background: `linear-gradient(165deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 55%, ${token.colorBgElevated} 100%)`,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 24,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <Flex gap={18} vertical>
+                                <Flex align="center" gap={14}>
+                                    <Flex
+                                        align="center"
+                                        justify="center"
+                                        style={{
+                                            backgroundColor: token.colorPrimaryBg,
+                                            border: `1px solid ${token.colorPrimaryBorder}`,
+                                            borderRadius: 16,
+                                            color: token.colorPrimary,
+                                            height: 52,
+                                            minWidth: 52,
+                                            width: 52,
+                                        }}
+                                    >
+                                        <LuFileText size={22} />
+                                    </Flex>
+                                    <Flex gap={4} style={{ flex: 1 }} vertical>
+                                        <Title level={4} style={{ color: token.colorTextHeading, margin: 0 }}>
+                                            {t('createYourMenu', { offering: labels.offeringTitle })}
+                                        </Title>
+                                        <Text style={{ color: token.colorTextSecondary }}>
+                                            {t('createYourMenuDesc', { offering: labels.offeringLower })}
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+
+                                <Button block color="primary" onClick={handleOpenUploadSheet} size="large" style={{ borderRadius: 16, minHeight: 50 }}>
+                                    {t('uploadMenuPhoto', { offering: labels.offeringTitle })}
+                                </Button>
+
+                                <Flex gap={10} style={{ width: '100%' }}>
+                                    <Button
+                                        block
+                                        fill="outline"
+                                        onClick={() => {
+                                            setCategorySheetMode('manage');
+                                            setIsCategorySheetOpen(true);
+                                        }}
+                                        size="large"
+                                        style={{
+                                            backgroundColor: token.colorBgElevated,
+                                            borderColor: token.colorBorder,
+                                            borderRadius: 16,
+                                        }}
+                                    >
+                                        {t('addCategoryLabel')}
+                                    </Button>
+                                    {hasCategories ? (
+                                        <Button
+                                            block
+                                            fill="outline"
+                                            onClick={() => setIsAddSheetOpen(true)}
+                                            size="large"
+                                            style={{
+                                                backgroundColor: token.colorBgElevated,
+                                                borderColor: token.colorBorder,
+                                                borderRadius: 16,
+                                            }}
+                                        >
+                                            {t('addItem')}
+                                        </Button>
+                                    ) : null}
+                                </Flex>
+                            </Flex>
+                        </Card>
+                    ) : Object.keys(groupedItems).length === 0 ? (
                         !searchQuery && !menuData ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
@@ -1029,12 +1109,14 @@ export default function MobileMenuScreen() {
                 </Flex>
             </PullToRefresh>
 
-            <FloatButton
-                icon={<LuSettings2 size={18} />}
-                onClick={() => setIsCommandMenuOpen(true)}
-                style={{ bottom: 76, insetInlineEnd: 16 }}
-                type="primary"
-            />
+            {!isFirstRunProject ? (
+                <FloatingBubble
+                    onClick={() => setIsCommandMenuOpen(true)}
+                    style={{ '--initial-position-bottom': 88, '--initial-position-right': 16, '--size': 52 }}
+                >
+                    <LuSettings2 size={18} />
+                </FloatingBubble>
+            ) : null}
 
             <Popup
                 bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '60vh' }}
@@ -1498,9 +1580,10 @@ export default function MobileMenuScreen() {
                     currentProjectId={menuData?.projectId || null}
                     currentProjectLanguages={menuData?.languages || null}
                     existingFiles={menuData?.files || []}
-                    onClose={() => setIsUploadSheetOpen(false)}
+                    onClose={() => handleCommandActionBack(() => setIsUploadSheetOpen(false))}
                     onJobCreated={({ jobId, projectId }) => {
                         setIsUploadSheetOpen(false);
+                        resetCommandActionFlow();
                         setActiveProcessingState({ jobId, projectId });
                         void fetchMenuData(projectId);
                     }}

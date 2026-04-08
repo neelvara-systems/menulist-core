@@ -2,17 +2,17 @@
 
 import GlobalLanguagesList from '@data/languages';
 import { addProject, uploadFile } from '@database/projects';
-import createProcessingJob from '@template/main-app/projects/getProcessedFile';
-import { MAX_TOTAL_UPLOAD_SIZE } from '@template/main-app/projects/constants';
-import type { ProjectFileType } from '@template/main-app/projects/types';
-import { validateFile } from '@template/main-app/projects/validation';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import createProcessingJob from '@template/main-app/projects/getProcessedFile';
+import type { ProjectFileType } from '@template/main-app/projects/types';
+import { validateFile } from '@template/main-app/projects/validation';
 import type { UploadProps } from 'antd';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuFileText, LuImage, LuUpload } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, Popup, ProgressBar, Result, Text, Title, Toast, Upload } from '../antd';
+import { LuFileText, LuUpload } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Text, Title, Toast, Upload } from '../antd';
 
 interface MenuUploadSheetProps {
     currentProjectId?: string | null;
@@ -48,6 +48,7 @@ export default function MenuUploadSheet({
     onClose,
     onJobCreated,
 }: MenuUploadSheetProps) {
+    const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
     const [step, setStep] = useState<UploadStep>('select');
     const [selectedFiles, setSelectedFiles] = useState<SelectedUploadFile[]>([]);
@@ -70,10 +71,6 @@ export default function MenuUploadSheet({
 
     const hasSelectedFiles = selectedFiles.length > 0;
     const totalSelectedMb = (totalSelectedBytes / (1024 * 1024)).toFixed(1);
-    const uploadLimitText = t('menuUploadTotalLimit', {
-        size: `${Math.round(MAX_TOTAL_UPLOAD_SIZE / (1024 * 1024))}MB`,
-    });
-
     const updateSelectedFiles = useCallback((updater: (current: SelectedUploadFile[]) => SelectedUploadFile[]) => {
         setSelectedFiles((current) => {
             const next = updater(current);
@@ -269,7 +266,7 @@ export default function MenuUploadSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82vh', overflow: 'hidden' }}
+            bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={step === 'select' || step === 'review' || step === 'error' ? onClose : undefined}
             position="bottom"
@@ -280,14 +277,17 @@ export default function MenuUploadSheet({
                 style={{ maxHeight: 'calc(82vh - 16px)', overflowY: 'auto', paddingBottom: 8 }}
                 vertical
             >
+                {(step === 'select' || step === 'review') ? (
+                    <NavBar onBack={onClose}>{t('uploadAndProcess')}</NavBar>
+                ) : null}
+
                 {step === 'select' ? (
                     <>
                         <Card
-                            size="small"
                             style={{
-                                background: 'linear-gradient(160deg, #eff6ff 0%, #f8fafc 48%, #eef2ff 100%)',
-                                border: '1px solid #dbeafe',
-                                borderRadius: 22,
+                                background: `linear-gradient(165deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 55%, ${token.colorBgElevated} 100%)`,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 24,
                                 overflow: 'hidden',
                             }}
                         >
@@ -297,66 +297,60 @@ export default function MenuUploadSheet({
                                         align="center"
                                         justify="center"
                                         style={{
-                                            background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
-                                            borderRadius: 18,
-                                            boxShadow: '0 12px 30px rgba(37, 99, 235, 0.18)',
-                                            color: '#ffffff',
-                                            height: 56,
-                                            minWidth: 56,
-                                            width: 56,
+                                            backgroundColor: token.colorPrimaryBg,
+                                            border: `1px solid ${token.colorPrimaryBorder}`,
+                                            borderRadius: 16,
+                                            color: token.colorPrimary,
+                                            height: 52,
+                                            minWidth: 52,
+                                            width: 52,
                                         }}
                                     >
-                                        <LuUpload size={22} />
+                                        <LuFileText size={22} />
                                     </Flex>
                                     <Flex gap={4} style={{ flex: 1 }} vertical>
-                                        <Title level={4} style={{ margin: 0 }}>
-                                            {t('uploadAndProcess')}
-                                        </Title>
-                                        <Text type="secondary">{t('menuUploadSubtitleDetailed')}</Text>
+                                        <Text style={{ color: token.colorTextSecondary }}>
+                                            {t('menuUploadSubtitleDetailed')}
+                                        </Text>
                                     </Flex>
                                 </Flex>
 
                                 <Flex gap={8} wrap="wrap">
                                     <Text
                                         style={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.88)',
-                                            border: '1px solid #dbeafe',
+                                            backgroundColor: token.colorBgElevated,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
                                             borderRadius: 999,
+                                            color: token.colorTextSecondary,
                                             padding: '6px 12px',
                                         }}
                                     >
                                         {t('menuUploadFormatsDetailed')}
                                     </Text>
-                                    <Text
-                                        style={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.88)',
-                                            border: '1px solid #dbeafe',
-                                            borderRadius: 999,
-                                            padding: '6px 12px',
-                                        }}
-                                    >
-                                        {uploadLimitText}
-                                    </Text>
                                 </Flex>
 
-                                <Upload {...uploadProps}>
-                                    <Button
-                                        block
-                                        color="primary"
-                                        size="large"
-                                        style={{
-                                            borderRadius: 16,
-                                            boxShadow: '0 14px 28px rgba(37, 99, 235, 0.14)',
-                                            justifyContent: 'center',
-                                            minHeight: 52,
-                                        }}
-                                    >
-                                        <Flex align="center" gap={8}>
-                                            <LuImage size={18} />
-                                            <Text style={{ color: 'inherit' }}>{t('chooseFiles')}</Text>
-                                        </Flex>
-                                    </Button>
-                                </Upload>
+                                <Flex align="center" justify="center" style={{ width: '100%' }}>
+                                    <Upload {...uploadProps}>
+                                        <Button
+                                            block
+                                            color="primary"
+                                            size="large"
+                                            style={{
+                                                borderRadius: 16,
+                                                display: 'flex',
+                                                justifyContent: 'center',
+                                                minHeight: 52,
+                                                paddingInline: 16,
+                                                width: '100%',
+                                            }}
+                                        >
+                                            <Flex align="center" gap={8} justify="center" style={{ width: '100%' }}>
+                                                <LuUpload size={18} />
+                                                <Text style={{ color: 'inherit' }}>{t('chooseFiles')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Upload>
+                                </Flex>
                             </Flex>
                         </Card>
                     </>
