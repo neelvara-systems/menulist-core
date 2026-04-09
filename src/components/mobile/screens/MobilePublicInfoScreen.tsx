@@ -56,10 +56,10 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
             ...locationUpdates,
             geo: nextStore.geo,
         }));
-        Toast.show({ content: t('saved'), duration: 1000 });
 
         try {
             await updateStore(nextStore as any);
+            Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
                 ...previous,

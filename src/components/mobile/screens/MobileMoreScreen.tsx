@@ -55,7 +55,7 @@ const MobileBusinessAttributesScreen = dynamic(() => import('./MobileBusinessAtt
 const MobileIntegrationsScreen = dynamic(() => import('./MobileIntegrationsScreen'), { ssr: false });
 const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr: false });
 
-type MoreSubScreen =
+export type MoreSubScreen =
     | 'main'
     | 'publicInfo'
     | 'billing'
@@ -86,15 +86,17 @@ type MoreSubScreen =
     | 'posSync';
 
 interface MobileMoreScreenProps {
+    initialScreen?: MoreSubScreen;
     onRootStateChange?: (isRoot: boolean) => void;
+    onScreenChange?: (screen: MoreSubScreen) => void;
 }
 
-export default function MobileMoreScreen({ onRootStateChange }: MobileMoreScreenProps) {
+export default function MobileMoreScreen({ initialScreen = 'main', onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
     const t = useTranslations('MobileMore');
     const tBusiness = useTranslations('BusinessSettings');
     const tFeedback = useTranslations('FeedbackInbox');
     const tPosSync = useTranslations('PosSync');
-    const [subScreen, setSubScreen] = useState<MoreSubScreen>('main');
+    const [subScreen, setSubScreen] = useState<MoreSubScreen>(initialScreen);
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
@@ -105,7 +107,12 @@ export default function MobileMoreScreen({ onRootStateChange }: MobileMoreScreen
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');
-    }, [onRootStateChange, subScreen]);
+        onScreenChange?.(subScreen);
+    }, [onRootStateChange, onScreenChange, subScreen]);
+
+    useEffect(() => {
+        setSubScreen(initialScreen);
+    }, [initialScreen]);
 
     if (subScreen === 'publicInfo') return <MobilePublicInfoScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'billing') return <MobileBillingScreen onBack={() => setSubScreen('main')} />;

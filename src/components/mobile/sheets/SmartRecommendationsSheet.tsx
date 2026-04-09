@@ -1,7 +1,6 @@
 'use client'
 
 import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
-import { updateProject } from '@database/projects';
 import {
     applyDecisionBlockSettings,
     buildAllItemOptions,
@@ -39,6 +38,10 @@ export default function SmartRecommendationsSheet({
 }: SmartRecommendationsSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 14,
+    } as const;
     const activeLang = projectData.languages?.[0] || 'en';
     const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType), [businessType]);
     const popularLabels = useMemo(() => getBlockLabels('popular', businessType), [businessType]);
@@ -141,7 +144,6 @@ export default function SmartRecommendationsSheet({
         try {
             trackDecisionBlockChanges(projectData, nextSettings);
             const updatedProject = applyDecisionBlockSettings(projectData, nextSettings);
-            await updateProject(updatedProject);
             onSaved(updatedProject);
             Toast.show({ content: t('smartRecommendationsSaved'), duration: 1200 });
         } catch {
@@ -162,7 +164,7 @@ export default function SmartRecommendationsSheet({
         const pinnedStatus = isPinnedItemUnavailable(projectData.files || [], pinnedId);
 
         return (
-            <Card key={blockType}>
+            <Card key={blockType} style={sectionCardStyle}>
                 <Flex gap={12} vertical>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={10} style={{ flex: 1, minWidth: 0 }}>
@@ -188,7 +190,14 @@ export default function SmartRecommendationsSheet({
                     </Flex>
 
                     {enabled ? (
-                        <Flex gap={8} vertical>
+                        <Flex
+                            gap={8}
+                            style={{
+                                borderTop: `1px solid ${token.colorBorderSecondary}`,
+                                paddingTop: 12,
+                            }}
+                            vertical
+                        >
                             <Flex align="center" gap={6}>
                                 <LuPin size={14} style={{ color: token.colorTextSecondary }} />
                                 <Text type="secondary">{t('smartRecommendationsPinLabel')}</Text>
@@ -244,7 +253,7 @@ export default function SmartRecommendationsSheet({
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar onBack={onClose}>{t('smartRecommendationsTitle')}</NavBar>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             <Flex gap={4} vertical>
                                 <Title level={5} style={{ margin: 0 }}>{t('smartRecommendationsHeading')}</Title>
                                 <Text type="secondary">{t('smartRecommendationsDesc')}</Text>

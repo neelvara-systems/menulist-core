@@ -1,6 +1,7 @@
 'use client'
 
 import { BRAND_COLOR_PRESETS } from '@config/designSystem';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCheck, LuX } from 'react-icons/lu';
@@ -16,8 +17,13 @@ interface ColorPickerSheetProps {
 
 export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, value, visible }: ColorPickerSheetProps) {
     const t = useTranslations('MobileDesignEditor');
+    const { token } = theme.useToken();
     const [hexInput, setHexInput] = useState(value || '');
     const activeColor = value || defaultMoodColor;
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 18,
+    } as const;
 
     const handleHexSubmit = () => {
         const hex = hexInput.trim();
@@ -31,11 +37,11 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
     };
 
     return (
-        <Popup bodyStyle={{ maxHeight: '70vh' }} onMaskClick={onClose} visible={visible}>
+        <Popup bodyStyle={{ maxHeight: '70vh', padding: 12 }} onMaskClick={onClose} visible={visible}>
             <Flex gap={16} vertical>
                 <NavBar backIcon={<LuX size={20} />} onBack={onClose}>{t('brandColor')}</NavBar>
 
-                <Card>
+                <Card style={sectionCardStyle}>
                     <Flex align="center" gap={12}>
                         <Card style={{ backgroundColor: activeColor, height: 40, minWidth: 40, width: 40 }} />
                         <Flex gap={2} vertical>
@@ -45,7 +51,7 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
                     </Flex>
                 </Card>
 
-                <Card title={t('presetColors')}>
+                <Card style={sectionCardStyle} title={t('presetColors')}>
                     <Flex gap={8} wrap>
                         {BRAND_COLOR_PRESETS.map((preset) => {
                             const isSelected = value === preset.color;
@@ -63,7 +69,7 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
                     </Flex>
                 </Card>
 
-                <Card title={t('customColor')}>
+                <Card style={sectionCardStyle} title={t('customColor')}>
                     <Flex gap={8}>
                         <Input onChange={setHexInput} placeholder="#FF5500" style={{ flex: 1 }} value={hexInput} />
                         <Button onClick={handleHexSubmit} size="small">{t('applyColor')}</Button>

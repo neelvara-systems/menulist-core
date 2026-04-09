@@ -1,15 +1,21 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
-import { updateProjectWithoutLoader } from '@database/projects';
+import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { createNewCategory, createNewItem } from '../../templates/main-app/projects/editorView/utils/editorOperations';
+import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
+import type {
+    ExtractedDataAttribute,
+    ExtractedDataCategory,
+    ExtractedDataItem,
+} from '../../templates/main-app/projects/types/extractedData.types';
 import { removeObjRef } from '@util/utils';
 import { InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -74,10 +80,72 @@ function toArray<T>(value: T[] | T | null | undefined): T[] {
     return Array.isArray(value) ? value : [];
 }
 
-function getCategoryTimeSlotPresetIds(category: any): string[] {
+function getCategoryTimeSlotPresetIds(category: ExtractedDataCategory): string[] {
     return toArray(category?.timeSlots)
         .map((slot: any) => slot?.presetId)
         .filter(Boolean);
+}
+
+function resolveLocalizedText(
+    value: unknown,
+    activeLang: string,
+    fallback = ''
+): string {
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    if (value && typeof value === 'object') {
+        const localizedValue = (value as Record<string, unknown>)[activeLang];
+        if (typeof localizedValue === 'string' && localizedValue.trim()) {
+            return localizedValue;
+        }
+
+        const englishValue = (value as Record<string, unknown>).en;
+        if (typeof englishValue === 'string' && englishValue.trim()) {
+            return englishValue;
+        }
+
+        const firstStringValue = Object.values(value as Record<string, unknown>)
+            .find((entry) => typeof entry === 'string' && entry.trim());
+
+        if (typeof firstStringValue === 'string') {
+            return firstStringValue;
+        }
+    }
+
+    return fallback;
+}
+
+function resolveCategoryName(
+    category: Partial<ExtractedDataCategory> | null | undefined,
+    activeLang: string,
+    fallback: string
+): string {
+    return resolveLocalizedText(category?.name, activeLang, fallback);
+}
+
+function resolveItemName(
+    item: Partial<ExtractedDataItem> | null | undefined,
+    activeLang: string,
+    fallback: string
+): string {
+    return resolveLocalizedText(item?.name, activeLang, fallback);
+}
+
+function resolveItemDescription(
+    item: Partial<ExtractedDataItem> | null | undefined,
+    activeLang: string
+): string {
+    return resolveLocalizedText(item?.description, activeLang);
+}
+
+function resolveAttributeName(
+    attribute: Partial<ExtractedDataAttribute> | null | undefined,
+    activeLang: string,
+    fallback: string
+): string {
+    return resolveLocalizedText(attribute?.name, activeLang, fallback);
 }
 
 export default function MobileMenuScreen() {
@@ -100,6 +168,7 @@ export default function MobileMenuScreen() {
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
+    const [draftFilters, setDraftFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
     const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
@@ -115,6 +184,8 @@ export default function MobileMenuScreen() {
     const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
     const [menuData, setMenuData] = useState<any>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<string[]>([]);
+    const [isMenuQualityExpanded, setIsMenuQualityExpanded] = useState(true);
     const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(() => {
         if (typeof window === 'undefined') return null;
         const raw = window.sessionStorage.getItem('mobileMenuActiveProcessingJob');
@@ -336,9 +407,19 @@ export default function MobileMenuScreen() {
             }
         };
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden' && pendingMenuRef.current?.projectId && !isPersistingRef.current) {
+                void flushPendingMenuPersist();
+            }
+        };
+
         window.addEventListener('pagehide', handlePageHide);
+        window.addEventListener('beforeunload', handlePageHide);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => {
             window.removeEventListener('pagehide', handlePageHide);
+            window.removeEventListener('beforeunload', handlePageHide);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             clearPersistTimers();
             if (pendingMenuRef.current?.projectId && !isPersistingRef.current) {
                 void flushPendingMenuPersist();
@@ -479,9 +560,9 @@ export default function MobileMenuScreen() {
         if (!menuData?.files) return [];
         const map = new Map<string, string>();
         menuData.files.forEach((file: any) => {
-            const categories = toArray(file.extractedData?.data?.categories);
-            categories.forEach((category: any) => {
-                const label = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
+            const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
+            categories.forEach((category) => {
+                const label = resolveCategoryName(category, activeLang, uncategorizedLabel);
                 if (!map.has(category.id)) map.set(category.id, label);
             });
         });
@@ -493,25 +574,32 @@ export default function MobileMenuScreen() {
         const items: MenuItemType[] = [];
         menuData.files.forEach((file: any) => {
             if (file.extractedData?.data?.categories && Array.isArray(file.extractedData.data.categories)) {
-                const categories = [...file.extractedData.data.categories].sort((a: any, b: any) => {
+                const categories = [...file.extractedData.data.categories as ExtractedDataCategory[]].sort((a, b) => {
                     const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
                     const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
                     if (aIndex !== bIndex) return aIndex - bIndex;
-                    const aName = a.name?.[activeLang] || a.name?.en || a.name || '';
-                    const bName = b.name?.[activeLang] || b.name?.en || b.name || '';
+                    const aName = resolveCategoryName(a, activeLang, '');
+                    const bName = resolveCategoryName(b, activeLang, '');
                     return aName.localeCompare(bName);
                 });
                 const categoryMap: Record<string, string> = {};
-                categories.forEach((category: any) => {
-                    categoryMap[category.id] = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
+                categories.forEach((category) => {
+                    categoryMap[category.id] = resolveCategoryName(category, activeLang, uncategorizedLabel);
                 });
-                const menuItems = file.extractedData.data.items || [];
-                categories.forEach((category: any) => {
+                const menuItems = [...toArray<ExtractedDataItem>(file.extractedData.data.items)].sort((a, b) => {
+                    const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
+                    const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
+                    if (aIndex !== bIndex) return aIndex - bIndex;
+                    const aName = resolveItemName(a, activeLang, '');
+                    const bName = resolveItemName(b, activeLang, '');
+                    return aName.localeCompare(bName);
+                });
+                categories.forEach((category) => {
                     const categoryName = categoryMap[category.id] || uncategorizedLabel;
-                    const categoryItems = menuItems.filter((item: any) => item.category === category.id);
-                    categoryItems.forEach((item: any) => {
-                        const itemName = item.name?.[activeLang] || item.name?.en || item.name || t('unnamedItem');
-                        const itemDescription = item.description?.[activeLang] || item.description?.en || item.description || '';
+                    const categoryItems = menuItems.filter((item) => item.category === category.id);
+                    categoryItems.forEach((item) => {
+                        const itemName = resolveItemName(item, activeLang, t('unnamedItem'));
+                        const itemDescription = resolveItemDescription(item, activeLang);
                         const price = typeof item.price === 'string' ? parseFloat(item.price) : (item.price || 0);
                         const available = item.available !== false;
                         const active = item.active !== false;
@@ -521,7 +609,7 @@ export default function MobileMenuScreen() {
                             price: price,
                             attributes: item.attributes?.map((attribute: any) => ({
                                 id: attribute.id,
-                                name: attribute.name?.[activeLang] || attribute.name?.en || attribute.name || 'Variant',
+                                name: resolveAttributeName(attribute, activeLang, 'Variant'),
                                 price: typeof attribute.price === 'string' ? parseFloat(attribute.price) || 0 : (attribute.price || 0),
                                 active: attribute.active !== false,
                             })),
@@ -530,7 +618,7 @@ export default function MobileMenuScreen() {
                             categoryId: item.category,
                             categoryName,
                             description: itemDescription,
-                            image: item.images?.[0]?.url || item.image || '',
+                            image: item.images?.[0]?.url || '',
                         });
                     });
                 });
@@ -627,6 +715,11 @@ export default function MobileMenuScreen() {
         ].filter(Boolean).length;
     }, [filters]);
 
+    useEffect(() => {
+        if (!isFilterSheetOpen) return;
+        setDraftFilters(filters);
+    }, [filters, isFilterSheetOpen]);
+
     const activeFilterChips = useMemo(() => {
         const chips: { key: string; label: string; onRemove: () => void }[] = [];
 
@@ -703,6 +796,7 @@ export default function MobileMenuScreen() {
 
     const handleReviewQualitySignal = useCallback((signal: { id: string }) => {
         setSearchQuery('');
+        setIsMenuQualityExpanded(false);
         setFilters(() => {
             switch (signal.id) {
             case 'descriptions':
@@ -723,6 +817,12 @@ export default function MobileMenuScreen() {
             menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }, []);
+
+    useEffect(() => {
+        if (searchQuery || appliedFilterCount > 0) {
+            setIsMenuQualityExpanded(false);
+        }
+    }, [appliedFilterCount, searchQuery]);
 
     const renderSingleChoiceFilter = useCallback((
         title: string,
@@ -777,19 +877,6 @@ export default function MobileMenuScreen() {
         </Card>
     ), [token]);
 
-    const groupedItems = useMemo(() => {
-        const groups: Record<string, MenuItemType[]> = {};
-        filteredItems.forEach((item) => {
-            const category = item.categoryName || uncategorizedLabel;
-            if (!groups[category]) groups[category] = [];
-            groups[category].push(item);
-        });
-        return groups;
-    }, [filteredItems, uncategorizedLabel]);
-    const categoryCount = useMemo(() => {
-        const categories = new Set(menuItems.map((item) => item.categoryName || uncategorizedLabel));
-        return categories.size;
-    }, [menuItems, uncategorizedLabel]);
     const activeProjectSummary = useMemo(
         () => selectedProjectSummary || projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
         [menuData?.projectId, projectsList, selectedProjectSummary]
@@ -799,11 +886,11 @@ export default function MobileMenuScreen() {
         if (!menuData?.files) return [];
         const map = new Map<string, CategorySummary>();
         menuData.files.forEach((file: any) => {
-            const categories = toArray(file.extractedData?.data?.categories);
-            const items = toArray(file.extractedData?.data?.items);
-            categories.forEach((category: any) => {
-                const name = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
-                const count = items.filter((item: any) => item.category === category.id).length;
+            const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
+            const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+            categories.forEach((category) => {
+                const name = resolveCategoryName(category, activeLang, uncategorizedLabel);
+                const count = items.filter((item) => item.category === category.id).length;
                 if (!map.has(category.id)) {
                     map.set(category.id, {
                         id: category.id,
@@ -816,22 +903,62 @@ export default function MobileMenuScreen() {
                 }
             });
         });
-        return Array.from(map.values());
+        return Array.from(map.values()).sort((a, b) => {
+            const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
+            const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
+            if (aIndex !== bIndex) return aIndex - bIndex;
+            return a.name.localeCompare(b.name);
+        });
     }, [activeLang, menuData?.files, uncategorizedLabel]);
     const hasCategories = categorySummary.length > 0;
+    const categoryCount = useMemo(() => categorySummary.length, [categorySummary.length]);
+
+    const orderedCategorySections = useMemo(() => {
+        const itemsByCategory = new Map<string, MenuItemType[]>();
+        filteredItems.forEach((item) => {
+            const key = item.categoryId || 'uncategorized';
+            const current = itemsByCategory.get(key) || [];
+            current.push(item);
+            itemsByCategory.set(key, current);
+        });
+
+        const sections = categorySummary
+            .map((category) => ({
+                id: category.id,
+                name: category.name,
+                items: itemsByCategory.get(category.id) || [],
+            }))
+            .filter((category) => {
+                if (!searchQuery && appliedFilterCount === 0) {
+                    return true;
+                }
+                return category.items.length > 0;
+            });
+
+        const uncategorizedItems = itemsByCategory.get('uncategorized') || [];
+        if (uncategorizedItems.length > 0) {
+            sections.push({
+                id: 'uncategorized',
+                name: uncategorizedLabel,
+                items: uncategorizedItems,
+            });
+        }
+
+        return sections;
+    }, [appliedFilterCount, categorySummary, filteredItems, searchQuery, uncategorizedLabel]);
 
     const categoryItemMap = useMemo<Record<string, MobileCategoryReorderItem[]>>(() => {
         if (!menuData?.files) return {};
         const grouped: Record<string, MobileCategoryReorderItem[]> = {};
         menuData.files.forEach((file: any) => {
-            const items = toArray(file.extractedData?.data?.items);
-            items.forEach((item: any) => {
+            const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+            items.forEach((item) => {
                 const categoryId = item.category || 'uncategorized';
                 if (!grouped[categoryId]) grouped[categoryId] = [];
                 grouped[categoryId].push({
                     available: item.available !== false,
                     id: item.id,
-                    name: item.name?.[activeLang] || item.name?.en || item.name || t('unnamedItem'),
+                    name: resolveItemName(item, activeLang, t('unnamedItem')),
                     active: item.active !== false,
                     price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
                 });
@@ -855,6 +982,7 @@ export default function MobileMenuScreen() {
             : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
         const nextCategory = createNewCategory(targetFile, languageCodes.length ? languageCodes : ['en'], menuData.masterProjectId);
         nextCategory.active = active;
+        nextCategory.orderIndex = targetFile.extractedData.data.categories.length;
         nextCategory.name = {
             ...nextCategory.name,
             [activeLang]: name,
@@ -904,21 +1032,12 @@ export default function MobileMenuScreen() {
         if (!menuData) return;
         const updated = removeObjRef(menuData);
         updated.files?.forEach((file: any) => {
-            if (!file.extractedData?.data) return;
-            const categories = file.extractedData.data.categories || [];
-            const items = file.extractedData.data.items || [];
-            let uncategorized = categories.find((cat: any) => (cat.name?.[activeLang] || cat.name?.en || cat.name) === uncategorizedLabel);
-            if (!uncategorized) {
-                uncategorized = { id: `uncat-${Date.now()}`, active: true, name: { [activeLang]: uncategorizedLabel } };
-                categories.push(uncategorized);
+            const hasCategory = file.extractedData?.data?.categories?.some((category: ExtractedDataCategory) => category.id === categoryId);
+            if (!hasCategory) {
+                return;
             }
-            file.extractedData.data.categories = categories.filter((cat: any) => cat.id !== categoryId);
-            file.extractedData.data.items = items.map((item: any) => {
-                if (item.category === categoryId) {
-                    return { ...item, category: uncategorized.id };
-                }
-                return item;
-            });
+
+            file.extractedData = deleteCategory(file, categoryId);
         });
         applyLocalMenuUpdate(updated);
     };
@@ -956,7 +1075,10 @@ export default function MobileMenuScreen() {
 
             const reorderedSet = new Set(orderedForFile.map((item: any) => item.id));
             const untouchedCategoryItems = categoryItems.filter((item: any) => !reorderedSet.has(item.id));
-            const nextCategoryItems = [...orderedForFile, ...untouchedCategoryItems];
+            const nextCategoryItems = [...orderedForFile, ...untouchedCategoryItems].map((item: any, index: number) => ({
+                ...item,
+                orderIndex: index,
+            }));
 
             let categoryIndex = 0;
             file.extractedData.data.items = currentItems.map((item: any) => {
@@ -1048,7 +1170,12 @@ export default function MobileMenuScreen() {
                     />
 
                     {menuData?.files && !isFirstRunProject ? (
-                        <MobileMenuQualitySignals files={menuData.files} onReviewSignal={handleReviewQualitySignal} />
+                        <MobileMenuQualitySignals
+                            activeKey={isMenuQualityExpanded ? ['menu-quality'] : []}
+                            files={menuData.files}
+                            onExpandedChange={setIsMenuQualityExpanded}
+                            onReviewSignal={handleReviewQualitySignal}
+                        />
                     ) : null}
 
                     {!isFirstRunProject ? (
@@ -1126,7 +1253,20 @@ export default function MobileMenuScreen() {
                                     categories: t('categoriesCount', { count: categoryCount }),
                                 })}
                             </Text>
-                            {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
+                            <Flex align="center" gap={8}>
+                                {orderedCategorySections.length > 0 ? (
+                                    <Button
+                                        fill="none"
+                                        onClick={() => {
+                                            setExpandedCategoryKeys((current) => current.length === orderedCategorySections.length ? [] : orderedCategorySections.map((section) => section.id));
+                                        }}
+                                        size="small"
+                                    >
+                                        {expandedCategoryKeys.length === orderedCategorySections.length ? 'Collapse all' : 'Expand all'}
+                                    </Button>
+                                ) : null}
+                                {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
+                            </Flex>
                         </Flex>
                     ) : null}
 
@@ -1211,7 +1351,7 @@ export default function MobileMenuScreen() {
                                 </Flex>
                             </Flex>
                         </Card>
-                    ) : Object.keys(groupedItems).length === 0 ? (
+                    ) : orderedCategorySections.length === 0 ? (
                         !searchQuery && !menuData ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
@@ -1238,55 +1378,62 @@ export default function MobileMenuScreen() {
                             <Empty description={searchQuery || appliedFilterCount > 0 ? t('noItemsToShow') : t('noMenuItemsYet', { items: labels.itemsPlural })} />
                         )
                     ) : (
-                        <Collapse defaultActiveKey={Object.keys(groupedItems)[0] ? [Object.keys(groupedItems)[0]] : undefined}>
-                            {Object.entries(groupedItems).map(([category, items]) => (
+                        <Collapse
+                            activeKey={expandedCategoryKeys}
+                            onChange={(key) => setExpandedCategoryKeys(Array.isArray(key) ? key : (key ? [key] : []))}
+                        >
+                            {orderedCategorySections.map(({ id, items, name }) => (
                                 <Collapse.Panel
-                                    key={category}
+                                    key={id}
                                     title={(
                                         <Flex align="center" justify="space-between">
-                                            <Text strong>{category}</Text>
+                                            <Text strong>{name}</Text>
                                             <Tag>{t('itemsCount', { count: items.length })}</Tag>
                                         </Flex>
                                     )}
                                 >
-                                    <List>
-                                        {items.map((item) => (
-                                            <List.Item
-                                                key={item.id}
-                                                onClick={() => setEditingItem(item)}
-                                                extra={
-                                                    <Flex align="center" gap={8} wrap>
-                                                        <div
-                                                            onClick={(event) => event.stopPropagation()}
-                                                            onMouseDown={(event) => event.stopPropagation()}
-                                                            onPointerDown={(event) => event.stopPropagation()}
-                                                        >
-                                                            <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
-                                                        </div>
-                                                        <Button fill="outline" onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setEditingItem(item);
-                                                        }} size="small">
-                                                            {t('edit')}
-                                                        </Button>
-                                                    </Flex>
-                                                }
-                                                title={<Text strong>{item.name}</Text>}
-                                                description={
-                                                    <Flex gap={6} vertical>
-                                                        {item.description ? <Text type="secondary">{item.description}</Text> : null}
+                                    {items.length === 0 ? (
+                                        <Empty description={t('noItemsToShow')} />
+                                    ) : (
+                                        <List>
+                                            {items.map((item) => (
+                                                <List.Item
+                                                    key={item.id}
+                                                    onClick={() => setEditingItem(item)}
+                                                    extra={
                                                         <Flex align="center" gap={8} wrap>
-                                                            <Tag color={item.available ? 'success' : 'warning'}>
-                                                                {item.available ? availabilityLabels.available : availabilityLabels.unavailable}
-                                                            </Tag>
-                                                            {!item.active ? <Tag>{t('hidden')}</Tag> : null}
-                                                            <Tag>{`${currencySymbol}${item.price}`}</Tag>
+                                                            <div
+                                                                onClick={(event) => event.stopPropagation()}
+                                                                onMouseDown={(event) => event.stopPropagation()}
+                                                                onPointerDown={(event) => event.stopPropagation()}
+                                                            >
+                                                                <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                            </div>
+                                                            <Button fill="outline" onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setEditingItem(item);
+                                                            }} size="small">
+                                                                {t('edit')}
+                                                            </Button>
                                                         </Flex>
-                                                    </Flex>
-                                                }
-                                            />
-                                        ))}
-                                    </List>
+                                                    }
+                                                    title={<Text strong>{item.name}</Text>}
+                                                    description={
+                                                        <Flex gap={6} vertical>
+                                                            {item.description ? <Text type="secondary">{item.description}</Text> : null}
+                                                            <Flex align="center" gap={8} wrap>
+                                                                <Tag color={item.available ? 'success' : 'warning'}>
+                                                                    {item.available ? availabilityLabels.available : availabilityLabels.unavailable}
+                                                                </Tag>
+                                                                {!item.active ? <Tag>{t('hidden')}</Tag> : null}
+                                                                <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
+                                                            </Flex>
+                                                        </Flex>
+                                                    }
+                                                />
+                                            ))}
+                                        </List>
+                                    )}
                                 </Collapse.Panel>
                             ))}
                         </Collapse>
@@ -1397,9 +1544,9 @@ export default function MobileMenuScreen() {
                         <Flex gap={12} vertical>
                             <Flex align="center" justify="space-between">
                                 <Text strong>{t('category')}</Text>
-                                {filters.categoryIds.length > 0 ? (
+                                {draftFilters.categoryIds.length > 0 ? (
                                     <Tag color="processing" style={{ borderRadius: 999 }}>
-                                        {filters.categoryIds.length}
+                                        {draftFilters.categoryIds.length}
                                     </Tag>
                                 ) : null}
                             </Flex>
@@ -1409,10 +1556,10 @@ export default function MobileMenuScreen() {
                                 ) : (
                                     categoryOptions.map((option) => (
                                         <Checkbox
-                                            checked={filters.categoryIds.includes(option.id)}
+                                            checked={draftFilters.categoryIds.includes(option.id)}
                                             key={option.id}
                                             onChange={(checked) => {
-                                                setFilters((prev) => ({
+                                                setDraftFilters((prev) => ({
                                                     ...prev,
                                                     categoryIds: checked
                                                         ? [...prev.categoryIds, option.id]
@@ -1434,17 +1581,17 @@ export default function MobileMenuScreen() {
                             <Flex gap={8}>
                                 <InputNumber
                                     min={0}
-                                    onChange={(value) => setFilters((prev) => ({ ...prev, minPrice: typeof value === 'number' ? value : null }))}
+                                    onChange={(value) => setDraftFilters((prev) => ({ ...prev, minPrice: typeof value === 'number' ? value : null }))}
                                     placeholder={t('minPrice')}
                                     style={{ width: '100%' }}
-                                    value={filters.minPrice}
+                                    value={draftFilters.minPrice}
                                 />
                                 <InputNumber
                                     min={0}
-                                    onChange={(value) => setFilters((prev) => ({ ...prev, maxPrice: typeof value === 'number' ? value : null }))}
+                                    onChange={(value) => setDraftFilters((prev) => ({ ...prev, maxPrice: typeof value === 'number' ? value : null }))}
                                     placeholder={t('maxPrice')}
                                     style={{ width: '100%' }}
-                                    value={filters.maxPrice}
+                                    value={draftFilters.maxPrice}
                                 />
                             </Flex>
                         </Flex>
@@ -1452,57 +1599,57 @@ export default function MobileMenuScreen() {
 
                     {renderSingleChoiceFilter(
                         t('images'),
-                        filters.hasImage === null ? 'all' : filters.hasImage ? 'yes' : 'no',
+                        draftFilters.hasImage === null ? 'all' : draftFilters.hasImage ? 'yes' : 'no',
                         [
                             { label: t('allItems'), value: 'all' },
                             { label: t('hasImage'), value: 'yes' },
                             { label: t('noImage'), value: 'no' },
                         ],
-                        (value) => setFilters((prev) => ({ ...prev, hasImage: value === 'all' ? null : value === 'yes' }))
+                        (value) => setDraftFilters((prev) => ({ ...prev, hasImage: value === 'all' ? null : value === 'yes' }))
                     )}
 
                     {renderSingleChoiceFilter(
                         t('descriptions'),
-                        filters.hasDescription === null ? 'all' : filters.hasDescription ? 'yes' : 'no',
+                        draftFilters.hasDescription === null ? 'all' : draftFilters.hasDescription ? 'yes' : 'no',
                         [
                             { label: t('allItems'), value: 'all' },
                             { label: t('hasDescription'), value: 'yes' },
                             { label: t('noDescription'), value: 'no' },
                         ],
-                        (value) => setFilters((prev) => ({ ...prev, hasDescription: value === 'all' ? null : value === 'yes' }))
+                        (value) => setDraftFilters((prev) => ({ ...prev, hasDescription: value === 'all' ? null : value === 'yes' }))
                     )}
 
                     {renderSingleChoiceFilter(
                         t('pricing'),
-                        filters.hasPrice === null ? 'all' : filters.hasPrice ? 'yes' : 'no',
+                        draftFilters.hasPrice === null ? 'all' : draftFilters.hasPrice ? 'yes' : 'no',
                         [
                             { label: t('allItems'), value: 'all' },
                             { label: t('hasPrice'), value: 'yes' },
                             { label: t('noPrice'), value: 'no' },
                         ],
-                        (value) => setFilters((prev) => ({ ...prev, hasPrice: value === 'all' ? null : value === 'yes' }))
+                        (value) => setDraftFilters((prev) => ({ ...prev, hasPrice: value === 'all' ? null : value === 'yes' }))
                     )}
 
                     {renderSingleChoiceFilter(
                         t('availability'),
-                        filters.availability === null ? 'all' : filters.availability ? 'available' : 'soldOut',
+                        draftFilters.availability === null ? 'all' : draftFilters.availability ? 'available' : 'soldOut',
                         [
                             { label: t('allItems'), value: 'all' },
                             { label: t('available'), value: 'available' },
                             { label: t('soldOut'), value: 'soldOut' },
                         ],
-                        (value) => setFilters((prev) => ({ ...prev, availability: value === 'all' ? null : value === 'available' }))
+                        (value) => setDraftFilters((prev) => ({ ...prev, availability: value === 'all' ? null : value === 'available' }))
                     )}
 
                     {renderSingleChoiceFilter(
                         t('status'),
-                        filters.activeStatus === null ? 'all' : filters.activeStatus ? 'active' : 'hidden',
+                        draftFilters.activeStatus === null ? 'all' : draftFilters.activeStatus ? 'active' : 'hidden',
                         [
                             { label: t('allStatuses'), value: 'all' },
                             { label: t('active'), value: 'active' },
                             { label: t('hidden'), value: 'hidden' },
                         ],
-                        (value) => setFilters((prev) => ({ ...prev, activeStatus: value === 'all' ? null : value === 'active' }))
+                        (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === 'all' ? null : value === 'active' }))
                     )}
 
                     <Flex gap={8}>
@@ -1510,11 +1657,18 @@ export default function MobileMenuScreen() {
                             block
                             color="danger"
                             fill="outline"
-                            onClick={() => setFilters(DEFAULT_FILTERS)}
+                            onClick={() => {
+                                setDraftFilters(DEFAULT_FILTERS);
+                                setFilters(DEFAULT_FILTERS);
+                                setIsFilterSheetOpen(false);
+                            }}
                         >
                             {t('clearAll')}
                         </Button>
-                        <Button block onClick={() => setIsFilterSheetOpen(false)}>
+                        <Button block onClick={() => {
+                            setFilters(draftFilters);
+                            setIsFilterSheetOpen(false);
+                        }}>
                             {t('applyFilters')}
                         </Button>
                     </Flex>
@@ -1563,8 +1717,7 @@ export default function MobileMenuScreen() {
                     businessType={storeDetails?.businessType}
                     onClose={() => handleCommandActionBack(() => setIsSmartRecommendationsOpen(false))}
                     onSaved={(updatedProject) => {
-                        setMenuData(updatedProject);
-                        replaceProjectInList(updatedProject);
+                        applyLocalMenuUpdate(updatedProject);
                         setIsSmartRecommendationsOpen(false);
                         resetCommandActionFlow();
                     }}
@@ -1577,8 +1730,7 @@ export default function MobileMenuScreen() {
                 <ManageLanguagesSheet
                     onClose={() => handleCommandActionBack(() => setIsManageLanguagesOpen(false))}
                     onSaved={(updatedProject) => {
-                        setMenuData(updatedProject);
-                        replaceProjectInList(updatedProject);
+                        applyLocalMenuUpdate(updatedProject);
                         setIsManageLanguagesOpen(false);
                         resetCommandActionFlow();
                     }}
@@ -1645,6 +1797,13 @@ export default function MobileMenuScreen() {
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
                         const updated = removeObjRef(menuData);
+                        let uploadedImage = updatedItem.image;
+                        if (uploadedImage && uploadedImage.includes('base64')) {
+                            uploadedImage = await uploadFile({
+                                uid: `${editingItem.id}-mobile-image`,
+                                url: uploadedImage,
+                            } as any, 'itemImages');
+                        }
                         updated.files?.forEach((file: any) => {
                             file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
                                 if (menuItem.id === editingItem.id) {
@@ -1681,7 +1840,7 @@ export default function MobileMenuScreen() {
                                         nextItem.category = updatedItem.categoryId;
                                     }
                                     if (updatedItem.image !== undefined) {
-                                        nextItem.images = updatedItem.image ? [{ url: updatedItem.image, name: `${updatedItem.name || menuItem.id}.jpg` }] : [];
+                                        nextItem.images = uploadedImage ? [{ url: uploadedImage, name: `${updatedItem.name || menuItem.id}.jpg` }] : [];
                                     }
                                     file.extractedData.data.items[idx] = nextItem;
                                 }
@@ -1703,6 +1862,10 @@ export default function MobileMenuScreen() {
                     onClose={() => handleCommandActionBack(() => setIsAddSheetOpen(false))}
                     onSave={async (newItem) => {
                         if (!menuData) return;
+                        if (!newItem.categoryId) {
+                            Toast.show({ content: t('selectCategory'), duration: 1500 });
+                            return;
+                        }
                         const updated = removeObjRef(menuData);
                         let targetFile = updated.files?.[0];
                         if (!targetFile) return;
@@ -1714,20 +1877,14 @@ export default function MobileMenuScreen() {
                             ? menuData.languages
                             : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
 
-                        let categoryId = newItem.categoryId;
-                        if (!categoryId) {
-                            const createdCategory = createNewCategory(
-                                targetFile,
-                                languageCodes.length ? languageCodes : ['en'],
-                                menuData.masterProjectId,
-                            );
-                            createdCategory.active = true;
-                            createdCategory.name = {
-                                ...createdCategory.name,
-                                [activeLang]: newItem.categoryName || 'Uncategorized',
-                            };
-                            targetFile.extractedData.data.categories.push(createdCategory);
-                            categoryId = createdCategory.id;
+                        const categoryId = newItem.categoryId;
+
+                        let uploadedImage = newItem.image;
+                        if (uploadedImage && uploadedImage.includes('base64')) {
+                            uploadedImage = await uploadFile({
+                                uid: `${Date.now()}-mobile-new-item`,
+                                url: uploadedImage,
+                            } as any, 'itemImages');
                         }
 
                         const createdItem = createNewItem(
@@ -1750,6 +1907,7 @@ export default function MobileMenuScreen() {
                             createdItem.descriptionSource = 'manual';
                         }
                         createdItem.price = String(newItem.price || 0);
+                        createdItem.orderIndex = targetFile.extractedData.data.items.filter((item: any) => item.category === categoryId).length;
                         createdItem.active = newItem.active !== false;
                         createdItem.available = newItem.available !== false;
                         createdItem.attributes = (newItem.attributes || []).map((attribute) => ({
@@ -1758,7 +1916,7 @@ export default function MobileMenuScreen() {
                             name: { [activeLang]: attribute.name },
                             price: String(attribute.price || 0),
                         }));
-                        createdItem.images = newItem.image ? [{ url: newItem.image, name: `${newItem.name || createdItem.id}.jpg` }] : [];
+                        createdItem.images = uploadedImage ? [{ url: uploadedImage, name: `${newItem.name || createdItem.id}.jpg` }] : [];
 
                         targetFile.extractedData.data.items.push(createdItem);
 
@@ -1809,8 +1967,7 @@ export default function MobileMenuScreen() {
             <BulkActionsSheet
                 initialAction={bulkActionType}
                 onApply={(updatedProject) => {
-                    setMenuData(updatedProject);
-                    upsertCachedProject(updatedProject);
+                    applyLocalMenuUpdate(updatedProject);
                     resetCommandActionFlow();
                 }}
                 projectData={menuData}

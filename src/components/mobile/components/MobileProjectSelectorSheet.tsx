@@ -1,6 +1,6 @@
 'use client'
 
-import { addProject, deleteProject, duplicateProject, setProjectActive, updateProject, updateProjectMetadata } from '@database/projects';
+import { addProject, deleteProject, duplicateProject, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
@@ -173,7 +173,7 @@ export default function MobileProjectSelectorSheet({
 
     const handleResetProject = async (project: ProjectSheetProject) => {
         setManagingProjectId(null);
-        await updateProject({ files: [], projectId: project.projectId });
+        await updateProjectWithoutLoader({ files: [], projectId: project.projectId });
         upsertCachedProject({ ...project, files: [] });
         await refreshAndSync(project.projectId);
         Toast.show({ content: t('catalogReset'), duration: 1400 });

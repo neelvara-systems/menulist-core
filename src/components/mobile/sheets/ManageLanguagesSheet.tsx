@@ -3,11 +3,11 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
-import { updateProject } from '@database/projects';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuCheck, LuLanguages, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
@@ -29,9 +29,14 @@ export default function ManageLanguagesSheet({
     onSaved,
 }: ManageLanguagesSheetProps) {
     const t = useTranslations('MobileMenu');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [pendingLanguageCode, setPendingLanguageCode] = useState<string>('');
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 14,
+    } as const;
 
     const projectLanguages = projectData.languages || ['en'];
     const sourceLangCode = projectLanguages[0] || 'en';
@@ -69,7 +74,6 @@ export default function ManageLanguagesSheet({
                 try {
                     const updated = removeObjRef(projectData);
                     updated.languages = projectLanguages.filter((code) => code !== languageCode);
-                    await updateProject(updated);
                     onSaved(updated);
                     Toast.show({ content: t('languageRemoved'), duration: 1200 });
                 } catch {
@@ -103,7 +107,6 @@ export default function ManageLanguagesSheet({
                 updated = result.updatedProject;
             }
 
-            await updateProject(updated);
             onSaved(updated);
             setPendingLanguageCode('');
             Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
@@ -113,6 +116,27 @@ export default function ManageLanguagesSheet({
             } else {
                 Toast.show({ content: t('languageAddFailed'), duration: 2000 });
             }
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleMakePrimary = async (languageCode: string) => {
+        if (!projectLanguages.includes(languageCode) || projectLanguages[0] === languageCode) {
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const updated = removeObjRef(projectData);
+            updated.languages = [
+                languageCode,
+                ...projectLanguages.filter((code) => code !== languageCode),
+            ];
+            onSaved(updated);
+            Toast.show({ content: t('primaryLanguage'), duration: 1200 });
+        } catch {
+            Toast.show({ content: t('languageUpdateFailed'), duration: 2000 });
         } finally {
             setIsSaving(false);
         }
@@ -136,7 +160,7 @@ export default function ManageLanguagesSheet({
                 </NavBar>
 
                 <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
-                    <Card size="small">
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>
                                 <LuLanguages size={16} />
@@ -148,10 +172,15 @@ export default function ManageLanguagesSheet({
                         </Flex>
                     </Card>
 
-                    <Card size="small">
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
                             {currentLanguages.map((language, index) => (
-                                <Flex align="center" justify="space-between" key={language!.code}>
+                                <Flex
+                                    align="center"
+                                    justify="space-between"
+                                    key={language!.code}
+                                    style={index > 0 ? { borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 } : undefined}
+                                >
                                     <Flex gap={4} vertical>
                                         <Text strong>
                                             {language!.name} {language!.nativeName !== language!.name ? `(${language!.nativeName})` : ''}
@@ -166,24 +195,39 @@ export default function ManageLanguagesSheet({
                                             <Text type="secondary">{t('primary')}</Text>
                                         </Flex>
                                     ) : (
-                                        <Button
-                                            color="danger"
-                                            disabled={isSaving}
-                                            fill="none"
-                                            onClick={() => void handleRemove(language!.code)}
-                                            size="small"
-                                        >
-                                            <LuTrash2 size={16} />
-                                        </Button>
+                                        <Flex align="center" gap={6}>
+                                            <Button
+                                                disabled={isSaving}
+                                                fill="outline"
+                                                onClick={() => void handleMakePrimary(language!.code)}
+                                                size="small"
+                                            >
+                                                {t('primary')}
+                                            </Button>
+                                            <Button
+                                                color="danger"
+                                                disabled={isSaving}
+                                                fill="none"
+                                                onClick={() => void handleRemove(language!.code)}
+                                                size="small"
+                                            >
+                                                <LuTrash2 size={16} />
+                                            </Button>
+                                        </Flex>
                                     )}
                                 </Flex>
                             ))}
                         </Flex>
                     </Card>
 
-                    <Card size="small">
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={10} vertical>
-                            <Text strong>{t('addLanguage')}</Text>
+                            <Flex gap={4} vertical>
+                                <Text strong>{t('addLanguage')}</Text>
+                                <Text type="secondary">
+                                    {t('languagesLimit', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}
+                                </Text>
+                            </Flex>
                             <Select
                                 onChange={setPendingLanguageCode}
                                 options={addableLanguages.map((language) => ({
@@ -193,9 +237,6 @@ export default function ManageLanguagesSheet({
                                 placeholder={t('chooseLanguage')}
                                 value={pendingLanguageCode || undefined}
                             />
-                            <Text type="secondary">
-                                {t('languagesLimit', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}
-                            </Text>
                             <Button
                                 block
                                 color="primary"

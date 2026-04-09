@@ -43,10 +43,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         const { domain: _domain, ...updates } = formData;
         setIsSaving(true);
         setStoreDetails((previous: any) => ({ ...previous, ...updates }));
-        Toast.show({ content: t('saved'), duration: 1000 });
 
         try {
             await updateStore({ ...storeDetails, ...updates } as any);
+            Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
                 ...previous,

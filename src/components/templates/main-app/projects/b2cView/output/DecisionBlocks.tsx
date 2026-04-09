@@ -26,6 +26,7 @@
 
 import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlockTranslation, getEnabledBlocks } from '@config/decisionBlocks';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { DecisionBlockEntry, PrecomputedDecisionBlocks } from '../../types';
@@ -586,12 +587,6 @@ export default function DecisionBlocks({
         return null;
     }
 
-    const formatPrice = (price: string | undefined) => {
-        if (!price) return null;
-        const num = parseFloat(price);
-        return isNaN(num) ? price : `${currency}${num.toFixed(2)}`;
-    };
-
     return (
         <div
             ref={containerRef}
@@ -615,7 +610,7 @@ export default function DecisionBlocks({
 
                     const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
                     const itemImage = rec.item.images?.[0]?.url;
-                    const itemPrice = formatPrice(rec.item.price);
+                    const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
 
                     // P3.1: Visual Hierarchy - first block is slightly larger/prominent
                     const isFirstBlock = index === 0;
@@ -679,14 +674,12 @@ export default function DecisionBlocks({
                                     >
                                         {translateReason(rec.reason, rec.reasonParams)}
                                     </span>
-                                    {itemPrice && (
-                                        <span
-                                            className="text-xs font-semibold flex-shrink-0"
-                                            style={{ color: moodConfig.priceColor }}
-                                        >
-                                            {itemPrice}
-                                        </span>
-                                    )}
+                                    <span
+                                        className="text-xs font-semibold flex-shrink-0"
+                                        style={{ color: moodConfig.priceColor }}
+                                    >
+                                        {itemPrice}
+                                    </span>
                                 </div>
                             </div>
                         </button>

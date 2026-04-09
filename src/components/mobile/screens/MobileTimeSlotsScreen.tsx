@@ -122,7 +122,15 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                             <Card key={preset.id}>
                                 <Flex align="center" gap={12} justify="space-between">
                                     <Flex align="center" gap={12}>
-                                        <Card style={{ backgroundColor: preset.color || PRESET_COLORS[0], borderRadius: 999, height: 40, minWidth: 8, padding: 0, width: 8 }} />
+                                        <div
+                                            style={{
+                                                backgroundColor: preset.color || PRESET_COLORS[0],
+                                                borderRadius: 999,
+                                                height: 40,
+                                                minWidth: 8,
+                                                width: 8,
+                                            }}
+                                        />
                                         <Flex gap={2} vertical>
                                             <Text strong>{preset.label}</Text>
                                             <Text type="secondary">{formatClockTime(preset.startTime)} - {formatClockTime(preset.endTime)}</Text>
@@ -202,9 +210,19 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                             <Flex gap={8} wrap>
                                 {PRESET_COLORS.map((color) => (
                                     <Button key={color} fill="none" onClick={() => setFormColor(color)} style={{ height: 'auto', padding: 2 }}>
-                                        <Card style={{ alignItems: 'center', backgroundColor: color, borderRadius: 999, display: 'flex', height: 32, justifyContent: 'center', width: 32 }}>
+                                        <div
+                                            style={{
+                                                alignItems: 'center',
+                                                backgroundColor: color,
+                                                borderRadius: 999,
+                                                display: 'flex',
+                                                height: 32,
+                                                justifyContent: 'center',
+                                                width: 32,
+                                            }}
+                                        >
                                             {formColor === color ? <LuCheck color="#fff" size={14} /> : null}
-                                        </Card>
+                                        </div>
                                     </Button>
                                 ))}
                             </Flex>

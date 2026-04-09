@@ -1,9 +1,9 @@
 'use client'
 
-import { updateProject } from '@database/projects';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { removeObjRef } from '@util/utils';
-import { InputNumber, Popover, Segmented, theme } from 'antd';
+import { Popover, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuX } from 'react-icons/lu';
@@ -20,7 +20,7 @@ import {
 } from '../../templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations';
 import type { Project } from '../../templates/main-app/projects/types';
 import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
-import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 
 interface BulkActionsSheetProps {
     visible: boolean;
@@ -66,6 +66,17 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     const [destinationCategoryId, setDestinationCategoryId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
+    const selectionSummaryStyle = {
+        backgroundColor: token.colorFillAlter,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 12,
+        padding: '10px 12px',
+    } as const;
+    const clearSelectionButtonStyle = {
+        color: token.colorError,
+        minHeight: 32,
+        paddingInline: 0,
+    } as const;
 
     useEffect(() => {
         if (!visible) return;
@@ -312,7 +323,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                         return;
                     }
 
-                    await updateProject(updated);
                     setWorkingProject(updated);
                     onApply(updated);
                     setSelectedIds(new Set());
@@ -466,7 +476,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         const change = pricingPreviewByItemId.get(item.id);
 
         if (!selectedIds.has(item.id)) {
-            return item.price ? <Text type="secondary">{item.price}</Text> : null;
+            return <Text type="secondary">{formatMenuPrice(item.price, currencySymbol)}</Text>;
         }
 
         if (!change) {
@@ -479,9 +489,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
         return (
             <Flex align="center" gap={6} wrap="wrap">
-                <Text type="secondary">{currencySymbol}{change.oldPrice}</Text>
+                <Text type="secondary">{formatMenuPrice(change.oldPrice, currencySymbol)}</Text>
                 <LuArrowRight size={12} style={{ color: token.colorTextQuaternary }} />
-                <Text strong>{currencySymbol}{change.newPrice}</Text>
+                <Text strong>{formatMenuPrice(change.newPrice, currencySymbol)}</Text>
                 <Tag color={change.changePercent >= 0 ? 'success' : 'warning'}>
                     {change.changePercent >= 0 ? '+' : ''}{Math.round(change.changePercent * 10) / 10}%
                 </Tag>
@@ -554,7 +564,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
                 <Flex gap={10} style={{ padding: '12px 12px 10px' }} vertical>
                     {action === 'pricing' ? (
-                        <Card size="small">
+                        <Card size="small" style={{ borderColor: token.colorBorderSecondary }}>
                             <Flex gap={10} vertical>
                                 <Flex align="center" gap={8}>
                                     <Flex gap={2} vertical>
@@ -572,9 +582,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                     ]}
                                     value={pricingMode}
                                 />
-                                <Flex align="end" gap={8}>
+                                <Flex align="center" gap={8}>
                                     {pricingMode !== 'set' ? (
-                                        <Flex style={{ minWidth: 92 }}>
+                                        <Flex style={{ minWidth: 72 }}>
                                             <Segmented
                                                 block
                                                 onChange={(value) => handlePricingUnitChange(value as string)}
@@ -582,20 +592,68 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                                     { label: '%', value: 'percent' },
                                                     { label: currencySymbol, value: 'amount' },
                                                 ]}
+                                                size="small"
                                                 value={pricingUnit}
                                             />
                                         </Flex>
                                     ) : null}
                                     <Flex style={{ flex: 1, minWidth: 0 }}>
-                                        <InputNumber
-                                            addonAfter={pricingMethod.includes('Percent') ? '%' : undefined}
-                                            addonBefore={pricingMethod.includes('Percent') ? undefined : currencySymbol}
-                                            min={0}
-                                            onChange={(value) => setPricingValue(typeof value === 'number' ? value : null)}
-                                            placeholder={pricingMethod.includes('Percent') ? t('enterPercentage') : t('enterAmount')}
-                                            style={{ width: '100%' }}
-                                            value={pricingValue}
-                                        />
+                                        <Flex
+                                            align="center"
+                                            style={{
+                                                backgroundColor: token.colorBgContainer,
+                                                border: `1px solid ${token.colorBorder}`,
+                                                borderRadius: 12,
+                                                overflow: 'hidden',
+                                                minHeight: 42,
+                                                width: '100%',
+                                            }}
+                                        >
+                                            {pricingMethod.includes('Percent') ? null : (
+                                                <Flex
+                                                    align="center"
+                                                    justify="center"
+                                                    style={{
+                                                        backgroundColor: token.colorFillAlter,
+                                                        borderRight: `1px solid ${token.colorBorderSecondary}`,
+                                                        color: token.colorTextSecondary,
+                                                        minHeight: 42,
+                                                        minWidth: 40,
+                                                        padding: '0 10px',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    <Text>{currencySymbol}</Text>
+                                                </Flex>
+                                            )}
+                                            <Input
+                                                onChange={(value) => {
+                                                    const parsed = value === '' ? null : Number(value);
+                                                    setPricingValue(Number.isFinite(parsed) && parsed !== null && parsed >= 0 ? parsed : null);
+                                                }}
+                                                placeholder={pricingMethod.includes('Percent') ? t('enterPercentage') : t('enterAmount')}
+                                                style={{ border: 'none', borderRadius: 0, fontSize: 16, fontWeight: 600, minHeight: 42, width: '100%' }}
+                                                type="number"
+                                                value={pricingValue === null ? '' : String(pricingValue)}
+                                            />
+                                            {pricingMethod.includes('Percent') ? (
+                                                <Flex
+                                                    align="center"
+                                                    justify="center"
+                                                    style={{
+                                                        backgroundColor: token.colorFillAlter,
+                                                        borderLeft: `1px solid ${token.colorBorderSecondary}`,
+                                                        color: token.colorTextSecondary,
+                                                        minHeight: 42,
+                                                        minWidth: 40,
+                                                        padding: '0 10px',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    <Text>%</Text>
+                                                </Flex>
+                                            ) : null}
+                                        </Flex>
                                     </Flex>
                                 </Flex>
                                 {pricingConfig && preview && 'itemsAffected' in preview ? (
@@ -632,9 +690,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 {preview && 'itemsToMove' in preview && destinationCategoryId ? (
                                     <Flex gap={8} wrap="wrap">
                                         <Tag color="processing">{t('itemsAffected', { count: preview.itemsToMove })}</Tag>
-                                        <Tag>{t('selectedCategory')}: {preview.destinationCategory}</Tag>
+                                        <Tag>{t('destinationCategory')}: {preview.destinationCategory}</Tag>
                                         {preview.sourceCategories.length > 0 ? (
-                                            <Tag>{preview.sourceCategories.length} {t('categories')}</Tag>
+                                            <Tag>{`From ${preview.sourceCategories.length} ${t('categories')}`}</Tag>
                                         ) : null}
                                     </Flex>
                                 ) : null}
@@ -643,6 +701,14 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     ) : null}
 
                     <Flex align="center" gap={10}>
+                        <Flex style={{ flex: 1, minWidth: 0 }}>
+                            <SearchBar
+                                onChange={handleSearchChange}
+                                placeholder={t('smartRecommendationsSearchItems')}
+                                value={search}
+                            />
+                        </Flex>
+
                         <Popover
                             content={statusFilterContent}
                             onOpenChange={setIsStatusFilterOpen}
@@ -660,14 +726,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 </Flex>
                             </Button>
                         </Popover>
-
-                        <Flex style={{ flex: 1, minWidth: 0 }}>
-                            <SearchBar
-                                onChange={handleSearchChange}
-                                placeholder={t('smartRecommendationsSearchItems')}
-                                value={search}
-                            />
-                        </Flex>
                     </Flex>
 
                     <Flex align="center" gap={12} justify="space-between" wrap>
@@ -684,7 +742,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     </Flex>
 
                     {selectedIds.size > 0 && action === 'availability' ? (
-                        <Flex align="center" gap={10} justify="space-between" wrap>
+                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
                             <Flex gap={8} wrap="wrap">
                                 <Tag color="success">
                                     {selectedAvailabilitySummary.availableCount} {t('available')}
@@ -698,6 +756,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 fill="none"
                                 onClick={clearSelection}
                                 size="small"
+                                style={clearSelectionButtonStyle}
                                 icon={<LuX />}
                             >
                                 Clear selection
@@ -706,7 +765,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     ) : null}
 
                     {selectedIds.size > 0 && action === 'showHide' ? (
-                        <Flex align="center" gap={10} justify="space-between" wrap>
+                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
                             <Flex gap={8} wrap="wrap">
                                 <Tag color="success">
                                     {selectedVisibilitySummary.visibleCount} {t('active')}
@@ -717,19 +776,55 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                             </Flex>
                             <Button
                                 color="danger"
-                                fill="outline"
+                                fill="none"
                                 onClick={clearSelection}
                                 size="small"
+                                style={clearSelectionButtonStyle}
+                                icon={<LuX />}
                             >
                                 Clear selection
                             </Button>
                         </Flex>
                     ) : null}
 
-                    {action === 'pricing' && preview && 'itemsAffected' in preview ? (
-                        <Flex gap={8} wrap="wrap">
-                            <Tag>{currencySymbol}{preview.avgPriceBefore} before</Tag>
-                            <Tag color="processing">{currencySymbol}{preview.avgPriceAfter} after</Tag>
+                    {selectedIds.size > 0 && action === 'pricing' ? (
+                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
+                            <Flex gap={8} wrap="wrap">
+                                {preview && 'itemsAffected' in preview ? (
+                                    <>
+                                        <Tag>{formatMenuPrice(preview.avgPriceBefore, currencySymbol)} before</Tag>
+                                        <Tag color="processing">{formatMenuPrice(preview.avgPriceAfter, currencySymbol)} after</Tag>
+                                    </>
+                                ) : null}
+                            </Flex>
+                            <Button
+                                color="danger"
+                                fill="none"
+                                onClick={clearSelection}
+                                size="small"
+                                style={clearSelectionButtonStyle}
+                                icon={<LuX />}
+                            >
+                                Clear selection
+                            </Button>
+                        </Flex>
+                    ) : null}
+
+                    {selectedIds.size > 0 && action === 'moveCategory' ? (
+                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
+                            <Flex gap={8} wrap="wrap">
+                                <Tag color="processing">{t('selectedCount', { count: effectiveSelectedCount })}</Tag>
+                            </Flex>
+                            <Button
+                                color="danger"
+                                fill="none"
+                                onClick={clearSelection}
+                                size="small"
+                                style={clearSelectionButtonStyle}
+                                icon={<LuX />}
+                            >
+                                Clear selection
+                            </Button>
                         </Flex>
                     ) : null}
                 </Flex>
@@ -766,7 +861,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                                         </div>
                                                         <Text strong>{categoryName}</Text>
                                                     </Flex>
-                                                    <Tag color={selectedCount > 0 ? 'processing' : undefined}>
+                                                    <Tag color={selectedCount > 0 ? 'processing' : undefined} style={{ borderRadius: 999 }}>
                                                         {selectedCount}/{categoryItems.length}
                                                     </Tag>
                                                 </Flex>
@@ -774,7 +869,15 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                         >
                                             <Flex gap={8} vertical>
                                                 {categoryItems.map((item) => (
-                                                    <Card key={item.id} size="small" style={{ margin: 0 }}>
+                                                    <Card
+                                                        key={item.id}
+                                                        size="small"
+                                                        style={{
+                                                            backgroundColor: selectedIds.has(item.id) ? token.colorPrimaryBg : token.colorBgContainer,
+                                                            borderColor: selectedIds.has(item.id) ? token.colorPrimaryBorder : token.colorBorderSecondary,
+                                                            margin: 0,
+                                                        }}
+                                                    >
                                                         <Flex
                                                             align="center"
                                                             gap={10}
@@ -792,7 +895,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                                                 <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                                                                     <Text>{item.name}</Text>
                                                                     <Flex gap={8} wrap="wrap">
-                                                                        {action === 'pricing' ? renderPricingChange(item) : (item.price ? <Text type="secondary">{item.price}</Text> : null)}
+                                                                        {action === 'pricing' ? renderPricingChange(item) : null}
                                                                         {renderItemStatus(item)}
                                                                         {item.attributes?.length ? <Tag>{t('variantsCount', { count: item.attributes.length })}</Tag> : null}
                                                                     </Flex>

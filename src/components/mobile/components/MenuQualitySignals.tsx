@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
-import { Card, Collapse, Flex, List, Tag, Text } from '../antd';
+import { Collapse, Flex, List, Tag, Text } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
@@ -18,11 +18,13 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
 };
 
 interface MobileMenuQualitySignalsProps {
+    activeKey?: string[];
     files: ProjectFileType[] | undefined;
+    onExpandedChange?: (expanded: boolean) => void;
     onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ files, onReviewSignal }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ activeKey, files, onExpandedChange, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
     const { token } = theme.useToken();
     const allSignals = useMemo(() => computeQualitySignals(files), [files]);
@@ -34,8 +36,20 @@ export default function MobileMenuQualitySignals({ files, onReviewSignal }: Mobi
     }
 
     return (
-        <Card size="small" style={{ backgroundColor: allClear ? token.colorSuccessBg : token.colorFillAlter }}>
-            <Collapse accordion defaultActiveKey={['menu-quality']}>
+        <div
+            style={{
+                backgroundColor: allClear ? token.colorSuccessBg : token.colorFillAlter,
+                borderRadius: 16,
+            }}
+        >
+            <Collapse
+                accordion
+                activeKey={activeKey}
+                onChange={(key) => {
+                    const nextKey = Array.isArray(key) ? key : (key ? [key] : []);
+                    onExpandedChange?.(nextKey.includes('menu-quality'));
+                }}
+            >
                 <Collapse.Panel
                     key="menu-quality"
                     title={(
@@ -81,6 +95,6 @@ export default function MobileMenuQualitySignals({ files, onReviewSignal }: Mobi
                     )}
                 </Collapse.Panel>
             </Collapse>
-        </Card>
+        </div>
     );
 }

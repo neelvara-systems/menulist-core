@@ -2,6 +2,7 @@
 
 import type { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuClock, LuPlus, LuTrash2 } from 'react-icons/lu';
@@ -35,10 +36,15 @@ export default function MobileCategoryEditSheet({
     visible,
 }: MobileCategoryEditSheetProps) {
     const t = useTranslations('MobileMenu');
+    const { token } = theme.useToken();
     const [name, setName] = useState('');
     const [active, setActive] = useState(true);
     const [presetIds, setPresetIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 14,
+    } as const;
 
     useEffect(() => {
         if (!visible) return;
@@ -81,21 +87,31 @@ export default function MobileCategoryEditSheet({
                 </NavBar>
 
                 <Flex gap={12} style={{ padding: 12 }} vertical>
-                    <Card size="small">
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
                             <Flex gap={4} vertical>
                                 <Text strong>{t('categoryNamePlaceholder')}</Text>
                                 <Input onChange={setName} placeholder={t('categoryNamePlaceholder')} value={name} />
                             </Flex>
 
-                            <Flex align="center" justify="space-between">
-                                <Text strong>{t('active')}</Text>
+                            <Flex
+                                align="center"
+                                justify="space-between"
+                                style={{
+                                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                                    paddingTop: 12,
+                                }}
+                            >
+                                <Flex gap={2} vertical>
+                                    <Text strong>{t('active')}</Text>
+                                    <Text type="secondary">{t('showOnMenuHelp')}</Text>
+                                </Flex>
                                 <Switch checked={active} onChange={setActive} />
                             </Flex>
                         </Flex>
                     </Card>
 
-                    <Card size="small">
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={10} vertical>
                             <Flex align="center" gap={8} justify="space-between">
                                 <Flex align="center" gap={8}>
@@ -132,7 +148,7 @@ export default function MobileCategoryEditSheet({
                     </Card>
                 </Flex>
 
-                <Card style={{ borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, marginTop: 'auto' }}>
+                <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 'auto' }}>
                     <Flex gap={8} vertical>
                         <Flex gap={8}>
                             <Button block fill="outline" onClick={onClose}>

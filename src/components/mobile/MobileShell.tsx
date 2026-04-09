@@ -10,6 +10,7 @@ import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, SafeArea, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
+import type { MoreSubScreen } from './screens/MobileMoreScreen';
 
 const MobileMenuScreen = dynamic(() => import('./screens/MobileMenuScreen'), { ssr: false });
 const MobileHoursScreen = dynamic(() => import('./screens/MobileHoursScreen'), { ssr: false });
@@ -17,12 +18,62 @@ const MobileDashboardScreen = dynamic(() => import('./screens/MobileDashboardScr
 const MobileShareScreen = dynamic(() => import('./screens/MobileShareScreen'), { ssr: false });
 const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { ssr: false });
 
+const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
+
+function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard'; moreScreen: MoreSubScreen } {
+    const fallback = { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen };
+    if (!hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
+        return fallback;
+    }
+
+    const parts = hash.slice(MOBILE_ROUTE_HASH_PREFIX.length).split('/').filter(Boolean);
+    const tab = parts[0] as MobileTab | undefined;
+
+    if (!tab || !['today', 'menu', 'share', 'more'].includes(tab)) {
+        return fallback;
+    }
+
+    if (tab === 'today') {
+        return {
+            tab,
+            todayScreen: parts[1] === 'dashboard' ? 'dashboard' : 'main',
+            moreScreen: 'main' as MoreSubScreen,
+        };
+    }
+
+    if (tab === 'more') {
+        return {
+            tab,
+            todayScreen: 'main',
+            moreScreen: (parts[1] || 'main') as MoreSubScreen,
+        };
+    }
+
+    return {
+        tab,
+        todayScreen: 'main',
+        moreScreen: 'main' as MoreSubScreen,
+    };
+}
+
+function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard', moreScreen: MoreSubScreen) {
+    if (tab === 'today' && todayScreen !== 'main') {
+        return `${MOBILE_ROUTE_HASH_PREFIX}today/${todayScreen}`;
+    }
+    if (tab === 'more' && moreScreen !== 'main') {
+        return `${MOBILE_ROUTE_HASH_PREFIX}more/${moreScreen}`;
+    }
+    return `${MOBILE_ROUTE_HASH_PREFIX}${tab}`;
+}
+
 export default function MobileShell() {
     const { activeSubscription } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
-    const [activeTab, setActiveTab] = useState<MobileTab>('today');
-    const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard'>('main');
-    const [isMoreRootScreen, setIsMoreRootScreen] = useState(true);
+    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseMobileRouteHash(window.location.hash);
+    const [activeTab, setActiveTab] = useState<MobileTab>(initialRoute.tab);
+    const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard'>(initialRoute.todayScreen);
+    const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
+    const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
     const [feedbackBadgeCount, setFeedbackBadgeCount] = useState<number>(0);
     const [isOffline, setIsOffline] = useState(false);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
@@ -51,6 +102,28 @@ export default function MobileShell() {
         void fetchCount();
     }, []);
 
+    useEffect(() => {
+        const handleHashChange = () => {
+            const nextRoute = parseMobileRouteHash(window.location.hash);
+            setActiveTab(nextRoute.tab);
+            setTodayScreen(nextRoute.todayScreen);
+            setMoreScreen(nextRoute.moreScreen);
+            setIsMoreRootScreen(nextRoute.moreScreen === 'main');
+        };
+
+        window.addEventListener('hashchange', handleHashChange);
+        return () => {
+            window.removeEventListener('hashchange', handleHashChange);
+        };
+    }, []);
+
+    useEffect(() => {
+        const nextHash = buildMobileRouteHash(activeTab, todayScreen, moreScreen);
+        if (window.location.hash !== nextHash) {
+            window.history.replaceState(null, '', nextHash);
+        }
+    }, [activeTab, moreScreen, todayScreen]);
+
     const handleTabChange = useCallback((tab: MobileTab) => {
         setActiveTab(tab);
         if (tab !== 'today') {
@@ -58,6 +131,7 @@ export default function MobileShell() {
         }
         if (tab !== 'more') {
             setIsMoreRootScreen(true);
+            setMoreScreen('main');
         }
         if (tab === 'more') {
             setFeedbackBadgeCount(0);
@@ -73,7 +147,7 @@ export default function MobileShell() {
         : activeTab === 'share'
             ? <MobileShareScreen />
             : activeTab === 'more'
-                ? <MobileMoreScreen onRootStateChange={setIsMoreRootScreen} />
+                ? <MobileMoreScreen initialScreen={moreScreen} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen />;
 
     if (!hasSubscription) {

@@ -31,6 +31,16 @@ export default function ItemEditSheet({
     const t = useTranslations('MobileMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 18,
+    } as const;
+    const inlineSurfaceStyle = {
+        backgroundColor: token.colorFillAlter,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 16,
+        padding: '14px 16px',
+    } as const;
     const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
     const isAddMode = mode === 'add';
     const [name, setName] = useState(item?.name || '');
@@ -40,7 +50,6 @@ export default function ItemEditSheet({
     const [isActive, setIsActive] = useState(item?.active ?? true);
     const [imagePreview, setImagePreview] = useState<string | null>(item?.image || null);
     const [selectedCategory, setSelectedCategory] = useState(item?.categoryId || categories[0]?.id || '');
-    const [newCategory, setNewCategory] = useState('');
     const [attributes, setAttributes] = useState(item?.attributes || []);
 
     const uploadProps: UploadProps = useMemo(() => ({
@@ -72,14 +81,14 @@ export default function ItemEditSheet({
 
     const handleSave = () => {
         const chosenCategory = categories.find((category) => category.id === selectedCategory);
-        const categoryName = newCategory.trim() || chosenCategory?.name || item?.categoryName || t('uncategorized');
+        const categoryName = chosenCategory?.name || item?.categoryName || t('uncategorized');
         onSave({
             name: name.trim(),
             price: parseFloat(price) || 0,
             description: description.trim(),
             available: isAvailable,
             active: isActive,
-            categoryId: newCategory.trim() ? undefined : (selectedCategory || undefined),
+            categoryId: selectedCategory || undefined,
             categoryName,
             image: imagePreview || (item?.image ? null : undefined),
             attributes,
@@ -97,8 +106,8 @@ export default function ItemEditSheet({
             <Flex style={{ maxHeight: '85vh', overflowY: 'auto' }} vertical>
                 <NavBar onBack={onClose}>{isAddMode ? t('addItemTitle') : t('editItemTitle')}</NavBar>
 
-                <Flex gap={16} style={{ padding: '0 12px 12px' }} vertical>
-                    <Card size="small">
+                <Flex gap={16} style={{ padding: '12px 12px 12px' }} vertical>
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={16} vertical>
                         <Flex gap={6} vertical>
                             <Text strong>{t('itemNameLabel')}</Text>
@@ -132,17 +141,6 @@ export default function ItemEditSheet({
                             </Flex>
                         ) : null}
 
-                        {isAddMode ? (
-                            <Flex gap={6} vertical>
-                                <Text strong>{t('newCategoryLabel')}</Text>
-                                <Input
-                                    onChange={setNewCategory}
-                                    placeholder={t('newCategoryPlaceholder')}
-                                    value={newCategory}
-                                />
-                            </Flex>
-                        ) : null}
-
                         <Flex gap={6} vertical>
                             <Text strong>{t('itemImageLabel')}</Text>
                             <Flex align="center" gap={12}>
@@ -155,7 +153,7 @@ export default function ItemEditSheet({
                                         width={64}
                                     />
                                 ) : (
-                                    <Card size="small" style={{ margin: 0 }}>
+                                    <Card size="small" style={{ borderRadius: 12, margin: 0 }}>
                                         <Flex align="center" justify="center" style={{ height: 48, width: 48 }}>
                                             <LuCamera color="#94a3b8" size={20} />
                                         </Flex>
@@ -215,7 +213,7 @@ export default function ItemEditSheet({
                             {attributes.length > 0 ? (
                                 <Flex gap={8} vertical>
                                     {attributes.map((attribute, index) => (
-                                        <Card key={attribute.id} size="small">
+                                        <Card key={attribute.id} size="small" style={{ borderRadius: 14 }}>
                                             <Flex gap={10} vertical>
                                                 <Flex align="center" justify="space-between">
                                                     <Text strong>{t('optionNumber', { number: index + 1 })}</Text>
@@ -263,13 +261,13 @@ export default function ItemEditSheet({
                                     ))}
                                 </Flex>
                             ) : (
-                                <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                <div style={inlineSurfaceStyle}>
                                     <Text type="secondary">{t('noVariantsAdded')}</Text>
-                                </Card>
+                                </div>
                             )}
                         </Flex>
 
-                            <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                            <div style={inlineSurfaceStyle}>
                                 <Flex align="center" justify="space-between">
                                     <Flex gap={2} vertical>
                                         <Text strong>{availabilityLabels.available}</Text>
@@ -277,9 +275,9 @@ export default function ItemEditSheet({
                                     </Flex>
                                     <Switch checked={isAvailable} onChange={setIsAvailable} />
                                 </Flex>
-                            </Card>
+                            </div>
 
-                            <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                            <div style={inlineSurfaceStyle}>
                                 <Flex align="center" justify="space-between">
                                     <Flex gap={2} vertical>
                                         <Text strong>{t('showOnMenu')}</Text>
@@ -287,7 +285,7 @@ export default function ItemEditSheet({
                                     </Flex>
                                     <Switch checked={isActive} onChange={setIsActive} />
                                 </Flex>
-                            </Card>
+                            </div>
                         </Flex>
                     </Card>
 

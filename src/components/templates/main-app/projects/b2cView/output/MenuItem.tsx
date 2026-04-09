@@ -6,6 +6,7 @@
  */
 
 import Image from 'next/image';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { MenuMoodConfig } from '../designSystem';
 
 interface MenuItemOutputProps {
@@ -32,12 +33,6 @@ export default function MenuItemOutput({
 }: MenuItemOutputProps) {
     const isAvailable = item.available !== false;
     const itemStyle = moodConfig.itemStyle;
-
-    const formatPrice = (price: number | string | undefined) => {
-        if (price === undefined || price === null) return null;
-        if (typeof price === 'string') return price;
-        return `${currency}${price.toFixed(2)}`;
-    };
 
     const isVertical = imagePosition === 'top';
 
@@ -67,22 +62,20 @@ export default function MenuItemOutput({
                 </h3>
 
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    {item.price !== undefined && (
-                        <span
-                            className="text-sm md:text-base font-semibold whitespace-nowrap"
-                            style={{
-                                fontFamily: moodConfig.bodyFont,
-                                color: moodConfig.priceColor,
-                                ...(itemStyle.priceStyle === 'badge' && itemStyle.priceBadgeColor && {
-                                    background: itemStyle.priceBadgeColor,
-                                    padding: '2px 8px',
-                                    borderRadius: 4,
-                                }),
-                            }}
-                        >
-                            {formatPrice(item.price)}
-                        </span>
-                    )}
+                    <span
+                        className="text-sm md:text-base font-semibold whitespace-nowrap"
+                        style={{
+                            fontFamily: moodConfig.bodyFont,
+                            color: moodConfig.priceColor,
+                            ...(itemStyle.priceStyle === 'badge' && itemStyle.priceBadgeColor && {
+                                background: itemStyle.priceBadgeColor,
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                            }),
+                        }}
+                    >
+                        {formatMenuPrice(item.price, currency, { fractionDigits: 2 })}
+                    </span>
 
                     {!isAvailable && (
                         <span className="text-xs font-medium text-red-500 whitespace-nowrap">

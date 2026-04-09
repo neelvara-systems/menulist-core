@@ -91,6 +91,16 @@ function sanitizeStyle(style?: AnyStyle) {
     return next as CSSProperties;
 }
 
+function withSafeAreaBottomPadding(value: string | number | undefined, fallback: number) {
+    if (typeof value === 'number') {
+        return `calc(${value}px + env(safe-area-inset-bottom))`;
+    }
+    if (typeof value === 'string' && /^[\d.]+(px|rem|em|%)$/.test(value.trim())) {
+        return `calc(${value} + env(safe-area-inset-bottom))`;
+    }
+    return `calc(${fallback}px + env(safe-area-inset-bottom))`;
+}
+
 function buttonStyles(token: ReturnType<typeof theme.useToken>['token'], fill?: string, color?: string) {
     if (fill === 'none') {
         return { background: 'transparent', borderColor: 'transparent', boxShadow: 'none' };
@@ -329,6 +339,7 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
         minHeight: undefined,
         overflowX: overflowX ?? 'hidden',
         overflowY: overflowY ?? 'auto',
+        paddingBottom: withSafeAreaBottomPadding(normalizedPadding.paddingBottom, popupBodyPadding.paddingBottom),
     };
 
     useEffect(() => {
@@ -461,7 +472,7 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
                 backgroundColor: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 minHeight: navHeight,
-                padding: isInsideSheet ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
+                padding: `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 zIndex: 5,
@@ -727,12 +738,33 @@ export const Upload = AntUpload;
 
 type CollapsePanelProps = { children?: ReactNode; title?: ReactNode };
 
-function CollapseComponent({ accordion, children, defaultActiveKey }: { accordion?: boolean; children?: ReactNode; defaultActiveKey?: string[] | string }) {
+function normalizeCollapseKey(key: string | null | undefined, fallback: string) {
+    if (!key) return fallback;
+    return key.replace(/^\.\$/, '').replace(/^\./, '');
+}
+
+function CollapseComponent({
+    accordion,
+    activeKey,
+    children,
+    defaultActiveKey,
+    onChange,
+}: {
+    accordion?: boolean;
+    activeKey?: string[] | string;
+    children?: ReactNode;
+    defaultActiveKey?: string[] | string;
+    onChange?: (key: string[] | string) => void;
+}) {
     const items = Children.toArray(children)
         .filter((child): child is ReactElement<CollapsePanelProps> => isValidElement(child))
-        .map((child, index) => ({ key: child.key?.toString() || `${index}`, label: child.props.title, children: child.props.children }));
+        .map((child, index) => ({
+            key: normalizeCollapseKey(child.key?.toString(), `${index}`),
+            label: child.props.title,
+            children: child.props.children,
+        }));
 
-    return <AntCollapse accordion={accordion} defaultActiveKey={defaultActiveKey} items={items} />;
+    return <AntCollapse accordion={accordion} activeKey={activeKey} defaultActiveKey={defaultActiveKey} items={items} onChange={onChange} />;
 }
 
 function CollapsePanel(_: CollapsePanelProps) {

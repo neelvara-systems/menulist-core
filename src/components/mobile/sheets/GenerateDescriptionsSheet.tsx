@@ -30,6 +30,10 @@ export default function GenerateDescriptionsSheet({
 }: GenerateDescriptionsSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 14,
+    } as const;
     const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
@@ -86,12 +90,14 @@ export default function GenerateDescriptionsSheet({
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={isProcessing ? undefined : onClose}>{t('menuDescriptions')}</NavBar>
                 <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
-                    <Text type="secondary">
-                        {t('menuDescriptionsDesc')}
-                    </Text>
+                    <Card size="small" style={sectionCardStyle}>
+                        <Text type="secondary">
+                            {t('menuDescriptionsDesc')}
+                        </Text>
+                    </Card>
 
                     {allDescriptionsReady ? (
-                        <Card size="small" style={{ backgroundColor: token.colorSuccessBg, borderRadius: 16 }}>
+                        <Card size="small" style={{ ...sectionCardStyle, backgroundColor: token.colorSuccessBg }}>
                             <Flex align="center" gap={12}>
                                 <LuCheck color={token.colorSuccess} size={22} />
                                 <Flex gap={2} vertical>
@@ -101,7 +107,7 @@ export default function GenerateDescriptionsSheet({
                             </Flex>
                         </Card>
                     ) : (
-                        <Card size="small" style={{ borderRadius: 16 }}>
+                        <Card size="small" style={sectionCardStyle}>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('itemsCountLabel', { count: itemsCount })}</Text>
                                 <Text type="secondary">{t('itemsNeedDescriptions', { count: itemsWithoutDescriptions })}</Text>
@@ -109,7 +115,7 @@ export default function GenerateDescriptionsSheet({
                         </Card>
                     )}
 
-                    <Card size="small" style={{ borderRadius: 16 }}>
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
                             <Text strong>{t('descriptionLength')}</Text>
                             <Flex gap={8} vertical>
@@ -119,7 +125,14 @@ export default function GenerateDescriptionsSheet({
                                         disabled={isProcessing}
                                         fill={contentLength === option.value ? 'solid' : 'outline'}
                                         onClick={() => setContentLength(option.value)}
-                                        style={{ height: 'auto', justifyContent: 'flex-start', paddingBlock: 12, paddingInline: 12, width: '100%' }}
+                                        style={{
+                                            borderColor: contentLength === option.value ? token.colorPrimaryBorder : token.colorBorderSecondary,
+                                            height: 'auto',
+                                            justifyContent: 'flex-start',
+                                            paddingBlock: 12,
+                                            paddingInline: 12,
+                                            width: '100%',
+                                        }}
                                     >
                                         <Flex gap={4} style={{ minWidth: 0, textAlign: 'left', width: '100%' }} vertical>
                                             <Text strong style={{ color: contentLength === option.value ? token.colorTextLightSolid : undefined, lineHeight: 1.3 }}>
@@ -135,7 +148,7 @@ export default function GenerateDescriptionsSheet({
                         </Flex>
                     </Card>
 
-                    <Card size="small" style={{ borderRadius: 16 }}>
+                    <Card size="small" style={sectionCardStyle}>
                         <Flex gap={10} vertical>
                             <Flex align="center" justify="space-between">
                                 <Text strong>{t('menuStatus')}</Text>

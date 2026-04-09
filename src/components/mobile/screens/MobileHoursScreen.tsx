@@ -192,6 +192,10 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
         window.open(menuUrl, '_blank', 'noopener,noreferrer');
     };
 
+    const handleOpenHoursEditor = () => {
+        window.location.hash = '#mobile/more/hoursEdit';
+    };
+
     const handleDownloadTentCard = async () => {
         const tentCard = physicalSurfaces?.tentCard;
         if (!tentCard?.eligible) return;
@@ -259,6 +263,13 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                         onClick={handleOpenPreview}
                         prefix={<LuEye size={18} />}
                         title={<Text strong>{tDesign('preview')}</Text>}
+                    />
+                    <List.Item
+                        arrow
+                        description={<Text type="secondary">{tMore('editWorkingHoursDesc')}</Text>}
+                        onClick={handleOpenHoursEditor}
+                        prefix={<LuClock size={18} />}
+                        title={<Text strong>{tMore('editWorkingHours')}</Text>}
                     />
                 </List>
             </Card>

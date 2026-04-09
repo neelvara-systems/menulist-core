@@ -83,10 +83,10 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
         };
 
         setStoreDetails((previous: any) => ({ ...previous, ...payload }));
-        Toast.show({ content: t('saved'), duration: 1000 });
 
         try {
             await updateStore(payload as any);
+            Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
                 ...previous,

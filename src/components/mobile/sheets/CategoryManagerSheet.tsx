@@ -1,6 +1,7 @@
 'use client'
 
 import type { TimeSlotPreset } from '@type/platform/store';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuChevronDown, LuChevronUp, LuFolderTree, LuPlus, LuTags } from 'react-icons/lu';
@@ -52,11 +53,16 @@ export default function CategoryManagerSheet({
     onClose,
 }: CategoryManagerSheetProps) {
     const t = useTranslations('MobileMenu');
+    const { token } = theme.useToken();
     const STATUS_COLORS = {
         active: '#22c55e',
         inactive: '#94a3b8',
         soldOut: '#f59e0b',
     };
+    const sectionCardStyle = {
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 14,
+    } as const;
     const launchedInReorderMode = initialMode === 'reorder';
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [selectedReorderCategoryId, setSelectedReorderCategoryId] = useState<string | null>(null);
@@ -248,9 +254,15 @@ export default function CategoryManagerSheet({
     };
 
     const handleDelete = async (categoryId: string) => {
+        const category = categories.find((entry) => entry.id === categoryId);
+        const itemCount = category?.itemCount || 0;
+        const categoryName = category?.name || t('categoriesTitle');
+
         Dialog.confirm({
             title: t('categoryDeleteTitle'),
-            content: t('categoryDeleteDesc', { uncategorized: t('uncategorized') }),
+            content: itemCount > 0
+                ? `Delete "${categoryName}" and ${itemCount} item${itemCount === 1 ? '' : 's'} inside it?`
+                : `Delete "${categoryName}"?`,
             confirmText: t('delete'),
             cancelText: t('cancel'),
             onConfirm: async () => {
@@ -326,14 +338,14 @@ export default function CategoryManagerSheet({
 
                 {isReorderMode ? (
                     <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             <Text type="secondary">{t('reorderCategoriesHelp')}</Text>
                         </Card>
 
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             <Flex gap={8} vertical>
                                 {draftCategories.map((category, index) => (
-                                    <Card key={category.id} size="small" style={{ margin: 0 }}>
+                                    <Card key={category.id} size="small" style={{ borderRadius: 14, margin: 0 }}>
                                         <Flex align="center" gap={12} justify="space-between">
                                             <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                                                 <Text strong>{category.name}</Text>
@@ -381,7 +393,7 @@ export default function CategoryManagerSheet({
                     </Flex>
                 ) : isItemReorderMode ? (
                     <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             <Flex gap={6} vertical>
                                 {selectedReorderCategory ? (
                                     <>
@@ -394,7 +406,7 @@ export default function CategoryManagerSheet({
                             </Flex>
                         </Card>
 
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             {!selectedReorderCategory ? (
                                 <List>
                                     {sorted.map((category) => (
@@ -412,7 +424,6 @@ export default function CategoryManagerSheet({
                             ) : (
                                 <Flex gap={10} vertical>
                                     <Flex align="center" gap={10} wrap="wrap">
-                                        {renderStatusBadge(t('active'), STATUS_COLORS.active)}
                                         {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
                                         {renderStatusBadge(t('soldOut'), STATUS_COLORS.soldOut)}
                                     </Flex>
@@ -422,7 +433,6 @@ export default function CategoryManagerSheet({
                                             const statusBits = [];
                                             if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
                                             if (item.available === false) statusBits.push(renderStatusBadge(t('soldOut'), STATUS_COLORS.soldOut));
-                                            if (item.active !== false && item.available !== false) statusBits.push(renderStatusBadge(t('active'), STATUS_COLORS.active));
 
                                             return (
                                                 <List.Item
@@ -491,14 +501,14 @@ export default function CategoryManagerSheet({
                     </Flex>
                 ) : isReorderHubMode ? (
                     <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('reorderMenu')}</Text>
                                 <Text type="secondary">{t('reorderMenuHelp')}</Text>
                             </Flex>
                         </Card>
 
-                        <Card>
+                        <Card style={sectionCardStyle}>
                             <List>
                                 <List.Item
                                     arrow

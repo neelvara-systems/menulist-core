@@ -192,19 +192,23 @@ export function computePricingPreview(
 
     editableItems.forEach((item) => {
         const currentPrice = parseFloat(item.price);
-        if (isNaN(currentPrice) || currentPrice <= 0) {
+        const canForceFixedPrice = config.method === 'setFixed';
+        if (!canForceFixedPrice && (isNaN(currentPrice) || currentPrice <= 0)) {
             skipped++;
             return;
         }
 
-        const newPrice = calculateNewPrice(currentPrice, config);
-        const changePercent = ((newPrice - currentPrice) / currentPrice) * 100;
+        const safeCurrentPrice = isNaN(currentPrice) || currentPrice < 0 ? 0 : currentPrice;
+        const newPrice = calculateNewPrice(safeCurrentPrice, config);
+        const changePercent = safeCurrentPrice > 0
+            ? ((newPrice - safeCurrentPrice) / safeCurrentPrice) * 100
+            : 0;
 
         changes.push({
             itemId: item.id,
             itemName: item.name,
             categoryName: item.categoryName,
-            oldPrice: currentPrice,
+            oldPrice: safeCurrentPrice,
             newPrice,
             changePercent,
         });
@@ -212,15 +216,16 @@ export function computePricingPreview(
         // Also compute attribute price changes
         item.attributes?.forEach((attr) => {
             const attrPrice = parseFloat(attr.price);
-            if (isNaN(attrPrice) || attrPrice <= 0) return;
-            const newAttrPrice = calculateNewPrice(attrPrice, config);
+            if (!canForceFixedPrice && (isNaN(attrPrice) || attrPrice <= 0)) return;
+            const safeAttrPrice = isNaN(attrPrice) || attrPrice < 0 ? 0 : attrPrice;
+            const newAttrPrice = calculateNewPrice(safeAttrPrice, config);
             changes.push({
                 itemId: item.id,
                 itemName: item.name,
                 categoryName: item.categoryName,
-                oldPrice: attrPrice,
+                oldPrice: safeAttrPrice,
                 newPrice: newAttrPrice,
-                changePercent: ((newAttrPrice - attrPrice) / attrPrice) * 100,
+                changePercent: safeAttrPrice > 0 ? ((newAttrPrice - safeAttrPrice) / safeAttrPrice) * 100 : 0,
                 isAttribute: true,
                 attributeName: attr.name,
             });
@@ -276,17 +281,20 @@ export function applyBulkPricing(
             if (!selectedItemIds.has(item.id)) return item;
 
             const currentPrice = parseFloat(item.price || '');
-            if (isNaN(currentPrice) || currentPrice <= 0) return item;
+            const canForceFixedPrice = config.method === 'setFixed';
+            if (!canForceFixedPrice && (isNaN(currentPrice) || currentPrice <= 0)) return item;
 
-            const newPrice = calculateNewPrice(currentPrice, config);
+            const safeCurrentPrice = isNaN(currentPrice) || currentPrice < 0 ? 0 : currentPrice;
+            const newPrice = calculateNewPrice(safeCurrentPrice, config);
             const updatedItem = { ...item, price: String(newPrice) };
 
             // Also update attribute prices
             if (updatedItem.attributes) {
                 updatedItem.attributes = updatedItem.attributes.map((attr) => {
                     const attrPrice = parseFloat(attr.price || '');
-                    if (isNaN(attrPrice) || attrPrice <= 0) return attr;
-                    const newAttrPrice = calculateNewPrice(attrPrice, config);
+                    if (!canForceFixedPrice && (isNaN(attrPrice) || attrPrice <= 0)) return attr;
+                    const safeAttrPrice = isNaN(attrPrice) || attrPrice < 0 ? 0 : attrPrice;
+                    const newAttrPrice = calculateNewPrice(safeAttrPrice, config);
                     return { ...attr, price: String(newAttrPrice) };
                 });
             }
