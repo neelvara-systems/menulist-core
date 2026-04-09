@@ -34,7 +34,7 @@ export default function MobileProjectSelectorSheet({
     visible,
 }: MobileProjectSelectorSheetProps) {
     const t = useTranslations('MobileProjectSelector');
-    const { isLoading, projectsList, refreshProjects, selectProject, upsertCachedProject } = useMobileProjects();
+    const { isLoading, projectsList, refreshProjects, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
@@ -98,7 +98,6 @@ export default function MobileProjectSelectorSheet({
         }
 
         onClose();
-        selectProject(projectId);
         await onProjectsChanged(projectId);
         Toast.show({ content: t('catalogSwitched'), duration: 1200 });
     };

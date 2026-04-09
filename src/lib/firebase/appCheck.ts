@@ -15,11 +15,17 @@ import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebas
 import { firebaseApp } from './firebaseClient';
 import { FEATURE_FLAGS } from '@config/features';
 
-// Debug token for local development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    // Enable debug mode for local testing
-    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-    console.log('🔧 App Check: Debug mode enabled (development)');
+const appCheckDebugToken = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+const APP_CHECK_BADGE = 'background: #14532d; color: #bbf7d0; padding: 2px 6px; border-radius: 999px; font-weight: 700;';
+const APP_CHECK_INFO = 'color: #15803d; font-weight: 700;';
+const APP_CHECK_WARN = 'color: #d97706; font-weight: 700;';
+const APP_CHECK_ERROR = 'color: #dc2626; font-weight: 700;';
+
+// Debug token for local development - opt-in only
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && appCheckDebugToken) {
+    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN =
+        appCheckDebugToken === 'true' ? true : appCheckDebugToken;
+    console.log(`%c🛡️ App Check%c debug mode enabled`, APP_CHECK_BADGE, APP_CHECK_INFO);
 }
 
 /**
@@ -38,17 +44,14 @@ export function initAppCheck() {
 
     // Check feature flag first
     if (!FEATURE_FLAGS.ENABLE_APP_CHECK) {
-        console.log('🔧 App Check: Disabled via feature flag (ENABLE_APP_CHECK = false)');
-        console.log('💡 To enable: Set ENABLE_APP_CHECK = true in src/config/features.ts');
+        console.log(`%c🛡️ App Check%c disabled via feature flag`, APP_CHECK_BADGE, APP_CHECK_WARN);
         return null;
     }
 
     const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
     if (!recaptchaSiteKey) {
-        console.warn('⚠️ App Check: NEXT_PUBLIC_RECAPTCHA_SITE_KEY not set');
-        console.warn('⚠️ App Check: Your Firebase resources are NOT protected from bots');
-        console.warn('💡 Get site key from: https://www.google.com/recaptcha/admin');
+        console.warn(`%c🛡️ App Check%c site key missing`, APP_CHECK_BADGE, APP_CHECK_WARN);
         return null;
     }
 
@@ -60,10 +63,10 @@ export function initAppCheck() {
             isTokenAutoRefreshEnabled: true
         });
 
-        console.log('✅ App Check: Initialized with reCAPTCHA v3');
+        console.log(`%c🛡️ App Check%c initialized with reCAPTCHA v3`, APP_CHECK_BADGE, APP_CHECK_INFO);
         return appCheck;
     } catch (error) {
-        console.error('❌ App Check: Initialization failed', error);
+        console.error(`%c🛡️ App Check%c initialization failed`, APP_CHECK_BADGE, APP_CHECK_ERROR, error);
         return null;
     }
 }
@@ -81,10 +84,10 @@ export function initAppCheckWithCustomProvider(getToken: () => Promise<{ token: 
             isTokenAutoRefreshEnabled: true
         });
 
-        console.log('✅ App Check: Initialized with custom provider');
+        console.log(`%c🛡️ App Check%c initialized with custom provider`, APP_CHECK_BADGE, APP_CHECK_INFO);
         return appCheck;
     } catch (error) {
-        console.error('❌ App Check: Custom provider failed', error);
+        console.error(`%c🛡️ App Check%c custom provider failed`, APP_CHECK_BADGE, APP_CHECK_ERROR, error);
         return null;
     }
 }

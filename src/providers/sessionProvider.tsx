@@ -105,7 +105,6 @@ export default function SessionProvider({ children, session }: Props) {
         }
         prevSessionKeyRef.current = currentSessionKey;
 
-        console.log("session", session)
         // Check if the session exists and store details have not been fetched yet
         if (session && (session.user?.platformRole == ECOMSAI_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)) && !Boolean(storeDetails?.storeId)) {
 

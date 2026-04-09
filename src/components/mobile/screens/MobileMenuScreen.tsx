@@ -1,7 +1,7 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
-import { updateProject } from '@database/projects';
+import { updateProjectWithoutLoader } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
@@ -70,6 +70,16 @@ const DEFAULT_FILTERS: MobileMenuFilters = {
 const MOBILE_MENU_PERSIST_DEBOUNCE_MS = 700;
 const MOBILE_MENU_PERSIST_RETRY_MS = 2500;
 
+function toArray<T>(value: T[] | T | null | undefined): T[] {
+    return Array.isArray(value) ? value : [];
+}
+
+function getCategoryTimeSlotPresetIds(category: any): string[] {
+    return toArray(category?.timeSlots)
+        .map((slot: any) => slot?.presetId)
+        .filter(Boolean);
+}
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
@@ -77,6 +87,7 @@ export default function MobileMenuScreen() {
     const {
         isLoading: loadingProjects,
         projectsList,
+        refreshCachedProject,
         refreshProjects,
         selectedProject,
         selectedProjectId,
@@ -130,6 +141,8 @@ export default function MobileMenuScreen() {
     const menuContentTopRef = useRef<HTMLDivElement | null>(null);
     const persistedMenuRef = useRef<any>(null);
     const pendingMenuRef = useRef<any>(null);
+    const persistedLocalSnapshotRef = useRef<string | null>(null);
+    const pendingLocalSnapshotRef = useRef<string | null>(null);
     const persistTimerRef = useRef<number | null>(null);
     const retryTimerRef = useRef<number | null>(null);
     const isPersistingRef = useRef(false);
@@ -166,18 +179,20 @@ export default function MobileMenuScreen() {
         }
 
         const snapshot = removeObjRef(pendingMenuRef.current);
+        const snapshotString = JSON.stringify(snapshot);
         isPersistingRef.current = true;
 
         try {
-            const savedProject = await updateProject(snapshot);
+            const savedProject = await updateProjectWithoutLoader(snapshot);
             const nextProject = savedProject || snapshot;
             persistedMenuRef.current = removeObjRef(nextProject);
+            persistedLocalSnapshotRef.current = snapshotString;
 
             if (pendingMenuRef.current?.projectId === snapshot.projectId) {
                 const pendingSnapshot = JSON.stringify(pendingMenuRef.current);
-                const savedSnapshot = JSON.stringify(snapshot);
-                if (pendingSnapshot === savedSnapshot) {
+                if (pendingSnapshot === snapshotString) {
                     pendingMenuRef.current = null;
+                    pendingLocalSnapshotRef.current = null;
                     setMenuData((current: any) => (
                         current?.projectId === nextProject.projectId ? nextProject : current
                     ));
@@ -211,7 +226,19 @@ export default function MobileMenuScreen() {
     const queueMenuPersist = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
 
-        pendingMenuRef.current = removeObjRef(updatedProject);
+        const nextPendingProject = removeObjRef(updatedProject);
+        const nextPendingSnapshot = JSON.stringify(nextPendingProject);
+
+        if (nextPendingSnapshot === pendingLocalSnapshotRef.current) {
+            return;
+        }
+
+        if (nextPendingSnapshot === persistedLocalSnapshotRef.current) {
+            return;
+        }
+
+        pendingMenuRef.current = nextPendingProject;
+        pendingLocalSnapshotRef.current = nextPendingSnapshot;
 
         if (retryTimerRef.current) {
             window.clearTimeout(retryTimerRef.current);
@@ -234,14 +261,53 @@ export default function MobileMenuScreen() {
     }, [queueMenuPersist, replaceProjectInList]);
 
     useEffect(() => {
-        const nextProject = activeProcessingState?.projectId
-            ? null
-            : selectedProject || null;
+        const nextProject = selectedProject ? removeObjRef(selectedProject) : null;
+        const nextProjectId = nextProject?.projectId || null;
+        const currentProjectId = menuData?.projectId || null;
+        const pendingProjectId = pendingMenuRef.current?.projectId || null;
+        const persistedProjectId = persistedMenuRef.current?.projectId || null;
 
-        setMenuData(nextProject ? removeObjRef(nextProject) : null);
-        persistedMenuRef.current = nextProject ? removeObjRef(nextProject) : null;
-        pendingMenuRef.current = null;
-    }, [activeProcessingState?.projectId, selectedProject]);
+        if (!nextProjectId) {
+            setMenuData(null);
+            persistedMenuRef.current = null;
+            pendingMenuRef.current = null;
+            persistedLocalSnapshotRef.current = null;
+            pendingLocalSnapshotRef.current = null;
+            return;
+        }
+
+        if (nextProjectId !== currentProjectId) {
+            setMenuData(nextProject);
+            persistedMenuRef.current = nextProject;
+            pendingMenuRef.current = null;
+            persistedLocalSnapshotRef.current = JSON.stringify(nextProject);
+            pendingLocalSnapshotRef.current = null;
+            return;
+        }
+
+        if (pendingProjectId === nextProjectId) {
+            // Desktop keeps the local dirty editor state while the background save is in flight.
+            // Match that here: provider echoes for the same project must not override unsaved edits.
+            persistedMenuRef.current = nextProject;
+            return;
+        }
+
+        if (persistedProjectId !== nextProjectId) {
+            setMenuData(nextProject);
+            persistedMenuRef.current = nextProject;
+            persistedLocalSnapshotRef.current = JSON.stringify(nextProject);
+            return;
+        }
+
+        const nextSnapshot = JSON.stringify(nextProject);
+        const persistedSnapshot = JSON.stringify(persistedMenuRef.current);
+
+        if (nextSnapshot !== persistedSnapshot) {
+            setMenuData(nextProject);
+            persistedMenuRef.current = nextProject;
+            persistedLocalSnapshotRef.current = nextSnapshot;
+        }
+    }, [menuData?.projectId, selectedProject]);
 
     useEffect(() => {
         if (!menuData?.projectId || activeProcessingState) return;
@@ -327,11 +393,7 @@ export default function MobileMenuScreen() {
             setActiveProcessingState(null);
             setShowReviewSheet(false);
             setComparisonResult(null);
-            void refreshProjects({
-                force: true,
-                preferredProjectId: activeProcessingState?.projectId || menuData?.projectId,
-                showLoader: false,
-            });
+            void refreshCachedProject(activeProcessingState?.projectId || menuData?.projectId);
             setShowSuccessState(true);
         }
 
@@ -405,7 +467,7 @@ export default function MobileMenuScreen() {
         jobIsFailed,
         jobIsPreviewReady,
         menuData,
-        refreshProjects,
+        refreshCachedProject,
         setActiveProcessingState,
         showReviewSheet,
         t,
@@ -417,7 +479,7 @@ export default function MobileMenuScreen() {
         if (!menuData?.files) return [];
         const map = new Map<string, string>();
         menuData.files.forEach((file: any) => {
-            const categories = file.extractedData?.data?.categories || [];
+            const categories = toArray(file.extractedData?.data?.categories);
             categories.forEach((category: any) => {
                 const label = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
                 if (!map.has(category.id)) map.set(category.id, label);
@@ -737,8 +799,8 @@ export default function MobileMenuScreen() {
         if (!menuData?.files) return [];
         const map = new Map<string, CategorySummary>();
         menuData.files.forEach((file: any) => {
-            const categories = file.extractedData?.data?.categories || [];
-            const items = file.extractedData?.data?.items || [];
+            const categories = toArray(file.extractedData?.data?.categories);
+            const items = toArray(file.extractedData?.data?.items);
             categories.forEach((category: any) => {
                 const name = category.name?.[activeLang] || category.name?.en || category.name || uncategorizedLabel;
                 const count = items.filter((item: any) => item.category === category.id).length;
@@ -749,7 +811,7 @@ export default function MobileMenuScreen() {
                         active: category.active !== false,
                         itemCount: count,
                         orderIndex: category.orderIndex,
-                        timeSlotPresetIds: (category.timeSlots || []).map((slot: any) => slot.presetId).filter(Boolean),
+                        timeSlotPresetIds: getCategoryTimeSlotPresetIds(category),
                     });
                 }
             });
@@ -762,7 +824,7 @@ export default function MobileMenuScreen() {
         if (!menuData?.files) return {};
         const grouped: Record<string, MobileCategoryReorderItem[]> = {};
         menuData.files.forEach((file: any) => {
-            const items = file.extractedData?.data?.items || [];
+            const items = toArray(file.extractedData?.data?.items);
             items.forEach((item: any) => {
                 const categoryId = item.category || 'uncategorized';
                 if (!grouped[categoryId]) grouped[categoryId] = [];
@@ -1735,11 +1797,7 @@ export default function MobileMenuScreen() {
                         setShowReviewSheet(false);
                         setComparisonResult(null);
                         setActiveProcessingState(null);
-                        void refreshProjects({
-                            force: true,
-                            preferredProjectId: menuData.projectId,
-                            showLoader: false,
-                        });
+                        void refreshCachedProject(menuData.projectId);
                         setShowSuccessState(true);
                     }}
                     primaryLang={menuData?.languages?.[0] || 'en'}
@@ -1772,7 +1830,7 @@ export default function MobileMenuScreen() {
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
                     await flushPendingMenuPersist();
-                    selectProject(preferredProjectId || null);
+                    await selectProject(preferredProjectId || null);
                 }}
                 visible={isProjectSelectorOpen}
             />

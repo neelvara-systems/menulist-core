@@ -40,23 +40,24 @@ type AnyStyle = CSSProperties & Record<string, any>;
 const { Text, Title } = Typography;
 const MobileSheetContext = createContext(false);
 let activePopupScrollLocks = 0;
-let lockedScrollY = 0;
+let lockedShellScrollTop = 0;
 
 function lockMobileBackgroundScroll() {
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
     if (activePopupScrollLocks === 0) {
-        lockedScrollY = window.scrollY || window.pageYOffset || 0;
+        const shellScrollContainer = document.querySelector<HTMLElement>('[data-mobile-shell-scroll="true"]');
+        lockedShellScrollTop = shellScrollContainer?.scrollTop || 0;
+
         document.documentElement.style.overflow = 'hidden';
         document.documentElement.style.overscrollBehavior = 'none';
-        document.documentElement.style.touchAction = 'none';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${lockedScrollY}px`;
-        document.body.style.left = '0';
-        document.body.style.right = '0';
-        document.body.style.width = '100%';
         document.body.style.overflow = 'hidden';
         document.body.style.overscrollBehavior = 'none';
-        document.body.style.touchAction = 'none';
+
+        if (shellScrollContainer) {
+            shellScrollContainer.style.overflow = 'hidden';
+            shellScrollContainer.style.overscrollBehavior = 'none';
+            shellScrollContainer.style.touchAction = 'none';
+        }
     }
     activePopupScrollLocks += 1;
 }
@@ -65,19 +66,18 @@ function unlockMobileBackgroundScroll() {
     if (typeof document === 'undefined' || typeof window === 'undefined' || activePopupScrollLocks === 0) return;
     activePopupScrollLocks -= 1;
     if (activePopupScrollLocks === 0) {
+        const shellScrollContainer = document.querySelector<HTMLElement>('[data-mobile-shell-scroll="true"]');
         document.documentElement.style.overflow = '';
         document.documentElement.style.overscrollBehavior = '';
-        document.documentElement.style.touchAction = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.width = '';
         document.body.style.overflow = '';
         document.body.style.overscrollBehavior = '';
-        document.body.style.touchAction = '';
-        window.scrollTo(0, lockedScrollY);
-        lockedScrollY = 0;
+        if (shellScrollContainer) {
+            shellScrollContainer.style.overflow = '';
+            shellScrollContainer.style.overscrollBehavior = '';
+            shellScrollContainer.style.touchAction = '';
+            shellScrollContainer.scrollTop = lockedShellScrollTop;
+        }
+        lockedShellScrollTop = 0;
     }
 }
 

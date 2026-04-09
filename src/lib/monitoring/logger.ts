@@ -166,31 +166,14 @@ export function setUserContext(user: {
   subscriptionPlan?: string;
   subscriptionStatus?: string;
 }) {
-  if (isDev) {
-    const formattedUsername = [
-      user.name,
-      `${user.tenantName}(${user.tId})`,
-      `${user.storeName}(${user.sId})`
-    ].filter(Boolean).join(' | ');
-
-    console.log('✅ User context set:', {
-      username: formattedUsername,
-      email: user.email,
-      tenant: user.tenantName,
-      store: user.storeName,
-      plan: user.subscriptionPlan,
-      status: user.subscriptionStatus,
-    });
-  }
+  void user;
 }
 
 /**
  * Clear user context (call on logout)
  */
 export function clearUserContext() {
-  if (isDev) {
-    console.log('🔒 User context cleared');
-  }
+  return;
 }
 
 /**

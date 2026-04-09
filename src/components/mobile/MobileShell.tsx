@@ -128,6 +128,7 @@ export default function MobileShell() {
                     </Card>
                 ) : null}
                 <Flex
+                    data-mobile-shell-scroll="true"
                     flex={1}
                     style={{
                         overflowY: 'auto',

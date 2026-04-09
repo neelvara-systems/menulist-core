@@ -16,13 +16,14 @@ export const dynamic = 'force-dynamic';
  *   // Custom tags:
  *   POST /api/revalidate/menu { tags: ["menu-store-42", "store-42"] }
  *
- * Auth: x-revalidate-secret header required.
- *
- * NOTE: Primary invalidation now happens via Server Action (revalidateMenuCache)
- * called from updateProject(). This API is a fallback / external trigger.
+ * Auth:
+ * - server/external callers may use x-revalidate-secret
+ * - authenticated app callers may use their normal NextAuth session
  */
 
+import { authOptions } from "@lib/auth";
 import { revalidateTag } from "next/cache";
+import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 // Valid tag prefixes for per-store invalidation (GPT FIX 2)
@@ -34,9 +35,11 @@ function isValidTag(tag: string): boolean {
 
 export async function POST(request: NextRequest) {
     try {
-        // Validate secret to prevent unauthorized cache purges
         const secret = request.headers.get("x-revalidate-secret");
-        if (secret !== process.env.REVALIDATION_SECRET) {
+        const hasValidSecret = secret === process.env.REVALIDATION_SECRET;
+        const session = hasValidSecret ? null : await getServerSession(authOptions);
+
+        if (!hasValidSecret && !session?.user) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }

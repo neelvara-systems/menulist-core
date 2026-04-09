@@ -70,6 +70,7 @@ export const CSP_ALLOWLIST = {
     connectSources: [
         'https://*.firebaseio.com',
         'https://*.googleapis.com',
+        'https://*.google.com',
         'https://vercel.live',
         'wss://*.firebaseio.com', // Firebase Realtime Database WebSocket
         'https://*.upstash.io', // Upstash Redis for rate limiting

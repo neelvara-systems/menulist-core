@@ -1,11 +1,13 @@
 'use client';
 
+import { FEATURE_FLAGS } from '@config/features';
 import LoadingMessage from '@antdComponent/loadingMessage';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import useDeviceType from '@hook/useDeviceType';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
@@ -70,6 +72,7 @@ const { useToken } = theme;
 function ProjectsPage() {
     const { token } = useToken();
     const loggedInSession = useClientAuthSession();
+    const { hasMounted, isMobile } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState(null)
     const [currentView, setCurrentView] = useState(1);
@@ -154,13 +157,16 @@ function ProjectsPage() {
         }
     };
 
+    const forceDesktop = typeof window !== 'undefined' && localStorage.getItem('forceDesktopMode') === 'true';
+    const shouldEnableDesktopProjectsData = hasMounted && (!FEATURE_FLAGS.ENABLE_MOBILE_UI || !isMobile || forceDesktop);
+
     // SWR cache key for projects list
-    const projectsListCacheKey = loggedInSession?.sId
+    const projectsListCacheKey = shouldEnableDesktopProjectsData && loggedInSession?.sId
         ? `projects-${loggedInSession.tId}-${loggedInSession.sId}`
         : null;
 
     // SWR cache key for individual project
-    const projectDataCacheKey = selectedProject?.projectId
+    const projectDataCacheKey = shouldEnableDesktopProjectsData && selectedProject?.projectId
         ? `project-${selectedProject.projectId}`
         : null;
 
@@ -169,8 +175,6 @@ function ProjectsPage() {
         projectsListCacheKey,
         async () => {
             if (!loggedInSession) return { projects: [], lastDoc: null };
-
-            console.log('[ProjectsPage] Fetching projects list with SWR');
             const result = await getMetadataProjectsList();
             return result || { projects: [] };
         },
@@ -187,15 +191,12 @@ function ProjectsPage() {
         projectDataCacheKey,
         async () => {
             if (!selectedProject?.projectId) return null;
-
-            console.log('[ProjectsPage] Fetching project data with SWR:', selectedProject.projectId);
             const project = await getProjectData(selectedProject.projectId);
 
             // Check if the project already has defined languages
             if (!Boolean(project?.languages?.length)) {
                 project.languages = [DefaultLanguage];
             }
-            console.log("project data fetched:", project)
             return project;
         },
         {
@@ -210,37 +211,25 @@ function ProjectsPage() {
     // CHECK FOR EXISTING ACTIVE JOB ON PROJECT LOAD
     // ═══════════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        console.log('[ProjectsPage] Job check useEffect triggered', {
-            projectId: activeProject?.projectId,
-            hasProject: !!activeProject,
-            activeProcessingJobId,
-        });
-
         if (!activeProject?.projectId) {
-            console.log('[ProjectsPage] Skipping job check - no project');
             return;
         }
 
         // Don't check for existing jobs if we already have an active job from user action
         // This prevents the job check from clearing a job that was just created
         if (activeProcessingJobId) {
-            console.log('[ProjectsPage] Already have active job, skipping check:', activeProcessingJobId);
             return;
         }
 
         const checkExistingJob = async () => {
             try {
-                console.log('[ProjectsPage] Starting job check for project:', activeProject.projectId);
                 const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
 
                 const activeJobId = await checkExistingActiveJob(activeProject.projectId);
                 if (activeJobId) {
-                    console.log('[ProjectsPage] Found existing active job:', activeJobId, '- Only listening, NOT triggering');
                     setActiveProcessingJobId(activeJobId);
                     return;
                 }
-
-                console.log('[ProjectsPage] No existing active job found');
             } catch (error) {
                 console.error('[ProjectsPage] Failed to check existing job:', error);
             }
@@ -294,21 +283,11 @@ function ProjectsPage() {
 
     // Handle job completion - refetch project data since server saved results
     useEffect(() => {
-        console.log('[JobQueue] Job status effect triggered:', {
-            activeProcessingJobId,
-            jobIsCompleted,
-            jobIsPreviewReady,
-            jobIsFailed,
-            jobIsCancelled,
-        });
-
         if (!activeProcessingJobId) {
-            console.log('[JobQueue] No active job, skipping effect');
             return;
         }
 
         if (jobIsCompleted) {
-            console.log('[JobQueue] Job completed, refetching project data');
             // Capture extraction stats from job result before clearing
             const result = activeJob?.result;
             if (result) {
@@ -326,12 +305,10 @@ function ProjectsPage() {
             setShowReviewScreen(false);
             setComparisonResult(null);
             // Show success modal instead of navigating directly
-            console.log('[JobQueue] Showing success modal');
             setShowSuccessModal(true);
         }
 
         if (jobIsPreviewReady && !showReviewScreen && activeJob?.result) {
-            console.log('[JobQueue] Re-extraction preview ready, running comparison engine');
             // Capture extraction stats for the success modal (after review save)
             const previewResult = activeJob.result;
             if (previewResult) {
@@ -378,16 +355,6 @@ function ProjectsPage() {
                 console.error('[JobQueue] Comparison engine error:', error);
                 message.error('Failed to compare extracted data');
             }
-        } else if (jobIsPreviewReady) {
-            // Debug logging to see why the review screen isn't showing
-            console.log('[JobQueue] Preview ready but review screen not showing:', {
-                jobIsPreviewReady,
-                showReviewScreen,
-                hasActiveJob: !!activeJob,
-                hasResult: !!activeJob?.result,
-                activeJobKeys: activeJob ? Object.keys(activeJob) : [],
-                resultKeys: activeJob?.result ? Object.keys(activeJob.result) : [],
-            });
         }
 
         if (jobIsFailed) {
@@ -402,7 +369,6 @@ function ProjectsPage() {
         }
 
         if (jobIsCancelled) {
-            console.log('[JobQueue] Job cancelled');
             setActiveProcessingJobId(null);
             setFileProcessingId(null);
             setShowReviewScreen(false);

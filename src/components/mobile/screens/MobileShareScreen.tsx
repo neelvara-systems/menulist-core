@@ -278,7 +278,7 @@ export default function MobileShareScreen() {
                 onClose={() => setIsProjectSelectorOpen(false)}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
-                    selectProject(preferredProjectId || null);
+                    await selectProject(preferredProjectId || null);
                 }}
                 visible={isProjectSelectorOpen}
             />

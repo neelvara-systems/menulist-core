@@ -537,9 +537,7 @@ export const updateProjectMetadata = async (
     );
 };
 
-export const updateProject = async (data: Partial<Project>) => {
-    return await apiCallComposer(
-        async () => {
+const runUpdateProject = async (data: Partial<Project>) => {
             // MOL v0 + Awareness: Fetch current state for change detection (if enabled)
             let oldProject: Project | null = null;
             if ((FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS || FEATURE_FLAGS.ENABLE_MCE) && data.projectId) {
@@ -588,12 +586,19 @@ export const updateProject = async (data: Partial<Project>) => {
             });
 
             // Instantly invalidate customer menu Vercel Data Cache (GPT FIX 1)
-            // Without this, customers may see stale prices for up to 60s after owner saves
+            // Without this, customers may see stale prices for up to 60s after owner saves.
+            // Use the authenticated API route here so browser saves do not pull in a server
+            // action module and trigger a full app refresh/remount cycle.
             if (data.projectId) {
                 try {
-                    const { revalidateMenuCache } = await import("@lib/actions/revalidateMenuCache");
                     const [, , sId] = (data.projectId as string).split("-");
-                    revalidateMenuCache(sId); // Fire-and-forget — don't await
+                    void fetch("/api/revalidate/menu", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ storeId: sId }),
+                    });
                 } catch {
                     // Silent fail — cache will self-heal via 60s TTL
                 }
@@ -715,9 +720,21 @@ export const updateProject = async (data: Partial<Project>) => {
             }
 
             return updateData;
-        },
+};
+
+export const updateProject = async (data: Partial<Project>) => {
+    return await apiCallComposer(
+        runUpdateProject,
         data,
         "updateProject",
+    );
+};
+
+export const updateProjectWithoutLoader = async (data: Partial<Project>) => {
+    return await apiCallComposerClientWithoutLoader(
+        runUpdateProject,
+        data,
+        "updateProjectWithoutLoader",
     );
 };
 
@@ -904,10 +921,7 @@ export const publishProject = async (data: Partial<Project>) => {
  */
 const getProjectsListCore = async (includeInactive = false) => {
     // Get all projects from summary (1 read)
-    const session = await getActiveSession();
     const summaryDocRef = await getProjectsSummaryDocRef();
-    console.log(`[getProjectsList] Session: tId=${session.tId}, sId=${session.sId}`);
-    console.log(`[getProjectsList] Reading summary document: ${summaryDocRef.path}`);
     const summaryDoc = await getDoc(summaryDocRef);
     const projectsMap = summaryDoc.exists()
         ? Object.fromEntries(
@@ -917,26 +931,12 @@ const getProjectsListCore = async (includeInactive = false) => {
         ) || {}
         : {};
 
-    if (Object.keys(projectsMap).length > 0) {
-        const firstProjectId = Object.keys(projectsMap)[0];
-        console.log(`[getProjectsList] First project data:`, projectsMap[firstProjectId]);
-    }
-
-    console.log(`[getProjectsList] Summary exists: ${summaryDoc.exists()}, projects count: ${Object.keys(projectsMap).length}`);
-    if (summaryDoc.exists()) {
-        console.log(`[getProjectsList] Summary data keys:`, Object.keys(summaryDoc.data()));
-    }
-
     const projects = Object.entries(projectsMap)
         .map(([projectId, data]) => ({
             projectId,
             ...(data as ProjectSummaryData),
         }))
         .filter((p) => includeInactive || p.active !== false);
-
-    console.log(
-        `✅ [getProjectsList] Found ${projects.length} active projects (1 read)`,
-    );
 
     if (projects.length === 0) {
         const sess = await getActiveSession();
@@ -1774,7 +1774,4 @@ export const cancelSpecialMenu = async (projectId: string) => {
 // ═══════════════════════════════════════════════════════════════
 if (typeof window !== "undefined") {
     (window as any).__backfillProjectsSummary = backfillProjectsSummary;
-    console.log(
-        "💡 [Projects] Backfill available: window.__backfillProjectsSummary()",
-    );
 }

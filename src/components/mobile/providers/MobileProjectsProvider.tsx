@@ -1,6 +1,7 @@
 'use client'
 
 import { getProjectDataWithoutLoader, getProjectsListWithoutLoader } from '@database/projects';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,12 +20,13 @@ type MobileProjectsContextValue = {
     isLoading: boolean;
     projectsById: Record<string, any>;
     projectsList: ProjectSummary[];
+    refreshCachedProject: (projectId?: string | null, options?: { showLoader?: boolean }) => Promise<any | null>;
     refreshProjects: (options?: { force?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => Promise<void>;
     removeCachedProject: (projectId: string) => void;
     selectedProject: any | null;
     selectedProjectId: string | null;
     selectedProjectSummary: ProjectSummary | null;
-    selectProject: (projectId?: string | null) => void;
+    selectProject: (projectId?: string | null) => Promise<void>;
     upsertCachedProject: (project: any) => void;
 };
 
@@ -32,12 +34,13 @@ const MobileProjectsContext = createContext<MobileProjectsContextValue>({
     isLoading: true,
     projectsById: {},
     projectsList: [],
+    refreshCachedProject: async () => null,
     refreshProjects: async () => { },
     removeCachedProject: () => { },
     selectedProject: null,
     selectedProjectId: null,
     selectedProjectSummary: null,
-    selectProject: () => { },
+    selectProject: async () => { },
     upsertCachedProject: () => { },
 });
 
@@ -47,15 +50,68 @@ export function useMobileProjects() {
 
 export default function MobileProjectsProvider({ children }: { children: React.ReactNode }) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const loggedInSession = useClientAuthSession();
+    const sessionStoreId = loggedInSession?.sId || null;
+    const sessionTenantId = loggedInSession?.tId || null;
     const [projectsList, setProjectsList] = useState<ProjectSummary[]>([]);
     const [projectsById, setProjectsById] = useState<Record<string, any>>({});
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const hydratedStoreIdRef = useRef<string | number | null>(null);
     const hasHydratedRef = useRef(false);
+    const inFlightProjectLoadsRef = useRef<Record<string, Promise<any>>>({});
+    const projectsListRef = useRef<ProjectSummary[]>([]);
+    const projectsByIdRef = useRef<Record<string, any>>({});
+
+    useEffect(() => {
+        projectsListRef.current = projectsList;
+    }, [projectsList]);
+
+    useEffect(() => {
+        projectsByIdRef.current = projectsById;
+    }, [projectsById]);
+
+    const loadProjectIntoCache = useCallback(async (
+        projectId?: string | null,
+        options?: { force?: boolean }
+    ) => {
+        const nextProjectId = projectId || null;
+        if (!nextProjectId) return null;
+        if (!sessionStoreId || !sessionTenantId) return null;
+
+        if (!options?.force && projectsByIdRef.current[nextProjectId]) {
+            return projectsByIdRef.current[nextProjectId];
+        }
+
+        if (!options?.force && inFlightProjectLoadsRef.current[nextProjectId]) {
+            return inFlightProjectLoadsRef.current[nextProjectId];
+        }
+
+        const request = getProjectDataWithoutLoader(nextProjectId)
+            .then((project) => {
+                const sanitizedProject = removeObjRef(project);
+                setProjectsById((prev) => ({
+                    ...prev,
+                    [nextProjectId]: sanitizedProject,
+                }));
+                return sanitizedProject;
+            })
+            .finally(() => {
+                delete inFlightProjectLoadsRef.current[nextProjectId];
+            });
+
+        inFlightProjectLoadsRef.current[nextProjectId] = request;
+        return request;
+    }, [sessionStoreId, sessionTenantId]);
 
     const refreshProjects = useCallback(async (options?: { force?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => {
         const storeId = storeDetails?.storeId;
+        if (!sessionStoreId || !sessionTenantId) {
+            setProjectsList([]);
+            setProjectsById({});
+            setSelectedProjectId(null);
+            return;
+        }
         if (!storeId) {
             setProjectsList([]);
             setProjectsById({});
@@ -69,7 +125,9 @@ export default function MobileProjectsProvider({ children }: { children: React.R
 
         if (!shouldForce && hasHydratedRef.current && hydratedStoreIdRef.current === storeId) {
             if (options?.preferredProjectId !== undefined) {
-                const preferred = options.preferredProjectId || null;
+                const resolvedProject = resolveMobileSelectedProject(projectsListRef.current, options.preferredProjectId || null);
+                const preferred = resolvedProject?.projectId || null;
+                await loadProjectIntoCache(preferred);
                 setSelectedProjectId(preferred);
                 setStoredMobileProjectId(preferred, storeId);
             }
@@ -96,13 +154,14 @@ export default function MobileProjectsProvider({ children }: { children: React.R
             if (summaries.length === 0) {
                 setProjectsById({});
             } else {
-                const fullProjects = await Promise.all(
-                    summaries.map(async (project) => {
-                        const full = await getProjectDataWithoutLoader(project.projectId);
-                        return [project.projectId, removeObjRef(full)] as const;
-                    })
-                );
-                setProjectsById(Object.fromEntries(fullProjects));
+                const validProjectIds = new Set(summaries.map((project) => project.projectId));
+                setProjectsById((prev) => Object.fromEntries(
+                    Object.entries(prev).filter(([projectId]) => validProjectIds.has(projectId))
+                ));
+
+                if (resolvedProjectId) {
+                    await loadProjectIntoCache(resolvedProjectId, { force: shouldForce });
+                }
             }
 
             hydratedStoreIdRef.current = storeId;
@@ -112,11 +171,54 @@ export default function MobileProjectsProvider({ children }: { children: React.R
                 setIsLoading(false);
             }
         }
-    }, [storeDetails?.storeId]);
+    }, [loadProjectIntoCache, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
+
+    const refreshCachedProject = useCallback(async (
+        projectId?: string | null,
+        options?: { showLoader?: boolean }
+    ) => {
+        const nextProjectId = projectId || selectedProjectId || null;
+        if (!nextProjectId || !sessionStoreId || !sessionTenantId) {
+            return null;
+        }
+
+        const shouldShowLoader = options?.showLoader ?? false;
+
+        try {
+            if (shouldShowLoader) {
+                setIsLoading(true);
+            }
+
+            return await loadProjectIntoCache(nextProjectId, { force: true });
+        } finally {
+            if (shouldShowLoader) {
+                setIsLoading(false);
+            }
+        }
+    }, [loadProjectIntoCache, sessionStoreId, sessionTenantId, selectedProjectId]);
 
     useEffect(() => {
-        const storeId = storeDetails?.storeId;
-        if (!storeId) return;
+        if (!storeDetails?.storeId) {
+            hasHydratedRef.current = false;
+            hydratedStoreIdRef.current = null;
+            setProjectsList([]);
+            setProjectsById({});
+            setSelectedProjectId(null);
+            setIsLoading(true);
+            return;
+        }
+
+        if (!sessionStoreId || !sessionTenantId) {
+            hasHydratedRef.current = false;
+            hydratedStoreIdRef.current = null;
+            setProjectsList([]);
+            setProjectsById({});
+            setSelectedProjectId(null);
+            setIsLoading(true);
+            return;
+        }
+
+        const storeId = storeDetails.storeId;
 
         if (hydratedStoreIdRef.current !== storeId) {
             hasHydratedRef.current = false;
@@ -130,13 +232,32 @@ export default function MobileProjectsProvider({ children }: { children: React.R
             force: true,
             showLoader: true,
         });
-    }, [refreshProjects, storeDetails?.storeId]);
+    }, [refreshProjects, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
 
-    const selectProject = useCallback((projectId?: string | null) => {
-        const nextProjectId = projectId || null;
+    const selectProject = useCallback(async (projectId?: string | null) => {
+        if (!sessionStoreId || !sessionTenantId) return;
+
+        const resolvedProject = resolveMobileSelectedProject(projectsListRef.current, projectId || null);
+        const nextProjectId = resolvedProject?.projectId || null;
+        const needsFetch = Boolean(nextProjectId) && !projectsByIdRef.current[nextProjectId];
+
+        if (needsFetch) {
+            setIsLoading(true);
+        }
+
         setSelectedProjectId(nextProjectId);
         setStoredMobileProjectId(nextProjectId, storeDetails?.storeId);
-    }, [storeDetails?.storeId]);
+
+        try {
+            if (needsFetch) {
+                await loadProjectIntoCache(nextProjectId);
+            }
+        } finally {
+            if (needsFetch) {
+                setIsLoading(false);
+            }
+        }
+    }, [loadProjectIntoCache, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
 
     const upsertCachedProject = useCallback((project: any) => {
         if (!project?.projectId) return;
@@ -195,6 +316,7 @@ export default function MobileProjectsProvider({ children }: { children: React.R
         isLoading,
         projectsById,
         projectsList,
+        refreshCachedProject,
         refreshProjects,
         removeCachedProject,
         selectedProject,
@@ -206,6 +328,7 @@ export default function MobileProjectsProvider({ children }: { children: React.R
         isLoading,
         projectsById,
         projectsList,
+        refreshCachedProject,
         refreshProjects,
         removeCachedProject,
         selectedProject,

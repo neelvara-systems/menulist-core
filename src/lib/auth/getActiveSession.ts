@@ -1,19 +1,63 @@
 import LoginUserType from "@type/loginUser";
 
+const CLIENT_SESSION_TTL_MS = 1500;
+
+let clientSessionCache: LoginUserType | null = null;
+let clientSessionCacheAt = 0;
+let clientSessionRequest: Promise<LoginUserType | null> | null = null;
+
+const AUTH_LOG_BADGE = 'background: #0f172a; color: #67e8f9; padding: 2px 6px; border-radius: 999px; font-weight: 700;';
+const AUTH_LOG_TEXT = 'color: #0891b2; font-weight: 700;';
+const AUTH_SUCCESS_TEXT = 'color: #16a34a; font-weight: 700;';
+const AUTH_WARN_TEXT = 'color: #f59e0b; font-weight: 700;';
+const AUTH_ERROR_TEXT = 'color: #dc2626; font-weight: 700;';
+
 const getActiveSession = async () => {
-    let session: any = null;
     if (typeof window === 'undefined') {
-        // Server-side
         const { getServerSession: sessionGetter } = await import("next-auth");
         const { authOptions } = await import(".")
-        session = await sessionGetter(authOptions);
-    } else {
-        // Client-side
-        const { getSession: sessionGetter } = await import('next-auth/react');
-        session = await sessionGetter();
+        const session = await sessionGetter(authOptions);
+        return session as unknown as LoginUserType;
     }
-    const sessionWithType: LoginUserType = session;
-    return sessionWithType;
+
+    const now = Date.now();
+    if (clientSessionCache && now - clientSessionCacheAt < CLIENT_SESSION_TTL_MS) {
+        console.log(`%c🔐 Auth%c session cache hit`, AUTH_LOG_BADGE, AUTH_LOG_TEXT, {
+            ageMs: now - clientSessionCacheAt,
+        });
+        return clientSessionCache;
+    }
+
+    if (clientSessionRequest) {
+        console.log(`%c🔐 Auth%c session request joined`, AUTH_LOG_BADGE, AUTH_WARN_TEXT);
+        return clientSessionRequest;
+    }
+
+    clientSessionRequest = (async () => {
+        try {
+            console.log(`%c🔐 Auth%c session fetch start`, AUTH_LOG_BADGE, AUTH_LOG_TEXT);
+            const { getSession: sessionGetter } = await import('next-auth/react');
+            const session = await sessionGetter();
+            const sessionWithType = session as unknown as LoginUserType | null;
+            clientSessionCache = sessionWithType;
+            clientSessionCacheAt = Date.now();
+            console.log(`%c🔐 Auth%c session fetch success`, AUTH_LOG_BADGE, AUTH_SUCCESS_TEXT, {
+                authenticated: Boolean(sessionWithType?.user),
+                sId: sessionWithType?.sId ?? null,
+                tId: sessionWithType?.tId ?? null,
+            });
+            return sessionWithType;
+        } catch (error: any) {
+            console.error(`%c🔐 Auth%c session fetch failed`, AUTH_LOG_BADGE, AUTH_ERROR_TEXT, {
+                error: error?.message || 'Unknown error',
+            });
+            throw error;
+        } finally {
+            clientSessionRequest = null;
+        }
+    })();
+
+    return clientSessionRequest;
 };
 
 export default getActiveSession;
