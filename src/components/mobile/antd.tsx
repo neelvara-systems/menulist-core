@@ -472,7 +472,7 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
                 backgroundColor: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 minHeight: navHeight,
-                padding: `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
+                padding: isInsideSheet ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 zIndex: 5,

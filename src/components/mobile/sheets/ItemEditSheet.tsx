@@ -15,7 +15,7 @@ interface ItemEditSheetProps {
     currencySymbol: string;
     mode?: 'add' | 'edit';
     onClose: () => void;
-    onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null }) => void;
+    onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null }) => void | Promise<void>;
     onDelete?: (itemId: string) => void;
 }
 
@@ -51,6 +51,7 @@ export default function ItemEditSheet({
     const [imagePreview, setImagePreview] = useState<string | null>(item?.image || null);
     const [selectedCategory, setSelectedCategory] = useState(item?.categoryId || categories[0]?.id || '');
     const [attributes, setAttributes] = useState(item?.attributes || []);
+    const [isSaving, setIsSaving] = useState(false);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: 'image/*',
@@ -79,32 +80,46 @@ export default function ItemEditSheet({
         showUploadList: false,
     }), [imagePreview, item?.id, item?.name, t]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (isSaving || !name.trim()) return;
+
         const chosenCategory = categories.find((category) => category.id === selectedCategory);
         const categoryName = chosenCategory?.name || item?.categoryName || t('uncategorized');
-        onSave({
-            name: name.trim(),
-            price: parseFloat(price) || 0,
-            description: description.trim(),
-            available: isAvailable,
-            active: isActive,
-            categoryId: selectedCategory || undefined,
-            categoryName,
-            image: imagePreview || (item?.image ? null : undefined),
-            attributes,
-        });
+        setIsSaving(true);
+
+        try {
+            await onSave({
+                name: name.trim(),
+                price: parseFloat(price) || 0,
+                description: description.trim(),
+                available: isAvailable,
+                active: isActive,
+                categoryId: selectedCategory || undefined,
+                categoryName,
+                image: imagePreview || (item?.image ? null : undefined),
+                attributes,
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
         <Popup
             bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', padding: 0 }}
             destroyOnClose
-            onMaskClick={onClose}
+            onMaskClick={() => {
+                if (!isSaving) onClose();
+            }}
             position="bottom"
             visible
         >
             <Flex style={{ maxHeight: '85vh', overflowY: 'auto' }} vertical>
-                <NavBar onBack={onClose}>{isAddMode ? t('addItemTitle') : t('editItemTitle')}</NavBar>
+                <NavBar onBack={() => {
+                    if (!isSaving) onClose();
+                }}>
+                    {isAddMode ? t('addItemTitle') : t('editItemTitle')}
+                </NavBar>
 
                 <Flex gap={16} style={{ padding: '12px 12px 12px' }} vertical>
                     <Card size="small" style={sectionCardStyle}>
@@ -189,8 +204,10 @@ export default function ItemEditSheet({
                                     <Text type="secondary">{t('variantsAddOnsDesc')}</Text>
                                 </Flex>
                                 <Button
+                                    disabled={isSaving}
                                     fill="outline"
                                     onClick={() => {
+                                        if (isSaving) return;
                                         setAttributes((previous) => [
                                             ...previous,
                                             {
@@ -219,8 +236,12 @@ export default function ItemEditSheet({
                                                     <Text strong>{t('optionNumber', { number: index + 1 })}</Text>
                                                     <Button
                                                         color="danger"
+                                                        disabled={isSaving}
                                                         fill="none"
-                                                        onClick={() => setAttributes((previous) => previous.filter((entry) => entry.id !== attribute.id))}
+                                                        onClick={() => {
+                                                            if (isSaving) return;
+                                                            setAttributes((previous) => previous.filter((entry) => entry.id !== attribute.id));
+                                                        }}
                                                         size="small"
                                                     >
                                                         <LuTrash2 size={14} />
@@ -290,10 +311,19 @@ export default function ItemEditSheet({
                     </Card>
 
                     <Flex gap={12}>
-                        <Button block fill="outline" onClick={onClose} size="large">
+                        <Button block disabled={isSaving} fill="outline" onClick={onClose} size="large">
                             {t('cancel')}
                         </Button>
-                        <Button block color="primary" disabled={!name.trim()} onClick={handleSave} size="large">
+                        <Button
+                            block
+                            color="primary"
+                            disabled={!name.trim() || isSaving}
+                            loading={isSaving}
+                            onClick={() => {
+                                void handleSave();
+                            }}
+                            size="large"
+                        >
                             {isAddMode ? t('addItem') : t('save')}
                         </Button>
                     </Flex>
@@ -302,8 +332,10 @@ export default function ItemEditSheet({
                         <Button
                             block
                             color="danger"
+                            disabled={isSaving}
                             fill="outline"
                             onClick={() => {
+                                if (isSaving) return;
                                 Dialog.confirm({
                                     title: t('deleteItemTitle'),
                                     content: t('deleteItemConfirm', { item: item.name }),

@@ -32,6 +32,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                 bottom: 0,
                 left: 0,
                 margin: 0,
+                paddingBottom: 'env(safe-area-inset-bottom)',
                 position: 'fixed',
                 right: 0,
                 zIndex: 50,

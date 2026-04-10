@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
-import { Button, Card, Flex, SafeArea, Text, Title } from './antd';
+import { Button, Card, Flex, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
 import type { MoreSubScreen } from './screens/MobileMoreScreen';
@@ -224,7 +224,6 @@ export default function MobileShell() {
                     feedbackCount={feedbackBadgeCount}
                     onTabChange={handleTabChange}
                 />
-                <SafeArea position="bottom" />
             </Flex>
         </MobileProjectsProvider>
     );

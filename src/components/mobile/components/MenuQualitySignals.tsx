@@ -78,13 +78,10 @@ export default function MobileMenuQualitySignals({ activeKey, files, onExpandedC
                                     arrow={signal.status === 'warning'}
                                     key={signal.id}
                                     onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
-                                    description={(
-                                        <Flex gap={8} vertical>
-                                            <Flex align="center" gap={8}>
-                                                {SIGNAL_ICONS[signal.id]}
-                                                <Text>{signal.label}</Text>
-                                            </Flex>
-                                            {signal.helpText ? <Text type="secondary">{signal.helpText}</Text> : null}
+                                    title={(
+                                        <Flex align="center" gap={8}>
+                                            {SIGNAL_ICONS[signal.id]}
+                                            <Text>{signal.label}</Text>
                                         </Flex>
                                     )}
                                     extra={signal.status === 'warning' ? <Tag color="processing">{t('review')}</Tag> : null}

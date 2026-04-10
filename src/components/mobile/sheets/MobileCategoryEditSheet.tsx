@@ -56,7 +56,7 @@ export default function MobileCategoryEditSheet({
     const selectedCount = useMemo(() => presetIds.length, [presetIds.length]);
 
     const handleSave = async () => {
-        if (!name.trim()) return;
+        if (isSaving || !name.trim()) return;
         setIsSaving(true);
         try {
             await onSave({
@@ -77,12 +77,16 @@ export default function MobileCategoryEditSheet({
         <Popup
             bodyStyle={{ maxHeight: '85vh', padding: 0 }}
             destroyOnClose
-            onMaskClick={onClose}
+            onMaskClick={() => {
+                if (!isSaving) onClose();
+            }}
             position="bottom"
             visible={visible}
         >
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onClose}>
+                <NavBar onBack={() => {
+                    if (!isSaving) onClose();
+                }}>
                     {mode === 'add' ? t('addCategoryLabel') : (category?.name || t('categoriesTitle'))}
                 </NavBar>
 
@@ -151,10 +155,10 @@ export default function MobileCategoryEditSheet({
                 <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 'auto' }}>
                     <Flex gap={8} vertical>
                         <Flex gap={8}>
-                            <Button block fill="outline" onClick={onClose}>
+                            <Button block disabled={isSaving} fill="outline" onClick={onClose}>
                                 {t('cancel')}
                             </Button>
-                            <Button block disabled={!name.trim()} loading={isSaving} onClick={() => void handleSave()}>
+                            <Button block disabled={!name.trim() || isSaving} loading={isSaving} onClick={() => void handleSave()}>
                                 <Flex align="center" gap={6}>
                                     {mode === 'add' ? <LuPlus size={14} /> : <LuCheck size={14} />}
                                     <Text>{mode === 'add' ? t('add') : t('save')}</Text>
@@ -163,7 +167,7 @@ export default function MobileCategoryEditSheet({
                         </Flex>
 
                         {mode === 'edit' && category?.id && onDelete ? (
-                            <Button block color="danger" fill="outline" onClick={() => onDelete(category.id)}>
+                            <Button block color="danger" disabled={isSaving} fill="outline" onClick={() => onDelete(category.id)}>
                                 <Flex align="center" gap={8}>
                                     <LuTrash2 size={16} />
                                     <Text>{t('delete')}</Text>

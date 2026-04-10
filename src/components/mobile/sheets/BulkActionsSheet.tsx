@@ -687,15 +687,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                     placeholder={t('chooseCategory')}
                                     value={destinationCategoryId || undefined}
                                 />
-                                {preview && 'itemsToMove' in preview && destinationCategoryId ? (
-                                    <Flex gap={8} wrap="wrap">
-                                        <Tag color="processing">{t('itemsAffected', { count: preview.itemsToMove })}</Tag>
-                                        <Tag>{t('destinationCategory')}: {preview.destinationCategory}</Tag>
-                                        {preview.sourceCategories.length > 0 ? (
-                                            <Tag>{`From ${preview.sourceCategories.length} ${t('categories')}`}</Tag>
-                                        ) : null}
-                                    </Flex>
-                                ) : null}
                             </Flex>
                         </Card>
                     ) : null}
@@ -837,79 +828,77 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     ) : categories.size === 0 ? (
                         <Empty description={t('noMatchingItems')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     ) : (
-                        <Card size="small">
-                            <Collapse
-                                defaultActiveKey={Array.from(categories.keys())[0] ? [Array.from(categories.keys())[0]] : undefined}
-                            >
-                                {Array.from(categories.entries()).map(([categoryName, categoryItems]) => {
-                                    const selectedCount = categoryItems.filter((item) => selectedIds.has(item.id)).length;
-                                    const allCategorySelected = categoryItems.length > 0 && selectedCount === categoryItems.length;
-                                    const someCategorySelected = selectedCount > 0 && !allCategorySelected;
+                        <Collapse
+                            defaultActiveKey={Array.from(categories.keys())[0] ? [Array.from(categories.keys())[0]] : undefined}
+                        >
+                            {Array.from(categories.entries()).map(([categoryName, categoryItems]) => {
+                                const selectedCount = categoryItems.filter((item) => selectedIds.has(item.id)).length;
+                                const allCategorySelected = categoryItems.length > 0 && selectedCount === categoryItems.length;
+                                const someCategorySelected = selectedCount > 0 && !allCategorySelected;
 
-                                    return (
-                                        <Collapse.Panel
-                                            key={categoryName}
-                                            title={(
-                                                <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
-                                                    <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
-                                                        <div onClick={(event) => event.stopPropagation()}>
-                                                            <Checkbox
-                                                                checked={allCategorySelected}
-                                                                indeterminate={someCategorySelected}
-                                                                onChange={(checked) => toggleCategory(categoryName, checked)}
-                                                            />
-                                                        </div>
-                                                        <Text strong>{categoryName}</Text>
-                                                    </Flex>
-                                                    <Tag color={selectedCount > 0 ? 'processing' : undefined} style={{ borderRadius: 999 }}>
-                                                        {selectedCount}/{categoryItems.length}
-                                                    </Tag>
+                                return (
+                                    <Collapse.Panel
+                                        key={categoryName}
+                                        title={(
+                                            <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
+                                                <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
+                                                    <div onClick={(event) => event.stopPropagation()}>
+                                                        <Checkbox
+                                                            checked={allCategorySelected}
+                                                            indeterminate={someCategorySelected}
+                                                            onChange={(checked) => toggleCategory(categoryName, checked)}
+                                                        />
+                                                    </div>
+                                                    <Text strong>{categoryName}</Text>
                                                 </Flex>
-                                            )}
-                                        >
-                                            <Flex gap={8} vertical>
-                                                {categoryItems.map((item) => (
-                                                    <Card
-                                                        key={item.id}
-                                                        size="small"
-                                                        style={{
-                                                            backgroundColor: selectedIds.has(item.id) ? token.colorPrimaryBg : token.colorBgContainer,
-                                                            borderColor: selectedIds.has(item.id) ? token.colorPrimaryBorder : token.colorBorderSecondary,
-                                                            margin: 0,
-                                                        }}
+                                                <Tag color={selectedCount > 0 ? 'processing' : undefined} style={{ borderRadius: 999 }}>
+                                                    {selectedCount}/{categoryItems.length}
+                                                </Tag>
+                                            </Flex>
+                                        )}
+                                    >
+                                        <Flex gap={8} vertical>
+                                            {categoryItems.map((item) => (
+                                                <Card
+                                                    key={item.id}
+                                                    size="small"
+                                                    style={{
+                                                        backgroundColor: selectedIds.has(item.id) ? token.colorPrimaryBg : token.colorBgContainer,
+                                                        borderColor: selectedIds.has(item.id) ? token.colorPrimaryBorder : token.colorBorderSecondary,
+                                                        margin: 0,
+                                                    }}
+                                                >
+                                                    <Flex
+                                                        align="center"
+                                                        gap={10}
+                                                        justify="space-between"
+                                                        onClick={() => toggleItem(item.id)}
+                                                        style={{ cursor: 'pointer' }}
                                                     >
-                                                        <Flex
-                                                            align="center"
-                                                            gap={10}
-                                                            justify="space-between"
-                                                            onClick={() => toggleItem(item.id)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        >
-                                                            <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
-                                                                <div onClick={(event) => event.stopPropagation()}>
-                                                                    <Checkbox
-                                                                        checked={selectedIds.has(item.id)}
-                                                                        onChange={() => toggleItem(item.id)}
-                                                                    />
-                                                                </div>
-                                                                <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                                    <Text>{item.name}</Text>
-                                                                    <Flex gap={8} wrap="wrap">
-                                                                        {action === 'pricing' ? renderPricingChange(item) : null}
-                                                                        {renderItemStatus(item)}
-                                                                        {item.attributes?.length ? <Tag>{t('variantsCount', { count: item.attributes.length })}</Tag> : null}
-                                                                    </Flex>
+                                                        <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
+                                                            <div onClick={(event) => event.stopPropagation()}>
+                                                                <Checkbox
+                                                                    checked={selectedIds.has(item.id)}
+                                                                    onChange={() => toggleItem(item.id)}
+                                                                />
+                                                            </div>
+                                                            <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                                                                <Text>{item.name}</Text>
+                                                                <Flex gap={8} wrap="wrap">
+                                                                    {action === 'pricing' ? renderPricingChange(item) : null}
+                                                                    {renderItemStatus(item)}
+                                                                    {item.attributes?.length ? <Tag>{t('variantsCount', { count: item.attributes.length })}</Tag> : null}
                                                                 </Flex>
                                                             </Flex>
                                                         </Flex>
-                                                    </Card>
-                                                ))}
-                                            </Flex>
-                                        </Collapse.Panel>
-                                    );
-                                })}
-                            </Collapse>
-                        </Card>
+                                                    </Flex>
+                                                </Card>
+                                            ))}
+                                        </Flex>
+                                    </Collapse.Panel>
+                                );
+                            })}
+                        </Collapse>
                     )}
                 </Flex>
 

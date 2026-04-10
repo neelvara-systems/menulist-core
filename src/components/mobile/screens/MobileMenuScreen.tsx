@@ -49,6 +49,14 @@ type CategorySummary = {
     timeSlotPresetIds?: string[];
 };
 
+type CategoryIssueSummary = {
+    hidden: number;
+    missingDescriptions: number;
+    missingImages: number;
+    missingPrices: number;
+    priceOutliers: number;
+};
+
 type MobileMenuFilters = {
     categoryIds: string[];
     minPrice: number | null;
@@ -148,6 +156,27 @@ function resolveAttributeName(
     return resolveLocalizedText(attribute?.name, activeLang, fallback);
 }
 
+function normalizeExtractedPrice(price: unknown): number {
+    if (typeof price === 'number') {
+        return Number.isFinite(price) ? price : 0;
+    }
+
+    if (typeof price === 'string') {
+        const direct = Number(price.trim());
+        if (Number.isFinite(direct)) return direct;
+
+        const cleaned = price.replace(/[^0-9.-]/g, '');
+        const parsed = Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+}
+
+function pluralizeCount(count: number, singular: string, plural = `${singular}s`) {
+    return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
@@ -211,6 +240,7 @@ export default function MobileMenuScreen() {
     const uncategorizedLabel = t('uncategorized');
     const menuContentTopRef = useRef<HTMLDivElement | null>(null);
     const persistedMenuRef = useRef<any>(null);
+    const menuDataRef = useRef<any>(null);
     const pendingMenuRef = useRef<any>(null);
     const persistedLocalSnapshotRef = useRef<string | null>(null);
     const pendingLocalSnapshotRef = useRef<string | null>(null);
@@ -326,10 +356,54 @@ export default function MobileMenuScreen() {
     }, [flushPendingMenuPersist]);
 
     const applyLocalMenuUpdate = useCallback((updatedProject: any) => {
+        menuDataRef.current = updatedProject;
         setMenuData(updatedProject);
         replaceProjectInList(updatedProject);
         queueMenuPersist(updatedProject);
     }, [queueMenuPersist, replaceProjectInList]);
+
+    useEffect(() => {
+        menuDataRef.current = menuData;
+    }, [menuData]);
+
+    const updateItemImageFromUpload = useCallback((itemId: string, imageUrl: string, imageName: string) => {
+        const sourceProject = menuDataRef.current;
+        if (!sourceProject?.files || !imageUrl) return;
+
+        const updated = removeObjRef(sourceProject);
+        let imageUpdated = false;
+
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.items?.forEach((menuItem: any) => {
+                if (menuItem.id === itemId) {
+                    menuItem.images = [{ url: imageUrl, name: imageName }];
+                    imageUpdated = true;
+                }
+            });
+        });
+
+        if (imageUpdated) {
+            applyLocalMenuUpdate(updated);
+        }
+    }, [applyLocalMenuUpdate]);
+
+    const uploadItemImageInBackground = useCallback((itemId: string, imageData: string, imageName: string, uid: string) => {
+        if (!imageData.includes('base64')) return;
+
+        void uploadFile({
+            uid,
+            url: imageData,
+        } as any, 'itemImages')
+            .then((uploadedImage) => {
+                if (uploadedImage) {
+                    updateItemImageFromUpload(itemId, uploadedImage, imageName);
+                }
+            })
+            .catch((error) => {
+                console.error('[MobileMenu] Failed to upload item image:', error);
+                Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+            });
+    }, [t, updateItemImageFromUpload]);
 
     useEffect(() => {
         const nextProject = selectedProject ? removeObjRef(selectedProject) : null;
@@ -600,7 +674,7 @@ export default function MobileMenuScreen() {
                     categoryItems.forEach((item) => {
                         const itemName = resolveItemName(item, activeLang, t('unnamedItem'));
                         const itemDescription = resolveItemDescription(item, activeLang);
-                        const price = typeof item.price === 'string' ? parseFloat(item.price) : (item.price || 0);
+                        const price = normalizeExtractedPrice(item.price);
                         const available = item.available !== false;
                         const active = item.active !== false;
                         items.push({
@@ -610,7 +684,7 @@ export default function MobileMenuScreen() {
                             attributes: item.attributes?.map((attribute: any) => ({
                                 id: attribute.id,
                                 name: resolveAttributeName(attribute, activeLang, 'Variant'),
-                                price: typeof attribute.price === 'string' ? parseFloat(attribute.price) || 0 : (attribute.price || 0),
+                                price: normalizeExtractedPrice(attribute.price),
                                 active: attribute.active !== false,
                             })),
                             available,
@@ -661,6 +735,66 @@ export default function MobileMenuScreen() {
 
         return outliers;
     }, [menuItems]);
+
+    const categoryIssueSummary = useMemo(() => {
+        const map = new Map<string, CategoryIssueSummary>();
+
+        const getSummary = (categoryId: string) => {
+            const existing = map.get(categoryId);
+            if (existing) return existing;
+
+            const next: CategoryIssueSummary = {
+                hidden: 0,
+                missingDescriptions: 0,
+                missingImages: 0,
+                missingPrices: 0,
+                priceOutliers: 0,
+            };
+            map.set(categoryId, next);
+            return next;
+        };
+
+        menuItems.forEach((item) => {
+            const categoryId = item.categoryId || 'uncategorized';
+            const summary = getSummary(categoryId);
+
+            if (!item.description?.trim()) summary.missingDescriptions += 1;
+            if (!item.image) summary.missingImages += 1;
+            if (!(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
+            if (!item.active) summary.hidden += 1;
+            if (priceOutlierItemIds.has(item.id)) summary.priceOutliers += 1;
+        });
+
+        return map;
+    }, [menuItems, priceOutlierItemIds]);
+
+    const categorySignalLabels = useMemo(() => {
+        const map = new Map<string, string>();
+
+        categoryIssueSummary.forEach((summary, categoryId) => {
+            if (summary.missingPrices > 0) {
+                map.set(categoryId, pluralizeCount(summary.missingPrices, 'missing price'));
+                return;
+            }
+            if (summary.missingImages > 0) {
+                map.set(categoryId, pluralizeCount(summary.missingImages, 'missing photo'));
+                return;
+            }
+            if (summary.hidden > 0) {
+                map.set(categoryId, pluralizeCount(summary.hidden, 'hidden item'));
+                return;
+            }
+            if (summary.priceOutliers > 0) {
+                map.set(categoryId, pluralizeCount(summary.priceOutliers, 'unusual price'));
+                return;
+            }
+            if (summary.missingDescriptions > 0) {
+                map.set(categoryId, pluralizeCount(summary.missingDescriptions, 'missing description'));
+            }
+        });
+
+        return map;
+    }, [categoryIssueSummary]);
 
     const filteredItems = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
@@ -1386,9 +1520,16 @@ export default function MobileMenuScreen() {
                                 <Collapse.Panel
                                     key={id}
                                     title={(
-                                        <Flex align="center" justify="space-between">
-                                            <Text strong>{name}</Text>
-                                            <Tag>{t('itemsCount', { count: items.length })}</Tag>
+                                        <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
+                                            <Text ellipsis strong style={{ flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap' }}>{name}</Text>
+                                            <Flex align="center" gap={6} style={{ flex: '0 0 auto' }}>
+                                                {categorySignalLabels.get(id) ? (
+                                                    <Tag color="warning">
+                                                        {categorySignalLabels.get(id)}
+                                                    </Tag>
+                                                ) : null}
+                                                <Tag>{items.length}</Tag>
+                                            </Flex>
                                         </Flex>
                                     )}
                                 >
@@ -1407,7 +1548,12 @@ export default function MobileMenuScreen() {
                                                                 onMouseDown={(event) => event.stopPropagation()}
                                                                 onPointerDown={(event) => event.stopPropagation()}
                                                             >
-                                                                <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                                <Flex align="center" gap={6}>
+                                                                    <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                                    <Text style={{ fontSize: 12, whiteSpace: 'nowrap' }} type="secondary">
+                                                                        {item.available ? availabilityLabels.available : availabilityLabels.unavailable}
+                                                                    </Text>
+                                                                </Flex>
                                                             </div>
                                                             <Button fill="outline" onClick={(event) => {
                                                                 event.stopPropagation();
@@ -1419,15 +1565,9 @@ export default function MobileMenuScreen() {
                                                     }
                                                     title={<Text strong>{item.name}</Text>}
                                                     description={
-                                                        <Flex gap={6} vertical>
-                                                            {item.description ? <Text type="secondary">{item.description}</Text> : null}
-                                                            <Flex align="center" gap={8} wrap>
-                                                                <Tag color={item.available ? 'success' : 'warning'}>
-                                                                    {item.available ? availabilityLabels.available : availabilityLabels.unavailable}
-                                                                </Tag>
-                                                                {!item.active ? <Tag>{t('hidden')}</Tag> : null}
-                                                                <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
-                                                            </Flex>
+                                                        <Flex align="center" gap={8} wrap>
+                                                            {!item.active ? <Tag>{t('hidden')}</Tag> : null}
+                                                            <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
                                                         </Flex>
                                                     }
                                                 />
@@ -1797,13 +1937,10 @@ export default function MobileMenuScreen() {
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
                         const updated = removeObjRef(menuData);
-                        let uploadedImage = updatedItem.image;
-                        if (uploadedImage && uploadedImage.includes('base64')) {
-                            uploadedImage = await uploadFile({
-                                uid: `${editingItem.id}-mobile-image`,
-                                url: uploadedImage,
-                            } as any, 'itemImages');
-                        }
+                        const pendingImage = typeof updatedItem.image === 'string' ? updatedItem.image : null;
+                        const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
+                        const imageName = `${updatedItem.name || editingItem.id}.jpg`;
+
                         updated.files?.forEach((file: any) => {
                             file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
                                 if (menuItem.id === editingItem.id) {
@@ -1840,7 +1977,9 @@ export default function MobileMenuScreen() {
                                         nextItem.category = updatedItem.categoryId;
                                     }
                                     if (updatedItem.image !== undefined) {
-                                        nextItem.images = uploadedImage ? [{ url: uploadedImage, name: `${updatedItem.name || menuItem.id}.jpg` }] : [];
+                                        if (!shouldUploadImage) {
+                                            nextItem.images = pendingImage ? [{ url: pendingImage, name: imageName }] : [];
+                                        }
                                     }
                                     file.extractedData.data.items[idx] = nextItem;
                                 }
@@ -1850,6 +1989,15 @@ export default function MobileMenuScreen() {
                         Toast.show({ content: t('itemUpdated'), duration: 1000 });
                         setEditingItem(null);
                         resetCommandActionFlow();
+
+                        if (shouldUploadImage && pendingImage) {
+                            uploadItemImageInBackground(
+                                editingItem.id,
+                                pendingImage,
+                                imageName,
+                                `${editingItem.id}-mobile-image`,
+                            );
+                        }
                     }}
                 />
             ) : null}
@@ -1879,13 +2027,8 @@ export default function MobileMenuScreen() {
 
                         const categoryId = newItem.categoryId;
 
-                        let uploadedImage = newItem.image;
-                        if (uploadedImage && uploadedImage.includes('base64')) {
-                            uploadedImage = await uploadFile({
-                                uid: `${Date.now()}-mobile-new-item`,
-                                url: uploadedImage,
-                            } as any, 'itemImages');
-                        }
+                        const pendingImage = typeof newItem.image === 'string' ? newItem.image : null;
+                        const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
 
                         const createdItem = createNewItem(
                             targetFile,
@@ -1916,7 +2059,8 @@ export default function MobileMenuScreen() {
                             name: { [activeLang]: attribute.name },
                             price: String(attribute.price || 0),
                         }));
-                        createdItem.images = uploadedImage ? [{ url: uploadedImage, name: `${newItem.name || createdItem.id}.jpg` }] : [];
+                        const imageName = `${newItem.name || createdItem.id}.jpg`;
+                        createdItem.images = pendingImage && !shouldUploadImage ? [{ url: pendingImage, name: imageName }] : [];
 
                         targetFile.extractedData.data.items.push(createdItem);
 
@@ -1924,6 +2068,15 @@ export default function MobileMenuScreen() {
                         Toast.show({ content: t('itemAdded'), duration: 1000 });
                         setIsAddSheetOpen(false);
                         resetCommandActionFlow();
+
+                        if (shouldUploadImage && pendingImage) {
+                            uploadItemImageInBackground(
+                                createdItem.id,
+                                pendingImage,
+                                imageName,
+                                `${createdItem.id}-mobile-new-item`,
+                            );
+                        }
                     }}
                 />
             ) : null}
