@@ -125,16 +125,8 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         return result;
     }, [workingProject]);
 
-    const filteredItems = useMemo(() => {
+    const searchScopedItems = useMemo(() => {
         let next = items;
-
-        if (statusFilter === 'active') {
-            next = next.filter((item) => item.active);
-        } else if (statusFilter === 'inactive') {
-            next = next.filter((item) => !item.active);
-        } else if (statusFilter === 'soldOut') {
-            next = next.filter((item) => !item.available);
-        }
 
         if (action === 'moveCategory' && destinationCategoryId) {
             next = next.filter((item) => item.category !== destinationCategoryId);
@@ -143,7 +135,20 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         if (!search.trim()) return next;
         const term = search.toLowerCase();
         return next.filter((item) => item.name.toLowerCase().includes(term) || item.categoryName.toLowerCase().includes(term));
-    }, [action, destinationCategoryId, items, search, statusFilter]);
+    }, [action, destinationCategoryId, items, search]);
+
+    const filteredItems = useMemo(() => {
+        if (statusFilter === 'active') {
+            return searchScopedItems.filter((item) => item.active);
+        }
+        if (statusFilter === 'inactive') {
+            return searchScopedItems.filter((item) => !item.active);
+        }
+        if (statusFilter === 'soldOut') {
+            return searchScopedItems.filter((item) => !item.available);
+        }
+        return searchScopedItems;
+    }, [searchScopedItems, statusFilter]);
 
     const categories = useMemo(() => {
         const map = new Map<string, ItemEntry[]>();
@@ -173,6 +178,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         () => filteredItems.filter((item) => selectedIds.has(item.id)).length,
         [filteredItems, selectedIds]
     );
+    const selectedHiddenByFiltersCount = Math.max(selectedIds.size - effectiveSelectedCount, 0);
     const selectedDestinationCategory = useMemo(
         () => destinationCategories.find((category) => category.value === destinationCategoryId) || null,
         [destinationCategories, destinationCategoryId]
@@ -250,16 +256,10 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     };
 
     const handleSearchChange = (value: string) => {
-        if (selectedIds.size > 0 && value !== search) {
-            clearSelection();
-        }
         setSearch(value);
     };
 
     const handleStatusFilterChange = (nextFilter: StatusFilter) => {
-        if (selectedIds.size > 0 && nextFilter !== statusFilter) {
-            clearSelection();
-        }
         setStatusFilter(nextFilter);
         setIsStatusFilterOpen(false);
     };
@@ -273,10 +273,24 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
     const toggleAll = () => {
         if (effectiveSelectedCount === filteredItems.length) {
-            setSelectedIds(new Set());
+            const next = new Set(selectedIds);
+            filteredItems.forEach((item) => next.delete(item.id));
+            setSelectedIds(next);
             return;
         }
-        setSelectedIds(new Set(filteredItems.map((item) => item.id)));
+        const next = new Set(selectedIds);
+        filteredItems.forEach((item) => next.add(item.id));
+        setSelectedIds(next);
+    };
+
+    const selectItems = (nextItems: ItemEntry[]) => {
+        setSelectedIds(new Set(nextItems.map((item) => item.id)));
+        setIsStatusFilterOpen(false);
+    };
+
+    const hasMissingPrice = (item: ItemEntry) => {
+        const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
+        return !(Number.isFinite(price) && price > 0) && !item.attributes?.length;
     };
 
     const toggleCategory = (categoryName: string, checked: boolean) => {
@@ -343,12 +357,12 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     if (!action) return null;
 
     const actionTitle = action === 'availability'
-        ? t('availability')
+        ? t('markAvailableUnavailable')
         : action === 'showHide'
-            ? t('showAndHide')
+            ? t('visibility')
             : action === 'pricing'
-                ? t('updatePrices')
-                : t('moveToCategory');
+                ? t('editPricesBulk')
+                : t('moveItems');
 
     const pricingMode = pricingMethod === 'setFixed'
         ? 'set'
@@ -395,37 +409,6 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
             <Text style={{ fontSize: 12, lineHeight: 1.2 }}>{label}</Text>
         </Flex>
     );
-
-    const renderLegend = () => {
-        if (action === 'availability') {
-            return (
-                <Flex gap={10} wrap="wrap">
-                    {renderStatusBadge(t('soldOut'), STATUS_COLORS.unavailable)}
-                    {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
-                </Flex>
-            );
-        }
-
-        if (action === 'showHide') {
-            return (
-                <Flex gap={10} wrap="wrap">
-                    {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
-                    {renderStatusBadge(t('soldOut'), STATUS_COLORS.unavailable)}
-                </Flex>
-            );
-        }
-
-        if (action === 'pricing' || action === 'moveCategory') {
-            return (
-                <Flex gap={10} wrap="wrap">
-                    {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
-                    {renderStatusBadge(t('soldOut'), STATUS_COLORS.unavailable)}
-                </Flex>
-            );
-        }
-
-        return null;
-    };
 
     const renderItemStatus = (item: ItemEntry) => {
         if (action === 'availability') {
@@ -501,19 +484,44 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
     const activeFilterCount = statusFilter === 'all' ? 0 : 1;
     const statusFilterLabel = statusFilter === 'active'
-        ? t('active')
+        ? t('showOnMenu')
         : statusFilter === 'inactive'
-            ? t('inactive')
+            ? t('hideFromMenu')
             : statusFilter === 'soldOut'
                 ? t('soldOut')
                 : t('allStatuses');
 
+    const renderSelectionShortcut = (label: string, nextItems: ItemEntry[]) => (
+        <Flex
+            align="center"
+            gap={10}
+            onClick={(event) => {
+                event.stopPropagation();
+                if (nextItems.length === 0) return;
+                selectItems(nextItems);
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            style={{
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 10,
+                cursor: nextItems.length > 0 ? 'pointer' : 'not-allowed',
+                opacity: nextItems.length > 0 ? 1 : 0.45,
+                padding: '9px 12px',
+            }}
+        >
+            <LuCheck size={14} style={{ color: nextItems.length > 0 ? token.colorPrimary : token.colorTextQuaternary, flex: '0 0 auto' }} />
+            <Text>{label}</Text>
+        </Flex>
+    );
+
     const statusFilterContent = (
-        <Flex gap={4} style={{ minWidth: 200 }} vertical>
+        <Flex gap={8} style={{ minWidth: 240 }} vertical>
+            <Flex gap={4} vertical>
+                <Text strong type="secondary">{t('filters')}</Text>
             {([
                 { key: 'all', label: t('allStatuses') },
-                { key: 'active', label: t('active') },
-                { key: 'inactive', label: t('inactive') },
+                { key: 'active', label: t('showOnMenu') },
+                { key: 'inactive', label: t('hideFromMenu') },
                 { key: 'soldOut', label: t('soldOut') },
             ] as const).map((option) => (
                 <Flex
@@ -543,6 +551,21 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     <Text style={{ color: statusFilter === option.key ? token.colorPrimary : undefined }}>{option.label}</Text>
                 </Flex>
             ))}
+            </Flex>
+            <Flex
+                style={{
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                    paddingTop: 8,
+                }}
+                gap={6}
+                vertical
+            >
+                <Text strong type="secondary">{t('selectionShortcuts')}</Text>
+                {renderSelectionShortcut(t('selectVisibleResults', { count: filteredItems.length }), filteredItems)}
+                {renderSelectionShortcut(t('selectSoldOutItems', { count: searchScopedItems.filter((item) => !item.available).length }), searchScopedItems.filter((item) => !item.available))}
+                {renderSelectionShortcut(t('selectHiddenItems', { count: searchScopedItems.filter((item) => !item.active).length }), searchScopedItems.filter((item) => !item.active))}
+                {renderSelectionShortcut(t('selectMissingPriceItems', { count: searchScopedItems.filter(hasMissingPrice).length }), searchScopedItems.filter(hasMissingPrice))}
+            </Flex>
         </Flex>
     );
 
@@ -557,7 +580,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar
                     onBack={onClose}
-                    right={<Tag color="processing">{t('selectedCount', { count: effectiveSelectedCount })}</Tag>}
+                    right={<Tag color="processing">{t('selectedCount', { count: selectedIds.size })}</Tag>}
                 >
                     {actionTitle}
                 </NavBar>
@@ -568,7 +591,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                             <Flex gap={10} vertical>
                                 <Flex align="center" gap={8}>
                                     <Flex gap={2} vertical>
-                                        <Text strong>{t('pricingRule')}</Text>
+                                        <Text strong>{t('priceChangeTitle')}</Text>
                                         <Text type="secondary">{t('pricingRuleSubtitle')}</Text>
                                     </Flex>
                                 </Flex>
@@ -720,102 +743,52 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     </Flex>
 
                     <Flex align="center" gap={12} justify="space-between" wrap>
-                        <Flex align="center" gap={10} style={{ flex: 1, minWidth: 0 }} wrap>
-                            {renderLegend()}
-                        </Flex>
+                        <Tag color={selectedIds.size > 0 ? 'processing' : undefined}>
+                            {selectedHiddenByFiltersCount > 0
+                                ? t('selectedHiddenByFilters', { count: selectedIds.size, hidden: selectedHiddenByFiltersCount })
+                                : t('selectedCount', { count: selectedIds.size })}
+                        </Tag>
                         <Checkbox
                             checked={filteredItems.length > 0 && effectiveSelectedCount === filteredItems.length}
                             indeterminate={effectiveSelectedCount > 0 && effectiveSelectedCount < filteredItems.length}
                             onChange={toggleAll}
                         >
-                            <Text style={{ whiteSpace: 'nowrap' }}>{t('selectAllCount', { count: filteredItems.length })}</Text>
+                            <Text style={{ whiteSpace: 'nowrap' }}>
+                                {filteredItems.length > 0 && effectiveSelectedCount === filteredItems.length
+                                    ? t('deselectVisibleResults', { count: filteredItems.length })
+                                    : t('selectVisibleResults', { count: filteredItems.length })}
+                            </Text>
                         </Checkbox>
                     </Flex>
 
-                    {selectedIds.size > 0 && action === 'availability' ? (
-                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
-                            <Flex gap={8} wrap="wrap">
-                                <Tag color="success">
-                                    {selectedAvailabilitySummary.availableCount} {t('available')}
-                                </Tag>
-                                <Tag color="warning">
-                                    {selectedAvailabilitySummary.unavailableCount} {t('soldOut')}
-                                </Tag>
+                    {selectedIds.size > 0 ? (
+                        <Flex gap={6} style={selectionSummaryStyle} vertical>
+                            <Flex align="center" gap={10} justify="space-between" wrap>
+                                <Flex gap={8} wrap="wrap">
+                                    {action === 'pricing' && preview && 'itemsAffected' in preview ? (
+                                        <>
+                                            <Tag>{formatMenuPrice(preview.avgPriceBefore, currencySymbol)} before</Tag>
+                                            <Tag color="processing">{formatMenuPrice(preview.avgPriceAfter, currencySymbol)} after</Tag>
+                                        </>
+                                    ) : null}
+                                    {action !== 'pricing' || !preview || !('itemsAffected' in preview) ? (
+                                        <Tag color="processing">{t('selectedCount', { count: selectedIds.size })}</Tag>
+                                    ) : null}
+                                </Flex>
+                                <Button
+                                    color="danger"
+                                    fill="none"
+                                    onClick={clearSelection}
+                                    size="small"
+                                    style={clearSelectionButtonStyle}
+                                    icon={<LuX />}
+                                >
+                                    Clear selection
+                                </Button>
                             </Flex>
-                            <Button
-                                color="danger"
-                                fill="none"
-                                onClick={clearSelection}
-                                size="small"
-                                style={clearSelectionButtonStyle}
-                                icon={<LuX />}
-                            >
-                                Clear selection
-                            </Button>
-                        </Flex>
-                    ) : null}
-
-                    {selectedIds.size > 0 && action === 'showHide' ? (
-                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
-                            <Flex gap={8} wrap="wrap">
-                                <Tag color="success">
-                                    {selectedVisibilitySummary.visibleCount} {t('active')}
-                                </Tag>
-                                <Tag>
-                                    {selectedVisibilitySummary.hiddenCount} {t('inactive')}
-                                </Tag>
-                            </Flex>
-                            <Button
-                                color="danger"
-                                fill="none"
-                                onClick={clearSelection}
-                                size="small"
-                                style={clearSelectionButtonStyle}
-                                icon={<LuX />}
-                            >
-                                Clear selection
-                            </Button>
-                        </Flex>
-                    ) : null}
-
-                    {selectedIds.size > 0 && action === 'pricing' ? (
-                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
-                            <Flex gap={8} wrap="wrap">
-                                {preview && 'itemsAffected' in preview ? (
-                                    <>
-                                        <Tag>{formatMenuPrice(preview.avgPriceBefore, currencySymbol)} before</Tag>
-                                        <Tag color="processing">{formatMenuPrice(preview.avgPriceAfter, currencySymbol)} after</Tag>
-                                    </>
-                                ) : null}
-                            </Flex>
-                            <Button
-                                color="danger"
-                                fill="none"
-                                onClick={clearSelection}
-                                size="small"
-                                style={clearSelectionButtonStyle}
-                                icon={<LuX />}
-                            >
-                                Clear selection
-                            </Button>
-                        </Flex>
-                    ) : null}
-
-                    {selectedIds.size > 0 && action === 'moveCategory' ? (
-                        <Flex align="center" gap={10} justify="space-between" style={selectionSummaryStyle} wrap>
-                            <Flex gap={8} wrap="wrap">
-                                <Tag color="processing">{t('selectedCount', { count: effectiveSelectedCount })}</Tag>
-                            </Flex>
-                            <Button
-                                color="danger"
-                                fill="none"
-                                onClick={clearSelection}
-                                size="small"
-                                style={clearSelectionButtonStyle}
-                                icon={<LuX />}
-                            >
-                                Clear selection
-                            </Button>
+                            {selectedHiddenByFiltersCount > 0 ? (
+                                <Text type="secondary">{t('hiddenSelectionCaution')}</Text>
+                            ) : null}
                         </Flex>
                     ) : null}
                 </Flex>
@@ -916,7 +889,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 >
                                     <Flex align="center" gap={6}>
                                         <LuCheck size={16} />
-                                        <Text>{t('available')} ({selectedAvailabilitySummary.toMarkAvailable})</Text>
+                                        <Text>{t('markAvailable')} ({selectedAvailabilitySummary.toMarkAvailable})</Text>
                                     </Flex>
                                 </Button>
                                 <Button
@@ -927,7 +900,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                     onClick={() => handleApply('unavailable')}
                                     size="large"
                                 >
-                                    {t('soldOut')} ({selectedAvailabilitySummary.toMarkUnavailable})
+                                    {t('markSoldOut')} ({selectedAvailabilitySummary.toMarkUnavailable})
                                 </Button>
                             </Flex>
                         ) : action === 'showHide' ? (
@@ -942,7 +915,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 >
                                     <Flex align="center" gap={6}>
                                         <LuEye size={16} />
-                                        <Text>{t('active')} ({selectedVisibilitySummary.toShow})</Text>
+                                        <Text>{t('showOnMenu')} ({selectedVisibilitySummary.toShow})</Text>
                                     </Flex>
                                 </Button>
                                 <Button
@@ -955,7 +928,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 >
                                     <Flex align="center" gap={6}>
                                         <LuEyeOff size={16} />
-                                        <Text>{t('inactive')} ({selectedVisibilitySummary.toHide})</Text>
+                                        <Text>{t('hideFromMenu')} ({selectedVisibilitySummary.toHide})</Text>
                                     </Flex>
                                 </Button>
                             </Flex>
@@ -971,7 +944,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 onClick={() => handleApply()}
                                 size="large"
                             >
-                                {action === 'pricing' ? t('applyPriceUpdate') : t('moveSelectedItems')}
+                                {action === 'pricing' ? t('applyToItems', { count: selectedIds.size }) : t('moveSelectedItems')}
                             </Button>
                         )}
                     </Card>

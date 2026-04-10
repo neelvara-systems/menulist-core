@@ -13,7 +13,7 @@ type CommandAction = {
     key: string;
     icon: React.ReactNode;
     title: string;
-    description: string;
+    description?: string;
     onClick?: () => void;
     isNew?: boolean;
 };
@@ -69,25 +69,11 @@ export default function MobileMenuCommandSheet({
         [labels]
     );
 
-    const commandActions = useMemo<CommandAction[]>(() => [
-        {
-            key: 'upload-menu',
-            icon: <LuCamera style={{ fontSize: 20 }} />,
-            title: t('uploadMenuPhoto', { offering: labels.offeringTitle }),
-            description: t('createYourMenuDesc', { offering: labels.offeringLower }),
-            onClick: onUploadMenu,
-        },
-        {
-            key: 'add-item',
-            icon: <LuPlus style={{ fontSize: 20 }} />,
-            title: t('addItem'),
-            description: t('addItemTitle'),
-            onClick: onAddItem,
-        },
+    const bulkActions = useMemo<CommandAction[]>(() => [
         {
             key: 'availability',
             icon: <LuToggleRight style={{ fontSize: 20 }} />,
-            title: t('changeAvailability'),
+            title: t('markAvailableUnavailable'),
             description: t('changeAvailabilityDesc', {
                 available: availabilityLabels.available.toLowerCase(),
                 unavailable: availabilityLabels.unavailable.toLowerCase(),
@@ -97,60 +83,73 @@ export default function MobileMenuCommandSheet({
         {
             key: 'pricing',
             icon: <LuDollarSign style={{ fontSize: 20 }} />,
-            title: t('updatePrices'),
+            title: t('editPricesBulk'),
             description: t('updatePricesDesc'),
             onClick: onPricing,
         },
         {
+            key: 'show-hide',
+            icon: <LuEyeOff style={{ fontSize: 20 }} />,
+            title: t('visibility'),
+            description: t('visibilityDesc'),
+            onClick: onShowHide,
+        },
+        {
             key: 'move-category',
             icon: <LuFolderInput style={{ fontSize: 20 }} />,
-            title: t('moveToCategory'),
+            title: t('moveItems'),
             description: t('moveToCategoryDesc'),
             onClick: onMoveCategory,
         },
+    ], [availabilityLabels.available, availabilityLabels.unavailable, onChangeAvailability, onMoveCategory, onPricing, onShowHide, t]);
+
+    const menuSetupActions = useMemo<CommandAction[]>(() => [
         {
-            key: 'show-hide',
-            icon: <LuEyeOff style={{ fontSize: 20 }} />,
-            title: t('showAndHideItems'),
-            description: t('showAndHideItemsDesc'),
-            onClick: onShowHide,
+            key: 'upload-menu',
+            icon: <LuCamera style={{ fontSize: 20 }} />,
+            title: t('importMenu'),
+            description: t('importMenuDesc', { offering: labels.offeringLower }),
+            onClick: onUploadMenu,
+        },
+        {
+            key: 'add-item',
+            icon: <LuPlus style={{ fontSize: 20 }} />,
+            title: t('addItem'),
+            onClick: onAddItem,
         },
         {
             key: 'categories',
             icon: <LuTags style={{ fontSize: 20 }} />,
-            title: t('categories'),
-            description: t('categoriesManageDesc'),
+            title: t('editCategories'),
             onClick: onCategories,
         },
         {
             key: 'reorder-menu',
             icon: <LuArrowUpDown style={{ fontSize: 20 }} />,
             title: t('reorderMenu'),
-            description: t('reorderMenuHelp'),
             onClick: onReorderMenu,
         },
         {
             key: 'language',
             icon: languageAction?.icon || null,
-            title: languageAction?.title || t('manageLanguages'),
-            description: languageAction?.description || labels.languageDesc,
+            title: t('menuLanguages'),
             onClick: onManageLanguages,
         },
         {
             key: 'description',
             icon: descriptionAction?.icon || null,
-            title: descriptionAction?.title || t('generateDescriptions'),
-            description: descriptionAction?.description || labels.descriptionDesc,
+            title: t('generateDescriptionsAi'),
+            description: t('generateDescriptionsAiDesc'),
             onClick: onGenerateDescriptions,
         },
         {
             key: 'decision-blocks',
             icon: decisionBlocksAction?.icon || null,
-            title: decisionBlocksAction?.title || t('smartRecommendationsTitle'),
-            description: decisionBlocksAction?.description || t('smartRecommendationsDesc'),
+            title: t('featuredSections'),
+            description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [availabilityLabels.available, availabilityLabels.unavailable, decisionBlocksAction, descriptionAction, labels.descriptionDesc, labels.languageDesc, labels.offeringLower, labels.offeringTitle, languageAction, onAddItem, onCategories, onChangeAvailability, onGenerateDescriptions, onManageLanguages, onMoveCategory, onPricing, onReorderMenu, onShowHide, onSmartRecommendations, onUploadMenu, t]);
+    ], [decisionBlocksAction?.icon, descriptionAction?.icon, labels.offeringLower, languageAction?.icon, onAddItem, onCategories, onGenerateDescriptions, onManageLanguages, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex
@@ -167,6 +166,29 @@ export default function MobileMenuCommandSheet({
         >
             {icon}
         </Flex>
+    );
+
+    const renderActionList = (actions: CommandAction[]) => (
+        <List>
+            {actions.map((action) => (
+                <List.Item
+                    arrow
+                    description={action.description ? <Text type="secondary">{action.description}</Text> : undefined}
+                    key={action.key}
+                    onClick={() => {
+                        onClose();
+                        action.onClick?.();
+                    }}
+                    prefix={renderIconTile(action.icon)}
+                    title={(
+                        <Flex align="center" gap={8}>
+                            <Text strong>{action.title}</Text>
+                            {action.isNew ? <Text style={{ color: token.colorSuccess }}>New</Text> : null}
+                        </Flex>
+                    )}
+                />
+            ))}
+        </List>
     );
 
     return (
@@ -188,29 +210,16 @@ export default function MobileMenuCommandSheet({
                 >
                     {t('manageAndControl', { offering: labels.offeringTitle })}
                 </NavBar>
-                <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
-                    <Card size="small" style={{ borderRadius: 16 }}>
-                        <List>
-                            {commandActions.map((action) => (
-                                <List.Item
-                                    arrow
-                                    description={<Text type="secondary">{action.description}</Text>}
-                                    key={action.key}
-                                    onClick={() => {
-                                        onClose();
-                                        action.onClick?.();
-                                    }}
-                                    prefix={renderIconTile(action.icon)}
-                                    title={(
-                                        <Flex align="center" gap={8}>
-                                            <Text strong>{action.title}</Text>
-                                            {action.isNew ? <Text style={{ color: token.colorSuccess }}>New</Text> : null}
-                                        </Flex>
-                                    )}
-                                />
-                            ))}
-                        </List>
-                    </Card>
+                <Flex gap={16} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={8} vertical>
+                        <Text strong type="secondary">{t('bulkActions')}</Text>
+                        {renderActionList(bulkActions)}
+                    </Flex>
+
+                    <Flex gap={8} vertical>
+                        <Text strong type="secondary">{t('menuSetup')}</Text>
+                        {renderActionList(menuSetupActions)}
+                    </Flex>
 
                     <Card size="small" style={{ backgroundColor: token.colorBgLayout, borderRadius: 16 }}>
                         <Flex gap={4} vertical>
