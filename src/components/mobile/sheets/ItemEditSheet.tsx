@@ -3,7 +3,7 @@
 import { getOwnerLabels } from '@config/businessLabels';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme, type UploadFile, type UploadProps } from 'antd';
-import { useMemo, useState, useContext } from 'react';
+import { useMemo, useState, useContext, useEffect } from 'react';
 import { LuCamera, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
@@ -15,6 +15,7 @@ interface ItemEditSheetProps {
     currencySymbol: string;
     mode?: 'add' | 'edit';
     onClose: () => void;
+    onManageImages?: () => void;
     onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null }) => void | Promise<void>;
     onDelete?: (itemId: string) => void;
 }
@@ -25,6 +26,7 @@ export default function ItemEditSheet({
     currencySymbol,
     mode = 'edit',
     onClose,
+    onManageImages,
     onSave,
     onDelete,
 }: ItemEditSheetProps) {
@@ -52,6 +54,10 @@ export default function ItemEditSheet({
     const [selectedCategory, setSelectedCategory] = useState(item?.categoryId || categories[0]?.id || '');
     const [attributes, setAttributes] = useState(item?.attributes || []);
     const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setImagePreview(item?.image || null);
+    }, [item?.image]);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: 'image/*',
@@ -96,7 +102,9 @@ export default function ItemEditSheet({
                 active: isActive,
                 categoryId: selectedCategory || undefined,
                 categoryName,
-                image: imagePreview || (item?.image ? null : undefined),
+                image: isAddMode || !onManageImages
+                    ? imagePreview || (item?.image ? null : undefined)
+                    : undefined,
                 attributes,
             });
         } finally {
@@ -174,14 +182,23 @@ export default function ItemEditSheet({
                                         </Flex>
                                     </Card>
                                 )}
-                                <Upload {...uploadProps}>
-                                    <Button fill="outline" size="small">
+                                {isAddMode || !onManageImages ? (
+                                    <Upload {...uploadProps}>
+                                        <Button fill="outline" size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuCamera size={14} />
+                                                <Text>{imagePreview ? t('changePhoto') : t('addPhoto')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Upload>
+                                ) : (
+                                    <Button fill="outline" onClick={onManageImages} size="small">
                                         <Flex align="center" gap={6}>
                                             <LuCamera size={14} />
                                             <Text>{imagePreview ? t('changePhoto') : t('addPhoto')}</Text>
                                         </Flex>
                                     </Button>
-                                </Upload>
+                                )}
                             </Flex>
                         </Flex>
 

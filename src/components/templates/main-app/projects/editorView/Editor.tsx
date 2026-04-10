@@ -3,7 +3,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { LANGUAGE_CONSTANTS } from "@constant/languages";
 import GlobalLanguagesList from "@data/languages";
-import { updateProject, uploadFile } from "@database/projects";
+import { updateProject } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
@@ -59,6 +59,7 @@ import {
     ProjectFileType,
     ProjectMetadata,
 } from "../types";
+import { associateItemImagesWithProject } from "./utils/associateItemImages";
 import { translateFile } from "../utils/translationsUtils";
 import AiDisclaimerAlert from "./AiDisclaimerAlert";
 import BulkStatusMenuModal from "./BulkStatusMenuModal";
@@ -744,41 +745,13 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
         imagesToUpload: UserUploadedFileType[],
     ) => {
         dispatch(startLoader("associating image"));
-        const updatedProjectData: Project = removeObjRef(projectData);
-        let itemUpdated = false;
+        const updatedProjectData = await associateItemImagesWithProject(
+            projectData,
+            selectedItem,
+            imagesToUpload,
+        );
 
-        for (const imageData of imagesToUpload) {
-            if (imageData.url.includes("base64")) {
-                const uploadedUrl = await uploadFile(
-                    {
-                        url: imageData.url,
-                        type: imageData.type,
-                        uid: `${selectedItem.id}-${imageData.uid}`,
-                    },
-                    "itemImages",
-                );
-                imageData.url = uploadedUrl;
-            }
-        }
-        // Iterate through files and their extractedData
-        if (updatedProjectData?.files) {
-            for (const file of updatedProjectData.files) {
-                const itemsList = file.extractedData?.data?.items || [];
-                if (itemsList.length > 0) {
-                    for (const item of itemsList) {
-                        if (item.id === selectedItem.id) {
-                            item.images = item.images || [];
-                            item.images = [...item.images, ...imagesToUpload];
-                            itemUpdated = true;
-                            break; // Found item
-                        }
-                    }
-                    if (itemUpdated) break; // Item found in this file
-                }
-            }
-        }
-
-        if (itemUpdated) {
+        if (updatedProjectData) {
             await updateProject({
                 ...updatedProjectData,
                 projectId: activeProject.projectId,

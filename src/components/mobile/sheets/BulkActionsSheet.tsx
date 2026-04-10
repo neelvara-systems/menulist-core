@@ -25,7 +25,7 @@ import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, P
 interface BulkActionsSheetProps {
     visible: boolean;
     onClose: () => void;
-    onApply: (updatedProject: Project) => void;
+    onApply: (updatedProject: Project, context?: { previousProject?: Project; updatedCount?: number }) => void;
     projectData: Project | null;
     initialAction?: BulkAction;
 }
@@ -323,6 +323,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                 if (!workingProject) return;
                 setApplying(true);
                 try {
+                    const previousProject = removeObjRef(workingProject);
                     let updated = removeObjRef(workingProject);
                     if (action === 'availability' && (target === 'available' || target === 'unavailable')) {
                         updated = applyBulkAvailability(updated, selectedIds, target);
@@ -338,11 +339,10 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     }
 
                     setWorkingProject(updated);
-                    onApply(updated);
+                    onApply(updated, { previousProject, updatedCount: selectedIds.size });
                     setSelectedIds(new Set());
                     setAction(null);
                     onClose();
-                    Toast.show({ content: t('itemsUpdated', { count: selectedIds.size }), duration: 1500 });
                 } catch {
                     Toast.show({ content: t('bulkApplyFailed'), duration: 2000 });
                 } finally {
@@ -484,9 +484,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
 
     const activeFilterCount = statusFilter === 'all' ? 0 : 1;
     const statusFilterLabel = statusFilter === 'active'
-        ? t('showOnMenu')
+        ? t('shownOnMenu')
         : statusFilter === 'inactive'
-            ? t('hideFromMenu')
+            ? t('hiddenFromMenu')
             : statusFilter === 'soldOut'
                 ? t('soldOut')
                 : t('allStatuses');
@@ -520,8 +520,8 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                 <Text strong type="secondary">{t('filters')}</Text>
             {([
                 { key: 'all', label: t('allStatuses') },
-                { key: 'active', label: t('showOnMenu') },
-                { key: 'inactive', label: t('hideFromMenu') },
+                { key: 'active', label: t('shownOnMenu') },
+                { key: 'inactive', label: t('hiddenFromMenu') },
                 { key: 'soldOut', label: t('soldOut') },
             ] as const).map((option) => (
                 <Flex

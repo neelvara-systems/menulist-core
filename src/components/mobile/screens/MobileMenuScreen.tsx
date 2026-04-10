@@ -3,26 +3,30 @@
 import { getOwnerLabels } from '@config/businessLabels';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { associateItemImagesWithProject } from '../../templates/main-app/projects/editorView/utils/associateItemImages';
 import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
+import type { BatchImageGenerationJobType, ItemForDropdown, Project } from '../../templates/main-app/projects/types';
 import type {
     ExtractedDataAttribute,
     ExtractedDataCategory,
     ExtractedDataItem,
 } from '../../templates/main-app/projects/types/extractedData.types';
 import { removeObjRef } from '@util/utils';
-import { InputNumber, theme } from 'antd';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCamera, LuCheck, LuFileText, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -38,6 +42,7 @@ const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerShee
 const ManageLanguagesSheet = dynamic(() => import('../sheets/ManageLanguagesSheet'), { ssr: false });
 const GenerateDescriptionsSheet = dynamic(() => import('../sheets/GenerateDescriptionsSheet'), { ssr: false });
 const SmartRecommendationsSheet = dynamic(() => import('../sheets/SmartRecommendationsSheet'), { ssr: false });
+const ImageUploadModal = dynamic(() => import('../../templates/main-app/projects/editorView/ImageUploadModal'), { ssr: false });
 
 type CategoryOption = { id: string; name: string };
 type CategorySummary = {
@@ -173,8 +178,18 @@ function normalizeExtractedPrice(price: unknown): number {
     return 0;
 }
 
-function pluralizeCount(count: number, singular: string, plural = `${singular}s`) {
-    return `${count} ${count === 1 ? singular : plural}`;
+function findExtractedItemById(projectData: Project | null | undefined, itemId: string): ExtractedDataItem | null {
+    if (!projectData?.files?.length) return null;
+
+    for (const file of projectData.files) {
+        const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+        const matchedItem = items.find((item) => item.id === itemId);
+        if (matchedItem) {
+            return matchedItem;
+        }
+    }
+
+    return null;
 }
 
 export default function MobileMenuScreen() {
@@ -210,6 +225,10 @@ export default function MobileMenuScreen() {
     const [isManageLanguagesOpen, setIsManageLanguagesOpen] = useState(false);
     const [isGenerateDescriptionsOpen, setIsGenerateDescriptionsOpen] = useState(false);
     const [isSmartRecommendationsOpen, setIsSmartRecommendationsOpen] = useState(false);
+    const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+    const [imageModalItem, setImageModalItem] = useState<ExtractedDataItem | null>(null);
+    const [imageModalSource, setImageModalSource] = useState<string>('');
+    const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
     const [menuData, setMenuData] = useState<any>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
@@ -247,6 +266,7 @@ export default function MobileMenuScreen() {
     const persistTimerRef = useRef<number | null>(null);
     const retryTimerRef = useRef<number | null>(null);
     const isPersistingRef = useRef(false);
+    const menuUpdateGenerationRef = useRef(0);
 
     const replaceProjectInList = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
@@ -263,6 +283,33 @@ export default function MobileMenuScreen() {
             retryTimerRef.current = null;
         }
     }, []);
+
+    const syncSavedMenuProject = useCallback((updatedProject: any) => {
+        if (!updatedProject?.projectId) return;
+
+        const savedProject = removeObjRef(updatedProject);
+        const savedSnapshot = JSON.stringify(savedProject);
+
+        clearPersistTimers();
+        pendingMenuRef.current = null;
+        pendingLocalSnapshotRef.current = null;
+        persistedMenuRef.current = savedProject;
+        persistedLocalSnapshotRef.current = savedSnapshot;
+        menuDataRef.current = savedProject;
+        setMenuData(savedProject);
+        replaceProjectInList(savedProject);
+
+        setEditingItem((current) => {
+            if (!current?.id) return current;
+            const nextExtractedItem = findExtractedItemById(savedProject, current.id);
+            if (!nextExtractedItem) return current;
+
+            return {
+                ...current,
+                image: nextExtractedItem.images?.[0]?.url || '',
+            };
+        });
+    }, [clearPersistTimers, replaceProjectInList]);
 
     const setActiveProcessingState = useCallback((value: { jobId: string; projectId: string } | null) => {
         setActiveProcessingStateState(value);
@@ -356,15 +403,70 @@ export default function MobileMenuScreen() {
     }, [flushPendingMenuPersist]);
 
     const applyLocalMenuUpdate = useCallback((updatedProject: any) => {
+        menuUpdateGenerationRef.current += 1;
         menuDataRef.current = updatedProject;
         setMenuData(updatedProject);
         replaceProjectInList(updatedProject);
         queueMenuPersist(updatedProject);
     }, [queueMenuPersist, replaceProjectInList]);
 
+    const applyUndoableBulkMenuUpdate = useCallback((updatedProject: any, previousProject?: any, updatedCount?: number) => {
+        applyLocalMenuUpdate(updatedProject);
+
+        if (!previousProject) {
+            Toast.show({ content: t('itemsUpdated', { count: updatedCount || 0 }), duration: 1500 });
+            return;
+        }
+
+        const undoGeneration = menuUpdateGenerationRef.current;
+        const undoProjectId = updatedProject?.projectId;
+        Toast.show({
+            content: (
+                <Flex align="center" gap={12} justify="space-between" style={{ minWidth: 0, width: '100%' }}>
+                    <Text style={{ flex: 1, minWidth: 0 }}>{t('itemsUpdated', { count: updatedCount || 0 })}</Text>
+                    <Flex align="center" gap={4}>
+                        <Button
+                            fill="none"
+                            onClick={() => {
+                                Toast.clear();
+                                if (
+                                    menuUpdateGenerationRef.current !== undoGeneration ||
+                                    menuDataRef.current?.projectId !== undoProjectId
+                                ) {
+                                    Toast.show({ content: t('undoUnavailable'), duration: 1800 });
+                                    return;
+                                }
+
+                                applyLocalMenuUpdate(removeObjRef(previousProject));
+                                Toast.show({ content: t('changesUndone'), duration: 1200 });
+                            }}
+                            size="small"
+                        >
+                            {t('undo')}
+                        </Button>
+                        <Button
+                            fill="none"
+                            icon={<LuX size={16} />}
+                            onClick={() => {
+                                Toast.clear();
+                            }}
+                            size="small"
+                        />
+                    </Flex>
+                </Flex>
+            ),
+            duration: 5000,
+        });
+    }, [applyLocalMenuUpdate, t]);
+
     useEffect(() => {
         menuDataRef.current = menuData;
     }, [menuData]);
+
+    useImageBatchJobListener({
+        project: ((isImageUploadOpen || Boolean(activeBatchImageJob)) ? menuData : null) as Project,
+        setActiveBatchImageJob,
+    });
 
     const updateItemImageFromUpload = useCallback((itemId: string, imageUrl: string, imageName: string) => {
         const sourceProject = menuDataRef.current;
@@ -405,6 +507,43 @@ export default function MobileMenuScreen() {
             });
     }, [t, updateItemImageFromUpload]);
 
+    const openImageUploadModal = useCallback((itemId?: string, source = '') => {
+        const matchedItem = itemId ? findExtractedItemById(menuDataRef.current, itemId) : null;
+        setImageModalItem(matchedItem);
+        setImageModalSource(source);
+        setIsImageUploadOpen(true);
+    }, []);
+
+    const handleModalImageUpload = useCallback(async (
+        selectedItem: ItemForDropdown,
+        imagesToUpload: any[],
+    ) => {
+        const sourceProject = menuDataRef.current as Project | null;
+        if (!sourceProject?.projectId) {
+            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+            return;
+        }
+
+        const updatedProject = await associateItemImagesWithProject(
+            sourceProject,
+            selectedItem,
+            imagesToUpload,
+        );
+
+        if (!updatedProject) {
+            Toast.show({ content: t('imageUploadFailed'), duration: 2000 });
+            return;
+        }
+
+        const savedProject = await updateProjectWithoutLoader({
+            ...updatedProject,
+            projectId: sourceProject.projectId,
+        });
+
+        syncSavedMenuProject(savedProject || updatedProject);
+        Toast.show({ content: t('imageAddedSuccess'), duration: 1200 });
+    }, [syncSavedMenuProject, t]);
+
     useEffect(() => {
         const nextProject = selectedProject ? removeObjRef(selectedProject) : null;
         const nextProjectId = nextProject?.projectId || null;
@@ -413,6 +552,7 @@ export default function MobileMenuScreen() {
         const persistedProjectId = persistedMenuRef.current?.projectId || null;
 
         if (!nextProjectId) {
+            menuUpdateGenerationRef.current += 1;
             setMenuData(null);
             persistedMenuRef.current = null;
             pendingMenuRef.current = null;
@@ -422,6 +562,7 @@ export default function MobileMenuScreen() {
         }
 
         if (nextProjectId !== currentProjectId) {
+            menuUpdateGenerationRef.current += 1;
             setMenuData(nextProject);
             persistedMenuRef.current = nextProject;
             pendingMenuRef.current = null;
@@ -768,29 +909,18 @@ export default function MobileMenuScreen() {
         return map;
     }, [menuItems, priceOutlierItemIds]);
 
-    const categorySignalLabels = useMemo(() => {
-        const map = new Map<string, string>();
+    const categoryHasSignals = useMemo(() => {
+        const map = new Map<string, boolean>();
 
         categoryIssueSummary.forEach((summary, categoryId) => {
-            if (summary.missingPrices > 0) {
-                map.set(categoryId, pluralizeCount(summary.missingPrices, 'missing price'));
-                return;
-            }
-            if (summary.missingImages > 0) {
-                map.set(categoryId, pluralizeCount(summary.missingImages, 'missing photo'));
-                return;
-            }
-            if (summary.hidden > 0) {
-                map.set(categoryId, pluralizeCount(summary.hidden, 'hidden item'));
-                return;
-            }
-            if (summary.priceOutliers > 0) {
-                map.set(categoryId, pluralizeCount(summary.priceOutliers, 'unusual price'));
-                return;
-            }
-            if (summary.missingDescriptions > 0) {
-                map.set(categoryId, pluralizeCount(summary.missingDescriptions, 'missing description'));
-            }
+            map.set(
+                categoryId,
+                summary.missingPrices > 0
+                || summary.missingImages > 0
+                || summary.hidden > 0
+                || summary.priceOutliers > 0
+                || summary.missingDescriptions > 0
+            );
         });
 
         return map;
@@ -803,12 +933,6 @@ export default function MobileMenuScreen() {
                 return false;
             }
             if (filters.categoryIds.length > 0 && (!item.categoryId || !filters.categoryIds.includes(item.categoryId))) {
-                return false;
-            }
-            if (filters.minPrice !== null && item.price < filters.minPrice) {
-                return false;
-            }
-            if (filters.maxPrice !== null && item.price > filters.maxPrice) {
                 return false;
             }
             if (filters.hasImage !== null) {
@@ -839,7 +963,6 @@ export default function MobileMenuScreen() {
     const appliedFilterCount = useMemo(() => {
         return [
             filters.categoryIds.length > 0,
-            filters.minPrice !== null || filters.maxPrice !== null,
             filters.hasImage !== null,
             filters.hasDescription !== null,
             filters.hasPrice !== null,
@@ -869,18 +992,10 @@ export default function MobileMenuScreen() {
             });
         });
 
-        if (filters.minPrice !== null || filters.maxPrice !== null) {
-            chips.push({
-                key: 'price',
-                label: `${t('priceRange')}: ${filters.minPrice ?? 0} - ${filters.maxPrice ?? 'Any'}`,
-                onRemove: () => setFilters((prev) => ({ ...prev, minPrice: null, maxPrice: null })),
-            });
-        }
-
         if (filters.hasImage !== null) {
             chips.push({
                 key: 'image',
-                label: filters.hasImage ? t('hasImage') : t('noImage'),
+                label: filters.hasImage ? t('hasImage') : t('missingPhoto'),
                 onRemove: () => setFilters((prev) => ({ ...prev, hasImage: null })),
             });
         }
@@ -888,7 +1003,7 @@ export default function MobileMenuScreen() {
         if (filters.hasDescription !== null) {
             chips.push({
                 key: 'description',
-                label: filters.hasDescription ? t('hasDescription') : t('noDescription'),
+                label: filters.hasDescription ? t('hasDescription') : t('missingDescription'),
                 onRemove: () => setFilters((prev) => ({ ...prev, hasDescription: null })),
             });
         }
@@ -896,7 +1011,7 @@ export default function MobileMenuScreen() {
         if (filters.hasPrice !== null) {
             chips.push({
                 key: 'price-presence',
-                label: filters.hasPrice ? t('hasPrice') : t('noPrice'),
+                label: filters.hasPrice ? t('hasPrice') : t('missingPrice'),
                 onRemove: () => setFilters((prev) => ({ ...prev, hasPrice: null })),
             });
         }
@@ -912,7 +1027,7 @@ export default function MobileMenuScreen() {
         if (filters.activeStatus !== null) {
             chips.push({
                 key: 'status',
-                label: filters.activeStatus ? t('active') : t('hidden'),
+                label: filters.activeStatus ? t('shownOnMenu') : t('hiddenFromMenu'),
                 onRemove: () => setFilters((prev) => ({ ...prev, activeStatus: null })),
             });
         }
@@ -962,11 +1077,15 @@ export default function MobileMenuScreen() {
         title: string,
         value: string,
         options: Array<{ label: string; value: string }>,
+        subtitle: string | null,
         onChange: (value: string) => void
     ) => (
         <Card>
             <Flex gap={12} vertical>
-                <Text strong>{title}</Text>
+                <Flex gap={2} vertical>
+                    <Text strong>{title}</Text>
+                    {subtitle ? <Text type="secondary">{subtitle}</Text> : null}
+                </Flex>
                 <Flex gap={8} vertical>
                     {options.map((option) => {
                         const selected = value === option.value;
@@ -974,7 +1093,7 @@ export default function MobileMenuScreen() {
                         return (
                             <div
                                 key={option.value}
-                                onClick={() => onChange(option.value)}
+                                onClick={() => onChange(selected ? '' : option.value)}
                                 style={{
                                     backgroundColor: selected ? token.colorPrimaryBg : token.colorBgContainer,
                                     border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
@@ -1009,6 +1128,44 @@ export default function MobileMenuScreen() {
                 </Flex>
             </Flex>
         </Card>
+    ), [token]);
+
+    const renderIssueToggle = useCallback((
+        label: string,
+        selected: boolean,
+        onToggle: () => void
+    ) => (
+        <div
+            onClick={onToggle}
+            style={{
+                backgroundColor: selected ? token.colorPrimaryBg : token.colorBgContainer,
+                border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+                borderRadius: 12,
+                cursor: 'pointer',
+                padding: '12px 14px',
+            }}
+        >
+            <Flex align="center" gap={12} justify="space-between">
+                <Text style={{ color: selected ? token.colorPrimary : undefined }}>
+                    {label}
+                </Text>
+                <Flex
+                    align="center"
+                    justify="center"
+                    style={{
+                        backgroundColor: selected ? token.colorPrimary : 'transparent',
+                        border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+                        borderRadius: '999px',
+                        color: selected ? token.colorTextLightSolid : token.colorTextQuaternary,
+                        flexShrink: 0,
+                        height: 20,
+                        width: 20,
+                    }}
+                >
+                    {selected ? <LuCheck size={12} /> : null}
+                </Flex>
+            </Flex>
+        </div>
     ), [token]);
 
     const activeProjectSummary = useMemo(
@@ -1520,16 +1677,28 @@ export default function MobileMenuScreen() {
                                 <Collapse.Panel
                                     key={id}
                                     title={(
-                                        <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
-                                            <Text ellipsis strong style={{ flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap' }}>{name}</Text>
-                                            <Flex align="center" gap={6} style={{ flex: '0 0 auto' }}>
-                                                {categorySignalLabels.get(id) ? (
-                                                    <Tag color="warning">
-                                                        {categorySignalLabels.get(id)}
-                                                    </Tag>
-                                                ) : null}
-                                                <Tag>{items.length}</Tag>
-                                            </Flex>
+                                        <Flex align="center" gap={8} style={{ minWidth: 0, width: '100%' }}>
+                                            <Text
+                                                strong
+                                                style={{
+                                                    flex: '1 1 auto',
+                                                    minWidth: 0,
+                                                    overflowWrap: 'anywhere',
+                                                }}
+                                            >
+                                                {name}
+                                            </Text>
+                                            {categoryHasSignals.get(id) ? (
+                                                <div
+                                                    style={{
+                                                        backgroundColor: token.colorWarning,
+                                                        borderRadius: '999px',
+                                                        flex: '0 0 auto',
+                                                        height: 8,
+                                                        width: 8,
+                                                    }}
+                                                />
+                                            ) : null}
                                         </Flex>
                                     )}
                                 >
@@ -1672,7 +1841,7 @@ export default function MobileMenuScreen() {
                         }}
                     >
                         <div style={{ minHeight: 40, minWidth: 40 }} />
-                        <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>{t('filters')}</Title>
+                        <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>{t('findAndFix')}</Title>
                         <Button fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
                             <LuX size={18} />
                         </Button>
@@ -1682,33 +1851,52 @@ export default function MobileMenuScreen() {
 
                     <Card>
                         <Flex gap={12} vertical>
-                            <Flex align="center" justify="space-between">
-                                <Text strong>{t('category')}</Text>
-                                {draftFilters.categoryIds.length > 0 ? (
-                                    <Tag color="processing" style={{ borderRadius: 999 }}>
-                                        {draftFilters.categoryIds.length}
-                                    </Tag>
-                                ) : null}
+                            <Flex gap={2} vertical>
+                                <Text strong>{t('whereToLook')}</Text>
+                                <Text type="secondary">{t('chooseCategoryToNarrowList')}</Text>
                             </Flex>
                             <Flex gap={10} vertical>
                                 {categoryOptions.length === 0 ? (
                                     <Text type="secondary">{t('allCategories')}</Text>
                                 ) : (
                                     categoryOptions.map((option) => (
-                                        <Checkbox
-                                            checked={draftFilters.categoryIds.includes(option.id)}
+                                        <div
                                             key={option.id}
-                                            onChange={(checked) => {
+                                            onClick={() => {
                                                 setDraftFilters((prev) => ({
                                                     ...prev,
-                                                    categoryIds: checked
-                                                        ? [...prev.categoryIds, option.id]
-                                                        : prev.categoryIds.filter((id) => id !== option.id),
+                                                    categoryIds: prev.categoryIds.includes(option.id) ? [] : [option.id],
                                                 }));
                                             }}
+                                            style={{
+                                                backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimaryBg : token.colorBgContainer,
+                                                border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                borderRadius: 12,
+                                                cursor: 'pointer',
+                                                padding: '12px 14px',
+                                            }}
                                         >
-                                            {option.name}
-                                        </Checkbox>
+                                            <Flex align="center" gap={12} justify="space-between">
+                                                <Text style={{ color: draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : undefined }}>
+                                                    {option.name}
+                                                </Text>
+                                                <Flex
+                                                    align="center"
+                                                    justify="center"
+                                                    style={{
+                                                        backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : 'transparent',
+                                                        border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                        borderRadius: '999px',
+                                                        color: draftFilters.categoryIds.includes(option.id) ? token.colorTextLightSolid : token.colorTextQuaternary,
+                                                        flexShrink: 0,
+                                                        height: 20,
+                                                        width: 20,
+                                                    }}
+                                                >
+                                                    {draftFilters.categoryIds.includes(option.id) ? <LuCheck size={12} /> : null}
+                                                </Flex>
+                                            </Flex>
+                                        </div>
                                     ))
                                 )}
                             </Flex>
@@ -1717,79 +1905,50 @@ export default function MobileMenuScreen() {
 
                     <Card>
                         <Flex gap={12} vertical>
-                            <Text strong>{t('priceRange')}</Text>
-                            <Flex gap={8}>
-                                <InputNumber
-                                    min={0}
-                                    onChange={(value) => setDraftFilters((prev) => ({ ...prev, minPrice: typeof value === 'number' ? value : null }))}
-                                    placeholder={t('minPrice')}
-                                    style={{ width: '100%' }}
-                                    value={draftFilters.minPrice}
-                                />
-                                <InputNumber
-                                    min={0}
-                                    onChange={(value) => setDraftFilters((prev) => ({ ...prev, maxPrice: typeof value === 'number' ? value : null }))}
-                                    placeholder={t('maxPrice')}
-                                    style={{ width: '100%' }}
-                                    value={draftFilters.maxPrice}
-                                />
+                            <Flex gap={2} vertical>
+                                <Text strong>{t('findItemsWith')}</Text>
+                                <Text type="secondary">{t('findItemsWithHint')}</Text>
+                            </Flex>
+                            <Flex gap={8} vertical>
+                                {renderIssueToggle(
+                                    t('missingPhoto'),
+                                    draftFilters.hasImage === false,
+                                    () => setDraftFilters((prev) => ({ ...prev, hasImage: prev.hasImage === false ? null : false }))
+                                )}
+                                {renderIssueToggle(
+                                    t('missingDescription'),
+                                    draftFilters.hasDescription === false,
+                                    () => setDraftFilters((prev) => ({ ...prev, hasDescription: prev.hasDescription === false ? null : false }))
+                                )}
+                                {renderIssueToggle(
+                                    t('missingPrice'),
+                                    draftFilters.hasPrice === false,
+                                    () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
+                                )}
                             </Flex>
                         </Flex>
                     </Card>
 
                     {renderSingleChoiceFilter(
-                        t('images'),
-                        draftFilters.hasImage === null ? 'all' : draftFilters.hasImage ? 'yes' : 'no',
-                        [
-                            { label: t('allItems'), value: 'all' },
-                            { label: t('hasImage'), value: 'yes' },
-                            { label: t('noImage'), value: 'no' },
-                        ],
-                        (value) => setDraftFilters((prev) => ({ ...prev, hasImage: value === 'all' ? null : value === 'yes' }))
-                    )}
-
-                    {renderSingleChoiceFilter(
-                        t('descriptions'),
-                        draftFilters.hasDescription === null ? 'all' : draftFilters.hasDescription ? 'yes' : 'no',
-                        [
-                            { label: t('allItems'), value: 'all' },
-                            { label: t('hasDescription'), value: 'yes' },
-                            { label: t('noDescription'), value: 'no' },
-                        ],
-                        (value) => setDraftFilters((prev) => ({ ...prev, hasDescription: value === 'all' ? null : value === 'yes' }))
-                    )}
-
-                    {renderSingleChoiceFilter(
-                        t('pricing'),
-                        draftFilters.hasPrice === null ? 'all' : draftFilters.hasPrice ? 'yes' : 'no',
-                        [
-                            { label: t('allItems'), value: 'all' },
-                            { label: t('hasPrice'), value: 'yes' },
-                            { label: t('noPrice'), value: 'no' },
-                        ],
-                        (value) => setDraftFilters((prev) => ({ ...prev, hasPrice: value === 'all' ? null : value === 'yes' }))
-                    )}
-
-                    {renderSingleChoiceFilter(
                         t('availability'),
-                        draftFilters.availability === null ? 'all' : draftFilters.availability ? 'available' : 'soldOut',
+                        draftFilters.availability === null ? '' : draftFilters.availability ? 'available' : 'soldOut',
                         [
-                            { label: t('allItems'), value: 'all' },
                             { label: t('available'), value: 'available' },
                             { label: t('soldOut'), value: 'soldOut' },
                         ],
-                        (value) => setDraftFilters((prev) => ({ ...prev, availability: value === 'all' ? null : value === 'available' }))
+                        null,
+                        (value) => setDraftFilters((prev) => ({ ...prev, availability: value === '' ? null : value === 'available' }))
                     )}
 
                     {renderSingleChoiceFilter(
-                        t('status'),
-                        draftFilters.activeStatus === null ? 'all' : draftFilters.activeStatus ? 'active' : 'hidden',
+                        t('visibility'),
+                        draftFilters.activeStatus === null ? '' : draftFilters.activeStatus ? 'active' : 'hidden',
                         [
-                            { label: t('allStatuses'), value: 'all' },
-                            { label: t('active'), value: 'active' },
-                            { label: t('hidden'), value: 'hidden' },
+                            { label: t('shownOnMenu'), value: 'active' },
+                            { label: t('hiddenFromMenu'), value: 'hidden' },
                         ],
-                        (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === 'all' ? null : value === 'active' }))
+                        null,
+                        (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === '' ? null : value === 'active' }))
                     )}
 
                     <Flex gap={8}>
@@ -1829,6 +1988,9 @@ export default function MobileMenuScreen() {
                     setIsBulkActionsOpen(true);
                 })}
                 onClose={() => setIsCommandMenuOpen(false)}
+                onAddImages={() => launchCommandAction(() => {
+                    openImageUploadModal(undefined, 'menu');
+                })}
                 onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
                 onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
                 onMoveCategory={() => launchCommandAction(() => {
@@ -1934,6 +2096,7 @@ export default function MobileMenuScreen() {
                         setEditingItem(null);
                         resetCommandActionFlow();
                     }}
+                    onManageImages={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item') : undefined}
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
                         const updated = removeObjRef(menuData);
@@ -2095,6 +2258,33 @@ export default function MobileMenuScreen() {
                 />
             ) : null}
 
+            {menuData && isImageUploadOpen ? (
+                <ProjectsDataProvider
+                    contextData={{
+                        activeProject: menuData,
+                        setActiveProject: syncSavedMenuProject,
+                        currentView: 1,
+                        setCurrentView: () => { },
+                        activeBatchImageJob,
+                        setActiveBatchImageJob,
+                    }}
+                >
+                    <ImageUploadModal
+                        from={imageModalSource}
+                        itemToUpdate={imageModalItem}
+                        onClose={() => {
+                            setIsImageUploadOpen(false);
+                            setImageModalItem(null);
+                            setImageModalSource('');
+                            resetCommandActionFlow();
+                        }}
+                        onImageUpload={handleModalImageUpload}
+                        open={isImageUploadOpen}
+                        projectData={menuData}
+                    />
+                </ProjectsDataProvider>
+            ) : null}
+
             {showReviewSheet && comparisonResult && activeProcessingJobId && menuData?.projectId ? (
                 <ExtractionReviewSheet
                     comparisonResult={comparisonResult}
@@ -2119,8 +2309,8 @@ export default function MobileMenuScreen() {
 
             <BulkActionsSheet
                 initialAction={bulkActionType}
-                onApply={(updatedProject) => {
-                    applyLocalMenuUpdate(updatedProject);
+                onApply={(updatedProject, context) => {
+                    applyUndoableBulkMenuUpdate(updatedProject, context?.previousProject, context?.updatedCount);
                     resetCommandActionFlow();
                 }}
                 projectData={menuData}

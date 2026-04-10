@@ -5,8 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFolderInput, LuPlus, LuTags, LuToggleRight, LuX } from 'react-icons/lu';
-import { getEditorActions } from '../../templates/main-app/projects/editorView/editorActions.config';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPlus, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
 type CommandAction = {
@@ -25,6 +24,7 @@ interface MobileMenuCommandSheetProps {
     onCategories: () => void;
     onChangeAvailability: () => void;
     onClose: () => void;
+    onAddImages: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
     onUploadMenu: () => void;
@@ -43,6 +43,7 @@ export default function MobileMenuCommandSheet({
     onCategories,
     onChangeAvailability,
     onClose,
+    onAddImages,
     onGenerateDescriptions,
     onManageLanguages,
     onUploadMenu,
@@ -56,18 +57,6 @@ export default function MobileMenuCommandSheet({
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
     const availabilityLabels = getOwnerLabels(businessType);
-    const languageAction = useMemo(
-        () => getEditorActions(labels).find((action) => action.key === 'language'),
-        [labels]
-    );
-    const descriptionAction = useMemo(
-        () => getEditorActions(labels).find((action) => action.key === 'description'),
-        [labels]
-    );
-    const decisionBlocksAction = useMemo(
-        () => getEditorActions(labels).find((action) => action.key === 'decisionBlocks'),
-        [labels]
-    );
 
     const bulkActions = useMemo<CommandAction[]>(() => [
         {
@@ -103,6 +92,36 @@ export default function MobileMenuCommandSheet({
         },
     ], [availabilityLabels.available, availabilityLabels.unavailable, onChangeAvailability, onMoveCategory, onPricing, onShowHide, t]);
 
+    const contentActions = useMemo<CommandAction[]>(() => [
+        {
+            key: 'add-item',
+            icon: <LuPlus style={{ fontSize: 20 }} />,
+            title: t('addItem'),
+            onClick: onAddItem,
+        },
+        {
+            key: 'add-images',
+            icon: <LuFileImage style={{ fontSize: 20 }} />,
+            title: t('addImages'),
+            description: t('addImagesDesc'),
+            onClick: onAddImages,
+        },
+        {
+            key: 'description',
+            icon: <LuSparkles style={{ fontSize: 20 }} />,
+            title: t('generateDescriptionsAi'),
+            description: t('generateDescriptionsAiDesc'),
+            onClick: onGenerateDescriptions,
+        },
+        {
+            key: 'decision-blocks',
+            icon: <LuZap style={{ fontSize: 20 }} />,
+            title: t('featuredSections'),
+            description: t('featuredSectionsDesc'),
+            onClick: onSmartRecommendations,
+        },
+    ], [onAddImages, onAddItem, onGenerateDescriptions, onSmartRecommendations, t]);
+
     const menuSetupActions = useMemo<CommandAction[]>(() => [
         {
             key: 'upload-menu',
@@ -110,12 +129,6 @@ export default function MobileMenuCommandSheet({
             title: t('importMenu'),
             description: t('importMenuDesc', { offering: labels.offeringLower }),
             onClick: onUploadMenu,
-        },
-        {
-            key: 'add-item',
-            icon: <LuPlus style={{ fontSize: 20 }} />,
-            title: t('addItem'),
-            onClick: onAddItem,
         },
         {
             key: 'categories',
@@ -131,25 +144,11 @@ export default function MobileMenuCommandSheet({
         },
         {
             key: 'language',
-            icon: languageAction?.icon || null,
+            icon: <LuLanguages style={{ fontSize: 20 }} />,
             title: t('menuLanguages'),
             onClick: onManageLanguages,
         },
-        {
-            key: 'description',
-            icon: descriptionAction?.icon || null,
-            title: t('generateDescriptionsAi'),
-            description: t('generateDescriptionsAiDesc'),
-            onClick: onGenerateDescriptions,
-        },
-        {
-            key: 'decision-blocks',
-            icon: decisionBlocksAction?.icon || null,
-            title: t('featuredSections'),
-            description: t('featuredSectionsDesc'),
-            onClick: onSmartRecommendations,
-        },
-    ], [decisionBlocksAction?.icon, descriptionAction?.icon, labels.offeringLower, languageAction?.icon, onAddItem, onCategories, onGenerateDescriptions, onManageLanguages, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
+    ], [labels.offeringLower, onCategories, onManageLanguages, onReorderMenu, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex
@@ -217,18 +216,14 @@ export default function MobileMenuCommandSheet({
                     </Flex>
 
                     <Flex gap={8} vertical>
+                        <Text strong type="secondary">{t('menuContent')}</Text>
+                        {renderActionList(contentActions)}
+                    </Flex>
+
+                    <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('menuSetup')}</Text>
                         {renderActionList(menuSetupActions)}
                     </Flex>
-
-                    <Card size="small" style={{ backgroundColor: token.colorBgLayout, borderRadius: 16 }}>
-                        <Flex gap={4} vertical>
-                            <Text strong>{t('desktopNoteTitle')}</Text>
-                            <Text type="secondary">
-                                {t('desktopNoteDesc')}
-                            </Text>
-                        </Flex>
-                    </Card>
                 </Flex>
             </Flex>
         </Popup>

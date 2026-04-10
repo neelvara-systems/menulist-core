@@ -439,6 +439,9 @@ export function Switch({ checked, loading, onChange }: { checked?: boolean; load
 }
 
 export const Toast = {
+    clear: () => {
+        void message.destroy();
+    },
     show: ({ content, duration, icon }: { content?: ReactNode; duration?: number; icon?: string }) => {
         if (!content) return;
         const seconds = typeof duration === 'number' ? duration / 1000 : 1.5;
