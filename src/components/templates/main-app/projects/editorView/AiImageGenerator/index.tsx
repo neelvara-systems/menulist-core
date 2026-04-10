@@ -1,6 +1,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { IMAGE_GENERATION_STYLES } from '@constant/AI';
+import useDeviceType from '@hook/useDeviceType';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import Loader from '@organisms/loader';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -39,6 +40,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
 }) => {
 
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const selectedBusinessData = storeDetails?.businessType ? IMAGE_VIEW_TYPES.find(type => type.businessType === storeDetails?.businessType) : null;
     const [selectedGeneratedForUpload, setSelectedGeneratedForUpload] = useState<UserUploadedFileType[]>([]);
@@ -214,8 +216,8 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                     key={image.uid || index} // Use uid if available
                                                     src={image.url}
                                                     alt={`Generated image ${index + 1}`}
-                                                    width={150} // Adjusted size for better mask visibility
-                                                    height={150}
+                                                    width={isMobile ? 112 : 150}
+                                                    height={isMobile ? 112 : 150}
                                                     style={{
                                                         objectFit: 'cover',
                                                         border: isSelected ? `2px solid ${token.colorPrimary}` : `1px solid ${token.colorBorder}`,

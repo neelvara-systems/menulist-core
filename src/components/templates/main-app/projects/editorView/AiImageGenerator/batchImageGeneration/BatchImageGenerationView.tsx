@@ -1,5 +1,6 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { IMAGE_GENERATION_STYLES } from '@constant/AI';
+import useDeviceType from '@hook/useDeviceType';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { GenerateImageViaApiPayloadGenerationConfiType } from '@template/main-app/projects/types';
 import { Button, Card, Checkbox, ColorPicker, Flex, Input, Skeleton, Switch, Tag, theme, Tooltip, Typography } from 'antd';
@@ -18,6 +19,7 @@ interface BatchImageGenerationViewProps {
 const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ generationConfig, setGenerationConfig }) => {
 
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const selectedBusinessData = storeDetails?.businessType ? IMAGE_VIEW_TYPES.find(type => type.businessType === storeDetails?.businessType) : null;
     const [showStyleSelector, setShowStyleSelector] = useState(false)
@@ -167,7 +169,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                             <InfoCircleOutlined style={{ color: '#888' }} />
                                         </Tooltip>
                                     </Flex>
-                                    <Flex gap={16} justify='flex-start' align='center' style={{ width: '100%' }}>
+                                    <Flex gap={16} justify='flex-start' align={isMobile ? 'flex-start' : 'center'} style={{ width: '100%' }} vertical={isMobile}>
                                         <Flex align='center' gap={8} style={{ width: '100%' }}>
                                             <Tooltip title="If enabled, the generated image will have a transparent background. Background color selection will be disabled.">
                                                 <Checkbox

@@ -2,6 +2,7 @@ import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import { updateProject } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
+import useDeviceType from '@hook/useDeviceType';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { logger } from '@lib/monitoring/logger';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -28,6 +29,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
     const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false);
     const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const { setActiveProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
     const dispatch = useAppDispatch()
     const { formatTimeOnly } = useDateFormatters()
@@ -384,7 +386,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                         variant="outlined"
                                         size='small'
                                         hoverable
-                                        style={{ width: "calc(50% - 8px)" }}
+                                        style={{ width: isMobile ? '100%' : "calc(50% - 8px)" }}
                                     >
                                         <Flex align="center" gap={16} style={{ width: '100%' }}>
                                             <Checkbox checked={image.isSelected} />
@@ -404,7 +406,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                         </Flex>
                     </Card>}
 
-                <Flex justify="flex-end" gap={8} style={{ position: 'sticky', bottom: 0, width: '100%', zIndex: 1 }}>
+                <Flex justify="flex-end" gap={8} style={{ position: 'sticky', bottom: 0, width: '100%', zIndex: 1 }} vertical={isMobile}>
                     {(activeJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING || activeJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED) &&
                         <Button danger icon={<LuX />} onClick={() => setIsCancelModalVisible(true)}>Cancel Job</Button>}
                     {(activeJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED) &&

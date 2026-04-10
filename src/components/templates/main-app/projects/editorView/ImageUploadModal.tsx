@@ -2,6 +2,7 @@ import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
 import { addImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import useDeviceType from '@hook/useDeviceType';
 import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenPreferences';
 import { validateImageQuality } from '@lib/imageQualityGuard';
 import { logger } from '@lib/monitoring/logger';
@@ -19,6 +20,7 @@ import type { UploadProps } from 'antd';
 import { Button, Flex, message, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuSave, LuSparkles, LuUploadCloud, LuX } from 'react-icons/lu';
+import { NavBar, Popup } from '../../../../mobile/antd';
 import { BatchImageGenerationJobType, ExtractedDataCategory, ExtractedDataItem, GenerateImageViaApiPayloadBatchType, GenerateImageViaApiPayloadGenerationConfiType, GenerateImageViaApiPayloadItemDetailsType, ImageGenerationConfigType, ItemForDropdown, Project, ProjectFileType } from '../types'; // Assuming Project structure
 import AiImageGenerator from './AiImageGenerator';
 import BatchSetupView from './AiImageGenerator/batchImageGeneration';
@@ -57,6 +59,7 @@ export const DefaultGenerationConfig: ImageGenerationConfigType = {
 const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, projectData, itemToUpdate, onImageUpload, from, itemStates, isMasterLinked = false }) => {
 
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const [modalView, setModalView] = useState<'initialChoice' | 'singleItemSetup' | 'batchSetup' | 'batchAIConfig' | 'batchResult'>('initialChoice');
     const [selectedItem, setSelectedItem] = useState<ItemForDropdown | null>();
     const [activeTab, setActiveTab] = useState<string>('upload');
@@ -95,7 +98,14 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         setSelectedImages([]);
     }, [storeDetails?.tenantId, storeDetails?.storeId]);
 
-    const extractMenuData = useCallback((files?: ProjectFileType[], itemToUpdate?: ExtractedDataItem) => {
+    const closeModal = useCallback(() => {
+        if (generationConfig.loading) return;
+        onClose();
+        resetGenerateState();
+        setModalView('initialChoice');
+    }, [generationConfig.loading, onClose, resetGenerateState]);
+
+    const extractMenuData = useCallback((files?: ProjectFileType[]) => {
         const categoriesForDropdown: { id: string; name: string }[] = [];
         const itemsForDropdown: ItemForDropdown[] = [];
         const categoryMap: { [id: string]: string } = {};
@@ -129,13 +139,6 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                         };
 
                         itemsForDropdown.push(itemObj);
-                        if (itemId == itemToUpdate?.id) {
-                            setSelectedItem(removeObjRef(itemObj));
-                            setGenerationConfig({ ...generationConfig, referanceImages: selectedItem?.images || [], referanceImage: null })
-                        } else if (itemId == selectedItem?.id) {
-                            setSelectedItem(removeObjRef(itemObj));
-                            setGenerationConfig({ ...generationConfig, referanceImages: selectedItem?.images || [], referanceImage: null })
-                        }
                     }
                 });
             }
@@ -147,7 +150,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
 
     const items: ItemForDropdown[] = useMemo(() => {
         if (!projectData?.files) return [];
-        let allItems = extractMenuData(projectData.files, itemToUpdate).items;
+        let allItems = extractMenuData(projectData.files).items;
 
         // Multi-outlet: Filter out inherited/overridden items for outlets
         // Outlets can only generate images for local-only items
@@ -156,7 +159,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         }
 
         return allItems;
-    }, [projectData?.files, itemToUpdate, isMasterLinked, itemStates]);
+    }, [extractMenuData, projectData?.files, isMasterLinked, itemStates]);
 
     useEffect(() => {
         if (open) {
@@ -200,11 +203,37 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         }
     }, [activeProject])
 
+    useEffect(() => {
+        if (!open) return;
+
+        if (itemToUpdate?.id) {
+            const matchedItem = items.find((item) => item.id === itemToUpdate.id) || null;
+            setSelectedItem(matchedItem ? removeObjRef(matchedItem) : null);
+            setGenerationConfig((prev) => ({
+                ...prev,
+                referanceImages: matchedItem?.images || [],
+                referanceImage: null,
+            }));
+            return;
+        }
+
+        if (selectedItem?.id) {
+            const refreshedItem = items.find((item) => item.id === selectedItem.id) || null;
+            if (refreshedItem) {
+                setSelectedItem(removeObjRef(refreshedItem));
+            }
+        }
+    }, [itemToUpdate?.id, items, open, selectedItem?.id]);
+
     const onSelectItem = (value: string) => {
-        const selectedItem = items.find(i => i.id === value) || null;
-        setSelectedItem(selectedItem);
+        const nextSelectedItem = items.find(i => i.id === value) || null;
+        setSelectedItem(nextSelectedItem);
         setSelectedImages([]);
-        setGenerationConfig({ ...generationConfig, referanceImages: selectedItem?.images || [], referanceImage: null })
+        setGenerationConfig((prev) => ({
+            ...prev,
+            referanceImages: nextSelectedItem?.images || [],
+            referanceImage: null,
+        }));
     };
 
     const onUploadGeneratedImage = async (imagesToUse?: UserUploadedFileType[]) => {
@@ -413,6 +442,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         setSelectedItemsForBatch([]); // Clear selection when leaving batch setup
     };
 
+    const handleSingleItemBack = useCallback(() => {
+        resetGenerateState();
+        if (itemToUpdate || from === 'item') {
+            closeModal();
+            return;
+        }
+        setModalView('initialChoice');
+    }, [closeModal, from, itemToUpdate, resetGenerateState]);
+
     const renderInitialChoice = () => (
         <Flex vertical gap="large" align="center" style={{ paddingBottom: 20, marginTop: 20 }}>
             <Typography.Title level={4} style={{ margin: 0 }}>How would you like to add images?</Typography.Title>
@@ -544,10 +582,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
 
         if (modalView === 'singleItemSetup') {
             titleText = `Add Image for ${selectedItem?.itemName || 'Item'}`;
-            onBack = () => {
-                resetGenerateState(); // Reset AI state when going back
-                setModalView('initialChoice');
-            };
+            onBack = handleSingleItemBack;
         } else if (modalView === 'batchSetup') {
             titleText = '';
             onBack = () => {
@@ -582,7 +617,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
 
         if (modalView === 'singleItemSetup' && activeTab === 'upload' && selectedImages.length > 0) {
             return (
-                <Flex style={{ width: '100%', marginTop: 8 }} gap={16} justify="space-between">
+                <Flex style={{ width: '100%', marginTop: 8 }} gap={12} justify="space-between" vertical={isMobile}>
                     <Button size='large' icon={<LuX />} block onClick={() => { onClose(); resetGenerateState() }}>
                         Cancel
                     </Button>
@@ -607,7 +642,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                             Please accept the Content Policy Agreement to proceed
                         </Text>
                     )}
-                    <Flex style={{ width: '100%' }} gap={16} justify="space-between">
+                    <Flex style={{ width: '100%' }} gap={12} justify="space-between" vertical={isMobile}>
                         <Button size='large' icon={<LuArrowLeft />} block onClick={() => setModalView('batchSetup')} disabled={generationConfig.loading}>
                             Back to Item Selection
                         </Button>
@@ -629,24 +664,105 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         return null;
     };
 
+    const getMobileHeaderTitle = () => {
+        if (modalView === 'singleItemSetup') {
+            return itemToUpdate || from === 'item'
+                ? (selectedItem?.itemName || 'Add Images')
+                : 'Add Images';
+        }
+        if (modalView === 'batchSetup') return 'Add Images';
+        if (modalView === 'batchAIConfig') return 'Generate Images';
+        if (modalView === 'batchResult') return 'Generated Images';
+        return 'Add Images';
+    };
+
+    const getMobileBackHandler = () => {
+        if (modalView === 'singleItemSetup') return handleSingleItemBack;
+        if (modalView === 'batchSetup') return handleBackToChoicesFromBatch;
+        if (modalView === 'batchAIConfig') return () => setModalView('batchSetup');
+        if (modalView === 'batchResult') return closeModal;
+        return closeModal;
+    };
+
+    const renderModalContent = () => (
+        <>
+            {modalView === 'initialChoice' && renderInitialChoice()}
+            {modalView === 'singleItemSetup' && renderSingleItemSetup()}
+            {modalView === 'batchSetup' && renderBatchSetup()}
+            {modalView === 'batchAIConfig' && renderBatchAIConfig()}
+            {modalView === 'batchResult' && renderBatchResult()}
+        </>
+    );
+
     return (
         <> {/* Wrap in fragment to fix JSX parent error */}
-            <Modal
-                destroyOnHidden
-                maskClosable={false}
-                title={getModalTitle()}
-                open={open}
-                onCancel={generationConfig.loading ? undefined : () => { onClose(); resetGenerateState(); setModalView('initialChoice'); }}
-                footer={getModalFooter()}
-                width={modalView === 'initialChoice' ? 500 : (activeTab === 'generate' ? 800 : 600)} // Adjust width based on view
-                styles={{ body: { maxHeight: 'calc(100vh - 250px)', padding: "10px 10px 5px", overflowY: 'auto', overflowX: 'hidden', position: 'relative', bottom: 10 } }}
-            >
-                {modalView === 'initialChoice' && renderInitialChoice()}
-                {modalView === 'singleItemSetup' && renderSingleItemSetup()}
-                {modalView === 'batchSetup' && renderBatchSetup()}
-                {modalView === 'batchAIConfig' && renderBatchAIConfig()}
-                {modalView === 'batchResult' && renderBatchResult()}
-            </Modal>
+            {isMobile ? (
+                <Popup
+                    bodyStyle={{ height: '100vh', maxHeight: '100vh', padding: 0 }}
+                    destroyOnClose
+                    onMaskClick={generationConfig.loading ? undefined : closeModal}
+                    visible={open}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <NavBar
+                            onBack={getMobileBackHandler()}
+                            right={(
+                                <Button
+                                    icon={<LuX size={18} />}
+                                    onClick={closeModal}
+                                    style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                    type="text"
+                                />
+                            )}
+                        >
+                            {getMobileHeaderTitle()}
+                        </NavBar>
+                        <div
+                            style={{
+                                flex: 1,
+                                overflowX: 'hidden',
+                                overflowY: 'auto',
+                                padding: '12px 16px 20px',
+                            }}
+                        >
+                            {renderModalContent()}
+                        </div>
+                        {getModalFooter() ? (
+                            <div
+                                style={{
+                                    backgroundColor: token.colorBgContainer,
+                                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                                    padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                                }}
+                            >
+                                {getModalFooter()}
+                            </div>
+                        ) : null}
+                    </div>
+                </Popup>
+            ) : (
+                <Modal
+                    destroyOnHidden
+                    maskClosable={false}
+                    title={getModalTitle()}
+                    open={open}
+                    onCancel={generationConfig.loading ? undefined : closeModal}
+                    footer={getModalFooter()}
+                    width={modalView === 'initialChoice' ? 500 : (activeTab === 'generate' ? 800 : 600)}
+                    styles={{
+                        body: {
+                            maxHeight: 'calc(100vh - 250px)',
+                            padding: '10px 10px 5px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            position: 'relative',
+                            bottom: 10,
+                        },
+                    }}
+                >
+                    {renderModalContent()}
+                </Modal>
+            )}
 
             <EditImageModal
                 selectedItem={selectedItem}

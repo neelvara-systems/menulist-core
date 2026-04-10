@@ -1,4 +1,5 @@
 import { ItemForDropdown } from '@template/main-app/projects/types';
+import useDeviceType from '@hook/useDeviceType';
 import { Button, Checkbox, Divider, Flex, Image, Input, message, Switch, theme, Typography } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import React, { useMemo, useState } from 'react';
@@ -22,6 +23,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
     onBackToChoices,
 }) => {
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const [batchSearchTerm, setBatchSearchTerm] = useState('');
     const [showOnlyItemsWithoutImages, setShowOnlyItemsWithoutImages] = useState(false);
 
@@ -248,7 +250,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
                 width: '100%',
                 backgroundColor: token.colorBgContainer,
                 padding: token.paddingSM
-            }}>
+            }} vertical={isMobile}>
                 <Button icon={<LuArrowLeft />} onClick={() => { onBackToChoices(); setBatchSearchTerm(''); }}>Back to Choices</Button>
                 <Flex vertical align="center" gap={4}>
                     <Button
