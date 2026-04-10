@@ -10,10 +10,11 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import generateImageViaApi from '@services/ai/image/generateImageViaApi';
 import { UserUploadedFileType } from '@type/common';
-import { Button, Card, Checkbox, Collapse, ColorPicker, Flex, Image, Input, message, Popconfirm, Skeleton, Space, Switch, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Checkbox, Collapse, ColorPicker, Flex, Image, Input, message, Modal, Popconfirm, Skeleton, Space, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import React, { Fragment, useContext, useState } from 'react';
 import { FaImages } from 'react-icons/fa6';
-import { LuBadgeInfo, LuCheckCircle, LuChevronDown, LuImage, LuImagePlus, LuPen, LuRefreshCcw, LuSettings2, LuWand2 } from 'react-icons/lu';
+import { LuBadgeInfo, LuCheck, LuCheckCircle, LuChevronDown, LuImage, LuImagePlus, LuRefreshCcw, LuSettings2, LuWand2 } from 'react-icons/lu';
+import { NavBar, Popup } from '../../../../../mobile/antd';
 import { ImageGenerationConfigType, ItemForDropdown } from '../../types';
 import AspectRatioSelector from './AspectRatioSelector';
 import ChatWidgetUi from './ChatWidgetUi'; // Import the new component
@@ -42,11 +43,16 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
-    const selectedBusinessData = storeDetails?.businessType ? IMAGE_VIEW_TYPES.find(type => type.businessType === storeDetails?.businessType) : null;
+    const normalizedBusinessType = storeDetails?.businessType?.trim().toLowerCase();
+    const selectedBusinessData = IMAGE_VIEW_TYPES.find(type => type.businessType?.trim().toLowerCase() === normalizedBusinessType)
+        || IMAGE_VIEW_TYPES.find(type => type.businessType === 'Restaurant')
+        || IMAGE_VIEW_TYPES[0];
+    const imageTypes = selectedBusinessData?.imageTypes || [];
     const [selectedGeneratedForUpload, setSelectedGeneratedForUpload] = useState<UserUploadedFileType[]>([]);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
     const dispatch = useAppDispatch()
     const [showStyleSelector, setShowStyleSelector] = useState(false)
+    const [showImageTypeSelector, setShowImageTypeSelector] = useState(false)
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
     // const { token } = theme.useToken(); // ChatWidgetUi will call this itself
 
@@ -176,8 +182,216 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
         return undefined;
     };
 
+    const selectedImageTypes = generationConfig.selectedImageTypes || [];
+
+    const setSelectedImageTypes = (nextTypes: string[]) => {
+        setGenerationConfig({ ...generationConfig, selectedImageTypes: nextTypes });
+    };
+
+    const toggleImageType = (type: string) => {
+        const nextTypes = selectedImageTypes.includes(type)
+            ? selectedImageTypes.filter((selectedType) => selectedType !== type)
+            : [...selectedImageTypes, type];
+        setSelectedImageTypes(nextTypes);
+    };
+
+    const selectCommonImageTypes = () => {
+        setSelectedImageTypes(imageTypes.slice(0, 3).map((imageType) => imageType.type));
+    };
+
+    const renderImageTypeCard = (imageType: { type: string; description: string }) => {
+        const isSelected = selectedImageTypes.includes(imageType.type);
+
+        return (
+            <div
+                key={imageType.type}
+                onClick={() => toggleImageType(imageType.type)}
+                style={{
+                    backgroundColor: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
+                    border: `2px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    padding: 12,
+                    position: 'relative',
+                }}
+            >
+                <SelectedItemCheck active={isSelected} />
+                <Flex gap={4} vertical>
+                    <Typography.Text strong>{imageType.type}</Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                        {imageType.description}
+                    </Typography.Text>
+                </Flex>
+            </div>
+        );
+    };
+
+    const renderImageTypeShortcut = (label: string, description: string, onClick: () => void, disabled = false) => (
+        <Flex
+            align="center"
+            gap={10}
+            onClick={() => {
+                if (disabled) return;
+                onClick();
+            }}
+            style={{
+                background: token.colorBgContainer,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 8,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.45 : 1,
+                padding: '10px 12px',
+            }}
+        >
+            <Flex
+                align="center"
+                justify="center"
+                style={{
+                    background: disabled ? token.colorBgTextHover : token.colorPrimaryBg,
+                    borderRadius: 8,
+                    color: disabled ? token.colorTextQuaternary : token.colorPrimary,
+                    flex: '0 0 auto',
+                    height: 32,
+                    width: 32,
+                }}
+            >
+                <LuCheck size={16} />
+            </Flex>
+            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                <Typography.Text strong>{label}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                    {description}
+                </Typography.Text>
+            </Flex>
+        </Flex>
+    );
+
+    const renderImageTypePickerContent = () => (
+        <Flex gap={16} vertical>
+            <Flex
+                gap={10}
+                style={{
+                    background: token.colorFillAlter,
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: 8,
+                    padding: 12,
+                }}
+                vertical
+            >
+                <Flex align="center" justify="space-between" gap={8}>
+                    <Flex gap={4} vertical>
+                        <Typography.Text strong>Pick the photo set</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                            Choose the views you want. Use Recommended if you are unsure.
+                        </Typography.Text>
+                    </Flex>
+                    {selectedImageTypes.length > 0 ? (
+                        <Tag color="blue" style={{ flex: '0 0 auto', margin: 0 }}>{selectedImageTypes.length} selected</Tag>
+                    ) : null}
+                </Flex>
+                <Flex
+                    gap={8}
+                    style={{
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        paddingTop: 10,
+                    }}
+                    vertical
+                >
+                    <Typography.Text strong type="secondary" style={{ fontSize: 12 }}>
+                        Shortcuts
+                    </Typography.Text>
+                    {renderImageTypeShortcut('Recommended set', 'Best starting set for most menus.', selectCommonImageTypes)}
+                    {renderImageTypeShortcut('All image types', 'Generate every available view.', () => setSelectedImageTypes(imageTypes.map((imageType) => imageType.type)))}
+                    {renderImageTypeShortcut('Clear selection', 'Start over with no selected views.', () => setSelectedImageTypes([]), selectedImageTypes.length === 0)}
+                </Flex>
+            </Flex>
+            <div
+                style={{
+                    display: 'grid',
+                    gap: 12,
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                }}
+            >
+                {imageTypes.map(renderImageTypeCard)}
+            </div>
+        </Flex>
+    );
+
+    const imageTypePickerFooter = (
+        <Flex gap={8} justify="flex-end">
+            <Button
+                onClick={() => setShowImageTypeSelector(false)}
+                style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 96 }}
+            >
+                Close
+            </Button>
+            <Button
+                disabled={selectedImageTypes.length === 0}
+                onClick={() => setShowImageTypeSelector(false)}
+                style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 96 }}
+                type="primary"
+            >
+                Done
+            </Button>
+        </Flex>
+    );
+
+    const renderImageTypeSelector = () => {
+        if (!generationConfig.isMultiMode) return null;
+
+        if (isMobile) {
+            return (
+                <Popup
+                    bodyStyle={{ minHeight: '72vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
+                    destroyOnClose
+                    onMaskClick={() => setShowImageTypeSelector(false)}
+                    visible={showImageTypeSelector}
+                >
+                    <Flex style={{ height: '100%' }} vertical>
+                        <NavBar onBack={() => setShowImageTypeSelector(false)}>Image Types</NavBar>
+                        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 16px' }}>
+                            {renderImageTypePickerContent()}
+                        </div>
+                        <div
+                            style={{
+                                backgroundColor: token.colorBgContainer,
+                                borderTop: `1px solid ${token.colorBorderSecondary}`,
+                                padding: '12px 12px calc(12px + env(safe-area-inset-bottom))',
+                            }}
+                        >
+                            {imageTypePickerFooter}
+                        </div>
+                    </Flex>
+                </Popup>
+            );
+        }
+
+        return (
+            <Modal
+                footer={imageTypePickerFooter}
+                onCancel={() => setShowImageTypeSelector(false)}
+                open={showImageTypeSelector}
+                title="Choose Image Types"
+                width={760}
+                styles={{
+                    body: {
+                        maxHeight: 'calc(100vh - 220px)',
+                        overflowY: 'auto',
+                        paddingTop: 12,
+                    },
+                }}
+            >
+                {renderImageTypePickerContent()}
+            </Modal>
+        );
+    };
+
     return (
-        <Card size="small" styles={{ body: { paddingBottom: 0 } }}>
+        <Card
+            size="small"
+            style={isMobile ? { background: 'transparent', border: 0 } : undefined}
+            styles={{ body: { padding: isMobile ? 0 : undefined, paddingBottom: 0 } }}
+        >
             <Flex vertical style={{ width: '100%' }} align="center">
                 {generationConfig.loading ? (
                     <Flex vertical align="center" gap={8} style={{ width: '100%' }}>
@@ -276,19 +490,19 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                             </Flex>
                         </Flex>
                     ) : (
-                        <Flex vertical gap={34} justify='flex-start' align='center' style={{ width: '100%' }}>
+                        <Flex vertical gap={isMobile ? 18 : 34} justify='flex-start' align='center' style={{ width: '100%' }}>
 
-                            <Typography.Text type="secondary" italic style={{ fontSize: '0.8em', marginTop: '4px' }}>
-                                The item&apos;s name, category, and description (if available) will be used to generate the image.
+                            <Typography.Text type="secondary" style={{ fontSize: isMobile ? 12 : '0.8em', marginTop: isMobile ? 0 : '4px', width: '100%' }}>
+                                We will use the item name, category, and description to guide the image.
                             </Typography.Text>
 
                             <Flex vertical gap={8} style={{ width: '100%' }} justify='flex-start' align='start'>
                                 <Flex align="center" gap={8}>
                                     <Typography.Text type='secondary'>
-                                        📷 Reference Image
+                                        Reference image
                                     </Typography.Text>
                                     <Typography.Text type='secondary' style={{ fontSize: 11, color: token.colorTextDescription }}>
-                                        (Optional - AI will match this style)
+                                        Optional
                                     </Typography.Text>
                                 </Flex>
                                 <Flex style={{ width: '100%' }} wrap gap={8} justify='flex-start' align='center'>
@@ -319,97 +533,123 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                             </Flex>
 
                             <Card
+                                onClick={() => {
+                                    if (generationConfig.isMultiMode) {
+                                        setShowImageTypeSelector(true);
+                                    }
+                                }}
                                 size="small"
                                 style={{
+                                    borderColor: token.colorBorderSecondary,
+                                    cursor: generationConfig.isMultiMode ? 'pointer' : 'default',
                                     width: '100%',
-                                    backgroundColor: generationConfig.isMultiMode ? token.colorPrimaryBg : token.colorBgLayout,
-                                    borderColor: generationConfig.isMultiMode ? token.colorPrimaryBorder : token.colorBorder,
-                                    transition: 'all 0.3s ease'
                                 }}
                             >
-                                <Flex align='center' justify='space-between' gap={8} style={{ width: '100%' }}>
-                                    <Flex vertical gap={4}>
-                                        <Typography.Text strong style={{ fontSize: 13 }}>
-                                            {generationConfig.isMultiMode ? '📸 Multi-Image Mode' : '🖼️ Single Image Mode'}
-                                        </Typography.Text>
-                                        <Typography.Text type='secondary' style={{ fontSize: 11 }}>
-                                            {generationConfig.isMultiMode
-                                                ? 'Generate multiple image types at once (hero, detail, ambiance, etc.)'
-                                                : 'Generate one high-quality image based on your settings'
-                                            }
-                                        </Typography.Text>
+                                <Flex gap={10} vertical>
+                                    <Flex align="center" justify="space-between" gap={8}>
+                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                            <Typography.Text strong>
+                                                Photo count
+                                            </Typography.Text>
+                                            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                                {generationConfig.isMultiMode
+                                                    ? selectedImageTypes.length > 0
+                                                        ? `${selectedImageTypes.length} photo type${selectedImageTypes.length === 1 ? '' : 's'} selected.`
+                                                        : 'Choose the photo views to generate.'
+                                                    : 'Create one photo for this item.'}
+                                            </Typography.Text>
+                                        </Flex>
+                                        <Flex align="center" gap={8} style={{ flex: '0 0 auto' }}>
+                                            {generationConfig.isMultiMode ? (
+                                                <Button
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        setShowImageTypeSelector(true);
+                                                    }}
+                                                    type={selectedImageTypes.length > 0 ? 'default' : 'primary'}
+                                                >
+                                                    {selectedImageTypes.length > 0 ? 'Change' : 'Choose'}
+                                                </Button>
+                                            ) : null}
+                                            <Switch
+                                                checked={generationConfig.isMultiMode}
+                                                onChange={(checked) => setGenerationConfig({ ...generationConfig, isMultiMode: checked, selectedImageTypes: [] })}
+                                                checkedChildren={<FaImages />}
+                                                unCheckedChildren={<LuImage />}
+                                            />
+                                        </Flex>
                                     </Flex>
-                                    <Switch
-                                        checked={generationConfig.isMultiMode}
-                                        onChange={(checked) => setGenerationConfig({ ...generationConfig, isMultiMode: checked, selectedImageTypes: [] })}
-                                        checkedChildren={<FaImages />}
-                                        unCheckedChildren={<LuImage />}
-                                    />
+                                    {generationConfig.isMultiMode && selectedImageTypes.length > 0 ? (
+                                        <Flex gap={6} wrap="wrap">
+                                            {selectedImageTypes.slice(0, 4).map((type) => (
+                                                <Tag key={type} color="processing" style={{ borderRadius: 8, margin: 0 }}>
+                                                    {type}
+                                                </Tag>
+                                            ))}
+                                            {selectedImageTypes.length > 4 ? (
+                                                <Tag style={{ borderRadius: 8, margin: 0 }}>
+                                                    +{selectedImageTypes.length - 4} more
+                                                </Tag>
+                                            ) : null}
+                                        </Flex>
+                                    ) : null}
+                                    {generationConfig.isMultiMode && selectedImageTypes.length === 0 ? (
+                                        <Tag style={{ borderRadius: 8, margin: 0, width: 'fit-content' }}>
+                                            No photo set selected
+                                        </Tag>
+                                    ) : null}
                                 </Flex>
                             </Card>
 
-                            {/* Image Types Selection - only show when multi-mode is enabled */}
-                            {generationConfig.isMultiMode && (
-                                <Flex vertical gap={8} style={{ width: '100%' }} justify='flex-start' align='start'>
-                                    <Flex align="center" justify="space-between" style={{ width: '100%' }}>
-                                        <Typography.Text type='secondary'>Image Types:</Typography.Text>
+                            {renderImageTypeSelector()}
+
+                            <Card
+                                onClick={() => setShowStyleSelector(true)}
+                                size="small"
+                                style={{
+                                    borderColor: token.colorBorderSecondary,
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                }}
+                            >
+                                <Flex gap={10} vertical>
+                                    <Flex align="center" justify="space-between" gap={8}>
+                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                            <Typography.Text strong>Image style</Typography.Text>
+                                            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                                Choose the look for the generated image.
+                                            </Typography.Text>
+                                        </Flex>
                                         <Button
-                                            type="link"
-                                            size="small"
-                                            onClick={() => {
-                                                const allTypes = selectedBusinessData.imageTypes.map(type => type.type);
-                                                setGenerationConfig({
-                                                    ...generationConfig,
-                                                    selectedImageTypes: allTypes.length === generationConfig.selectedImageTypes?.length ? [] : allTypes
-                                                });
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                setShowStyleSelector(true);
                                             }}
+                                            style={{ flex: '0 0 auto' }}
                                         >
-                                            {generationConfig.selectedImageTypes?.length === selectedBusinessData.imageTypes.length ? 'Deselect All' : 'Select All'}
+                                            Change
                                         </Button>
                                     </Flex>
-                                    <Space direction="vertical" style={{ width: '100%' }}>
-                                        {selectedBusinessData?.imageTypes?.map(imageType => (
-                                            <Checkbox
-                                                key={imageType.type}
-                                                checked={generationConfig.selectedImageTypes?.includes(imageType.type)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setGenerationConfig({
-                                                            ...generationConfig,
-                                                            selectedImageTypes: [...(generationConfig.selectedImageTypes || []), imageType.type]
-                                                        });
-                                                    } else {
-                                                        setGenerationConfig({
-                                                            ...generationConfig,
-                                                            selectedImageTypes: (generationConfig.selectedImageTypes || []).filter(type => type !== imageType.type)
-                                                        });
-                                                    }
-                                                }}
-                                            >
-                                                <Flex vertical>
-                                                    <Typography.Text>{imageType.type}</Typography.Text>
-                                                    <Typography.Text type="secondary" style={{ fontSize: '0.8em' }}>
-                                                        {imageType.description}
-                                                    </Typography.Text>
-                                                </Flex>
-                                            </Checkbox>
-                                        ))}
-                                    </Space>
+                                    <Flex gap={6} wrap="wrap">
+                                        <Tag color="processing" style={{ borderRadius: 8, margin: 0 }}>
+                                            {generationConfig.stylesCategory || 'Photorealism'}
+                                        </Tag>
+                                        {(generationConfig.styles || []).slice(0, 3).map((styleName) => {
+                                            const styleObj = findStyleByName(styleName);
+                                            return (
+                                                <Tag key={styleName} style={{ borderRadius: 8, margin: 0 }}>
+                                                    {styleObj?.name || styleName}
+                                                </Tag>
+                                            );
+                                        })}
+                                        {(generationConfig.styles || []).length > 3 ? (
+                                            <Tag style={{ borderRadius: 8, margin: 0 }}>
+                                                +{(generationConfig.styles || []).length - 3} more
+                                            </Tag>
+                                        ) : null}
+                                    </Flex>
                                 </Flex>
-                            )}
-
-                            <Flex gap={4} vertical style={{ width: '100%' }} justify='flex-start' align='start' >
-                                <Typography.Text type='secondary'>Styles*:</Typography.Text>
-                                <Flex gap={4} wrap style={{ width: '100%' }} onClick={() => setShowStyleSelector(true)}>
-                                    <Button shape='round' ghost type='primary'>{generationConfig.stylesCategory}</Button>
-                                    {(generationConfig.styles || []).map((styleName, index) => {
-                                        const styleObj = findStyleByName(styleName);
-                                        return <Fragment key={styleName}>
-                                            <Button shape='round'>{styleObj?.name}</Button></Fragment>
-                                    })}
-                                    <Button shape='circle' type='text' icon={<LuPen />} />
-                                </Flex>
-                            </Flex>
+                            </Card>
 
                             <StyleSelector
                                 open={showStyleSelector}
@@ -441,8 +681,19 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                     ),
                                     showArrow: false,
                                     children: (
-                                        <Flex vertical gap={24} style={{ width: '100%', paddingTop: 16 }}>
+                                        <Flex
+                                            vertical
+                                            gap={isMobile ? 16 : 24}
+                                            style={{
+                                                background: isMobile ? token.colorBgContainer : undefined,
+                                                border: isMobile ? `1px solid ${token.colorBorderSecondary}` : undefined,
+                                                borderRadius: isMobile ? 8 : undefined,
+                                                padding: isMobile ? 12 : '16px 0 0',
+                                                width: '100%',
+                                            }}
+                                        >
                                             <MultiSelectAttributeSelector
+                                                displayMode={isMobile ? 'select' : 'chips'}
                                                 label="Setting"
                                                 tooltip="Select one or more environments to influence the mood and look of the generated image."
                                                 options={selectedBusinessData?.contextual_elements?.environments || []}
@@ -450,6 +701,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                 onChange={(environments) => setGenerationConfig({ ...generationConfig, environments })}
                                             />
                                             <MultiSelectAttributeSelector
+                                                displayMode={isMobile ? 'select' : 'chips'}
                                                 label="Lighting"
                                                 tooltip="Select one or more lighting conditions to influence the mood and look of the generated image."
                                                 options={selectedBusinessData?.contextual_elements?.lighting || []}
@@ -458,6 +710,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                 multi={true}
                                             />
                                             <MultiSelectAttributeSelector
+                                                displayMode={isMobile ? 'select' : 'chips'}
                                                 label="Colors"
                                                 tooltip="Select preferred colors to include in the generated image."
                                                 options={selectedBusinessData?.contextual_elements?.colors || []}
@@ -465,6 +718,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                 onChange={(colors) => setGenerationConfig({ ...generationConfig, colors })}
                                             />
                                             <MultiSelectAttributeSelector
+                                                displayMode={isMobile ? 'select' : 'chips'}
                                                 label="Mood"
                                                 tooltip="Select the moods you want the generated image to convey."
                                                 options={selectedBusinessData?.contextual_elements?.moods || []}
@@ -473,6 +727,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                 multi={true}
                                             />
                                             <MultiSelectAttributeSelector
+                                                displayMode={isMobile ? 'select' : 'chips'}
                                                 label="Camera Angle"
                                                 tooltip="Select one or more composition types for the image layout."
                                                 options={selectedBusinessData?.contextual_elements?.compositions || []}
@@ -480,7 +735,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                 onChange={(compositions) => setGenerationConfig({ ...generationConfig, compositions })}
                                             />
 
-                                            <Flex gap={16} justify='flex-start' align='center' style={{ width: '100%' }}>
+                                            <Flex gap={isMobile ? 12 : 16} justify='flex-start' align={isMobile ? 'stretch' : 'center'} style={{ width: '100%' }} vertical={isMobile}>
                                                 <Flex vertical gap={8} justify='flex-start' align='start' style={{ width: '100%' }}>
                                                     <Flex align='center' gap={8}>
                                                         <Tooltip title="If enabled, the generated image will have a transparent background. Background color selection will be disabled.">

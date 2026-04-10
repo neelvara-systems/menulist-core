@@ -93,8 +93,14 @@ const MultiSelectAttributeSelector: React.FC<MultiSelectAttributeSelectorProps> 
           mode={multi ? "multiple" : undefined}
           style={{ width: '100%' }}
           placeholder={`Select ${label.toLowerCase()}`}
-          value={selected}
-          onChange={onChange}
+          value={multi ? selected : selected[0]}
+          onChange={(value) => {
+            if (multi) {
+              onChange(Array.isArray(value) ? value.map(String) : []);
+              return;
+            }
+            onChange(value ? [String(value)] : []);
+          }}
           options={options.map(option => ({
             label: option,
             value: option,

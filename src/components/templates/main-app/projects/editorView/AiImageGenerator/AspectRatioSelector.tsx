@@ -1,5 +1,6 @@
 import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { ASPECT_RATIOS_LIST } from '@constant/common';
+import useDeviceType from '@hook/useDeviceType';
 import { Card, Flex, Typography, theme } from 'antd';
 import React from 'react';
 
@@ -13,11 +14,19 @@ const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
   onChange
 }) => {
   const { token } = theme.useToken();
+  const { isMobile } = useDeviceType();
 
   return (
     <Flex vertical gap={8} style={{ width: '100%' }}>
       <Typography.Text type='secondary'>Aspect Ratio:</Typography.Text>
-      <Flex gap={12} style={{ width: '100%' }}>
+      <div
+        style={{
+          display: 'grid',
+          gap: 12,
+          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : `repeat(${ASPECT_RATIOS_LIST.length}, minmax(0, 1fr))`,
+          width: '100%',
+        }}
+      >
         {ASPECT_RATIOS_LIST.map((ratio) => (
           <Card
             key={ratio.value}
@@ -30,7 +39,8 @@ const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
               border: `1px solid ${selectedAspectRatio === ratio.value ? token.colorPrimary : token.colorBorder}`,
               borderRadius: 8,
               transition: 'all 0.2s',
-              position: 'relative'
+              position: 'relative',
+              minHeight: 112,
             }}
           >
             <Flex align="center" justify="center" vertical style={{ height: '100%', width: '100%', paddingBottom: 20 }}>
@@ -62,7 +72,7 @@ const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
             </Flex>
           </Card>
         ))}
-      </Flex>
+      </div>
     </Flex>
   );
 };

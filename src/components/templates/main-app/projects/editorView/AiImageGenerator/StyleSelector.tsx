@@ -1,9 +1,11 @@
 import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { IMAGE_GENERATION_STYLES } from '@constant/AI';
+import useDeviceType from '@hook/useDeviceType';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Flex, Modal, Tabs, Tag, Typography, theme } from 'antd';
+import { Button, Flex, Modal, Tag, Typography, theme } from 'antd';
 import React, { useContext, useEffect, useMemo } from 'react';
-import { LuCheckCircle, LuSparkles, LuStar, LuX } from 'react-icons/lu';
+import { LuCheckCircle, LuStar, LuX } from 'react-icons/lu';
+import { NavBar, Popup } from '../../../../../mobile/antd';
 
 const { Text } = Typography;
 
@@ -23,25 +25,26 @@ interface StyleOption {
   recommended?: string[];
 }
 
-const STYLE_RECOMMENDATIONS: Record<string, { bestFor: string; recommended: string[]; preview: string }> = {
-  'Natural Light': { bestFor: '🍔 Food & Products', recommended: ['Restaurant', 'Cafe', 'Bakery', 'Coffee Shop'], preview: '☀️' },
-  'Food Photography': { bestFor: '🍕 Food Businesses', recommended: ['Restaurant', 'Cafe', 'Bakery', 'Cake Shop', 'Ice Cream Shop'], preview: '🍽️' },
-  'Studio Lighting': { bestFor: '💎 Products & Jewelry', recommended: ['Jewelry Store', 'Boutique', 'Electronics Store'], preview: '💡' },
-  'Product Photography': { bestFor: '🛍️ Retail & E-commerce', recommended: ['Boutique', 'Furniture Store', 'Electronics Store'], preview: '📦' },
-  'Shallow Depth of Field / Bokeh': { bestFor: '📸 Portraits & Food', recommended: ['Salon', 'Spa', 'Restaurant', 'Cafe'], preview: '🔍' },
-  'Macro Photography': { bestFor: '💅 Details & Textures', recommended: ['Tattoo Studio', 'Jewelry Store', 'Bakery'], preview: '🔬' },
-  'Cinematic Lighting': { bestFor: '🎬 Dramatic Shots', recommended: ['Restaurant', 'Spa', 'Gym'], preview: '🎬' },
-  'Top-Down / Flat Lay': { bestFor: '🍽️ Food & Layouts', recommended: ['Restaurant', 'Cafe', 'Bakery'], preview: '⬇️' },
-  'Digital Painting': { bestFor: '🎨 Creative & Artistic', recommended: ['Art Studio', 'Creative Agency'], preview: '🖌️' },
-  'Watercolor': { bestFor: '🌸 Soft & Artistic', recommended: ['Florist', 'Wedding Planner', 'Spa'], preview: '🎨' },
-  'Minimalist': { bestFor: '✨ Clean & Modern', recommended: ['Tech', 'Modern', 'Boutique'], preview: '◻️' },
-  'Vintage / Retro': { bestFor: '📼 Nostalgic Look', recommended: ['Cafe', 'Boutique', 'Bar'], preview: '📷' },
-  'High Contrast': { bestFor: '⚫ Bold & Dramatic', recommended: ['Gym', 'Sports', 'Restaurant'], preview: '🎯' },
-  'Soft Focus': { bestFor: '💫 Dreamy & Gentle', recommended: ['Spa', 'Salon', 'Wedding Planner'], preview: '✨' },
+const STYLE_RECOMMENDATIONS: Record<string, { bestFor: string; recommended: string[] }> = {
+  'Natural Light': { bestFor: 'Food, products, and everyday menu photos', recommended: ['Restaurant', 'Cafe', 'Bakery', 'Coffee Shop'] },
+  'Food Photography': { bestFor: 'Food menus and delivery photos', recommended: ['Restaurant', 'Cafe', 'Bakery', 'Cake Shop', 'Ice Cream Shop'] },
+  'Studio Lighting': { bestFor: 'Clean product and catalog photos', recommended: ['Jewelry Store', 'Boutique', 'Electronics Store'] },
+  'Product Photography': { bestFor: 'Retail and ecommerce items', recommended: ['Boutique', 'Furniture Store', 'Electronics Store'] },
+  'Shallow Depth of Field / Bokeh': { bestFor: 'Premium food, salon, and lifestyle photos', recommended: ['Salon', 'Spa', 'Restaurant', 'Cafe'] },
+  'Macro Photography': { bestFor: 'Close-up details and textures', recommended: ['Tattoo Studio', 'Jewelry Store', 'Bakery'] },
+  'Cinematic Lighting': { bestFor: 'Dramatic, premium-looking photos', recommended: ['Restaurant', 'Spa', 'Gym'] },
+  'Top-Down / Flat Lay': { bestFor: 'Menu layouts, bowls, plates, and sets', recommended: ['Restaurant', 'Cafe', 'Bakery'] },
+  'Digital Painting': { bestFor: 'Illustrated or artistic concepts', recommended: ['Art Studio', 'Creative Agency'] },
+  'Watercolor': { bestFor: 'Soft, gentle, artistic visuals', recommended: ['Florist', 'Wedding Planner', 'Spa'] },
+  'Minimalist': { bestFor: 'Clean modern visuals', recommended: ['Tech', 'Modern', 'Boutique'] },
+  'Vintage / Retro': { bestFor: 'Classic or nostalgic looks', recommended: ['Cafe', 'Boutique', 'Bar'] },
+  'High Contrast': { bestFor: 'Bold and strong visuals', recommended: ['Gym', 'Sports', 'Restaurant'] },
+  'Soft Focus': { bestFor: 'Gentle, calm, premium visuals', recommended: ['Spa', 'Salon', 'Wedding Planner'] },
 };
 
 const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCategory, onChange, open, setShowStyleSelector, businessType }) => {
   const { token } = theme.useToken();
+  const { isMobile } = useDeviceType();
   const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
   const effectiveBusinessType = businessType || storeDetails?.businessType;
   const [localCategory, setLocalCategory] = React.useState<string>(stylesCategory);
@@ -92,7 +95,10 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
     setShowStyleSelector(false);
   };
 
-  const renderStyleCard = (style: StyleOption, isSelected: boolean) => {
+  const activeCategoryIndex = Math.max(IMAGE_GENERATION_STYLES.findIndex(cat => cat.category === localCategory), 0);
+  const activeCategory = IMAGE_GENERATION_STYLES[activeCategoryIndex] || IMAGE_GENERATION_STYLES[0];
+
+  const renderStyleCard = (style: StyleOption, isSelected: boolean, compact = false) => {
     const isRecommended = isRecommendedForBusiness(style.name);
     const styleInfo = STYLE_RECOMMENDATIONS[style.name];
 
@@ -106,18 +112,22 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
           borderRadius: 8,
           border: `2px solid ${isSelected ? token.colorPrimary : isRecommended ? token.colorWarningBorder : token.colorBorder}`,
           position: 'relative',
-          padding: 12,
-          transition: 'all 0.3s ease',
-          backgroundColor: isRecommended ? token.colorWarningBg : 'transparent',
+          padding: compact ? '10px 12px' : 12,
+          transition: 'all 0.2s ease',
+          backgroundColor: isSelected ? token.colorPrimaryBg : isRecommended ? token.colorWarningBg : token.colorBgContainer,
         }}
       >
         <SelectedItemCheck active={isSelected} />
-        <Flex align="center" justify="space-between" gap={8}>
-          <Flex align="center" gap={8}>
-            {styleInfo?.preview && (
-              <span style={{ fontSize: 20 }}>{styleInfo.preview}</span>
-            )}
-            <Text strong>{style.name}</Text>
+        <Flex align="flex-start" justify="space-between" gap={8}>
+          <Flex gap={4} style={{ minWidth: 0 }} vertical>
+            <Text strong style={{ lineHeight: 1.25 }}>{style.name}</Text>
+            {styleInfo ? (
+              <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                Good for: {styleInfo.bestFor}
+              </Text>
+            ) : null}
+          </Flex>
+          <Flex align="center" gap={6} style={{ flex: '0 0 auto' }}>
             {isRecommended && (
               <Tag color="gold" style={{ margin: 0, fontSize: 10 }}>
                 <LuStar style={{ marginRight: 2 }} /> Recommended
@@ -125,91 +135,185 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
             )}
           </Flex>
         </Flex>
-        {styleInfo && (
-          <Text style={{ fontSize: 11, color: token.colorTextSecondary, display: 'block', marginTop: 4 }}>
-            {styleInfo.bestFor}
-          </Text>
-        )}
-        <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block', wordWrap: 'break-word', whiteSpace: 'normal' }}>
+        <Text type="secondary" style={{ fontSize: 12, marginTop: compact ? 6 : 8, display: 'block', lineHeight: 1.4, wordWrap: 'break-word', whiteSpace: 'normal' }}>
           {style.description}
         </Text>
       </div>
     );
   };
 
-  const renderTabContent = (categoryIndex: number) => {
-    const category = IMAGE_GENERATION_STYLES[categoryIndex];
+  const renderCategoryPicker = () => (
+    <Flex gap={8} style={{ overflowX: 'auto', paddingBottom: 2, width: '100%' }}>
+      {IMAGE_GENERATION_STYLES.map((category) => {
+        const isActive = category.category === localCategory;
+        return (
+          <Button
+            key={category.category}
+            onClick={() => handleCategoryChange(category.category)}
+            shape="round"
+            type={isActive ? 'primary' : 'default'}
+            style={{ flex: '0 0 auto' }}
+          >
+            {category.category}
+          </Button>
+        );
+      })}
+    </Flex>
+  );
+
+  const renderRecommendedSection = () => {
+    const recommendedOptions = recommendedStyles
+      .map((styleName) => IMAGE_GENERATION_STYLES.flatMap((category) => category.styles).find((style) => style.name === styleName))
+      .filter(Boolean)
+      .slice(0, 3) as StyleOption[];
+
+    if (!recommendedOptions.length) return null;
+
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 500, overflow: 'auto', padding: 12 }}>
-        {category.styles.map(style => {
+      <Flex gap={8} vertical>
+        <Flex align="center" justify="space-between">
+          <Text strong>Recommended for your business</Text>
+          {effectiveBusinessType ? <Text type="secondary" style={{ fontSize: 12 }}>{effectiveBusinessType}</Text> : null}
+        </Flex>
+        <Flex gap={8} vertical>
+          {recommendedOptions.map((style) => renderStyleCard(style, localSelectedStyles.includes(style.name), true))}
+        </Flex>
+      </Flex>
+    );
+  };
+
+  const renderStyleList = () => (
+    <Flex gap={12} vertical>
+      <Flex gap={4} vertical>
+        <Text strong>Choose a style</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Select one or more looks. Natural Light is usually the easiest choice for menu photos.
+        </Text>
+      </Flex>
+      {renderCategoryPicker()}
+      <div
+        style={{
+          display: 'grid',
+          gap: 12,
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+        }}
+      >
+        {activeCategory.styles.map(style => {
           const isSelected = (localSelectedStyles || []).includes(style.name);
           return renderStyleCard(style, isSelected);
         })}
       </div>
+    </Flex>
+  );
+
+  const renderContent = () => (
+    <Flex gap={16} vertical>
+      <Flex
+        align={isMobile ? 'stretch' : 'center'}
+        gap={10}
+        justify="space-between"
+        style={{
+          background: token.colorFillAlter,
+          border: `1px solid ${token.colorBorderSecondary}`,
+          borderRadius: 8,
+          padding: 12,
+        }}
+        vertical={isMobile}
+      >
+        <Flex gap={4} vertical>
+          <Text strong>Pick the image look</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            This only changes the visual style. You can change it anytime before generating.
+          </Text>
+        </Flex>
+        {localSelectedStyles.length > 0 ? (
+          <Flex align="center" gap={8} wrap="wrap">
+            <Tag color="blue" style={{ margin: 0 }}>{localSelectedStyles.length} selected</Tag>
+            <Button
+              type="text"
+              danger
+              size="small"
+              icon={<LuX size={12} />}
+              onClick={() => setLocalSelectedStyles([])}
+              style={{ fontSize: 12, fontWeight: 500, paddingInline: 4 }}
+            >
+              Clear
+            </Button>
+          </Flex>
+        ) : null}
+      </Flex>
+      {renderRecommendedSection()}
+      {renderStyleList()}
+    </Flex>
+  );
+
+  const footer = (
+    <Flex gap={8} justify="flex-end">
+      <Button
+        key="cancel"
+        type="default"
+        icon={<LuX />}
+        onClick={() => setShowStyleSelector(false)}
+        style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 96 }}
+      >
+        Cancel
+      </Button>
+      <Button
+        key="submit"
+        type="primary"
+        icon={<LuCheckCircle />}
+        onClick={handleSubmit}
+        disabled={localSelectedStyles.length === 0}
+        style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 120 }}
+      >
+        {localSelectedStyles.length === 0 ? 'Select a style' : `Use ${localSelectedStyles.length} style${localSelectedStyles.length > 1 ? 's' : ''}`}
+      </Button>
+    </Flex>
+  );
+
+  if (isMobile) {
+    return (
+      <Popup
+        bodyStyle={{ minHeight: '72vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
+        destroyOnClose
+        onMaskClick={() => setShowStyleSelector(false)}
+        visible={open}
+      >
+        <Flex style={{ height: '100%' }} vertical>
+          <NavBar onBack={() => setShowStyleSelector(false)}>Image Style</NavBar>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 16px' }}>
+            {renderContent()}
+          </div>
+          <div
+            style={{
+              backgroundColor: token.colorBgContainer,
+              borderTop: `1px solid ${token.colorBorderSecondary}`,
+              padding: '12px 12px calc(12px + env(safe-area-inset-bottom))',
+            }}
+          >
+            {footer}
+          </div>
+        </Flex>
+      </Popup>
     );
-  };
+  }
 
   return (
     <Modal
-      title={
-        <Flex align="center" justify="space-between" style={{ width: '100%', paddingRight: 32 }}>
-          <Flex align="center" gap={8}>
-            <LuSparkles />
-            <span>Choose Your Image Style</span>
-          </Flex>
-          {localSelectedStyles.length > 0 && (
-            <Flex align="center" gap={8}>
-              <Tag color="blue">{localSelectedStyles.length} selected</Tag>
-              <Button
-                type="text"
-                danger
-                size="small"
-                icon={<LuX size={12} />}
-                onClick={() => setLocalSelectedStyles([])}
-                style={{ fontSize: 12, fontWeight: 500 }}
-              >
-                Clear all
-              </Button>
-            </Flex>
-          )}
-        </Flex>
-      }
+      title="Choose Image Style"
       open={open}
-      footer={[
-        <Button key="cancel" type="default" icon={<LuX />} onClick={() => setShowStyleSelector(false)}>Cancel</Button>,
-        <Button
-          key="submit"
-          type="primary"
-          icon={<LuCheckCircle />}
-          onClick={handleSubmit}
-          disabled={localSelectedStyles.length === 0}
-        >
-          {localSelectedStyles.length === 0 ? 'Select a Style' : `Apply ${localSelectedStyles.length} Style${localSelectedStyles.length > 1 ? 's' : ''}`}
-        </Button>
-      ]}
+      footer={footer}
       onCancel={() => setShowStyleSelector(false)}
-      width={600}
+      width={760}
+      styles={{
+        body: {
+          maxHeight: 'calc(100vh - 220px)',
+          overflowY: 'auto',
+          paddingTop: 12,
+        },
+      }}
     >
-      {recommendedStyles.length > 0 && (
-        <Flex align="center" gap={8} style={{ marginBottom: 12, padding: '8px 12px', backgroundColor: token.colorWarningBg, borderRadius: 8 }}>
-          <LuStar style={{ color: token.colorWarning }} />
-          <Text style={{ fontSize: 12 }}>
-            <strong>Recommended for {storeDetails?.businessType}:</strong> {recommendedStyles.slice(0, 3).join(', ')}
-          </Text>
-        </Flex>
-      )}
-      <div style={{ padding: 12 }}>
-        <Tabs
-          moreIcon={null}
-          activeKey={IMAGE_GENERATION_STYLES.findIndex(cat => cat.category === localCategory).toString()}
-          onChange={(activeKey) => handleCategoryChange(IMAGE_GENERATION_STYLES[parseInt(activeKey)].category)}
-          items={IMAGE_GENERATION_STYLES.map((category, index) => ({
-            key: index.toString(),
-            label: category.category,
-            children: renderTabContent(index)
-          }))}
-        />
-      </div>
+      {renderContent()}
     </Modal>
   );
 };

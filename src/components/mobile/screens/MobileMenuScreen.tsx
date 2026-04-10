@@ -2273,10 +2273,11 @@ export default function MobileMenuScreen() {
                         from={imageModalSource}
                         itemToUpdate={imageModalItem}
                         onClose={() => {
-                            setIsImageUploadOpen(false);
-                            setImageModalItem(null);
-                            setImageModalSource('');
-                            resetCommandActionFlow();
+                            handleCommandActionBack(() => {
+                                setIsImageUploadOpen(false);
+                                setImageModalItem(null);
+                                setImageModalSource('');
+                            });
                         }}
                         onImageUpload={handleModalImageUpload}
                         open={isImageUploadOpen}

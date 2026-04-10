@@ -126,7 +126,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                     const itemId = itm.id;
                     const itemName = itm.name?.[language] || itemId || '';
                     const categoryName = categoryMap[itm.category] || 'Uncategorized';
-                    const description = itm.description?.[language] || itemId || '';
+                    const description = itm.description?.[language] || '';
                     if (itemId) {
                         const itemObj: ItemForDropdown = {
                             ...itm,
@@ -190,7 +190,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                 const language = projectData?.languages?.[0] || 'en';
                 const itemName = item.name?.[language] || item.id || '';
                 const categoryName = file.extractedData.data.categories.find(cat => cat.id === item.category)?.name?.[language] || 'Uncategorized';
-                const description = item.description?.[language] || item.id || '';
+                const description = item.description?.[language] || '';
                 setSelectedItem({
                     ...item,
                     itemName,
@@ -452,8 +452,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
     }, [closeModal, from, itemToUpdate, resetGenerateState]);
 
     const renderInitialChoice = () => (
-        <Flex vertical gap="large" align="center" style={{ paddingBottom: 20, marginTop: 20 }}>
-            <Typography.Title level={4} style={{ margin: 0 }}>How would you like to add images?</Typography.Title>
+        <Flex
+            vertical
+            gap="large"
+            align={isMobile ? 'stretch' : 'center'}
+            style={{ paddingBottom: 20, marginTop: isMobile ? 0 : 20, width: '100%' }}
+        >
+            {!isMobile ? (
+                <Typography.Title level={4} style={{ margin: 0 }}>How would you like to add images?</Typography.Title>
+            ) : null}
             <Button
                 size="large"
                 block
@@ -487,7 +494,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
 
     const renderSingleItemSetup = () => (
         <Flex gap={24} vertical style={{ width: '100%' }}>
-            {!Boolean(from) && <Flex vertical gap={0}>
+            {!(itemToUpdate || from === 'item') && <Flex vertical gap={0}>
                 <Typography.Text type='secondary'>Select Item:</Typography.Text>
                 <Select
                     showSearch
@@ -698,7 +705,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         <> {/* Wrap in fragment to fix JSX parent error */}
             {isMobile ? (
                 <Popup
-                    bodyStyle={{ height: '100vh', maxHeight: '100vh', padding: 0 }}
+                    bodyStyle={{ minHeight: '68vh', maxHeight: '90vh', overflowX: 'hidden', padding: 0 }}
                     destroyOnClose
                     onMaskClick={generationConfig.loading ? undefined : closeModal}
                     visible={open}
@@ -706,14 +713,6 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                         <NavBar
                             onBack={getMobileBackHandler()}
-                            right={(
-                                <Button
-                                    icon={<LuX size={18} />}
-                                    onClick={closeModal}
-                                    style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
-                                    type="text"
-                                />
-                            )}
                         >
                             {getMobileHeaderTitle()}
                         </NavBar>

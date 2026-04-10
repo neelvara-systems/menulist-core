@@ -1,4 +1,5 @@
 import { UserUploadedFileType } from '@type/common';
+import useDeviceType from '@hook/useDeviceType';
 import { Button, Card, Flex, Image, Input, Tag, theme, Tooltip } from 'antd';
 import React, { Fragment, useEffect, useState } from 'react';
 import { LuSparkles, LuWand2, LuX } from 'react-icons/lu';
@@ -15,10 +16,10 @@ const PROMPT_EXAMPLES = [
 
 // UX-31: Quick quality enhancer tags
 const QUICK_ENHANCERS = [
-    { label: '✨ HD Quality', value: 'high resolution, sharp focus' },
-    { label: '📸 Professional', value: 'professional photography, studio quality' },
-    { label: '🌟 Vibrant', value: 'vibrant colors, well-lit' },
-    { label: '🍽️ Appetizing', value: 'appetizing, food photography' },
+    { label: 'HD Quality', value: 'high resolution, sharp focus' },
+    { label: 'Professional', value: 'professional photography, studio quality' },
+    { label: 'Vibrant', value: 'vibrant colors, well-lit' },
+    { label: 'Appetizing', value: 'appetizing, food photography' },
 ];
 
 export interface ChatWidgetUiProps {
@@ -37,6 +38,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
     setShowStyleSelector
 }) => {
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const [exampleIndex, setExampleIndex] = useState(0);
 
     // Rotate prompt examples every 4 seconds
@@ -55,13 +57,13 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                 position: "sticky",
                 bottom: 0,
                 zIndex: 100,
-                borderRadius: 20,
+                borderRadius: isMobile ? 8 : 20,
                 boxShadow: token.boxShadow,
                 background: token.colorBgContainer,
                 borderColor: token.colorPrimaryBg
             }}
         >
-            <Flex vertical style={{ width: '100%' }} gap={16}>
+            <Flex vertical style={{ width: '100%' }} gap={isMobile ? 10 : 16}>
                 <Flex vertical gap={8} style={{ width: '100%' }} justify='flex-start' align='start'>
 
                     <Flex justify='space-between' align='center' style={{ width: '100%' }} gap={8}>
@@ -166,7 +168,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                         <Button
                             size='large'
                             type="default"
-                            style={{ minWidth: 140 }}
+                            style={{ flex: isMobile ? 1 : undefined, fontSize: isMobile ? 12 : undefined, minWidth: isMobile ? 0 : 140, paddingInline: isMobile ? 6 : undefined }}
                             onClick={() => {
                                 // Quick generate with smart defaults
                                 setGenerationConfig({
@@ -181,19 +183,19 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                             disabled={generationConfig.loading}
                             icon={<LuSparkles />}
                         >
-                            Quick Generate
+                            {isMobile ? 'Quick' : 'Quick Generate'}
                         </Button>
                     </Tooltip>
                     <Button
                         size='large'
                         type="primary"
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, fontSize: isMobile ? 12 : undefined, minWidth: 0, paddingInline: isMobile ? 6 : undefined }}
                         onClick={onGenerateImage}
                         loading={generationConfig.loading}
                         disabled={generationConfig.loading}
                         icon={<LuWand2 />}
                     >
-                        Generate Image
+                        {isMobile ? 'Generate' : 'Generate Image'}
                     </Button>
                 </Flex>
             </Flex>
