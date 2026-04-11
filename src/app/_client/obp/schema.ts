@@ -65,7 +65,7 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
             description: storeData.publicPresence.descriptor,
         }),
         ...(!storeData?.publicPresence?.descriptor && storeData?.publicPresence?.knownFor && {
-            description: `Known for: ${storeData.publicPresence.knownFor}`,
+            description: storeData.publicPresence.knownFor,
         }),
         ...(!storeData?.publicPresence?.descriptor && !storeData?.publicPresence?.knownFor && storeData?.description && {
             description: storeData.description,

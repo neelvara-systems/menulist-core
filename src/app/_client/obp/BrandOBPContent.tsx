@@ -20,6 +20,7 @@ import {
     where,
 } from "firebase/firestore";
 import { unstable_cache } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import styles from "./obp.module.scss";
 
 interface OutletInfo {
@@ -82,6 +83,7 @@ interface BrandOBPContentProps {
 }
 
 export default async function BrandOBPContent({ store, baseUrl }: BrandOBPContentProps) {
+    const t = await getTranslations({ namespace: 'BusinessSettings' });
     const outlets = await getOutletsForTenant(store.tenantId, store.storeId);
 
     const pp = store?.publicPresence || {};
@@ -109,7 +111,7 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
                     </div>
                 )}
                 <h1 className={styles.name}>{brandName}</h1>
-                <p className={styles.descriptor}>Choose a location</p>
+                <p className={styles.descriptor}>{t('publicChooseLocation')}</p>
             </div>
 
             {/* Location Cards */}
@@ -223,7 +225,7 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
                                     flexShrink: 0,
                                     whiteSpace: 'nowrap',
                                 }}>
-                                    {status.isOpen ? 'Open' : 'Closed'}
+                                    {status.isOpen ? t('publicOpen') : t('publicClosed')}
                                 </div>
                             ) : (
                                 <div style={{
@@ -244,7 +246,7 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
 
             {/* Footer */}
             <footer className={styles.footer}>
-                <span className={styles.footerText}>Powered by MenuList</span>
+                <span className={styles.footerText}>{t('publicPoweredBy')}</span>
             </footer>
         </div>
     );

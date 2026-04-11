@@ -20,7 +20,6 @@ import {
     LuPalette,
     LuReceipt,
     LuSettings,
-    LuSettings2,
     LuShield,
     LuSparkles,
     LuTv,
@@ -189,7 +188,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
         { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: 'Store-level guest feedback collection and review destination settings.', onClick: () => openSubScreen('feedbackSettings') },
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
-        { key: 'advancedSettings', icon: <LuSettings2 color="#6b7280" size={20} />, label: 'Feedback Settings', description: 'Manage store-level guest feedback defaults and collection rules.', onClick: () => openSubScreen('advancedSettings') },
     ];
 
     const handleLogout = () => {

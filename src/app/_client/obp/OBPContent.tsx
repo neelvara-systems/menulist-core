@@ -596,7 +596,7 @@ export default async function OBPContent() {
                             <details style={{ width: '100%' }}>
                                 <summary className={styles.infoRow} style={{ cursor: 'pointer', listStyle: 'none' }}>
                                     <span className={styles.infoIcon}>📅</span>
-                                    <span>Business Hours</span>
+                                    <span>{t('publicBusinessHours')}</span>
                                 </summary>
                                 <div style={{ paddingLeft: 28, paddingTop: 4, fontSize: 13, lineHeight: 1.8 }}>
                                     {allHours}
@@ -612,7 +612,7 @@ export default async function OBPContent() {
                         {priceRange && (
                             <div className={styles.infoRow}>
                                 <span className={styles.infoIcon}>💰</span>
-                                <span>Price range: {priceRange}</span>
+                                <span>{t('publicPriceRange', { value: priceRange })}</span>
                             </div>
                         )}
                         {serviceModeTags.length > 0 && (
@@ -624,7 +624,7 @@ export default async function OBPContent() {
                         {paymentTags.length > 0 && (
                             <div className={styles.infoRow}>
                                 <span className={styles.infoIcon}>💳</span>
-                                <span>Accepts: {paymentTags.join(', ')}</span>
+                                <span>{t('publicAccepts', { value: paymentTags.join(', ') })}</span>
                             </div>
                         )}
                     </div>
@@ -690,14 +690,14 @@ export default async function OBPContent() {
 
                 {/* ── Footer ── */}
                 <footer className={styles.footer}>
-                    <span className={styles.footerText}>Official Page · Powered by MenuList</span>
+                    <span className={styles.footerText}>{t('publicOfficialPagePoweredBy')}</span>
                     {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && (
                         <div style={{ marginTop: 6, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                            <a href="/privacy" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>Privacy</a>
+                            <a href="/privacy" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{t('publicPrivacy')}</a>
                             <span style={{ fontSize: 11, color: '#ccc' }}>·</span>
-                            <a href="/terms" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>Terms</a>
+                            <a href="/terms" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{t('publicTerms')}</a>
                             <span style={{ fontSize: 11, color: '#ccc' }}>·</span>
-                            <a href="/refund" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>Refund</a>
+                            <a href="/refund" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{t('publicRefund')}</a>
                         </div>
                     )}
                 </footer>
