@@ -15,6 +15,7 @@ interface OfficialPageTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     publicPresence?: {
         descriptor?: string;
+        knownFor?: string;
         accentColor?: string;
         whatsappNumber?: string;
         googleMapsUrl?: string;
@@ -53,7 +54,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
 
         const handlePhotoUpload = async (file: File, index: number) => {
             if (!session?.tId || !session?.sId) {
-                message.error('Session not available');
+                message.error(t('sessionUnavailable'));
                 return;
             }
             setPhotoUploading(index);
@@ -63,9 +64,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 updated[index] = url;
                 setPhotos(updated);
                 onPublicPresenceChange?.('photos', updated.filter(Boolean));
-                message.success('Photo uploaded');
+                message.success(t('photoUploaded'));
             } catch {
-                message.error('Upload failed');
+                message.error(t('photoUploadFailed'));
             } finally {
                 setPhotoUploading(null);
             }
@@ -114,12 +115,12 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Col xs={24} md={12}>
                             <Form.Item
                                 name={['publicPresence', 'knownFor']}
-                                label={t('knownFor' as any) || 'Known For'}
-                                extra={t('knownForHelp' as any) || 'Short identity cue shown on your page (e.g. "Wood-fired pizza")'}
-                                rules={[{ max: 40, message: 'Maximum 40 characters' }]}
+                                label={t('knownFor')}
+                                extra={t('knownForHelp')}
+                                rules={[{ max: 40, message: t('knownForMax') }]}
                             >
                                 <Input
-                                    placeholder="Wood-fired pizza"
+                                    placeholder={t('knownForPlaceholder')}
                                     maxLength={40}
                                     showCount
                                 />
@@ -159,8 +160,8 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Col xs={24} md={6}>
                             <Form.Item
                                 name={['publicPresence', 'accentColor']}
-                                label={t('accentColor' as any) || 'Accent Color'}
-                                extra={t('accentColorHelp' as any) || 'Button & highlight color'}
+                                label={t('accentColor')}
+                                extra={t('accentColorHelp')}
                             >
                                 <ColorPicker
                                     showText
@@ -177,13 +178,13 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Col xs={24} md={6}>
                             <Form.Item
                                 name={['publicPresence', 'establishedYear']}
-                                label={t('establishedYear' as any) || 'Established Year'}
-                                extra={t('establishedYearHelp' as any) || 'Shows "Serving since" on your page'}
+                                label={t('establishedYear')}
+                                extra={t('establishedYearHelp')}
                                 rules={[{
                                     type: 'number',
                                     min: 1900,
                                     max: new Date().getFullYear(),
-                                    message: t('establishedYearInvalid' as any) || 'Enter a valid year',
+                                    message: t('establishedYearInvalid'),
                                 }]}
                             >
                                 <InputNumber
@@ -227,7 +228,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
 
                     <Divider orientation="left" orientationMargin={0}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Google Reviews
+                            {t('googleReviews')}
                         </Text>
                     </Divider>
 
@@ -235,9 +236,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Col xs={24} md={10}>
                             <Form.Item
                                 name={['publicPresence', 'googleReviewUrl']}
-                                label="Google Review Link"
-                                extra="Paste your Google review URL. Customers can click to see your reviews."
-                                rules={[{ type: 'url', message: 'Enter a valid URL' }]}
+                                label={t('googleReviewUrl')}
+                                extra={t('googleReviewLinkHelp')}
+                                rules={[{ type: 'url', message: t('validUrlRequired') }]}
                             >
                                 <Input
                                     prefix={<LuStar size={14} />}
@@ -248,13 +249,13 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Col xs={24} md={7}>
                             <Form.Item
                                 name={['publicPresence', 'googleRating']}
-                                label="Google Rating"
-                                extra="Your current Google star rating (e.g. 4.5)"
+                                label={t('googleRating')}
+                                extra={t('googleRatingHelp')}
                                 rules={[{
                                     type: 'number',
                                     min: 1,
                                     max: 5,
-                                    message: 'Rating must be between 1 and 5',
+                                    message: t('googleRatingInvalid'),
                                 }]}
                             >
                                 <InputNumber
@@ -270,12 +271,12 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Col xs={24} md={7}>
                             <Form.Item
                                 name={['publicPresence', 'googleReviewCount']}
-                                label="Review Count"
-                                extra="Number of Google reviews (e.g. 320)"
+                                label={t('googleReviewCount')}
+                                extra={t('googleReviewCountHelp')}
                                 rules={[{
                                     type: 'number',
                                     min: 0,
-                                    message: 'Must be a positive number',
+                                    message: t('googleReviewCountInvalid'),
                                 }]}
                             >
                                 <InputNumber
@@ -289,12 +290,12 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
 
                     <Divider orientation="left" orientationMargin={0}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Business Photos (max 3)
+                            {t('businessPhotos')}
                         </Text>
                     </Divider>
 
                     <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-                        Add up to 3 photos of your business (storefront, interior, signature dish). These appear on your official page.
+                        {t('businessPhotosHelp')}
                     </Text>
                     <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                         {[0, 1, 2].map((idx) => {
@@ -306,7 +307,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', aspectRatio: '4/3' }}>
                                             <img
                                                 src={photo}
-                                                alt={`Business photo ${idx + 1}`}
+                                                alt={t('photoLabel', { index: idx + 1 })}
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                             />
                                             <Button
@@ -347,11 +348,11 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 }}
                                             >
                                                 {isUploading ? (
-                                                    <span>Uploading...</span>
+                                                    <span>{t('photoUploading')}</span>
                                                 ) : (
                                                     <>
                                                         <LuUpload size={20} />
-                                                        Photo {idx + 1}
+                                                        {t('photoLabel', { index: idx + 1 })}
                                                     </>
                                                 )}
                                             </div>

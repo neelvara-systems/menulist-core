@@ -73,6 +73,52 @@ export const getStoreById = async (id: number) => {
     );
 }
 
+export const checkCustomDomainAvailability = async (
+    domain: string,
+    currentStoreId?: number
+) => {
+    return await apiCallComposer(
+        async () => {
+            const normalizedDomain = domain.toLowerCase().trim();
+            const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+            if (!normalizedDomain || normalizedDomain.length < 4 || normalizedDomain.length > 253 || !domainRegex.test(normalizedDomain)) {
+                return {
+                    available: false,
+                    normalized: normalizedDomain,
+                    reason: "Invalid domain format. Example: yourbusiness.com",
+                };
+            }
+
+            const storesRef = collection(firebaseClient, COLLECTION);
+            const q = query(
+                storesRef,
+                where('customDomain', '==', normalizedDomain),
+                where('active', '==', true)
+            );
+            const snapshot = await getDocs(q);
+
+            if (!snapshot.empty) {
+                const existingStoreId = snapshot.docs[0].data()?.storeId;
+                if (existingStoreId !== currentStoreId) {
+                    return {
+                        available: false,
+                        normalized: normalizedDomain,
+                        reason: "This domain is already linked to another store",
+                    };
+                }
+            }
+
+            return {
+                available: true,
+                normalized: normalizedDomain,
+            };
+        },
+        { currentStoreId, domain },
+        "checkCustomDomainAvailability"
+    );
+}
+
 const updateLogoImage = async (data) => {
 
     let logoUrl: any = '';

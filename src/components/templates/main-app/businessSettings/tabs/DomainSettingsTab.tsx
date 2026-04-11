@@ -1,6 +1,7 @@
 'use client';
 
 import { getMenuUrl } from '@constant/urls';
+import { checkCustomDomainAvailability } from '@database/stores';
 import { Alert, Button, Card, Divider, Input, List, Space, Steps, Tag, Typography } from 'antd';
 import axios from 'axios';
 import { useTranslations } from 'next-intl';
@@ -65,7 +66,9 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
     const [subdomainCopied, setSubdomainCopied] = useState(false);
 
     const [domainInput, setDomainInput] = useState(storeDetails?.customDomain || '');
+    const [domainAvailability, setDomainAvailability] = useState<{ available?: boolean; reason?: string; normalized?: string } | null>(null);
     const [domainLoading, setDomainLoading] = useState(false);
+    const [checkingDomain, setCheckingDomain] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
     const [domainError, setDomainError] = useState<string | null>(null);
     const [domainStatus, setDomainStatus] = useState<any>(null);
@@ -74,6 +77,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
 
     const subdomainUrl = storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null;
     const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
+    const normalizedDomainInput = domainInput.trim().toLowerCase();
+    const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
+    const canConnectDomain = Boolean(
+        !activeDomain
+        && domainAvailability?.available
+        && domainAvailability?.normalized === normalizedDomainInput
+    );
     const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
     const dnsRecords = useMemo(
         () => normalizeDnsRecords(domainStatus?.config || domainStatus?.verification, activeDomain || domainInput),
@@ -144,9 +154,10 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
         setDomainLoading(true);
         setDomainError(null);
         try {
-            const res = await axios.post('/api/domain', { domain: domainInput.trim() });
+            const res = await axios.post('/api/domain', { domain: domainAvailability?.normalized || domainInput.trim() });
             const nextDomain = res.data?.domain || domainInput.trim();
             setDomainInput(nextDomain);
+            setDomainAvailability({ available: true, normalized: nextDomain });
             setDomainStatus({
                 hasDomain: true,
                 domain: nextDomain,
@@ -160,6 +171,23 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
             setDomainLoading(false);
         }
     }, [domainInput, onStoreUpdate]);
+
+    const handleCheckDomain = useCallback(async () => {
+        if (!normalizedDomainInput) return;
+        setCheckingDomain(true);
+        setDomainError(null);
+        try {
+            const result = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            setDomainAvailability(result);
+            if (result?.normalized) {
+                setDomainInput(result.normalized);
+            }
+        } catch {
+            setDomainAvailability({ available: false, reason: 'Could not check domain right now.' });
+        } finally {
+            setCheckingDomain(false);
+        }
+    }, [normalizedDomainInput, storeDetails?.storeId]);
 
     const handleRemoveDomain = useCallback(async () => {
         setDomainLoading(true);
@@ -359,16 +387,34 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                             placeholder={t('domainPlaceholder')}
                             prefix={<LuGlobe />}
                             value={domainInput}
-                            onChange={(event) => setDomainInput(event.target.value.toLowerCase().trim())}
+                            onChange={(event) => {
+                                setDomainInput(event.target.value.toLowerCase().trim());
+                                setDomainAvailability(null);
+                            }}
                         />
-                        <Button
-                            disabled={!domainInput || domainInput.length < 4}
-                            loading={domainLoading}
-                            onClick={() => void handleAddDomain()}
-                            type="primary"
-                        >
-                            {t('connectDomain')}
-                        </Button>
+                        {domainAvailability ? (
+                            <Text type={domainAvailability.available ? 'success' : 'danger'}>
+                                {domainAvailability.available ? 'Domain is available to connect' : domainAvailability.reason}
+                            </Text>
+                        ) : null}
+                        <Space wrap>
+                            <Button
+                                disabled={!canCheckDomain}
+                                icon={<LuSearch />}
+                                loading={checkingDomain}
+                                onClick={() => void handleCheckDomain()}
+                            >
+                                {t('checkAvailability')}
+                            </Button>
+                            <Button
+                                disabled={!canConnectDomain}
+                                loading={domainLoading}
+                                onClick={() => void handleAddDomain()}
+                                type="primary"
+                            >
+                                {t('connectDomain')}
+                            </Button>
+                        </Space>
                     </Space>
                 )}
 

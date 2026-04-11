@@ -107,7 +107,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
     const handlePhotoUpload = async (file: File, index: number) => {
         if (!session?.tId || !session?.sId) {
-            Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
+            Toast.show({ content: t('sessionUnavailable'), duration: 1500 });
             return false;
         }
 
@@ -118,7 +118,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             nextPhotos[index] = url;
             setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
         } catch {
-            Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
+            Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
         } finally {
             setUploadingIndex(null);
         }
@@ -178,7 +178,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                     onClick={() => window.open(officialPageUrl, '_blank', 'noopener,noreferrer')}
                                     size="small"
                                 >
-                                    View Official Page
+                                    {t('viewOfficialPage')}
                                 </Button>
                             </Flex>
                         </Flex>
@@ -195,8 +195,9 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Known For</Text>
-                        <Input maxLength={40} onChange={(value) => setFormData((previous) => ({ ...previous, knownFor: value }))} placeholder="Wood-fired pizza" value={formData.knownFor} />
+                        <Text strong>{t('knownFor')}</Text>
+                        <Input maxLength={40} onChange={(value) => setFormData((previous) => ({ ...previous, knownFor: value }))} placeholder={t('knownForPlaceholder')} value={formData.knownFor} />
+                        <Text type="secondary">{t('knownForHelp')}</Text>
                     </Flex>
                 </Card>
 
@@ -218,19 +219,20 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Accent Color</Text>
+                        <Text strong>{t('accentColor')}</Text>
                         <ColorPicker
                             format="hex"
                             onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color.toHexString() }))}
                             showText
                             value={formData.accentColor}
                         />
+                        <Text type="secondary">{t('accentColorHelp')}</Text>
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Established Year</Text>
+                        <Text strong>{t('establishedYear')}</Text>
                         <InputNumber
                             max={new Date().getFullYear()}
                             min={1900}
@@ -239,6 +241,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             style={{ width: '100%' }}
                             value={formData.establishedYear}
                         />
+                        <Text type="secondary">{t('establishedYearHelp')}</Text>
                     </Flex>
                 </Card>
 
@@ -268,7 +271,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Google Rating</Text>
+                        <Text strong>{t('googleRating')}</Text>
                         <InputNumber
                             max={5}
                             min={1}
@@ -279,12 +282,13 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             style={{ width: '100%' }}
                             value={formData.googleRating}
                         />
+                        <Text type="secondary">{t('googleRatingHelp')}</Text>
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Review Count</Text>
+                        <Text strong>{t('googleReviewCount')}</Text>
                         <InputNumber
                             min={0}
                             onChange={(value) => setFormData((previous) => ({ ...previous, googleReviewCount: typeof value === 'number' ? value : undefined }))}
@@ -292,20 +296,21 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             style={{ width: '100%' }}
                             value={formData.googleReviewCount}
                         />
+                        <Text type="secondary">{t('googleReviewCountHelp')}</Text>
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Business Photos</Text>
-                        <Text type="secondary">Add up to 3 photos of your business.</Text>
+                        <Text strong>{t('businessPhotos')}</Text>
+                        <Text type="secondary">{t('businessPhotosHelp')}</Text>
                         <Flex gap={10} wrap>
                             {photoSlots.map((photo, index) => (
                                 <Card key={index} style={{ flex: '1 1 30%', minWidth: 92 }}>
                                     <Flex align="center" gap={8} vertical>
                                         {photo ? (
                                             <>
-                                                <Image alt={`Business photo ${index + 1}`} height={88} preview={false} src={photo} style={{ borderRadius: 8, objectFit: 'cover' }} width={88} />
+                                                <Image alt={t('photoLabel', { index: index + 1 })} height={88} preview={false} src={photo} style={{ borderRadius: 8, objectFit: 'cover' }} width={88} />
                                                 <Button color="danger" fill="none" onClick={() => handlePhotoRemove(index)} size="small">
                                                     <LuTrash2 size={16} />
                                                 </Button>
@@ -315,7 +320,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                                 <Button fill="outline" loading={uploadingIndex === index} size="small">
                                                     <Flex align="center" gap={6}>
                                                         <LuUpload size={16} />
-                                                        <Text>Photo {index + 1}</Text>
+                                                        <Text>{t('photoLabel', { index: index + 1 })}</Text>
                                                     </Flex>
                                                 </Button>
                                             </Upload>

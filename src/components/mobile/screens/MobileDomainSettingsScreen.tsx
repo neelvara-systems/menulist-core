@@ -1,6 +1,7 @@
 'use client'
 
 import { getMenuUrl } from '@constant/urls';
+import { checkCustomDomainAvailability } from '@database/stores';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Input as AntInput, List as AntList, Steps, Typography } from 'antd';
@@ -33,9 +34,11 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
     const [domainInput, setDomainInput] = useState(storeDetails?.customDomain || '');
     const [checkingSubdomain, setCheckingSubdomain] = useState(false);
     const [savingSubdomain, setSavingSubdomain] = useState(false);
+    const [checkingDomain, setCheckingDomain] = useState(false);
     const [domainLoading, setDomainLoading] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
     const [availability, setAvailability] = useState<{ available?: boolean; reason?: string; normalized?: string; preview?: string } | null>(null);
+    const [domainAvailability, setDomainAvailability] = useState<{ available?: boolean; reason?: string; normalized?: string } | null>(null);
     const [domainStatus, setDomainStatus] = useState<any>(null);
 
     const subdomainUrl = useMemo(
@@ -52,6 +55,13 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         && (!storeDetails?.subdomain || hasSubdomainChanged)
     );
     const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
+    const normalizedDomainInput = domainInput.trim().toLowerCase();
+    const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
+    const canConnectDomain = Boolean(
+        !activeDomain
+        && domainAvailability?.available
+        && domainAvailability?.normalized === normalizedDomainInput
+    );
     const liveUrl = activeDomain ? `https://${activeDomain}` : subdomainUrl;
     const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
     const dnsRecords = useMemo(() => {
@@ -137,18 +147,35 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             const response = await fetch('/api/domain', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ domain: domainInput.trim() }),
+                body: JSON.stringify({ domain: domainAvailability?.normalized || domainInput.trim() }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data?.error || common('error'));
             setStoreDetails({ ...storeDetails, customDomain: data.domain, domainVerified: false });
             setDomainInput(data.domain);
+            setDomainAvailability({ available: true, normalized: data.domain });
             setDomainStatus({ hasDomain: true, domain: data.domain, verified: false, config: data.verification });
             Toast.show({ content: t('domainAdded'), duration: 1200 });
         } catch (error: any) {
             Toast.show({ content: error?.message || common('error'), duration: 1800 });
         } finally {
             setDomainLoading(false);
+        }
+    };
+
+    const checkDomainAvailability = async () => {
+        if (!normalizedDomainInput) return;
+        setCheckingDomain(true);
+        try {
+            const data = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            setDomainAvailability(data);
+            if (data?.normalized) {
+                setDomainInput(data.normalized);
+            }
+        } catch {
+            setDomainAvailability({ available: false, reason: common('error') });
+        } finally {
+            setCheckingDomain(false);
         }
     };
 
@@ -305,10 +332,31 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                             </>
                         ) : (
                             <>
-                                <Input onChange={setDomainInput} placeholder={t('domainPlaceholder')} value={domainInput} />
-                                <Button block color="primary" loading={domainLoading} onClick={() => void addDomain()} size="large">
-                                    {t('connectDomain')}
-                                </Button>
+                                <Input
+                                    onChange={(value) => {
+                                        setDomainInput(value);
+                                        setDomainAvailability(null);
+                                    }}
+                                    placeholder={t('domainPlaceholder')}
+                                    value={domainInput}
+                                />
+                                {domainAvailability ? (
+                                    <Flex align="center" gap={8}>
+                                        {domainAvailability.available ? <LuCheck color="#16a34a" size={16} /> : <LuX color="#dc2626" size={16} />}
+                                        <Text type="secondary">{domainAvailability.available ? 'Domain is available to connect' : domainAvailability.reason}</Text>
+                                    </Flex>
+                                ) : null}
+                                <Flex gap={8}>
+                                    <Button block disabled={!canCheckDomain} fill="outline" loading={checkingDomain} onClick={() => void checkDomainAvailability()} size="large">
+                                        <Flex align="center" gap={6}>
+                                            <LuSearch size={16} />
+                                            <Text>{t('checkAvailability')}</Text>
+                                        </Flex>
+                                    </Button>
+                                    <Button block color="primary" disabled={!canConnectDomain} loading={domainLoading} onClick={() => void addDomain()} size="large">
+                                        {t('connectDomain')}
+                                    </Button>
+                                </Flex>
                             </>
                         )}
                     </Flex>

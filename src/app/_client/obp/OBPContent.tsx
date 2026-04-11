@@ -25,6 +25,7 @@ import {
     where,
 } from "firebase/firestore";
 import { unstable_cache } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { formatClockTime } from '@util/dateTime';
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -164,7 +165,7 @@ async function getTenantFromHeaders() {
 
 // ── Format today's hours for display ──
 
-function getTodayHoursDisplay(workingHours?: Record<string, string>, timeZone?: string): string | null {
+function getTodayHoursDisplay(workingHours: Record<string, string> | undefined, timeZone: string | undefined, t: (key: string, values?: Record<string, any>) => string): string | null {
     if (!workingHours) return null;
 
     const tz = timeZone || 'Asia/Kolkata';
@@ -182,16 +183,16 @@ function getTodayHoursDisplay(workingHours?: Record<string, string>, timeZone?: 
     const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const todayHours = workingHours[dayKeys[dayIndex]];
 
-    if (!todayHours || todayHours.toLowerCase() === 'closed') return 'Closed today';
+    if (!todayHours || todayHours.toLowerCase() === 'closed') return t('publicClosedToday');
 
     const [openTime, closeTime] = todayHours.split('-').map((time) => time.trim());
-    if (!openTime || !closeTime) return `Open today: ${todayHours.replace('-', ' – ')}`;
-    return `Open today: ${formatClockTime(openTime)} – ${formatClockTime(closeTime)}`;
+    if (!openTime || !closeTime) return t('publicOpenToday', { hours: todayHours.replace('-', ' – ') });
+    return t('publicOpenToday', { hours: `${formatClockTime(openTime)} – ${formatClockTime(closeTime)}` });
 }
 
 // ── Freshness signal text ──
 
-function getFreshnessText(modifiedOn?: any): string | null {
+function getFreshnessText(modifiedOn: any, t: (key: string) => string): string | null {
     if (!modifiedOn) return null;
 
     let date: Date;
@@ -213,9 +214,9 @@ function getFreshnessText(modifiedOn?: any): string | null {
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 1) return 'Info verified today';
-    if (diffDays < 7) return 'Info verified this week';
-    if (diffDays < 30) return 'Info verified this month';
+    if (diffDays < 1) return t('publicInfoVerifiedToday');
+    if (diffDays < 7) return t('publicInfoVerifiedThisWeek');
+    if (diffDays < 30) return t('publicInfoVerifiedThisMonth');
     return null; // Don't show stale freshness — silence is better than "updated 6 months ago"
 }
 
@@ -288,6 +289,7 @@ function getFullAddress(store: any): string | null {
 // ── Main async component ──
 
 export default async function OBPContent() {
+    const t = await getTranslations({ namespace: 'BusinessSettings' });
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
 
     // Lookup store
@@ -341,7 +343,7 @@ export default async function OBPContent() {
         ? { isOpen: hoursOutput.styleHint === "open", statusText: hoursOutput.statusText, nextChange: hoursOutput.secondaryText }
         : getStoreOpenStatus(store?.workingHours, store?.timeZone);
     const showStatusBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
-    const todayHours = getTodayHoursDisplay(store?.workingHours, store?.timeZone);
+    const todayHours = getTodayHoursDisplay(store?.workingHours, store?.timeZone, t);
     const fullAddress = getFullAddress(store);
 
     const obpUrl = generateOBPUrl(store?.subdomain, store?.customDomain);
@@ -376,7 +378,7 @@ export default async function OBPContent() {
         .map(([key]) => ATTRIBUTE_DISPLAY[key]);
 
     // Freshness signal — compute how recently the store was updated
-    const freshnessText = getFreshnessText(store?.modifiedOn);
+    const freshnessText = getFreshnessText(store?.modifiedOn, t);
 
     // Established year
     const establishedYear = pp.establishedYear;
@@ -467,7 +469,7 @@ export default async function OBPContent() {
                     {isPermanentlyClosed ? (
                         <div className={`${styles.statusBadge} ${styles.statusClosed}`}>
                             <span className={`${styles.statusDot} ${styles.statusDotClosed}`} />
-                            Permanently Closed
+                            {t('publicPermanentlyClosed')}
                         </div>
                     ) : showStatusBadge ? (
                         <div className={`${styles.statusBadge} ${status.isOpen ? styles.statusOpen : styles.statusClosed}`}>
@@ -488,16 +490,18 @@ export default async function OBPContent() {
                             rel="noopener noreferrer"
                             style={{ textDecoration: 'none', color: '#666', fontSize: 13 }}
                         >
-                            {googleRating} ★ on Google{googleReviewCount ? ` (${googleReviewCount})` : ''}
+                            {googleReviewCount
+                                ? t('publicGoogleRatingWithCount', { count: googleReviewCount, rating: googleRating })
+                                : t('publicGoogleRating', { rating: googleRating })}
                         </a>
                     )}
 
                     {knownFor && (
-                        <p className={styles.nextChange}>Known for: {knownFor}</p>
+                        <p className={styles.nextChange}>{t('publicKnownForPrefix', { value: knownFor })}</p>
                     )}
 
                     {establishedYear && (
-                        <p className={styles.nextChange}>Serving since {establishedYear}</p>
+                        <p className={styles.nextChange}>{t('publicServingSince', { year: establishedYear })}</p>
                     )}
                 </div>
 
@@ -505,7 +509,7 @@ export default async function OBPContent() {
                 <div className={styles.primaryCta}>
                     {isPermanentlyClosed ? (
                         <span className={styles.menuButtonDisabled}>
-                            This business is permanently closed
+                            {t('publicBusinessPermanentlyClosed')}
                         </span>
                     ) : hasMenu ? (
                         <OBPMenuCTA
@@ -516,7 +520,7 @@ export default async function OBPContent() {
                         />
                     ) : (
                         <span className={styles.menuButtonDisabled}>
-                            Menu coming soon
+                            {t('publicMenuComingSoon')}
                         </span>
                     )}
                 </div>
