@@ -183,15 +183,24 @@ export const updateStore = async (data: any) => {
 
             // Sync to storesSummary for Cloud Function optimization
             // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
-            await syncStoreToSummary(data.storeId, {
-                tId: data.tenantId,
-                businessType: data.businessType || 'unknown',
-                businessCategory,
-                active: data.active ?? true,
-                name: data.name || '',
-                timeZone: data.timeZone,
-                schedulerHour: data.schedulerHour,
-            });
+            // Only sync if summary-relevant fields are present in the update
+            const summaryFields = ['businessType', 'businessCategory', 'active', 'name', 'timeZone', 'schedulerHour'];
+            const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
+
+            if (hasSummaryFieldChanges && data.tenantId) {
+                await syncStoreToSummary(data.storeId, {
+                    tId: data.tenantId,
+                    businessType: data.businessType || 'unknown',
+                    businessCategory,
+                    active: data.active ?? true,
+                    name: data.name || '',
+                    timeZone: data.timeZone,
+                    schedulerHour: data.schedulerHour,
+                });
+            } else if (!data.tenantId) {
+                console.warn('Skipping syncStoreToSummary: tenantId is undefined for store', data.storeId);
+            }
+            // Skip sync if no summary-relevant fields present in update
 
             return data;
         },

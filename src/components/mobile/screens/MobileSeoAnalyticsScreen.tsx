@@ -4,27 +4,34 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
-import { LuBarChart2, LuSearch } from 'react-icons/lu';
-import { Card, Flex, Input, NavBar, Switch, Text, Title, Toast } from '../antd';
+import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
+import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileSeoAnalyticsScreenProps {
     onBack: () => void;
+    mode?: 'seo' | 'analytics';
 }
 
-export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsScreenProps) {
+export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
     const t = useTranslations('MobileSeoAnalytics');
+    const tSeo = useTranslations('SEO');
+    const tAnalytics = useTranslations('Analytics');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [tagline, setTagline] = useState('');
     const [metaTitle, setMetaTitle] = useState('');
     const [metaDescription, setMetaDescription] = useState('');
     const [canonicalUrl, setCanonicalUrl] = useState('');
+    const [keywords, setKeywords] = useState('');
     const [gaId, setGaId] = useState('');
     const [fbPixelId, setFbPixelId] = useState('');
     const [searchConsole, setSearchConsole] = useState('');
     const [enhancedEcommerce, setEnhancedEcommerce] = useState(false);
     const [trackMenuViews, setTrackMenuViews] = useState(false);
     const [trackLocation, setTrackLocation] = useState(false);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
+    const [wizardStep, setWizardStep] = useState(0);
 
     useEffect(() => {
         if (!storeDetails) return;
@@ -32,6 +39,7 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
         setMetaTitle(storeDetails.metaTitle || '');
         setMetaDescription(storeDetails.metaDescription || '');
         setCanonicalUrl(storeDetails.canonicalUrl || '');
+        setKeywords((storeDetails.keywords || []).join(', '));
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
         setFbPixelId(storeDetails.analytics?.facebookPixelId || '');
         setSearchConsole(storeDetails.analytics?.googleSearchConsole || '');
@@ -44,7 +52,12 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
         if (!storeDetails?.storeId) return;
         try {
             const update: any = { storeId: storeDetails.storeId };
-            if (field.startsWith('analytics.')) {
+            if (field === 'keywords') {
+                update.keywords = String(value)
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean);
+            } else if (field.startsWith('analytics.')) {
                 const analyticsKey = field.replace('analytics.', '');
                 update.analytics = { ...storeDetails.analytics, [analyticsKey]: value };
             } else {
@@ -58,68 +71,462 @@ export default function MobileSeoAnalyticsScreen({ onBack }: MobileSeoAnalyticsS
         }
     };
 
+    const isSeoMode = mode === 'seo';
+    const pageTitle = isSeoMode ? tSeo('title') : tAnalytics('title');
+    const pageSubtitle = isSeoMode
+        ? 'Manage how your business appears in search and shared links.'
+        : 'Manage tracking IDs and customer activity measurement for your menu.';
+
+    const wizardSteps = [
+        {
+            content: (
+                <Card size="small">
+                    <Flex gap={10} vertical>
+                        <Text strong>Let's set up your analytics.</Text>
+                        <Text type="secondary">
+                            This helps you track menu visits, popular dishes, customer locations, and order activity.
+                        </Text>
+                        <InfoCallout
+                            description="This setup usually takes around 5 minutes and you can skip optional steps."
+                            title="No action needed."
+                        />
+                    </Flex>
+                </Card>
+            ),
+            title: 'Overview',
+        },
+        {
+            content: (
+                <Card size="small">
+                    <Flex gap={10} vertical>
+                        <Text strong>Step 1: Set Up Google Analytics</Text>
+                        <Text type="secondary">
+                            This is the main tracking setup for your menu traffic and customer activity.
+                        </Text>
+                        <StepList
+                            items={[
+                                'Go to analytics.google.com',
+                                'Click "Start measuring"',
+                                'Choose Web for your menu website',
+                                'Create the property and copy the Measurement ID',
+                                'Paste the ID here. It starts with "G-"',
+                            ]}
+                        />
+                        <Button
+                            fill="outline"
+                            icon={<LuExternalLink size={16} />}
+                            onClick={() => openExternalLink('https://analytics.google.com')}
+                        >
+                            Open Google Analytics
+                        </Button>
+                        <Image
+                            alt="Where to find GA4 ID"
+                            preview={false}
+                            src="/images/analytics/ga4-id-location.png"
+                            style={{ borderRadius: 12, width: '100%' }}
+                        />
+                    </Flex>
+                </Card>
+            ),
+            title: 'Google Analytics',
+        },
+        {
+            content: (
+                <Card size="small">
+                    <Flex gap={10} vertical>
+                        <Text strong>Step 2: Set Up Google Search Console</Text>
+                        <Text type="secondary">
+                            This helps your menu appear correctly in Google Search.
+                        </Text>
+                        <StepList
+                            items={[
+                                'Go to Google Search Console',
+                                'Add your menu website URL as a property',
+                                'Choose HTML tag verification',
+                                'Copy the verification content',
+                                'Paste it into the Google Search Console field here',
+                            ]}
+                        />
+                        <Button
+                            fill="outline"
+                            icon={<LuExternalLink size={16} />}
+                            onClick={() => openExternalLink('https://search.google.com/search-console')}
+                        >
+                            Open Search Console
+                        </Button>
+                        <Image
+                            alt="Search Console verification"
+                            preview={false}
+                            src="/images/analytics/search-console-verification.png"
+                            style={{ borderRadius: 12, width: '100%' }}
+                        />
+                        <InfoCallout
+                            description="You can skip this and come back later."
+                            title="Optional step"
+                        />
+                    </Flex>
+                </Card>
+            ),
+            title: 'Search Console',
+        },
+        {
+            content: (
+                <Card size="small">
+                    <Flex gap={10} vertical>
+                        <Text strong>Step 3: Connect Facebook Pixel</Text>
+                        <Text type="secondary">
+                            Use this only if you run Facebook or Instagram ads and want campaign tracking.
+                        </Text>
+                        <StepList
+                            items={[
+                                'Go to business.facebook.com/events_manager',
+                                'Connect a new data source',
+                                'Choose Web as the platform',
+                                'Copy your Pixel ID',
+                                'Paste it into the Facebook Pixel field here',
+                            ]}
+                        />
+                        <Button
+                            fill="outline"
+                            icon={<LuExternalLink size={16} />}
+                            onClick={() => openExternalLink('https://business.facebook.com/events_manager')}
+                        >
+                            Open Events Manager
+                        </Button>
+                        <Image
+                            alt="Facebook Pixel ID location"
+                            preview={false}
+                            src="/images/analytics/facebook-pixel-id.png"
+                            style={{ borderRadius: 12, width: '100%' }}
+                        />
+                        <InfoCallout
+                            description="Only needed for ad tracking."
+                            title="Optional step"
+                        />
+                    </Flex>
+                </Card>
+            ),
+            title: 'Facebook Pixel',
+        },
+        {
+            content: (
+                <Card size="small">
+                    <Flex gap={12} vertical>
+                        <Text strong>Step 4: Choose What You Want to Track</Text>
+                        <Text type="secondary">
+                            These settings are applied directly to your store when you switch them on or off.
+                        </Text>
+                        <FeatureToggleCard
+                            checked={enhancedEcommerce}
+                            description={tAnalytics('enhancedEcommerceHelp')}
+                            label={tAnalytics('enhancedEcommerce')}
+                            onChange={(value) => { setEnhancedEcommerce(value); void saveField('analytics.enhancedEcommerce', value); }}
+                        />
+                        <FeatureToggleCard
+                            checked={trackMenuViews}
+                            description={tAnalytics('menuItemViewsHelp')}
+                            label={tAnalytics('menuItemViews')}
+                            onChange={(value) => { setTrackMenuViews(value); void saveField('analytics.trackMenuViews', value); }}
+                        />
+                        <FeatureToggleCard
+                            checked={trackLocation}
+                            description={tAnalytics('customerLocationsHelp')}
+                            label={tAnalytics('customerLocations')}
+                            onChange={(value) => { setTrackLocation(value); void saveField('analytics.trackLocation', value); }}
+                        />
+                        <InfoCallout
+                            description="We only track general analytics information, not personal customer identity."
+                            title="Privacy"
+                        />
+                    </Flex>
+                </Card>
+            ),
+            title: 'Tracking Options',
+        },
+        {
+            content: (
+                <Card size="small">
+                    <Flex align="center" gap={12} style={{ textAlign: 'center' }} vertical>
+                        <LuCheckCircle2 size={40} />
+                        <Text strong>Everything is running normally.</Text>
+                        <Text type="secondary">
+                            Your analytics setup is ready. Data usually starts appearing within 24 to 48 hours.
+                        </Text>
+                        <StepList
+                            items={[
+                                'Check your analytics dashboard tomorrow',
+                                'Review your popular menu items',
+                                'Watch for customer location and traffic patterns',
+                            ]}
+                        />
+                    </Flex>
+                </Card>
+            ),
+            title: 'Done',
+        },
+    ];
+
+    const openSetupWizard = () => {
+        setWizardStep(0);
+        setIsSetupWizardOpen(true);
+    };
+
+    const closeSetupWizard = () => {
+        setIsSetupWizardOpen(false);
+        setWizardStep(0);
+    };
+
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
+                    subtitle={pageSubtitle}
+                    title={pageTitle}
                 />
-                <Card title={<Flex align="center" gap={8}><LuSearch color="#1677ff" size={18} /><Text strong>{t('seoSettings')}</Text></Flex>}>
-                    <Flex gap={12} vertical>
-                        <FieldGroup hint={t('taglineHint')} label={t('tagline')}>
-                            <Input maxLength={100} onBlur={() => void saveField('tagline', tagline)} onChange={setTagline} placeholder="Authentic Italian cuisine since 1985" value={tagline} />
-                        </FieldGroup>
-                        <FieldGroup hint={t('metaTitleHint')} label={t('metaTitle')}>
-                            <Input maxLength={60} onBlur={() => void saveField('metaTitle', metaTitle)} onChange={setMetaTitle} placeholder="Your Restaurant Name | Best Pizza in Town" value={metaTitle} />
-                        </FieldGroup>
-                        <FieldGroup hint={t('metaDescriptionHint')} label={t('metaDescription')}>
-                            <Input maxLength={160} onBlur={() => void saveField('metaDescription', metaDescription)} onChange={setMetaDescription} placeholder="Serving the best wood-fired pizza and handmade pasta..." value={metaDescription} />
-                        </FieldGroup>
-                        <FieldGroup hint={t('websiteUrlHint')} label={t('websiteUrl')}>
-                            <Input onBlur={() => void saveField('canonicalUrl', canonicalUrl)} onChange={setCanonicalUrl} placeholder="https://yourrestaurant.com" value={canonicalUrl} />
-                        </FieldGroup>
-                    </Flex>
-                </Card>
+                {isSeoMode ? (
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <FieldGroup hint={tSeo('taglineHelp')} label={tSeo('tagline')}>
+                                <Input maxLength={100} onBlur={() => void saveField('tagline', tagline)} onChange={setTagline} placeholder={tSeo('taglinePlaceholder')} value={tagline} />
+                            </FieldGroup>
+                            <FieldGroup hint={tSeo('metaTitleHelp')} label={tSeo('metaTitle')}>
+                                <Input maxLength={60} onBlur={() => void saveField('metaTitle', metaTitle)} onChange={setMetaTitle} placeholder={tSeo('metaTitlePlaceholder')} value={metaTitle} />
+                            </FieldGroup>
+                            <FieldGroup hint={tSeo('metaDescHelp')} label={tSeo('metaDescription')}>
+                                <Input maxLength={160} onBlur={() => void saveField('metaDescription', metaDescription)} onChange={setMetaDescription} placeholder={tSeo('metaDescPlaceholder')} value={metaDescription} />
+                            </FieldGroup>
+                            <FieldGroup hint={tSeo('keywordsHelp')} label={tSeo('keywords')}>
+                                <Input
+                                    onBlur={() => void saveField('keywords', keywords)}
+                                    onChange={setKeywords}
+                                    placeholder={tSeo('keywordsPlaceholder')}
+                                    value={keywords}
+                                />
+                            </FieldGroup>
+                            <FieldGroup hint={tSeo('canonicalUrlHelp')} label={tSeo('canonicalUrl')}>
+                                <Input onBlur={() => void saveField('canonicalUrl', canonicalUrl)} onChange={setCanonicalUrl} placeholder={tSeo('canonicalUrlPlaceholder')} value={canonicalUrl} />
+                            </FieldGroup>
+                        </Flex>
+                    </Card>
+                ) : (
+                    <>
+                        <Card>
+                            <Flex gap={12} vertical>
+                                <Flex gap={6} vertical>
+                                    <Text strong>{tAnalytics('trackSuccess')}</Text>
+                                    <Text type="secondary">{tAnalytics('trackSuccessDesc')}</Text>
+                                </Flex>
+                                <Flex gap={8}>
+                                    <Button block icon={<LuRocket size={16} />} onClick={openSetupWizard}>
+                                        {tAnalytics('setupWizard')}
+                                    </Button>
+                                    <Button block fill="outline" icon={<LuBookOpen size={16} />} onClick={() => setIsGuideOpen(true)}>
+                                        {tAnalytics('viewGuide')}
+                                    </Button>
+                                </Flex>
+                            </Flex>
+                        </Card>
 
-                <Card title={<Flex align="center" gap={8}><LuBarChart2 color="#16a34a" size={18} /><Text strong>{t('analytics')}</Text></Flex>}>
-                    <Flex gap={12} vertical>
-                        <FieldGroup hint={t('gaIdHint')} label={t('gaId')}>
-                            <Input onBlur={() => void saveField('analytics.googleAnalyticsId', gaId)} onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
-                        </FieldGroup>
-                        <FieldGroup hint={t('fbPixelIdHint')} label={t('fbPixelId')}>
-                            <Input onBlur={() => void saveField('analytics.facebookPixelId', fbPixelId)} onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
-                        </FieldGroup>
-                        <FieldGroup hint={t('searchConsoleHint')} label={t('searchConsole')}>
-                            <Input onBlur={() => void saveField('analytics.googleSearchConsole', searchConsole)} onChange={setSearchConsole} placeholder="Verification code" value={searchConsole} />
-                        </FieldGroup>
-                    </Flex>
-                </Card>
+                        <Card title={tAnalytics('essentialTracking')}>
+                            <Flex gap={12} vertical>
+                                <FieldGroup hint={tAnalytics('googleAnalyticsIdHelp')} label={tAnalytics('googleAnalyticsId')}>
+                                    <Input onBlur={() => void saveField('analytics.googleAnalyticsId', gaId)} onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
+                                </FieldGroup>
+                                <FieldGroup hint={tAnalytics('googleSearchConsoleHelp')} label={tAnalytics('googleSearchConsole')}>
+                                    <Input
+                                        onBlur={() => void saveField('analytics.googleSearchConsole', searchConsole)}
+                                        onChange={setSearchConsole}
+                                        placeholder="Verification code"
+                                        value={searchConsole}
+                                    />
+                                </FieldGroup>
+                                <FieldGroup hint={tAnalytics('facebookPixelIdHelp')} label={tAnalytics('facebookPixelId')}>
+                                    <Input onBlur={() => void saveField('analytics.facebookPixelId', fbPixelId)} onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
+                                </FieldGroup>
+                            </Flex>
+                        </Card>
 
-                <Card>
-                    <Flex gap={16} vertical>
-                        <ToggleRow
-                            checked={enhancedEcommerce}
-                            description={t('enhancedEcommerceDesc')}
-                            label={t('enhancedEcommerce')}
-                            onChange={(value) => { setEnhancedEcommerce(value); void saveField('analytics.enhancedEcommerce', value); }}
-                        />
-                        <ToggleRow
-                            checked={trackMenuViews}
-                            description={t('menuItemViewsDesc')}
-                            label={t('menuItemViews')}
-                            onChange={(value) => { setTrackMenuViews(value); void saveField('analytics.trackMenuViews', value); }}
-                        />
-                        <ToggleRow
-                            checked={trackLocation}
-                            description={t('customerLocationsDesc')}
-                            label={t('customerLocations')}
-                            onChange={(value) => { setTrackLocation(value); void saveField('analytics.trackLocation', value); }}
-                        />
-                    </Flex>
-                </Card>
+                        <Card title={tAnalytics('trackingFeatures')}>
+                            <Flex gap={16} vertical>
+                                <ToggleRow
+                                    checked={enhancedEcommerce}
+                                    description={tAnalytics('enhancedEcommerceHelp')}
+                                    label={tAnalytics('enhancedEcommerce')}
+                                    onChange={(value) => { setEnhancedEcommerce(value); void saveField('analytics.enhancedEcommerce', value); }}
+                                />
+                                <ToggleRow
+                                    checked={trackMenuViews}
+                                    description={tAnalytics('menuItemViewsHelp')}
+                                    label={tAnalytics('menuItemViews')}
+                                    onChange={(value) => { setTrackMenuViews(value); void saveField('analytics.trackMenuViews', value); }}
+                                />
+                                <ToggleRow
+                                    checked={trackLocation}
+                                    description={tAnalytics('customerLocationsHelp')}
+                                    label={tAnalytics('customerLocations')}
+                                    onChange={(value) => { setTrackLocation(value); void saveField('analytics.trackLocation', value); }}
+                                />
+                            </Flex>
+                        </Card>
+                    </>
+                )}
             </Flex>
+
+            {!isSeoMode ? (
+                <>
+                    <Popup
+                        bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+                        destroyOnClose
+                        onMaskClick={() => setIsGuideOpen(false)}
+                        visible={isGuideOpen}
+                    >
+                        <Flex style={{ height: '100%' }} vertical>
+                            <NavBar
+                                onBack={() => setIsGuideOpen(false)}
+                                right={(
+                                    <Button
+                                        fill="none"
+                                        onClick={() => setIsGuideOpen(false)}
+                                        style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                    >
+                                        <LuX size={18} />
+                                    </Button>
+                                )}
+                            >
+                                {tAnalytics('viewGuide')}
+                            </NavBar>
+
+                            <Flex style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} vertical>
+                                <Tabs activeKey="quick">
+                                    <Tabs.Tab key="quick" title="Quick Start Guide">
+                                        <Flex gap={12} style={{ paddingTop: 12 }} vertical>
+                                            <GuideSection
+                                                items={[
+                                                    'Go to analytics.google.com',
+                                                    'Click "Start measuring"',
+                                                    'Finish the setup and copy the Measurement ID',
+                                                    'Paste the ID into this analytics screen',
+                                                ]}
+                                                title="Set Up Google Analytics"
+                                            />
+                                            <GuideSection
+                                                items={[
+                                                    'Open Google Search Console',
+                                                    'Add your menu website URL',
+                                                    'Choose HTML tag verification',
+                                                    'Copy the meta content and paste it here',
+                                                ]}
+                                                title="Set Up Google Search Console"
+                                            />
+                                            <GuideSection
+                                                items={[
+                                                    'Open Facebook Events Manager',
+                                                    'Connect a web data source',
+                                                    'Copy your Pixel ID',
+                                                    'Paste the ID into this analytics screen',
+                                                ]}
+                                                title="Set Up Facebook Pixel"
+                                            />
+                                            <GuideSection
+                                                items={[
+                                                    'Enable sales tracking for order and revenue visibility',
+                                                    'Enable menu item views to see popular dishes',
+                                                    'Enable location tracking for customer geography',
+                                                    'Wait 24 to 48 hours for data to appear',
+                                                ]}
+                                                title="Enable Tracking Features"
+                                            />
+                                        </Flex>
+                                    </Tabs.Tab>
+
+                                    <Tabs.Tab key="complete" title="Complete Guide">
+                                        <Flex gap={12} style={{ paddingTop: 12 }} vertical>
+                                            <GuideSection
+                                                description="Reports > Realtime shows who is currently visiting your menu. Reports > Engagement > Events helps you track views, add-to-cart actions, and purchases."
+                                                title="Google Analytics Reports"
+                                            />
+                                            <GuideSection
+                                                description="Search performance shows how customers find your menu on Google. Mobile usability helps you confirm the public page works well on phones."
+                                                title="Search Console Features"
+                                            />
+                                            <GuideSection
+                                                description="Facebook Pixel helps you understand ad-driven visits, customer journeys, and conversion performance."
+                                                title="Facebook Pixel Insights"
+                                            />
+                                            <GuideSection
+                                                description="Enhanced e-commerce gives view-to-purchase insight, cart behavior, and category-level sales visibility."
+                                                title="Enhanced E-commerce Features"
+                                            />
+                                            <GuideSection
+                                                description="Location analytics helps you understand where visitors come from and when they are most active."
+                                                title="Location Analytics"
+                                            />
+                                            <ResourceLinksSection />
+                                        </Flex>
+                                    </Tabs.Tab>
+                                </Tabs>
+                            </Flex>
+                        </Flex>
+                    </Popup>
+
+                    <Popup
+                        bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+                        destroyOnClose
+                        onMaskClick={closeSetupWizard}
+                        visible={isSetupWizardOpen}
+                    >
+                        <Flex style={{ height: '100%' }} vertical>
+                            <NavBar
+                                onBack={closeSetupWizard}
+                                right={(
+                                    <Button
+                                        fill="none"
+                                        onClick={closeSetupWizard}
+                                        style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                    >
+                                        <LuX size={18} />
+                                    </Button>
+                                )}
+                            >
+                                {tAnalytics('setupWizard')}
+                            </NavBar>
+
+                            <Flex gap={12} style={{ borderBottom: '1px solid #f0f0f0', padding: 12 }} vertical>
+                                <Flex align="center" justify="space-between">
+                                    <Text strong>{wizardSteps[wizardStep]?.title}</Text>
+                                    <Text type="secondary">Step {wizardStep + 1} of {wizardSteps.length}</Text>
+                                </Flex>
+                            </Flex>
+
+                            <Flex style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} vertical>
+                                {wizardSteps[wizardStep]?.content}
+                            </Flex>
+
+                            <Flex gap={8} style={{ borderTop: '1px solid #f0f0f0', padding: 12 }} justify="space-between">
+                                <Button
+                                    disabled={wizardStep === 0}
+                                    fill="outline"
+                                    onClick={() => setWizardStep((current) => Math.max(0, current - 1))}
+                                >
+                                    Back
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        if (wizardStep === wizardSteps.length - 1) {
+                                            closeSetupWizard();
+                                            return;
+                                        }
+                                        setWizardStep((current) => Math.min(wizardSteps.length - 1, current + 1));
+                                    }}
+                                >
+                                    {wizardStep === wizardSteps.length - 1 ? 'Finish Setup' : 'Next Step'}
+                                </Button>
+                            </Flex>
+                        </Flex>
+                    </Popup>
+                </>
+            ) : null}
         </Flex>
     );
 }
@@ -144,4 +551,82 @@ function ToggleRow({ checked, description, label, onChange }: { checked: boolean
             <Switch checked={checked} onChange={onChange} />
         </Flex>
     );
+}
+
+function FeatureToggleCard({ checked, description, label, onChange }: { checked: boolean; description: string; label: string; onChange: (value: boolean) => void }) {
+    return (
+        <Card size="small">
+            <ToggleRow checked={checked} description={description} label={label} onChange={onChange} />
+        </Card>
+    );
+}
+
+function GuideSection({ description, items, title }: { description?: string; items?: string[]; title: string }) {
+    return (
+        <Card size="small">
+            <Flex gap={8} vertical>
+                <Text strong>{title}</Text>
+                {description ? <Text type="secondary">{description}</Text> : null}
+                {items?.length ? <StepList items={items} /> : null}
+            </Flex>
+        </Card>
+    );
+}
+
+function InfoCallout({ description, title }: { description: string; title: string }) {
+    return (
+        <Card size="small">
+            <Flex align="flex-start" gap={8}>
+                <LuInfo size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                <Flex gap={2} vertical>
+                    <Text strong>{title}</Text>
+                    <Text type="secondary">{description}</Text>
+                </Flex>
+            </Flex>
+        </Card>
+    );
+}
+
+function ResourceLinksSection() {
+    return (
+        <Card size="small">
+            <Flex gap={12} vertical>
+                <Text strong>Help Resources</Text>
+                <LinkButton label="Google Analytics Help Center" url="https://support.google.com/analytics" />
+                <LinkButton label="Analytics Academy" url="https://analytics.google.com/analytics/academy" />
+                <LinkButton label="Search Console Help Center" url="https://support.google.com/webmasters" />
+                <LinkButton label="SEO Best Practices Guide" url="https://developers.google.com/search/docs" />
+                <LinkButton label="Facebook Pixel Setup Guide" url="https://www.facebook.com/business/help/952192354843755" />
+                <LinkButton label="Events Manager Guide" url="https://www.facebook.com/business/help/402791146561655" />
+                <LinkButton label="GA4 E-commerce Guide" url="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" />
+                <LinkButton label="MenuListAI Analytics Docs" url="https://docs.menulistai.com/analytics" />
+            </Flex>
+        </Card>
+    );
+}
+
+function LinkButton({ label, url }: { label: string; url: string }) {
+    return (
+        <Button fill="outline" icon={<LuExternalLink size={16} />} onClick={() => openExternalLink(url)}>
+            {label}
+        </Button>
+    );
+}
+
+function StepList({ items }: { items: string[] }) {
+    return (
+        <Flex gap={8} vertical>
+            {items.map((item, index) => (
+                <Flex align="flex-start" gap={8} key={`${index}-${item}`}>
+                    <Text strong>{index + 1}.</Text>
+                    <Text style={{ flex: 1 }}>{item}</Text>
+                </Flex>
+            ))}
+        </Flex>
+    );
+}
+
+function openExternalLink(url: string) {
+    if (typeof window === 'undefined') return;
+    window.open(url, '_blank', 'noopener,noreferrer');
 }

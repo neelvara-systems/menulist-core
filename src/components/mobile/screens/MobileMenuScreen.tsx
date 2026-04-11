@@ -2133,33 +2133,9 @@ export default function MobileMenuScreen() {
                     setIsBulkActionsOpen(true);
                 })}
                 onClose={() => setIsCommandMenuOpen(false)}
-                onAddImages={() => launchCommandAction(() => {
-                    void Dialog.confirm({
-                        cancelText: t('cancel'),
-                        confirmText: t('addImages'),
-                        content: t('openImageToolsConfirm', { offering: labels.offeringPhrase }),
-                        onConfirm: () => openImageUploadModal(undefined, 'menu'),
-                        title: t('addImages'),
-                    });
-                })}
-                onGenerateDescriptions={() => launchCommandAction(() => {
-                    void Dialog.confirm({
-                        cancelText: t('cancel'),
-                        confirmText: t('generateDescriptions'),
-                        content: t('openDescriptionsConfirm', { offering: labels.offeringPhrase }),
-                        onConfirm: () => setIsGenerateDescriptionsOpen(true),
-                        title: t('generateDescriptionsAi'),
-                    });
-                })}
-                onManageLanguages={() => launchCommandAction(() => {
-                    void Dialog.confirm({
-                        cancelText: t('cancel'),
-                        confirmText: t('manageLanguages'),
-                        content: t('openLanguagesConfirm', { offering: labels.offeringPhrase }),
-                        onConfirm: () => setIsManageLanguagesOpen(true),
-                        title: t('manageLanguages'),
-                    });
-                })}
+                onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
+                onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
+                onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
                 onTextCase={() => launchCommandAction(() => setIsTextCaseOpen(true))}
                 onMoveCategory={() => launchCommandAction(() => {
                     setBulkActionType('moveCategory');

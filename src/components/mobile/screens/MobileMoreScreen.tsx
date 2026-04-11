@@ -28,7 +28,6 @@ import {
 } from 'react-icons/lu';
 import { Avatar, Card, Dialog, Flex, List, Text, Title, Toast } from '../antd';
 
-const MobilePublicInfoScreen = dynamic(() => import('./MobilePublicInfoScreen'), { ssr: false });
 const MobileBillingScreen = dynamic(() => import('./MobileBillingScreen'), { ssr: false });
 const MobileBasicSettingsScreen = dynamic(() => import('./MobileBasicSettingsScreen'), { ssr: false });
 const MobileLocaleSettingsScreen = dynamic(() => import('./MobileLocaleSettingsScreen'), { ssr: false });
@@ -56,7 +55,6 @@ const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr
 
 export type MoreSubScreen =
     | 'main'
-    | 'publicInfo'
     | 'billing'
     | 'basicSettings'
     | 'locale'
@@ -75,7 +73,8 @@ export type MoreSubScreen =
     | 'businessAttributes'
     | 'feedbackSettings'
     | 'officialPage'
-    | 'seoAnalytics'
+    | 'seoSettings'
+    | 'analyticsSettings'
     | 'socialSettings'
     | 'timeSlots'
     | 'tempStatus'
@@ -113,7 +112,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
         setSubScreen(initialScreen);
     }, [initialScreen]);
 
-    if (subScreen === 'publicInfo') return <MobilePublicInfoScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'billing') return <MobileBillingScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'basicSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'locale') return <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} />;
@@ -127,12 +125,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
     if (subScreen === 'transactions') return <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'help') return <MobileHelpScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'advancedSettings') return <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'contactSettings') return <MobileAdvancedSettingsScreen mode="contact" onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'contactSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'designEditor') return <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'businessAttributes') return <MobileBusinessAttributesScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'feedbackSettings') return <MobileAdvancedSettingsScreen mode="feedback" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'officialPage') return <MobileOfficialPageScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'seoAnalytics') return <MobileSeoAnalyticsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'seoSettings') return <MobileSeoAnalyticsScreen mode="seo" onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'analyticsSettings') return <MobileSeoAnalyticsScreen mode="analytics" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'socialSettings') return <MobileAdvancedSettingsScreen mode="social" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
@@ -154,10 +153,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
 
     const businessIdentityItems = [
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: t('basicSettings'), description: t('basicSettingsDesc'), onClick: () => setSubScreen('basicSettings') },
-        { key: 'publicInfo', icon: <LuMapPin color="#16a34a" size={20} />, label: t('publicInfo'), description: t('publicInfoDesc'), onClick: () => setSubScreen('publicInfo') },
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => setSubScreen('locale') },
-        { key: 'contactSettings', icon: <LuUsers color="#2563eb" size={20} />, label: tBusiness('contactPerson'), description: 'Primary business contact details for owners, staff, and support.', onClick: () => setSubScreen('contactSettings') },
-        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), description: 'Public social links shown across your business presence.', onClick: () => setSubScreen('socialSettings') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => setSubScreen('hoursEdit') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => setSubScreen('timeSlots') },
         { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: t('locations'), description: t('locationsDesc'), onClick: () => setSubScreen('locations') },
@@ -168,12 +164,14 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
     const businessPresenceItems = [
         { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('domainSettings') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => setSubScreen('officialPage') }] : []),
+        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), description: 'Public social links shown across your business presence.', onClick: () => setSubScreen('socialSettings') },
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => setSubScreen('businessAttributes') }] : []),
-        { key: 'seoAnalytics', icon: <LuGlobe color="#0ea5e9" size={20} />, label: t('seoAnalytics'), description: t('seoAnalyticsDesc'), onClick: () => setSubScreen('seoAnalytics') },
+        { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, label: 'SEO', description: 'Manage search title, description, keywords, and canonical URL.', onClick: () => setSubScreen('seoSettings') },
+        { key: 'analyticsSettings', icon: <LuBarChart3 color="#16a34a" size={20} />, label: 'Analytics Settings', description: 'Manage analytics IDs, verification, and tracking options.', onClick: () => setSubScreen('analyticsSettings') },
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => setSubScreen('integrations') }] : []),
         { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: 'Store-level guest feedback collection and review destination settings.', onClick: () => setSubScreen('feedbackSettings') },
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => setSubScreen('posSync') }] : []),
-        { key: 'advancedSettings', icon: <LuSettings2 color="#6b7280" size={20} />, label: t('advancedSettings'), description: t('advancedSettingsDesc'), onClick: () => setSubScreen('advancedSettings') },
+        { key: 'advancedSettings', icon: <LuSettings2 color="#6b7280" size={20} />, label: 'Feedback Settings', description: 'Manage store-level guest feedback defaults and collection rules.', onClick: () => setSubScreen('advancedSettings') },
     ];
 
     const handleLogout = () => {

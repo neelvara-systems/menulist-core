@@ -16,7 +16,7 @@ import { getUTCDate } from '@util/dateTime';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
-import { Button, Card, Checkbox, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileLocaleSettingsScreenProps {
@@ -73,22 +73,17 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
         }));
     };
 
-    const toggleLanguage = (languageCode: string, checked: boolean) => {
-        setFormData((previous) => {
-            const nextLanguages = checked
-                ? Array.from(new Set([...previous.activeLanguages, languageCode])).slice(0, LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT)
-                : previous.activeLanguages.filter((code) => code !== languageCode);
+    const handleActiveLanguagesChange = (value: string | string[]) => {
+        const selectedLanguages = Array.isArray(value) ? value : [value];
+        const nextLanguages = selectedLanguages.slice(0, LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT);
 
-            const nextDefaultLanguage = nextLanguages.includes(previous.defaultLanguage)
+        setFormData((previous) => ({
+            ...previous,
+            activeLanguages: nextLanguages,
+            defaultLanguage: nextLanguages.includes(previous.defaultLanguage)
                 ? previous.defaultLanguage
-                : (nextLanguages[0] || 'en');
-
-            return {
-                ...previous,
-                activeLanguages: nextLanguages,
-                defaultLanguage: nextDefaultLanguage,
-            };
-        });
+                : (nextLanguages[0] || 'en'),
+        }));
     };
 
     const handleSave = useCallback(async () => {
@@ -190,18 +185,14 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <Text type="secondary">{tBusiness('availableLanguages')}</Text>
                         </Flex>
                         <Text type="secondary">{tBusiness('languageSettingsDesc')}</Text>
-                        <Flex gap={8} vertical>
-                            {languageOptions.map((language) => (
-                                <Checkbox
-                                    checked={formData.activeLanguages.includes(language.value)}
-                                    key={language.value}
-                                    onChange={(checked) => toggleLanguage(language.value, checked)}
-                                    disabled={!formData.activeLanguages.includes(language.value) && formData.activeLanguages.length >= LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
-                                >
-                                    {language.label}
-                                </Checkbox>
-                            ))}
-                        </Flex>
+                        <Select
+                            maxCount={LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
+                            mode="multiple"
+                            onChange={handleActiveLanguagesChange}
+                            options={languageOptions}
+                            placeholder={tBusiness('selectAvailableLanguages')}
+                            value={formData.activeLanguages}
+                        />
                         <Text type="secondary">{tBusiness('availableLanguagesTooltip', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}</Text>
                     </Flex>
                 </Card>

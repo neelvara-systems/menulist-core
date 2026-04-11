@@ -1,14 +1,14 @@
 'use client'
 
+import ImageUploadInput from '@atoms/imageUploadInput';
 import { BUSINESS_TYPES } from '@constant/common';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useRef, useState } from 'react';
-import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuPhoneCall, LuUpload } from 'react-icons/lu';
-import ImageUploadInput from '@atoms/imageUploadInput';
-import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Title, Toast } from '../antd';
+import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileBasicSettingsScreenProps {
@@ -37,12 +37,24 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             : null
     );
     const [formData, setFormData] = useState({
+        addressLine: storeDetails?.addressLine || '',
+        area: storeDetails?.area || '',
+        city: storeDetails?.city || '',
+        contactPersonEmail: storeDetails?.contactPersonEmail || '',
+        contactPersonName: storeDetails?.contactPersonName || '',
+        contactPersonNumber: storeDetails?.contactPersonNumber || '',
+        country: storeDetails?.country || '',
+        district: storeDetails?.district || '',
         email: storeDetails?.email || '',
         businessType: storeDetails?.businessType || '',
         description: storeDetails?.description || '',
         gstn: storeDetails?.gstn || '',
+        latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
+        longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
         name: storeDetails?.name || '',
+        postalCode: storeDetails?.postalCode || '',
         phoneNumber: storeDetails?.phoneNumber || '',
+        state: storeDetails?.state || '',
     });
 
     const handleSave = useCallback(async () => {
@@ -52,7 +64,30 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             return;
         }
 
-        const updates: Record<string, any> = { ...formData };
+        const latitude = formData.latitude.trim() ? Number(formData.latitude) : undefined;
+        const longitude = formData.longitude.trim() ? Number(formData.longitude) : undefined;
+        const updates: Record<string, any> = {
+            addressLine: formData.addressLine,
+            area: formData.area,
+            businessType: formData.businessType,
+            city: formData.city,
+            contactPersonEmail: formData.contactPersonEmail,
+            contactPersonName: formData.contactPersonName,
+            contactPersonNumber: formData.contactPersonNumber,
+            country: formData.country,
+            description: formData.description,
+            district: formData.district,
+            email: formData.email,
+            gstn: formData.gstn,
+            name: formData.name,
+            phoneNumber: formData.phoneNumber,
+            postalCode: formData.postalCode,
+            state: formData.state,
+            tenantId: storeDetails.tenantId, // Ensure tenantId is included for syncStoreToSummary
+        };
+        if (latitude !== undefined && longitude !== undefined) {
+            updates.geo = { latitude, longitude };
+        }
         if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
             updates.imageToUpdate = selectedLogo.url;
             updates.imageType = selectedLogo.type || 'image/png';
@@ -67,12 +102,23 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         } catch {
             setStoreDetails((previous: any) => ({
                 ...previous,
+                addressLine: storeDetails.addressLine,
+                area: storeDetails.area,
+                city: storeDetails.city,
                 businessType: storeDetails.businessType,
+                contactPersonEmail: storeDetails.contactPersonEmail,
+                contactPersonName: storeDetails.contactPersonName,
+                contactPersonNumber: storeDetails.contactPersonNumber,
+                country: storeDetails.country,
                 email: storeDetails.email,
                 description: storeDetails.description,
+                district: storeDetails.district,
+                geo: storeDetails.geo,
                 gstn: storeDetails.gstn,
                 name: storeDetails.name,
+                postalCode: storeDetails.postalCode,
                 phoneNumber: storeDetails.phoneNumber,
+                state: storeDetails.state,
             }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         } finally {
@@ -121,10 +167,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                         >
                             <Flex align="center" gap={6}>
                                 <LuUpload size={16} />
-                                <Text>Update logo</Text>
+                                <Text>{tBusiness('uploadLogo')}</Text>
                             </Flex>
                         </Button>
-                        <Text type="secondary">Your logo is part of the business profile and can be updated here.</Text>
+                        <Text type="secondary">{tBusiness('uploadLogoDesc')}</Text>
                     </Flex>
                 </Card>
 
@@ -175,6 +221,32 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
 
                 <Card>
                     <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuUser size={14} />
+                            <Text type="secondary">{tBusiness('contactPerson')}</Text>
+                        </Flex>
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, contactPersonName: value }))}
+                            placeholder={tBusiness('fullName')}
+                            value={formData.contactPersonName}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, contactPersonEmail: value }))}
+                            placeholder={tBusiness('emailPlaceholder')}
+                            type="email"
+                            value={formData.contactPersonEmail}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, contactPersonNumber: value }))}
+                            placeholder={tBusiness('phonePlaceholder')}
+                            type="tel"
+                            value={formData.contactPersonNumber}
+                        />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('businessDescription')}</Text>
                         <TextArea
                             maxLength={300}
@@ -195,9 +267,65 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 </Card>
 
                 <Card>
-                    <Flex align="center" justify="space-between">
-                        <Text type="secondary">{t('storeId')}</Text>
-                        <Title level={5} style={{ margin: 0 }}>{storeDetails.storeId}</Title>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuMapPin size={14} />
+                            <Text type="secondary">{tBusiness('locationInformation')}</Text>
+                        </Flex>
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
+                            placeholder={tBusiness('streetAddressPlaceholder')}
+                            value={formData.addressLine}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, area: value }))}
+                            placeholder={tBusiness('area')}
+                            value={formData.area}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, district: value }))}
+                            placeholder={tBusiness('district')}
+                            value={formData.district}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, city: value }))}
+                            placeholder={tBusiness('city')}
+                            value={formData.city}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, state: value }))}
+                            placeholder={tBusiness('state')}
+                            value={formData.state}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, country: value }))}
+                            placeholder={tBusiness('country')}
+                            value={formData.country}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, postalCode: value }))}
+                            placeholder={tBusiness('postalCode')}
+                            value={formData.postalCode}
+                        />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuMapPin size={14} />
+                            <Text type="secondary">{tBusiness('addressCoordinates')}</Text>
+                        </Flex>
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, latitude: value }))}
+                            placeholder={tBusiness('latitude')}
+                            value={formData.latitude}
+                        />
+                        <Input
+                            onChange={(value) => setFormData((previous) => ({ ...previous, longitude: value }))}
+                            placeholder={tBusiness('longitude')}
+                            value={formData.longitude}
+                        />
                     </Flex>
                 </Card>
 

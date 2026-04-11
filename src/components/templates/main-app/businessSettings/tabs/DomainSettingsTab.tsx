@@ -192,7 +192,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
             <Card size="small" style={{ marginBottom: 16 }}>
                 <Title level={5} style={{ marginTop: 0 }}>{t('subdomain')}</Title>
                 <Paragraph type="secondary" style={{ marginBottom: 12 }}>
-                    This is usually created from your business name during setup. You can change it here if needed.
+                    {t('subdomainSetupNote')}
                 </Paragraph>
 
                 {storeDetails?.isMaster === false ? (
@@ -225,7 +225,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
 
                         <Input
                             addonAfter=".menulist.ai"
-                            placeholder="your-business"
+                            placeholder={t('subdomainPlaceholder')}
                             value={subdomainValue}
                             onBlur={(event) => void checkAvailability(event.target.value)}
                             onChange={(event) => setSubdomainValue(event.target.value.toLowerCase().trim())}
@@ -253,7 +253,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                                 onClick={() => void saveSubdomain()}
                                 type="primary"
                             >
-                                {t('copy') ? 'Save' : 'Save'}
+                                {t('saveChanges')}
                             </Button>
                         </Space>
 

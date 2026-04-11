@@ -186,7 +186,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 <Card>
                     <Flex gap={8} vertical>
                         <Text strong>{t('subdomain')}</Text>
-                        <Text type="secondary">This is usually created from your business name during setup. You can change it here if needed.</Text>
+                        <Text type="secondary">{t('subdomainSetupNote')}</Text>
                         {storeDetails?.isMaster === false ? (
                             <>
                                 <Text>{storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : t('outletSubdomainInfo')}</Text>
@@ -197,7 +197,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                 <AntInput
                                     addonAfter=".menulist.ai"
                                     onChange={(event) => setSubdomainValue(event.target.value.toLowerCase().trim())}
-                                    placeholder="your-business"
+                                    placeholder={t('subdomainPlaceholder')}
                                     value={subdomainValue}
                                 />
                                 <Text type="secondary">{t('subdomainHelp')}</Text>
@@ -275,7 +275,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                         }}
                                         size="small"
                                     >
-                                        <Flex align="center" gap={6}><LuTrash2 size={16} /><Text>Remove</Text></Flex>
+                                        <Flex align="center" gap={6}><LuTrash2 size={16} /><Text>{t('removeDomain')}</Text></Flex>
                                     </Button>
                                 </Flex>
                                 {!customDomainVerified ? (

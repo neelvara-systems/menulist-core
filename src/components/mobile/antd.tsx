@@ -390,19 +390,35 @@ export function SearchBar({ onChange, placeholder, style, value }: { onChange?: 
 
 type SelectOption = { label: ReactNode; value: string };
 
+type BaseSelectProps = {
+    options: SelectOption[];
+    placeholder?: string;
+    style?: AnyStyle;
+};
+
+type SingleSelectProps = BaseSelectProps & {
+    maxCount?: never;
+    mode?: undefined;
+    onChange?: (value: string) => void;
+    value?: string;
+};
+
+type MultiSelectProps = BaseSelectProps & {
+    maxCount?: number;
+    mode: 'multiple';
+    onChange?: (value: string[]) => void;
+    value?: string[];
+};
+
 export function Select({
+    maxCount,
+    mode,
     onChange,
     options,
     placeholder,
     style,
     value,
-}: {
-    onChange?: (value: string) => void;
-    options: SelectOption[];
-    placeholder?: string;
-    style?: AnyStyle;
-    value?: string;
-}) {
+}: SingleSelectProps | MultiSelectProps) {
     return (
         <AntSelect
             allowClear={false}
@@ -412,6 +428,8 @@ export function Select({
                 return String(option?.value || '').toLowerCase().includes(input.toLowerCase());
             }}
             getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+            maxCount={maxCount}
+            mode={mode}
             onChange={onChange}
             optionFilterProp="label"
             options={options}
@@ -472,13 +490,17 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
             className={className}
             justify="space-between"
             style={{
+                alignSelf: 'stretch',
+                backdropFilter: 'blur(10px)',
                 backgroundColor: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                flex: '0 0 auto',
                 minHeight: navHeight,
                 padding: isInsideSheet ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
-                zIndex: 5,
+                width: '100%',
+                zIndex: 20,
                 ...sanitizeStyle(style),
             }}
         >

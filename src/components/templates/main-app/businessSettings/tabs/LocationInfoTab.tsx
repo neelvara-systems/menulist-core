@@ -36,6 +36,25 @@ const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scro
             <Row gutter={[16, 0]}>
                 <Col xs={24} md={12}>
                     <Form.Item
+                        name="area"
+                        label={t('area')}
+                    >
+                        <Input placeholder={t('area')} />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                    <Form.Item
+                        name="district"
+                        label={t('district')}
+                    >
+                        <Input placeholder={t('district')} />
+                    </Form.Item>
+                </Col>
+            </Row>
+
+            <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                    <Form.Item
                         name="city"
                         label={t('city')}
                         rules={[{ message: t('cityRequired') }]}

@@ -19,6 +19,7 @@ const MobileShareScreen = dynamic(() => import('./screens/MobileShareScreen'), {
 const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { ssr: false });
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
+const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 116px)';
 
 function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard'; moreScreen: MoreSubScreen } {
     const fallback = { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen };
@@ -206,7 +207,7 @@ export default function MobileShell() {
                     flex={1}
                     style={{
                         overflowY: 'auto',
-                        paddingBottom: 88,
+                        paddingBottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         paddingTop:
                             activeTab === 'menu' ||
                             activeTab === 'share' ||
@@ -214,6 +215,7 @@ export default function MobileShell() {
                             (activeTab === 'more' && isMoreRootScreen)
                                 ? 'calc(env(safe-area-inset-top) + 8px)'
                                 : 0,
+                        scrollPaddingBottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                     }}
                     vertical
                 >

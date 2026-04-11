@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { updateStore } from '@database/stores';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ColorPicker, InputNumber, Upload } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -28,10 +29,15 @@ interface MobileOfficialPageScreenProps {
 export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
+    const common = useTranslations('Common');
     const session = useClientAuthSession();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+    const officialPageUrl = useMemo(
+        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
+        [storeDetails?.customDomain, storeDetails?.subdomain, storeDetails?.subDomain]
+    );
 
     const initialPresence = storeDetails?.publicPresence || {};
     const [formData, setFormData] = useState({
@@ -143,6 +149,34 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     subtitle={t('officialPageSubtitle')}
                     title={t('officialPage')}
                 />
+
+                {officialPageUrl ? (
+                    <Card>
+                        <Flex gap={10} vertical>
+                            <Text strong>{t('officialPage')}</Text>
+                            <Card size="small">
+                                <Text style={{ wordBreak: 'break-all' }}>{officialPageUrl}</Text>
+                            </Card>
+                            <Flex gap={8}>
+                                <Button
+                                    block
+                                    fill="outline"
+                                    onClick={() => navigator.clipboard.writeText(officialPageUrl)}
+                                    size="small"
+                                >
+                                    {common('copy')}
+                                </Button>
+                                <Button
+                                    block
+                                    onClick={() => window.open(officialPageUrl, '_blank', 'noopener,noreferrer')}
+                                    size="small"
+                                >
+                                    View Official Page
+                                </Button>
+                            </Flex>
+                        </Flex>
+                    </Card>
+                ) : null}
 
                 <Card>
                     <Flex gap={10} vertical>
