@@ -90,35 +90,43 @@ export default function ManageLanguagesSheet({
         const targetLang = GlobalLanguagesList.find((lang) => lang.code === pendingLanguageCode);
         if (!targetLang) return;
 
-        setIsSaving(true);
-        try {
-            let updated = removeObjRef(projectData);
-            updated.languages = [...projectLanguages, targetLang.code];
+        void Dialog.confirm({
+            cancelText: t('cancel'),
+            confirmText: t('addLanguageAction'),
+            content: `${targetLang.nativeName || targetLang.name} will be added and translated across this menu. This can take a little time.`,
+            onConfirm: async () => {
+                setIsSaving(true);
+                try {
+                    let updated = removeObjRef(projectData);
+                    updated.languages = [...projectLanguages, targetLang.code];
 
-            const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
-            for (const file of filesToTranslate) {
-                const result = await translateFile(
-                    updated,
-                    file,
-                    targetLang,
-                    sourceLang,
-                    AI_ACTIONS_TYPES.LANGUAGE_ADDITION
-                );
-                updated = result.updatedProject;
-            }
+                    const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
+                    for (const file of filesToTranslate) {
+                        const result = await translateFile(
+                            updated,
+                            file,
+                            targetLang,
+                            sourceLang,
+                            AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+                        );
+                        updated = result.updatedProject;
+                    }
 
-            onSaved(updated);
-            setPendingLanguageCode('');
-            Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
-        } catch (error) {
-            if (error instanceof AICapacityError) {
-                Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
-            } else {
-                Toast.show({ content: t('languageAddFailed'), duration: 2000 });
-            }
-        } finally {
-            setIsSaving(false);
-        }
+                    onSaved(updated);
+                    setPendingLanguageCode('');
+                    Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
+                } catch (error) {
+                    if (error instanceof AICapacityError) {
+                        Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+                    } else {
+                        Toast.show({ content: t('languageAddFailed'), duration: 2000 });
+                    }
+                } finally {
+                    setIsSaving(false);
+                }
+            },
+            title: t('addLanguage'),
+        });
     };
 
     const handleMakePrimary = async (languageCode: string) => {
@@ -160,6 +168,15 @@ export default function ManageLanguagesSheet({
                 </NavBar>
 
                 <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    {isSaving ? (
+                        <Card size="small" style={{ ...sectionCardStyle, backgroundColor: token.colorPrimaryBg }}>
+                            <Flex gap={4} vertical>
+                                <Text strong>Updating menu language</Text>
+                                <Text type="secondary">This can take a little time. Keep this screen open while we finish.</Text>
+                            </Flex>
+                        </Card>
+                    ) : null}
+
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>

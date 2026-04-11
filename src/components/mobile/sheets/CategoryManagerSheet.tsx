@@ -1,5 +1,6 @@
 'use client'
 
+import { getOwnerLabels } from '@config/businessLabels';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -26,6 +27,7 @@ export type MobileCategoryReorderItem = {
 };
 
 interface CategoryManagerSheetProps {
+    businessType?: string;
     categories: MobileCategoryItem[];
     categoryItems: Record<string, MobileCategoryReorderItem[]>;
     initialMode?: 'manage' | 'reorder';
@@ -40,6 +42,7 @@ interface CategoryManagerSheetProps {
 }
 
 export default function CategoryManagerSheet({
+    businessType,
     categories,
     categoryItems,
     initialMode = 'manage',
@@ -54,6 +57,7 @@ export default function CategoryManagerSheet({
 }: CategoryManagerSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
+    const availabilityLabels = getOwnerLabels(businessType);
     const STATUS_COLORS = {
         active: '#22c55e',
         inactive: '#94a3b8',
@@ -425,14 +429,14 @@ export default function CategoryManagerSheet({
                                 <Flex gap={10} vertical>
                                     <Flex align="center" gap={10} wrap="wrap">
                                         {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
-                                        {renderStatusBadge(t('soldOut'), STATUS_COLORS.soldOut)}
+                                        {renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut)}
                                     </Flex>
 
                                     <List>
                                         {draftItems.map((item, index) => {
                                             const statusBits = [];
                                             if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
-                                            if (item.available === false) statusBits.push(renderStatusBadge(t('soldOut'), STATUS_COLORS.soldOut));
+                                            if (item.available === false) statusBits.push(renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut));
 
                                             return (
                                                 <List.Item

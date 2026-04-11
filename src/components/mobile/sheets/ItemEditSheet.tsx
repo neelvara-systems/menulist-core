@@ -4,7 +4,7 @@ import { getOwnerLabels } from '@config/businessLabels';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme, type UploadFile, type UploadProps } from 'antd';
 import { useMemo, useState, useContext, useEffect } from 'react';
-import { LuCamera, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { LuCamera, LuLanguages, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast, Upload } from '../antd';
 import type { MobileMenuItemType } from '../types';
 import { useTranslations } from 'next-intl';
@@ -15,6 +15,8 @@ interface ItemEditSheetProps {
     currencySymbol: string;
     mode?: 'add' | 'edit';
     onClose: () => void;
+    onGenerateDescriptions?: () => void;
+    onManageLanguages?: () => void;
     onManageImages?: () => void;
     onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null }) => void | Promise<void>;
     onDelete?: (itemId: string) => void;
@@ -26,6 +28,8 @@ export default function ItemEditSheet({
     currencySymbol,
     mode = 'edit',
     onClose,
+    onGenerateDescriptions,
+    onManageLanguages,
     onManageImages,
     onSave,
     onDelete,
@@ -54,6 +58,13 @@ export default function ItemEditSheet({
     const [selectedCategory, setSelectedCategory] = useState(item?.categoryId || categories[0]?.id || '');
     const [attributes, setAttributes] = useState(item?.attributes || []);
     const [isSaving, setIsSaving] = useState(false);
+
+    const collapseKeyboard = () => {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+            activeElement.blur();
+        }
+    };
 
     useEffect(() => {
         setImagePreview(item?.image || null);
@@ -156,7 +167,10 @@ export default function ItemEditSheet({
                             <Flex gap={6} vertical>
                                 <Text strong>{t('categoryLabel')}</Text>
                                 <Select
-                                    onChange={setSelectedCategory}
+                                    onChange={(value) => {
+                                        setSelectedCategory(value);
+                                        collapseKeyboard();
+                                    }}
                                     options={categories.map((category) => ({ label: category.name, value: category.id }))}
                                     placeholder={t('selectCategory')}
                                     value={selectedCategory || undefined}
@@ -213,6 +227,41 @@ export default function ItemEditSheet({
                                 value={description}
                             />
                         </Flex>
+
+                        {!isAddMode && (onManageImages || onGenerateDescriptions || onManageLanguages) ? (
+                            <Flex gap={10} vertical>
+                                <Flex gap={2} vertical>
+                                    <Text strong>AI tools</Text>
+                                    <Text type="secondary">Continue images, descriptions, and language actions without leaving this item.</Text>
+                                </Flex>
+                                <Flex gap={8} wrap="wrap">
+                                    {onManageImages ? (
+                                        <Button fill="outline" onClick={onManageImages} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuCamera size={14} />
+                                                <Text>{t('addImages')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    ) : null}
+                                    {onGenerateDescriptions ? (
+                                        <Button fill="outline" onClick={onGenerateDescriptions} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuSparkles size={14} />
+                                                <Text>{t('generateDescriptions')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    ) : null}
+                                    {onManageLanguages ? (
+                                        <Button fill="outline" onClick={onManageLanguages} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuLanguages size={14} />
+                                                <Text>{t('manageLanguages')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    ) : null}
+                                </Flex>
+                            </Flex>
+                        ) : null}
 
                         <Flex gap={10} vertical>
                             <Flex align="center" justify="space-between">
@@ -273,26 +322,35 @@ export default function ItemEditSheet({
                                                     placeholder={t('variantName')}
                                                     value={attribute.name}
                                                 />
-                                                <Input
-                                                    onChange={(value) => {
-                                                        setAttributes((previous) => previous.map((entry) => (
-                                                            entry.id === attribute.id ? { ...entry, price: parseFloat(value) || 0 } : entry
-                                                        )));
-                                                    }}
-                                                    placeholder={t('variantPrice')}
-                                                    type="number"
-                                                    value={String(attribute.price || '')}
-                                                />
-                                                <Flex align="center" justify="space-between">
-                                                    <Text type="secondary">{t('availableToOrder')}</Text>
-                                                    <Switch
-                                                        checked={attribute.active !== false}
-                                                        onChange={(checked) => {
-                                                            setAttributes((previous) => previous.map((entry) => (
-                                                                entry.id === attribute.id ? { ...entry, active: checked } : entry
-                                                            )));
-                                                        }}
-                                                    />
+                                                <Flex align="center" gap={12}>
+                                                    <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
+                                                        <Text type="secondary">{t('variantPrice')}</Text>
+                                                        <Input
+                                                            onChange={(value) => {
+                                                                setAttributes((previous) => previous.map((entry) => (
+                                                                    entry.id === attribute.id ? { ...entry, price: parseFloat(value) || 0 } : entry
+                                                                )));
+                                                            }}
+                                                            placeholder={t('variantPrice')}
+                                                            type="number"
+                                                            value={String(attribute.price || '')}
+                                                        />
+                                                    </Flex>
+                                                    <div style={{ ...inlineSurfaceStyle, flexShrink: 0, minWidth: 122, padding: '10px 12px' }}>
+                                                        <Flex align="center" justify="space-between">
+                                                            <Flex gap={2} vertical>
+                                                                <Text style={{ fontSize: 12 }} type="secondary">{t('availableToOrder')}</Text>
+                                                            </Flex>
+                                                            <Switch
+                                                                checked={attribute.active !== false}
+                                                                onChange={(checked) => {
+                                                                    setAttributes((previous) => previous.map((entry) => (
+                                                                        entry.id === attribute.id ? { ...entry, active: checked } : entry
+                                                                    )));
+                                                                }}
+                                                            />
+                                                        </Flex>
+                                                    </div>
                                                 </Flex>
                                             </Flex>
                                         </Card>

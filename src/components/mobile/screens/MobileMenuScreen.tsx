@@ -1,6 +1,7 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
+import GlobalLanguagesList from '@data/languages';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
@@ -25,7 +26,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCamera, LuCheck, LuFileText, LuFilter, LuSettings2, LuX } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuFileText, LuFilter, LuLanguages, LuPencil, LuSettings2, LuX } from 'react-icons/lu';
 import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
@@ -42,6 +43,7 @@ const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerShee
 const ManageLanguagesSheet = dynamic(() => import('../sheets/ManageLanguagesSheet'), { ssr: false });
 const GenerateDescriptionsSheet = dynamic(() => import('../sheets/GenerateDescriptionsSheet'), { ssr: false });
 const SmartRecommendationsSheet = dynamic(() => import('../sheets/SmartRecommendationsSheet'), { ssr: false });
+const TextCaseSheet = dynamic(() => import('../sheets/TextCaseSheet'), { ssr: false });
 const ImageUploadModal = dynamic(() => import('../../templates/main-app/projects/editorView/ImageUploadModal'), { ssr: false });
 
 type CategoryOption = { id: string; name: string };
@@ -71,7 +73,7 @@ type MobileMenuFilters = {
     hasPrice: boolean | null;
     availability: boolean | null;
     activeStatus: boolean | null;
-    qualityIssue: 'priceOutliers' | null;
+    qualityIssue: 'priceOutliers' | 'translationMissing' | null;
 };
 
 const DEFAULT_FILTERS: MobileMenuFilters = {
@@ -161,6 +163,32 @@ function resolveAttributeName(
     return resolveLocalizedText(attribute?.name, activeLang, fallback);
 }
 
+function hasLocalizedValue(value: unknown, languageCode: string): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const localizedValue = (value as Record<string, unknown>)[languageCode];
+    return typeof localizedValue === 'string' && localizedValue.trim().length > 0;
+}
+
+function hasMissingTranslations(item: Partial<ExtractedDataItem> | null | undefined, languages: string[]): boolean {
+    if (!item || languages.length <= 1) return false;
+
+    const [primaryLanguage, ...secondaryLanguages] = languages;
+
+    return secondaryLanguages.some((languageCode) => {
+        if (hasLocalizedValue(item.name, primaryLanguage) && !hasLocalizedValue(item.name, languageCode)) {
+            return true;
+        }
+
+        if (hasLocalizedValue(item.description, primaryLanguage) && !hasLocalizedValue(item.description, languageCode)) {
+            return true;
+        }
+
+        return toArray(item.attributes).some((attribute) => (
+            hasLocalizedValue(attribute?.name, primaryLanguage) && !hasLocalizedValue(attribute?.name, languageCode)
+        ));
+    });
+}
+
 function normalizeExtractedPrice(price: unknown): number {
     if (typeof price === 'number') {
         return Number.isFinite(price) ? price : 0;
@@ -225,6 +253,7 @@ export default function MobileMenuScreen() {
     const [isManageLanguagesOpen, setIsManageLanguagesOpen] = useState(false);
     const [isGenerateDescriptionsOpen, setIsGenerateDescriptionsOpen] = useState(false);
     const [isSmartRecommendationsOpen, setIsSmartRecommendationsOpen] = useState(false);
+    const [isTextCaseOpen, setIsTextCaseOpen] = useState(false);
     const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
     const [imageModalItem, setImageModalItem] = useState<ExtractedDataItem | null>(null);
     const [imageModalSource, setImageModalSource] = useState<string>('');
@@ -770,6 +799,15 @@ export default function MobileMenuScreen() {
     ]);
 
     const activeLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
+    const activeProjectLanguages = useMemo(() => menuData?.languages || ['en'], [menuData?.languages]);
+    const languageLabels = useMemo(() => {
+        const labelsByCode = new Map(GlobalLanguagesList.map((language) => [language.code, language.nativeName || language.name]));
+        return activeProjectLanguages.map((code) => ({
+            code,
+            isPrimary: code === activeProjectLanguages[0],
+            label: labelsByCode.get(code) || code.toUpperCase(),
+        }));
+    }, [activeProjectLanguages]);
 
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
@@ -834,13 +872,14 @@ export default function MobileMenuScreen() {
                             categoryName,
                             description: itemDescription,
                             image: item.images?.[0]?.url || '',
+                            translationMissing: hasMissingTranslations(item, activeProjectLanguages),
                         });
                     });
                 });
             }
         });
         return items;
-    }, [activeLang, menuData, t, uncategorizedLabel]);
+    }, [activeLang, activeProjectLanguages, menuData, t, uncategorizedLabel]);
 
     const priceOutlierItemIds = useMemo(() => {
         const LOW_FACTOR = 0.35;
@@ -956,6 +995,9 @@ export default function MobileMenuScreen() {
             if (filters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
                 return false;
             }
+            if (filters.qualityIssue === 'translationMissing' && !item.translationMissing) {
+                return false;
+            }
             return true;
         });
     }, [filters, menuItems, priceOutlierItemIds, searchQuery]);
@@ -1019,7 +1061,7 @@ export default function MobileMenuScreen() {
         if (filters.availability !== null) {
             chips.push({
                 key: 'availability',
-                label: filters.availability ? t('available') : t('soldOut'),
+                label: filters.availability ? availabilityLabels.available : availabilityLabels.unavailable,
                 onRemove: () => setFilters((prev) => ({ ...prev, availability: null })),
             });
         }
@@ -1040,8 +1082,16 @@ export default function MobileMenuScreen() {
             });
         }
 
+        if (filters.qualityIssue === 'translationMissing') {
+            chips.push({
+                key: 'quality-translation-missing',
+                label: 'Missing translation',
+                onRemove: () => setFilters((prev) => ({ ...prev, qualityIssue: null })),
+            });
+        }
+
         return chips;
-    }, [categoryOptions, filters, t]);
+    }, [availabilityLabels.available, availabilityLabels.unavailable, categoryOptions, filters, t]);
 
     const handleReviewQualitySignal = useCallback((signal: { id: string }) => {
         setSearchQuery('');
@@ -1058,6 +1108,8 @@ export default function MobileMenuScreen() {
                 return { ...DEFAULT_FILTERS, activeStatus: false };
             case 'priceOutliers':
                 return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
+            case 'translations':
+                return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
             default:
                 return DEFAULT_FILTERS;
             }
@@ -1257,6 +1309,11 @@ export default function MobileMenuScreen() {
         });
         return grouped;
     }, [activeLang, menuData?.files, t]);
+    const categorySummaryById = useMemo(() => {
+        const map = new Map<string, CategorySummary>();
+        categorySummary.forEach((category) => map.set(category.id, category));
+        return map;
+    }, [categorySummary]);
 
     const handleCategoryAdd = async ({ name, active, presetIds }: { name: string; active: boolean; presetIds: string[] }) => {
         if (!menuData) return;
@@ -1401,6 +1458,25 @@ export default function MobileMenuScreen() {
         });
     }, [applyLocalMenuUpdate, availabilityLabels.available, availabilityLabels.unavailable, menuData]);
 
+    const handleToggleCategoryActive = useCallback((categoryId: string, nextActive: boolean) => {
+        if (!menuData || categoryId === 'uncategorized') return;
+
+        const updated = removeObjRef(menuData);
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.categories?.forEach((category: any) => {
+                if (category.id === categoryId) {
+                    category.active = nextActive;
+                }
+            });
+        });
+
+        applyLocalMenuUpdate(updated);
+        Toast.show({
+            content: nextActive ? 'Category active' : 'Category hidden',
+            duration: 1000,
+        });
+    }, [applyLocalMenuUpdate, menuData]);
+
     const handleRefresh = async () => {
         await flushPendingMenuPersist();
         await refreshProjects({
@@ -1522,6 +1598,16 @@ export default function MobileMenuScreen() {
                                     </Flex>
                                 </Tag>
                             ))}
+                            {filters.hasImage === false && filteredItems.length > 0 ? (
+                                <Button
+                                    color="primary"
+                                    fill="outline"
+                                    onClick={() => openImageUploadModal(undefined, 'filter-missing-image')}
+                                    size="small"
+                                >
+                                    {t('addImages')}
+                                </Button>
+                            ) : null}
                             <Button
                                 color="danger"
                                 fill="none"
@@ -1538,12 +1624,27 @@ export default function MobileMenuScreen() {
 
                     {!isFirstRunProject ? (
                         <Flex align="center" justify="space-between">
-                            <Text type="secondary">
-                                {t('categoriesSummary', {
-                                    items: `${menuItems.length} ${labels.itemsPlural}`,
-                                    categories: t('categoriesCount', { count: categoryCount }),
-                                })}
-                            </Text>
+                            <Flex gap={8} style={{ flex: 1, minWidth: 0 }} vertical>
+                                <Text type="secondary">
+                                    {t('categoriesSummary', {
+                                        items: `${menuItems.length} ${labels.itemsPlural}`,
+                                        categories: t('categoriesCount', { count: categoryCount }),
+                                    })}
+                                </Text>
+                                {languageLabels.length > 0 ? (
+                                    <Flex align="center" gap={6} wrap="wrap">
+                                        <Flex align="center" gap={6}>
+                                            <LuLanguages size={14} />
+                                            <Text type="secondary">Menu languages</Text>
+                                        </Flex>
+                                        {languageLabels.map((language) => (
+                                            <Tag color={language.isPrimary ? 'primary' : undefined} key={language.code}>
+                                                {language.label}
+                                            </Tag>
+                                        ))}
+                                    </Flex>
+                                ) : null}
+                            </Flex>
                             <Flex align="center" gap={8}>
                                 {orderedCategorySections.length > 0 ? (
                                     <Button
@@ -1678,16 +1779,22 @@ export default function MobileMenuScreen() {
                                     key={id}
                                     title={(
                                         <Flex align="center" gap={8} style={{ minWidth: 0, width: '100%' }}>
-                                            <Text
-                                                strong
-                                                style={{
-                                                    flex: '1 1 auto',
-                                                    minWidth: 0,
-                                                    overflowWrap: 'anywhere',
-                                                }}
-                                            >
-                                                {name}
-                                            </Text>
+                                            <Flex gap={4} style={{ flex: '1 1 auto', minWidth: 0 }} vertical>
+                                                <Text
+                                                    strong
+                                                    style={{
+                                                        minWidth: 0,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {name}
+                                                </Text>
+                                                {id !== 'uncategorized' ? (
+                                                    <Text type="secondary">
+                                                        {categorySummaryById.get(id)?.itemCount || items.length} items
+                                                    </Text>
+                                                ) : null}
+                                            </Flex>
                                             {categoryHasSignals.get(id) ? (
                                                 <div
                                                     style={{
@@ -1698,6 +1805,31 @@ export default function MobileMenuScreen() {
                                                         width: 8,
                                                     }}
                                                 />
+                                            ) : null}
+                                            {id !== 'uncategorized' ? (
+                                                <Flex
+                                                    align="center"
+                                                    gap={8}
+                                                    onClick={(event) => event.stopPropagation()}
+                                                    onMouseDown={(event) => event.stopPropagation()}
+                                                    onPointerDown={(event) => event.stopPropagation()}
+                                                    style={{ flexShrink: 0 }}
+                                                >
+                                                    <Button
+                                                        fill="outline"
+                                                        onClick={() => {
+                                                            setCategorySheetMode('manage');
+                                                            setIsCategorySheetOpen(true);
+                                                        }}
+                                                        size="small"
+                                                    >
+                                                        <LuPencil size={14} />
+                                                    </Button>
+                                                    <Switch
+                                                        checked={categorySummaryById.get(id)?.active !== false}
+                                                        onChange={(checked) => handleToggleCategoryActive(id, checked)}
+                                                    />
+                                                </Flex>
                                             ) : null}
                                         </Flex>
                                     )}
@@ -1737,6 +1869,11 @@ export default function MobileMenuScreen() {
                                                         <Flex align="center" gap={8} wrap>
                                                             {!item.active ? <Tag>{t('hidden')}</Tag> : null}
                                                             <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
+                                                            {item.translationMissing ? <Tag color="warning">Missing translation</Tag> : null}
+                                                            {item.attributes?.slice(0, 2).map((attribute) => (
+                                                                <Tag key={attribute.id}>{attribute.name}</Tag>
+                                                            ))}
+                                                            {item.attributes && item.attributes.length > 2 ? <Tag>+{item.attributes.length - 2} more</Tag> : null}
                                                         </Flex>
                                                     }
                                                 />
@@ -1925,6 +2062,14 @@ export default function MobileMenuScreen() {
                                     draftFilters.hasPrice === false,
                                     () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
                                 )}
+                                {activeProjectLanguages.length > 1 ? renderIssueToggle(
+                                    'Missing translation',
+                                    draftFilters.qualityIssue === 'translationMissing',
+                                    () => setDraftFilters((prev) => ({
+                                        ...prev,
+                                        qualityIssue: prev.qualityIssue === 'translationMissing' ? null : 'translationMissing',
+                                    }))
+                                ) : null}
                             </Flex>
                         </Flex>
                     </Card>
@@ -1933,8 +2078,8 @@ export default function MobileMenuScreen() {
                         t('availability'),
                         draftFilters.availability === null ? '' : draftFilters.availability ? 'available' : 'soldOut',
                         [
-                            { label: t('available'), value: 'available' },
-                            { label: t('soldOut'), value: 'soldOut' },
+                            { label: availabilityLabels.available, value: 'available' },
+                            { label: availabilityLabels.unavailable, value: 'soldOut' },
                         ],
                         null,
                         (value) => setDraftFilters((prev) => ({ ...prev, availability: value === '' ? null : value === 'available' }))
@@ -1989,10 +2134,33 @@ export default function MobileMenuScreen() {
                 })}
                 onClose={() => setIsCommandMenuOpen(false)}
                 onAddImages={() => launchCommandAction(() => {
-                    openImageUploadModal(undefined, 'menu');
+                    void Dialog.confirm({
+                        cancelText: t('cancel'),
+                        confirmText: t('addImages'),
+                        content: 'Open image generation and upload tools for this menu?',
+                        onConfirm: () => openImageUploadModal(undefined, 'menu'),
+                        title: t('addImages'),
+                    });
                 })}
-                onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
-                onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
+                onGenerateDescriptions={() => launchCommandAction(() => {
+                    void Dialog.confirm({
+                        cancelText: t('cancel'),
+                        confirmText: t('generateDescriptions'),
+                        content: 'Open description generation for this menu?',
+                        onConfirm: () => setIsGenerateDescriptionsOpen(true),
+                        title: t('generateDescriptionsAi'),
+                    });
+                })}
+                onManageLanguages={() => launchCommandAction(() => {
+                    void Dialog.confirm({
+                        cancelText: t('cancel'),
+                        confirmText: t('manageLanguages'),
+                        content: 'Open language management for this menu?',
+                        onConfirm: () => setIsManageLanguagesOpen(true),
+                        title: t('manageLanguages'),
+                    });
+                })}
+                onTextCase={() => launchCommandAction(() => setIsTextCaseOpen(true))}
                 onMoveCategory={() => launchCommandAction(() => {
                     setBulkActionType('moveCategory');
                     setIsBulkActionsOpen(true);
@@ -2013,6 +2181,19 @@ export default function MobileMenuScreen() {
                 })}
                 visible={isCommandMenuOpen}
             />
+
+            {menuData ? (
+                <TextCaseSheet
+                    onClose={() => handleCommandActionBack(() => setIsTextCaseOpen(false))}
+                    onSaved={(updatedProject) => {
+                        applyLocalMenuUpdate(updatedProject);
+                        setIsTextCaseOpen(false);
+                        resetCommandActionFlow();
+                    }}
+                    projectData={menuData}
+                    visible={isTextCaseOpen}
+                />
+            ) : null}
 
             {menuData ? (
                 <SmartRecommendationsSheet
@@ -2055,6 +2236,7 @@ export default function MobileMenuScreen() {
             ) : null}
 
             <CategoryManagerSheet
+                businessType={storeDetails?.businessType}
                 categories={categorySummary}
                 categoryItems={categoryItemMap}
                 initialMode={categorySheetMode}
@@ -2095,6 +2277,14 @@ export default function MobileMenuScreen() {
                         Toast.show({ content: t('itemDeleted'), duration: 1000 });
                         setEditingItem(null);
                         resetCommandActionFlow();
+                    }}
+                    onGenerateDescriptions={() => {
+                        setEditingItem(null);
+                        setIsGenerateDescriptionsOpen(true);
+                    }}
+                    onManageLanguages={() => {
+                        setEditingItem(null);
+                        setIsManageLanguagesOpen(true);
                     }}
                     onManageImages={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item') : undefined}
                     onSave={async (updatedItem) => {

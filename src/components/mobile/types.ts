@@ -19,6 +19,7 @@ export type MobileMenuItemType = {
     categoryName?: string;
     description?: string;
     image?: string;
+    translationMissing?: boolean;
 };
 
 export type MobileFeedbackItemType = {

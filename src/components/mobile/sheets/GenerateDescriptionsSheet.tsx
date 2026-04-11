@@ -120,29 +120,49 @@ export default function GenerateDescriptionsSheet({
                             <Text strong>{t('descriptionLength')}</Text>
                             <Flex gap={8} vertical>
                                 {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
-                                    <Button
+                                    <div
                                         key={option.value}
-                                        disabled={isProcessing}
-                                        fill={contentLength === option.value ? 'solid' : 'outline'}
-                                        onClick={() => setContentLength(option.value)}
+                                        onClick={() => {
+                                            if (isProcessing) return;
+                                            setContentLength(option.value);
+                                        }}
                                         style={{
-                                            borderColor: contentLength === option.value ? token.colorPrimaryBorder : token.colorBorderSecondary,
-                                            height: 'auto',
-                                            justifyContent: 'flex-start',
+                                            backgroundColor: token.colorBgContainer,
+                                            border: `1px solid ${contentLength === option.value ? token.colorPrimary : token.colorBorderSecondary}`,
+                                            borderRadius: 12,
+                                            cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                            opacity: isProcessing ? 0.6 : 1,
                                             paddingBlock: 12,
                                             paddingInline: 12,
                                             width: '100%',
                                         }}
                                     >
-                                        <Flex gap={4} style={{ minWidth: 0, textAlign: 'left', width: '100%' }} vertical>
-                                            <Text strong style={{ color: contentLength === option.value ? token.colorTextLightSolid : undefined, lineHeight: 1.3 }}>
-                                                {option.label}
-                                            </Text>
-                                            <Text style={{ color: contentLength === option.value ? token.colorTextLightSolid : token.colorTextSecondary, lineHeight: 1.35, opacity: contentLength === option.value ? 0.85 : 1, whiteSpace: 'normal' }}>
-                                                {option.description}
-                                            </Text>
+                                        <Flex align="center" gap={12} justify="space-between">
+                                            <Flex gap={4} style={{ flex: 1, minWidth: 0, textAlign: 'left' }} vertical>
+                                                <Text strong style={{ color: contentLength === option.value ? token.colorPrimary : undefined, lineHeight: 1.3 }}>
+                                                    {option.label}
+                                                </Text>
+                                                <Text style={{ color: token.colorTextSecondary, lineHeight: 1.35, whiteSpace: 'normal' }}>
+                                                    {option.description}
+                                                </Text>
+                                            </Flex>
+                                            <Flex
+                                                align="center"
+                                                justify="center"
+                                                style={{
+                                                    backgroundColor: contentLength === option.value ? token.colorPrimary : 'transparent',
+                                                    border: `1px solid ${contentLength === option.value ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                    borderRadius: '999px',
+                                                    color: contentLength === option.value ? token.colorTextLightSolid : token.colorTextQuaternary,
+                                                    flexShrink: 0,
+                                                    height: 20,
+                                                    width: 20,
+                                                }}
+                                            >
+                                                {contentLength === option.value ? <LuCheck size={12} /> : null}
+                                            </Flex>
                                         </Flex>
-                                    </Button>
+                                    </div>
                                 ))}
                             </Flex>
                         </Flex>
@@ -176,7 +196,15 @@ export default function GenerateDescriptionsSheet({
                             color="primary"
                             disabled={isProcessing || itemsWithoutDescriptions === 0}
                             loading={isProcessing}
-                            onClick={() => void handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION)}
+                            onClick={() => {
+                                void Dialog.confirm({
+                                    cancelText: t('cancel'),
+                                    confirmText: t('generateMissing'),
+                                    content: `Generate descriptions for ${itemsWithoutDescriptions} item${itemsWithoutDescriptions === 1 ? '' : 's'} with the ${contentLength.toLowerCase()} style?`,
+                                    onConfirm: () => handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION),
+                                    title: t('generateDescriptionsAi'),
+                                });
+                            }}
                             size="large"
                         >
                             <Flex align="center" gap={6}>

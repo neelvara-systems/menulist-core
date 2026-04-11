@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPlus, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
 type CommandAction = {
@@ -27,6 +27,7 @@ interface MobileMenuCommandSheetProps {
     onAddImages: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
+    onTextCase: () => void;
     onUploadMenu: () => void;
     onPricing: () => void;
     onReorderMenu: () => void;
@@ -46,6 +47,7 @@ export default function MobileMenuCommandSheet({
     onAddImages,
     onGenerateDescriptions,
     onManageLanguages,
+    onTextCase,
     onUploadMenu,
     onPricing,
     onReorderMenu,
@@ -100,6 +102,16 @@ export default function MobileMenuCommandSheet({
             onClick: onAddItem,
         },
         {
+            key: 'text-case',
+            icon: <LuPen style={{ fontSize: 20 }} />,
+            title: 'Fix text case',
+            description: 'Convert ALL CAPS or inconsistent text into a cleaner format.',
+            onClick: onTextCase,
+        },
+    ], [onAddItem, onTextCase, t]);
+
+    const aiActions = useMemo<CommandAction[]>(() => [
+        {
             key: 'add-images',
             icon: <LuFileImage style={{ fontSize: 20 }} />,
             title: t('addImages'),
@@ -114,13 +126,20 @@ export default function MobileMenuCommandSheet({
             onClick: onGenerateDescriptions,
         },
         {
+            key: 'language',
+            icon: <LuLanguages style={{ fontSize: 20 }} />,
+            title: t('menuLanguages'),
+            description: 'Add or reorder menu languages.',
+            onClick: onManageLanguages,
+        },
+        {
             key: 'decision-blocks',
             icon: <LuZap style={{ fontSize: 20 }} />,
             title: t('featuredSections'),
             description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [onAddImages, onAddItem, onGenerateDescriptions, onSmartRecommendations, t]);
+    ], [onAddImages, onGenerateDescriptions, onManageLanguages, onSmartRecommendations, t]);
 
     const menuSetupActions = useMemo<CommandAction[]>(() => [
         {
@@ -141,12 +160,6 @@ export default function MobileMenuCommandSheet({
             icon: <LuArrowUpDown style={{ fontSize: 20 }} />,
             title: t('reorderMenu'),
             onClick: onReorderMenu,
-        },
-        {
-            key: 'language',
-            icon: <LuLanguages style={{ fontSize: 20 }} />,
-            title: t('menuLanguages'),
-            onClick: onManageLanguages,
         },
     ], [labels.offeringLower, onCategories, onManageLanguages, onReorderMenu, onUploadMenu, t]);
 
@@ -218,6 +231,11 @@ export default function MobileMenuCommandSheet({
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('menuContent')}</Text>
                         {renderActionList(contentActions)}
+                    </Flex>
+
+                    <Flex gap={8} vertical>
+                        <Text strong type="secondary">Content generation</Text>
+                        {renderActionList(aiActions)}
                     </Flex>
 
                     <Flex gap={8} vertical>
