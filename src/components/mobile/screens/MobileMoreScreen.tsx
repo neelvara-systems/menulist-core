@@ -17,7 +17,6 @@ import {
     LuLogOut,
     LuMapPin,
     LuMessageCircle,
-    LuMonitor,
     LuPalette,
     LuReceipt,
     LuSettings,
@@ -149,28 +148,31 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => setSubScreen('specialMenus') }] : []),
         { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => setSubScreen('designEditor') },
         { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => setSubScreen('digitalScreens') },
-        { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: t('locations'), description: t('locationsDesc'), onClick: () => setSubScreen('locations') },
-        { key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, label: t('staff'), description: t('staffDesc'), onClick: () => setSubScreen('users') },
         { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, label: t('billing'), description: t('billingDesc'), onClick: () => setSubScreen('billing') },
         { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, label: t('transactions'), description: t('transactionsDesc'), onClick: () => setSubScreen('transactions') },
     ];
 
-    const settingsItems = [
+    const businessIdentityItems = [
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: t('basicSettings'), description: t('basicSettingsDesc'), onClick: () => setSubScreen('basicSettings') },
-        { key: 'publicInfo', icon: <LuBuilding2 color="#16a34a" size={20} />, label: t('publicInfo'), description: t('publicInfoDesc'), onClick: () => setSubScreen('publicInfo') },
-        { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('domainSettings') },
-        ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => setSubScreen('officialPage') }] : []),
+        { key: 'publicInfo', icon: <LuMapPin color="#16a34a" size={20} />, label: t('publicInfo'), description: t('publicInfoDesc'), onClick: () => setSubScreen('publicInfo') },
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => setSubScreen('locale') },
+        { key: 'contactSettings', icon: <LuUsers color="#2563eb" size={20} />, label: tBusiness('contactPerson'), description: 'Primary business contact details for owners, staff, and support.', onClick: () => setSubScreen('contactSettings') },
+        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), description: 'Public social links shown across your business presence.', onClick: () => setSubScreen('socialSettings') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => setSubScreen('hoursEdit') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => setSubScreen('timeSlots') },
-        { key: 'contactSettings', icon: <LuUsers color="#2563eb" size={20} />, label: tBusiness('contactPerson'), description: t('advancedSettingsDesc'), onClick: () => setSubScreen('contactSettings') },
-        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), onClick: () => setSubScreen('socialSettings') },
+        { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: t('locations'), description: t('locationsDesc'), onClick: () => setSubScreen('locations') },
+        { key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, label: t('staff'), description: t('staffDesc'), onClick: () => setSubScreen('users') },
+        { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => setSubScreen('roles') },
+    ];
+
+    const businessPresenceItems = [
+        { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), onClick: () => setSubScreen('domainSettings') },
+        ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => setSubScreen('officialPage') }] : []),
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => setSubScreen('businessAttributes') }] : []),
         { key: 'seoAnalytics', icon: <LuGlobe color="#0ea5e9" size={20} />, label: t('seoAnalytics'), description: t('seoAnalyticsDesc'), onClick: () => setSubScreen('seoAnalytics') },
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => setSubScreen('integrations') }] : []),
-        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), onClick: () => setSubScreen('feedbackSettings') },
+        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: 'Store-level guest feedback collection and review destination settings.', onClick: () => setSubScreen('feedbackSettings') },
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => setSubScreen('posSync') }] : []),
-        { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => setSubScreen('roles') },
         { key: 'advancedSettings', icon: <LuSettings2 color="#6b7280" size={20} />, label: t('advancedSettings'), description: t('advancedSettingsDesc'), onClick: () => setSubScreen('advancedSettings') },
     ];
 
@@ -217,9 +219,24 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
                 </List>
             </Card>
 
-            <Card title={t('basicSettings')}>
+            <Card title="Business Settings">
                 <List>
-                    {settingsItems.map((item) => (
+                    {businessIdentityItems.map((item) => (
+                        <List.Item
+                            arrow
+                            description={<Text type="secondary">{item.description}</Text>}
+                            key={item.key}
+                            onClick={item.onClick}
+                            prefix={item.icon}
+                            title={<Text strong>{item.label}</Text>}
+                        />
+                    ))}
+                </List>
+            </Card>
+
+            <Card title="Business Presence">
+                <List>
+                    {businessPresenceItems.map((item) => (
                         <List.Item
                             arrow
                             description={<Text type="secondary">{item.description}</Text>}
@@ -259,16 +276,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
                         onClick={() => setIsAppSettingsOpen(true)}
                         prefix={<LuSettings color="#64748b" size={20} />}
                         title={<Text strong>{t('appSettings')}</Text>}
-                    />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">{t('switchToDesktopDesc')}</Text>}
-                        onClick={() => {
-                            localStorage.setItem('forceDesktopMode', 'true');
-                            window.location.reload();
-                        }}
-                        prefix={<LuMonitor color="#64748b" size={20} />}
-                        title={<Text strong>{t('switchToDesktop')}</Text>}
                     />
                     <List.Item
                         onClick={handleLogout}

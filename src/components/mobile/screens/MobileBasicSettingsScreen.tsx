@@ -3,9 +3,11 @@
 import { BUSINESS_TYPES } from '@constant/common';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import type { UserUploadedFileType } from '@type/common';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useState } from 'react';
-import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuPhoneCall } from 'react-icons/lu';
+import { useCallback, useContext, useRef, useState } from 'react';
+import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuPhoneCall, LuUpload } from 'react-icons/lu';
+import ImageUploadInput from '@atoms/imageUploadInput';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
@@ -23,11 +25,21 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const tBusiness = useTranslations('BusinessSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [selectedLogo, setSelectedLogo] = useState<UserUploadedFileType | null>(
+        storeDetails?.logo
+            ? {
+                name: storeDetails.name || 'logo',
+                size: 0,
+                type: '',
+                url: storeDetails.logo,
+            }
+            : null
+    );
     const [formData, setFormData] = useState({
         email: storeDetails?.email || '',
         businessType: storeDetails?.businessType || '',
         description: storeDetails?.description || '',
-        domain: storeDetails?.customDomain || storeDetails?.subdomain || '',
         gstn: storeDetails?.gstn || '',
         name: storeDetails?.name || '',
         phoneNumber: storeDetails?.phoneNumber || '',
@@ -40,7 +52,12 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             return;
         }
 
-        const { domain: _domain, ...updates } = formData;
+        const updates: Record<string, any> = { ...formData };
+        if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
+            updates.imageToUpdate = selectedLogo.url;
+            updates.imageType = selectedLogo.type || 'image/png';
+        }
+
         setIsSaving(true);
         setStoreDetails((previous: any) => ({ ...previous, ...updates }));
 
@@ -83,12 +100,12 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     <Flex align="center" gap={12} vertical>
                         <LuImage color="#64748b" size={20} />
                         <Text type="secondary">{t('businessLogo')}</Text>
-                        {storeDetails.logo ? (
+                        {(selectedLogo?.url || storeDetails.logo) ? (
                             <Image
                                 alt={storeDetails.name}
                                 height={80}
                                 preview={false}
-                                src={storeDetails.logo}
+                                src={selectedLogo?.url || storeDetails.logo}
                                 style={{ borderRadius: 12, objectFit: 'cover' }}
                                 width={80}
                             />
@@ -97,7 +114,17 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                                 <LuBuilding2 color="#64748b" size={28} />
                             </Card>
                         )}
-                        <Text type="secondary">{t('changeLogoOnDesktop')}</Text>
+                        <Button
+                            fill="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            size="small"
+                        >
+                            <Flex align="center" gap={6}>
+                                <LuUpload size={16} />
+                                <Text>Update logo</Text>
+                            </Flex>
+                        </Button>
+                        <Text type="secondary">Your logo is part of the business profile and can be updated here.</Text>
                     </Flex>
                 </Card>
 
@@ -168,14 +195,6 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 </Card>
 
                 <Card>
-                    <Flex gap={4} vertical>
-                        <Text type="secondary">{tBusiness('domain')}</Text>
-                        <Text strong>{formData.domain || tBusiness('domainPlaceholder')}</Text>
-                        <Text type="secondary">{t('changeOnDesktop')}</Text>
-                    </Flex>
-                </Card>
-
-                <Card>
                     <Flex align="center" justify="space-between">
                         <Text type="secondary">{t('storeId')}</Text>
                         <Title level={5} style={{ margin: 0 }}>{storeDetails.storeId}</Title>
@@ -186,6 +205,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     {t('saveChanges')}
                 </Button>
             </Flex>
+            <ImageUploadInput
+                fileInputRef={fileInputRef}
+                onUploadFile={(file: UserUploadedFileType) => setSelectedLogo(file)}
+            />
         </Flex>
     );
 }

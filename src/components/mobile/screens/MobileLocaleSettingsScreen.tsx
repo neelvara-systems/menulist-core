@@ -5,6 +5,7 @@ import GlobalLanguagesList from '@data/languages';
 import TIMEZONES_LIST from '@data/timeZones';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import countryData from '@atoms/phoneNumberInput/countryData';
 import {
     DATE_FORMATS,
     TIME_FORMATS,
@@ -27,12 +28,12 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
     const tBusiness = useTranslations('BusinessSettings');
     const format = useFormatter();
     const now = useMemo(() => getUTCDate().newDate, []);
-    const { storeDetails, setStoreDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
         activeLanguages: storeDetails?.activeLanguages || [],
-        currencyCode: tenantDetails?.currencyCode || 'INR',
-        currencySymbol: tenantDetails?.currencySymbol || '₹',
+        currencyCode: storeDetails?.currencyCode || 'INR',
+        currencySymbol: storeDetails?.currencySymbol || '₹',
         defaultLanguage: storeDetails?.defaultLanguage || 'en',
         timeFormat: storeDetails?.timeFormat || defaultTimeFormatString,
         timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -49,7 +50,28 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
         return languageOptions.filter((option) => active.includes(option.value));
     }, [formData.activeLanguages, languageOptions]);
 
-    const getLabel = (list: { label: string; value: string }[], value: string) => list.find((item) => item.value === value)?.label || value;
+    const currencyOptions = useMemo(() => {
+        const uniqueCurrencies = new Map<string, { label: string; value: string }>();
+        countryData.forEach((item) => {
+            if (!uniqueCurrencies.has(item.currencyCode)) {
+                uniqueCurrencies.set(item.currencyCode, {
+                    label: `${item.currencyCode} (${item.currencySymbol})`,
+                    value: item.currencyCode,
+                });
+            }
+        });
+
+        return Array.from(uniqueCurrencies.values()).sort((left, right) => left.label.localeCompare(right.label));
+    }, []);
+
+    const handleCurrencyChange = (value: string) => {
+        const matchedCurrency = countryData.find((item) => item.currencyCode === value);
+        setFormData((previous) => ({
+            ...previous,
+            currencyCode: value,
+            currencySymbol: matchedCurrency?.currencySymbol || previous.currencySymbol,
+        }));
+    };
 
     const toggleLanguage = (languageCode: string, checked: boolean) => {
         setFormData((previous) => {
@@ -76,6 +98,8 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
         const payload = {
             ...storeDetails,
             activeLanguages: formData.activeLanguages.length > 0 ? formData.activeLanguages : ['en'],
+            currencyCode: formData.currencyCode,
+            currencySymbol: formData.currencySymbol,
             defaultLanguage: formData.defaultLanguage || 'en',
             timeFormat: formData.timeFormat,
             timeZone: formData.timeZone,
@@ -91,6 +115,8 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
             setStoreDetails((previous: any) => ({
                 ...previous,
                 activeLanguages: storeDetails.activeLanguages,
+                currencyCode: storeDetails.currencyCode,
+                currencySymbol: storeDetails.currencySymbol,
                 defaultLanguage: storeDetails.defaultLanguage,
                 timeFormat: storeDetails.timeFormat,
                 timeZone: storeDetails.timeZone,
@@ -201,8 +227,13 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuDollarSign size={14} />
                             <Text type="secondary">{t('currency')}</Text>
                         </Flex>
-                        <Text strong>{formData.currencySymbol} {formData.currencyCode}</Text>
-                        <Text type="secondary">{t('currencyDesktopNote')}</Text>
+                        <Select
+                            onChange={handleCurrencyChange}
+                            options={currencyOptions}
+                            placeholder={t('currency')}
+                            value={formData.currencyCode}
+                        />
+                        <Text type="secondary">{`${formData.currencySymbol} ${formData.currencyCode}`}</Text>
                     </Flex>
                 </Card>
 

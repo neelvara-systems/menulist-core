@@ -238,11 +238,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                     </>
                 ) : null}
 
-                {mode === 'all' ? (
-                    <Text style={{ textAlign: 'center' }} type="secondary">
-                    {t('desktopOnlyNote')}
-                    </Text>
-                ) : null}
             </Flex>
 
             <Popup
