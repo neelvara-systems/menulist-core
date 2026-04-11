@@ -26,21 +26,9 @@ interface MobileOfficialPageScreenProps {
     onBack: () => void;
 }
 
-export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
-    const t = useTranslations('BusinessSettings');
-    const tMobile = useTranslations('MobileSettings');
-    const common = useTranslations('Common');
-    const session = useClientAuthSession();
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
-    const [isSaving, setIsSaving] = useState(false);
-    const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
-    const officialPageUrl = useMemo(
-        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
-        [storeDetails?.customDomain, storeDetails?.subdomain, storeDetails?.subDomain]
-    );
-
+function getInitialPresenceForm(storeDetails: any) {
     const initialPresence = storeDetails?.publicPresence || {};
-    const [formData, setFormData] = useState({
+    return {
         accentColor: initialPresence.accentColor || '#1677ff',
         descriptor: initialPresence.descriptor || '',
         establishedYear: initialPresence.establishedYear,
@@ -56,7 +44,25 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         showDirections: initialPresence.showDirections !== false,
         showWhatsApp: initialPresence.showWhatsApp !== false,
         whatsappNumber: initialPresence.whatsappNumber || '',
-    });
+    };
+}
+
+export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
+    const t = useTranslations('BusinessSettings');
+    const tMobile = useTranslations('MobileSettings');
+    const common = useTranslations('Common');
+    const session = useClientAuthSession();
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const [isSaving, setIsSaving] = useState(false);
+    const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+    const officialPageUrl = useMemo(
+        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
+        [storeDetails?.customDomain, storeDetails?.subdomain, storeDetails?.subDomain]
+    );
+
+    const [formData, setFormData] = useState(getInitialPresenceForm(storeDetails));
+    const [originalFormData, setOriginalFormData] = useState(() => getInitialPresenceForm(storeDetails));
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
 
     const photoSlots = useMemo(() => {
         const slots = Array.from({ length: 3 }, (_, index) => formData.photos[index] || '');
@@ -82,6 +88,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
         try {
             await updateStore(payload as any);
+            setOriginalFormData(nextPresence);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
@@ -109,9 +116,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             const url = await uploadOBPPhoto(file, { tId: session.tId, sId: session.sId }, index);
             const nextPhotos = [...formData.photos];
             nextPhotos[index] = url;
-            const nextState = { ...formData, photos: nextPhotos.filter(Boolean) };
-            setFormData(nextState);
-            await updatePresence(nextState);
+            setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
         } catch {
             Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
         } finally {
@@ -124,10 +129,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const handlePhotoRemove = (index: number) => {
         const nextPhotos = [...photoSlots];
         nextPhotos[index] = '';
-        const nextState = { ...formData, photos: nextPhotos.filter(Boolean) };
-        setFormData(nextState);
-        void updatePresence(nextState);
+        setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
+
+    const handleReset = useCallback(() => {
+        setFormData(originalFormData);
+    }, [originalFormData]);
 
     if (!FEATURE_FLAGS.ENABLE_OBP) {
         return null;
@@ -347,9 +354,14 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     </Flex>
                 </Card>
 
-                <Button block loading={isSaving} onClick={handleSave} size="large">
-                    {tMobile('saveChanges')}
-                </Button>
+                <Flex gap={8}>
+                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
+                        {tMobile('reset')}
+                    </Button>
+                    <Button block disabled={!isDirty} loading={isSaving} onClick={handleSave} size="large">
+                        {tMobile('saveChanges')}
+                    </Button>
+                </Flex>
             </Flex>
         </Flex>
     );

@@ -23,6 +23,18 @@ interface MobileLocaleSettingsScreenProps {
     onBack: () => void;
 }
 
+function getInitialLocaleForm(storeDetails: any) {
+    return {
+        activeLanguages: storeDetails?.activeLanguages || [],
+        currencyCode: storeDetails?.currencyCode || 'INR',
+        currencySymbol: storeDetails?.currencySymbol || '₹',
+        dateFormat: storeDetails?.dateFormat || defaultDateFormatString,
+        defaultLanguage: storeDetails?.defaultLanguage || 'en',
+        timeFormat: storeDetails?.timeFormat || defaultTimeFormatString,
+        timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
+}
+
 export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
@@ -30,15 +42,9 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
     const now = useMemo(() => getUTCDate().newDate, []);
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const [formData, setFormData] = useState({
-        activeLanguages: storeDetails?.activeLanguages || [],
-        currencyCode: storeDetails?.currencyCode || 'INR',
-        currencySymbol: storeDetails?.currencySymbol || '₹',
-        defaultLanguage: storeDetails?.defaultLanguage || 'en',
-        timeFormat: storeDetails?.timeFormat || defaultTimeFormatString,
-        timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-        dateFormat: storeDetails?.dateFormat || defaultDateFormatString,
-    });
+    const [formData, setFormData] = useState(getInitialLocaleForm(storeDetails));
+    const [originalFormData, setOriginalFormData] = useState(() => getInitialLocaleForm(storeDetails));
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
 
     const languageOptions = useMemo(() => GlobalLanguagesList.map((lang) => ({
         label: lang.nativeName !== lang.name ? `${lang.nativeName} (${lang.name})` : lang.name,
@@ -105,6 +111,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
 
         try {
             await updateStore(payload as any);
+            setOriginalFormData(formData);
             Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
@@ -122,6 +129,10 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
             setIsSaving(false);
         }
     }, [formData, setStoreDetails, storeDetails, t]);
+
+    const handleReset = useCallback(() => {
+        setFormData(originalFormData);
+    }, [originalFormData]);
 
     if (!storeDetails) {
         return (
@@ -228,9 +239,14 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                     </Flex>
                 </Card>
 
-                <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
-                    {t('saveChanges')}
-                </Button>
+                <Flex gap={8}>
+                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large" style={{ minHeight: 44 }}>
+                        {t('reset')}
+                    </Button>
+                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                        {t('saveChanges')}
+                    </Button>
+                </Flex>
             </Flex>
         </Flex>
     );

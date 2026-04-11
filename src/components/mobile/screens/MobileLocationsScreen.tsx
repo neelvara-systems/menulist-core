@@ -39,8 +39,9 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={onBack} />
-                <Flex align="center" justify="center" style={{ flex: 1 }}>
-                    <Text type="secondary">{t('notAvailable')}</Text>
+                <Flex align="center" gap={8} justify="center" style={{ flex: 1, padding: 24, textAlign: 'center' }} vertical>
+                    <Text strong>Locations / Branches / Outlets list is not available for this store.</Text>
+                    <Text type="secondary">This screen appears only for the main account when multi-location management is enabled.</Text>
                 </Flex>
             </Flex>
         );

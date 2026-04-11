@@ -1890,7 +1890,7 @@ export default function MobileMenuScreen() {
             {!isFirstRunProject ? (
                 <FloatingBubble
                     onClick={() => setIsCommandMenuOpen(true)}
-                    style={{ '--initial-position-bottom': 88, '--initial-position-right': 16, '--size': 52 }}
+                    style={{ '--initial-position-bottom': 'calc(env(safe-area-inset-bottom) + 96px)', '--initial-position-right': 16, '--size': 52 }}
                 >
                     <LuSettings2 size={18} />
                 </FloatingBubble>

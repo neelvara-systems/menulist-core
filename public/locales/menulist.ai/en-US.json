@@ -1054,6 +1054,7 @@
         "saved": "Saved",
         "failedToSave": "Failed to save. Please retry.",
         "saveChanges": "Save Changes",
+        "reset": "Reset",
         "basicSettingsSubtitle": "Update your business identity, contact details, and category information.",
         "publicInfoSubtitle": "Manage the public contact, address, and location details customers can rely on.",
         "localeSubtitle": "Set language, time zone, date, and time defaults for your business.",

@@ -56,6 +56,13 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         });
         return result;
     });
+    const [originalSchedule, setOriginalSchedule] = useState<Record<string, DaySchedule>>(() => {
+        const result: Record<string, DaySchedule> = {};
+        DAYS.forEach(({ key }) => {
+            result[key] = parseDayValue(storeDetails?.workingHours?.[key]);
+        });
+        return result;
+    });
 
     const pickerOptions = buildClockTimeOptions();
 
@@ -63,6 +70,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         if (found) return found;
         return schedule[key]?.isClosed ? null : schedule[key];
     }, null) || { open: '09:00', close: '22:00', isClosed: false };
+    const isDirty = JSON.stringify(schedule) !== JSON.stringify(originalSchedule);
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -75,6 +83,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
 
         try {
             await updateStore({ ...storeDetails, workingHours } as any);
+            setOriginalSchedule(schedule);
         } catch {
             setStoreDetails((previous: any) => ({ ...previous, workingHours: storeDetails.workingHours }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
@@ -82,6 +91,10 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
             setIsSaving(false);
         }
     }, [schedule, setStoreDetails, storeDetails, t]);
+
+    const handleReset = useCallback(() => {
+        setSchedule(originalSchedule);
+    }, [originalSchedule]);
 
     const handleApplyAllDaysHours = useCallback(() => {
         setSchedule((previous) => {
@@ -130,6 +143,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                 })}
                                 options={pickerOptions}
                                 placeholder={t('selectOpeningTime')}
+                                showSearch={false}
                                 value={allDaysTemplate.open}
                             />
                             <Select
@@ -142,6 +156,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                 })}
                                 options={pickerOptions}
                                 placeholder={t('selectClosingTime')}
+                                showSearch={false}
                                 value={allDaysTemplate.close}
                             />
                         </Flex>
@@ -173,6 +188,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                             }))}
                                             options={pickerOptions}
                                             placeholder={t('selectOpeningTime')}
+                                            showSearch={false}
                                             value={day.open}
                                         />
                                         <Select
@@ -182,6 +198,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                             }))}
                                             options={pickerOptions}
                                             placeholder={t('selectClosingTime')}
+                                            showSearch={false}
                                             value={day.close}
                                         />
                                     </Flex>
@@ -191,9 +208,14 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                     );
                 })}
 
-                <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
-                    {t('saveHours')}
-                </Button>
+                <Flex gap={8}>
+                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large" style={{ minHeight: 44 }}>
+                        {t('reset')}
+                    </Button>
+                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                        {t('saveHours')}
+                    </Button>
+                </Flex>
             </Flex>
         </Flex>
     );

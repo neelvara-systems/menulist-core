@@ -393,6 +393,7 @@ type SelectOption = { label: ReactNode; value: string };
 type BaseSelectProps = {
     options: SelectOption[];
     placeholder?: string;
+    showSearch?: boolean;
     style?: AnyStyle;
 };
 
@@ -416,6 +417,7 @@ export function Select({
     onChange,
     options,
     placeholder,
+    showSearch = true,
     style,
     value,
 }: SingleSelectProps | MultiSelectProps) {
@@ -444,7 +446,7 @@ export function Select({
                 </div>
             )}
             popupMatchSelectWidth
-            showSearch
+            showSearch={showSearch}
             size="large"
             style={{ width: '100%', ...sanitizeStyle(style) }}
             value={value}

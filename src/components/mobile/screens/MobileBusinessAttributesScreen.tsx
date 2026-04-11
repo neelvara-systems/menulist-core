@@ -37,6 +37,8 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [attributes, setAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
+    const [originalAttributes, setOriginalAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
+    const isDirty = JSON.stringify(attributes) !== JSON.stringify(originalAttributes);
 
     const saveAttributes = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -50,6 +52,7 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
 
         try {
             await updateStore(payload as any);
+            setOriginalAttributes(attributes);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({ ...previous, businessAttributes: storeDetails.businessAttributes }));
@@ -58,6 +61,10 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
             setIsSaving(false);
         }
     }, [attributes, setStoreDetails, storeDetails, tMobile]);
+
+    const resetAttributes = useCallback(() => {
+        setAttributes(originalAttributes);
+    }, [originalAttributes]);
 
     if (!FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES) {
         return null;
@@ -97,9 +104,14 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                     </Card>
                 ))}
 
-                <Button block loading={isSaving} onClick={() => void saveAttributes()} size="large">
-                    {tMobile('saveChanges')}
-                </Button>
+                <Flex gap={8}>
+                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={resetAttributes} size="large">
+                        {tMobile('reset')}
+                    </Button>
+                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void saveAttributes()} size="large">
+                        {tMobile('saveChanges')}
+                    </Button>
+                </Flex>
             </Flex>
         </Flex>
     );

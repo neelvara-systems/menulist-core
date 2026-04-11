@@ -13,6 +13,23 @@ interface MobileSeoAnalyticsScreenProps {
     mode?: 'seo' | 'analytics';
 }
 
+type AnalyticsDraft = {
+    enhancedEcommerce: boolean;
+    facebookPixelId: string;
+    googleAnalyticsId: string;
+    googleSearchConsole: string;
+    trackLocation: boolean;
+    trackMenuViews: boolean;
+};
+
+type SeoDraft = {
+    canonicalUrl: string;
+    keywords: string;
+    metaDescription: string;
+    metaTitle: string;
+    tagline: string;
+};
+
 export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
     const t = useTranslations('MobileSeoAnalytics');
     const tSeo = useTranslations('SEO');
@@ -29,6 +46,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const [enhancedEcommerce, setEnhancedEcommerce] = useState(false);
     const [trackMenuViews, setTrackMenuViews] = useState(false);
     const [trackLocation, setTrackLocation] = useState(false);
+    const [originalSeoState, setOriginalSeoState] = useState<SeoDraft | null>(null);
+    const [originalAnalyticsState, setOriginalAnalyticsState] = useState<AnalyticsDraft | null>(null);
+    const [isAnalyticsSaving, setIsAnalyticsSaving] = useState(false);
+    const [isSeoSaving, setIsSeoSaving] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
     const [wizardStep, setWizardStep] = useState(0);
@@ -40,12 +61,14 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setMetaDescription(storeDetails.metaDescription || '');
         setCanonicalUrl(storeDetails.canonicalUrl || '');
         setKeywords((storeDetails.keywords || []).join(', '));
+        setOriginalSeoState(getSeoDraft(storeDetails));
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
         setFbPixelId(storeDetails.analytics?.facebookPixelId || '');
         setSearchConsole(storeDetails.analytics?.googleSearchConsole || '');
         setEnhancedEcommerce(storeDetails.analytics?.enhancedEcommerce || false);
         setTrackMenuViews(storeDetails.analytics?.trackMenuViews || false);
         setTrackLocation(storeDetails.analytics?.trackLocation || false);
+        setOriginalAnalyticsState(getAnalyticsDraft(storeDetails));
     }, [storeDetails]);
 
     const saveField = async (field: string, value: any) => {
@@ -76,13 +99,32 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const pageSubtitle = isSeoMode
         ? 'Manage how your business appears in search and shared links.'
         : 'Manage tracking IDs and customer activity measurement for your menu.';
+    const analyticsDraft: AnalyticsDraft = {
+        enhancedEcommerce,
+        facebookPixelId: fbPixelId,
+        googleAnalyticsId: gaId,
+        googleSearchConsole: searchConsole,
+        trackLocation,
+        trackMenuViews,
+    };
+    const isAnalyticsDirty = !isSeoMode && originalAnalyticsState !== null
+        && JSON.stringify(analyticsDraft) !== JSON.stringify(originalAnalyticsState);
+    const seoDraft: SeoDraft = {
+        canonicalUrl,
+        keywords,
+        metaDescription,
+        metaTitle,
+        tagline,
+    };
+    const isSeoDirty = isSeoMode && originalSeoState !== null
+        && JSON.stringify(seoDraft) !== JSON.stringify(originalSeoState);
 
     const wizardSteps = [
         {
             content: (
                 <Card size="small">
                     <Flex gap={10} vertical>
-                        <Text strong>Let's set up your analytics.</Text>
+                        <Text strong>Let&apos;s set up your analytics.</Text>
                         <Text type="secondary">
                             This helps you track menu visits, popular dishes, customer locations, and order activity.
                         </Text>
@@ -109,7 +151,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 'Click "Start measuring"',
                                 'Choose Web for your menu website',
                                 'Create the property and copy the Measurement ID',
-                                'Paste the ID here. It starts with "G-"',
+                                'Paste the ID here. It starts with &quot;G-&quot;',
                             ]}
                         />
                         <Button
@@ -220,19 +262,19 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             checked={enhancedEcommerce}
                             description={tAnalytics('enhancedEcommerceHelp')}
                             label={tAnalytics('enhancedEcommerce')}
-                            onChange={(value) => { setEnhancedEcommerce(value); void saveField('analytics.enhancedEcommerce', value); }}
+                            onChange={setEnhancedEcommerce}
                         />
                         <FeatureToggleCard
                             checked={trackMenuViews}
                             description={tAnalytics('menuItemViewsHelp')}
                             label={tAnalytics('menuItemViews')}
-                            onChange={(value) => { setTrackMenuViews(value); void saveField('analytics.trackMenuViews', value); }}
+                            onChange={setTrackMenuViews}
                         />
                         <FeatureToggleCard
                             checked={trackLocation}
                             description={tAnalytics('customerLocationsHelp')}
                             label={tAnalytics('customerLocations')}
-                            onChange={(value) => { setTrackLocation(value); void saveField('analytics.trackLocation', value); }}
+                            onChange={setTrackLocation}
                         />
                         <InfoCallout
                             description="We only track general analytics information, not personal customer identity."
@@ -276,6 +318,74 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setWizardStep(0);
     };
 
+    const resetAnalyticsSettings = () => {
+        if (!originalAnalyticsState) return;
+        setGaId(originalAnalyticsState.googleAnalyticsId);
+        setSearchConsole(originalAnalyticsState.googleSearchConsole);
+        setFbPixelId(originalAnalyticsState.facebookPixelId);
+        setEnhancedEcommerce(originalAnalyticsState.enhancedEcommerce);
+        setTrackMenuViews(originalAnalyticsState.trackMenuViews);
+        setTrackLocation(originalAnalyticsState.trackLocation);
+    };
+
+    const saveAnalyticsSettings = async () => {
+        if (!storeDetails?.storeId || !isAnalyticsDirty) return;
+
+        try {
+            setIsAnalyticsSaving(true);
+            const update = {
+                analytics: {
+                    ...storeDetails.analytics,
+                    ...analyticsDraft,
+                },
+                storeId: storeDetails.storeId,
+            };
+            await updateStore(update);
+            setStoreDetails({ ...storeDetails, ...update });
+            setOriginalAnalyticsState(analyticsDraft);
+            Toast.show({ content: t('saved'), duration: 800 });
+        } catch {
+            Toast.show({ content: t('failedToSave'), duration: 1500 });
+        } finally {
+            setIsAnalyticsSaving(false);
+        }
+    };
+
+    const resetSeoSettings = () => {
+        if (!originalSeoState) return;
+        setTagline(originalSeoState.tagline);
+        setMetaTitle(originalSeoState.metaTitle);
+        setMetaDescription(originalSeoState.metaDescription);
+        setKeywords(originalSeoState.keywords);
+        setCanonicalUrl(originalSeoState.canonicalUrl);
+    };
+
+    const saveSeoSettings = async () => {
+        if (!storeDetails?.storeId || !isSeoDirty) return;
+        try {
+            setIsSeoSaving(true);
+            const update = {
+                canonicalUrl,
+                keywords: keywords
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                metaDescription,
+                metaTitle,
+                storeId: storeDetails.storeId,
+                tagline,
+            };
+            await updateStore(update);
+            setStoreDetails({ ...storeDetails, ...update });
+            setOriginalSeoState(seoDraft);
+            Toast.show({ content: t('saved'), duration: 800 });
+        } catch {
+            Toast.show({ content: t('failedToSave'), duration: 1500 });
+        } finally {
+            setIsSeoSaving(false);
+        }
+    };
+
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack} />
@@ -285,30 +395,39 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                     title={pageTitle}
                 />
                 {isSeoMode ? (
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <FieldGroup hint={tSeo('taglineHelp')} label={tSeo('tagline')}>
-                                <Input maxLength={100} onBlur={() => void saveField('tagline', tagline)} onChange={setTagline} placeholder={tSeo('taglinePlaceholder')} value={tagline} />
-                            </FieldGroup>
-                            <FieldGroup hint={tSeo('metaTitleHelp')} label={tSeo('metaTitle')}>
-                                <Input maxLength={60} onBlur={() => void saveField('metaTitle', metaTitle)} onChange={setMetaTitle} placeholder={tSeo('metaTitlePlaceholder')} value={metaTitle} />
-                            </FieldGroup>
-                            <FieldGroup hint={tSeo('metaDescHelp')} label={tSeo('metaDescription')}>
-                                <Input maxLength={160} onBlur={() => void saveField('metaDescription', metaDescription)} onChange={setMetaDescription} placeholder={tSeo('metaDescPlaceholder')} value={metaDescription} />
-                            </FieldGroup>
-                            <FieldGroup hint={tSeo('keywordsHelp')} label={tSeo('keywords')}>
-                                <Input
-                                    onBlur={() => void saveField('keywords', keywords)}
-                                    onChange={setKeywords}
-                                    placeholder={tSeo('keywordsPlaceholder')}
-                                    value={keywords}
-                                />
-                            </FieldGroup>
-                            <FieldGroup hint={tSeo('canonicalUrlHelp')} label={tSeo('canonicalUrl')}>
-                                <Input onBlur={() => void saveField('canonicalUrl', canonicalUrl)} onChange={setCanonicalUrl} placeholder={tSeo('canonicalUrlPlaceholder')} value={canonicalUrl} />
-                            </FieldGroup>
+                    <>
+                        <Card>
+                            <Flex gap={12} vertical>
+                                <FieldGroup hint={tSeo('taglineHelp')} label={tSeo('tagline')}>
+                                    <Input maxLength={100} onChange={setTagline} placeholder={tSeo('taglinePlaceholder')} value={tagline} />
+                                </FieldGroup>
+                                <FieldGroup hint={tSeo('metaTitleHelp')} label={tSeo('metaTitle')}>
+                                    <Input maxLength={60} onChange={setMetaTitle} placeholder={tSeo('metaTitlePlaceholder')} value={metaTitle} />
+                                </FieldGroup>
+                                <FieldGroup hint={tSeo('metaDescHelp')} label={tSeo('metaDescription')}>
+                                    <Input maxLength={160} onChange={setMetaDescription} placeholder={tSeo('metaDescPlaceholder')} value={metaDescription} />
+                                </FieldGroup>
+                                <FieldGroup hint={tSeo('keywordsHelp')} label={tSeo('keywords')}>
+                                    <Input
+                                        onChange={setKeywords}
+                                        placeholder={tSeo('keywordsPlaceholder')}
+                                        value={keywords}
+                                    />
+                                </FieldGroup>
+                                <FieldGroup hint={tSeo('canonicalUrlHelp')} label={tSeo('canonicalUrl')}>
+                                    <Input onChange={setCanonicalUrl} placeholder={tSeo('canonicalUrlPlaceholder')} value={canonicalUrl} />
+                                </FieldGroup>
+                            </Flex>
+                        </Card>
+                        <Flex gap={8}>
+                            <Button block disabled={!isSeoDirty || isSeoSaving} fill="outline" onClick={resetSeoSettings}>
+                                Reset
+                            </Button>
+                            <Button block disabled={!isSeoDirty} loading={isSeoSaving} onClick={() => void saveSeoSettings()}>
+                                Save
+                            </Button>
                         </Flex>
-                    </Card>
+                    </>
                 ) : (
                     <>
                         <Card>
@@ -331,18 +450,17 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         <Card title={tAnalytics('essentialTracking')}>
                             <Flex gap={12} vertical>
                                 <FieldGroup hint={tAnalytics('googleAnalyticsIdHelp')} label={tAnalytics('googleAnalyticsId')}>
-                                    <Input onBlur={() => void saveField('analytics.googleAnalyticsId', gaId)} onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
+                                    <Input onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
                                 </FieldGroup>
                                 <FieldGroup hint={tAnalytics('googleSearchConsoleHelp')} label={tAnalytics('googleSearchConsole')}>
                                     <Input
-                                        onBlur={() => void saveField('analytics.googleSearchConsole', searchConsole)}
                                         onChange={setSearchConsole}
                                         placeholder="Verification code"
                                         value={searchConsole}
                                     />
                                 </FieldGroup>
                                 <FieldGroup hint={tAnalytics('facebookPixelIdHelp')} label={tAnalytics('facebookPixelId')}>
-                                    <Input onBlur={() => void saveField('analytics.facebookPixelId', fbPixelId)} onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
+                                    <Input onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
                                 </FieldGroup>
                             </Flex>
                         </Card>
@@ -353,22 +471,31 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     checked={enhancedEcommerce}
                                     description={tAnalytics('enhancedEcommerceHelp')}
                                     label={tAnalytics('enhancedEcommerce')}
-                                    onChange={(value) => { setEnhancedEcommerce(value); void saveField('analytics.enhancedEcommerce', value); }}
+                                    onChange={setEnhancedEcommerce}
                                 />
                                 <ToggleRow
                                     checked={trackMenuViews}
                                     description={tAnalytics('menuItemViewsHelp')}
                                     label={tAnalytics('menuItemViews')}
-                                    onChange={(value) => { setTrackMenuViews(value); void saveField('analytics.trackMenuViews', value); }}
+                                    onChange={setTrackMenuViews}
                                 />
                                 <ToggleRow
                                     checked={trackLocation}
                                     description={tAnalytics('customerLocationsHelp')}
                                     label={tAnalytics('customerLocations')}
-                                    onChange={(value) => { setTrackLocation(value); void saveField('analytics.trackLocation', value); }}
+                                    onChange={setTrackLocation}
                                 />
                             </Flex>
                         </Card>
+
+                        <Flex gap={8}>
+                            <Button block disabled={!isAnalyticsDirty || isAnalyticsSaving} fill="outline" onClick={resetAnalyticsSettings}>
+                                Reset
+                            </Button>
+                            <Button block disabled={!isAnalyticsDirty} loading={isAnalyticsSaving} onClick={() => void saveAnalyticsSettings()}>
+                                Save
+                            </Button>
+                        </Flex>
                     </>
                 )}
             </Flex>
@@ -629,4 +756,25 @@ function StepList({ items }: { items: string[] }) {
 function openExternalLink(url: string) {
     if (typeof window === 'undefined') return;
     window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
+    return {
+        enhancedEcommerce: storeDetails?.analytics?.enhancedEcommerce || false,
+        facebookPixelId: storeDetails?.analytics?.facebookPixelId || '',
+        googleAnalyticsId: storeDetails?.analytics?.googleAnalyticsId || '',
+        googleSearchConsole: storeDetails?.analytics?.googleSearchConsole || '',
+        trackLocation: storeDetails?.analytics?.trackLocation || false,
+        trackMenuViews: storeDetails?.analytics?.trackMenuViews || false,
+    };
+}
+
+function getSeoDraft(storeDetails: any): SeoDraft {
+    return {
+        canonicalUrl: storeDetails?.canonicalUrl || '',
+        keywords: (storeDetails?.keywords || []).join(', '),
+        metaDescription: storeDetails?.metaDescription || '',
+        metaTitle: storeDetails?.metaTitle || '',
+        tagline: storeDetails?.tagline || '',
+    };
 }

@@ -42,6 +42,15 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         () => (storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null),
         [storeDetails?.subdomain]
     );
+    const currentSubdomain = (storeDetails?.subdomain || '').trim().toLowerCase();
+    const normalizedInputSubdomain = subdomainValue.trim().toLowerCase();
+    const hasSubdomainChanged = normalizedInputSubdomain !== currentSubdomain;
+    const canCheckSubdomain = normalizedInputSubdomain.length >= 3 && (!storeDetails?.subdomain || hasSubdomainChanged);
+    const canSaveSubdomain = Boolean(
+        availability?.available
+        && availability?.normalized === normalizedInputSubdomain
+        && (!storeDetails?.subdomain || hasSubdomainChanged)
+    );
     const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
     const liveUrl = activeDomain ? `https://${activeDomain}` : subdomainUrl;
     const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
@@ -196,7 +205,10 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                             <>
                                 <AntInput
                                     addonAfter=".menulist.ai"
-                                    onChange={(event) => setSubdomainValue(event.target.value.toLowerCase().trim())}
+                                    onChange={(event) => {
+                                        setSubdomainValue(event.target.value.toLowerCase().trim());
+                                        setAvailability(null);
+                                    }}
                                     placeholder={t('subdomainPlaceholder')}
                                     value={subdomainValue}
                                 />
@@ -216,13 +228,13 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                     />
                                 ) : null}
                                 <Flex gap={8}>
-                                    <Button block fill="outline" loading={checkingSubdomain} onClick={() => void checkAvailability(subdomainValue)} size="large">
+                                    <Button block disabled={!canCheckSubdomain} fill="outline" loading={checkingSubdomain} onClick={() => void checkAvailability(subdomainValue)} size="large">
                                         <Flex align="center" gap={6}>
                                             <LuSearch size={16} />
                                             <Text>{t('checkAvailability')}</Text>
                                         </Flex>
                                     </Button>
-                                    <Button block color="primary" disabled={!availability?.available} loading={savingSubdomain} onClick={() => void saveSubdomain()} size="large">
+                                    <Button block color="primary" disabled={!canSaveSubdomain} loading={savingSubdomain} onClick={() => void saveSubdomain()} size="large">
                                         {common('save')}
                                     </Button>
                                 </Flex>

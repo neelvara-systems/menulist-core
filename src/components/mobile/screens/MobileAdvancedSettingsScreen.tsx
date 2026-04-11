@@ -14,16 +14,34 @@ interface MobileAdvancedSettingsScreenProps {
     mode?: 'all' | 'social' | 'feedback';
 }
 
+type FeedbackDraft = {
+    collectEmail: boolean;
+    collectName: boolean;
+    collectPhone: boolean;
+    feedbackEnabled: boolean;
+};
+
+function getInitialFeedbackDraft(storeDetails: any): FeedbackDraft {
+    return {
+        collectEmail: storeDetails?.feedbackDefaults?.collectEmail ?? true,
+        collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
+        collectPhone: storeDetails?.feedbackDefaults?.collectPhone ?? true,
+        feedbackEnabled: storeDetails?.feedbackEnabled !== false,
+    };
+}
+
 export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
 
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
+    const [originalSocialMedia, setOriginalSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
     const [feedbackEnabled, setFeedbackEnabled] = useState(storeDetails?.feedbackEnabled !== false);
     const [collectName, setCollectName] = useState(storeDetails?.feedbackDefaults?.collectName ?? false);
     const [collectPhone, setCollectPhone] = useState(storeDetails?.feedbackDefaults?.collectPhone ?? true);
     const [collectEmail, setCollectEmail] = useState(storeDetails?.feedbackDefaults?.collectEmail ?? true);
+    const [originalFeedbackDraft, setOriginalFeedbackDraft] = useState<FeedbackDraft>(() => getInitialFeedbackDraft(storeDetails));
     const [isSocialPickerOpen, setIsSocialPickerOpen] = useState(false);
     const [editingPlatformKey, setEditingPlatformKey] = useState<string | null>(null);
     const [editingPlatformLabel, setEditingPlatformLabel] = useState('');
@@ -85,8 +103,10 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             await updateStore({ storeId: storeDetails?.storeId, ...updates });
             setStoreDetails({ ...storeDetails, ...updates });
             Toast.show({ content: t('saved'), duration: 1000 });
+            return true;
         } catch {
             Toast.show({ content: t('failedToSave'), duration: 2000 });
+            return false;
         } finally {
             setIsSaving(false);
         }
@@ -98,7 +118,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             if (value.trim()) cleaned[key] = value.trim();
         });
         setSocialMedia(cleaned);
-        saveField({ socialMedia: cleaned });
     };
 
     const handleOpenEditSheet = (platformKey: string) => {
@@ -156,7 +175,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
     const handleToggleFeedback = (enabled: boolean) => {
         setFeedbackEnabled(enabled);
-        saveField({ feedbackEnabled: enabled });
     };
 
     const handleToggleCollectField = (field: string, value: boolean) => {
@@ -168,10 +186,12 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         if (field === 'collectName') setCollectName(value);
         if (field === 'collectPhone') setCollectPhone(value);
         if (field === 'collectEmail') setCollectEmail(value);
-        saveField({ feedbackDefaults: updated });
     };
 
     const filledSocialCount = linkedSocialPlatforms.length;
+    const feedbackDraft: FeedbackDraft = { collectEmail, collectName, collectPhone, feedbackEnabled };
+    const isSocialDirty = showSocial && JSON.stringify(socialMedia) !== JSON.stringify(originalSocialMedia);
+    const isFeedbackDirty = showFeedback && JSON.stringify(feedbackDraft) !== JSON.stringify(originalFeedbackDraft);
     const editingPlatform = editingPlatformKey ? linkedSocialPlatforms.find((platform) => platform.key === editingPlatformKey) || (
         knownPlatformMap.get(editingPlatformKey)
             ? {
@@ -188,6 +208,46 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                 isCustom: true,
             }
     ) : null;
+
+    const handleReset = () => {
+        if (showSocial) {
+            setSocialMedia(originalSocialMedia);
+        }
+        if (showFeedback) {
+            setFeedbackEnabled(originalFeedbackDraft.feedbackEnabled);
+            setCollectName(originalFeedbackDraft.collectName);
+            setCollectPhone(originalFeedbackDraft.collectPhone);
+            setCollectEmail(originalFeedbackDraft.collectEmail);
+        }
+    };
+
+    const handleSave = async () => {
+        const updates: Record<string, any> = {};
+
+        if (showSocial && isSocialDirty) {
+            updates.socialMedia = socialMedia;
+        }
+
+        if (showFeedback && isFeedbackDirty) {
+            updates.feedbackEnabled = feedbackEnabled;
+            updates.feedbackDefaults = {
+                collectEmail,
+                collectName,
+                collectPhone,
+            };
+        }
+
+        if (Object.keys(updates).length === 0) return;
+
+        const didSave = await saveField(updates);
+        if (!didSave) return;
+        if (showSocial) {
+            setOriginalSocialMedia(socialMedia);
+        }
+        if (showFeedback) {
+            setOriginalFeedbackDraft(feedbackDraft);
+        }
+    };
 
     return (
         <Flex style={{ height: '100%' }} vertical>
@@ -321,6 +381,15 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                         </Card>
                     </>
                 ) : null}
+
+                <Flex gap={8}>
+                    <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} fill="outline" onClick={handleReset} size="large">
+                        Reset
+                    </Button>
+                    <Button block disabled={!isSocialDirty && !isFeedbackDirty} loading={isSaving} onClick={() => void handleSave()} size="large">
+                        Save
+                    </Button>
+                </Flex>
             </Flex>
 
             <Popup

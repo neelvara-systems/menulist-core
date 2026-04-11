@@ -7,7 +7,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import type { UserUploadedFileType } from '@type/common';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useRef, useState } from 'react';
-import { LuBriefcase, LuBuilding2, LuImage, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
+import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
@@ -19,6 +19,29 @@ const BUSINESS_TYPE_OPTIONS = BUSINESS_TYPES.map((businessType) => ({
     label: businessType.label,
     value: businessType.value,
 }));
+
+function getInitialFormData(storeDetails: any) {
+    return {
+        addressLine: storeDetails?.addressLine || '',
+        area: storeDetails?.area || '',
+        businessType: storeDetails?.businessType || '',
+        city: storeDetails?.city || '',
+        contactPersonEmail: storeDetails?.contactPersonEmail || '',
+        contactPersonName: storeDetails?.contactPersonName || '',
+        contactPersonNumber: storeDetails?.contactPersonNumber || '',
+        country: storeDetails?.country || '',
+        description: storeDetails?.description || '',
+        district: storeDetails?.district || '',
+        email: storeDetails?.email || '',
+        gstn: storeDetails?.gstn || '',
+        latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
+        longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
+        name: storeDetails?.name || '',
+        phoneNumber: storeDetails?.phoneNumber || '',
+        postalCode: storeDetails?.postalCode || '',
+        state: storeDetails?.state || '',
+    };
+}
 
 export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
@@ -36,26 +59,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             }
             : null
     );
-    const [formData, setFormData] = useState({
-        addressLine: storeDetails?.addressLine || '',
-        area: storeDetails?.area || '',
-        city: storeDetails?.city || '',
-        contactPersonEmail: storeDetails?.contactPersonEmail || '',
-        contactPersonName: storeDetails?.contactPersonName || '',
-        contactPersonNumber: storeDetails?.contactPersonNumber || '',
-        country: storeDetails?.country || '',
-        district: storeDetails?.district || '',
-        email: storeDetails?.email || '',
-        businessType: storeDetails?.businessType || '',
-        description: storeDetails?.description || '',
-        gstn: storeDetails?.gstn || '',
-        latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
-        longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
-        name: storeDetails?.name || '',
-        postalCode: storeDetails?.postalCode || '',
-        phoneNumber: storeDetails?.phoneNumber || '',
-        state: storeDetails?.state || '',
-    });
+    const [formData, setFormData] = useState(getInitialFormData(storeDetails));
+    const [originalFormData, setOriginalFormData] = useState(() => getInitialFormData(storeDetails));
+    const [originalLogoUrl, setOriginalLogoUrl] = useState(storeDetails?.logo || '');
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData) || (selectedLogo?.url || '') !== originalLogoUrl;
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -94,10 +101,28 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         }
 
         setIsSaving(true);
-        setStoreDetails((previous: any) => ({ ...previous, ...updates }));
+        const optimisticUpdates = { ...updates };
+        delete optimisticUpdates.imageToUpdate;
+        delete optimisticUpdates.imageType;
+        setStoreDetails((previous: any) => ({ ...previous, ...optimisticUpdates }));
 
         try {
-            await updateStore({ ...storeDetails, ...updates } as any);
+            const savedStore = await updateStore({ ...storeDetails, ...updates } as any);
+            setStoreDetails((previous: any) => ({
+                ...previous,
+                ...optimisticUpdates,
+                logo: savedStore?.logo || previous.logo,
+            }));
+            if (savedStore?.logo) {
+                setSelectedLogo({
+                    name: storeDetails.name || 'logo',
+                    size: 0,
+                    type: selectedLogo?.type || 'image/png',
+                    url: savedStore.logo,
+                });
+            }
+            setOriginalFormData(formData);
+            setOriginalLogoUrl(savedStore?.logo || selectedLogo?.url || storeDetails.logo || '');
             Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
@@ -126,6 +151,20 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         }
     }, [formData, setStoreDetails, storeDetails, t]);
 
+    const handleReset = useCallback(() => {
+        setFormData(originalFormData);
+        setSelectedLogo(
+            originalLogoUrl
+                ? {
+                    name: storeDetails?.name || 'logo',
+                    size: 0,
+                    type: '',
+                    url: originalLogoUrl,
+                }
+                : null
+        );
+    }, [originalFormData, originalLogoUrl, storeDetails?.name]);
+
     if (!storeDetails) {
         return (
             <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
@@ -142,35 +181,27 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     subtitle={t('basicSettingsSubtitle')}
                     title={t('basicSettings')}
                 />
-                <Card>
-                    <Flex align="center" gap={12} vertical>
-                        <LuImage color="#64748b" size={20} />
-                        <Text type="secondary">{t('businessLogo')}</Text>
+                <Card onClick={() => fileInputRef.current?.click()}>
+                    <Flex align="center" gap={10} justify="center" style={{ minHeight: 120 }} vertical>
                         {(selectedLogo?.url || storeDetails.logo) ? (
-                            <Image
-                                alt={storeDetails.name}
-                                height={80}
-                                preview={false}
-                                src={selectedLogo?.url || storeDetails.logo}
-                                style={{ borderRadius: 12, objectFit: 'cover' }}
-                                width={80}
-                            />
+                            <>
+                                <Image
+                                    alt={storeDetails.name}
+                                    height={72}
+                                    preview={false}
+                                    src={selectedLogo?.url || storeDetails.logo}
+                                    style={{ borderRadius: 12, objectFit: 'cover' }}
+                                    width={72}
+                                />
+                                <Text strong>{tBusiness('uploadLogo')}</Text>
+                                <Text type="secondary">Tap to replace</Text>
+                            </>
                         ) : (
-                            <Card style={{ alignItems: 'center', display: 'flex', height: 80, justifyContent: 'center', width: 80 }}>
-                                <LuBuilding2 color="#64748b" size={28} />
-                            </Card>
+                            <>
+                                <LuUpload size={20} />
+                                <Text strong>{tBusiness('uploadLogo')}</Text>
+                            </>
                         )}
-                        <Button
-                            fill="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                            size="small"
-                        >
-                            <Flex align="center" gap={6}>
-                                <LuUpload size={16} />
-                                <Text>{tBusiness('uploadLogo')}</Text>
-                            </Flex>
-                        </Button>
-                        <Text type="secondary">{tBusiness('uploadLogoDesc')}</Text>
                     </Flex>
                 </Card>
 
@@ -329,9 +360,14 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     </Flex>
                 </Card>
 
-                <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
-                    {t('saveChanges')}
-                </Button>
+                <Flex gap={8}>
+                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large" style={{ minHeight: 44 }}>
+                        {t('reset')}
+                    </Button>
+                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                        {t('saveChanges')}
+                    </Button>
+                </Flex>
             </Flex>
             <ImageUploadInput
                 fileInputRef={fileInputRef}

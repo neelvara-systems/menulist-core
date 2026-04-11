@@ -987,6 +987,7 @@
         "saved": "Saved",
         "failedToSave": "Failed to save. Please retry.",
         "saveChanges": "Save Changes",
+        "reset": "Reset",
         "publicInfo": "Public Info",
         "businessName": "Business Name",
         "changeOnDesktop": "Change on desktop",
