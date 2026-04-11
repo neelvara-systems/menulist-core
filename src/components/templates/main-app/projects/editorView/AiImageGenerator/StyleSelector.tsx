@@ -110,34 +110,51 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
           width: '100%',
           cursor: 'pointer',
           borderRadius: 8,
-          border: `2px solid ${isSelected ? token.colorPrimary : isRecommended ? token.colorWarningBorder : token.colorBorder}`,
-          position: 'relative',
+          border: `1px solid ${isSelected ? token.colorPrimary : isRecommended ? token.colorWarningBorder : token.colorBorderSecondary}`,
           padding: compact ? '10px 12px' : 12,
           transition: 'all 0.2s ease',
-          backgroundColor: isSelected ? token.colorPrimaryBg : isRecommended ? token.colorWarningBg : token.colorBgContainer,
+          background: token.colorFillAlter,
         }}
       >
-        <SelectedItemCheck active={isSelected} />
-        <Flex align="flex-start" justify="space-between" gap={8}>
-          <Flex gap={4} style={{ minWidth: 0 }} vertical>
-            <Text strong style={{ lineHeight: 1.25 }}>{style.name}</Text>
-            {styleInfo ? (
-              <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
-                Good for: {styleInfo.bestFor}
+        <Flex align="flex-start" gap={10}>
+          <Flex
+            align="center"
+            justify="center"
+            style={{
+              background: 'transparent',
+              border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorder}`,
+              borderRadius: '999px',
+              color: isSelected ? token.colorPrimary : token.colorTextSecondary,
+              flex: '0 0 auto',
+              height: 24,
+              width: 24,
+            }}
+          >
+            <LuCheckCircle size={12} />
+          </Flex>
+          <Flex align="flex-start" justify="space-between" gap={8} style={{ flex: 1, minWidth: 0 }}>
+            <Flex gap={4} style={{ minWidth: 0 }} vertical>
+              <Text strong style={{ color: isSelected ? token.colorPrimary : undefined, lineHeight: 1.25 }}>{style.name}</Text>
+              {styleInfo ? (
+                <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                  Good for: {styleInfo.bestFor}
+                </Text>
+              ) : null}
+              <Text type="secondary" style={{ fontSize: 12, marginTop: compact ? 2 : 4, display: 'block', lineHeight: 1.4, wordWrap: 'break-word', whiteSpace: 'normal' }}>
+                {style.description}
               </Text>
+            </Flex>
+            {styleInfo ? (
+              <Flex align="center" gap={6} style={{ flex: '0 0 auto' }}>
+                {isRecommended && (
+                  <Tag color="gold" style={{ margin: 0, fontSize: 10 }}>
+                    <LuStar style={{ marginRight: 2 }} /> Recommended
+                  </Tag>
+                )}
+              </Flex>
             ) : null}
           </Flex>
-          <Flex align="center" gap={6} style={{ flex: '0 0 auto' }}>
-            {isRecommended && (
-              <Tag color="gold" style={{ margin: 0, fontSize: 10 }}>
-                <LuStar style={{ marginRight: 2 }} /> Recommended
-              </Tag>
-            )}
-          </Flex>
         </Flex>
-        <Text type="secondary" style={{ fontSize: 12, marginTop: compact ? 6 : 8, display: 'block', lineHeight: 1.4, wordWrap: 'break-word', whiteSpace: 'normal' }}>
-          {style.description}
-        </Text>
       </div>
     );
   };

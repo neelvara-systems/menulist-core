@@ -1,6 +1,6 @@
 import { UserUploadedFileType } from '@type/common';
 import useDeviceType from '@hook/useDeviceType';
-import { Button, Card, Flex, Image, Input, Tag, theme, Tooltip } from 'antd';
+import { Button, Card, Flex, Image, Input, Tag, Typography, theme, Tooltip } from 'antd';
 import React, { Fragment, useEffect, useState } from 'react';
 import { LuSparkles, LuWand2, LuX } from 'react-icons/lu';
 import { ImageGenerationConfigType } from '../../types';
@@ -28,6 +28,7 @@ export interface ChatWidgetUiProps {
     onGenerateImage: () => Promise<void>;
     onSelecteRefImage: (image: UserUploadedFileType | null) => void;
     setShowStyleSelector: (show: boolean) => void;
+    isDesktopSidebar?: boolean;
 }
 
 const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
@@ -35,11 +36,14 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
     setGenerationConfig,
     onGenerateImage,
     onSelecteRefImage,
-    setShowStyleSelector
+    setShowStyleSelector,
+    isDesktopSidebar = false,
 }) => {
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const [exampleIndex, setExampleIndex] = useState(0);
+    const selectedStyleLabel = generationConfig.styles?.filter(Boolean).join(', ');
+    const selectedModeLabel = generationConfig.isMultiMode ? 'Multiple photos' : 'Single photo';
 
     // Rotate prompt examples every 4 seconds
     useEffect(() => {
@@ -54,94 +58,186 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
             size="small"
             style={{
                 width: '100%',
-                position: "sticky",
-                bottom: 0,
-                zIndex: 100,
-                borderRadius: isMobile ? 8 : 20,
-                boxShadow: token.boxShadow,
+                height: !isMobile && isDesktopSidebar ? '100%' : undefined,
+                position: isMobile ? 'sticky' : (isDesktopSidebar ? 'sticky' : 'relative'),
+                top: !isMobile && isDesktopSidebar ? 0 : 'auto',
+                bottom: isMobile ? 0 : 'auto',
+                zIndex: isMobile ? 100 : 'auto',
+                borderRadius: 8,
+                boxShadow: isMobile || isDesktopSidebar ? token.boxShadow : 'none',
                 background: token.colorBgContainer,
-                borderColor: token.colorPrimaryBg
+                borderColor: token.colorBorderSecondary
+            }}
+            styles={{
+                body: {
+                    display: !isMobile && isDesktopSidebar ? 'flex' : undefined,
+                    flexDirection: !isMobile && isDesktopSidebar ? 'column' : undefined,
+                    height: !isMobile && isDesktopSidebar ? '100%' : undefined,
+                    padding: isMobile ? 12 : 14,
+                },
             }}
         >
-            <Flex vertical style={{ width: '100%' }} gap={isMobile ? 10 : 16}>
-                <Flex vertical gap={8} style={{ width: '100%' }} justify='flex-start' align='start'>
-
-                    <Flex justify='space-between' align='center' style={{ width: '100%' }} gap={8}>
-                        {generationConfig.referanceImage && <Image
-                            src={generationConfig.referanceImage?.url}
-                            alt={generationConfig.referanceImage?.name || `Reference image`}
-                            style={{
-                                border: `1px solid ${token.colorBorder}`,
-                                borderRadius: 10,
-                                height: 'auto',
-                                width: 'auto',
-                                maxWidth: 70,
-                                maxHeight: 150,
-                                objectFit: 'cover'
-                            }}
-                            preview={{
-                                mask: (
-                                    <LuX
-                                        style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
-                                        onClick={(e) => { e.stopPropagation(); onSelecteRefImage(null); }}
-                                    />
-                                )
-                            }}
-                        />}
-
-                        <Flex vertical>
-                            {(generationConfig.stylesCategory || (generationConfig.styles && generationConfig.styles.length > 0)) && (
-                                <Flex wrap="wrap" gap={4} onClick={() => setShowStyleSelector(true)}>
-                                    {generationConfig.stylesCategory && (
-                                        <Tag color={"cyan"} style={{ cursor: 'pointer', borderRadius: token.borderRadius, width: '100%', margin: 0, padding: "2px 10px" }}>{generationConfig.stylesCategory}:&nbsp;
-                                            {generationConfig.styles && generationConfig.styles.map((style, index) => (
-                                                <Fragment key={index}>{style}{index < generationConfig.styles.length - 1 ? ', ' : ''}</Fragment>
-                                            ))}
+            <Flex
+                vertical
+                style={{
+                    flex: !isMobile && isDesktopSidebar ? 1 : undefined,
+                    minHeight: 0,
+                    width: '100%',
+                }}
+                gap={isMobile ? 10 : 12}
+            >
+                <Flex
+                    vertical
+                    style={{
+                        flex: !isMobile && isDesktopSidebar ? 1 : undefined,
+                        minHeight: 0,
+                        overflowY: !isMobile && isDesktopSidebar ? 'auto' : undefined,
+                        paddingRight: !isMobile && isDesktopSidebar ? 2 : undefined,
+                    }}
+                    gap={isMobile ? 10 : 12}
+                >
+                    {isDesktopSidebar ? (
+                        <Flex gap={2} vertical>
+                            <Typography.Text strong>
+                                Review and generate
+                            </Typography.Text>
+                            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                Check your selections, add any final instructions, then generate the image.
+                            </Typography.Text>
+                        </Flex>
+                    ) : null}
+                    <Flex
+                        gap={isMobile ? 12 : 16}
+                        style={{
+                            alignItems: isMobile ? undefined : 'stretch',
+                            width: '100%',
+                        }}
+                        vertical={isMobile || isDesktopSidebar}
+                    >
+                    <Flex
+                        gap={12}
+                        style={{
+                            background: token.colorFillAlter,
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 8,
+                            flex: 1,
+                            padding: isMobile ? 10 : 12,
+                            width: '100%',
+                        }}
+                        vertical
+                    >
+                        <Flex gap={10} align={generationConfig.referanceImage ? 'flex-start' : 'center'}>
+                            {generationConfig.referanceImage ? (
+                                <Image
+                                    src={generationConfig.referanceImage?.url}
+                                    alt={generationConfig.referanceImage?.name || 'Reference image'}
+                                    style={{
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 8,
+                                        flex: '0 0 auto',
+                                        height: 56,
+                                        objectFit: 'cover',
+                                        width: 56,
+                                    }}
+                                    preview={{
+                                        mask: (
+                                            <LuX
+                                                style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
+                                                onClick={(e) => { e.stopPropagation(); onSelecteRefImage(null); }}
+                                            />
+                                        )
+                                    }}
+                                />
+                            ) : null}
+                            <Flex gap={8} style={{ minWidth: 0, flex: 1 }} vertical>
+                                <Flex gap={6} wrap="wrap">
+                                    <Tag
+                                        style={{
+                                            background: token.colorBgContainer,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            borderRadius: 8,
+                                            margin: 0,
+                                        }}
+                                    >
+                                        {selectedModeLabel}
+                                    </Tag>
+                                    {generationConfig.aspectRatio ? (
+                                        <Tag
+                                            style={{
+                                                background: token.colorBgContainer,
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 8,
+                                                margin: 0,
+                                            }}
+                                        >
+                                            Ratio {generationConfig.aspectRatio}
                                         </Tag>
-                                    )}
+                                    ) : null}
                                 </Flex>
-                            )}
-                            {/* Show summary of other selected options */}
-                            {/* <Flex wrap="wrap" gap={4} style={{ marginBottom: 8 }}>
-                                {[
-                                    { label: "Environments", key: "environments", color: "blue" },
-                                    { label: "Lighting", key: "lighting", color: "gold" },
-                                    { label: "Colors", key: "colors", color: "magenta" },
-                                    { label: "Moods", key: "moods", color: "purple" },
-                                    { label: "Compositions", key: "compositions", color: "geekblue" },
-                                ].map(attr => (
-                                    Boolean(generationConfig[attr.key]) && (
-                                        <Flex key={attr.key} style={{ alignItems: "center", gap: 4, width: "100%" }}>
-                                            <Typography.Text strong key={attr.key} color={attr.color}>
-                                                {attr.label}: <Typography.Text key={attr.key} color={attr.color}>
-                                                    {generationConfig[attr.key]}
-                                                </Typography.Text>
-                                            </Typography.Text>
-                                        </Flex>
-                                    )
-                                ))}
-                            </Flex> */}
+                                {(generationConfig.stylesCategory || selectedStyleLabel) ? (
+                                    <Flex
+                                        gap={6}
+                                        onClick={() => setShowStyleSelector(true)}
+                                        style={{ cursor: 'pointer' }}
+                                        vertical
+                                    >
+                                        <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.2 }}>
+                                            Selected style
+                                        </Typography.Text>
+                                        <Typography.Text style={{ lineHeight: 1.35, wordBreak: 'break-word' }}>
+                                            {generationConfig.stylesCategory ? (
+                                                <Fragment>
+                                                    {generationConfig.stylesCategory}
+                                                    {selectedStyleLabel ? `: ${selectedStyleLabel}` : ''}
+                                                </Fragment>
+                                            ) : selectedStyleLabel}
+                                        </Typography.Text>
+                                    </Flex>
+                                ) : null}
+                            </Flex>
                         </Flex>
                     </Flex>
 
-                    <Flex vertical gap={8} style={{ width: '100%' }}>
+                    <Flex vertical gap={8} style={{ width: '100%', flex: isMobile || isDesktopSidebar ? undefined : 1.2 }}>
+                        <Flex gap={4} vertical>
+                            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.2 }}>
+                                Special instructions
+                            </Typography.Text>
+                            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                Add any extra detail you want the image to follow.
+                            </Typography.Text>
+                        </Flex>
                         <Tooltip title="The prompt is used to guide the AI in generating an image that matches your vision.">
                             <Input.TextArea
                                 id="prompt-input"
                                 allowClear
-                                rows={2}
-                                placeholder={`Add special instructions (optional) ${PROMPT_EXAMPLES[exampleIndex]}`}
+                                autoSize={{ minRows: 3, maxRows: 5 }}
+                                placeholder={`Optional, ${PROMPT_EXAMPLES[exampleIndex]}`}
                                 value={generationConfig.prompt}
                                 onChange={(e) => setGenerationConfig({ ...generationConfig, prompt: e.target.value })}
-                                style={{ height: 50, minWidth: '100%', resize: 'none', background: "unset" }}
+                                style={{
+                                    background: token.colorBgContainer,
+                                    borderRadius: 8,
+                                    lineHeight: 1.45,
+                                    minWidth: '100%',
+                                    resize: 'none',
+                                }}
                             />
                         </Tooltip>
-                        <Flex gap={4} wrap="wrap">
+                        <Flex gap={6} wrap="wrap">
                             {QUICK_ENHANCERS.map((enhancer) => (
                                 <Tag
                                     key={enhancer.label}
-                                    color={generationConfig.prompt?.includes(enhancer.value) ? 'blue' : 'default'}
-                                    style={{ cursor: 'pointer', fontSize: 11 }}
+                                    style={{
+                                        background: token.colorBgContainer,
+                                        border: `1px solid ${generationConfig.prompt?.includes(enhancer.value) ? token.colorPrimary : token.colorBorderSecondary}`,
+                                        borderRadius: 8,
+                                        color: generationConfig.prompt?.includes(enhancer.value) ? token.colorPrimary : undefined,
+                                        cursor: 'pointer',
+                                        fontSize: 11,
+                                        margin: 0,
+                                        padding: '2px 10px',
+                                    }}
                                     onClick={() => {
                                         const currentPrompt = generationConfig.prompt || '';
                                         if (currentPrompt.includes(enhancer.value)) {
@@ -162,13 +258,32 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                             ))}
                         </Flex>
                     </Flex>
+                    </Flex>
                 </Flex>
-                <Flex justify='center' align='center' gap={8}>
+                <Flex
+                    justify='center'
+                    align='center'
+                    gap={8}
+                    style={{
+                        background: !isMobile && isDesktopSidebar ? token.colorBgContainer : undefined,
+                        borderTop: !isMobile && isDesktopSidebar ? `1px solid ${token.colorBorderSecondary}` : undefined,
+                        marginTop: !isMobile && isDesktopSidebar ? 4 : undefined,
+                        paddingTop: !isMobile && isDesktopSidebar ? 12 : undefined,
+                        width: '100%',
+                    }}
+                >
                     <Tooltip title="Generate with smart defaults - no customization needed">
                         <Button
                             size='large'
                             type="default"
-                            style={{ flex: isMobile ? 1 : undefined, fontSize: isMobile ? 12 : undefined, minWidth: isMobile ? 0 : 140, paddingInline: isMobile ? 6 : undefined }}
+                            style={{
+                                borderRadius: 8,
+                                flex: 1,
+                                fontSize: isMobile ? 12 : undefined,
+                                height: isDesktopSidebar ? 46 : undefined,
+                                minWidth: 0,
+                                paddingInline: isMobile ? 6 : 14,
+                            }}
                             onClick={() => {
                                 // Quick generate with smart defaults
                                 setGenerationConfig({
@@ -189,7 +304,14 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                     <Button
                         size='large'
                         type="primary"
-                        style={{ flex: 1, fontSize: isMobile ? 12 : undefined, minWidth: 0, paddingInline: isMobile ? 6 : undefined }}
+                        style={{
+                            borderRadius: 8,
+                            flex: 1,
+                            fontSize: isMobile ? 12 : undefined,
+                            height: isDesktopSidebar ? 46 : undefined,
+                            minWidth: 0,
+                            paddingInline: isMobile ? 6 : 14,
+                        }}
                         onClick={onGenerateImage}
                         loading={generationConfig.loading}
                         disabled={generationConfig.loading}

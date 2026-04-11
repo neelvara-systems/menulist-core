@@ -6,7 +6,6 @@ import useDeviceType from '@hook/useDeviceType';
 import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenPreferences';
 import { validateImageQuality } from '@lib/imageQualityGuard';
 import { logger } from '@lib/monitoring/logger';
-import { calculateTotalImageWeight, validateImageUpload } from '@lib/performanceBudget';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -15,7 +14,7 @@ import triggerBatchImageGenerationApi from '@services/ai/image/triggerBatchImage
 import { UserUploadedFileType } from '@type/common';
 import { InheritanceState } from '@type/multiOutlet.types';
 import { getISOStringDate } from '@util/dateTime';
-import { getBase64, removeObjRef } from '@util/utils';
+import { getBase64, getBase64Length, getCompressedImage, removeObjRef } from '@util/utils';
 import type { UploadProps } from 'antd';
 import { Button, Flex, message, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -336,14 +335,24 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
             const { status, originFileObj, uid, name, type, size } = info.file;
             if (status === 'done' && originFileObj) {
                 try {
-                    // Await the Promise from getBase64
-                    const url = await getBase64(originFileObj as any);
+                    const originalFile = originFileObj as File;
+                    let url = await getBase64(originalFile as any);
+                    let finalSize = size;
+
+                    if (originalFile.size / 1024 / 1024 >= 2) {
+                        const compressedBase64 = await getCompressedImage(originalFile, 0.6);
+                        if (compressedBase64) {
+                            url = compressedBase64 as string;
+                            finalSize = Math.round(getBase64Length(compressedBase64 as string));
+                        }
+                    }
+
                     const newImage: UserUploadedFileType = {
                         uid: uid, // Use custom ID
                         url: url,
                         name: name,
                         type: type,
-                        size: size
+                        size: finalSize
                     };
                     // Add the new file to the array, preventing duplicates by uid
                     setSelectedImages(prevImages => {
@@ -380,34 +389,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                 return false;
             }
 
-            // Check 2: Individual file size (legacy check)
-            const isLt2M = file.size / 1024 / 1024 < 2;
-            if (!isLt2M) {
-                message.error('Image must smaller than 2MB!');
-                return false;
-            }
-
-            // Check 3: Constitutional Performance Budget (G03) - Global Image Weight
-            const existingImagesKB = calculateTotalImageWeight(
-                selectedImages.map(img => ({ size: img.size || 0 }))
-            );
-
-            const budgetValidation = validateImageUpload(file, existingImagesKB, 'item');
-
-            if (!budgetValidation.allowed) {
-                message.error(budgetValidation.reason);
-                return false;
-            }
-
-            // Check 4: Constitutional Image Quality (G04) - Resolution & Aspect Ratio
-            const qualityValidation = await validateImageQuality(file);
+            // Check 2: Relaxed reference image quality validation
+            const qualityValidation = await validateImageQuality(file, 'reference');
 
             if (!qualityValidation.allowed) {
                 message.error(qualityValidation.reason);
                 return false;
             }
 
-            // All checks passed
+            // Reference images can be compressed client-side after selection if needed.
             return true;
         }
     };
@@ -747,15 +737,16 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
                     open={open}
                     onCancel={generationConfig.loading ? undefined : closeModal}
                     footer={getModalFooter()}
-                    width={modalView === 'initialChoice' ? 500 : (activeTab === 'generate' ? 800 : 600)}
+                    style={{ top: activeTab === 'generate' ? 20 : 48 }}
+                    width={modalView === 'initialChoice' ? 500 : (activeTab === 'generate' ? 1040 : 640)}
                     styles={{
                         body: {
-                            maxHeight: 'calc(100vh - 250px)',
-                            padding: '10px 10px 5px',
-                            overflowY: 'auto',
+                            maxHeight: activeTab === 'generate' ? 'calc(100vh - 180px)' : 'calc(100vh - 250px)',
+                            padding: activeTab === 'generate' ? '12px 18px 18px' : '10px 10px 5px',
+                            overflowY: activeTab === 'generate' ? 'hidden' : 'auto',
                             overflowX: 'hidden',
                             position: 'relative',
-                            bottom: 10,
+                            bottom: activeTab === 'generate' ? 0 : 10,
                         },
                     }}
                 >
