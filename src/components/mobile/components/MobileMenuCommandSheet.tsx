@@ -104,8 +104,8 @@ export default function MobileMenuCommandSheet({
         {
             key: 'text-case',
             icon: <LuPen style={{ fontSize: 20 }} />,
-            title: 'Fix text case',
-            description: 'Convert ALL CAPS or inconsistent text into a cleaner format.',
+            title: t('fixTextCase'),
+            description: t('fixTextCaseDesc'),
             onClick: onTextCase,
         },
     ], [onAddItem, onTextCase, t]);
@@ -234,7 +234,7 @@ export default function MobileMenuCommandSheet({
                     </Flex>
 
                     <Flex gap={8} vertical>
-                        <Text strong type="secondary">Content generation</Text>
+                        <Text strong type="secondary">{t('contentGenerationSection')}</Text>
                         {renderActionList(aiActions)}
                     </Flex>
 

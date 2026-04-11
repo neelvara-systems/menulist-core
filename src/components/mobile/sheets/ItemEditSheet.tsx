@@ -231,8 +231,8 @@ export default function ItemEditSheet({
                         {!isAddMode && (onManageImages || onGenerateDescriptions || onManageLanguages) ? (
                             <Flex gap={10} vertical>
                                 <Flex gap={2} vertical>
-                                    <Text strong>AI tools</Text>
-                                    <Text type="secondary">Continue images, descriptions, and language actions without leaving this item.</Text>
+                                    <Text strong>{t('aiToolsTitle')}</Text>
+                                    <Text type="secondary">{t('aiToolsDesc')}</Text>
                                 </Flex>
                                 <Flex gap={8} wrap="wrap">
                                     {onManageImages ? (

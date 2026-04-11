@@ -1085,7 +1085,7 @@ export default function MobileMenuScreen() {
         if (filters.qualityIssue === 'translationMissing') {
             chips.push({
                 key: 'quality-translation-missing',
-                label: 'Missing translation',
+                label: t('missingTranslation'),
                 onRemove: () => setFilters((prev) => ({ ...prev, qualityIssue: null })),
             });
         }
@@ -1472,10 +1472,10 @@ export default function MobileMenuScreen() {
 
         applyLocalMenuUpdate(updated);
         Toast.show({
-            content: nextActive ? 'Category active' : 'Category hidden',
+            content: nextActive ? t('categoryShown') : t('categoryHidden'),
             duration: 1000,
         });
-    }, [applyLocalMenuUpdate, menuData]);
+    }, [applyLocalMenuUpdate, menuData, t]);
 
     const handleRefresh = async () => {
         await flushPendingMenuPersist();
@@ -1635,7 +1635,7 @@ export default function MobileMenuScreen() {
                                     <Flex align="center" gap={6} wrap="wrap">
                                         <Flex align="center" gap={6}>
                                             <LuLanguages size={14} />
-                                            <Text type="secondary">Menu languages</Text>
+                                            <Text type="secondary">{t('availableLanguages')}</Text>
                                         </Flex>
                                         {languageLabels.map((language) => (
                                             <Tag color={language.isPrimary ? 'primary' : undefined} key={language.code}>
@@ -1869,7 +1869,7 @@ export default function MobileMenuScreen() {
                                                         <Flex align="center" gap={8} wrap>
                                                             {!item.active ? <Tag>{t('hidden')}</Tag> : null}
                                                             <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
-                                                            {item.translationMissing ? <Tag color="warning">Missing translation</Tag> : null}
+                                                            {item.translationMissing ? <Tag color="warning">{t('missingTranslation')}</Tag> : null}
                                                             {item.attributes?.slice(0, 2).map((attribute) => (
                                                                 <Tag key={attribute.id}>{attribute.name}</Tag>
                                                             ))}
@@ -2063,7 +2063,7 @@ export default function MobileMenuScreen() {
                                     () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
                                 )}
                                 {activeProjectLanguages.length > 1 ? renderIssueToggle(
-                                    'Missing translation',
+                                    t('missingTranslation'),
                                     draftFilters.qualityIssue === 'translationMissing',
                                     () => setDraftFilters((prev) => ({
                                         ...prev,
@@ -2137,7 +2137,7 @@ export default function MobileMenuScreen() {
                     void Dialog.confirm({
                         cancelText: t('cancel'),
                         confirmText: t('addImages'),
-                        content: 'Open image generation and upload tools for this menu?',
+                        content: t('openImageToolsConfirm', { offering: labels.offeringPhrase }),
                         onConfirm: () => openImageUploadModal(undefined, 'menu'),
                         title: t('addImages'),
                     });
@@ -2146,7 +2146,7 @@ export default function MobileMenuScreen() {
                     void Dialog.confirm({
                         cancelText: t('cancel'),
                         confirmText: t('generateDescriptions'),
-                        content: 'Open description generation for this menu?',
+                        content: t('openDescriptionsConfirm', { offering: labels.offeringPhrase }),
                         onConfirm: () => setIsGenerateDescriptionsOpen(true),
                         title: t('generateDescriptionsAi'),
                     });
@@ -2155,7 +2155,7 @@ export default function MobileMenuScreen() {
                     void Dialog.confirm({
                         cancelText: t('cancel'),
                         confirmText: t('manageLanguages'),
-                        content: 'Open language management for this menu?',
+                        content: t('openLanguagesConfirm', { offering: labels.offeringPhrase }),
                         onConfirm: () => setIsManageLanguagesOpen(true),
                         title: t('manageLanguages'),
                     });

@@ -14,6 +14,7 @@ import {
     type DescriptionContentLength,
 } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import { Button, Card, Dialog, Flex, NavBar, Popup, Text, Toast } from '../antd';
+import AiActionProgressPanel from '../components/AiActionProgressPanel';
 
 interface GenerateDescriptionsSheetProps {
     onClose: () => void;
@@ -95,6 +96,21 @@ export default function GenerateDescriptionsSheet({
                             {t('menuDescriptionsDesc')}
                         </Text>
                     </Card>
+
+                    {isProcessing ? (
+                        <AiActionProgressPanel
+                            detail={totalFiles > 1
+                                ? t('processingFileProgress', { current: Math.min(processedCount + 1, totalFiles), total: totalFiles })
+                                : t('workingOnMenu')}
+                            helperText={t('keepScreenOpen')}
+                            labels={[
+                                t('checkingItemsStep'),
+                                t('writingDescriptionsStep'),
+                                t('savingDescriptionsStep'),
+                            ]}
+                            title={t('updatingOfferingDescriptions')}
+                        />
+                    ) : null}
 
                     {allDescriptionsReady ? (
                         <Card size="small" style={{ ...sectionCardStyle, backgroundColor: token.colorSuccessBg }}>

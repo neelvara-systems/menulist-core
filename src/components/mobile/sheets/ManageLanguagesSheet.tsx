@@ -5,6 +5,7 @@ import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
@@ -14,6 +15,7 @@ import { LuCheck, LuLanguages, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import type { Project } from '../../templates/main-app/projects/types';
 import { translateFile } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Dialog, Flex, NavBar, Popup, Select, Text, Toast } from '../antd';
+import AiActionProgressPanel from '../components/AiActionProgressPanel';
 
 interface ManageLanguagesSheetProps {
     projectData: Project;
@@ -29,6 +31,7 @@ export default function ManageLanguagesSheet({
     onSaved,
 }: ManageLanguagesSheetProps) {
     const t = useTranslations('MobileMenu');
+    const labels = useOfferingLabels();
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
@@ -93,7 +96,7 @@ export default function ManageLanguagesSheet({
         void Dialog.confirm({
             cancelText: t('cancel'),
             confirmText: t('addLanguageAction'),
-            content: `${targetLang.nativeName || targetLang.name} will be added and translated across this menu. This can take a little time.`,
+            content: `${targetLang.nativeName || targetLang.name} will be added and translated across this ${labels.offeringPhrase}. This can take a little time.`,
             onConfirm: async () => {
                 setIsSaving(true);
                 try {
@@ -169,19 +172,25 @@ export default function ManageLanguagesSheet({
 
                 <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     {isSaving ? (
-                        <Card size="small" style={{ ...sectionCardStyle, backgroundColor: token.colorPrimaryBg }}>
-                            <Flex gap={4} vertical>
-                                <Text strong>Updating menu language</Text>
-                                <Text type="secondary">This can take a little time. Keep this screen open while we finish.</Text>
-                            </Flex>
-                        </Card>
+                        <AiActionProgressPanel
+                            detail={pendingLanguageCode
+                                ? `Adding ${GlobalLanguagesList.find((language) => language.code === pendingLanguageCode)?.nativeName || pendingLanguageCode.toUpperCase()}`
+                                : undefined}
+                            helperText={t('keepScreenOpen')}
+                            labels={[
+                                t('checkingLanguagesStep'),
+                                t('preparingTranslationStep'),
+                                t('applyingTranslationsStep'),
+                            ]}
+                            title={t('updatingOfferingLanguage')}
+                        />
                     ) : null}
 
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>
                                 <LuLanguages size={16} />
-                                <Text strong>{t('menuLanguages')}</Text>
+                                <Text strong>{t('availableLanguages')}</Text>
                             </Flex>
                             <Text type="secondary">
                                 {t('menuLanguagesDesc')}

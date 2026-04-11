@@ -1,8 +1,10 @@
 'use client'
 
 import type { Project } from '../../templates/main-app/projects/types';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { Button, Card, Flex, NavBar, Popup, Switch, Text } from '../antd';
 
@@ -56,6 +58,8 @@ export default function TextCaseSheet({
     projectData,
     visible,
 }: TextCaseSheetProps) {
+    const t = useTranslations('MobileMenu');
+    const labels = useOfferingLabels();
     const { token } = theme.useToken();
     const [caseMode, setCaseMode] = useState<CaseMode>('title');
     const [applyToCategories, setApplyToCategories] = useState(true);
@@ -69,11 +73,11 @@ export default function TextCaseSheet({
     } as const;
 
     const options = useMemo(() => ([
-        { value: 'title' as const, label: 'Title Case', description: 'Chicken Tikka Masala' },
-        { value: 'sentence' as const, label: 'Sentence case', description: 'Chicken tikka masala' },
-        { value: 'lower' as const, label: 'lower case', description: 'chicken tikka masala' },
-        { value: 'upper' as const, label: 'UPPER CASE', description: 'CHICKEN TIKKA MASALA' },
-    ]), []);
+        { value: 'title' as const, label: t('textCaseTitleOption'), description: 'Chicken Tikka Masala' },
+        { value: 'sentence' as const, label: t('textCaseSentenceOption'), description: 'Chicken tikka masala' },
+        { value: 'lower' as const, label: t('textCaseLowerOption'), description: 'chicken tikka masala' },
+        { value: 'upper' as const, label: t('textCaseUpperOption'), description: 'CHICKEN TIKKA MASALA' },
+    ]), [t]);
 
     const handleApply = () => {
         const updated = removeObjRef(projectData);
@@ -114,18 +118,18 @@ export default function TextCaseSheet({
             visible={visible}
         >
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onClose}>Fix text case</NavBar>
+                <NavBar onBack={onClose}>{t('fixTextCase')}</NavBar>
 
                 <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Text type="secondary">
-                            Use this when a menu is extracted in all caps or inconsistent casing. Apply one style everywhere in one go.
+                            {t('textCaseIntro', { offering: labels.offeringPhrase })}
                         </Text>
                     </Card>
 
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={10} vertical>
-                            <Text strong>Choose text style</Text>
+                            <Text strong>{t('chooseTextStyle')}</Text>
                             <Flex gap={8} vertical>
                                 {options.map((option) => {
                                     const selected = caseMode === option.value;
@@ -173,12 +177,12 @@ export default function TextCaseSheet({
 
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={10} vertical>
-                            <Text strong>Apply to</Text>
+                            <Text strong>{t('applyToLabel')}</Text>
                             {[
-                                { checked: applyToCategories, label: 'Category names', onChange: setApplyToCategories },
-                                { checked: applyToItems, label: 'Item names', onChange: setApplyToItems },
-                                { checked: applyToAttributes, label: 'Attribute names', onChange: setApplyToAttributes },
-                                { checked: applyToDescriptions, label: 'Descriptions', onChange: setApplyToDescriptions },
+                                { checked: applyToCategories, label: t('categoryNames'), onChange: setApplyToCategories },
+                                { checked: applyToItems, label: t('itemNames'), onChange: setApplyToItems },
+                                { checked: applyToAttributes, label: t('attributeNames'), onChange: setApplyToAttributes },
+                                { checked: applyToDescriptions, label: t('descriptionLabel'), onChange: setApplyToDescriptions },
                             ].map((entry) => (
                                 <Flex align="center" justify="space-between" key={entry.label}>
                                     <Text>{entry.label}</Text>
@@ -199,7 +203,7 @@ export default function TextCaseSheet({
                             onClick={handleApply}
                             size="large"
                         >
-                            Apply changes
+                            {t('applyTextCaseChanges')}
                         </Button>
                     </Flex>
                 </Flex>

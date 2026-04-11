@@ -2,7 +2,7 @@
 
 import { theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, DotLoading, Flex, Text } from '../antd';
+import { Card, DotLoading, Flex, Text } from '../antd';
 
 interface AiActionProgressPanelProps {
     detail?: string;
