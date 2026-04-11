@@ -1,5 +1,6 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -49,6 +50,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
 
     const dispatch = useAppDispatch()
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
     const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
@@ -120,7 +122,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
 
     return (
         <Modal
-            title="Menu descriptions"
+            title={`${labels.offeringTitle} descriptions`}
             open={modalData.active}
             onCancel={onClose}
             footer={null}
@@ -148,7 +150,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                         <LuCheck style={{ fontSize: 48, color: token.colorSuccess }} />
                         <div style={{ textAlign: 'center' }}>
                             <Text strong style={{ fontSize: 16, display: 'block', marginBottom: 4 }}>
-                                Your menu descriptions are ready.
+                                Your {labels.offeringLower} descriptions are ready.
                             </Text>
                             <Text type="secondary">
                                 You can update them anytime.
@@ -182,10 +184,10 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                     {/* Header line + Status */}
                     <div style={{ marginBottom: 20 }}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                            Create clear, professional descriptions for your menu items.
+                            Create clear, professional descriptions for your {labels.itemsPlural}.
                         </Text>
                         <Text strong>
-                            {itemsCount} items • {itemsWithoutDescriptions} need descriptions
+                            {itemsCount} {labels.itemsPlural} • {itemsWithoutDescriptions} need descriptions
                         </Text>
                     </div>
 
@@ -229,7 +231,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                             <Text type="secondary">
                                 {totalFiles > 1
                                     ? `Processing file ${processedCount + 1} of ${totalFiles}`
-                                    : 'Working on your menu…'}
+                                    : `Working on your ${labels.offeringLower}…`}
                             </Text>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
                                 This may take a moment.

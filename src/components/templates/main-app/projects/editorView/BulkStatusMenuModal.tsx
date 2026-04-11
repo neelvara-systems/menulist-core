@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { removeObjRef } from '@util/utils';
 import { Alert, Button, Checkbox, Flex, Input, Modal, Tag, Typography, theme } from 'antd';
 import { useState } from 'react';
@@ -70,6 +71,7 @@ function buildItemsForCategory(files: ProjectFileType[], categoryId: string, act
 
 const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatusMenuModalProps) => {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
     const activeLang = projectData.languages?.[0] || 'en';
 
     // State
@@ -249,7 +251,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                         Bulk Active / Inactive
                     </Title>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        Control which categories and items appear on your menu
+                        Control which categories and {labels.itemsPlural} appear on your {labels.offeringLower}
                     </Text>
                 </Flex>
             }

@@ -11,6 +11,7 @@ interface WelcomeModalProps {
 export const WelcomeModal = ({ isOpen, onClose, onStart }: WelcomeModalProps) => {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
+    const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
 
     return (
         <Modal
@@ -24,7 +25,7 @@ export const WelcomeModal = ({ isOpen, onClose, onStart }: WelcomeModalProps) =>
             <Flex vertical align="center" gap={24} style={{ padding: '20px 0' }}>
                 <Flex vertical align="center" gap={8}>
                     <LuSparkles size={48} color={token.colorPrimary} />
-                    <Typography.Title level={3} style={{ margin: 0 }}>Welcome to Catalogs!</Typography.Title>
+                    <Typography.Title level={3} style={{ margin: 0 }}>Welcome to Your {offeringName}</Typography.Title>
                     <Typography.Text type="secondary">Get started with {labels.digitalLabel} in 4 easy steps</Typography.Text>
                 </Flex>
 

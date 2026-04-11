@@ -1,9 +1,12 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Space, Typography } from 'antd';
 import React from 'react';
 
 const { Text, Paragraph } = Typography;
 
 const AiDisclaimerAlert: React.FC = () => {
+    const labels = useOfferingLabels();
+
     return (
         <Alert
             type="info"
@@ -13,7 +16,7 @@ const AiDisclaimerAlert: React.FC = () => {
             description={
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Paragraph>
-                        Please be aware that several features within this project, such as content generation (descriptions, menu items), image creation, and language translation, are powered by AI. While we strive for accuracy and relevance, please note the following:
+                        Please be aware that several features within this project, such as content generation for descriptions and {labels.itemsPlural}, image creation, and language translation, are powered by AI. While we strive for accuracy and relevance, please note the following:
                     </Paragraph>
 
                     <ul style={{ margin: 0, paddingLeft: '20px' }}>

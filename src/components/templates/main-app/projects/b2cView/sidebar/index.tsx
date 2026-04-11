@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Card, Divider, Flex, Segmented, theme } from 'antd'
 import { DEFAULTS } from '../designSystem'
 import BrandColorPicker from '../designSystem/BrandColorPicker'
@@ -14,12 +15,13 @@ interface B2CSidebarProps {
 
 function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: B2CSidebarProps) {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
 
     return (
         <Flex gap={12} vertical>
             <Card
                 size="small"
-                title="Customise your menu"
+                title={`Customise your ${labels.offeringLower}`}
                 style={{ width: 400, height: 'calc(100vh - 120px)', overflowY: 'scroll' }}
                 styles={{ body: { background: token.colorBgLayout } }}
             >

@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
 import React from 'react';
 import { FaFacebook, FaInstagram, FaLine, FaLinkedin, FaTelegram, FaVk, FaWeixin, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
@@ -18,6 +19,7 @@ interface SocialPlatform {
 
 function SocialShareView({ shareUrl }: SocialShareViewProps) {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
     // Define social media platforms with their sharing URLs
     const socialPlatforms: SocialPlatform[] = [
         // Global platforms (most commonly used)
@@ -96,7 +98,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
     return (
         <Flex vertical gap={24} style={{ padding: '8px 0' }}>
             <Text strong style={{ marginBottom: '0' }}>
-                Share your menu directly on social media platforms:
+                Share your {labels.offeringLower} directly on social media platforms:
             </Text>
 
             <div style={{

@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Button, Flex, Modal, Typography } from "antd";
 
 const { Text } = Typography;
@@ -21,10 +22,12 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
     fileCount = 0,
     projectName
 }) => {
+    const labels = useOfferingLabels();
+    const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
 
     return (
         <Modal
-            title={actionType === 'delete' ? "Delete Catalog" : "Reset Catalog"}
+            title={actionType === 'delete' ? `Delete ${offeringName}` : `Reset ${offeringName}`}
             centered
             open={isOpen}
             onCancel={onCancel}
@@ -43,7 +46,7 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                         type="primary"
                         onClick={onDelete}
                     >
-                        {fileCount > 0 ? `Delete Catalog & ${fileCount} File${fileCount > 1 ? 's' : ''}` : 'Delete Catalog'}
+                        {fileCount > 0 ? `Delete ${offeringName} & ${fileCount} File${fileCount > 1 ? 's' : ''}` : `Delete ${offeringName}`}
                     </Button>
                 ) : (
                     <Button
@@ -53,7 +56,7 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                         type="primary"
                         onClick={onReset}
                     >
-                        Reset Catalog
+                        Reset {offeringName}
                     </Button>
                 )
             ]}
@@ -68,7 +71,7 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                                     <Text strong>&quot;{projectName}&quot;</Text>?
                                 </>
                             ) : (
-                                'this catalog?'
+                                `this ${labels.offeringPhrase}?`
                             )}
                         </Text>
                         {fileCount > 0 && (
@@ -81,7 +84,7 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                         )}
                         <Alert
                             message="This action cannot be undone"
-                            description="All catalog data will be permanently deleted and cannot be recovered."
+                            description={`All ${labels.offeringPhrase} data will be permanently deleted and cannot be recovered.`}
                             type="error"
                             showIcon
                         />
@@ -89,12 +92,12 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                 ) : (
                     <>
                         <Text>
-                            Are you sure you want to reset this catalog and remove all files?
+                            Are you sure you want to reset this {labels.offeringPhrase} and remove all files?
                         </Text>
                         {fileCount > 0 && (
                             <Alert
                                 message={`${fileCount} file${fileCount > 1 ? 's' : ''} will be removed`}
-                                description="All uploaded files and extracted data will be cleared. Catalog settings will be preserved."
+                                description={`All uploaded files and extracted data will be cleared. ${offeringName} settings will be preserved.`}
                                 type="warning"
                                 showIcon
                             />

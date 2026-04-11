@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Flex, message, Typography } from 'antd';
 import { LuCopy, LuExternalLink } from 'react-icons/lu';
 
@@ -10,6 +11,7 @@ interface LinkViewProps {
 
 
 function LinkView({ shareUrl }: LinkViewProps) {
+    const labels = useOfferingLabels();
 
 
     const handleCopyLink = async () => {
@@ -31,7 +33,7 @@ function LinkView({ shareUrl }: LinkViewProps) {
         <Flex vertical gap={24}>
             <Flex vertical gap={8}>
                 <Text strong style={{ marginBottom: '12px' }}>
-                    Share this link with others to let them view your menu:
+                    Share this link with others to let them view your {labels.offeringLower}:
                 </Text>
                 <Link
                     style={{

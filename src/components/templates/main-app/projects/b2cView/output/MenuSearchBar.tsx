@@ -23,6 +23,23 @@ interface MenuSearchBarProps {
     isMobile?: boolean;
 }
 
+const getSearchAriaLabel = (businessType?: string): string => {
+    switch (businessType?.toLowerCase()) {
+        case 'restaurant':
+        case 'cafe':
+        case 'food':
+        case 'bakery':
+            return 'Search menu items';
+        case 'salon':
+        case 'spa':
+        case 'beauty':
+        case 'service':
+            return 'Search services';
+        default:
+            return 'Search products';
+    }
+};
+
 const getSearchPlaceholder = (businessType?: string): string => {
     switch (businessType?.toLowerCase()) {
         case 'restaurant':
@@ -82,7 +99,7 @@ function MenuSearchBar({
                     fontFamily: moodConfig.bodyFont,
                     fontSize: isMobile ? 14 : 15,
                 }}
-                aria-label="Search menu items"
+                aria-label={getSearchAriaLabel(businessType)}
             />
             {searchTerm && (
                 <button

@@ -1,5 +1,6 @@
 'use client';
 
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Modal, Result, theme } from 'antd';
 import { LuXCircle } from 'react-icons/lu';
 
@@ -23,6 +24,7 @@ export default function ExtractionJobFailureModal({
     onClose,
 }: ExtractionJobFailureModalProps) {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
 
     return (
         <Modal
@@ -36,7 +38,7 @@ export default function ExtractionJobFailureModal({
                 icon={<LuXCircle size={64} style={{ color: token.colorError }} />}
                 status="error"
                 title="Processing Failed"
-                subTitle={message || 'An error occurred while processing your menu files. Please try again.'}
+                subTitle={message || `An error occurred while processing your ${labels.offeringLower} files. Please try again.`}
                 extra={[
                     <Button
                         key="retry"

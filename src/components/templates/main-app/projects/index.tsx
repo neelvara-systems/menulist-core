@@ -9,6 +9,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import useDeviceType from '@hook/useDeviceType';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
@@ -71,6 +72,8 @@ const { useToken } = theme;
 
 function ProjectsPage() {
     const { token } = useToken();
+    const labels = useOfferingLabels();
+    const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const loggedInSession = useClientAuthSession();
     const { hasMounted, isMobile } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
@@ -448,7 +451,7 @@ function ProjectsPage() {
                     } : current,
                     { revalidate: false }
                 );
-                message.success('Catalog updated successfully');
+                message.success(`${offeringName} updated successfully`);
             } else {
                 const newProject = await addProject({ name: sanitizedName, description: sanitizedDescription });
                 if (newProject) {
@@ -461,7 +464,7 @@ function ProjectsPage() {
                         } : { projects: [newProject.summaryData], lastDoc: null },
                         { revalidate: false }
                     );
-                    message.success('Catalog created successfully');
+                    message.success(`${offeringName} created successfully`);
                 }
             }
             setIsModalOpen(false);
@@ -469,7 +472,7 @@ function ProjectsPage() {
             setEditingProject(null);
         } catch (error) {
             console.error('Error handling project:', error);
-            message.error(`Failed to ${editingProject ? 'update' : 'create'} catalog`);
+            message.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
         }
     };
 
@@ -478,7 +481,7 @@ function ProjectsPage() {
             try {
                 dispatch(startLoader("Deleting project"))
                 await deleteProject(editingProject.projectId);
-                message.success("Catalog deleted successfully");
+                message.success(`${offeringName} deleted successfully`);
                 if (selectedProject?.projectId === editingProject.projectId) {
                     setSelectedProject(null);
                 }
@@ -493,7 +496,7 @@ function ProjectsPage() {
                 onCloseModal();
             } catch (error) {
                 console.error("Error deleting project:", error);
-                message.error("Failed to delete catalog");
+                message.error(`Failed to delete ${labels.offeringPhrase}`);
             }
             dispatch(stopLoader("Deleting project"))
         }
@@ -509,10 +512,10 @@ function ProjectsPage() {
                 await updateProject({ projectId: selectedProject.projectId, files: [] });
                 // Revalidate cache after mutation
                 mutateProject();
-                message.success("Catalog has been reset");
+                message.success(`${offeringName} has been reset`);
             } catch (error) {
                 console.error("Error resetting project:", error);
-                message.error("Failed to reset catalog");
+                message.error(`Failed to reset ${labels.offeringPhrase}`);
                 // Revert on error
                 mutateProject();
             }
@@ -528,7 +531,7 @@ function ProjectsPage() {
 
     const handleDuplicateSubmit = async (newName: string, newDescription?: string) => {
         if (!projectToDuplicate?.projectId) {
-            message.error("Invalid catalog data");
+            message.error(`Invalid ${labels.offeringPhrase} data`);
             return;
         }
 
@@ -555,7 +558,7 @@ function ProjectsPage() {
 
         } catch (error) {
             console.error("Error duplicating project:", error);
-            message.error("Failed to duplicate catalog");
+            message.error(`Failed to duplicate ${labels.offeringPhrase}`);
         } finally {
             dispatch(stopLoader("Duplicating project"));
             setDuplicateModalOpen(false);
@@ -567,7 +570,7 @@ function ProjectsPage() {
 
     const handleDeleteProjectFromSelector = async (project: ProjectMetadata) => {
         if (!project.projectId) {
-            message.error("Invalid catalog data");
+            message.error(`Invalid ${labels.offeringPhrase} data`);
             return;
         }
 
@@ -593,7 +596,7 @@ function ProjectsPage() {
             }
         } catch (error) {
             console.error("Error deleting project:", error);
-            message.error("Failed to delete catalog");
+            message.error(`Failed to delete ${labels.offeringPhrase}`);
         } finally {
             dispatch(stopLoader("Deleting project"));
         }
@@ -666,11 +669,11 @@ function ProjectsPage() {
         // Handle errors
         if (projectsError) {
             console.error('[ProjectsPage] Projects error:', projectsError);
-            message.error('Failed to load catalogs');
+            message.error(`Failed to load ${labels.offeringPhrase} data`);
         }
         if (projectError) {
             console.error('[ProjectsPage] Project error:', projectError);
-            message.error('Failed to load catalog data');
+            message.error(`Failed to load ${labels.offeringPhrase} data`);
         }
     }, [projectsList.length, projectsError, projectError]);
 
@@ -1203,9 +1206,9 @@ function ProjectsPage() {
                                 {!activeProject?.files?.length && (
                                     <Dragger {...uploadProps} style={{ minWidth: 700, width: "100%" }}>
                                         <Flex vertical gap={16} align='center' justify='center' style={{ width: '100%', padding: '40px 20px' }}>
-                                            <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>Upload Your Menu</Typography.Title>
+                                            <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>{labels.uploadLabel}</Typography.Title>
                                             <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '16px', maxWidth: 500 }}>
-                                                Drag and drop your menu photos or PDFs here, or click below to browse
+                                                Drag and drop your {labels.offeringLower} photos or PDFs here, or click below to browse
                                             </Typography.Text>
                                             <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '13px', color: token.colorTextTertiary }}>
                                                 ⚡ AI will automatically extract items in ~3 minutes
@@ -1257,14 +1260,14 @@ function ProjectsPage() {
                                         <Flex gap={12} align='center' justify='center' style={{ padding: '16px 20px' }}>
                                             <LuFilePlus size={24} style={{ color: token.colorTextSecondary }} />
                                             <Typography.Text type="secondary">
-                                                Add more menu pages (optional)
+                                                Add more {labels.offeringLower} pages (optional)
                                             </Typography.Text>
                                         </Flex>
                                     </Dragger>
 
                                     {/* Language Selector */}
                                     <LanguageSelector
-                                        description="Select languages for your menu (you can add more later)"
+                                        description={`Select languages for your ${labels.offeringLower} (you can add more later)`}
                                         selectedLanguages={activeProject?.languages || []}
                                         onLanguageToggle={handleLanguageToggle}
                                         storeActiveLanguages={storeDetails?.activeLanguages}
@@ -1517,10 +1520,10 @@ function ProjectsPage() {
                                                 </div>
                                                 <Flex vertical gap={2}>
                                                     <Typography.Text strong style={{ fontSize: 13 }}>
-                                                        Smart Catalog
+                                                        {offeringName}
                                                     </Typography.Text>
                                                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                                        Digital menu ready
+                                                        {labels.digitalLabel.charAt(0).toUpperCase() + labels.digitalLabel.slice(1)} ready
                                                     </Typography.Text>
                                                 </Flex>
                                             </Flex>

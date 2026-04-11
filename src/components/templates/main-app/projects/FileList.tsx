@@ -1,4 +1,5 @@
 import { CheckCircleFilled } from '@ant-design/icons';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Button, Card, Flex, Image, Modal, Progress, Tag, Tooltip, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { LuEye, LuFileText, LuSparkles, LuTrash, LuTrash2 } from 'react-icons/lu';
@@ -20,6 +21,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
     const [fileToDelete, setFileToDelete] = useState<ProjectFileType | null>(null);
 
     const { token } = useToken();
+    const labels = useOfferingLabels();
     const [previewFile, setPreviewFile] = useState<ProjectFileType | null>(null);
     const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
@@ -120,7 +122,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                                 AI is reading...
                                                             </Text>
                                                             <Text type="secondary" style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
-                                                                Extracting menu items
+                                                                Extracting {labels.itemsPlural}
                                                             </Text>
                                                         </Flex>
                                                         <Progress

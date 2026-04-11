@@ -5,6 +5,7 @@ import { LANGUAGE_CONSTANTS } from "@constant/languages";
 import GlobalLanguagesList from "@data/languages";
 import { updateProject } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { useOfferingLabels } from "@hook/useOfferingLabels";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
 import {
@@ -96,6 +97,7 @@ type EditorProps = {
 
 function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
     const [previewFile, setPreviewFile] = useState<ProjectFileType | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState<string | null>(null);
     const splitterRefs = useRef<any>({});
@@ -1043,7 +1045,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     >
                         {tenantDetails?.businessEntityType == "B2B"
                             ? "View JSON"
-                            : "View Catalog"}
+                            : `View ${labels.offeringTitle}`}
                     </Button>
                 </Tooltip>
             </Flex>

@@ -13,6 +13,7 @@
 import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
+import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import Image from 'next/image';
@@ -72,6 +73,7 @@ function MenuPageNew({
     const isMobile = activeDeviceType === 'mobile';
     const isTablet = activeDeviceType === 'tablet';
     const isDesktop = activeDeviceType === 'desktop';
+    const labels = useMemo(() => getOfferingLabels(businessType), [businessType]);
 
     // Layout properties from config
     const isGridLayout = layoutConfig.itemsPerRow > 1;
@@ -840,7 +842,7 @@ function MenuPageNew({
                                     color: moodConfig.bodyColor,
                                     fontFamily: moodConfig.bodyFont,
                                 }}>
-                                    No menu items yet
+                                    No {labels.itemsPlural} yet
                                 </div>
                             )}
 

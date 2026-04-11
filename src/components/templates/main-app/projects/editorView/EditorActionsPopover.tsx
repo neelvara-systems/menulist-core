@@ -81,7 +81,7 @@ export default function EditorActionsPopover({
                 Manage & Control Your {labels.offeringTitle}
             </Text>
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', lineHeight: 1.5 }}>
-                Customize content, add languages, upload images, and organize items
+                Customize content, add languages, upload images, and organize your {labels.itemsPlural}
             </Text>
         </Flex>
     );

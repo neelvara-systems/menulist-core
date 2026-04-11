@@ -1,5 +1,6 @@
 'use client';
 
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Flex, Modal, Progress, theme, Typography } from 'antd';
 import { LuCheckCircle, LuDollarSign, LuFileText, LuLayoutGrid, LuList } from 'react-icons/lu';
 
@@ -39,6 +40,7 @@ export default function ExtractionJobSuccessModal({
     extractionStats,
 }: ExtractionJobSuccessModalProps) {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
 
     const qualityScore = extractionStats?.qualityScore ?? 0;
     const qualityDetails = extractionStats?.qualityDetails;
@@ -50,10 +52,11 @@ export default function ExtractionJobSuccessModal({
         if (score >= 50) return token.colorWarning;
         return token.colorError;
     };
+    const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
     const qualityBreakdown = qualityDetails ? [
         { label: 'Categories', value: qualityDetails.categoryQuality, max: 25, icon: <LuLayoutGrid size={14} /> },
-        { label: 'Items', value: qualityDetails.itemQuality, max: 10, icon: <LuList size={14} /> },
+        { label: titleCase(labels.itemsPlural), value: qualityDetails.itemQuality, max: 10, icon: <LuList size={14} /> },
         { label: 'Prices', value: qualityDetails.priceQuality, max: 50, icon: <LuDollarSign size={14} /> },
         { label: 'Descriptions', value: qualityDetails.descriptionQuality, max: 25, icon: <LuFileText size={14} /> },
     ] : [];
@@ -70,7 +73,7 @@ export default function ExtractionJobSuccessModal({
                 <LuCheckCircle size={56} style={{ color: token.colorSuccess }} />
                 <Title level={4} style={{ margin: 0 }}>Extraction Complete</Title>
                 <Text type="secondary" style={{ textAlign: 'center' }}>
-                    All menu files have been processed and merged with your catalog.
+                    All uploaded files have been processed and merged into your {labels.offeringPhrase}.
                 </Text>
 
                 {extractionStats && (
@@ -93,7 +96,7 @@ export default function ExtractionJobSuccessModal({
                                 <Text strong style={{ fontSize: 24, lineHeight: 1 }}>
                                     {itemsCount}
                                 </Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Items</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{titleCase(labels.itemsPlural)}</Text>
                             </Flex>
                             <Flex vertical align="center" gap={2}>
                                 <Text strong style={{

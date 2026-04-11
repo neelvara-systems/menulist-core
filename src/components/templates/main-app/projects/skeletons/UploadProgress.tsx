@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Card, Flex, Progress, Typography } from 'antd';
 import { LuCheckCircle, LuClock, LuUploadCloud } from 'react-icons/lu';
 
@@ -18,6 +19,8 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
     errorMessage,
     estimatedTime
 }) => {
+    const labels = useOfferingLabels();
+
     const getStatusConfig = () => {
         switch (status) {
             case 'uploading':
@@ -32,7 +35,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 return {
                     icon: <LuClock size={32} style={{ color: '#faad14' }} />,
                     title: 'Processing...',
-                    description: 'Our AI is reading your menu and extracting items',
+                    description: `Our AI is reading your ${labels.offeringLower} and extracting ${labels.itemsPlural}`,
                     color: '#faad14',
                     showProgress: true
                 };
@@ -40,7 +43,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 return {
                     icon: <LuCheckCircle size={32} style={{ color: '#52c41a' }} />,
                     title: 'Complete!',
-                    description: 'Your menu is ready to edit',
+                    description: `Your ${labels.offeringLower} is ready to edit`,
                     color: '#52c41a',
                     showProgress: false
                 };
@@ -134,7 +137,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 {status === 'processing' && (
                     <Alert
                         message="💡 What's happening?"
-                        description="We're using AI to read your menu and automatically extract all items, prices, and descriptions. This saves you hours of manual typing!"
+                        description={`We're using AI to read your ${labels.offeringLower} and automatically extract ${labels.itemsPlural}, prices, and descriptions. This saves you hours of manual typing.`}
                         type="info"
                         showIcon={false}
                         style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }}
@@ -144,7 +147,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 {status === 'complete' && (
                     <Alert
                         message="✨ Success!"
-                        description="Your menu has been processed. You can now review and edit the extracted items."
+                        description={`Your ${labels.offeringLower} has been processed. You can now review and edit the extracted ${labels.itemsPlural}.`}
                         type="success"
                         showIcon={false}
                         style={{ background: '#f6ffed', border: '1px solid #b7eb8f' }}

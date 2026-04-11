@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Flex, Form, FormInstance, Input, Modal } from "antd";
 import { ProjectMetadata } from '../types';
 
@@ -24,9 +25,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     onSubmit,
     onReset,
 }) => {
+    const labels = useOfferingLabels();
+    const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
+
     return (
         <Modal
-            title={editingProject ? 'Edit Catalog' : 'Create New Catalog'}
+            title={editingProject ? `Edit ${offeringName}` : `Create New ${offeringName}`}
             open={isOpen}
             centered
             onOk={onSubmit}
@@ -43,7 +47,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 size="small"
                                 onClick={onReset}
                             >
-                                Reset Catalog
+                                Reset {offeringName}
                             </Button>
                         )}
                     </div>
@@ -62,17 +66,17 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             >
                 <Form.Item
                     name="name"
-                    label="Catalog Name"
-                    rules={[{ required: true, message: 'Please enter a catalog name' }]}
+                    label={`${offeringName} Name`}
+                    rules={[{ required: true, message: `Please enter a ${labels.offeringPhrase} name` }]}
                 >
-                    <Input placeholder="Enter catalog name" />
+                    <Input placeholder={`Enter ${labels.offeringPhrase} name`} />
                 </Form.Item>
                 <Form.Item
                     name="description"
                     label="Description"
                 >
                     <Input.TextArea
-                        placeholder="Enter catalog description"
+                        placeholder={`Enter ${labels.offeringPhrase} description`}
                         rows={3}
                         maxLength={200}
                         showCount

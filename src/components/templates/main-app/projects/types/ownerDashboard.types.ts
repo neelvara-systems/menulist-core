@@ -288,11 +288,11 @@ export const MONTHLY_GUARDRAILS = {
 export const EMPTY_STATE_MESSAGES = {
     noData: {
         title: 'No data yet',
-        description: 'Your menu analytics will appear here once customers start scanning.',
+        description: 'Your analytics will appear here once customers start visiting.',
     },
     lowActivity: {
         title: 'Low activity yesterday',
-        description: 'Not enough menu scans to show detailed insights.',
+        description: 'Not enough visits to show detailed insights.',
     },
     noWeeklyData: {
         title: 'Building your weekly summary',

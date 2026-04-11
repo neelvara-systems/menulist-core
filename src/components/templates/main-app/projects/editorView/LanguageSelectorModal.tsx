@@ -1,5 +1,6 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { canAddLanguage, getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet, getRemainingLanguageSlots } from '@lib/localization/languageResolver';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Flex, message, Modal, Progress, Select, Tag, theme, Tooltip, Typography } from 'antd';
@@ -38,6 +39,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
     isMasterLinked = false
 }) => {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
     const [isModalOpen, setIsModalOpen] = useState(false);
     // State now holds the full Language object or null
     const [languageToRemove, setLanguageToRemove] = useState<LanguageType | null>(null);
@@ -265,7 +267,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                     Add {getNativeLabel(languageToAdd)}?
                                 </Text>
                                 <Text type="secondary">
-                                    Your menu will be translated
+                                    Your {labels.offeringLower} will be translated
                                 </Text>
                             </Flex>
                         </Flex>
@@ -328,8 +330,8 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                 </div>
                                 <Text type="secondary">
                                     {isMasterLinked
-                                        ? "Activate languages from your master menu, or remove ones you don't need. Only local items will be translated."
-                                        : "Add languages to translate your menu with AI, or remove ones you don't need."
+                                        ? `Activate languages from your main ${labels.offeringPhrase}, or remove ones you don't need. Only local ${labels.itemsPlural} will be translated.`
+                                        : `Add languages to translate your ${labels.offeringLower} with AI, or remove ones you don't need.`
                                     }
                                 </Text>
                             </Flex>
@@ -509,7 +511,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                                 {hasData ? (
                                                     <Flex vertical gap={4}>
                                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                                            This will remove the following from your menu:
+                                                            This will remove the following from your {labels.offeringLower}:
                                                         </Text>
                                                         <Flex vertical gap={2} style={{ fontSize: 12, marginLeft: 8 }}>
                                                             {impact.itemNames > 0 && (

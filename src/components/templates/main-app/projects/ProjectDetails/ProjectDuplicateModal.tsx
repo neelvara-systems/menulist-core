@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Card, Flex, Form, Input, Modal, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import { ProjectMetadata } from '../types';
@@ -16,6 +17,8 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const { token } = useToken();
+    const labels = useOfferingLabels();
+    const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
 
     // Reset form when project changes or modal opens
     useEffect(() => {
@@ -47,7 +50,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
 
     return (
         <Modal
-            title="📋 Duplicate Catalog"
+            title={`Duplicate ${offeringName}`}
             open={open}
             onOk={() => form.submit()}
             onCancel={handleCancel}
@@ -65,10 +68,10 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                     description={
                         <Flex vertical gap={4}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Original catalog: <Text strong>{project?.name}</Text>
+                                Original {labels.offeringPhrase}: <Text strong>{project?.name}</Text>
                             </Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                All categories, items, images, languages, and theme will be copied.
+                                All categories, {labels.itemsPlural}, images, languages, and theme will be copied.
                             </Text>
                         </Flex>
                     }
@@ -79,13 +82,13 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
 
                 <Form.Item
                     name="name"
-                    label="New Catalog Name"
+                    label={`New ${offeringName} Name`}
                     rules={[
-                        { required: true, message: 'Please enter a catalog name' },
-                        { max: 100, message: 'Catalog name must be less than 100 characters' }
+                        { required: true, message: `Please enter a ${labels.offeringPhrase} name` },
+                        { max: 100, message: `${offeringName} name must be less than 100 characters` }
                     ]}
                 >
-                    <Input placeholder="Enter new catalog name" />
+                    <Input placeholder={`Enter new ${labels.offeringPhrase} name`} />
                 </Form.Item>
 
                 <Form.Item
@@ -96,7 +99,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                     ]}
                 >
                     <Input.TextArea
-                        placeholder="Enter description (e.g., Summer 2024 Menu)"
+                        placeholder={`Enter description (e.g., Seasonal ${offeringName})`}
                         rows={3}
                     />
                 </Form.Item>
@@ -121,13 +124,13 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                                 <Flex gap={8} align="flex-start">
                                     <Text type="secondary" style={{ fontSize: 12 }}>•</Text>
                                     <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.6 }}>
-                                        <Text strong>Seasonal Menus:</Text> Copy &ldquo;Summer 2024&rdquo; → Create &ldquo;Fall 2024&rdquo;, then update items
+                                        <Text strong>Seasonal updates:</Text> Duplicate your current {labels.offeringPhrase}, then adjust prices, timing, or featured {labels.itemsPlural}
                                     </Text>
                                 </Flex>
                                 <Flex gap={8} align="flex-start">
                                     <Text type="secondary" style={{ fontSize: 12 }}>•</Text>
                                     <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.6 }}>
-                                        <Text strong>Multi-Location:</Text> Copy main menu → Adjust prices/items for different locations
+                                        <Text strong>Multi-location:</Text> Copy your main {labels.offeringPhrase} and adjust local pricing or availability
                                     </Text>
                                 </Flex>
                                 <Flex gap={8} align="flex-start">

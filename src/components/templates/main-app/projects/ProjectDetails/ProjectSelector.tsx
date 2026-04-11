@@ -1,3 +1,4 @@
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Dropdown, Flex, Modal, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -252,15 +253,17 @@ export const ProjectSelector = ({
 }: ProjectSelectorProps) => {
     const { token } = useToken();
     const [modalOpen, setModalOpen] = useState(false);
+    const labels = useOfferingLabels();
+    const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
 
     const confirmDuplicate = (project: ProjectMetadata) => {
         setModalOpen(false);
         Modal.confirm({
-            title: 'Duplicate Catalog',
+            title: `Duplicate ${offeringName}`,
             content: (
                 <div>
                     <p>Create a copy of <strong>&quot;{project.name}&quot;</strong>?</p>
-                    <p style={{ fontSize: 12, opacity: 0.7 }}>This will duplicate all files, items, and settings.</p>
+                    <p style={{ fontSize: 12, opacity: 0.7 }}>This will duplicate all files, {labels.itemsPlural}, and settings.</p>
                 </div>
             ),
             okText: 'Duplicate',
@@ -272,11 +275,11 @@ export const ProjectSelector = ({
     const confirmDelete = (project: ProjectMetadata) => {
         setModalOpen(false);
         Modal.confirm({
-            title: 'Delete Catalog',
+            title: `Delete ${offeringName}`,
             content: (
                 <div>
                     <p>Permanently delete <strong>&quot;{project.name}&quot;</strong>?</p>
-                    <p style={{ fontSize: 12, color: '#ff4d4f' }}>This action cannot be undone. All data will be lost.</p>
+                    <p style={{ fontSize: 12, color: '#ff4d4f' }}>This action cannot be undone. All {labels.offeringPhrase} data will be lost.</p>
                 </div>
             ),
             okText: 'Delete',
@@ -290,7 +293,7 @@ export const ProjectSelector = ({
         <>
             {/* Trigger Button */}
             <Button type="default" icon={<LuFolderOpen size={18} />} onClick={() => setModalOpen(true)}>
-                {selectedProject ? selectedProject.name : 'Select Catalog'}
+                {selectedProject ? selectedProject.name : `Select ${offeringName}`}
                 <IoChevronDown style={{ marginLeft: 8 }} />
             </Button>
 
@@ -323,10 +326,10 @@ export const ProjectSelector = ({
                 >
                     {/* Header */}
                     <Title level={4} style={{ marginBottom: 8 }}>
-                        Select a Catalog
+                        Select {offeringName}
                     </Title>
                     <Text type="secondary" style={{ marginBottom: 24, textAlign: 'center' }}>
-                        Choose a catalog to work with, or create a new one
+                        Choose the {labels.offeringPhrase} you want to work with, or create a new one
                     </Text>
 
                     {/* Grid of Catalog Cards */}

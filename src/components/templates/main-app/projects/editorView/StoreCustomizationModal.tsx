@@ -15,6 +15,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import type { InheritanceState } from '@type/multiOutlet.types';
 import { Badge, Button, Flex, Input, InputNumber, Modal, Switch, Table, Tabs, Tag, theme, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -69,6 +70,7 @@ export default function StoreCustomizationModal({
     categoryStates = {},
     masterPrices = {},
 }: StoreCustomizationModalProps) {
+    const labels = useOfferingLabels();
     const { token } = theme.useToken();
     const [activeTab, setActiveTab] = useState<'items' | 'categories'>('items');
     const [searchTerm, setSearchTerm] = useState('');
@@ -232,7 +234,7 @@ export default function StoreCustomizationModal({
         },
         {
             title: (
-                <Tooltip title="Show/hide this item on your menu">
+                <Tooltip title={`Show or hide this ${labels.itemSingular} on your ${labels.offeringLower}`}>
                     <Flex align="center" gap={4}>Show</Flex>
                 </Tooltip>
             ),
@@ -390,7 +392,7 @@ export default function StoreCustomizationModal({
         },
         {
             title: (
-                <Tooltip title="Show/hide this entire category on your menu">
+                <Tooltip title={`Show or hide this entire category on your ${labels.offeringLower}`}>
                     <Flex align="center" gap={4}>Active</Flex>
                 </Tooltip>
             ),

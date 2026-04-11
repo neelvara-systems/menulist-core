@@ -169,8 +169,8 @@ function ShareModal({
         const urls = {
             whatsapp: `https://wa.me/?text=${encodeURIComponent(
                 FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES
-                    ? `Here is our latest menu:\n${urlWithUTM}\n(Always updated)`
-                    : `Check out our menu: ${urlWithUTM}`
+                    ? `Here is ${labels.yourLatest}:\n${urlWithUTM}\n(Always updated)`
+                    : `Check out our ${labels.offeringLower}: ${urlWithUTM}`
             )}`,
             facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlWithUTM)}`,
             instagram: urlWithUTM, // Instagram copies to clipboard
@@ -188,7 +188,7 @@ function ShareModal({
 
     const handleDownloadPdf = async () => {
         if (items.length === 0) {
-            message.warning('No menu items to export');
+            message.warning(`No ${labels.itemsPlural} to export`);
             return;
         }
 
@@ -212,7 +212,7 @@ function ShareModal({
             if (pdfResult.snapshotHash) {
                 localStorage.setItem(`menulist_last_pdf_version_${projectId}`, pdfResult.snapshotHash);
             }
-            message.success('Menu PDF downloaded');
+            message.success(`${labels.offeringTitle} PDF downloaded`);
         } catch (error) {
             console.error('[ShareModal] PDF generation failed:', error);
             message.error('Failed to generate PDF');
@@ -263,10 +263,10 @@ function ShareModal({
                             />
                         </div>
                         <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
-                            <Text type="secondary" style={{ fontSize: 11 }}>How your menu appears when shared</Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>How your {labels.offeringLower} appears when shared</Text>
                             <Text strong style={{ fontSize: 14 }}>{storeName}</Text>
                             <Text type="secondary" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {storeDescription || 'View our menu online'}
+                                {storeDescription || `View our ${labels.offeringLower} online`}
                             </Text>
                         </Flex>
                     </Flex>

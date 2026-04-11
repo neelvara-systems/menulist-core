@@ -1,4 +1,5 @@
 import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Button, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
@@ -31,6 +32,7 @@ const DecisionBlocksSettingsModal = ({
     onClose,
     onApply
 }: DecisionBlocksSettingsModalProps) => {
+    const labels = useOfferingLabels();
     const { token } = theme.useToken();
     const activeLang = projectData.languages?.[0] || 'en';
 
@@ -225,7 +227,7 @@ const DecisionBlocksSettingsModal = ({
                 <Flex vertical gap={4}>
                     <Title level={5} style={{ margin: 0 }}>Smart Recommendations</Title>
                     <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal' }}>
-                        Configure which items appear in Decision Blocks on your menu
+                        Configure which {labels.itemsPlural} appear in Decision Blocks on your {labels.offeringLower}
                     </Text>
                 </Flex>
             }

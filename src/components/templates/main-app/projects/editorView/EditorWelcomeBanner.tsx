@@ -84,7 +84,7 @@ export default function EditorWelcomeBanner({
                     message={labels.outletLinkedLabel}
                     description={
                         <Flex vertical gap={4}>
-                            <Text>• Brand items (name, description, images) stay consistent across stores</Text>
+                            <Text>• Shared {labels.itemsPlural} stay consistent across stores</Text>
                             <Text>• You CAN change: prices, availability, bestsellers</Text>
                             <Text>• Use <strong>More Actions → Store Customization</strong> for quick changes</Text>
                         </Flex>

@@ -4,6 +4,7 @@
  * Users choose a vibe for their menu, not design parameters.
  */
 
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Card, Flex, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { LuCheck, LuFlame, LuSparkles, LuZap } from 'react-icons/lu';
@@ -24,11 +25,12 @@ const MOOD_ICONS: Record<string, typeof LuSparkles> = {
 
 const MenuMoodSelector: React.FC<MenuMoodSelectorProps> = ({ value, onChange }) => {
     const { token } = theme.useToken();
+    const labels = useOfferingLabels();
 
     return (
         <Flex vertical gap={12}>
             <Text type="secondary" style={{ fontSize: 13 }}>
-                Choose how your menu feels
+                Choose how your {labels.offeringLower} feels
             </Text>
             <Flex gap={12} wrap="wrap">
                 {Object.entries(MENU_MOODS).map(([key, config]) => {
