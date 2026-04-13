@@ -10,11 +10,12 @@
  * 3. Missing prices — customers compare before deciding
  * 4. Hidden items — items customers can't see
  * 5. Price outliers — possible price mistakes within a category
+ * 6. Missing translations — secondary languages missing item content
  * 
  * @see __docs__/menu-quality-signals/menu-quality-signals_impl.md
  */
 
-import type { ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
+import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
 
 export interface QualitySignal {
@@ -31,6 +32,14 @@ const MAX_VISIBLE_SIGNALS = 4;
 const PRICE_OUTLIER_LOW_FACTOR = 0.35;
 const PRICE_OUTLIER_HIGH_FACTOR = 3;
 const MIN_ITEMS_FOR_PRICE_OUTLIER = 4;
+const SIGNAL_PRIORITY: Record<string, number> = {
+    prices: 1,
+    images: 2,
+    descriptions: 3,
+    translations: 4,
+    hidden: 5,
+    priceOutliers: 6,
+};
 
 /**
  * Flatten all items from all files' extractedData into a single array.
@@ -49,7 +58,11 @@ function getAllItems(files: ProjectFileType[] | undefined): ExtractedDataItem[] 
 /**
  * Get primary language code from the first file's languages array.
  */
-function getPrimaryLang(files: ProjectFileType[] | undefined): string {
+function getPrimaryLang(files: ProjectFileType[] | undefined, projectLanguages?: string[]): string {
+    if (projectLanguages?.length) {
+        return projectLanguages[0] || 'en';
+    }
+
     if (!files) return 'en';
     for (const file of files) {
         const langs = file.extractedData?.data?.languages;
@@ -74,6 +87,71 @@ function isImageMissing(item: ExtractedDataItem): boolean {
 function isPriceMissing(item: ExtractedDataItem): boolean {
     if (item.attributes && item.attributes.length > 0) return false;
     return !item.price?.trim();
+}
+
+function hasLocalizedValue(value: unknown, languageCode: string): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const localizedValue = (value as Record<string, unknown>)[languageCode];
+    return typeof localizedValue === 'string' && localizedValue.trim().length > 0;
+}
+
+function collectLocalizedLanguageCodes(value: unknown, unique: Set<string>): void {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+
+    for (const [languageCode, localizedValue] of Object.entries(value as Record<string, unknown>)) {
+        if (typeof localizedValue === 'string' && localizedValue.trim().length > 0) {
+            unique.add(languageCode);
+        }
+    }
+}
+
+function isTranslationMissing(item: ExtractedDataItem, primaryLang: string, allLangs: string[]): boolean {
+    if (allLangs.length <= 1) return false;
+
+    return allLangs
+        .filter((lang) => lang !== primaryLang)
+        .some((lang) => {
+            if (hasLocalizedValue(item.name, primaryLang) && !hasLocalizedValue(item.name, lang)) {
+                return true;
+            }
+
+            if (hasLocalizedValue(item.description, primaryLang) && !hasLocalizedValue(item.description, lang)) {
+                return true;
+            }
+
+            return (item.attributes || []).some((attribute) => (
+                hasLocalizedValue(attribute?.name, primaryLang) && !hasLocalizedValue(attribute?.name, lang)
+            ));
+        });
+}
+
+function getAllLanguageCodes(files: ProjectFileType[] | undefined, projectLanguages?: string[]): string[] {
+    const unique = new Set<string>(projectLanguages || []);
+
+    if (!files) return Array.from(unique);
+
+    for (const file of files) {
+        const langs = file.extractedData?.data?.languages || [];
+        langs.forEach((lang) => {
+            if (lang?.code) unique.add(lang.code);
+        });
+
+        const categories = file.extractedData?.data?.categories || [];
+        categories.forEach((category: ExtractedDataCategory) => {
+            collectLocalizedLanguageCodes(category?.name, unique);
+        });
+
+        const items = file.extractedData?.data?.items || [];
+        items.forEach((item) => {
+            collectLocalizedLanguageCodes(item?.name, unique);
+            collectLocalizedLanguageCodes(item?.description, unique);
+            (item?.attributes || []).forEach((attribute) => {
+                collectLocalizedLanguageCodes(attribute?.name, unique);
+            });
+        });
+    }
+
+    return Array.from(unique);
 }
 
 /**
@@ -135,11 +213,12 @@ function countPriceOutliers(activeItems: ExtractedDataItem[]): number {
  * @param files - Project files array (project.files)
  * @returns Array of QualitySignal (v1.1: 5 signal types)
  */
-export function computeQualitySignals(files: ProjectFileType[] | undefined): QualitySignal[] {
+export function computeQualitySignals(files: ProjectFileType[] | undefined, projectLanguages?: string[]): QualitySignal[] {
     const allItems = getAllItems(files);
     if (allItems.length === 0) return [];
 
-    const lang = getPrimaryLang(files);
+    const lang = getPrimaryLang(files, projectLanguages);
+    const allLanguages = getAllLanguageCodes(files, projectLanguages);
     const activeItems = allItems.filter(item => item.active !== false);
     const signals: QualitySignal[] = [];
 
@@ -213,6 +292,21 @@ export function computeQualitySignals(files: ProjectFileType[] | undefined): Qua
         });
     }
 
+    const missingTranslations = activeItems.filter((item) => isTranslationMissing(item, lang, allLanguages)).length;
+    if (allLanguages.length > 1) {
+        signals.push({
+            id: 'translations',
+            label: missingTranslations > 0
+                ? `${missingTranslations} item${missingTranslations !== 1 ? 's' : ''} missing translations`
+                : 'All visible items are translated',
+            helpText: missingTranslations > 0 ? 'Some items are incomplete in your selected menu languages' : undefined,
+            count: missingTranslations,
+            status: missingTranslations > 0 ? 'warning' : 'ok',
+            actionLabel: missingTranslations > 0 ? 'Review' : undefined,
+            actionRoute: missingTranslations > 0 ? 'translations' : undefined,
+        });
+    }
+
     return signals;
 }
 
@@ -228,9 +322,19 @@ export function isAllClear(signals: QualitySignal[]): boolean {
  * Used by dashboard to avoid overwhelming the owner.
  */
 export function getVisibleSignals(signals: QualitySignal[]): QualitySignal[] {
-    const warnings = signals.filter(s => s.status === 'warning');
-    const oks = signals.filter(s => s.status === 'ok');
-    return [...warnings.slice(0, MAX_VISIBLE_SIGNALS), ...oks];
+    const warnings = signals
+        .filter(s => s.status === 'warning')
+        .sort((a, b) => {
+            const aPriority = SIGNAL_PRIORITY[a.id] ?? 999;
+            const bPriority = SIGNAL_PRIORITY[b.id] ?? 999;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            return b.count - a.count;
+        });
+    if (warnings.length > 0) {
+        return warnings.slice(0, MAX_VISIBLE_SIGNALS);
+    }
+
+    return signals.filter(s => s.status === 'ok');
 }
 
 /**
@@ -245,6 +349,7 @@ export function getActionableSignals(signals: QualitySignal[]): QualitySignal[] 
         if (s.id === 'images' && s.count >= 3) return true;
         if (s.id === 'prices' && s.count >= 1) return true;
         if (s.id === 'priceOutliers' && s.count >= 1) return true;
+        if (s.id === 'translations' && s.count >= 1) return true;
         return false;
     });
 }

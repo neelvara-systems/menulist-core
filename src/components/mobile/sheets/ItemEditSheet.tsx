@@ -128,7 +128,13 @@ export default function ItemEditSheet({
     }, [item, selectedLanguages]);
 
     const itemImagePreviews = useMemo(() => {
-        const images = (draftItem.images || [])
+        const normalizedImages = Array.isArray(draftItem.images)
+            ? draftItem.images
+            : draftItem.images
+                ? [draftItem.images]
+                : [];
+
+        const images = normalizedImages
             .map((image) => image?.url)
             .filter((url): url is string => Boolean(url));
 
@@ -361,11 +367,9 @@ export default function ItemEditSheet({
                     <Flex gap={6} vertical>
                         <Text strong>{t('descriptionLabel')}</Text>
                         <TextArea
-                            maxLength={200}
+                            autoSize={{ minRows: 4, maxRows: 10 }}
                             onChange={(value) => updateLocalizedField(languageCode, 'description', value)}
                             placeholder={t('descriptionPlaceholder')}
-                            rows={3}
-                            showCount
                             value={getLocalizedValue(draftItem.description, languageCode)}
                         />
                     </Flex>
@@ -523,12 +527,14 @@ export default function ItemEditSheet({
                                                     <Text>{imageActionLabel}</Text>
                                                 </Flex>
                                             </Button>
-                                            <Button fill="outline" onClick={onGenerateImage || onManageImages} size="small">
-                                                <Flex align="center" gap={6}>
-                                                    <LuSparkles size={14} />
-                                                    <Text>{t('generateImage')}</Text>
-                                                </Flex>
-                                            </Button>
+                                            {itemImagePreviews.length > 0 ? (
+                                                <Button fill="outline" onClick={onGenerateImage || onManageImages} size="small">
+                                                    <Flex align="center" gap={6}>
+                                                        <LuSparkles size={14} />
+                                                        <Text>{t('generateImage')}</Text>
+                                                    </Flex>
+                                                </Button>
+                                            ) : null}
                                         </Flex>
                                     )}
                                 </Flex>

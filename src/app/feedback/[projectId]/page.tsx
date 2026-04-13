@@ -148,8 +148,8 @@ export default async function FeedbackPage({ params }: PageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(186,230,253,0.35),_transparent_35%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_55%,_#eef2ff_100%)] px-4 py-6 sm:px-6">
+            <div className="mx-auto w-full max-w-xl">
                 <GuestFeedbackForm
                     tId={project.tId}
                     sId={project.sId}
@@ -158,11 +158,6 @@ export default async function FeedbackPage({ params }: PageProps) {
                     storeName={storeInfo.storeName}
                     feedbackDefaults={storeInfo.feedbackDefaults}
                 />
-
-                {/* Powered by MenuList - subtle branding */}
-                <p className="text-center text-xs text-gray-400 mt-6">
-                    Powered by MenuList
-                </p>
             </div>
         </div>
     );

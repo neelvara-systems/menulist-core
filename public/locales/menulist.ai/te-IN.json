@@ -1557,6 +1557,7 @@
         "couldNotCopy": "Could not copy link",
         "copy": "Copy",
         "qrDownloaded": "QR downloaded",
+        "qrFailed": "Failed to generate QR",
         "saveQrImage": "Save QR Image",
         "obpNudgeHint": "This is your official menu link. Send this whenever customers ask for your menu.",
         "obpShareHint": "Share this link everywhere — customers see your business info + menu",
@@ -1575,6 +1576,8 @@
         "shareMessageCopied": "Share message copied!",
         "copiedLabel": "{label} copied",
         "copyFailedLabel": "Could not copy {label}",
+        "showQr": "Show QR",
+        "generatingQr": "Generating QR...",
         "noMenuYet": "No menu yet",
         "noMenuYetDesc": "Create your first {offering} to start sharing.",
         "shareYourOffering": "Share Your {offering}",
@@ -2242,6 +2245,7 @@
         "title": "మెనూ నాణ్యత",
         "allClearTitle": "మీ మెనూ చాలా బాగుంది",
         "allClearDesc": "వివరణలు, ఫోటోలు మరియు ధరలు బాగున్నాయి.",
+        "tapHint": "ఏ సమస్యపై ట్యాప్ చేస్తే ఆ ఐటమ్స్ కనిపిస్తాయి.",
         "review": "పరిశీలించండి"
     },
     "MobileCommunicationKit": {

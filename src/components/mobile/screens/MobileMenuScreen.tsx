@@ -280,6 +280,34 @@ function findFileForCategory(projectData: Project | null | undefined, categoryId
     return projectData.files[0] || null;
 }
 
+function StatusDot({
+    color,
+    label,
+}: {
+    color: string;
+    label?: string;
+}) {
+    return (
+        <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+            <span
+                style={{
+                    backgroundColor: color,
+                    borderRadius: '999px',
+                    display: 'inline-block',
+                    flex: '0 0 auto',
+                    height: 8,
+                    width: 8,
+                }}
+            />
+            {label ? (
+                <Text style={{ fontSize: 12, lineHeight: 1.2 }} type="secondary">
+                    {label}
+                </Text>
+            ) : null}
+        </Flex>
+    );
+}
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
@@ -910,6 +938,11 @@ export default function MobileMenuScreen() {
             stats: languageStats.find((entry) => entry.code === code) || null,
         }));
     }, [activeProjectLanguages, languageStats]);
+    const listingStatusLegend = useMemo(() => ([
+        { color: token.colorTextQuaternary, key: 'hidden', label: t('hidden') },
+        { color: token.colorWarning, key: 'sold-out', label: availabilityLabels.unavailable },
+        { color: token.colorPrimary, key: 'translation-missing', label: t('missingTranslation') },
+    ]), [availabilityLabels.unavailable, t, token.colorPrimary, token.colorTextQuaternary, token.colorWarning]);
 
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
@@ -1650,6 +1683,7 @@ export default function MobileMenuScreen() {
                         <MobileMenuQualitySignals
                             activeKey={isMenuQualityExpanded ? ['menu-quality'] : []}
                             files={menuData.files}
+                            projectLanguages={menuData.languages}
                             onExpandedChange={setIsMenuQualityExpanded}
                             onReviewSignal={handleReviewQualitySignal}
                         />
@@ -1770,6 +1804,11 @@ export default function MobileMenuScreen() {
                                         })}
                                     </Flex>
                                 ) : null}
+                                <Flex align="center" gap={12} wrap="wrap">
+                                    {listingStatusLegend.map((status) => (
+                                        <StatusDot color={status.color} key={status.key} label={status.label} />
+                                    ))}
+                                </Flex>
                             </Flex>
                             <Flex align="center" gap={8}>
                                 {orderedCategorySections.length > 0 ? (
@@ -1919,13 +1958,9 @@ export default function MobileMenuScreen() {
                                                 {id !== 'uncategorized' ? (
                                                     <Flex align="center" gap={6} wrap="wrap">
                                                         <Text type="secondary">
-                                                            {categorySummaryById.get(id)?.itemCount || items.length} items
+                                                            {items.length} items
                                                         </Text>
-                                                        {categorySummaryById.get(id)?.translationMissing ? (
-                                                            <Tag color="warning" style={{ marginRight: 0 }}>
-                                                                {t('missingTranslation')}
-                                                            </Tag>
-                                                        ) : null}
+                                                        {categorySummaryById.get(id)?.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
                                                     </Flex>
                                                 ) : null}
                                             </Flex>
@@ -1984,26 +2019,43 @@ export default function MobileMenuScreen() {
                                                                 onMouseDown={(event) => event.stopPropagation()}
                                                                 onPointerDown={(event) => event.stopPropagation()}
                                                             >
-                                                                <Flex align="center" gap={6}>
-                                                                    <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
-                                                                    <Text style={{ fontSize: 12, whiteSpace: 'nowrap' }} type="secondary">
-                                                                        {item.available ? availabilityLabels.available : availabilityLabels.unavailable}
-                                                                    </Text>
-                                                                </Flex>
+                                                                <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
                                                             </div>
-                                                            <Button fill="outline" onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                setEditingItem(item);
-                                                            }} size="small">
-                                                                {t('edit')}
+                                                            <Button
+                                                                fill="outline"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    setEditingItem(item);
+                                                                }}
+                                                                size="small"
+                                                            >
+                                                                <LuPencil size={14} />
                                                             </Button>
                                                         </Flex>
                                                     }
-                                                    title={<Text strong>{item.name}</Text>}
+                                                    title={(
+                                                        <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                                                            <Text
+                                                                strong
+                                                                style={{
+                                                                    minWidth: 0,
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap',
+                                                                }}
+                                                            >
+                                                                {item.name}
+                                                            </Text>
+                                                            <Flex align="center" gap={6} style={{ flexShrink: 0 }}>
+                                                                {!item.active ? <StatusDot color={token.colorTextQuaternary} /> : null}
+                                                                {item.available === false ? <StatusDot color={token.colorWarning} /> : null}
+                                                                {item.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
+                                                            </Flex>
+                                                        </Flex>
+                                                    )}
                                                     description={
                                                         <Flex gap={8} vertical>
                                                             <Flex align="center" gap={8} wrap>
-                                                                {!item.active ? <Tag>{t('hidden')}</Tag> : null}
                                                                 {!item.attributes?.length ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag> : null}
                                                             </Flex>
 
@@ -2016,12 +2068,6 @@ export default function MobileMenuScreen() {
                                                                         </Tag>
                                                                     ))}
                                                                     {item.attributes.length > 3 ? <Tag>+{item.attributes.length - 3} more</Tag> : null}
-                                                                </Flex>
-                                                            ) : null}
-
-                                                            {item.translationMissing ? (
-                                                                <Flex align="center" gap={8} wrap>
-                                                                    <Tag color="warning">{t('missingTranslation')}</Tag>
                                                                 </Flex>
                                                             ) : null}
                                                         </Flex>

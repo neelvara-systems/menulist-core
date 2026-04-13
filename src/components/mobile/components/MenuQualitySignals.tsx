@@ -6,7 +6,7 @@ import type { ProjectFileType } from '@template/main-app/projects/types/project.
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
-import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuSparkles, LuTrendingDown } from 'react-icons/lu';
+import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
 import { Collapse, Flex, List, Tag, Text } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
@@ -15,19 +15,21 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     images: <LuImage size={16} />,
     priceOutliers: <LuTrendingDown size={16} />,
     prices: <LuDollarSign size={16} />,
+    translations: <LuLanguages size={16} />,
 };
 
 interface MobileMenuQualitySignalsProps {
     activeKey?: string[];
     files: ProjectFileType[] | undefined;
+    projectLanguages?: string[];
     onExpandedChange?: (expanded: boolean) => void;
     onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ activeKey, files, onExpandedChange, onReviewSignal }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, onExpandedChange, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
     const { token } = theme.useToken();
-    const allSignals = useMemo(() => computeQualitySignals(files), [files]);
+    const allSignals = useMemo(() => computeQualitySignals(files, projectLanguages), [files, projectLanguages]);
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
 
@@ -72,23 +74,25 @@ export default function MobileMenuQualitySignals({ activeKey, files, onExpandedC
                             </Flex>
                         </Flex>
                     ) : (
-                        <List>
-                            {signals.map((signal) => (
-                                <List.Item
-                                    arrow={signal.status === 'warning'}
-                                    key={signal.id}
-                                    onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
-                                    title={(
-                                        <Flex align="center" gap={8}>
-                                            {SIGNAL_ICONS[signal.id]}
-                                            <Text>{signal.label}</Text>
-                                        </Flex>
-                                    )}
-                                    extra={signal.status === 'warning' ? <Tag color="processing">{t('review')}</Tag> : null}
-                                    prefix={signal.status === 'ok' ? <LuCheckCircle color={token.colorSuccess} size={16} /> : <LuAlertCircle color={token.colorWarning} size={16} />}
-                                />
-                            ))}
-                        </List>
+                        <Flex gap={8} vertical>
+                            <Text type="secondary">{t('tapHint')}</Text>
+                            <List>
+                                {signals.map((signal) => (
+                                    <List.Item
+                                        arrow={signal.status === 'warning'}
+                                        key={signal.id}
+                                        onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
+                                        title={(
+                                            <Flex align="center" gap={8}>
+                                                {SIGNAL_ICONS[signal.id]}
+                                                <Text>{signal.label}</Text>
+                                            </Flex>
+                                        )}
+                                        prefix={signal.status === 'ok' ? <LuCheckCircle color={token.colorSuccess} size={16} /> : <LuAlertCircle color={token.colorWarning} size={16} />}
+                                    />
+                                ))}
+                            </List>
+                        </Flex>
                     )}
                 </Collapse.Panel>
             </Collapse>

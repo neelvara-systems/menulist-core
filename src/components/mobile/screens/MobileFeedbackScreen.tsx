@@ -1,13 +1,15 @@
 'use client'
 
 import { getFeedbackList, updateFeedbackStatus } from '@database/guestFeedback';
-import { downloadQrCode, generateFeedbackQrCode, getFeedbackUrl, getQrCodeFilename } from '@lib/utils/feedbackQrCode';
+import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
+import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCopy, LuDownload, LuMessageSquare, LuQrCode, LuStar, LuX } from 'react-icons/lu';
-import { Button, Card, DotLoading, Empty, Flex, Image, List, NavBar, Popup, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
+import { LuCopy, LuMessageSquare, LuQrCode, LuStar } from 'react-icons/lu';
+import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
+import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
@@ -27,8 +29,6 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>('all');
     const [isQrOpen, setIsQrOpen] = useState(false);
-    const [isQrLoading, setIsQrLoading] = useState(false);
-    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
     const fetchFeedback = useCallback(async (targetFilter = filter) => {
         try {
@@ -73,23 +73,12 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         }
     }, [handleStatusUpdate, t]);
 
-    const handleOpenQr = async () => {
+    const handleOpenQr = () => {
         if (!selectedProjectId) {
             Toast.show({ content: t('noFeedback'), duration: 1500 });
             return;
         }
         setIsQrOpen(true);
-        if (qrDataUrl || isQrLoading) return;
-        setIsQrLoading(true);
-        try {
-            const dataUrl = await generateFeedbackQrCode(selectedProjectId);
-            setQrDataUrl(dataUrl);
-        } catch {
-            Toast.show({ content: t('failedToUpdate'), duration: 1500 });
-            setIsQrOpen(false);
-        } finally {
-            setIsQrLoading(false);
-        }
     };
 
     const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId) : '';
@@ -102,13 +91,6 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         } catch {
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         }
-    };
-
-    const handleDownloadQr = () => {
-        if (!qrDataUrl || !storeDetails?.name) return;
-        const filename = getQrCodeFilename(storeDetails.name);
-        downloadQrCode(qrDataUrl, filename);
-        Toast.show({ content: t('qrDownloaded'), duration: 1500 });
     };
 
     const stars = (rating: number) => (
@@ -224,51 +206,20 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 </PullToRefresh>
             </Flex>
 
-            <Popup
-                bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }}
-                onMaskClick={() => setIsQrOpen(false)}
-                position="bottom"
+            <MobileQrCodeSheet
+                copyErrorMessage={t('failedToUpdate')}
+                copySuccessMessage={t('linkCopied')}
+                downloadSuccessMessage={t('qrDownloaded')}
+                filename={buildQrCodeFilename(storeDetails?.name || 'feedback', 'feedback-qr')}
+                generatingLabel={t('generatingQr')}
+                helperText={t('feedbackQrTip')}
+                imageAlt={t('feedbackQrTitle')}
+                onClose={() => setIsQrOpen(false)}
+                qrErrorMessage={t('failedToUpdate')}
+                title={t('feedbackQrTitle')}
+                url={feedbackUrl}
                 visible={isQrOpen}
-            >
-                <Flex style={{ height: '100%' }} vertical>
-                    <NavBar backIcon={<LuX size={20} />} onBack={() => setIsQrOpen(false)}>
-                        {t('feedbackQrTitle')}
-                    </NavBar>
-
-                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
-                        {isQrLoading ? (
-                            <Flex align="center" gap={8} justify="center">
-                            <DotLoading color="primary" />
-                            <Text type="secondary">{t('generatingQr')}</Text>
-                            </Flex>
-                        ) : qrDataUrl ? (
-                            <Flex align="center" gap={12} vertical>
-                                <Card size="small">
-                                    <Image alt="Feedback QR" preview={false} src={qrDataUrl} width={180} />
-                                </Card>
-                                <Flex gap={6} vertical>
-                                    <Text type="secondary">{t('feedbackQrTip')}</Text>
-                                </Flex>
-                                {feedbackUrl ? <Text type="secondary">{feedbackUrl}</Text> : null}
-                                <Flex gap={8}>
-                                    <Button block fill="outline" onClick={handleCopyFeedbackLink}>
-                                        <Flex align="center" gap={6}>
-                                            <LuCopy size={14} />
-                                            <Text>{t('copyLink')}</Text>
-                                        </Flex>
-                                    </Button>
-                                    <Button block onClick={handleDownloadQr}>
-                                        <Flex align="center" gap={6}>
-                                            <LuDownload size={14} />
-                                            <Text>{t('download')}</Text>
-                                        </Flex>
-                                    </Button>
-                                </Flex>
-                            </Flex>
-                        ) : null}
-                    </Flex>
-                </Flex>
-            </Popup>
+            />
         </Flex>
     );
 }

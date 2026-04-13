@@ -6,6 +6,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
+import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
@@ -16,8 +17,9 @@ import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCod
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobilePresenceMonitor from '../components/PresenceMonitor';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 
 type ProjectLink = {
     feedbackUrl: string;
@@ -45,17 +47,24 @@ type ShareData = {
     storeName: string;
 };
 
+type QrSheetState = {
+    filename: string;
+    helperText: string;
+    title: string;
+    url: string;
+} | null;
+
 export default function MobileShareScreen() {
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
-    const common = useTranslations('Common');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
     const { isLoading: loadingProjects, projectsList, selectedProjectId, selectProject } = useMobileProjects();
     const [data, setData] = useState<ShareData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [qrSheet, setQrSheet] = useState<QrSheetState>(null);
 
     const loadData = useCallback(async () => {
         if (!storeDetails) return;
@@ -145,6 +154,10 @@ export default function MobileShareScreen() {
         }
     };
 
+    const handleOpenQr = (qrConfig: QrSheetState) => {
+        setQrSheet(qrConfig);
+    };
+
     if (isLoading || loadingProjects) {
         return (
             <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
@@ -185,6 +198,13 @@ export default function MobileShareScreen() {
                 label={t('yourOfferingPage', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(data.obpLink, t('offeringPageCopyLabel', { offering: labels.offeringTitle }))}
                 onOpen={() => window.open(data.obpLink, '_blank')}
+                onShowQr={() => handleOpenQr({
+                    filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-page`, 'qr'),
+                    helperText: t('offeringPageDesc', { offering: labels.offeringLower }),
+                    title: t('yourOfferingPage', { offering: labels.offeringTitle }),
+                    url: data.obpLink,
+                })}
+                showQrLabel={t('showQr')}
                 value={data.obpLink}
             />
 
@@ -194,6 +214,13 @@ export default function MobileShareScreen() {
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(data.menuLink, t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
                 onOpen={() => window.open(data.menuLink, '_blank')}
+                onShowQr={() => handleOpenQr({
+                    filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-direct-link`, 'qr'),
+                    helperText: t('directOfferingLinkDesc', { offering: labels.offeringLower }),
+                    title: t('directOfferingLink', { offering: labels.offeringTitle }),
+                    url: data.menuLink,
+                })}
+                showQrLabel={t('showQr')}
                 value={data.menuLink}
             />
 
@@ -204,6 +231,13 @@ export default function MobileShareScreen() {
                     label={t('feedbackLink')}
                     onCopy={() => void handleCopy(data.feedbackLink, t('feedbackLink'))}
                     onOpen={() => window.open(data.feedbackLink, '_blank')}
+                    onShowQr={() => handleOpenQr({
+                        filename: buildQrCodeFilename(`${data.storeName}-feedback`, 'qr'),
+                        helperText: t('feedbackLinkDesc'),
+                        title: t('feedbackLink'),
+                        url: data.feedbackLink,
+                    })}
+                    showQrLabel={t('showQr')}
                     value={data.feedbackLink}
                 />
             ) : null}
@@ -282,6 +316,23 @@ export default function MobileShareScreen() {
                 }}
                 visible={isProjectSelectorOpen}
             />
+
+            {qrSheet ? (
+                <MobileQrCodeSheet
+                    copyErrorMessage={t('couldNotCopy')}
+                    copySuccessMessage={t('linkCopied')}
+                    downloadSuccessMessage={t('qrDownloaded')}
+                    filename={qrSheet.filename}
+                    generatingLabel={t('generatingQr')}
+                    helperText={qrSheet.helperText}
+                    imageAlt={qrSheet.title}
+                    onClose={() => setQrSheet(null)}
+                    qrErrorMessage={t('qrFailed')}
+                    title={qrSheet.title}
+                    url={qrSheet.url}
+                    visible={!!qrSheet}
+                />
+            ) : null}
         </Flex>
     );
 }
@@ -292,6 +343,8 @@ function LinkCard({
     label,
     onCopy,
     onOpen,
+    onShowQr,
+    showQrLabel,
     value,
 }: {
     description: string;
@@ -299,6 +352,8 @@ function LinkCard({
     label: string;
     onCopy: () => void;
     onOpen: () => void;
+    onShowQr: () => void;
+    showQrLabel: string;
     value: string;
 }) {
     const common = useTranslations('Common');
@@ -306,9 +361,14 @@ function LinkCard({
     return (
         <Card>
             <Flex gap={10} vertical>
-                <Flex align="center" gap={8}>
-                    {icon}
-                    <Text strong>{label}</Text>
+                <Flex align="center" justify="space-between">
+                    <Flex align="center" gap={8}>
+                        {icon}
+                        <Text strong>{label}</Text>
+                    </Flex>
+                    <Button fill="none" onClick={onOpen} size="small" style={{ minHeight: 32, minWidth: 32, paddingInline: 4 }}>
+                        <LuExternalLink size={16} />
+                    </Button>
                 </Flex>
                 <Text type="secondary">{description}</Text>
                 <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
@@ -318,8 +378,8 @@ function LinkCard({
                     <Button block fill="outline" onClick={onCopy} size="small">
                         {common('copy')}
                     </Button>
-                    <Button block onClick={onOpen} size="small">
-                        {common('open')}
+                    <Button block onClick={onShowQr} size="small">
+                        {showQrLabel}
                     </Button>
                 </Flex>
             </Flex>

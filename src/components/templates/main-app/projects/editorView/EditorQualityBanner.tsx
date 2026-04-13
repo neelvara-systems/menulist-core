@@ -24,9 +24,9 @@ interface EditorQualityBannerProps {
 const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, onAction }) => {
     const actionableSignals = useMemo(() => {
         if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || !projectData?.files) return [];
-        const all = computeQualitySignals(projectData.files);
+        const all = computeQualitySignals(projectData.files, projectData.languages);
         return getActionableSignals(all);
-    }, [projectData?.files]);
+    }, [projectData?.files, projectData?.languages]);
 
     if (actionableSignals.length === 0) return null;
 

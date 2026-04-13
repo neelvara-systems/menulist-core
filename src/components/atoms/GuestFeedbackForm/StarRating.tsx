@@ -1,94 +1,56 @@
 'use client';
 
-/**
- * StarRating Component
- * 
- * Interactive 5-star rating input for guest feedback form.
- * Mobile-first design with large touch targets.
- * 
- * @see __docs__/projects/internal-feedback-system/
- */
-
 import React, { useState } from 'react';
-import { FaStar, FaRegStar } from 'react-icons/fa';
+import { LuStar } from 'react-icons/lu';
+import styles from './StarRating.module.scss';
 
 interface StarRatingProps {
-    /** Current rating value (1-5) */
-    value: number;
-    /** Callback when rating changes */
-    onChange: (rating: number) => void;
-    /** Disable interaction */
     disabled?: boolean;
-    /** Size of stars in pixels */
+    onChange: (rating: number) => void;
     size?: number;
+    value: number;
 }
 
-/**
- * Interactive star rating component
- */
 export const StarRating: React.FC<StarRatingProps> = ({
-    value,
-    onChange,
     disabled = false,
-    size = 40,
+    onChange,
+    size = 28,
+    value,
 }) => {
     const [hoverValue, setHoverValue] = useState<number | null>(null);
-
-    const handleClick = (rating: number) => {
-        if (disabled) return;
-        onChange(rating);
-    };
-
-    const handleMouseEnter = (rating: number) => {
-        if (disabled) return;
-        setHoverValue(rating);
-    };
-
-    const handleMouseLeave = () => {
-        setHoverValue(null);
-    };
-
-    const displayValue = hoverValue !== null ? hoverValue : value;
+    const displayValue = hoverValue ?? value;
 
     return (
-        <div 
-            className="flex items-center gap-1"
-            role="radiogroup"
+        <div
             aria-label="Rating"
+            className={styles.group}
+            role="radiogroup"
         >
             {[1, 2, 3, 4, 5].map((star) => {
-                const isFilled = star <= displayValue;
-                const isActive = star <= value;
+                const isActive = star <= displayValue;
 
                 return (
                     <button
                         key={star}
-                        type="button"
-                        onClick={() => handleClick(star)}
-                        onMouseEnter={() => handleMouseEnter(star)}
-                        onMouseLeave={handleMouseLeave}
-                        disabled={disabled}
-                        className={`
-                            transition-all duration-150 ease-in-out
-                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400
-                            rounded-sm p-1
-                            ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-110'}
-                        `}
+                        aria-checked={value === star}
                         aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
-                        aria-checked={isActive}
+                        className={[
+                            styles.button,
+                            disabled ? styles.buttonDisabled : '',
+                            isActive ? styles.buttonActive : '',
+                        ].filter(Boolean).join(' ')}
+                        disabled={disabled}
+                        onClick={() => !disabled && onChange(star)}
+                        onMouseEnter={() => !disabled && setHoverValue(star)}
+                        onMouseLeave={() => setHoverValue(null)}
                         role="radio"
+                        type="button"
                     >
-                        {isFilled ? (
-                            <FaStar 
-                                size={size} 
-                                className="text-yellow-400 drop-shadow-sm"
-                            />
-                        ) : (
-                            <FaRegStar 
-                                size={size} 
-                                className="text-gray-300"
-                            />
-                        )}
+                        <LuStar
+                            fill={isActive ? 'currentColor' : 'none'}
+                            size={size}
+                            strokeWidth={2}
+                        />
                     </button>
                 );
             })}
@@ -96,24 +58,25 @@ export const StarRating: React.FC<StarRatingProps> = ({
     );
 };
 
-/**
- * Read-only star display (for inbox cards)
- */
 export const StarDisplay: React.FC<{
     rating: number;
     size?: number;
 }> = ({ rating, size = 16 }) => {
     return (
-        <div className="flex items-center gap-0.5" aria-label={`${rating} star rating`}>
-            {[1, 2, 3, 4, 5].map((star) => (
-                <span key={star}>
-                    {star <= rating ? (
-                        <FaStar size={size} className="text-yellow-400" />
-                    ) : (
-                        <FaRegStar size={size} className="text-gray-300" />
-                    )}
-                </span>
-            ))}
+        <div aria-label={`${rating} star rating`} className={styles.display}>
+            {[1, 2, 3, 4, 5].map((star) => {
+                const isActive = star <= rating;
+
+                return (
+                    <LuStar
+                        key={star}
+                        className={isActive ? styles.displayActive : styles.displayInactive}
+                        fill={isActive ? 'currentColor' : 'none'}
+                        size={size}
+                        strokeWidth={2}
+                    />
+                );
+            })}
         </div>
     );
 };

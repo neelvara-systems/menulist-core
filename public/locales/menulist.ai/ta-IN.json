@@ -1557,6 +1557,7 @@
         "couldNotCopy": "Could not copy link",
         "copy": "Copy",
         "qrDownloaded": "QR downloaded",
+        "qrFailed": "Failed to generate QR",
         "saveQrImage": "Save QR Image",
         "obpNudgeHint": "This is your official menu link. Send this whenever customers ask for your menu.",
         "obpShareHint": "Share this link everywhere — customers see your business info + menu",
@@ -1575,6 +1576,8 @@
         "shareMessageCopied": "Share message copied!",
         "copiedLabel": "{label} copied",
         "copyFailedLabel": "Could not copy {label}",
+        "showQr": "Show QR",
+        "generatingQr": "Generating QR...",
         "noMenuYet": "No menu yet",
         "noMenuYetDesc": "Create your first {offering} to start sharing.",
         "shareYourOffering": "Share Your {offering}",
@@ -2242,6 +2245,7 @@
         "title": "மெனு தரம்",
         "allClearTitle": "உங்கள் மெனு சிறப்பாக உள்ளது",
         "allClearDesc": "விளக்கங்கள், படங்கள் மற்றும் விலைகள் நன்றாக உள்ளன.",
+        "tapHint": "ஒரு சிக்கலைத் தட்டினால் அந்த உருப்படிகளைப் பார்க்கலாம்.",
         "review": "மதிப்பாய்வு"
     },
     "MobileCommunicationKit": {
