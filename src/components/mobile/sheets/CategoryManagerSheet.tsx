@@ -14,6 +14,7 @@ export type MobileCategoryItem = {
     name: string;
     active: boolean;
     itemCount: number;
+    nameByLanguage?: Record<string, string>;
     orderIndex?: number;
     timeSlotPresetIds?: string[];
 };
@@ -30,21 +31,24 @@ interface CategoryManagerSheetProps {
     businessType?: string;
     categories: MobileCategoryItem[];
     categoryItems: Record<string, MobileCategoryReorderItem[]>;
+    initialCategoryId?: string | null;
     initialMode?: 'manage' | 'reorder';
     presets: TimeSlotPreset[];
     visible: boolean;
-    onAdd: (payload: { name: string; active: boolean; presetIds: string[] }) => Promise<void>;
-    onUpdate: (payload: { id: string; name: string; active: boolean; presetIds: string[] }) => Promise<void>;
+    onAdd: (payload: { names: Record<string, string>; active: boolean; presetIds: string[] }) => Promise<void>;
+    onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onReorder: (orderedIds: string[]) => Promise<void>;
     onReorderItems: (categoryId: string, orderedItemIds: string[]) => Promise<void>;
     onClose: () => void;
+    selectedLanguages?: string[];
 }
 
 export default function CategoryManagerSheet({
     businessType,
     categories,
     categoryItems,
+    initialCategoryId = null,
     initialMode = 'manage',
     presets,
     visible,
@@ -54,6 +58,7 @@ export default function CategoryManagerSheet({
     onReorder,
     onReorderItems,
     onClose,
+    selectedLanguages = ['en'],
 }: CategoryManagerSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
@@ -93,6 +98,12 @@ export default function CategoryManagerSheet({
         () => sorted.find((category) => category.id === selectedCategoryId) || null,
         [selectedCategoryId, sorted]
     );
+    const isDirectCategoryEditFlow = !isReorderHubMode
+        && !isReorderMode
+        && !isItemReorderMode
+        && categoryEditorMode === 'edit'
+        && !!initialCategoryId
+        && selectedCategoryId === initialCategoryId;
 
     const selectedReorderCategory = useMemo(
         () => sorted.find((category) => category.id === selectedReorderCategoryId) || null,
@@ -140,6 +151,13 @@ export default function CategoryManagerSheet({
         setSelectedCategoryId(null);
         setCategoryEditorMode(null);
     };
+    const closeCategoryEditor = () => {
+        if (isDirectCategoryEditFlow) {
+            onClose();
+            return;
+        }
+        resetCategoryEditor();
+    };
 
     const resetItemReorder = () => {
         setSelectedReorderCategoryId(null);
@@ -171,11 +189,18 @@ export default function CategoryManagerSheet({
     useEffect(() => {
         if (!visible) return;
         if (initialMode === 'reorder') {
+            resetCategoryEditor();
             openReorderHub();
             return;
         }
         resetReorderState();
-    }, [initialMode, visible]);
+        if (initialCategoryId) {
+            setSelectedCategoryId(initialCategoryId);
+            setCategoryEditorMode('edit');
+            return;
+        }
+        resetCategoryEditor();
+    }, [initialCategoryId, initialMode, visible]);
 
     const openItemReorderMode = () => {
         setIsItemReorderMode(true);
@@ -325,7 +350,7 @@ export default function CategoryManagerSheet({
                                         setSelectedReorderCategoryId(null);
                                     }
                                 : selectedCategoryId
-                                    ? resetCategoryEditor
+                                    ? closeCategoryEditor
                                     : onClose
                     }
                 >
@@ -590,7 +615,7 @@ export default function CategoryManagerSheet({
             <MobileCategoryEditSheet
                 category={categoryEditorMode === 'edit' ? selectedCategory : null}
                 mode={categoryEditorMode === 'edit' ? 'edit' : 'add'}
-                onClose={resetCategoryEditor}
+                onClose={closeCategoryEditor}
                 onDelete={async (categoryId) => {
                     await handleDelete(categoryId);
                 }}
@@ -600,7 +625,7 @@ export default function CategoryManagerSheet({
                         if (categoryEditorMode === 'add') {
                             await onAdd({
                                 active: payload.active,
-                                name: payload.name,
+                                names: payload.names,
                                 presetIds: payload.presetIds,
                             });
                             Toast.show({ content: t('categoryAdded'), duration: 1200 });
@@ -609,12 +634,12 @@ export default function CategoryManagerSheet({
                             await onUpdate({
                                 active: payload.active,
                                 id: payload.id,
-                                name: payload.name,
+                                names: payload.names,
                                 presetIds: payload.presetIds,
                             });
                             Toast.show({ content: t('categoryUpdated'), duration: 1200 });
                         }
-                        resetCategoryEditor();
+                        closeCategoryEditor();
                     } catch {
                         Toast.show({ content: categoryEditorMode === 'add' ? t('categoryAddFailed') : t('categoryUpdateFailed'), duration: 1500 });
                     } finally {
@@ -622,6 +647,7 @@ export default function CategoryManagerSheet({
                     }
                 }}
                 presets={presets}
+                selectedLanguages={selectedLanguages}
                 visible={categoryEditorMode !== null}
             />
         </Popup>

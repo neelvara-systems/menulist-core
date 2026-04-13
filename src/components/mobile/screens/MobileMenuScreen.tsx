@@ -15,6 +15,7 @@ import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { associateItemImagesWithProject } from '../../templates/main-app/projects/editorView/utils/associateItemImages';
 import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
+import { clearStaleCategoryTranslations, clearStaleTranslations } from '../../templates/main-app/projects/utils/translationsUtils';
 import type { BatchImageGenerationJobType, ItemForDropdown, Project } from '../../templates/main-app/projects/types';
 import type {
     ExtractedDataAttribute,
@@ -51,9 +52,11 @@ type CategorySummary = {
     active: boolean;
     id: string;
     itemCount: number;
+    nameByLanguage?: Record<string, string>;
     name: string;
     orderIndex?: number;
     timeSlotPresetIds?: string[];
+    translationMissing?: boolean;
 };
 
 type CategoryIssueSummary = {
@@ -189,6 +192,36 @@ function hasMissingTranslations(item: Partial<ExtractedDataItem> | null | undefi
     });
 }
 
+function hasMissingTranslationsForLanguage(
+    item: Partial<ExtractedDataItem> | null | undefined,
+    primaryLanguage: string,
+    targetLanguage: string
+): boolean {
+    if (!item || primaryLanguage === targetLanguage) return false;
+
+    if (hasLocalizedValue(item.name, primaryLanguage) && !hasLocalizedValue(item.name, targetLanguage)) {
+        return true;
+    }
+
+    if (hasLocalizedValue(item.description, primaryLanguage) && !hasLocalizedValue(item.description, targetLanguage)) {
+        return true;
+    }
+
+    return toArray(item.attributes).some((attribute) => (
+        hasLocalizedValue(attribute?.name, primaryLanguage) && !hasLocalizedValue(attribute?.name, targetLanguage)
+    ));
+}
+
+function hasMissingCategoryTranslationForLanguage(
+    category: Partial<ExtractedDataCategory> | null | undefined,
+    primaryLanguage: string,
+    targetLanguage: string
+): boolean {
+    if (!category || primaryLanguage === targetLanguage) return false;
+
+    return hasLocalizedValue(category.name, primaryLanguage) && !hasLocalizedValue(category.name, targetLanguage);
+}
+
 function normalizeExtractedPrice(price: unknown): number {
     if (typeof price === 'number') {
         return Number.isFinite(price) ? price : 0;
@@ -220,6 +253,33 @@ function findExtractedItemById(projectData: Project | null | undefined, itemId: 
     return null;
 }
 
+function findFileContainingItem(projectData: Project | null | undefined, itemId: string): Project['files'][number] | null {
+    if (!projectData?.files?.length) return null;
+
+    for (const file of projectData.files) {
+        const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+        if (items.some((item) => item.id === itemId)) {
+            return file;
+        }
+    }
+
+    return null;
+}
+
+function findFileForCategory(projectData: Project | null | undefined, categoryId?: string): Project['files'][number] | null {
+    if (!projectData?.files?.length) return null;
+    if (!categoryId) return projectData.files[0] || null;
+
+    for (const file of projectData.files) {
+        const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
+        if (categories.some((category) => category.id === categoryId)) {
+            return file;
+        }
+    }
+
+    return projectData.files[0] || null;
+}
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
@@ -249,6 +309,7 @@ export default function MobileMenuScreen() {
     const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | null>(null);
     const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
     const [categorySheetMode, setCategorySheetMode] = useState<'manage' | 'reorder'>('manage');
+    const [categorySheetInitialCategoryId, setCategorySheetInitialCategoryId] = useState<string | null>(null);
     const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
     const [isManageLanguagesOpen, setIsManageLanguagesOpen] = useState(false);
     const [isGenerateDescriptionsOpen, setIsGenerateDescriptionsOpen] = useState(false);
@@ -798,16 +859,63 @@ export default function MobileMenuScreen() {
         t,
     ]);
 
-    const activeLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
+    const primaryLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
     const activeProjectLanguages = useMemo(() => menuData?.languages || ['en'], [menuData?.languages]);
+    const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);
+
+    useEffect(() => {
+        if (!activeProjectLanguages.includes(displayLanguage)) {
+            setDisplayLanguage(primaryLang);
+        }
+    }, [activeProjectLanguages, displayLanguage, primaryLang]);
+
+    useEffect(() => {
+        setDisplayLanguage((current) => (
+            activeProjectLanguages.includes(current) ? current : primaryLang
+        ));
+    }, [activeProjectLanguages, primaryLang, menuData?.projectId]);
+
+    const languageStats = useMemo(() => {
+        return activeProjectLanguages.map((lang) => {
+            let totalCategories = 0;
+            let totalItems = 0;
+            let filled = 0;
+
+            menuData?.files?.forEach((file: any) => {
+                const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
+                const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+
+                totalCategories += categories.length;
+                totalItems += items.length;
+
+                categories.forEach((category) => {
+                    if (hasLocalizedValue(category.name, lang)) filled += 1;
+                });
+
+                items.forEach((item) => {
+                    if (hasLocalizedValue(item.name, lang)) filled += 1;
+                });
+            });
+
+            const total = totalCategories + totalItems;
+            return {
+                code: lang,
+                filled,
+                percentage: total > 0 ? Math.round((filled / total) * 100) : 0,
+                total,
+            };
+        });
+    }, [activeProjectLanguages, menuData?.files]);
+
     const languageLabels = useMemo(() => {
         const labelsByCode = new Map(GlobalLanguagesList.map((language) => [language.code, language.nativeName || language.name]));
         return activeProjectLanguages.map((code) => ({
             code,
             isPrimary: code === activeProjectLanguages[0],
             label: labelsByCode.get(code) || code.toUpperCase(),
+            stats: languageStats.find((entry) => entry.code === code) || null,
         }));
-    }, [activeProjectLanguages]);
+    }, [activeProjectLanguages, languageStats]);
 
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
@@ -815,12 +923,12 @@ export default function MobileMenuScreen() {
         menuData.files.forEach((file: any) => {
             const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
             categories.forEach((category) => {
-                const label = resolveCategoryName(category, activeLang, uncategorizedLabel);
+                const label = resolveCategoryName(category, displayLanguage, uncategorizedLabel);
                 if (!map.has(category.id)) map.set(category.id, label);
             });
         });
         return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-    }, [activeLang, menuData?.files, uncategorizedLabel]);
+    }, [displayLanguage, menuData?.files, uncategorizedLabel]);
 
     const menuItems = useMemo(() => {
         if (!menuData?.files) return [];
@@ -831,28 +939,28 @@ export default function MobileMenuScreen() {
                     const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
                     const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
                     if (aIndex !== bIndex) return aIndex - bIndex;
-                    const aName = resolveCategoryName(a, activeLang, '');
-                    const bName = resolveCategoryName(b, activeLang, '');
+                    const aName = resolveCategoryName(a, displayLanguage, '');
+                    const bName = resolveCategoryName(b, displayLanguage, '');
                     return aName.localeCompare(bName);
                 });
                 const categoryMap: Record<string, string> = {};
                 categories.forEach((category) => {
-                    categoryMap[category.id] = resolveCategoryName(category, activeLang, uncategorizedLabel);
+                    categoryMap[category.id] = resolveCategoryName(category, displayLanguage, uncategorizedLabel);
                 });
                 const menuItems = [...toArray<ExtractedDataItem>(file.extractedData.data.items)].sort((a, b) => {
                     const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
                     const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
                     if (aIndex !== bIndex) return aIndex - bIndex;
-                    const aName = resolveItemName(a, activeLang, '');
-                    const bName = resolveItemName(b, activeLang, '');
+                    const aName = resolveItemName(a, displayLanguage, '');
+                    const bName = resolveItemName(b, displayLanguage, '');
                     return aName.localeCompare(bName);
                 });
                 categories.forEach((category) => {
                     const categoryName = categoryMap[category.id] || uncategorizedLabel;
                     const categoryItems = menuItems.filter((item) => item.category === category.id);
                     categoryItems.forEach((item) => {
-                        const itemName = resolveItemName(item, activeLang, t('unnamedItem'));
-                        const itemDescription = resolveItemDescription(item, activeLang);
+                        const itemName = resolveItemName(item, displayLanguage, t('unnamedItem'));
+                        const itemDescription = resolveItemDescription(item, displayLanguage);
                         const price = normalizeExtractedPrice(item.price);
                         const available = item.available !== false;
                         const active = item.active !== false;
@@ -862,7 +970,7 @@ export default function MobileMenuScreen() {
                             price: price,
                             attributes: item.attributes?.map((attribute: any) => ({
                                 id: attribute.id,
-                                name: resolveAttributeName(attribute, activeLang, 'Variant'),
+                                name: resolveAttributeName(attribute, displayLanguage, 'Attribute'),
                                 price: normalizeExtractedPrice(attribute.price),
                                 active: attribute.active !== false,
                             })),
@@ -871,15 +979,17 @@ export default function MobileMenuScreen() {
                             categoryId: item.category,
                             categoryName,
                             description: itemDescription,
+                            fileId: file.uid,
                             image: item.images?.[0]?.url || '',
-                            translationMissing: hasMissingTranslations(item, activeProjectLanguages),
+                            rawItem: removeObjRef(item),
+                            translationMissing: hasMissingTranslationsForLanguage(item, primaryLang, displayLanguage),
                         });
                     });
                 });
             }
         });
         return items;
-    }, [activeLang, activeProjectLanguages, menuData, t, uncategorizedLabel]);
+    }, [activeProjectLanguages, displayLanguage, menuData, primaryLang, t, uncategorizedLabel]);
 
     const priceOutlierItemIds = useMemo(() => {
         const LOW_FACTOR = 0.35;
@@ -1232,7 +1342,7 @@ export default function MobileMenuScreen() {
             const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
             const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
             categories.forEach((category) => {
-                const name = resolveCategoryName(category, activeLang, uncategorizedLabel);
+                const name = resolveCategoryName(category, displayLanguage, uncategorizedLabel);
                 const count = items.filter((item) => item.category === category.id).length;
                 if (!map.has(category.id)) {
                     map.set(category.id, {
@@ -1240,8 +1350,10 @@ export default function MobileMenuScreen() {
                         name,
                         active: category.active !== false,
                         itemCount: count,
+                        nameByLanguage: typeof category.name === 'object' ? removeObjRef(category.name) : undefined,
                         orderIndex: category.orderIndex,
                         timeSlotPresetIds: getCategoryTimeSlotPresetIds(category),
+                        translationMissing: hasMissingCategoryTranslationForLanguage(category, primaryLang, displayLanguage),
                     });
                 }
             });
@@ -1252,7 +1364,7 @@ export default function MobileMenuScreen() {
             if (aIndex !== bIndex) return aIndex - bIndex;
             return a.name.localeCompare(b.name);
         });
-    }, [activeLang, menuData?.files, uncategorizedLabel]);
+    }, [displayLanguage, menuData?.files, primaryLang, uncategorizedLabel]);
     const hasCategories = categorySummary.length > 0;
     const categoryCount = useMemo(() => categorySummary.length, [categorySummary.length]);
 
@@ -1301,21 +1413,21 @@ export default function MobileMenuScreen() {
                 grouped[categoryId].push({
                     available: item.available !== false,
                     id: item.id,
-                    name: resolveItemName(item, activeLang, t('unnamedItem')),
+                    name: resolveItemName(item, displayLanguage, t('unnamedItem')),
                     active: item.active !== false,
                     price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
                 });
             });
         });
         return grouped;
-    }, [activeLang, menuData?.files, t]);
+    }, [displayLanguage, menuData?.files, t]);
     const categorySummaryById = useMemo(() => {
         const map = new Map<string, CategorySummary>();
         categorySummary.forEach((category) => map.set(category.id, category));
         return map;
     }, [categorySummary]);
 
-    const handleCategoryAdd = async ({ name, active, presetIds }: { name: string; active: boolean; presetIds: string[] }) => {
+    const handleCategoryAdd = async ({ names, active, presetIds }: { names: Record<string, string>; active: boolean; presetIds: string[] }) => {
         if (!menuData) return;
         const presets = storeDetails?.timeSlotPresets || [];
         const previous = menuData;
@@ -1333,7 +1445,7 @@ export default function MobileMenuScreen() {
         nextCategory.orderIndex = targetFile.extractedData.data.categories.length;
         nextCategory.name = {
             ...nextCategory.name,
-            [activeLang]: name,
+            ...names,
         };
         nextCategory.timeSlots = presetIds.length
             ? presetIds
@@ -1349,15 +1461,19 @@ export default function MobileMenuScreen() {
         applyLocalMenuUpdate(updated);
     };
 
-    const handleCategoryUpdate = async ({ id: categoryId, name, active, presetIds }: { id: string; name: string; active: boolean; presetIds: string[] }) => {
+    const handleCategoryUpdate = async ({ id: categoryId, names, active, presetIds }: { id: string; names: Record<string, string>; active: boolean; presetIds: string[] }) => {
         if (!menuData) return;
         const presets = storeDetails?.timeSlotPresets || [];
         const updated = removeObjRef(menuData);
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.categories?.forEach((category: any) => {
                 if (category.id === categoryId) {
-                    const nextName = typeof category.name === 'object' && category.name ? { ...category.name } : {};
-                    nextName[activeLang] = name;
+                    const nextName = clearStaleCategoryTranslations(
+                        category.name,
+                        names,
+                        primaryLang,
+                        activeProjectLanguages
+                    );
                     category.name = nextName;
                     category.active = active;
                     category.timeSlots = presetIds.length
@@ -1637,11 +1753,27 @@ export default function MobileMenuScreen() {
                                             <LuLanguages size={14} />
                                             <Text type="secondary">{t('availableLanguages')}</Text>
                                         </Flex>
-                                        {languageLabels.map((language) => (
-                                            <Tag color={language.isPrimary ? 'primary' : undefined} key={language.code}>
-                                                {language.label}
-                                            </Tag>
-                                        ))}
+                                        {languageLabels.map((language) => {
+                                            const isSelected = displayLanguage === language.code;
+                                            const completionLabel = !language.isPrimary && language.stats && language.stats.total > 0
+                                                ? ` · ${language.stats.percentage}%`
+                                                : '';
+
+                                            return (
+                                                <Tag
+                                                    color={isSelected ? 'primary' : undefined}
+                                                    key={language.code}
+                                                    onClick={() => setDisplayLanguage(language.code)}
+                                                    style={{
+                                                        borderWidth: isSelected ? 2 : 1,
+                                                        cursor: 'pointer',
+                                                        marginRight: 0,
+                                                    }}
+                                                >
+                                                    {`${language.label}${completionLabel}`}
+                                                </Tag>
+                                            );
+                                        })}
                                     </Flex>
                                 ) : null}
                             </Flex>
@@ -1714,6 +1846,7 @@ export default function MobileMenuScreen() {
                                         fill="outline"
                                         onClick={() => {
                                             setCategorySheetMode('manage');
+                                            setCategorySheetInitialCategoryId(null);
                                             setIsCategorySheetOpen(true);
                                         }}
                                         size="large"
@@ -1790,9 +1923,16 @@ export default function MobileMenuScreen() {
                                                     {name}
                                                 </Text>
                                                 {id !== 'uncategorized' ? (
-                                                    <Text type="secondary">
-                                                        {categorySummaryById.get(id)?.itemCount || items.length} items
-                                                    </Text>
+                                                    <Flex align="center" gap={6} wrap="wrap">
+                                                        <Text type="secondary">
+                                                            {categorySummaryById.get(id)?.itemCount || items.length} items
+                                                        </Text>
+                                                        {categorySummaryById.get(id)?.translationMissing ? (
+                                                            <Tag color="warning" style={{ marginRight: 0 }}>
+                                                                {t('missingTranslation')}
+                                                            </Tag>
+                                                        ) : null}
+                                                    </Flex>
                                                 ) : null}
                                             </Flex>
                                             {categoryHasSignals.get(id) ? (
@@ -1819,6 +1959,7 @@ export default function MobileMenuScreen() {
                                                         fill="outline"
                                                         onClick={() => {
                                                             setCategorySheetMode('manage');
+                                                            setCategorySheetInitialCategoryId(id);
                                                             setIsCategorySheetOpen(true);
                                                         }}
                                                         size="small"
@@ -1866,14 +2007,29 @@ export default function MobileMenuScreen() {
                                                     }
                                                     title={<Text strong>{item.name}</Text>}
                                                     description={
-                                                        <Flex align="center" gap={8} wrap>
-                                                            {!item.active ? <Tag>{t('hidden')}</Tag> : null}
-                                                            <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
-                                                            {item.translationMissing ? <Tag color="warning">{t('missingTranslation')}</Tag> : null}
-                                                            {item.attributes?.slice(0, 2).map((attribute) => (
-                                                                <Tag key={attribute.id}>{attribute.name}</Tag>
-                                                            ))}
-                                                            {item.attributes && item.attributes.length > 2 ? <Tag>+{item.attributes.length - 2} more</Tag> : null}
+                                                        <Flex gap={8} vertical>
+                                                            <Flex align="center" gap={8} wrap>
+                                                                {!item.active ? <Tag>{t('hidden')}</Tag> : null}
+                                                                {!item.attributes?.length ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag> : null}
+                                                            </Flex>
+
+                                                            {item.attributes?.length ? (
+                                                                <Flex gap={6} wrap>
+                                                                    {item.attributes.slice(0, 3).map((attribute) => (
+                                                                        <Tag key={attribute.id}>
+                                                                            {attribute.name}
+                                                                            {typeof attribute.price === 'number' && attribute.price > 0 ? ` · ${formatMenuPrice(attribute.price, currencySymbol)}` : ''}
+                                                                        </Tag>
+                                                                    ))}
+                                                                    {item.attributes.length > 3 ? <Tag>+{item.attributes.length - 3} more</Tag> : null}
+                                                                </Flex>
+                                                            ) : null}
+
+                                                            {item.translationMissing ? (
+                                                                <Flex align="center" gap={8} wrap>
+                                                                    <Tag color="warning">{t('missingTranslation')}</Tag>
+                                                                </Flex>
+                                                            ) : null}
                                                         </Flex>
                                                     }
                                                 />
@@ -2126,6 +2282,7 @@ export default function MobileMenuScreen() {
                 onAddItem={() => launchCommandAction(() => setIsAddSheetOpen(true))}
                 onCategories={() => launchCommandAction(() => {
                     setCategorySheetMode('manage');
+                    setCategorySheetInitialCategoryId(null);
                     setIsCategorySheetOpen(true);
                 })}
                 onChangeAvailability={() => launchCommandAction(() => {
@@ -2148,6 +2305,7 @@ export default function MobileMenuScreen() {
                 })}
                 onReorderMenu={() => launchCommandAction(() => {
                     setCategorySheetMode('reorder');
+                    setCategorySheetInitialCategoryId(null);
                     setIsCategorySheetOpen(true);
                 })}
                 onSmartRecommendations={() => launchCommandAction(() => setIsSmartRecommendationsOpen(true))}
@@ -2215,17 +2373,20 @@ export default function MobileMenuScreen() {
                 businessType={storeDetails?.businessType}
                 categories={categorySummary}
                 categoryItems={categoryItemMap}
+                initialCategoryId={categorySheetInitialCategoryId}
                 initialMode={categorySheetMode}
                 presets={storeDetails?.timeSlotPresets || []}
                 onAdd={handleCategoryAdd}
                 onClose={() => handleCommandActionBack(() => {
                     setIsCategorySheetOpen(false);
                     setCategorySheetMode('manage');
+                    setCategorySheetInitialCategoryId(null);
                 })}
                 onDelete={handleCategoryDelete}
                 onUpdate={handleCategoryUpdate}
                 onReorder={handleCategoryReorder}
                 onReorderItems={handleCategoryItemReorder}
+                selectedLanguages={activeProjectLanguages}
                 visible={isCategorySheetOpen}
             />
 
@@ -2254,56 +2415,59 @@ export default function MobileMenuScreen() {
                         setEditingItem(null);
                         resetCommandActionFlow();
                     }}
-                    onGenerateDescriptions={() => {
-                        setEditingItem(null);
-                        setIsGenerateDescriptionsOpen(true);
-                    }}
-                    onManageLanguages={() => {
-                        setEditingItem(null);
-                        setIsManageLanguagesOpen(true);
-                    }}
                     onManageImages={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item') : undefined}
+                    projectData={menuData}
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
                         const updated = removeObjRef(menuData);
                         const pendingImage = typeof updatedItem.image === 'string' ? updatedItem.image : null;
                         const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
                         const imageName = `${updatedItem.name || editingItem.id}.jpg`;
+                        const rawItem = updatedItem.rawItem
+                            ? clearStaleTranslations(
+                                editingItem.rawItem || updatedItem.rawItem,
+                                removeObjRef(updatedItem.rawItem),
+                                primaryLang,
+                                activeProjectLanguages
+                            )
+                            : null;
 
                         updated.files?.forEach((file: any) => {
                             file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
                                 if (menuItem.id === editingItem.id) {
-                                    const nextItem = { ...menuItem };
-                                    if (updatedItem.name !== undefined) {
-                                        const nextName = typeof menuItem.name === 'object' && menuItem.name ? { ...menuItem.name } : {};
-                                        nextName[activeLang] = updatedItem.name;
-                                        nextItem.name = nextName;
-                                    }
-                                    if (updatedItem.description !== undefined) {
-                                        const nextDescription = typeof menuItem.description === 'object' && menuItem.description ? { ...menuItem.description } : {};
-                                        nextDescription[activeLang] = updatedItem.description;
-                                        nextItem.description = nextDescription;
-                                        nextItem.descriptionSource = 'manual';
-                                    }
-                                    if (updatedItem.price !== undefined) {
-                                        nextItem.price = String(updatedItem.price);
-                                    }
-                                    if (updatedItem.attributes !== undefined) {
-                                        nextItem.attributes = updatedItem.attributes.map((attribute) => ({
-                                            id: attribute.id,
-                                            active: attribute.active !== false,
-                                            name: { [activeLang]: attribute.name },
-                                            price: String(attribute.price || 0),
-                                        }));
-                                    }
-                                    if (updatedItem.available !== undefined) {
-                                        nextItem.available = updatedItem.available;
-                                    }
-                                    if (updatedItem.active !== undefined) {
-                                        nextItem.active = updatedItem.active;
-                                    }
-                                    if (updatedItem.categoryId) {
-                                        nextItem.category = updatedItem.categoryId;
+                                    const nextItem = rawItem ? { ...menuItem, ...rawItem } : { ...menuItem };
+                                    if (!rawItem) {
+                                        if (updatedItem.name !== undefined) {
+                                            const nextName = typeof menuItem.name === 'object' && menuItem.name ? { ...menuItem.name } : {};
+                                            nextName[primaryLang] = updatedItem.name;
+                                            nextItem.name = nextName;
+                                        }
+                                        if (updatedItem.description !== undefined) {
+                                            const nextDescription = typeof menuItem.description === 'object' && menuItem.description ? { ...menuItem.description } : {};
+                                            nextDescription[primaryLang] = updatedItem.description;
+                                            nextItem.description = nextDescription;
+                                            nextItem.descriptionSource = 'manual';
+                                        }
+                                        if (updatedItem.price !== undefined) {
+                                            nextItem.price = String(updatedItem.price);
+                                        }
+                                        if (updatedItem.attributes !== undefined) {
+                                            nextItem.attributes = updatedItem.attributes.map((attribute) => ({
+                                                id: attribute.id,
+                                                active: attribute.active !== false,
+                                                name: { [primaryLang]: attribute.name },
+                                                price: String(attribute.price || 0),
+                                            }));
+                                        }
+                                        if (updatedItem.available !== undefined) {
+                                            nextItem.available = updatedItem.available;
+                                        }
+                                        if (updatedItem.active !== undefined) {
+                                            nextItem.active = updatedItem.active;
+                                        }
+                                        if (updatedItem.categoryId) {
+                                            nextItem.category = updatedItem.categoryId;
+                                        }
                                     }
                                     if (updatedItem.image !== undefined) {
                                         if (!shouldUploadImage) {
@@ -2328,6 +2492,8 @@ export default function MobileMenuScreen() {
                             );
                         }
                     }}
+                    selectedLanguages={activeProjectLanguages}
+                    sourceFile={findFileContainingItem(menuData, editingItem.id)}
                 />
             ) : null}
 
@@ -2337,6 +2503,7 @@ export default function MobileMenuScreen() {
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
                     mode="add"
                     onClose={() => handleCommandActionBack(() => setIsAddSheetOpen(false))}
+                    projectData={menuData}
                     onSave={async (newItem) => {
                         if (!menuData) return;
                         if (!newItem.categoryId) {
@@ -2344,7 +2511,7 @@ export default function MobileMenuScreen() {
                             return;
                         }
                         const updated = removeObjRef(menuData);
-                        let targetFile = updated.files?.[0];
+                        let targetFile = findFileForCategory(updated, newItem.categoryId);
                         if (!targetFile) return;
                         if (!targetFile.extractedData) targetFile.extractedData = { data: { categories: [], items: [], languages: [] } };
                         if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
@@ -2355,6 +2522,7 @@ export default function MobileMenuScreen() {
                             : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
 
                         const categoryId = newItem.categoryId;
+                        const rawItem = newItem.rawItem ? removeObjRef(newItem.rawItem) : null;
 
                         const pendingImage = typeof newItem.image === 'string' ? newItem.image : null;
                         const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
@@ -2367,12 +2535,12 @@ export default function MobileMenuScreen() {
                         );
                         createdItem.name = {
                             ...createdItem.name,
-                            [activeLang]: newItem.name || '',
+                            [primaryLang]: newItem.name || '',
                         };
                         createdItem.description = newItem.description
                             ? {
                                 ...createdItem.description,
-                                [activeLang]: newItem.description,
+                                [primaryLang]: newItem.description,
                             }
                             : createdItem.description;
                         if (newItem.description) {
@@ -2385,9 +2553,22 @@ export default function MobileMenuScreen() {
                         createdItem.attributes = (newItem.attributes || []).map((attribute) => ({
                             id: attribute.id,
                             active: attribute.active !== false,
-                            name: { [activeLang]: attribute.name },
+                            name: { [primaryLang]: attribute.name },
                             price: String(attribute.price || 0),
                         }));
+                        if (rawItem) {
+                            createdItem.name = rawItem.name;
+                            createdItem.description = rawItem.description;
+                            createdItem.descriptionSource = rawItem.descriptionSource;
+                            createdItem.price = rawItem.price;
+                            createdItem.category = rawItem.category || categoryId;
+                            createdItem.active = rawItem.active !== false;
+                            createdItem.available = rawItem.available !== false;
+                            createdItem.attributes = (rawItem.attributes || []).map((attribute) => ({
+                                ...attribute,
+                                price: String(attribute.price || ''),
+                            }));
+                        }
                         const imageName = `${newItem.name || createdItem.id}.jpg`;
                         createdItem.images = pendingImage && !shouldUploadImage ? [{ url: pendingImage, name: imageName }] : [];
 
@@ -2407,6 +2588,8 @@ export default function MobileMenuScreen() {
                             );
                         }
                     }}
+                    selectedLanguages={activeProjectLanguages}
+                    sourceFile={findFileForCategory(menuData, categoryOptions[0]?.id)}
                 />
             ) : null}
 

@@ -1,18 +1,19 @@
 'use client'
 
+import GlobalLanguagesList from '@data/languages';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuClock, LuPlus, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Checkbox, Flex, Input, NavBar, Popup, Switch, Tag, Text } from '../antd';
+import { Button, Card, Checkbox, Collapse, Flex, Input, NavBar, Popup, Switch, Tag, Text } from '../antd';
 import type { MobileCategoryItem } from './CategoryManagerSheet';
 
 type SavePayload = {
     active: boolean;
     id?: string;
-    name: string;
+    names: Record<string, string>;
     presetIds: string[];
 };
 
@@ -23,6 +24,7 @@ interface MobileCategoryEditSheetProps {
     onDelete?: (categoryId: string) => void;
     onSave: (payload: SavePayload) => Promise<void>;
     presets: TimeSlotPreset[];
+    selectedLanguages: string[];
     visible: boolean;
 }
 
@@ -33,14 +35,17 @@ export default function MobileCategoryEditSheet({
     onDelete,
     onSave,
     presets,
+    selectedLanguages,
     visible,
 }: MobileCategoryEditSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
-    const [name, setName] = useState('');
+    const primaryLanguage = selectedLanguages[0] || 'en';
+    const [names, setNames] = useState<Record<string, string>>({});
     const [active, setActive] = useState(true);
     const [presetIds, setPresetIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const sectionCardStyle = {
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
@@ -48,21 +53,27 @@ export default function MobileCategoryEditSheet({
 
     useEffect(() => {
         if (!visible) return;
-        setName(category?.name || '');
+        const nextNames = Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || '']));
+        setNames(nextNames);
         setActive(category?.active ?? true);
         setPresetIds(category?.timeSlotPresetIds || []);
-    }, [category, visible]);
+        setActiveLanguageKey([primaryLanguage]);
+    }, [category, primaryLanguage, selectedLanguages, visible]);
 
     const selectedCount = useMemo(() => presetIds.length, [presetIds.length]);
+    const hasMultipleLanguages = selectedLanguages.length > 1;
 
     const handleSave = async () => {
-        if (isSaving || !name.trim()) return;
+        const hasName = selectedLanguages.some((language) => names[language]?.trim());
+        if (isSaving || !hasName) return;
         setIsSaving(true);
         try {
             await onSave({
                 active,
                 id: category?.id,
-                name: name.trim(),
+                names: Object.fromEntries(
+                    selectedLanguages.map((language) => [language, names[language]?.trim() || ''])
+                ),
                 presetIds,
             });
             onClose();
@@ -93,10 +104,43 @@ export default function MobileCategoryEditSheet({
                 <Flex gap={12} style={{ padding: 12 }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
-                            <Flex gap={4} vertical>
-                                <Text strong>{t('categoryNamePlaceholder')}</Text>
-                                <Input onChange={setName} placeholder={t('categoryNamePlaceholder')} value={name} />
-                            </Flex>
+                            {hasMultipleLanguages ? (
+                                <Collapse activeKey={activeLanguageKey} onChange={(key) => setActiveLanguageKey(Array.isArray(key) ? key : (key ? [key] : []))}>
+                                    {selectedLanguages.map((languageCode, index) => {
+                                        const languageLabel = GlobalLanguagesList.find((language) => language.code === languageCode)?.name || languageCode;
+                                        return (
+                                            <Collapse.Panel
+                                                key={languageCode}
+                                                title={(
+                                                    <Flex align="center" gap={8} wrap="wrap">
+                                                        <Text strong>{languageLabel}</Text>
+                                                        {index === 0 ? <Tag color="primary">{t('primary')}</Tag> : null}
+                                                    </Flex>
+                                                )}
+                                            >
+                                                <Input
+                                                    autoFocus={mode === 'add' && languageCode === primaryLanguage}
+                                                    onChange={(value) => {
+                                                        setNames((previous) => ({ ...previous, [languageCode]: value }));
+                                                    }}
+                                                    placeholder={t('categoryNamePlaceholder')}
+                                                    value={names[languageCode] || ''}
+                                                />
+                                            </Collapse.Panel>
+                                        );
+                                    })}
+                                </Collapse>
+                            ) : (
+                                <Flex gap={4} vertical>
+                                    <Text strong>{t('categoryNamePlaceholder')}</Text>
+                                    <Input
+                                        autoFocus={mode === 'add'}
+                                        onChange={(value) => setNames((previous) => ({ ...previous, [primaryLanguage]: value }))}
+                                        placeholder={t('categoryNamePlaceholder')}
+                                        value={names[primaryLanguage] || ''}
+                                    />
+                                </Flex>
+                            )}
 
                             <Flex
                                 align="center"
@@ -158,7 +202,12 @@ export default function MobileCategoryEditSheet({
                             <Button block disabled={isSaving} fill="outline" onClick={onClose}>
                                 {t('cancel')}
                             </Button>
-                            <Button block disabled={!name.trim() || isSaving} loading={isSaving} onClick={() => void handleSave()}>
+                            <Button
+                                block
+                                disabled={!selectedLanguages.some((language) => names[language]?.trim()) || isSaving}
+                                loading={isSaving}
+                                onClick={() => void handleSave()}
+                            >
                                 <Flex align="center" gap={6}>
                                     {mode === 'add' ? <LuPlus size={14} /> : <LuCheck size={14} />}
                                     <Text>{mode === 'add' ? t('add') : t('save')}</Text>

@@ -3,6 +3,8 @@
  * Single source of truth — no duplicating types across screens/sheets.
  */
 
+import type { ExtractedDataItem } from '../templates/main-app/projects/types';
+
 export type MobileMenuItemType = {
     id: string;
     name: string;
@@ -18,7 +20,9 @@ export type MobileMenuItemType = {
     categoryId?: string;
     categoryName?: string;
     description?: string;
+    fileId?: string;
     image?: string;
+    rawItem?: ExtractedDataItem;
     translationMissing?: boolean;
 };
 
