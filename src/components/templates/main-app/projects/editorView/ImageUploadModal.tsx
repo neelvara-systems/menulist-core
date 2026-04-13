@@ -37,6 +37,7 @@ interface ImageUploadModalProps {
     itemToUpdate: ExtractedDataItem | null;
     onImageUpload: (item: ItemForDropdown, imagesToUse?: UserUploadedFileType[]) => Promise<void>;
     from: string;
+    preferredInitialTab?: 'upload' | 'generate';
     /** Multi-outlet: Item inheritance states for governance filtering */
     itemStates?: Record<string, InheritanceState>;
     /** Multi-outlet: Whether this store is linked to a master */
@@ -55,7 +56,17 @@ export const DefaultGenerationConfig: ImageGenerationConfigType = {
     agreeToTerms: false
 }
 
-const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, projectData, itemToUpdate, onImageUpload, from, itemStates, isMasterLinked = false }) => {
+const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
+    open,
+    onClose,
+    projectData,
+    itemToUpdate,
+    onImageUpload,
+    from,
+    preferredInitialTab = 'upload',
+    itemStates,
+    isMasterLinked = false
+}) => {
 
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
@@ -66,6 +77,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
     const [generationConfig, setGenerationConfig] = useState<ImageGenerationConfigType>(DefaultGenerationConfig);
     const [imageEditModal, setImageEditModal] = useState<{ active: boolean, imageData: UserUploadedFileType | null }>({ active: false, imageData: null });
     const [selectedItemsForBatch, setSelectedItemsForBatch] = useState<string[]>([]); // Store IDs of selected items
+    const [isUploadingSingleItem, setIsUploadingSingleItem] = useState(false);
     const { activeProject, activeBatchImageJob } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [batchGenerationConfig, setBatchGenerationConfig] = useState<GenerateImageViaApiPayloadGenerationConfiType>(DefaultGenerationConfig);
@@ -93,9 +105,9 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
             : DefaultGenerationConfig;
         setGenerationConfig(configWithPrefs);
         setBatchGenerationConfig(configWithPrefs);
-        setActiveTab('upload');
+        setActiveTab(preferredInitialTab);
         setSelectedImages([]);
-    }, [storeDetails?.tenantId, storeDetails?.storeId]);
+    }, [preferredInitialTab, storeDetails?.tenantId, storeDetails?.storeId]);
 
     const closeModal = useCallback(() => {
         if (generationConfig.loading) return;
@@ -252,14 +264,20 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
             return;
         }
 
-        onImageUpload(selectedItem, imagesToUpload).then(() => {
+        setIsUploadingSingleItem(true);
+        dispatch(startLoader("Uploading image"));
+        try {
+            await onImageUpload(selectedItem, imagesToUpload);
             logger.debug('Image uploaded successfully after onImageUpload');
             if (storeDetails?.tenantId && storeDetails?.storeId) {
                 saveImageGenPreferences(storeDetails.tenantId, storeDetails.storeId, generationConfig);
             }
             setGenerationConfig({ ...generationConfig, generatedImages: [] });
             resetGenerateState();
-        });
+        } finally {
+            dispatch(stopLoader("Uploading image"));
+            setIsUploadingSingleItem(false);
+        }
     };
 
     const onStartBatchGeneration = async (): Promise<void> => {
@@ -328,65 +346,26 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
         listType: 'picture-card',
         maxCount: 10,
         className: 'upload-list-inline',
+        fileList: selectedImages.map((image) => ({
+            uid: image.uid,
+            name: image.name,
+            status: 'done' as const,
+            url: image.url,
+        })),
         showUploadList: selectedImages.length > 0 ? { showPreviewIcon: false } : false,
         style: { width: '100%', backgroundColor: token.colorBgContainer },
-        // Refactor onChange to use async/await with getBase64 Promise
-        onChange: async (info) => { // Make handler async
-            const { status, originFileObj, uid, name, type, size } = info.file;
-            if (status === 'done' && originFileObj) {
-                try {
-                    const originalFile = originFileObj as File;
-                    let url = await getBase64(originalFile as any);
-                    let finalSize = size;
-
-                    if (originalFile.size / 1024 / 1024 >= 2) {
-                        const compressedBase64 = await getCompressedImage(originalFile, 0.6);
-                        if (compressedBase64) {
-                            url = compressedBase64 as string;
-                            finalSize = Math.round(getBase64Length(compressedBase64 as string));
-                        }
-                    }
-
-                    const newImage: UserUploadedFileType = {
-                        uid: uid, // Use custom ID
-                        url: url,
-                        name: name,
-                        type: type,
-                        size: finalSize
-                    };
-                    // Add the new file to the array, preventing duplicates by uid
-                    setSelectedImages(prevImages => {
-                        if (prevImages.some(img => img.uid === uid)) {
-                            return prevImages; // Already exists
-                        }
-                        return [...prevImages, newImage];
-                    });
-                    setGenerationConfig(prev => ({ ...prev, referanceImages: [...prev.referanceImages, newImage] }))
-
-                } catch (error) {
-                    logger.error('Error getting base64', error);
-                    message.error(`Error processing file ${name}`);
-                    // Optionally remove the file if conversion failed (depends on desired UX)
-                    setSelectedImages(prevImages => prevImages.filter(image => image.uid !== uid));
-                    setGenerationConfig(prev => ({ ...prev, referanceImages: prev.referanceImages.filter(image => image.uid !== uid) }))
-                }
-            } else if (status === 'removed') {
-                // Remove the specific file from the array using uid
-                setSelectedImages(prevImages => prevImages.filter(image => image.uid !== uid));
-                setGenerationConfig(prev => ({ ...prev, referanceImages: prev.referanceImages.filter(image => image.uid !== uid) }))
-            } else if (status === 'error') {
-                message.error(`${name} file upload failed.`);
-                // Remove the failed file from the list
-                setSelectedImages(prevImages => prevImages.filter(image => image.uid !== uid));
-                setGenerationConfig(prev => ({ ...prev, referanceImages: prev.referanceImages.filter(image => image.uid !== uid) }))
-            }
+        onRemove: (file) => {
+            const uid = String(file.uid);
+            setSelectedImages(prevImages => prevImages.filter(image => image.uid !== uid));
+            setGenerationConfig(prev => ({ ...prev, referanceImages: prev.referanceImages.filter(image => image.uid !== uid) }));
+            return true;
         },
         beforeUpload: async (file) => {
             // Check 1: File type validation
             const isJpgOrPngOrWebp = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
             if (!isJpgOrPngOrWebp) {
                 message.error('You can only upload JPG/PNG/WEBP file!');
-                return false;
+                return Upload.LIST_IGNORE;
             }
 
             // Check 2: Relaxed reference image quality validation
@@ -394,11 +373,48 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
 
             if (!qualityValidation.allowed) {
                 message.error(qualityValidation.reason);
-                return false;
+                return Upload.LIST_IGNORE;
             }
 
-            // Reference images can be compressed client-side after selection if needed.
-            return true;
+            try {
+                let url = await getBase64(file as any);
+                let finalSize = file.size;
+
+                if (file.size / 1024 / 1024 >= 2) {
+                    const compressedBase64 = await getCompressedImage(file as File, 0.6);
+                    if (compressedBase64) {
+                        url = compressedBase64 as string;
+                        finalSize = Math.round(getBase64Length(compressedBase64 as string));
+                    }
+                }
+
+                const newImage: UserUploadedFileType = {
+                    uid: file.uid,
+                    url,
+                    name: file.name,
+                    type: file.type,
+                    size: finalSize,
+                };
+
+                setSelectedImages((prevImages) => {
+                    if (prevImages.some((image) => image.uid === newImage.uid)) {
+                        return prevImages;
+                    }
+                    return [...prevImages, newImage];
+                });
+                setGenerationConfig((prev) => {
+                    if (prev.referanceImages.some((image) => image.uid === newImage.uid)) {
+                        return prev;
+                    }
+                    return { ...prev, referanceImages: [...prev.referanceImages, newImage] };
+                });
+            } catch (error) {
+                logger.error('Error getting base64', error);
+                message.error(`Error processing file ${file.name}`);
+            }
+
+            // Keep this as a local preview flow. Actual upload happens only on the final save action.
+            return Upload.LIST_IGNORE;
         }
     };
 
@@ -614,11 +630,19 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ open, onClose, proj
 
         if (modalView === 'singleItemSetup' && activeTab === 'upload' && selectedImages.length > 0) {
             return (
-                <Flex style={{ width: '100%', marginTop: 8 }} gap={12} justify="space-between" vertical={isMobile}>
-                    <Button size='large' icon={<LuX />} block onClick={() => { onClose(); resetGenerateState() }}>
+                <Flex style={{ width: '100%', marginTop: 8 }} gap={12} justify="space-between">
+                    <Button size='large' icon={<LuX />} block disabled={isUploadingSingleItem} onClick={() => { onClose(); resetGenerateState(); }}>
                         Cancel
                     </Button>
-                    <Button size='large' type="primary" icon={<LuSave />} block onClick={(e) => { e.stopPropagation(); onUploadGeneratedImage() }}>
+                    <Button
+                        size='large'
+                        type="primary"
+                        icon={<LuSave />}
+                        block
+                        loading={isUploadingSingleItem}
+                        disabled={isUploadingSingleItem}
+                        onClick={(e) => { e.stopPropagation(); void onUploadGeneratedImage(); }}
+                    >
                         {`Upload ${selectedImages.length > 0 ? selectedImages.length : ''} Image(s)`}
                     </Button>
                 </Flex>

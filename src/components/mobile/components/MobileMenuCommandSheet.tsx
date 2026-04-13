@@ -92,15 +92,6 @@ export default function MobileMenuCommandSheet({
             description: t('moveToCategoryDesc'),
             onClick: onMoveCategory,
         },
-    ], [availabilityLabels.available, availabilityLabels.unavailable, onChangeAvailability, onMoveCategory, onPricing, onShowHide, t]);
-
-    const contentActions = useMemo<CommandAction[]>(() => [
-        {
-            key: 'add-item',
-            icon: <LuPlus style={{ fontSize: 20 }} />,
-            title: t('addItem'),
-            onClick: onAddItem,
-        },
         {
             key: 'text-case',
             icon: <LuPen style={{ fontSize: 20 }} />,
@@ -108,7 +99,7 @@ export default function MobileMenuCommandSheet({
             description: t('fixTextCaseDesc'),
             onClick: onTextCase,
         },
-    ], [onAddItem, onTextCase, t]);
+    ], [availabilityLabels.available, availabilityLabels.unavailable, onChangeAvailability, onMoveCategory, onPricing, onShowHide, onTextCase, t]);
 
     const aiActions = useMemo<CommandAction[]>(() => [
         {
@@ -132,13 +123,6 @@ export default function MobileMenuCommandSheet({
             description: 'Add or reorder menu languages.',
             onClick: onManageLanguages,
         },
-        {
-            key: 'decision-blocks',
-            icon: <LuZap style={{ fontSize: 20 }} />,
-            title: t('featuredSections'),
-            description: t('featuredSectionsDesc'),
-            onClick: onSmartRecommendations,
-        },
     ], [onAddImages, onGenerateDescriptions, onManageLanguages, onSmartRecommendations, t]);
 
     const menuSetupActions = useMemo<CommandAction[]>(() => [
@@ -156,12 +140,25 @@ export default function MobileMenuCommandSheet({
             onClick: onCategories,
         },
         {
+            key: 'add-item',
+            icon: <LuPlus style={{ fontSize: 20 }} />,
+            title: t('addItem'),
+            onClick: onAddItem,
+        },
+        {
             key: 'reorder-menu',
             icon: <LuArrowUpDown style={{ fontSize: 20 }} />,
             title: t('reorderMenu'),
             onClick: onReorderMenu,
         },
-    ], [labels.offeringLower, onCategories, onManageLanguages, onReorderMenu, onUploadMenu, t]);
+        {
+            key: 'decision-blocks',
+            icon: <LuZap style={{ fontSize: 20 }} />,
+            title: t('featuredSections'),
+            description: t('featuredSectionsDesc'),
+            onClick: onSmartRecommendations,
+        },
+    ], [labels.offeringLower, onAddItem, onCategories, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex
@@ -226,11 +223,6 @@ export default function MobileMenuCommandSheet({
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('bulkActions')}</Text>
                         {renderActionList(bulkActions)}
-                    </Flex>
-
-                    <Flex gap={8} vertical>
-                        <Text strong type="secondary">{t('menuContent')}</Text>
-                        {renderActionList(contentActions)}
                     </Flex>
 
                     <Flex gap={8} vertical>

@@ -1,21 +1,24 @@
 import { updateProject } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import useDeviceType from '@hook/useDeviceType';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { UserUploadedFileType } from '@type/common';
 import { removeObjRef } from '@util/utils';
-import { Flex, Image, Modal, Space, Tooltip, message, theme } from 'antd';
+import { Button, Flex, Image, Modal, Popover, Space, Tooltip, message, theme } from 'antd';
 import { Fragment, useContext, useState } from 'react';
-import { LuPencil, LuTrash } from 'react-icons/lu';
+import { LuMoreVertical, LuPencil, LuTrash } from 'react-icons/lu';
 import { ExtractedDataItem, Project } from '../types';
 import EditImageModal from './AiImageGenerator/EditImageModal';
 
 function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { item: any, projectData: Project, onUploadGeneratedImage }) {
     const { token } = theme.useToken();
+    const { isMobile } = useDeviceType();
     const dispatch = useAppDispatch()
     const { activeProject, setActiveProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
     const [imageEditModal, setImageEditModal] = useState({ active: false, imageData: null })
+    const [mobileActionImageUrl, setMobileActionImageUrl] = useState<string | null>(null);
 
     const onImageDelete = async (selectedItem: ExtractedDataItem, imageToDelete: UserUploadedFileType) => {
         Modal.confirm({
@@ -79,37 +82,91 @@ function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { ite
     return (
         <Flex wrap gap={12}>
             {item?.images?.map((image: UserUploadedFileType, index: number) => {
+                const imagePreviewConfig = isMobile ? true : {
+                    mask: (
+                        <Space size={12}>
+                            <LuPencil
+                                style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation(); setImageEditModal({ active: true, imageData: image }); }}
+                            />
+                            <LuTrash
+                                style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation(); onImageDelete(item, image); }}
+                            />
+                        </Space>
+                    )
+                };
+
+                const mobileActionContent = (
+                    <Flex gap={6} style={{ minWidth: 132 }} vertical>
+                        <Button
+                            icon={<LuPencil size={14} />}
+                            onClick={() => {
+                                setMobileActionImageUrl(null);
+                                setImageEditModal({ active: true, imageData: image });
+                            }}
+                            size="small"
+                        >
+                            Edit
+                        </Button>
+                        <Button
+                            danger
+                            icon={<LuTrash size={14} />}
+                            onClick={() => {
+                                setMobileActionImageUrl(null);
+                                void onImageDelete(item, image);
+                            }}
+                            size="small"
+                        >
+                            Delete
+                        </Button>
+                    </Flex>
+                );
+
                 return <Fragment key={index}>
-                    <Tooltip title={image.name}>
-                        <Image
-                            key={index}
-                            src={image.url}
-                            alt={image.name || `Uploaded image ${index + 1}`}
-                            style={{
-                                height: 'auto',
-                                width: 'auto',
-                                maxWidth: 70,
-                                maxHeight: 150,
-                                objectFit: 'cover',
-                                border: `1px solid ${token.colorBorder}`,
-                                borderRadius: token.borderRadius
-                            }}
-                            preview={{
-                                mask: (
-                                    <Space size={12}>
-                                        <LuPencil
-                                            style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
-                                            onClick={(e) => { e.stopPropagation(); setImageEditModal({ active: true, imageData: image }); }}
-                                        />
-                                        <LuTrash
-                                            style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
-                                            onClick={(e) => { e.stopPropagation(); onImageDelete(item, image); }}
-                                        />
-                                    </Space>
-                                )
-                            }}
-                        />
-                    </Tooltip>
+                    <Flex gap={8} vertical style={{ width: isMobile ? 104 : 'auto' }}>
+                        <div style={{ display: 'inline-block', position: 'relative', width: 'fit-content' }}>
+                            <Tooltip title={image.name}>
+                                <Image
+                                    key={index}
+                                    src={image.url}
+                                    alt={image.name || `Uploaded image ${index + 1}`}
+                                    style={{
+                                        height: 'auto',
+                                        width: 'auto',
+                                        maxWidth: isMobile ? 104 : 70,
+                                        maxHeight: 150,
+                                        objectFit: 'cover',
+                                        border: `1px solid ${token.colorBorder}`,
+                                        borderRadius: token.borderRadius
+                                    }}
+                                    preview={imagePreviewConfig}
+                                />
+                            </Tooltip>
+                            {isMobile ? (
+                                <Popover
+                                    content={mobileActionContent}
+                                    open={mobileActionImageUrl === image.url}
+                                    onOpenChange={(open) => setMobileActionImageUrl(open ? image.url : null)}
+                                    placement="bottomRight"
+                                    trigger="click"
+                                >
+                                    <Button
+                                        icon={<LuMoreVertical size={16} />}
+                                        onClick={(event) => event.stopPropagation()}
+                                        shape="circle"
+                                        size="small"
+                                        style={{
+                                            position: 'absolute',
+                                            right: 6,
+                                            top: 6,
+                                            zIndex: 2,
+                                        }}
+                                    />
+                                </Popover>
+                            ) : null}
+                        </div>
+                    </Flex>
                 </Fragment>
             })}
             <EditImageModal

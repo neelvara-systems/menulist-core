@@ -317,6 +317,7 @@ export default function MobileMenuScreen() {
     const [isTextCaseOpen, setIsTextCaseOpen] = useState(false);
     const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
     const [imageModalItem, setImageModalItem] = useState<ExtractedDataItem | null>(null);
+    const [imageModalInitialTab, setImageModalInitialTab] = useState<'upload' | 'generate'>('upload');
     const [imageModalSource, setImageModalSource] = useState<string>('');
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
@@ -597,9 +598,10 @@ export default function MobileMenuScreen() {
             });
     }, [t, updateItemImageFromUpload]);
 
-    const openImageUploadModal = useCallback((itemId?: string, source = '') => {
+    const openImageUploadModal = useCallback((itemId?: string, source = '', preferredInitialTab: 'upload' | 'generate' = 'upload') => {
         const matchedItem = itemId ? findExtractedItemById(menuDataRef.current, itemId) : null;
         setImageModalItem(matchedItem);
+        setImageModalInitialTab(preferredInitialTab);
         setImageModalSource(source);
         setIsImageUploadOpen(true);
     }, []);
@@ -864,16 +866,8 @@ export default function MobileMenuScreen() {
     const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);
 
     useEffect(() => {
-        if (!activeProjectLanguages.includes(displayLanguage)) {
-            setDisplayLanguage(primaryLang);
-        }
-    }, [activeProjectLanguages, displayLanguage, primaryLang]);
-
-    useEffect(() => {
-        setDisplayLanguage((current) => (
-            activeProjectLanguages.includes(current) ? current : primaryLang
-        ));
-    }, [activeProjectLanguages, primaryLang, menuData?.projectId]);
+        setDisplayLanguage(primaryLang);
+    }, [primaryLang, menuData?.projectId]);
 
     const languageStats = useMemo(() => {
         return activeProjectLanguages.map((lang) => {
@@ -1751,7 +1745,7 @@ export default function MobileMenuScreen() {
                                     <Flex align="center" gap={6} wrap="wrap">
                                         <Flex align="center" gap={6}>
                                             <LuLanguages size={14} />
-                                            <Text type="secondary">{t('availableLanguages')}</Text>
+                                            <Text type="secondary">{t('menuLanguages')}</Text>
                                         </Flex>
                                         {languageLabels.map((language) => {
                                             const isSelected = displayLanguage === language.code;
@@ -2415,7 +2409,8 @@ export default function MobileMenuScreen() {
                         setEditingItem(null);
                         resetCommandActionFlow();
                     }}
-                    onManageImages={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item') : undefined}
+                    onGenerateImage={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
+                    onManageImages={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
                     projectData={menuData}
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
@@ -2625,11 +2620,13 @@ export default function MobileMenuScreen() {
                             handleCommandActionBack(() => {
                                 setIsImageUploadOpen(false);
                                 setImageModalItem(null);
+                                setImageModalInitialTab('upload');
                                 setImageModalSource('');
                             });
                         }}
                         onImageUpload={handleModalImageUpload}
                         open={isImageUploadOpen}
+                        preferredInitialTab={imageModalInitialTab}
                         projectData={menuData}
                     />
                 </ProjectsDataProvider>

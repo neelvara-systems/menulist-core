@@ -4,8 +4,10 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { getOwnerLabels } from '@config/businessLabels';
 import { AICapacityError } from '@services/ai/capacityError';
+import { useAppDispatch } from '@hook/useAppDispatch';
 import getNewItemMetadataViaAPI from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { theme, type UploadFile, type UploadProps } from 'antd';
 import { useMemo, useState, useContext, useEffect } from 'react';
 import { LuCamera, LuLanguages, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
@@ -25,6 +27,7 @@ interface ItemEditSheetProps {
     currencySymbol: string;
     mode?: 'add' | 'edit';
     onClose: () => void;
+    onGenerateImage?: () => void;
     onManageImages?: () => void;
     onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null; rawItem?: ExtractedDataItem }) => void | Promise<void>;
     onDelete?: (itemId: string) => void;
@@ -76,6 +79,7 @@ export default function ItemEditSheet({
     currencySymbol,
     mode = 'edit',
     onClose,
+    onGenerateImage,
     onManageImages,
     onSave,
     onDelete,
@@ -84,6 +88,7 @@ export default function ItemEditSheet({
     sourceFile,
 }: ItemEditSheetProps) {
     const t = useTranslations('MobileMenu');
+    const dispatch = useAppDispatch();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const sectionCardStyle = {
@@ -121,6 +126,19 @@ export default function ItemEditSheet({
         setDraftItem(createDraftItem({ item, languages: selectedLanguages }));
         setActiveLanguageKey([selectedLanguages[0] || 'en']);
     }, [item, selectedLanguages]);
+
+    const itemImagePreviews = useMemo(() => {
+        const images = (draftItem.images || [])
+            .map((image) => image?.url)
+            .filter((url): url is string => Boolean(url));
+
+        if (imagePreview && !images.includes(imagePreview)) {
+            return [imagePreview, ...images];
+        }
+
+        return images;
+    }, [draftItem.images, imagePreview]);
+    const imageActionLabel = itemImagePreviews.length > 0 ? t('editImages') : t('addImages');
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: 'image/*',
@@ -206,6 +224,7 @@ export default function ItemEditSheet({
         }
 
         setIsAiWorking(true);
+        dispatch(startLoader('generating_content'));
         try {
             const result = await getNewItemMetadataViaAPI({
                 businessType: storeDetails?.businessType,
@@ -238,6 +257,7 @@ export default function ItemEditSheet({
                 Toast.show({ content: t('descriptionGenerationFailed'), duration: 2000 });
             }
         } finally {
+            dispatch(stopLoader('generating_content'));
             setIsAiWorking(false);
         }
     };
@@ -465,15 +485,20 @@ export default function ItemEditSheet({
 
                             <Flex gap={6} vertical>
                                 <Text strong>{t('itemImageLabel')}</Text>
-                                <Flex align="center" gap={12}>
-                                    {imagePreview ? (
-                                        <Image
-                                            height={64}
-                                            preview={false}
-                                            src={imagePreview}
-                                            style={{ borderRadius: 8, objectFit: 'cover', width: 64 }}
-                                            width={64}
-                                        />
+                                <Flex align="center" gap={12} wrap="wrap">
+                                    {itemImagePreviews.length > 0 ? (
+                                        <Flex gap={8} wrap="wrap">
+                                            {itemImagePreviews.map((imageUrl, index) => (
+                                                <Image
+                                                    height={64}
+                                                    key={`${imageUrl}-${index}`}
+                                                    preview={false}
+                                                    src={imageUrl}
+                                                    style={{ borderRadius: 8, objectFit: 'cover', width: 64 }}
+                                                    width={64}
+                                                />
+                                            ))}
+                                        </Flex>
                                     ) : (
                                         <Card size="small" style={{ borderRadius: 12, margin: 0 }}>
                                             <Flex align="center" justify="center" style={{ height: 48, width: 48 }}>
@@ -486,17 +511,25 @@ export default function ItemEditSheet({
                                             <Button fill="outline" size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuCamera size={14} />
-                                                    <Text>{imagePreview ? t('changePhoto') : t('addPhoto')}</Text>
+                                                    <Text>{imageActionLabel}</Text>
                                                 </Flex>
                                             </Button>
                                         </Upload>
                                     ) : (
-                                        <Button fill="outline" onClick={onManageImages} size="small">
-                                            <Flex align="center" gap={6}>
-                                                <LuCamera size={14} />
-                                                <Text>{imagePreview ? t('changePhoto') : t('addPhoto')}</Text>
-                                            </Flex>
-                                        </Button>
+                                        <Flex gap={8} wrap="wrap">
+                                            <Button fill="outline" onClick={onManageImages} size="small">
+                                                <Flex align="center" gap={6}>
+                                                    <LuCamera size={14} />
+                                                    <Text>{imageActionLabel}</Text>
+                                                </Flex>
+                                            </Button>
+                                            <Button fill="outline" onClick={onGenerateImage || onManageImages} size="small">
+                                                <Flex align="center" gap={6}>
+                                                    <LuSparkles size={14} />
+                                                    <Text>{t('generateImage')}</Text>
+                                                </Flex>
+                                            </Button>
+                                        </Flex>
                                     )}
                                 </Flex>
                             </Flex>
