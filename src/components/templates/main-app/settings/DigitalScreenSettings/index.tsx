@@ -19,7 +19,7 @@ import { getScreenState, initializeScreenState, updateScreenSettings } from "@da
 import { trackOwnerControlUsage } from "@database/ownerControlUsage";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { ScreenSlide } from "@type/campaigns";
-import { Card, Divider, Empty, message, Space, Spin, Switch, Typography } from "antd";
+import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
 import { useEffect, useState } from "react";
 import CurrentSlides from "./CurrentSlides";
 import OwnerUploads from "./OwnerUploads";
@@ -39,6 +39,7 @@ interface ScreenSettingsData {
 }
 
 export default function DigitalScreenSettings() {
+    const { token } = theme.useToken();
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -137,7 +138,7 @@ export default function DigitalScreenSettings() {
             title={
                 <Space>
                     <span>Digital Screen</span>
-                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                    <CheckCircleOutlined style={{ color: token.colorSuccess }} />
                     <Text type="secondary" style={{ fontSize: 14, fontWeight: 'normal' }}>
                         Running
                     </Text>
@@ -153,15 +154,15 @@ export default function DigitalScreenSettings() {
                     gap: 8,
                     marginBottom: 16,
                     padding: '8px 12px',
-                    background: '#f0fdf4',
+                    background: token.colorSuccessBg,
                     borderRadius: 8,
-                    border: '1px solid #bbf7d0',
+                    border: `1px solid ${token.colorSuccessBorder}`,
                 }}>
                     <span style={{
                         width: 8,
                         height: 8,
                         borderRadius: '50%',
-                        background: '#22c55e',
+                        background: token.colorSuccess,
                         display: 'inline-block',
                     }} />
                     <Text style={{ fontSize: 13 }}>
@@ -234,7 +235,8 @@ export default function DigitalScreenSettings() {
                 }
                 .override-section {
                     padding: 16px;
-                    background: #fafafa;
+                    background: ${token.colorFillAlter};
+                    border: 1px solid ${token.colorBorderSecondary};
                     border-radius: 8px;
                 }
             `}</style>

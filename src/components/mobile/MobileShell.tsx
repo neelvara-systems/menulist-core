@@ -126,6 +126,11 @@ export default function MobileShell() {
     }, [activeTab, moreScreen, todayScreen]);
 
     const handleTabChange = useCallback((tab: MobileTab) => {
+        if (tab === 'more' && activeTab === 'more' && moreScreen !== 'main') {
+            setMoreScreen('main');
+            setIsMoreRootScreen(true);
+            return;
+        }
         setActiveTab(tab);
         if (tab !== 'today') {
             setTodayScreen('main');
@@ -137,7 +142,7 @@ export default function MobileShell() {
         if (tab === 'more') {
             setFeedbackBadgeCount(0);
         }
-    }, []);
+    }, [activeTab, moreScreen]);
 
     const screen = activeTab === 'today'
         ? (

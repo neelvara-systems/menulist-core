@@ -14,6 +14,7 @@ import {
 import { publishProject } from '@database/projects';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -76,6 +77,7 @@ interface MobileDesignEditorScreenProps {
 
 export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { isLoading: loadingProjects, selectedProject, upsertCachedProject } = useMobileProjects();
 
@@ -288,8 +290,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     key={preset.key}
                                     onClick={() => applyQuickPreset(preset)}
                                     style={{
-                                        borderColor: isActive ? '#3b82f6' : '#e5e7eb',
-                                        backgroundColor: isActive ? '#eff6ff' : '#ffffff',
+                                        backgroundColor: isActive ? token.colorPrimaryBg : token.colorBgContainer,
+                                        borderColor: isActive ? token.colorPrimary : token.colorBorderSecondary,
                                         flex: '1 1 30%',
                                         textAlign: 'center',
                                     }}
@@ -354,14 +356,18 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     key={key}
                                     onClick={() => (isCompatible ? handleLayoutChange(layoutKey) : undefined)}
                                     style={{
-                                        borderColor: !isCompatible ? '#e5e7eb' : isSelected ? '#3b82f6' : '#e5e7eb',
-                                        backgroundColor: !isCompatible ? '#f9fafb' : isSelected ? '#eff6ff' : '#ffffff',
+                                        backgroundColor: !isCompatible
+                                            ? token.colorFillAlter
+                                            : isSelected
+                                                ? token.colorPrimaryBg
+                                                : token.colorBgContainer,
+                                        borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
                                         opacity: !isCompatible ? 0.4 : 1,
                                         flex: '1 1 45%',
                                     }}
                                 >
                                     <Flex align="center" gap={6} vertical>
-                                        {isSelected ? <LuCheck color="#3b82f6" size={14} /> : null}
+                                        {isSelected ? <LuCheck color={token.colorPrimary} size={14} /> : null}
                                         <Text strong>{config.label}</Text>
                                         <Text type="secondary">{config.description}</Text>
                                     </Flex>
@@ -389,7 +395,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     }}
                                 />
                             }
-                            extra={<LuPalette color="#9ca3af" size={18} />}
+                            extra={<LuPalette color={token.colorTextTertiary} size={18} />}
                             title={
                                 <Text>
                                     {brandAccentColor
@@ -491,12 +497,13 @@ function OptionRow({
     onSelect: () => void;
     previewColor?: string;
 }) {
+    const { token } = theme.useToken();
     return (
         <Card
             onClick={onSelect}
             style={{
-                borderColor: isSelected ? '#3b82f6' : '#e5e7eb',
-                backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                backgroundColor: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
+                borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
             }}
         >
             <Flex align="center" gap={12}>
@@ -512,10 +519,10 @@ function OptionRow({
                     />
                 ) : null}
                 <Flex gap={2} style={{ flex: 1 }} vertical>
-                    <Text strong style={{ color: isSelected ? '#2563eb' : undefined }}>{label}</Text>
+                    <Text strong style={{ color: isSelected ? token.colorPrimary : token.colorText }}>{label}</Text>
                     <Text type="secondary">{description}</Text>
                 </Flex>
-                {isSelected ? <LuCheck color="#3b82f6" size={18} /> : null}
+                {isSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
             </Flex>
         </Card>
     );

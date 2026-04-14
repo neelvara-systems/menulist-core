@@ -10,7 +10,7 @@ import { ClockCircleOutlined, DeleteOutlined, UploadOutlined } from "@ant-design
 import { removePinnedSlide, uploadScreenSlide } from "@database/campaigns";
 import { ScreenSlide } from "@type/campaigns";
 import { getBase64 } from "@util/utils";
-import { Button, List, Popconfirm, Typography, Upload, message } from "antd";
+import { Button, List, Popconfirm, theme, Typography, Upload, message } from "antd";
 import { useState } from "react";
 
 const { Text } = Typography;
@@ -30,6 +30,7 @@ export default function OwnerUploads({
     onSlideUploaded,
     onSlideDeleted
 }: OwnerUploadsProps) {
+    const { token } = theme.useToken();
     const [uploading, setUploading] = useState(false);
 
     const canUpload = pinnedSlides.length < maxUploads;
@@ -150,7 +151,7 @@ export default function OwnerUploads({
                                             <div style={{
                                                 width: 48,
                                                 height: 48,
-                                                background: '#f0f0f0',
+                                                background: token.colorFillAlter,
                                                 borderRadius: 4,
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -186,4 +187,3 @@ export default function OwnerUploads({
         </div>
     );
 }
-

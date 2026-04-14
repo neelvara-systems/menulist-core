@@ -5,6 +5,7 @@ import { BUSINESS_TYPES } from '@constant/common';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useRef, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
@@ -46,6 +47,7 @@ function getInitialFormData(storeDetails: any) {
 export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -181,7 +183,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     subtitle={t('basicSettingsSubtitle')}
                     title={t('basicSettings')}
                 />
-                <Card onClick={() => fileInputRef.current?.click()}>
+                <Card>
                     <Flex align="center" gap={10} justify="center" style={{ minHeight: 120 }} vertical>
                         {(selectedLogo?.url || storeDetails.logo) ? (
                             <>
@@ -195,11 +197,29 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                                 />
                                 <Text strong>{tBusiness('uploadLogo')}</Text>
                                 <Text type="secondary">Tap to replace</Text>
+                                <Button fill="outline" onClick={() => fileInputRef.current?.click()} size="small">
+                                    {tBusiness('uploadLogo')}
+                                </Button>
                             </>
                         ) : (
                             <>
-                                <LuUpload size={20} />
+                                <Flex
+                                    align="center"
+                                    justify="center"
+                                    style={{
+                                        background: token.colorFillAlter,
+                                        borderRadius: 14,
+                                        color: token.colorPrimary,
+                                        height: 44,
+                                        width: 44,
+                                    }}
+                                >
+                                    <LuUpload size={20} />
+                                </Flex>
                                 <Text strong>{tBusiness('uploadLogo')}</Text>
+                                <Button onClick={() => fileInputRef.current?.click()} size="small">
+                                    {tBusiness('uploadLogo')}
+                                </Button>
                             </>
                         )}
                     </Flex>

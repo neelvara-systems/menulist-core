@@ -10,7 +10,7 @@
  */
 
 import { CheckOutlined, CopyOutlined, DesktopOutlined, LinkOutlined, PlaySquareOutlined } from "@ant-design/icons";
-import { Button, Input, message, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Input, message, Space, Tag, theme, Tooltip, Typography } from "antd";
 import { useState } from "react";
 
 const { Text } = Typography;
@@ -21,6 +21,7 @@ interface ScreenLinkProps {
 }
 
 export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) {
+    const { token } = theme.useToken();
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
 
@@ -47,7 +48,7 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
             {/* Menu Board Link (Default) */}
             <div style={{ marginBottom: 16 }}>
                 <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <DesktopOutlined style={{ color: '#1677ff' }} />
+                    <DesktopOutlined style={{ color: token.colorPrimary }} />
                     <Text strong>Menu Board</Text>
                     <Tag color="blue">Main TV</Tag>
                 </div>
@@ -59,7 +60,7 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
                         value={screenUrl}
                         readOnly
                         style={{ fontFamily: 'monospace', fontSize: 13 }}
-                        prefix={<LinkOutlined style={{ color: '#999' }} />}
+                        prefix={<LinkOutlined style={{ color: token.colorTextTertiary }} />}
                     />
                     <Tooltip title={copiedMenu ? 'Copied!' : 'Copy link'}>
                         <Button
@@ -84,7 +85,7 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
             {/* Highlights Link */}
             <div style={{ marginBottom: 16 }}>
                 <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <PlaySquareOutlined style={{ color: '#722ed1' }} />
+                    <PlaySquareOutlined style={{ color: token.colorInfo }} />
                     <Text strong>Highlights</Text>
                     <Tag color="purple">Second TV</Tag>
                 </div>
@@ -96,7 +97,7 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
                         value={highlightsUrl}
                         readOnly
                         style={{ fontFamily: 'monospace', fontSize: 13 }}
-                        prefix={<LinkOutlined style={{ color: '#999' }} />}
+                        prefix={<LinkOutlined style={{ color: token.colorTextTertiary }} />}
                     />
                     <Tooltip title={copiedHighlights ? 'Copied!' : 'Copy link'}>
                         <Button
@@ -121,9 +122,9 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
             <div
                 style={{
                     padding: 12,
-                    background: '#f6ffed',
+                    background: token.colorSuccessBg,
                     borderRadius: 8,
-                    border: '1px solid #b7eb8f'
+                    border: `1px solid ${token.colorSuccessBorder}`
                 }}
             >
                 <Text style={{ fontSize: 13 }}>

@@ -39,10 +39,12 @@ import {
     LuSearch,
     LuShield,
     LuTimer,
+    LuTv,
     LuUpload,
     LuUser,
 } from "react-icons/lu";
 import { SiGooglemybusiness } from "react-icons/si";
+import DigitalScreenSettings from "../settings/DigitalScreenSettings";
 import OBPLinkCard from "./OBPLinkCard";
 import TempStatusCard from "./TempStatusCard";
 import {
@@ -191,17 +193,27 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuMapPin />,
             tab: <LocationInfoTab scrollRef={scrollRefs.current[3]} />,
         },
+        ...(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? [{
+            key: "digital-screens",
+            label: t('digitalScreens'),
+            icon: <LuTv />,
+            tab: (
+                <div ref={scrollRefs.current[4]}>
+                    <DigitalScreenSettings />
+                </div>
+            ),
+        }] : []),
         {
             key: "locale",
             label: t('localeSettings'),
             icon: <LuGlobe />,
-            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[4]} />,
+            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 5 : 4]} />,
         },
         {
             key: "contact",
             label: t('contactPerson'),
             icon: <LuUser />,
-            tab: <ContactPersonTab scrollRef={scrollRefs.current[5]} />,
+            tab: <ContactPersonTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 6 : 5]} />,
         },
         {
             key: "hours",
@@ -209,7 +221,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuClock />,
             tab: (
                 <WorkingHoursTab
-                    scrollRef={scrollRefs.current[6]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 7 : 6]}
                     workingHours={workingHours}
                     setWorkingHours={setWorkingHours}
                     form={form}
@@ -222,7 +234,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuTimer />,
             tab: (
                 <TimeSlotPresetsTab
-                    scrollRef={scrollRefs.current[7]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 8 : 7]}
                     tenantId={storeDetails?.tenantId}
                     storeId={storeDetails?.storeId}
                     presets={timeSlotPresets}
@@ -236,7 +248,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuLink />,
             tab: (
                 <SocialMediaTab
-                    scrollRef={scrollRefs.current[8]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 9 : 8]}
                     socialMedia={socialMedia}
                     setSocialMedia={setSocialMedia}
                 />
@@ -246,19 +258,19 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             key: "business-attributes",
             label: t('businessAttributes'),
             icon: <LuList />,
-            tab: <BusinessAttributesTab scrollRef={scrollRefs.current[9]} />,
+            tab: <BusinessAttributesTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 10 : 9]} />,
         }] : []),
         {
             key: "seo",
             label: t('seoSettings'),
             icon: <LuSearch />,
-            tab: <SeoTab scrollRef={scrollRefs.current[FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 11 : 10]} />,
+            tab: <SeoTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 11 : 10) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]} />,
         },
         {
             key: "analytics",
             label: t('analytics'),
             icon: <LuBarChart />,
-            tab: <AnalyticsTab scrollRef={scrollRefs.current[11]} form={form} />,
+            tab: <AnalyticsTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 12 : 11) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]} form={form} />,
         },
         {
             key: "integrations",
@@ -266,7 +278,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <SiGooglemybusiness />,
             tab: (
                 <IntegrationsTab
-                    scrollRef={scrollRefs.current[12]}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 13 : 12) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
                     storeDetails={storeDetails}
                 />
             ),
@@ -277,7 +289,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuMessageSquare />,
             tab: (
                 <FeedbackSettingsTab
-                    scrollRef={scrollRefs.current[13]}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 14 : 13) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
                     feedbackEnabled={feedbackEnabled}
                     setFeedbackEnabled={setFeedbackEnabled}
                     feedbackDefaults={feedbackDefaults}
@@ -293,7 +305,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuShield />,
             tab: (
                 <PosSyncTab
-                    scrollRef={scrollRefs.current[14]}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 15 : 14) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
                     storeDetails={storeDetails}
                     onStoreUpdate={(updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
