@@ -220,12 +220,18 @@ export type StoreDataType = {
     feedbackDefaults?: {
         /** Collect customer name (default: false) */
         collectName: boolean;
+        /** Require customer name when shown (default: false) */
+        collectNameRequired?: boolean;
 
         /** Collect customer phone (default: true - India market) */
         collectPhone: boolean;
+        /** Require customer phone when shown (default: false) */
+        collectPhoneRequired?: boolean;
 
         /** Collect customer email (default: true) */
         collectEmail: boolean;
+        /** Require customer email when shown (default: false) */
+        collectEmailRequired?: boolean;
     };
 
     /**

@@ -112,12 +112,18 @@ export type GuestFeedbackSort = 'newest' | 'oldest' | 'rating_low' | 'rating_hig
 export interface FeedbackDefaults {
     /** Collect customer name (default: false) */
     collectName: boolean;
+    /** Require customer name when shown (default: false) */
+    collectNameRequired?: boolean;
 
     /** Collect customer phone (default: true - India market) */
     collectPhone: boolean;
+    /** Require customer phone when shown (default: false) */
+    collectPhoneRequired?: boolean;
 
     /** Collect customer email (default: true) */
     collectEmail: boolean;
+    /** Require customer email when shown (default: false) */
+    collectEmailRequired?: boolean;
 }
 
 /**
@@ -125,8 +131,11 @@ export interface FeedbackDefaults {
  */
 export const DEFAULT_FEEDBACK_SETTINGS: FeedbackDefaults = {
     collectName: false,
+    collectNameRequired: false,
     collectPhone: true,
+    collectPhoneRequired: false,
     collectEmail: true,
+    collectEmailRequired: false,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

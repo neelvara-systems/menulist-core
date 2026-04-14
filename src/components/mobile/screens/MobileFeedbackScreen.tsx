@@ -4,10 +4,11 @@ import { getFeedbackList, updateFeedbackStatus } from '@database/guestFeedback';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCopy, LuMessageSquare, LuQrCode, LuStar } from 'react-icons/lu';
+import { LuCopy, LuExternalLink, LuQrCode, LuStar } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -20,14 +21,22 @@ interface MobileFeedbackScreenProps {
     onBack?: () => void;
 }
 
+const DEFAULT_FEEDBACK_FILTER: 'all' | 'needs_attention' | 'resolved' = 'all';
+
+const FEEDBACK_LIST_CARD_STYLE = {
+    borderRadius: 20,
+    overflow: 'hidden' as const,
+};
+
 export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { selectedProjectId } = useMobileProjects();
     const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
-    const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>('all');
+    const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>(DEFAULT_FEEDBACK_FILTER);
     const [isQrOpen, setIsQrOpen] = useState(false);
 
     const fetchFeedback = useCallback(async (targetFilter = filter) => {
@@ -93,6 +102,11 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         }
     };
 
+    const handleOpenFeedbackLink = () => {
+        if (!feedbackUrl) return;
+        window.open(feedbackUrl, '_blank', 'noopener,noreferrer');
+    };
+
     const stars = (rating: number) => (
         <Flex align="center" gap={2}>
             {[1, 2, 3, 4, 5].map((star) => (
@@ -100,6 +114,13 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             ))}
         </Flex>
     );
+
+    const getInitials = (name?: string) => {
+        const trimmedName = name?.trim();
+        if (!trimmedName) return 'A';
+        const parts = trimmedName.split(/\s+/).filter(Boolean);
+        return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+    };
 
     const badge = (status: string, needsAttention?: boolean) => {
         if (needsAttention) return <Tag color="warning">{t('needsAttention')}</Tag>;
@@ -132,78 +153,130 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                     title={t('title')}
                 />
 
-                <Card>
-                    <Tabs activeKey={filter} onChange={(key) => { setFilter(key as any); void fetchFeedback(key as any); }}>
-                        <Tabs.Tab key="all" title={t('all')} />
-                        <Tabs.Tab key="needs_attention" title={t('needsAttention')} />
-                        <Tabs.Tab key="resolved" title={t('resolved')} />
-                    </Tabs>
-                </Card>
-
-                <Card>
-                    <Flex align="center" justify="space-between">
-                        <Flex align="center" gap={8}>
-                            <LuQrCode size={18} />
-                            <Text strong>{t('feedbackQrTitle')}</Text>
+                <Card style={{ borderRadius: 20 }}>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={10}>
+                                <Flex
+                                    align="center"
+                                    justify="center"
+                                    style={{
+                                        background: '#ecfeff',
+                                        borderRadius: 12,
+                                        color: '#0891b2',
+                                        height: 40,
+                                        width: 40,
+                                    }}
+                                >
+                                    <LuQrCode size={18} />
+                                </Flex>
+                                <Flex gap={2} vertical>
+                                    <Text strong>{t('feedbackQrTitle')}</Text>
+                                    <Text type="secondary">{t('feedbackQrDesc')}</Text>
+                                </Flex>
+                            </Flex>
+                            <Button
+                                fill="none"
+                                onClick={handleOpenFeedbackLink}
+                                size="small"
+                                style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
+                            >
+                                <LuExternalLink size={16} />
+                            </Button>
                         </Flex>
                         <Flex gap={8}>
-                            <Button fill="outline" onClick={handleCopyFeedbackLink} size="small">
-                                <Flex align="center" gap={6}>
+                            <Button fill="outline" onClick={handleCopyFeedbackLink} size="small" style={{ flex: 1 }}>
+                                <Flex align="center" gap={6} justify="center">
                                     <LuCopy size={14} />
                                     <Text>{t('copyLink')}</Text>
                                 </Flex>
                             </Button>
-                            <Button onClick={handleOpenQr} size="small">{t('showQr')}</Button>
+                            <Button onClick={handleOpenQr} size="small" style={{ flex: 1 }}>
+                                {t('showQr')}
+                            </Button>
                         </Flex>
                     </Flex>
-                    <Text type="secondary">{t('feedbackQrDesc')}</Text>
                 </Card>
 
-                <PullToRefresh onRefresh={() => fetchFeedback()}>
-                    {feedbackList.length === 0 ? (
-                        <Card>
-                            <Empty description={t('noFeedback')} />
-                        </Card>
-                    ) : (
-                        <Card>
-                            <List>
-                                {feedbackList.map((feedback) => (
-                                    <List.Item
-                                        arrow
-                                        description={(
-                                            <Flex gap={6} vertical>
-                                                {stars(feedback.rating)}
-                                                <Text type="secondary">{feedback.message}</Text>
-                                                <Text type="secondary">{feedback.createdAt}</Text>
-                                            </Flex>
-                                        )}
-                                        extra={feedback.status !== 'resolved' ? (
-                                            <Button
-                                                fill="outline"
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    void handleQuickResolve(feedback.id);
-                                                }}
-                                                size="small"
-                                                style={{ borderColor: '#16a34a', color: '#16a34a' }}
-                                            >
-                                                {t('resolved')}
-                                            </Button>
-                                        ) : null}
-                                        key={feedback.id}
-                                        onClick={() => setSelectedFeedback(feedback)}
-                                        title={(
-                                            <Flex align="center" justify="space-between">
-                                                <Text strong>{feedback.customerName || 'Anonymous'}</Text>
-                                                {badge(feedback.status, feedback.needsAttention)}
-                                            </Flex>
-                                        )}
-                                    />
-                                ))}
-                            </List>
-                        </Card>
-                    )}
-                </PullToRefresh>
+                <Card style={FEEDBACK_LIST_CARD_STYLE}>
+                    <Flex gap={12} vertical>
+                        <Tabs activeKey={filter} onChange={(key) => { setFilter(key as any); void fetchFeedback(key as any); }}>
+                            <Tabs.Tab key="all" title={t('all')} />
+                            <Tabs.Tab key="needs_attention" title={t('needsAttention')} />
+                            <Tabs.Tab key="resolved" title={t('resolved')} />
+                        </Tabs>
+                        <PullToRefresh onRefresh={() => fetchFeedback()}>
+                            {feedbackList.length === 0 ? (
+                                <Empty description={t('noFeedback')} />
+                            ) : (
+                                <List>
+                                    {feedbackList.map((feedback) => (
+                                        <List.Item
+                                            arrow
+                                            description={(
+                                                <Flex gap={8} vertical>
+                                                    <Flex align="center" gap={8}>
+                                                        {stars(feedback.rating)}
+                                                        <Text type="secondary">{feedback.createdAt}</Text>
+                                                    </Flex>
+                                                    <Text
+                                                        style={{
+                                                            color: token.colorTextSecondary,
+                                                            display: '-webkit-box',
+                                                            overflow: 'hidden',
+                                                            WebkitBoxOrient: 'vertical',
+                                                            WebkitLineClamp: 2,
+                                                        }}
+                                                    >
+                                                        {feedback.message || t('noFeedback')}
+                                                    </Text>
+                                                </Flex>
+                                            )}
+                                            extra={feedback.status !== 'resolved' ? (
+                                                <Button
+                                                    fill="outline"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        void handleQuickResolve(feedback.id);
+                                                    }}
+                                                    size="small"
+                                                    style={{ borderColor: '#16a34a', color: '#16a34a', flexShrink: 0 }}
+                                                >
+                                                    {t('resolved')}
+                                                </Button>
+                                            ) : null}
+                                            key={feedback.id}
+                                            onClick={() => setSelectedFeedback(feedback)}
+                                            prefix={(
+                                                <Flex
+                                                    align="center"
+                                                    justify="center"
+                                                    style={{
+                                                        background: feedback.needsAttention ? '#fff7ed' : '#eff6ff',
+                                                        borderRadius: 14,
+                                                        color: feedback.needsAttention ? '#ea580c' : '#2563eb',
+                                                        fontSize: 13,
+                                                        fontWeight: 700,
+                                                        height: 40,
+                                                        width: 40,
+                                                    }}
+                                                >
+                                                    {getInitials(feedback.customerName)}
+                                                </Flex>
+                                            )}
+                                            title={(
+                                                <Flex align="center" justify="space-between" style={{ gap: 12 }}>
+                                                    <Text strong style={{ color: token.colorText }}>{feedback.customerName || 'Anonymous'}</Text>
+                                                    {badge(feedback.status, feedback.needsAttention)}
+                                                </Flex>
+                                            )}
+                                        />
+                                    ))}
+                                </List>
+                            )}
+                        </PullToRefresh>
+                    </Flex>
+                </Card>
             </Flex>
 
             <MobileQrCodeSheet

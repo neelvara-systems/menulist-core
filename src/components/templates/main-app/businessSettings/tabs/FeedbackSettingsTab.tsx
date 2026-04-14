@@ -1,4 +1,4 @@
-import { Alert, Card, Divider, Flex, Form, Input, Switch, Typography } from 'antd';
+import { Alert, Card, Divider, Flex, Form, Input, Switch, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { LuCheckCircle, LuExternalLink, LuInfo } from 'react-icons/lu';
@@ -50,13 +50,19 @@ interface FeedbackSettingsTabProps {
     setFeedbackEnabled: (enabled: boolean) => void;
     feedbackDefaults?: {
         collectName: boolean;
+        collectNameRequired: boolean;
         collectPhone: boolean;
+        collectPhoneRequired: boolean;
         collectEmail: boolean;
+        collectEmailRequired: boolean;
     };
     setFeedbackDefaults: (defaults: {
         collectName: boolean;
+        collectNameRequired: boolean;
         collectPhone: boolean;
+        collectPhoneRequired: boolean;
         collectEmail: boolean;
+        collectEmailRequired: boolean;
     }) => void;
     reviewUrl?: string;
     setReviewUrl: (url: string) => void;
@@ -66,16 +72,86 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
     scrollRef,
     feedbackEnabled = true,
     setFeedbackEnabled,
-    feedbackDefaults = { collectName: false, collectPhone: true, collectEmail: true },
+    feedbackDefaults = {
+        collectName: false,
+        collectNameRequired: false,
+        collectPhone: true,
+        collectPhoneRequired: false,
+        collectEmail: true,
+        collectEmailRequired: false,
+    },
     setFeedbackDefaults,
     reviewUrl = '',
     setReviewUrl,
 }) => {
     const t = useTranslations('FeedbackSettings');
+    const { token } = theme.useToken();
 
     const urlValidation = useMemo(() => validateGoogleReviewUrl(reviewUrl), [reviewUrl]);
     const showUrlError = reviewUrl.trim().length > 0 && !urlValidation.valid;
     const showUrlSuccess = reviewUrl.trim().length > 0 && urlValidation.valid;
+    const fieldCardStyle = {
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 12,
+        padding: 12,
+    } as const;
+
+    const renderContactField = ({
+        checked,
+        description,
+        keyName,
+        mandatoryChecked,
+        mandatoryDescription,
+        mandatoryLabel,
+        label,
+    }: {
+        checked: boolean;
+        description: string;
+        keyName: 'collectName' | 'collectPhone' | 'collectEmail';
+        mandatoryChecked: boolean;
+        mandatoryDescription: string;
+        mandatoryLabel: string;
+        label: string;
+    }) => (
+        <Flex gap={12} style={fieldCardStyle} vertical>
+            <Flex align="center" justify="space-between" gap={16}>
+                <Flex style={{ minWidth: 0, flex: 1 }} vertical>
+                    <Text strong>{label}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {description}
+                    </Text>
+                </Flex>
+                <Switch
+                    checked={checked}
+                    onChange={(nextChecked) => setFeedbackDefaults({
+                        ...feedbackDefaults,
+                        [keyName]: nextChecked,
+                        [`${keyName}Required`]: nextChecked ? mandatoryChecked : false,
+                    })}
+                    disabled={!feedbackEnabled}
+                />
+            </Flex>
+            {checked ? (
+                <Flex align="center" justify="space-between" gap={16}>
+                    <Flex style={{ minWidth: 0, flex: 1 }} vertical>
+                        <Text>{mandatoryLabel}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {mandatoryDescription}
+                        </Text>
+                    </Flex>
+                    <Switch
+                        checked={mandatoryChecked}
+                        onChange={(nextChecked) => setFeedbackDefaults({
+                            ...feedbackDefaults,
+                            [`${keyName}Required`]: nextChecked,
+                        })}
+                        disabled={!feedbackEnabled}
+                    />
+                </Flex>
+            ) : null}
+        </Flex>
+    );
 
     return (
         <Card size="small" ref={scrollRef}>
@@ -106,57 +182,33 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                         {t('contactFieldsDesc')}
                     </Paragraph>
                 </Flex>
-
-                <Flex justify="space-between" align="center">
-                    <Flex vertical>
-                        <Text>{t('collectName')}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {t('collectNameDesc')}
-                        </Text>
-                    </Flex>
-                    <Switch
-                        checked={feedbackDefaults.collectName}
-                        onChange={(checked) => setFeedbackDefaults({
-                            ...feedbackDefaults,
-                            collectName: checked,
-                        })}
-                        disabled={!feedbackEnabled}
-                    />
-                </Flex>
-
-                <Flex justify="space-between" align="center">
-                    <Flex vertical>
-                        <Text>{t('collectPhone')}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {t('collectPhoneDesc')}
-                        </Text>
-                    </Flex>
-                    <Switch
-                        checked={feedbackDefaults.collectPhone}
-                        onChange={(checked) => setFeedbackDefaults({
-                            ...feedbackDefaults,
-                            collectPhone: checked,
-                        })}
-                        disabled={!feedbackEnabled}
-                    />
-                </Flex>
-
-                <Flex justify="space-between" align="center">
-                    <Flex vertical>
-                        <Text>{t('collectEmail')}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {t('collectEmailDesc')}
-                        </Text>
-                    </Flex>
-                    <Switch
-                        checked={feedbackDefaults.collectEmail}
-                        onChange={(checked) => setFeedbackDefaults({
-                            ...feedbackDefaults,
-                            collectEmail: checked,
-                        })}
-                        disabled={!feedbackEnabled}
-                    />
-                </Flex>
+                {renderContactField({
+                    checked: feedbackDefaults.collectName,
+                    description: t('collectNameDesc'),
+                    keyName: 'collectName',
+                    mandatoryChecked: feedbackDefaults.collectNameRequired,
+                    mandatoryDescription: t('requireNameDesc'),
+                    mandatoryLabel: t('requireName'),
+                    label: t('collectName'),
+                })}
+                {renderContactField({
+                    checked: feedbackDefaults.collectPhone,
+                    description: t('collectPhoneDesc'),
+                    keyName: 'collectPhone',
+                    mandatoryChecked: feedbackDefaults.collectPhoneRequired,
+                    mandatoryDescription: t('requirePhoneDesc'),
+                    mandatoryLabel: t('requirePhone'),
+                    label: t('collectPhone'),
+                })}
+                {renderContactField({
+                    checked: feedbackDefaults.collectEmail,
+                    description: t('collectEmailDesc'),
+                    keyName: 'collectEmail',
+                    mandatoryChecked: feedbackDefaults.collectEmailRequired,
+                    mandatoryDescription: t('requireEmailDesc'),
+                    mandatoryLabel: t('requireEmail'),
+                    label: t('collectEmail'),
+                })}
 
                 <Divider style={{ margin: '8px 0' }} />
 

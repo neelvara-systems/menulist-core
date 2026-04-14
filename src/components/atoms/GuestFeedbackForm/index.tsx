@@ -12,20 +12,25 @@ import {
     LuMail,
     LuMessageSquare,
     LuPhone,
-    LuSparkles,
     LuStar,
 } from 'react-icons/lu';
 import { StarRating } from './StarRating';
 import styles from './index.module.scss';
 
 interface GuestFeedbackFormProps {
+    accentColor?: string;
     feedbackDefaults?: FeedbackDefaults;
+    logoUrl?: string;
     onSuccess?: (reviewUrl?: string | null) => void;
+    officialPageUrl?: string;
+    phoneNumber?: string;
     projectId: string;
     sId: number;
     source: 'menu_footer' | 'feedback_qr' | 'direct_link';
     storeName?: string;
+    tagline?: string;
     tId: number;
+    whatsappNumber?: string;
 }
 
 type FormState = {
@@ -111,6 +116,25 @@ function getGoogleReviewTitle(rating: number): string {
     return rating >= 4 ? 'Enjoyed your visit?' : 'Want to share more publicly?';
 }
 
+function isValidHexColor(value?: string): value is string {
+    return !!value && /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
+}
+
+function getReadableTextColor(backgroundColor?: string): string {
+    if (!isValidHexColor(backgroundColor)) return '#ffffff';
+
+    const hex = backgroundColor.length === 4
+        ? `#${backgroundColor[1]}${backgroundColor[1]}${backgroundColor[2]}${backgroundColor[2]}${backgroundColor[3]}${backgroundColor[3]}`
+        : backgroundColor;
+
+    const red = parseInt(hex.slice(1, 3), 16);
+    const green = parseInt(hex.slice(3, 5), 16);
+    const blue = parseInt(hex.slice(5, 7), 16);
+    const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
+
+    return luminance > 0.62 ? '#0f172a' : '#ffffff';
+}
+
 function validateField(field: keyof Omit<FormState, 'website'>, value: string): string {
     const trimmedValue = value.trim();
 
@@ -133,32 +157,46 @@ function validateField(field: keyof Omit<FormState, 'website'>, value: string): 
     }
 
     if (field === 'customerPhone') {
-        const digitsOnly = trimmedValue.replace(/\D/g, '');
-        if (digitsOnly.length < 7) return 'Please enter a valid phone number.';
-        if (!/^[0-9+\-\s()]+$/.test(trimmedValue)) return 'Please enter a valid phone number.';
+        if (trimmedValue.length > 0) {
+            const digitsOnly = trimmedValue.replace(/\D/g, '');
+            if (digitsOnly.length < 7) return 'Please enter a valid phone number.';
+            if (!/^[0-9+\-\s()]+$/.test(trimmedValue)) return 'Please enter a valid phone number.';
+        }
         return '';
     }
 
     return '';
 }
 
-function getFormErrors(values: FormState): FormErrors {
+function getFormErrors(values: FormState, settings: FeedbackDefaults): FormErrors {
     return {
-        customerEmail: validateField('customerEmail', values.customerEmail),
-        customerName: validateField('customerName', values.customerName),
-        customerPhone: validateField('customerPhone', values.customerPhone),
+        customerEmail: settings.collectEmail
+            ? (!values.customerEmail.trim() && settings.collectEmailRequired ? 'Email is required.' : validateField('customerEmail', values.customerEmail))
+            : '',
+        customerName: settings.collectName
+            ? (!values.customerName.trim() && settings.collectNameRequired ? 'Name is required.' : validateField('customerName', values.customerName))
+            : '',
+        customerPhone: settings.collectPhone
+            ? (!values.customerPhone.trim() && settings.collectPhoneRequired ? 'Phone is required.' : validateField('customerPhone', values.customerPhone))
+            : '',
         message: validateField('message', values.message),
     };
 }
 
 export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
+    accentColor,
     feedbackDefaults,
+    logoUrl,
     onSuccess,
+    officialPageUrl,
+    phoneNumber,
     projectId,
     sId,
     source,
     storeName,
+    tagline,
     tId,
+    whatsappNumber,
 }) => {
     const [formValues, setFormValues] = useState<FormState>(DEFAULT_FORM_STATE);
     const [rating, setRating] = useState<number>(0);
@@ -173,8 +211,13 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         prompt: 'Share what stood out, or what could have been better.',
     };
     const insightCard = useMemo(() => getInsightCardCopy(rating), [rating]);
-    const formErrors = useMemo(() => getFormErrors(formValues), [formValues]);
+    const formErrors = useMemo(() => getFormErrors(formValues, settings), [formValues, settings]);
     const hasVisibleErrors = Object.values(formErrors).some(Boolean);
+    const primaryCtaColor = isValidHexColor(accentColor) ? accentColor : '#0f172a';
+    const primaryCtaTextColor = getReadableTextColor(primaryCtaColor);
+    const callHref = phoneNumber?.trim() ? `tel:${phoneNumber.trim().replace(/\s+/g, '')}` : '';
+    const whatsappValue = whatsappNumber?.trim() || phoneNumber?.trim() || '';
+    const whatsappHref = whatsappValue ? `https://wa.me/${whatsappValue.replace(/[^\d]/g, '')}` : '';
 
     const updateField = (field: keyof FormState, value: string) => {
         setFormValues((current) => ({ ...current, [field]: value }));
@@ -245,6 +288,22 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         return (
             <div className={styles.successWrap}>
                 <div className={styles.successInner}>
+                    {(logoUrl || storeName) ? (
+                        <div className={styles.brandRow} style={{ justifyContent: 'center', marginBottom: 20 }}>
+                            {logoUrl ? (
+                                <div className={styles.brandLogo}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img alt={storeName || 'Business logo'} src={logoUrl} />
+                                </div>
+                            ) : null}
+                            {storeName ? (
+                                <div className={styles.brandMeta}>
+                                    <p className={styles.brandName}>{storeName}</p>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
+
                     <div className={styles.successIcon}>
                         <LuBadgeCheck size={30} strokeWidth={2.4} />
                     </div>
@@ -287,6 +346,33 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                 Leave a Google review
                                 <LuExternalLink size={16} />
                             </a>
+                            {officialPageUrl ? (
+                                <a
+                                    className={styles.secondaryLink}
+                                    href={officialPageUrl}
+                                    rel="noopener noreferrer"
+                                    target="_blank"
+                                >
+                                    View business page
+                                    <LuExternalLink size={16} />
+                                </a>
+                            ) : null}
+                        </div>
+                    ) : officialPageUrl ? (
+                        <div className={styles.successPanel}>
+                            <p className={styles.successPanelTitle}>Continue browsing</p>
+                            <p className={styles.successPanelText}>
+                                You can go back to the main business page anytime to view the latest menu and details.
+                            </p>
+                            <a
+                                className={styles.secondaryLink}
+                                href={officialPageUrl}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                            >
+                                View business page
+                                <LuExternalLink size={16} />
+                            </a>
                         </div>
                     ) : null}
                 </div>
@@ -298,170 +384,176 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         <div className={styles.shell}>
             <div className={styles.content}>
                 <div>
-                    <div className={styles.heroBadge}>
-                        <LuSparkles className={styles.heroBadgeIcon} size={14} />
-                        Private guest feedback
-                    </div>
+                    {(logoUrl || storeName || officialPageUrl) ? (
+                        <div className={styles.brandRow}>
+                            {logoUrl ? (
+                                <div className={styles.brandLogo}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img alt={storeName || 'Business logo'} src={logoUrl} />
+                                </div>
+                            ) : null}
+                            <div className={styles.brandMeta}>
+                                {storeName ? <p className={styles.brandName}>{storeName}</p> : null}
+                                {officialPageUrl ? (
+                                    <a className={styles.brandLink} href={officialPageUrl} rel="noopener noreferrer" target="_blank">
+                                        View official page
+                                        <LuExternalLink size={14} />
+                                    </a>
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : null}
 
                     <h1 className={styles.heroTitle}>
                         Share your experience
                     </h1>
 
                     <p className={styles.heroText}>
-                        A quick note helps {storeName || 'the team'} understand what felt great and what can be improved.
+                        {tagline?.trim()
+                            ? `${tagline.trim()} A quick note helps ${storeName || 'the team'} understand what felt great and what can be improved.`
+                            : `A quick note helps ${storeName || 'the team'} understand what felt great and what can be improved.`}
                     </p>
                 </div>
 
                 <form className={styles.form} onSubmit={handleSubmit}>
                     <div className={styles.stack}>
-                    <section className={`${styles.panel} ${styles.panelSoft}`}>
-                        <div className={styles.ratingIntro}>
-                            <p className={styles.eyebrow}>
-                                How was your visit?
-                            </p>
-                            <p className={styles.ratingTitle}>
-                                {getRatingLabel(rating)}
-                            </p>
-                            <p className={styles.ratingText}>
-                                {ratingCopy.prompt}
-                            </p>
-                        </div>
-
-                        <div className={styles.ratingBox}>
-                            <StarRating
-                                disabled={submitState === 'submitting'}
-                                onChange={(nextRating) => {
-                                    setRating(nextRating);
-                                    setRatingTouched(true);
-                                }}
-                                size={28}
-                                value={rating}
-                            />
-                        </div>
-
-                        {ratingTouched && rating === 0 ? (
-                            <p className={styles.errorText}>
-                                Please select a rating to continue.
-                            </p>
-                        ) : null}
-
-                        {rating > 0 ? (
-                            <div className={styles.hintBox}>
-                                <p className={styles.hintTitle}>{ratingCopy.eyebrow}</p>
-                                <p className={styles.hintText}>{ratingCopy.prompt}</p>
+                        <section className={`${styles.panel} ${styles.panelSoft}`}>
+                            <div className={styles.ratingIntro}>
+                                <p className={styles.eyebrow}>
+                                    How was your visit?
+                                </p>
+                                <p className={styles.ratingTitle}>
+                                    {getRatingLabel(rating)}
+                                </p>
+                                <p className={styles.ratingText}>
+                                    {ratingCopy.prompt}
+                                </p>
                             </div>
-                        ) : null}
-                    </section>
 
-                    <section className={styles.panel}>
-                        <div className={styles.panelHeader}>
-                            <div className={styles.panelIcon}>
-                                <LuMessageSquare size={18} />
+                            <div className={styles.ratingBox}>
+                                <StarRating
+                                    disabled={submitState === 'submitting'}
+                                    onChange={(nextRating) => {
+                                        setRating(nextRating);
+                                        setRatingTouched(true);
+                                    }}
+                                    size={28}
+                                    value={rating}
+                                />
                             </div>
-                            <div>
+
+                            {ratingTouched && rating === 0 ? (
+                                <p className={styles.errorText}>
+                                    Please select a rating to continue.
+                                </p>
+                            ) : null}
+
+                            {rating > 0 ? (
+                                <div className={styles.hintBox}>
+                                    <p className={styles.hintTitle}>{ratingCopy.eyebrow}</p>
+                                    <p className={styles.hintText}>{ratingCopy.prompt}</p>
+                                </div>
+                            ) : null}
+                        </section>
+
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <div className={styles.panelIcon}>
+                                    <LuMessageSquare size={18} />
+                                </div>
+                                <div>
                                 <h2 className={styles.panelTitle}>Tell us more</h2>
                                 <p className={styles.panelText}>
-                                    Optional, but very helpful. Mention taste, service, speed, comfort, or anything you noticed.
+                                    Optional. Share what stood out or what could be better.
                                 </p>
                             </div>
                         </div>
 
-                        <div style={{ marginTop: 16 }}>
-                            <textarea
-                                className={`${styles.textarea} ${touchedFields.message && formErrors.message ? styles.inputInvalid : ''}`}
-                                disabled={submitState === 'submitting'}
-                                maxLength={300}
-                                onBlur={() => markFieldTouched('message')}
-                                onChange={(event) => updateField('message', event.target.value)}
-                                placeholder="What stood out for you? What could have been better?"
-                                value={formValues.message}
-                            />
+                            <div style={{ marginTop: 16 }}>
+                                <textarea
+                                    className={`${styles.textarea} ${touchedFields.message && formErrors.message ? styles.inputInvalid : ''}`}
+                                    disabled={submitState === 'submitting'}
+                                    maxLength={300}
+                                    onBlur={() => markFieldTouched('message')}
+                                    onChange={(event) => updateField('message', event.target.value)}
+                                    placeholder="What stood out for you? What could have been better?"
+                                    value={formValues.message}
+                                />
                             {touchedFields.message && formErrors.message ? (
                                 <p className={styles.fieldError}>{formErrors.message}</p>
                             ) : null}
+                            <div className={styles.inlineTip}>
+                                <span className={styles.inlineTipTitle}>{insightCard.title}</span>
+                                <span className={styles.inlineTipText}>{insightCard.description}</span>
+                            </div>
                             <div className={styles.metaRow}>
                                 <span>{formValues.message.length > 0 ? `${formValues.message.length}/300` : 'Up to 300 characters'}</span>
                                 <span>Your feedback stays private.</span>
-                            </div>
-                        </div>
-                    </section>
-
-                    {(settings.collectName || settings.collectPhone || settings.collectEmail) ? (
-                        <section className={`${styles.panel} ${styles.panelMuted}`}>
-                            <div className={styles.panelHeader}>
-                                <div className={`${styles.panelIcon} ${styles.panelIconWhite}`}>
-                                    <LuLock size={18} />
                                 </div>
+                            </div>
+                        </section>
+
+                        {(settings.collectName || settings.collectPhone || settings.collectEmail) ? (
+                            <section className={`${styles.panel} ${styles.panelMuted}`}>
+                                <div className={styles.panelHeader}>
+                                    <div className={`${styles.panelIcon} ${styles.panelIconWhite}`}>
+                                        <LuLock size={18} />
+                                    </div>
                                 <div>
-                                    <h2 className={styles.panelTitle}>Contact details</h2>
+                                    <h2 className={styles.panelTitle}>Want a follow-up?</h2>
                                     <p className={styles.panelText}>
-                                        Optional. Leave your details only if you want the business to follow up with you.
+                                        Add your contact details below.
                                     </p>
                                 </div>
                             </div>
 
-                            <div className={styles.fields}>
-                                {settings.collectName ? (
+                                <div className={styles.fields}>
+                                    {settings.collectName ? (
                                     <Field
-                                        label="Name"
                                         error={touchedFields.customerName ? formErrors.customerName : ''}
                                         onChange={(value) => updateField('customerName', value)}
                                         onBlur={() => markFieldTouched('customerName')}
-                                        placeholder="Your name"
-                                        type="text"
-                                        value={formValues.customerName}
-                                    />
-                                ) : null}
+                                            placeholder="Your name"
+                                            type="text"
+                                            value={formValues.customerName}
+                                        />
+                                    ) : null}
 
-                                {settings.collectPhone ? (
+                                    {settings.collectPhone ? (
                                     <Field
                                         icon={<LuPhone size={16} />}
-                                        label="Phone"
                                         error={touchedFields.customerPhone ? formErrors.customerPhone : ''}
                                         onChange={(value) => updateField('customerPhone', value)}
                                         onBlur={() => markFieldTouched('customerPhone')}
-                                        placeholder="+1 (555) 000-0000"
-                                        type="tel"
-                                        value={formValues.customerPhone}
-                                    />
-                                ) : null}
+                                            placeholder="+1 (555) 000-0000"
+                                            type="tel"
+                                            value={formValues.customerPhone}
+                                        />
+                                    ) : null}
 
-                                {settings.collectEmail ? (
+                                    {settings.collectEmail ? (
                                     <Field
                                         icon={<LuMail size={16} />}
-                                        label="Email"
                                         error={touchedFields.customerEmail ? formErrors.customerEmail : ''}
                                         onChange={(value) => updateField('customerEmail', value)}
                                         onBlur={() => markFieldTouched('customerEmail')}
-                                        placeholder="name@example.com"
-                                        type="email"
-                                        value={formValues.customerEmail}
-                                    />
-                                ) : null}
-                            </div>
-                        </section>
-                    ) : null}
+                                            placeholder="name@example.com"
+                                            type="email"
+                                            value={formValues.customerEmail}
+                                        />
+                                    ) : null}
+                                </div>
+                            </section>
+                        ) : null}
 
-                    <input
-                        aria-hidden="true"
-                        autoComplete="off"
-                        className={styles.hiddenField}
-                        onChange={(event) => updateField('website', event.target.value)}
-                        tabIndex={-1}
-                        value={formValues.website}
-                    />
-
-                    <div className={`${styles.panel} ${styles.panelWarm}`}>
-                        <div className={styles.panelHeader}>
-                            <div className={`${styles.panelIcon} ${styles.panelIconWhite}`} style={{ color: '#b45309' }}>
-                                <LuStar size={18} fill="currentColor" strokeWidth={1.8} />
-                            </div>
-                            <div>
-                                <p className={styles.panelTitle} style={{ fontSize: 18 }}>{insightCard.title}</p>
-                                <p className={styles.panelText}>{insightCard.description}</p>
-                            </div>
-                        </div>
-                    </div>
+                        <input
+                            aria-hidden="true"
+                            autoComplete="off"
+                            className={styles.hiddenField}
+                            onChange={(event) => updateField('website', event.target.value)}
+                            tabIndex={-1}
+                            value={formValues.website}
+                        />
 
                     <button
                         className={[
@@ -469,11 +561,14 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                             rating === 0 || submitState === 'submitting' ? styles.ctaDisabled : '',
                         ].filter(Boolean).join(' ')}
                         disabled={rating === 0 || submitState === 'submitting'}
+                        style={rating === 0 || submitState === 'submitting'
+                            ? undefined
+                            : { background: primaryCtaColor, color: primaryCtaTextColor }}
                         type="submit"
                     >
-                        {submitState === 'submitting' ? 'Submitting feedback...' : 'Submit feedback'}
-                        {submitState === 'submitting' ? null : <LuChevronRight size={18} />}
-                    </button>
+                            {submitState === 'submitting' ? 'Submitting feedback...' : 'Submit feedback'}
+                            {submitState === 'submitting' ? null : <LuChevronRight size={18} />}
+                        </button>
                     </div>
                 </form>
 
@@ -483,9 +578,26 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                         <span>Your feedback is private and goes directly to the business.</span>
                     </div>
 
-                    <div className={styles.powered}>
+                    <Link className={styles.powered} href="https://menulist.ai" rel="noopener noreferrer" target="_blank">
                         Powered by MenuList
-                    </div>
+                    </Link>
+
+                    {(callHref || whatsappHref) ? (
+                        <div className={styles.quickActions}>
+                            {callHref ? (
+                                <a className={styles.quickAction} href={callHref}>
+                                    <LuPhone size={14} />
+                                    Call
+                                </a>
+                            ) : null}
+                            {whatsappHref ? (
+                                <a className={styles.quickAction} href={whatsappHref} rel="noopener noreferrer" target="_blank">
+                                    <LuMessageSquare size={14} />
+                                    WhatsApp
+                                </a>
+                            ) : null}
+                        </div>
+                    ) : null}
 
                     <div className={styles.footerLinks}>
                         <Link className={styles.footerLink} href="/privacy-policy" target="_blank">
@@ -503,7 +615,6 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
 function Field({
     icon,
-    label,
     error,
     onChange,
     onBlur,
@@ -512,7 +623,6 @@ function Field({
     value,
 }: {
     icon?: React.ReactNode;
-    label: string;
     error?: string;
     onChange: (value: string) => void;
     onBlur: () => void;
@@ -522,19 +632,18 @@ function Field({
 }) {
     return (
         <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-                {icon}
-                {label}
-            </span>
-            <input
-                className={`${styles.input} ${error ? styles.inputInvalid : ''}`}
-                maxLength={type === 'email' ? 120 : type === 'tel' ? 20 : 60}
-                onBlur={onBlur}
-                onChange={(event) => onChange(event.target.value)}
-                placeholder={placeholder}
-                type={type}
-                value={value}
-            />
+            <div className={styles.inputWrap}>
+                {icon ? <span className={styles.inputIcon}>{icon}</span> : null}
+                <input
+                    className={`${styles.input} ${icon ? styles.inputWithIcon : ''} ${error ? styles.inputInvalid : ''}`}
+                    maxLength={type === 'email' ? 120 : type === 'tel' ? 20 : 60}
+                    onBlur={onBlur}
+                    onChange={(event) => onChange(event.target.value)}
+                    placeholder={placeholder}
+                    type={type}
+                    value={value}
+                />
+            </div>
             {error ? <p className={styles.fieldError}>{error}</p> : null}
         </label>
     );

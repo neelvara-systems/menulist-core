@@ -13,6 +13,7 @@ import GuestFeedbackForm from '@atoms/GuestFeedbackForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
 import { notFound } from 'next/navigation';
 
@@ -87,9 +88,15 @@ async function getProjectData(projectId: string) {
 }
 
 interface StoreInfo {
+    accentColor?: string;
     storeName?: string;
     feedbackDefaults: FeedbackDefaults;
     feedbackEnabled: boolean;
+    logoUrl?: string;
+    officialPageUrl?: string;
+    phoneNumber?: string;
+    tagline?: string;
+    whatsappNumber?: string;
 }
 
 /**
@@ -114,12 +121,18 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
         const feedbackEnabled = storeData.feedbackEnabled !== false;
 
         return {
-            storeName: storeData.storeName as string | undefined,
+            accentColor: storeData.publicPresence?.accentColor as string | undefined,
+            storeName: `${storeData.tenantName} - ${storeData.name}` as string | undefined,
             feedbackEnabled,
             feedbackDefaults: {
                 ...DEFAULT_FEEDBACK_SETTINGS,
                 ...storeData.feedbackDefaults,
             },
+            logoUrl: (storeData.logo || '') as string | undefined,
+            officialPageUrl: generateOBPUrl(storeData.subdomain || storeData.subDomain, storeData.customDomain),
+            phoneNumber: (storeData.phoneNumber || '') as string | undefined,
+            tagline: (storeData.tagline || storeData.description || '') as string | undefined,
+            whatsappNumber: (storeData.publicPresence?.whatsappNumber || '') as string | undefined,
         };
     } catch (error) {
         console.error('[FeedbackPage] Error fetching store info:', error);
@@ -148,15 +161,21 @@ export default async function FeedbackPage({ params }: PageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(186,230,253,0.35),_transparent_35%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_55%,_#eef2ff_100%)] px-4 py-6 sm:px-6">
+        <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(186,230,253,0.35),_transparent_35%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_55%,_#eef2ff_100%)] px-4 py-6 sm:px-6">
             <div className="mx-auto w-full max-w-xl">
                 <GuestFeedbackForm
+                    accentColor={storeInfo.accentColor}
                     tId={project.tId}
                     sId={project.sId}
                     projectId={project.projectId}
                     source="feedback_qr"
                     storeName={storeInfo.storeName}
                     feedbackDefaults={storeInfo.feedbackDefaults}
+                    logoUrl={storeInfo.logoUrl}
+                    officialPageUrl={storeInfo.officialPageUrl}
+                    phoneNumber={storeInfo.phoneNumber}
+                    tagline={storeInfo.tagline}
+                    whatsappNumber={storeInfo.whatsappNumber}
                 />
             </div>
         </div>

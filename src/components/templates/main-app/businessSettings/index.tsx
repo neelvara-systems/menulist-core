@@ -109,8 +109,11 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     );
     const [feedbackDefaults, setFeedbackDefaults] = useState({
         collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
+        collectNameRequired: storeDetails?.feedbackDefaults?.collectNameRequired ?? false,
         collectPhone: storeDetails?.feedbackDefaults?.collectPhone ?? true,
+        collectPhoneRequired: storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false,
         collectEmail: storeDetails?.feedbackDefaults?.collectEmail ?? true,
+        collectEmailRequired: storeDetails?.feedbackDefaults?.collectEmailRequired ?? false,
     });
     const [reviewUrl, setReviewUrl] = useState<string>(
         storeDetails?.reviewUrl || ''

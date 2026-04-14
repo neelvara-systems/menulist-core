@@ -16,16 +16,22 @@ interface MobileAdvancedSettingsScreenProps {
 
 type FeedbackDraft = {
     collectEmail: boolean;
+    collectEmailRequired: boolean;
     collectName: boolean;
+    collectNameRequired: boolean;
     collectPhone: boolean;
+    collectPhoneRequired: boolean;
     feedbackEnabled: boolean;
 };
 
 function getInitialFeedbackDraft(storeDetails: any): FeedbackDraft {
     return {
         collectEmail: storeDetails?.feedbackDefaults?.collectEmail ?? true,
+        collectEmailRequired: storeDetails?.feedbackDefaults?.collectEmailRequired ?? false,
         collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
+        collectNameRequired: storeDetails?.feedbackDefaults?.collectNameRequired ?? false,
         collectPhone: storeDetails?.feedbackDefaults?.collectPhone ?? true,
+        collectPhoneRequired: storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false,
         feedbackEnabled: storeDetails?.feedbackEnabled !== false,
     };
 }
@@ -39,8 +45,11 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     const [originalSocialMedia, setOriginalSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
     const [feedbackEnabled, setFeedbackEnabled] = useState(storeDetails?.feedbackEnabled !== false);
     const [collectName, setCollectName] = useState(storeDetails?.feedbackDefaults?.collectName ?? false);
+    const [collectNameRequired, setCollectNameRequired] = useState(storeDetails?.feedbackDefaults?.collectNameRequired ?? false);
     const [collectPhone, setCollectPhone] = useState(storeDetails?.feedbackDefaults?.collectPhone ?? true);
+    const [collectPhoneRequired, setCollectPhoneRequired] = useState(storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false);
     const [collectEmail, setCollectEmail] = useState(storeDetails?.feedbackDefaults?.collectEmail ?? true);
+    const [collectEmailRequired, setCollectEmailRequired] = useState(storeDetails?.feedbackDefaults?.collectEmailRequired ?? false);
     const [originalFeedbackDraft, setOriginalFeedbackDraft] = useState<FeedbackDraft>(() => getInitialFeedbackDraft(storeDetails));
     const [isSocialPickerOpen, setIsSocialPickerOpen] = useState(false);
     const [editingPlatformKey, setEditingPlatformKey] = useState<string | null>(null);
@@ -178,18 +187,85 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     };
 
     const handleToggleCollectField = (field: string, value: boolean) => {
-        const updated = {
-            collectName: field === 'collectName' ? value : collectName,
-            collectPhone: field === 'collectPhone' ? value : collectPhone,
-            collectEmail: field === 'collectEmail' ? value : collectEmail,
-        };
         if (field === 'collectName') setCollectName(value);
+        if (field === 'collectName' && !value) setCollectNameRequired(false);
         if (field === 'collectPhone') setCollectPhone(value);
+        if (field === 'collectPhone' && !value) setCollectPhoneRequired(false);
         if (field === 'collectEmail') setCollectEmail(value);
+        if (field === 'collectEmail' && !value) setCollectEmailRequired(false);
     };
 
+    const handleToggleRequiredField = (field: string, value: boolean) => {
+        if (field === 'collectNameRequired') setCollectNameRequired(value);
+        if (field === 'collectPhoneRequired') setCollectPhoneRequired(value);
+        if (field === 'collectEmailRequired') setCollectEmailRequired(value);
+    };
+    const feedbackFieldCardStyle = {
+        border: '1px solid var(--adm-color-border)',
+        borderRadius: 12,
+        padding: 12,
+    } as const;
+
+    const renderFeedbackField = ({
+        description,
+        isEnabled,
+        label,
+        mandatoryLabel,
+        requiredValue,
+        showDescription = false,
+        toggleField,
+        toggleRequiredField,
+        value,
+    }: {
+        description?: string;
+        isEnabled: boolean;
+        label: string;
+        mandatoryLabel: string;
+        requiredValue: boolean;
+        showDescription?: boolean;
+        toggleField: 'collectName' | 'collectPhone' | 'collectEmail';
+        toggleRequiredField: 'collectNameRequired' | 'collectPhoneRequired' | 'collectEmailRequired';
+        value: boolean;
+    }) => (
+        <Flex gap={10} style={{ ...feedbackFieldCardStyle, opacity: isEnabled ? 1 : 0.55 }} vertical>
+            <Flex align="center" justify="space-between" gap={12}>
+                <Flex style={{ minWidth: 0, flex: 1 }} vertical>
+                    <Text style={{ fontWeight: 600 }}>{label}</Text>
+                    {showDescription && description ? (
+                        <Text color="weak" style={{ fontSize: 12 }}>
+                            {description}
+                        </Text>
+                    ) : null}
+                </Flex>
+                <Switch checked={value} onChange={(nextValue) => {
+                    if (!isEnabled) return;
+                    handleToggleCollectField(toggleField, nextValue);
+                }} />
+            </Flex>
+            {value ? (
+                <Flex align="center" justify="space-between" gap={12}>
+                    <Text color="weak" style={{ fontSize: 13 }}>
+                        {mandatoryLabel}
+                    </Text>
+                    <Switch checked={requiredValue} onChange={(nextValue) => {
+                        if (!isEnabled) return;
+                        handleToggleRequiredField(toggleRequiredField, nextValue);
+                    }} />
+                </Flex>
+            ) : null}
+        </Flex>
+    );
+
     const filledSocialCount = linkedSocialPlatforms.length;
-    const feedbackDraft: FeedbackDraft = { collectEmail, collectName, collectPhone, feedbackEnabled };
+    const feedbackDraft: FeedbackDraft = {
+        collectEmail,
+        collectEmailRequired,
+        collectName,
+        collectNameRequired,
+        collectPhone,
+        collectPhoneRequired,
+        feedbackEnabled,
+    };
     const isSocialDirty = showSocial && JSON.stringify(socialMedia) !== JSON.stringify(originalSocialMedia);
     const isFeedbackDirty = showFeedback && JSON.stringify(feedbackDraft) !== JSON.stringify(originalFeedbackDraft);
     const editingPlatform = editingPlatformKey ? linkedSocialPlatforms.find((platform) => platform.key === editingPlatformKey) || (
@@ -216,8 +292,11 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         if (showFeedback) {
             setFeedbackEnabled(originalFeedbackDraft.feedbackEnabled);
             setCollectName(originalFeedbackDraft.collectName);
+            setCollectNameRequired(originalFeedbackDraft.collectNameRequired);
             setCollectPhone(originalFeedbackDraft.collectPhone);
+            setCollectPhoneRequired(originalFeedbackDraft.collectPhoneRequired);
             setCollectEmail(originalFeedbackDraft.collectEmail);
+            setCollectEmailRequired(originalFeedbackDraft.collectEmailRequired);
         }
     };
 
@@ -232,8 +311,11 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             updates.feedbackEnabled = feedbackEnabled;
             updates.feedbackDefaults = {
                 collectEmail,
+                collectEmailRequired,
                 collectName,
+                collectNameRequired,
                 collectPhone,
+                collectPhoneRequired,
             };
         }
 
@@ -362,21 +444,35 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                         >
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('feedbackFormFieldsDesc')}</Text>
-                                <List>
-                                    <List.Item
-                                        extra={<Switch checked={collectName} onChange={(value) => handleToggleCollectField('collectName', value)} />}
-                                        title={<Text>{t('askForName')}</Text>}
-                                    />
-                                    <List.Item
-                                        description={<Text type="secondary">{t('forWhatsAppFollowUp')}</Text>}
-                                        extra={<Switch checked={collectPhone} onChange={(value) => handleToggleCollectField('collectPhone', value)} />}
-                                        title={<Text>{t('askForPhone')}</Text>}
-                                    />
-                                    <List.Item
-                                        extra={<Switch checked={collectEmail} onChange={(value) => handleToggleCollectField('collectEmail', value)} />}
-                                        title={<Text>{t('askForEmail')}</Text>}
-                                    />
-                                </List>
+                                {renderFeedbackField({
+                                    isEnabled: feedbackEnabled,
+                                    label: t('askForName'),
+                                    mandatoryLabel: t('makeNameRequired'),
+                                    requiredValue: collectNameRequired,
+                                    toggleField: 'collectName',
+                                    toggleRequiredField: 'collectNameRequired',
+                                    value: collectName,
+                                })}
+                                {renderFeedbackField({
+                                    description: t('forWhatsAppFollowUp'),
+                                    isEnabled: feedbackEnabled,
+                                    label: t('askForPhone'),
+                                    mandatoryLabel: t('makePhoneRequired'),
+                                    requiredValue: collectPhoneRequired,
+                                    showDescription: true,
+                                    toggleField: 'collectPhone',
+                                    toggleRequiredField: 'collectPhoneRequired',
+                                    value: collectPhone,
+                                })}
+                                {renderFeedbackField({
+                                    isEnabled: feedbackEnabled,
+                                    label: t('askForEmail'),
+                                    mandatoryLabel: t('makeEmailRequired'),
+                                    requiredValue: collectEmailRequired,
+                                    toggleField: 'collectEmail',
+                                    toggleRequiredField: 'collectEmailRequired',
+                                    value: collectEmail,
+                                })}
                             </Flex>
                         </Card>
                     </>

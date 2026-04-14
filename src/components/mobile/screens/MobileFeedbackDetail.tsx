@@ -1,6 +1,7 @@
 'use client'
 
 import { updateFeedbackStatus } from '@database/guestFeedback';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCheck, LuMail, LuPhone, LuStar } from 'react-icons/lu';
@@ -15,8 +16,13 @@ interface MobileFeedbackDetailProps {
 
 export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate }: MobileFeedbackDetailProps) {
     const t = useTranslations('MobileFeedbackDetail');
+    const { token } = theme.useToken();
     const [replyText, setReplyText] = useState('');
     const [isSending, setIsSending] = useState(false);
+
+    const statusTag = feedback.status === 'resolved'
+        ? <Tag color="success">{t('resolve')}</Tag>
+        : <Tag color={feedback.needsAttention ? 'warning' : 'primary'}>{feedback.needsAttention ? 'Needs Attention' : 'New'}</Tag>;
 
     const handleResolve = async () => {
         onStatusUpdate(feedback.id, 'resolved');
@@ -47,56 +53,99 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack}>{t('title')}</NavBar>
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
+                <Card style={{ borderRadius: 20 }}>
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">
-                            <Title level={4} style={{ margin: 0 }}>{feedback.customerName || t('anonymous')}</Title>
-                            {feedback.status === 'resolved' ? <Tag color="success">{t('resolve')}</Tag> : <Tag color="primary">{feedback.status === 'new' ? 'New' : 'Seen'}</Tag>}
-                        </Flex>
-
-                        <Flex align="center" gap={4}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <LuStar color={star <= feedback.rating ? '#fbbf24' : '#d1d5db'} fill={star <= feedback.rating ? '#fbbf24' : 'none'} key={star} size={18} />
-                            ))}
-                        </Flex>
-
-                        <Text>{feedback.message}</Text>
-                        <Text type="secondary">{feedback.createdAt}</Text>
-
-                        {feedback.email || feedback.phone ? (
-                            <Flex gap={8} vertical>
-                                {feedback.email ? (
-                                    <Button fill="outline" onClick={() => window.location.href = `mailto:${feedback.email}`}>
-                                        <Flex align="center" gap={6}>
-                                            <LuMail size={14} />
-                                            <Text>{feedback.email}</Text>
-                                        </Flex>
-                                    </Button>
-                                ) : null}
-                                {feedback.phone ? (
-                                    <Button fill="outline" onClick={() => window.location.href = `tel:${feedback.phone}`}>
-                                        <Flex align="center" gap={6}>
-                                            <LuPhone size={14} />
-                                            <Text>{feedback.phone}</Text>
-                                        </Flex>
-                                    </Button>
-                                ) : null}
+                            <Flex gap={4} vertical>
+                                <Title level={4} style={{ margin: 0 }}>{feedback.customerName || t('anonymous')}</Title>
+                                <Text type="secondary">{feedback.createdAt}</Text>
                             </Flex>
-                        ) : null}
+                            {statusTag}
+                        </Flex>
+
+                        <Flex
+                            align="center"
+                            gap={10}
+                            style={{
+                                background: token.colorWarningBg,
+                                border: `1px solid ${token.colorWarningBorder}`,
+                                borderRadius: 16,
+                                padding: '10px 12px',
+                            }}
+                        >
+                            <Flex align="center" gap={4}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <LuStar color={star <= feedback.rating ? '#fbbf24' : '#d1d5db'} fill={star <= feedback.rating ? '#fbbf24' : 'none'} key={star} size={18} />
+                                ))}
+                            </Flex>
+                            <Text strong>{feedback.rating}/5</Text>
+                        </Flex>
+
+                        <Flex gap={8} vertical>
+                            <Text strong>Feedback</Text>
+                            <div
+                                style={{
+                                    background: token.colorBgContainer,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 16,
+                                    color: token.colorTextSecondary,
+                                    lineHeight: 1.6,
+                                    padding: 14,
+                                    whiteSpace: 'pre-wrap',
+                                }}
+                            >
+                                {feedback.message || t('anonymous')}
+                            </div>
+                        </Flex>
                     </Flex>
                 </Card>
 
+                {feedback.email || feedback.phone ? (
+                    <Card style={{ borderRadius: 20 }}>
+                        <Flex gap={10} vertical>
+                            <Text strong>Contact</Text>
+                            {feedback.email ? (
+                                <Button fill="outline" onClick={() => window.location.href = `mailto:${feedback.email}`} style={{ justifyContent: 'flex-start' }}>
+                                    <Flex align="center" gap={8}>
+                                        <LuMail size={14} />
+                                        <Text>{feedback.email}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                            {feedback.phone ? (
+                                <Button fill="outline" onClick={() => window.location.href = `tel:${feedback.phone}`} style={{ justifyContent: 'flex-start' }}>
+                                    <Flex align="center" gap={8}>
+                                        <LuPhone size={14} />
+                                        <Text>{feedback.phone}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    </Card>
+                ) : null}
+
                 {feedback.status !== 'resolved' ? (
-                    <Card>
+                    <Card style={{ borderRadius: 20 }}>
                         <Flex gap={12} vertical>
-                            <Title level={5} style={{ margin: 0 }}>{t('reply')}</Title>
-                            <TextArea maxLength={500} onChange={setReplyText} placeholder={t('writeReply')} rows={3} showCount value={replyText} />
+                            <Flex gap={4} vertical>
+                                <Title level={5} style={{ margin: 0 }}>{t('reply')}</Title>
+                                <Text type="secondary">Reply and resolve in one step, or mark this feedback handled automatically.</Text>
+                            </Flex>
+                            <TextArea
+                                maxLength={500}
+                                onChange={setReplyText}
+                                placeholder={t('writeReply')}
+                                rows={4}
+                                showCount
+                                style={{ borderRadius: 16 }}
+                                value={replyText}
+                            />
                             <Flex gap={8}>
                                 <Button block disabled={!replyText.trim()} loading={isSending} onClick={() => void handleSendReply()}>
                                     {t('sendReply')}
                                 </Button>
                                 <Button block fill="outline" onClick={() => void handleResolve()} style={{ borderColor: '#16a34a', color: '#16a34a' }}>
-                                    <Flex align="center" gap={6}>
+                                    <Flex align="center" gap={6} justify="center">
                                         <LuCheck size={16} />
                                         <Text style={{ color: '#16a34a' }}>{t('resolve')}</Text>
                                     </Flex>
@@ -104,7 +153,11 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                             </Flex>
                         </Flex>
                     </Card>
-                ) : null}
+                ) : (
+                    <Card style={{ borderRadius: 20 }}>
+                        <Text type="secondary">No action needed. This feedback is already resolved.</Text>
+                    </Card>
+                )}
             </Flex>
         </Flex>
     );
