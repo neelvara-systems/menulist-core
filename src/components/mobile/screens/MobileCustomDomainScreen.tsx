@@ -1,5 +1,6 @@
 'use client'
 
+import { normalizeBaseUrl } from '@constant/urls';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
@@ -80,6 +81,7 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
     };
 
     const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
+    const activeDomainUrl = activeDomain ? normalizeBaseUrl(activeDomain) : '';
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
@@ -109,8 +111,8 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                             </Text>
                             <Flex align="center" gap={8} wrap>
                                 <Button fill="outline" loading={statusLoading} onClick={() => void refreshStatus()} size="small">{t('checkVerification')}</Button>
-                                <Button fill="none" onClick={() => navigator.clipboard.writeText(`https://${activeDomain}`)} size="small"><LuCopy size={16} /></Button>
-                                <Button fill="none" onClick={() => window.open(`https://${activeDomain}`, '_blank')} size="small"><LuExternalLink size={16} /></Button>
+                                <Button fill="none" onClick={() => navigator.clipboard.writeText(activeDomainUrl)} size="small"><LuCopy size={16} /></Button>
+                                <Button fill="none" onClick={() => window.open(activeDomainUrl, '_blank')} size="small"><LuExternalLink size={16} /></Button>
                                 <Button
                                     color="danger"
                                     fill="none"

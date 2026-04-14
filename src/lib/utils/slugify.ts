@@ -6,7 +6,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { getMenuUrl, getPublicBaseUrl, normalizeBaseUrl } from '@constant/urls';
+import { appendPublicPath, getPublicBaseUrl, getTenantBaseUrl } from '@constant/urls';
 
 /**
  * Convert a string to a URL-safe slug
@@ -57,25 +57,23 @@ export function generateProjectUrl(
 ): string {
     // Determine base URL
     let baseUrl: string;
-    if (customDomain) {
-        baseUrl = normalizeBaseUrl(customDomain);
-    } else if (subdomain) {
-        baseUrl = getMenuUrl(subdomain);
+    if (customDomain || subdomain) {
+        baseUrl = getTenantBaseUrl(subdomain, customDomain);
     } else {
         const publicBaseUrl = getPublicBaseUrl();
         const slug = projectName ? slugify(projectName) : '';
         return (isDefault || !slug)
-            ? `${publicBaseUrl}/menu`
-            : `${publicBaseUrl}/menu/${slug}`;
+            ? appendPublicPath(publicBaseUrl, 'menu')
+            : appendPublicPath(publicBaseUrl, `menu/${slug}`);
     }
 
     // If OBP is enabled, root resolves to OBP and the default menu lives at /menu.
     // Otherwise the root itself is the default menu.
     if (isDefault || !projectName) {
-        return FEATURE_FLAGS.ENABLE_OBP ? `${baseUrl}/menu` : baseUrl;
+        return FEATURE_FLAGS.ENABLE_OBP ? appendPublicPath(baseUrl, 'menu') : baseUrl;
     }
 
     // Add slug path
     const slug = slugify(projectName);
-    return slug ? `${baseUrl}/${slug}` : baseUrl;
+    return slug ? appendPublicPath(baseUrl, slug) : baseUrl;
 }

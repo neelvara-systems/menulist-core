@@ -1,6 +1,6 @@
 'use client';
 
-import { getMenuUrl } from '@constant/urls';
+import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { Alert, Button, Card, Divider, Input, List, Space, Steps, Tag, Typography } from 'antd';
 import axios from 'axios';
@@ -234,7 +234,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
                         {subdomainUrl ? (
                             <Space wrap>
-                                <Tag color="blue" icon={<LuGlobe />}>{storeDetails.subdomain}.menulist.ai</Tag>
+                                <Tag color="blue" icon={<LuGlobe />}>{subdomainUrl.replace(/^https?:\/\//, '')}</Tag>
                                 <Button
                                     icon={subdomainCopied ? <LuCheck /> : <LuCopy />}
                                     onClick={() => {
@@ -310,14 +310,14 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                             <Button
                                 icon={domainLinkCopied ? <LuCheck /> : <LuCopy />}
                                 onClick={() => {
-                                    navigator.clipboard.writeText(`https://${activeDomain}`);
+                                    navigator.clipboard.writeText(normalizeBaseUrl(activeDomain));
                                     setDomainLinkCopied(true);
                                     setTimeout(() => setDomainLinkCopied(false), 2000);
                                 }}
                             >
                                 {domainLinkCopied ? t('copied') : t('copy')}
                             </Button>
-                            <Button icon={<LuExternalLink />} onClick={() => window.open(`https://${activeDomain}`, '_blank')}>
+                            <Button icon={<LuExternalLink />} onClick={() => window.open(normalizeBaseUrl(activeDomain), '_blank')}>
                                 {t('open')}
                             </Button>
                             <Button danger icon={<LuTrash2 />} loading={domainLoading} onClick={() => void handleRemoveDomain()}>
@@ -375,7 +375,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                         ) : (
                             <Alert
                                 description={t('autoRedirect')}
-                                message={`${t('menuLiveAt')} https://${activeDomain}`}
+                                message={`${t('menuLiveAt')} ${normalizeBaseUrl(activeDomain)}`}
                                 showIcon
                                 type="success"
                             />

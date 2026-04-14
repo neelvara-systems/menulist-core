@@ -198,7 +198,12 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     verifyMenuPublish({
                         storeId: String(storeDetails.storeId),
                         tenantId: String(storeDetails.tenantId),
-                        publicMenuUrl: `https://${slug}.menulist.ai`,
+                        publicMenuUrl: generateProjectUrl(
+                            slug,
+                            storeDetails?.customDomain,
+                            undefined,
+                            true,
+                        ),
                     });
                 }
             } catch {

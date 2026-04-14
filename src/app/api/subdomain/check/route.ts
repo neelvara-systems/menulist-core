@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedSubdomain } from "@constant/reservedSlugs";
+import { getMenuUrl } from "@constant/urls";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { slugify } from "@lib/utils/slugify";
 import { NextRequest, NextResponse } from "next/server";
@@ -79,6 +80,6 @@ export const GET = withAuth(async (request: NextRequest) => {
     return NextResponse.json({
         available: true,
         normalized: subdomain,
-        preview: `${subdomain}.menulist.ai`,
+        preview: getMenuUrl(subdomain).replace(/^https?:\/\//, ''),
     });
 });

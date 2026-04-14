@@ -44,6 +44,27 @@ export const VERCEL_URLS = [
 export const PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
 
 const stripTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
+const stripLeadingSlashes = (value: string) => value.replace(/^\/+/, '');
+
+const getHostnameFromUrl = (value?: string | null): string => {
+    if (!value) return '';
+    try {
+        return new URL(normalizeBaseUrl(value)).hostname.toLowerCase();
+    } catch {
+        return '';
+    }
+};
+
+const isCanonicalPublicHost = (hostname: string): boolean =>
+    hostname === PLATFORM_DOMAIN || hostname === `www.${PLATFORM_DOMAIN}`;
+
+const isLocalhostHost = (hostname: string): boolean =>
+    hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname.startsWith('192.168.');
+
+const isPreviewLikeHost = (hostname: string): boolean =>
+    hostname.endsWith('.vercel.app');
 
 export const normalizeBaseUrl = (value?: string | null): string => {
     if (!value) return '';
@@ -55,6 +76,18 @@ export const normalizeBaseUrl = (value?: string | null): string => {
 
 export const getPublicBaseUrl = (): string => {
     const envBaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+    if (typeof window !== 'undefined' && window.location?.origin) {
+        const currentOrigin = stripTrailingSlashes(window.location.origin);
+        const currentHostname = window.location.hostname.toLowerCase();
+
+        if (isLocalhostHost(currentHostname) || isPreviewLikeHost(currentHostname)) {
+            return currentOrigin;
+        }
+
+        if (!envBaseUrl) {
+            return currentOrigin;
+        }
+    }
     if (envBaseUrl) return envBaseUrl;
     if (typeof window !== 'undefined' && window.location?.origin) {
         return stripTrailingSlashes(window.location.origin);
@@ -102,8 +135,42 @@ export const POS_DOCS_URL = `https://${PLATFORM_DOMAIN}/pos-sync`;
 // ═══════════════════════════════════════════════════════════════
 
 /** Build a customer-facing menu URL from subdomain */
-export const getMenuUrl = (subdomain: string): string =>
-    normalizeBaseUrl(`https://${subdomain}.${PLATFORM_DOMAIN}`);
+export const getMenuUrl = (subdomain: string): string => {
+    const normalizedSubdomain = subdomain.trim().toLowerCase();
+    if (!normalizedSubdomain) return getPublicBaseUrl();
+
+    const publicBaseUrl = getPublicBaseUrl();
+    const publicHostname = getHostnameFromUrl(publicBaseUrl);
+
+    if (isCanonicalPublicHost(publicHostname)) {
+        return normalizeBaseUrl(`https://${normalizedSubdomain}.${PLATFORM_DOMAIN}`);
+    }
+
+    return `${publicBaseUrl}/_client/${encodeURIComponent(normalizedSubdomain)}`;
+};
+
+/** Build a customer-facing tenant root URL from either custom domain or subdomain */
+export const getTenantBaseUrl = (
+    subdomain?: string,
+    customDomain?: string,
+): string => {
+    if (customDomain) {
+        return normalizeBaseUrl(customDomain);
+    }
+
+    if (subdomain) {
+        return getMenuUrl(subdomain);
+    }
+
+    return getPublicBaseUrl();
+};
+
+/** Append a path segment to a public base URL without duplicating slashes */
+export const appendPublicPath = (baseUrl: string, path: string): string => {
+    const normalizedBase = normalizeBaseUrl(baseUrl);
+    const normalizedPath = stripLeadingSlashes(path);
+    return normalizedPath ? `${normalizedBase}/${normalizedPath}` : normalizedBase;
+};
 
 /** Build a generated email from phone number (messaging-onboarding) */
 export const getGeneratedEmail = (phone: string): string => {

@@ -77,7 +77,7 @@ export default function MobileSubdomainScreen({ onBack }: MobileSubdomainScreenP
                                 <Flex gap={8} vertical>
                                     <Text type="secondary">{t('yourCurrentLink')}</Text>
                                     <Flex align="center" gap={8} wrap>
-                                        <Tag color="processing">{storeDetails.subdomain}.menulist.ai</Tag>
+                                        <Tag color="processing">{fullUrl?.replace(/^https?:\/\//, '')}</Tag>
                                         <Button fill="none" onClick={() => navigator.clipboard.writeText(fullUrl)} size="small"><LuCopy size={16} /></Button>
                                         <Button fill="none" onClick={() => window.open(fullUrl, '_blank')} size="small"><LuExternalLink size={16} /></Button>
                                     </Flex>

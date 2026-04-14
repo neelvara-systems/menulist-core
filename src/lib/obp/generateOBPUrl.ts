@@ -8,7 +8,7 @@
  * @see src/constants/urls.ts — Single source of truth for platform URLs
  */
 
-import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { appendPublicPath, getTenantBaseUrl } from '@constant/urls';
 
 /**
  * Generate the OBP URL for a store
@@ -17,13 +17,7 @@ export function generateOBPUrl(
     subdomain?: string,
     customDomain?: string,
 ): string {
-    if (customDomain) {
-        return normalizeBaseUrl(customDomain);
-    }
-    if (subdomain) {
-        return getMenuUrl(subdomain);
-    }
-    return '';
+    return getTenantBaseUrl(subdomain, customDomain);
 }
 
 /**
@@ -34,5 +28,5 @@ export function generateMenuUrl(
     customDomain?: string,
 ): string {
     const base = generateOBPUrl(subdomain, customDomain);
-    return base ? `${base}/menu` : '/menu';
+    return base ? appendPublicPath(base, 'menu') : '/menu';
 }

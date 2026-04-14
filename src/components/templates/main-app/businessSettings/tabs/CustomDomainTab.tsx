@@ -1,5 +1,6 @@
 'use client';
 import { FEATURE_FLAGS } from '@config/features';
+import { normalizeBaseUrl } from '@constant/urls';
 import { Alert, Button, Card, Col, Divider, Input, Row, Space, Steps, Tag, Typography, notification } from 'antd';
 import axios from 'axios';
 import { memo, useCallback, useEffect, useState } from 'react';
@@ -29,6 +30,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
     const [error, setError] = useState<string | null>(null);
     const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
     const [copied, setCopied] = useState<string | null>(null);
+    const activeDomainUrl = storeDetails?.customDomain ? normalizeBaseUrl(storeDetails.customDomain) : '';
 
     // Initialize from store data
     useEffect(() => {
@@ -283,7 +285,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                                 <Text>
                                     Your menu is live at{' '}
                                     <a
-                                        href={`https://${storeDetails?.customDomain}`}
+                                        href={activeDomainUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ fontWeight: 600 }}
@@ -301,13 +303,13 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                     <Space>
                         <Button
                             icon={<LuExternalLink />}
-                            onClick={() => window.open(`https://${storeDetails?.customDomain}`, '_blank')}
+                            onClick={() => window.open(activeDomainUrl, '_blank')}
                         >
                             Open
                         </Button>
                         <Button
                             icon={copied === 'url' ? <LuCheck /> : <LuCopy />}
-                            onClick={() => handleCopy(`https://${storeDetails?.customDomain}`, 'url')}
+                            onClick={() => handleCopy(activeDomainUrl, 'url')}
                         >
                             {copied === 'url' ? 'Copied' : 'Copy Link'}
                         </Button>

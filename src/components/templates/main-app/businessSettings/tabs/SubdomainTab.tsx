@@ -91,7 +91,7 @@ function SubdomainTab({ scrollRef, currentSubdomain, isMaster }: SubdomainTabPro
                             color="blue"
                             style={{ fontSize: 14, padding: '4px 12px' }}
                         >
-                            {currentSubdomain}.menulist.ai
+                            {fullUrl?.replace(/^https?:\/\//, '')}
                         </Tag>
                         <Button
                             size="small"

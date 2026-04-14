@@ -1,6 +1,6 @@
 'use client'
 
-import { getMenuUrl } from '@constant/urls';
+import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -62,7 +62,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         && domainAvailability?.available
         && domainAvailability?.normalized === normalizedDomainInput
     );
-    const liveUrl = activeDomain ? `https://${activeDomain}` : subdomainUrl;
+    const liveUrl = activeDomain ? normalizeBaseUrl(activeDomain) : subdomainUrl;
     const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
     const dnsRecords = useMemo(() => {
         const records: { type: string; name: string; value: string }[] = [];
@@ -225,7 +225,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                         <Text type="secondary">{t('subdomainSetupNote')}</Text>
                         {storeDetails?.isMaster === false ? (
                             <>
-                                <Text>{storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : t('outletSubdomainInfo')}</Text>
+                                <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : t('outletSubdomainInfo')}</Text>
                                 <Text type="secondary">{t('outletSubdomainDesc')}</Text>
                             </>
                         ) : (
@@ -293,10 +293,10 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                     <Button fill="outline" loading={statusLoading} onClick={() => void refreshStatus()} size="small">
                                         <Flex align="center" gap={6}><LuSearch size={16} /><Text>{t('checkVerification')}</Text></Flex>
                                     </Button>
-                                    <Button fill="outline" onClick={() => navigator.clipboard.writeText(`https://${activeDomain}`)} size="small">
+                                    <Button fill="outline" onClick={() => navigator.clipboard.writeText(normalizeBaseUrl(activeDomain))} size="small">
                                         <Flex align="center" gap={6}><LuCopy size={16} /><Text>{t('copy')}</Text></Flex>
                                     </Button>
-                                    <Button fill="outline" onClick={() => window.open(`https://${activeDomain}`, '_blank')} size="small">
+                                    <Button fill="outline" onClick={() => window.open(normalizeBaseUrl(activeDomain), '_blank')} size="small">
                                         <Flex align="center" gap={6}><LuExternalLink size={16} /><Text>{t('open')}</Text></Flex>
                                     </Button>
                                     <Button

@@ -5,6 +5,7 @@ import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { generateMenuUrl } from "@lib/obp/generateOBPUrl";
 import { generateScreenToken } from "@lib/screen/utils";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
 import {
@@ -576,7 +577,10 @@ export const getScreenDataByToken = async (token: string): Promise<{
         const storeInfo = {
             name: storeData?.name || storeData?.businessName || 'Menu',
             logoUrl: storeData?.logo || undefined,
-            menuQrUrl: `https://${storeData?.subDomain || storeId}.menulist.ai`
+            menuQrUrl: generateMenuUrl(
+                storeData?.subdomain || storeData?.subDomain || storeId,
+                storeData?.customDomain,
+            ),
         };
 
         return {
@@ -954,4 +958,3 @@ export const uploadScreenSlide = async (
         "uploadScreenSlide"
     );
 };
-
