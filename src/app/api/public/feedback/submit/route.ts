@@ -137,7 +137,8 @@ export async function POST(req: NextRequest) {
                 .get();
 
             if (storeDoc.exists) {
-                reviewUrl = storeDoc.data()?.reviewUrl || null;
+                const storeData = storeDoc.data();
+                reviewUrl = storeData?.reviewUrl || storeData?.publicPresence?.googleReviewUrl || null;
             }
         } catch {
             // Don't fail if we can't get review URL

@@ -56,6 +56,10 @@ export const DefaultGenerationConfig: ImageGenerationConfigType = {
     agreeToTerms: false
 }
 
+function normalizeReferenceImages(images: unknown): UserUploadedFileType[] {
+    return Array.isArray(images) ? images : [];
+}
+
 const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     open,
     onClose,
@@ -103,6 +107,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 isMultiMode: savedPrefs.isMultiMode,
             }
             : DefaultGenerationConfig;
+        configWithPrefs.referanceImages = normalizeReferenceImages(configWithPrefs.referanceImages);
         setGenerationConfig(configWithPrefs);
         setBatchGenerationConfig(configWithPrefs);
         setActiveTab(preferredInitialTab);
@@ -222,7 +227,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             setSelectedItem(matchedItem ? removeObjRef(matchedItem) : null);
             setGenerationConfig((prev) => ({
                 ...prev,
-                referanceImages: matchedItem?.images || [],
+                referanceImages: normalizeReferenceImages(matchedItem?.images),
                 referanceImage: null,
             }));
             return;
@@ -242,7 +247,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         setSelectedImages([]);
         setGenerationConfig((prev) => ({
             ...prev,
-            referanceImages: nextSelectedItem?.images || [],
+            referanceImages: normalizeReferenceImages(nextSelectedItem?.images),
             referanceImage: null,
         }));
     };
@@ -357,7 +362,10 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         onRemove: (file) => {
             const uid = String(file.uid);
             setSelectedImages(prevImages => prevImages.filter(image => image.uid !== uid));
-            setGenerationConfig(prev => ({ ...prev, referanceImages: prev.referanceImages.filter(image => image.uid !== uid) }));
+            setGenerationConfig(prev => ({
+                ...prev,
+                referanceImages: normalizeReferenceImages(prev.referanceImages).filter(image => image.uid !== uid)
+            }));
             return true;
         },
         beforeUpload: async (file) => {
@@ -403,10 +411,11 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     return [...prevImages, newImage];
                 });
                 setGenerationConfig((prev) => {
-                    if (prev.referanceImages.some((image) => image.uid === newImage.uid)) {
+                    const existingImages = normalizeReferenceImages(prev.referanceImages);
+                    if (existingImages.some((image) => image.uid === newImage.uid)) {
                         return prev;
                     }
-                    return { ...prev, referanceImages: [...prev.referanceImages, newImage] };
+                    return { ...prev, referanceImages: [...existingImages, newImage] };
                 });
             } catch (error) {
                 logger.error('Error getting base64', error);

@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
 import { generateImageEditingPrompt } from "./promptsList";
 
-const AI_MODEL = "gemini-2.0-flash-preview-image-generation";
+const AI_MODEL = "gemini-2.5-flash-image";
 const LOG_FILE = "image-editing.log"
 
 async function editImageViaFlash(generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] }): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null | NextResponse> {

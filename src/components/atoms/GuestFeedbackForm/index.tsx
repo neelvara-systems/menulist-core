@@ -277,7 +277,10 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
             }
 
             setSubmitState('error');
-            message.error(data.error || 'Failed to submit feedback');
+            const validationMessage = Array.isArray(data.details) && data.details.length > 0
+                ? data.details[0]?.message
+                : '';
+            message.error(validationMessage || data.error || 'Failed to submit feedback');
         } catch {
             setSubmitState('error');
             message.error('Network error. Please try again.');
@@ -636,6 +639,7 @@ function Field({
                 {icon ? <span className={styles.inputIcon}>{icon}</span> : null}
                 <input
                     className={`${styles.input} ${icon ? styles.inputWithIcon : ''} ${error ? styles.inputInvalid : ''}`}
+                    inputMode={type === 'tel' ? 'tel' : type === 'email' ? 'email' : 'text'}
                     maxLength={type === 'email' ? 120 : type === 'tel' ? 20 : 60}
                     onBlur={onBlur}
                     onChange={(event) => onChange(event.target.value)}

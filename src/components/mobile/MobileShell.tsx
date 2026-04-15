@@ -3,11 +3,11 @@
 import { getFeedbackCount } from '@database/guestFeedback';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
-import { theme } from 'antd';
+import { App as AntApp, theme } from 'antd';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
-import { Button, Card, Flex, Text, Title } from './antd';
+import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
 import type { MoreSubScreen } from './screens/MobileMoreScreen';
@@ -194,7 +194,9 @@ export default function MobileShell() {
     }
 
     return (
-        <MobileProjectsProvider>
+        <AntApp>
+            <MobileAntdAppBridge />
+            <MobileProjectsProvider>
             <Flex
                 style={{
                     background: token.colorBgLayout,
@@ -232,6 +234,7 @@ export default function MobileShell() {
                     onTabChange={handleTabChange}
                 />
             </Flex>
-        </MobileProjectsProvider>
+            </MobileProjectsProvider>
+        </AntApp>
     );
 }

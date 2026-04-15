@@ -3,6 +3,10 @@ import type { ItemForDropdown, Project } from '../../types';
 import type { UserUploadedFileType } from '@type/common';
 import { removeObjRef } from '@util/utils';
 
+function normalizeItemImages(images: unknown): UserUploadedFileType[] {
+    return Array.isArray(images) ? images : [];
+}
+
 export async function associateItemImagesWithProject(
     projectData: Project,
     selectedItem: ItemForDropdown,
@@ -32,8 +36,7 @@ export async function associateItemImagesWithProject(
 
             for (const item of itemsList) {
                 if (item.id === selectedItem.id) {
-                    item.images = item.images || [];
-                    item.images = [...item.images, ...imagesToUpload];
+                    item.images = [...normalizeItemImages(item.images), ...imagesToUpload];
                     itemUpdated = true;
                     break;
                 }

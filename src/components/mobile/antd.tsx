@@ -2,6 +2,7 @@
 
 import { getMobileUiLocaleText } from '@lib/localization/mobileUiLocale';
 import {
+    App as AntApp,
     Avatar,
     Badge,
     Button as AntButton,
@@ -28,8 +29,8 @@ import {
     theme,
     Typography,
     Upload as AntUpload,
-    message,
 } from 'antd';
+import type { MessageInstance } from 'antd/es/message/interface';
 import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
 import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
@@ -41,6 +42,41 @@ const { Text, Title } = Typography;
 const MobileSheetContext = createContext(false);
 let activePopupScrollLocks = 0;
 let lockedShellScrollTop = 0;
+let mobileMessageApi: MessageInstance | null = null;
+let pendingToastQueue: Array<{ content?: ReactNode; duration?: number; icon?: string }> = [];
+
+function showToastWithApi(
+    api: MessageInstance,
+    { content, duration, icon }: { content?: ReactNode; duration?: number; icon?: string },
+) {
+    if (!content) return;
+    api.open({
+        content,
+        duration: typeof duration === 'number' ? duration / 1000 : 1.5,
+        style: {
+            marginTop: 'calc(env(safe-area-inset-top) + 12px)',
+        },
+        type: icon === 'success' ? 'success' : 'info',
+    });
+}
+
+export function MobileAntdAppBridge() {
+    const { message } = AntApp.useApp();
+
+    useEffect(() => {
+        mobileMessageApi = message;
+        pendingToastQueue.forEach((toast) => showToastWithApi(message, toast));
+        pendingToastQueue = [];
+
+        return () => {
+            if (mobileMessageApi === message) {
+                mobileMessageApi = null;
+            }
+        };
+    }, [message]);
+
+    return null;
+}
 
 function lockMobileBackgroundScroll() {
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -104,6 +140,10 @@ function withSafeAreaBottomPadding(value: string | number | undefined, fallback:
 function buttonStyles(token: ReturnType<typeof theme.useToken>['token'], fill?: string, color?: string) {
     if (fill === 'none') {
         return { background: 'transparent', borderColor: 'transparent', boxShadow: 'none' };
+    }
+
+    if (fill === 'solid' && (!color || color === 'primary')) {
+        return { backgroundColor: token.colorPrimary, borderColor: token.colorPrimary, color: token.colorTextLightSolid };
     }
 
     if (fill === 'solid' && color === 'success') {
@@ -326,10 +366,16 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     if (paddingLeft !== undefined) normalizedPadding.paddingLeft = paddingLeft;
 
     const popupHeight = (height as string | number | undefined) ?? 'auto';
+    const normalizeViewportHeight = (value: string | number | undefined) => {
+        if (typeof value === 'string' && value.includes('vh')) {
+            return value.replace(/vh/g, 'dvh');
+        }
+        return value;
+    };
     const popupContentStyle = {
-        height: popupHeight,
-        maxHeight: maxHeight ?? '88vh',
-        minHeight,
+        height: normalizeViewportHeight(popupHeight),
+        maxHeight: normalizeViewportHeight(maxHeight ?? '88vh'),
+        minHeight: normalizeViewportHeight(minHeight),
     };
     const popupBodyStyle = {
         ...normalizedPadding,
@@ -460,19 +506,19 @@ export function Switch({ checked, loading, onChange }: { checked?: boolean; load
 
 export const Toast = {
     clear: () => {
-        void message.destroy();
+        pendingToastQueue = [];
+        if (mobileMessageApi) {
+            void mobileMessageApi.destroy();
+        }
     },
     show: ({ content, duration, icon }: { content?: ReactNode; duration?: number; icon?: string }) => {
         if (!content) return;
-        const seconds = typeof duration === 'number' ? duration / 1000 : 1.5;
-        const toastStyle = {
-            marginTop: 'calc(env(safe-area-inset-top) + 12px)',
-        };
-        if (icon === 'success') {
-            void message.success({ content, duration: seconds, style: toastStyle });
+        const toastPayload = { content, duration, icon };
+        if (mobileMessageApi) {
+            showToastWithApi(mobileMessageApi, toastPayload);
             return;
         }
-        void message.info({ content, duration: seconds, style: toastStyle });
+        pendingToastQueue.push(toastPayload);
     },
 };
 

@@ -37,6 +37,8 @@ type ItemEntry = {
     id: string;
     name: string;
     price: string;
+    description?: string;
+    image?: string;
     category: string;
     categoryName: string;
     available: boolean;
@@ -110,6 +112,8 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     id: item.id,
                     name: item.name?.[activeLang] || item.name?.en || 'Untitled',
                     price: item.price || '',
+                    description: item.description?.[activeLang] || item.description?.en || '',
+                    image: item.images?.[0]?.url || '',
                     category: item.category,
                     categoryName: catMap[item.category] || 'Uncategorized',
                     available: item.available !== false,
@@ -294,6 +298,9 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
         return !(Number.isFinite(price) && price > 0) && !item.attributes?.length;
     };
+
+    const hasMissingDescription = (item: ItemEntry) => !item.description?.trim();
+    const hasMissingImage = (item: ItemEntry) => !(item.image?.trim());
 
     const toggleCategory = (categoryName: string, checked: boolean) => {
         const next = new Set(selectedIds);
@@ -567,6 +574,8 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                 {renderSelectionShortcut(`${availabilityLabels.unavailable} (${searchScopedItems.filter((item) => !item.available).length})`, searchScopedItems.filter((item) => !item.available))}
                 {renderSelectionShortcut(t('selectHiddenItems', { count: searchScopedItems.filter((item) => !item.active).length }), searchScopedItems.filter((item) => !item.active))}
                 {renderSelectionShortcut(t('selectMissingPriceItems', { count: searchScopedItems.filter(hasMissingPrice).length }), searchScopedItems.filter(hasMissingPrice))}
+                {renderSelectionShortcut(`${t('missingDescription')} (${searchScopedItems.filter(hasMissingDescription).length})`, searchScopedItems.filter(hasMissingDescription))}
+                {renderSelectionShortcut(`${t('missingPhoto')} (${searchScopedItems.filter(hasMissingImage).length})`, searchScopedItems.filter(hasMissingImage))}
             </Flex>
         </Flex>
     );

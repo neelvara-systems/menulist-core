@@ -40,7 +40,7 @@
 
 .content {
     position: relative;
-    padding: 18px;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 18px 18px;
     overflow-x: clip;
 }
 
@@ -290,8 +290,9 @@
     background: #f8fafc;
     padding: 14px;
     color: #0f172a;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.55;
+    -webkit-appearance: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
@@ -378,7 +379,8 @@
     background: #ffffff;
     padding: 12px 14px;
     color: #0f172a;
-    font-size: 15px;
+    font-size: 16px;
+    -webkit-appearance: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 

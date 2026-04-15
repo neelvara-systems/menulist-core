@@ -19,7 +19,7 @@ import { writeLogEntry } from 'logs/utils';
 export type AI_MODEL_TYPE = "GEMINI" | "IMAGEN";
 
 export const IMAGE_AI_MODELS = {
-    GEMINI: "gemini-2.5-flash-preview-05-20",
+    GEMINI: "gemini-2.5-flash-image",
     IMAGEN: "imagen-3.0-generate-002"
 } as const;
 

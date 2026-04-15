@@ -4,7 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Switch, Tag, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -36,6 +36,23 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     const [enabled, setEnabled] = useState(currentPosSync.enabled);
     const [webhookUrl, setWebhookUrl] = useState(currentPosSync.webhookUrl);
     const [webhookSecret, setWebhookSecret] = useState(currentPosSync.webhookSecret);
+    const [originalDraft, setOriginalDraft] = useState(() => ({
+        enabled: currentPosSync.enabled,
+        webhookSecret: currentPosSync.webhookSecret,
+        webhookUrl: currentPosSync.webhookUrl,
+    }));
+
+    useEffect(() => {
+        const nextDraft = {
+            enabled: currentPosSync.enabled,
+            webhookSecret: currentPosSync.webhookSecret,
+            webhookUrl: currentPosSync.webhookUrl,
+        };
+        setEnabled(nextDraft.enabled);
+        setWebhookUrl(nextDraft.webhookUrl);
+        setWebhookSecret(nextDraft.webhookSecret);
+        setOriginalDraft(nextDraft);
+    }, [currentPosSync.enabled, currentPosSync.webhookSecret, currentPosSync.webhookUrl]);
 
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
         return null;
@@ -70,66 +87,66 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         return `whsec_${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
     };
 
-    const handleToggle = async (checked: boolean) => {
+    const handleToggle = (checked: boolean) => {
         const nextSecret = checked && !webhookSecret ? generateSecret() : webhookSecret;
-        const nextPosSync = {
-            ...currentPosSync,
-            enabled: checked,
-            lastError: checked ? currentPosSync.lastError : '',
-            menuVersion: checked ? currentPosSync.menuVersion : 0,
-            status: checked ? (currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
-            webhookSecret: nextSecret,
-            webhookUrl,
-        };
 
         setEnabled(checked);
         setWebhookSecret(nextSecret);
-        const saved = await persistPosSync(nextPosSync);
-        if (saved) {
-            Toast.show({ content: checked ? 'POS sync enabled.' : 'POS sync disabled.', duration: 1000 });
-        } else {
-            setEnabled(currentPosSync.enabled);
-            setWebhookSecret(currentPosSync.webhookSecret);
-        }
     };
 
-    const handleSaveUrl = async () => {
-        if (!webhookUrl.trim()) return;
+    const isDirty = JSON.stringify({
+        enabled,
+        webhookSecret,
+        webhookUrl: webhookUrl.trim(),
+    }) !== JSON.stringify({
+        enabled: originalDraft.enabled,
+        webhookSecret: originalDraft.webhookSecret,
+        webhookUrl: originalDraft.webhookUrl.trim(),
+    });
 
-        try {
-            new URL(webhookUrl.trim());
-        } catch {
-            Toast.show({ content: 'Enter a valid webhook URL.', duration: 1500 });
-            return;
+    const handleSave = async () => {
+        const trimmedWebhookUrl = webhookUrl.trim();
+        if (enabled && trimmedWebhookUrl) {
+            try {
+                new URL(trimmedWebhookUrl);
+            } catch {
+                Toast.show({ content: 'Enter a valid webhook URL.', duration: 1500 });
+                return;
+            }
         }
 
-        const saved = await persistPosSync({
+        const nextPosSync = {
             ...currentPosSync,
             enabled,
             webhookSecret,
-            webhookUrl: webhookUrl.trim(),
-        });
+            lastError: enabled ? currentPosSync.lastError : '',
+            menuVersion: enabled ? currentPosSync.menuVersion : 0,
+            status: enabled ? (currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
+            webhookUrl: trimmedWebhookUrl,
+        };
+
+        const saved = await persistPosSync(nextPosSync);
 
         if (saved) {
-            Toast.show({ content: 'Webhook URL saved.', duration: 1000 });
+            setOriginalDraft({
+                enabled,
+                webhookSecret,
+                webhookUrl: trimmedWebhookUrl,
+            });
+            Toast.show({ content: 'POS sync settings saved.', duration: 1000 });
         }
     };
 
-    const handleRegenerateSecret = async () => {
+    const handleRegenerateSecret = () => {
         const nextSecret = generateSecret();
         setWebhookSecret(nextSecret);
-        const saved = await persistPosSync({
-            ...currentPosSync,
-            enabled,
-            webhookSecret: nextSecret,
-            webhookUrl,
-        });
+    };
 
-        if (saved) {
-            Toast.show({ content: 'New signing secret generated.', duration: 1000 });
-        } else {
-            setWebhookSecret(currentPosSync.webhookSecret);
-        }
+    const handleReset = () => {
+        setEnabled(originalDraft.enabled);
+        setWebhookUrl(originalDraft.webhookUrl);
+        setWebhookSecret(originalDraft.webhookSecret);
+        setTestResult(null);
     };
 
     const handleCopySecret = async () => {
@@ -222,7 +239,6 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     <Flex gap={10} vertical>
                         <Text strong>{t('webhookUrl')}</Text>
                         <Input
-                            onBlur={() => void handleSaveUrl()}
                             onChange={setWebhookUrl}
                             placeholder={t('webhookUrlPlaceholder')}
                             value={webhookUrl}
@@ -277,6 +293,15 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                         ) : null}
                     </Flex>
                 </Card>
+
+                <Flex gap={8}>
+                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
+                        Reset
+                    </Button>
+                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void handleSave()} size="large">
+                        Save
+                    </Button>
+                </Flex>
             </Flex>
         </Flex>
     );

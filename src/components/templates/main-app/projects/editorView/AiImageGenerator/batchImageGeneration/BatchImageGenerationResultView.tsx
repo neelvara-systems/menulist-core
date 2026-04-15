@@ -19,6 +19,10 @@ import styles from './BatchImageGenerationResultView.module.scss';
 
 const { Text, Title } = Typography;
 
+function normalizeItemImages(images: unknown): UserUploadedFileType[] {
+    return Array.isArray(images) ? images : [];
+}
+
 interface BatchImageGenerationResultViewProps {
     activeBatchImageJob: BatchImageGenerationJobType;
     projectData: Project;
@@ -94,8 +98,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                     const jobItem = activeJobData?.itemsList.find(jobItm => jobItm.id === item.id);
                     const updatedImages = jobItem?.images.filter(img => img.isSelected);
                     if (updatedImages && updatedImages.length > 0 && jobItem) {
-                        item.images = item.images || [];
-                        item.images = [...(item.images || []), ...updatedImages];
+                        item.images = [...normalizeItemImages(item.images), ...updatedImages];
                     }
                 })
             })

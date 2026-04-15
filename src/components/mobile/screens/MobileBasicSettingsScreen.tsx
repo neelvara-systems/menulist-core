@@ -109,7 +109,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         setStoreDetails((previous: any) => ({ ...previous, ...optimisticUpdates }));
 
         try {
-            const savedStore = await updateStore({ ...storeDetails, ...updates } as any);
+            const savedStore = await updateStore({
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                ...updates,
+            } as any);
             setStoreDetails((previous: any) => ({
                 ...previous,
                 ...optimisticUpdates,
@@ -151,7 +155,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         } finally {
             setIsSaving(false);
         }
-    }, [formData, setStoreDetails, storeDetails, t]);
+    }, [formData, selectedLogo, setStoreDetails, storeDetails, t]);
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);

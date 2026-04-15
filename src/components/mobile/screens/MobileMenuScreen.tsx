@@ -2267,6 +2267,36 @@ export default function MobileMenuScreen() {
                                     }))
                                 ) : null}
                             </Flex>
+                            {(draftFilters.hasImage === false || draftFilters.hasDescription === false) ? (
+                                <Flex gap={8} wrap="wrap">
+                                    {draftFilters.hasImage === false ? (
+                                        <Button
+                                            fill="outline"
+                                            onClick={() => {
+                                                setFilters({ ...draftFilters, hasImage: false });
+                                                setIsFilterSheetOpen(false);
+                                                openImageUploadModal(undefined, 'filters', 'generate');
+                                            }}
+                                            size="small"
+                                        >
+                                            {t('generateImages')}
+                                        </Button>
+                                    ) : null}
+                                    {draftFilters.hasDescription === false ? (
+                                        <Button
+                                            fill="outline"
+                                            onClick={() => {
+                                                setFilters({ ...draftFilters, hasDescription: false });
+                                                setIsFilterSheetOpen(false);
+                                                setIsGenerateDescriptionsOpen(true);
+                                            }}
+                                            size="small"
+                                        >
+                                            {t('generateDescriptions')}
+                                        </Button>
+                                    ) : null}
+                                </Flex>
+                            ) : null}
                         </Flex>
                     </Card>
 

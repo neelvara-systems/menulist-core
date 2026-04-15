@@ -4,7 +4,6 @@ import { LinkOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { Button, List, Modal, Space, Steps, Tabs, Typography } from 'antd';
 import React from 'react';
 
-const { TabPane } = Tabs;
 const { Text, Title, Paragraph } = Typography;
 const { Step } = Steps;
 
@@ -253,18 +252,29 @@ const AnalyticsGuideModal: React.FC<AnalyticsGuideModalProps> = ({ open, onClose
                 </Button>
             ]}
         >
-            <Tabs defaultActiveKey="quick">
-                <TabPane tab="Quick Start Guide" key="quick">
-                    <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
-                        <QuickStartGuide />
-                    </div>
-                </TabPane>
-                <TabPane tab="Complete Guide" key="complete">
-                    <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
-                        <CompleteGuide />
-                    </div>
-                </TabPane>
-            </Tabs>
+            <Tabs
+                defaultActiveKey="quick"
+                items={[
+                    {
+                        key: 'quick',
+                        label: 'Quick Start Guide',
+                        children: (
+                            <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                                <QuickStartGuide />
+                            </div>
+                        ),
+                    },
+                    {
+                        key: 'complete',
+                        label: 'Complete Guide',
+                        children: (
+                            <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                                <CompleteGuide />
+                            </div>
+                        ),
+                    },
+                ]}
+            />
         </Modal>
     );
 };

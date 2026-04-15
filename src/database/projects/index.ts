@@ -589,7 +589,7 @@ const runUpdateProject = async (data: Partial<Project>) => {
             // Without this, customers may see stale prices for up to 60s after owner saves.
             // Use the authenticated API route here so browser saves do not pull in a server
             // action module and trigger a full app refresh/remount cycle.
-            if (data.projectId) {
+            if (data.projectId && process.env.NODE_ENV === "production") {
                 try {
                     const [, , sId] = (data.projectId as string).split("-");
                     void fetch("/api/revalidate/menu", {

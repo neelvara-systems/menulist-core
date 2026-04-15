@@ -148,6 +148,12 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                         <Text type="secondary">
                             Menu Board always shows your live menu. Highlights rotates promoted items and any custom slides you upload here.
                         </Text>
+                        <Card size="small" style={{ background: token.colorFillAlter }}>
+                            <Flex gap={6} vertical>
+                                <Text strong>How to manage each screen</Text>
+                                <Text type="secondary">Update your menu to change Menu Board. Upload or remove custom slides below to change Highlights.</Text>
+                            </Flex>
+                        </Card>
                     </Flex>
                 </Card>
 

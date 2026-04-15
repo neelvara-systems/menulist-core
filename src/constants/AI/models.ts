@@ -32,7 +32,7 @@ export const GEMINI_MODELS = {
     PRO_2_5: 'gemini-2.5-pro',               // Best for complex reasoning
 
     // Image Generation Models
-    FLASH_IMAGE_GEN: 'gemini-2.5-flash-preview-05-20',
+    FLASH_IMAGE_GEN: 'gemini-2.5-flash-image',
     IMAGEN_3: 'imagen-3.0-generate-002',
 
     // Embedding Model
@@ -143,7 +143,7 @@ export const AI_MODELS = {
     /**
      * 🎨 Image Generation (Gemini Flash)
      * 
-     * Model: gemini-2.0-flash-preview-image-generation
+     * Model: gemini-2.5-flash-image
      * Why: Supports reference images for editing/variations
      * 
      * Config: High temperature for creative variety

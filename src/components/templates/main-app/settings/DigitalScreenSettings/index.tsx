@@ -185,6 +185,19 @@ export default function DigitalScreenSettings() {
                 </div>
             )}
 
+            <div style={{
+                marginBottom: 16,
+                padding: '12px 14px',
+                background: token.colorFillAlter,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 10,
+            }}>
+                <Text strong style={{ display: 'block', marginBottom: 4 }}>How to manage content</Text>
+                <Text type="secondary">
+                    Menu Board updates automatically from your live menu. Highlights can also show the custom slides you upload here.
+                </Text>
+            </div>
+
             {/* Screen Link Section */}
             <ScreenLink
                 screenUrl={settings.screenUrl}
