@@ -61,6 +61,7 @@ interface UseOwnerDashboardOptions {
 const SWR_CONFIG = {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
+    revalidateOnMount: false,
     dedupingInterval: 86400000, // 24 hours - scheduler data
     errorRetryCount: 2,
     focusThrottleInterval: 3600000, // 1 hour throttle

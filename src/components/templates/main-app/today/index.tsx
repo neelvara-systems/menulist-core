@@ -2,10 +2,13 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { useTodayCampaigns } from "@hook/useTodayCampaigns";
+import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
-import { Button, Spin, Typography } from "antd";
-import { useEffect, useState } from "react";
+import { Button, Divider, Spin, Typography } from "antd";
+import { useContext, useEffect, useState } from "react";
 import { LuCalendarOff } from "react-icons/lu";
+import OBPLinkCard from "../businessSettings/OBPLinkCard";
+import TempStatusCard from "../businessSettings/TempStatusCard";
 import EmptyState from "./components/EmptyState";
 import OperationalSection from "./components/OperationalSection";
 import PostActionState from "./components/PostActionState";
@@ -26,6 +29,7 @@ const TodayScreen = () => {
 
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading, mutate } = useTodayCampaigns();
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
+    const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     // Check if feature is enabled
     const isEnabled = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED;
@@ -175,6 +179,20 @@ const TodayScreen = () => {
             >
                 View past activity →
             </Button>
+
+            {/* Operational cards — always visible regardless of campaign state */}
+            {storeDetails && (
+                <>
+                    <Divider />
+                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && (
+                        <TempStatusCard
+                            storeDetails={storeDetails}
+                            setStoreDetails={setStoreDetails}
+                        />
+                    )}
+                    <OBPLinkCard storeDetails={storeDetails} />
+                </>
+            )}
         </div>
     );
 };

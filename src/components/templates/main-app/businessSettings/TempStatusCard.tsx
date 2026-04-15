@@ -9,7 +9,7 @@
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
-import { Button, Card, DatePicker, Input, Radio, Space, Tag, Typography } from 'antd';
+import { Button, Card, DatePicker, Flex, Input, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
@@ -124,115 +124,120 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     }, [storeDetails, setStoreDetails]);
 
     return (
-        <Card
-            size="small"
-            style={{ marginBottom: 16 }}
-            title={
-                <Space>
-                    <LuAlertTriangle size={16} style={{ color: '#faad14' }} />
-                    <span>Temporary Status</span>
-                    {isActive && (
-                        <Tag color="warning" style={{ marginLeft: 8 }}>Active</Tag>
-                    )}
-                </Space>
-            }
-        >
+        <Card style={{ marginBottom: 16 }}>
+            {/* Header */}
+            <Flex align="center" gap={10} style={{ marginBottom: 16 }}>
+                <Flex
+                    align="center" justify="center"
+                    style={{ width: 38, height: 38, borderRadius: 10, background: '#fffbe6', flexShrink: 0 }}
+                >
+                    <LuAlertTriangle size={18} style={{ color: '#d48806' }} />
+                </Flex>
+                <Flex vertical style={{ flex: 1, minWidth: 0 }}>
+                    <Flex align="center" gap={8}>
+                        <Text strong style={{ fontSize: 15 }}>Temporary Status</Text>
+                        {isActive && <Tag color="warning">Active</Tag>}
+                    </Flex>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {isActive ? 'Customers see this banner on your public page' : 'Post a notice on your public page for customers'}
+                    </Text>
+                </Flex>
+            </Flex>
+
             {isActive ? (
-                <div>
+                <Flex vertical gap={12}>
                     <div style={{
-                        background: '#fff8e1',
-                        border: '1px solid #ffe082',
-                        borderRadius: 8,
-                        padding: '12px 16px',
-                        marginBottom: 12,
+                        background: '#fffbe6',
+                        border: '1px solid #ffe58f',
+                        borderRadius: 10,
+                        padding: '14px 16px',
                     }}>
-                        <Text strong style={{ color: '#6d4c00' }}>
+                        <Text strong style={{ fontSize: 15, color: '#614700' }}>
                             {STATUS_OPTIONS.find(o => o.value === currentStatus.type)?.icon || 'ℹ️'}{' '}
                             {currentStatus.message}
                         </Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            <LuClock size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                            Expires: {dayjs(currentStatus.expiresAt).format('MMM D, YYYY h:mm A')}
-                        </Text>
+                        <Flex align="center" gap={6} style={{ marginTop: 6 }}>
+                            <LuClock size={12} style={{ color: '#8c6900', flexShrink: 0 }} />
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Expires {dayjs(currentStatus.expiresAt).format('MMM D, YYYY [at] h:mm A')}
+                            </Text>
+                        </Flex>
                     </div>
-                    <Button
-                        danger
-                        icon={<LuX size={14} />}
-                        onClick={handleClear}
-                        loading={isLoading}
-                        size="small"
-                    >
-                        Clear Status
-                    </Button>
-                </div>
+                    <div>
+                        <Button
+                            danger
+                            icon={<LuX size={14} />}
+                            onClick={handleClear}
+                            loading={isLoading}
+                        >
+                            Clear Status
+                        </Button>
+                    </div>
+                </Flex>
             ) : (
-                <div>
-                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 12 }}>
-                        Set a temporary notice on your public page. Customers will see a banner until it expires.
-                    </Text>
-
-                    <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                        <div>
-                            <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Status Type</Text>
-                            <Radio.Group
-                                value={statusType}
-                                onChange={(e) => setStatusType(e.target.value)}
-                                optionType="button"
-                                buttonStyle="solid"
-                                size="small"
+                <Flex vertical gap={16}>
+                    {/* Status type pills */}
+                    <Flex gap={8} wrap="wrap">
+                        {STATUS_OPTIONS.map((opt) => (
+                            <Tag
+                                key={opt.value}
+                                color={statusType === opt.value ? 'warning' : 'default'}
+                                onClick={() => setStatusType(opt.value)}
+                                style={{
+                                    cursor: 'pointer',
+                                    padding: '6px 14px',
+                                    fontSize: 13,
+                                    borderRadius: 20,
+                                    border: statusType === opt.value ? '1.5px solid #d48806' : '1.5px solid #d9d9d9',
+                                    fontWeight: statusType === opt.value ? 600 : 400,
+                                    userSelect: 'none',
+                                }}
                             >
-                                {STATUS_OPTIONS.map((opt) => (
-                                    <Radio.Button key={opt.value} value={opt.value}>
-                                        {opt.icon} {opt.label}
-                                    </Radio.Button>
-                                ))}
-                            </Radio.Group>
-                        </div>
+                                {opt.icon} {opt.label}
+                            </Tag>
+                        ))}
+                    </Flex>
 
-                        {statusType === 'custom' && (
-                            <div>
-                                <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Message</Text>
-                                <Input
-                                    value={customMessage}
-                                    onChange={(e) => setCustomMessage(e.target.value)}
-                                    placeholder="e.g., Private event tonight"
-                                    maxLength={100}
-                                    showCount
-                                    size="small"
-                                />
-                            </div>
-                        )}
+                    {statusType === 'custom' && (
+                        <Input
+                            value={customMessage}
+                            onChange={(e) => setCustomMessage(e.target.value)}
+                            placeholder="e.g., Private event tonight"
+                            maxLength={100}
+                            showCount
+                        />
+                    )}
 
-                        <div>
-                            <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Expires At</Text>
+                    <Flex align="center" gap={12}>
+                        <Flex vertical style={{ flex: 1 }}>
+                            <Text type="secondary" style={{ fontSize: 12, marginBottom: 4 }}>Expires at</Text>
                             <DatePicker
                                 showTime
                                 value={expiresAt}
                                 onChange={(val) => setExpiresAt(val)}
                                 format="MMM D, YYYY h:mm A"
-                                size="small"
                                 disabledDate={(current) => current && current.isBefore(dayjs(), 'day')}
                                 style={{ width: '100%' }}
                             />
-                        </div>
+                        </Flex>
+                    </Flex>
 
-                        {error && (
-                            <Text type="danger" style={{ fontSize: 12 }}>{error}</Text>
-                        )}
+                    {error && (
+                        <Text type="danger" style={{ fontSize: 13 }}>{error}</Text>
+                    )}
 
-                        <Button
-                            type="primary"
-                            icon={<LuCheck size={14} />}
-                            onClick={handleSet}
-                            loading={isLoading}
-                            size="small"
-                            style={{ background: '#faad14', borderColor: '#faad14' }}
-                        >
-                            Set Status
-                        </Button>
-                    </Space>
-                </div>
+                    <Button
+                        type="primary"
+                        icon={<LuCheck size={15} />}
+                        onClick={handleSet}
+                        loading={isLoading}
+                        size="large"
+                        block
+                        style={{ background: '#d48806', borderColor: '#d48806' }}
+                    >
+                        Set Status
+                    </Button>
+                </Flex>
             )}
         </Card>
     );

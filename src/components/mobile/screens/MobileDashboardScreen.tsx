@@ -4,14 +4,14 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { LuBarChart3, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuZap } from 'react-icons/lu';
+import { LuBarChart3, LuCalendar, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileDashboardScreenProps {
     onBack: () => void;
@@ -77,6 +77,8 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
     const overview = data?.overview;
     const overall = data?.overall;
     const wtd = overview?.wtd;
+    const mtd = overview?.mtd;
+    const historicalWeeks = overview?.historicalWeeks || data?.historicalWeeks || [];
 
     const getStatus = () => {
         if (!overview) return { icon: <LuInfo size={24} />, text: t('noDataYet'), color: '#9ca3af', bg: '#f3f4f6' };
@@ -200,6 +202,75 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                                         <List.Item key={`${bullet}-${index}`} title={<Text>{bullet}</Text>} />
                                     ))}
                                 </List>
+                            </Card>
+                        ) : null}
+
+                        {/* 4-Week Trend — most engaging visual for SMB owners */}
+                        {historicalWeeks.length > 0 ? (() => {
+                            const maxScans = Math.max(...historicalWeeks.map((w: any) => w.metrics?.menuVisits || 0), 1);
+                            return (
+                                <Card size="small" title={
+                                    <Flex align="center" gap={6}>
+                                        <LuTrendingUp color="#3b82f6" size={14} />
+                                        <Text strong>4-Week Trend</Text>
+                                    </Flex>
+                                }>
+                                    <Flex gap={8} vertical>
+                                        {historicalWeeks.map((week: any, idx: number) => {
+                                            const pct = Math.round((week.metrics?.menuVisits || 0) / maxScans * 100);
+                                            return (
+                                                <Flex key={idx} align="center" gap={8}>
+                                                    <Text type="secondary" style={{ fontSize: 11, minWidth: 56 }}>{week.weekLabel}</Text>
+                                                    <div style={{ flex: 1, background: '#f3f4f6', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                                                        <div style={{
+                                                            background: week.isCurrentWeek ? '#3b82f6' : '#93c5fd',
+                                                            borderRadius: 4,
+                                                            height: '100%',
+                                                            width: `${pct}%`,
+                                                            transition: 'width 0.4s ease',
+                                                        }} />
+                                                    </div>
+                                                    <Text style={{ fontSize: 12, minWidth: 32, textAlign: 'right', fontWeight: week.isCurrentWeek ? 600 : 400 }}>
+                                                        {(week.metrics?.menuVisits || 0).toLocaleString()}
+                                                    </Text>
+                                                    {week.isCurrentWeek ? <Tag color="blue" style={{ fontSize: 10, padding: '0 4px' }}>Now</Tag> : null}
+                                                </Flex>
+                                            );
+                                        })}
+                                    </Flex>
+                                </Card>
+                            );
+                        })() : null}
+
+                        {/* MTD Summary */}
+                        {mtd ? (
+                            <Card size="small" title={
+                                <Flex align="center" gap={6}>
+                                    <LuCalendar color="#8b5cf6" size={14} />
+                                    <Text strong>This Month</Text>
+                                </Flex>
+                            }>
+                                <Flex gap={12} wrap>
+                                    <Card size="small" style={{ flex: '1 1 45%' }}>
+                                        <Flex align="center" gap={6}>
+                                            <LuEye color="#3b82f6" size={12} />
+                                            <Text type="secondary" style={{ fontSize: 11 }}>{labels.scansLabel}</Text>
+                                        </Flex>
+                                        <Title level={4} style={{ margin: 0 }}>{(mtd.metrics?.menuVisits || 0).toLocaleString()}</Title>
+                                    </Card>
+                                    <Card size="small" style={{ flex: '1 1 45%' }}>
+                                        <Flex align="center" gap={6}>
+                                            <LuFlame color="#f97316" size={12} />
+                                            <Text type="secondary" style={{ fontSize: 11 }}>Item Taps</Text>
+                                        </Flex>
+                                        <Title level={4} style={{ margin: 0 }}>{(mtd.metrics?.itemClicks || 0).toLocaleString()}</Title>
+                                    </Card>
+                                </Flex>
+                                {mtd.daysWithData > 0 ? (
+                                    <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
+                                        {`${mtd.daysWithData} active days this month`}
+                                    </Text>
+                                ) : null}
                             </Card>
                         ) : null}
 

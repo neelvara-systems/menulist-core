@@ -77,47 +77,44 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const activeQrUrl = qrType === 'menu' ? menuUrl : obpUrl;
 
     return (
-        <Card
-            size="small"
-            style={{ marginBottom: 16 }}
-        >
-            <Flex align="center" gap={12}>
-                <Flex
-                    align="center"
-                    justify="center"
-                    style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 10,
-                        background: '#f0f5ff',
-                        flexShrink: 0,
-                    }}
-                >
-                    <LuGlobe size={20} style={{ color: '#1677ff' }} />
-                </Flex>
-
-                <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-                    <Title level={5} style={{ margin: 0, fontSize: 14 }}>
-                        Your Official Business Link
-                    </Title>
-                    <Text
-                        type="secondary"
+        <Card style={{ marginBottom: 16 }}>
+            <Flex vertical gap={14}>
+                {/* Row 1: icon + title + url */}
+                <Flex align="center" gap={14}>
+                    <Flex
+                        align="center"
+                        justify="center"
                         style={{
-                            fontSize: 13,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            width: 42,
+                            height: 42,
+                            borderRadius: 10,
+                            background: '#e6f4ff',
+                            flexShrink: 0,
                         }}
                     >
-                        {obpUrl}
-                    </Text>
+                        <LuGlobe size={20} style={{ color: '#1677ff' }} />
+                    </Flex>
+                    <Flex vertical style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ fontSize: 15 }}>Your Official Business Link</Text>
+                        <Text
+                            type="secondary"
+                            style={{
+                                fontSize: 12,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {obpUrl}
+                        </Text>
+                    </Flex>
                 </Flex>
 
-                <Flex gap={8} wrap="wrap">
+                {/* Row 2: primary action prominent, secondary actions smaller */}
+                <Flex gap={8} wrap="wrap" align="center">
                     <Button
-                        icon={<LuMessageCircle size={14} />}
+                        icon={<LuMessageCircle size={15} />}
                         onClick={handleWhatsAppShare}
-                        size="small"
                         type="primary"
                         style={{ background: '#25D366', borderColor: '#25D366' }}
                     >
@@ -127,30 +124,17 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                         icon={copied ? <LuCheck size={14} /> : <LuCopy size={14} />}
                         onClick={handleCopy}
                         type={copied ? 'primary' : 'default'}
-                        size="small"
                     >
-                        {copied ? 'Copied' : 'Copy Link'}
+                        {copied ? 'Copied!' : 'Copy Link'}
                     </Button>
-                    <Button
-                        onClick={handleCopyMessage}
-                        size="small"
-                    >
-                        Copy Message
-                    </Button>
-                    <Button
-                        icon={<LuExternalLink size={14} />}
-                        onClick={handleOpen}
-                        size="small"
-                    >
-                        Open
-                    </Button>
+                    <Button onClick={handleCopyMessage}>Copy Message</Button>
+                    <Button icon={<LuExternalLink size={14} />} onClick={handleOpen}>Open</Button>
                     <Button
                         icon={<LuQrCode size={14} />}
                         onClick={() => setShowQr(!showQr)}
-                        size="small"
                         type={showQr ? 'primary' : 'default'}
                     >
-                        QR
+                        QR Code
                     </Button>
                 </Flex>
             </Flex>
@@ -189,9 +173,9 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
 
             <Text
                 type="secondary"
-                style={{ fontSize: 12, marginTop: 8, display: 'block' }}
+                style={{ fontSize: 12, marginTop: 14, display: 'block', lineHeight: 1.6 }}
             >
-                This is the one link you send to every customer. Add it to your Google Business Profile (Website field), Instagram bio, and packaging.
+                💡 Share this one link everywhere — Google Business Profile, Instagram bio, and packaging.
             </Text>
         </Card>
     );

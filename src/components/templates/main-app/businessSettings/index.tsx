@@ -45,8 +45,6 @@ import {
 } from "react-icons/lu";
 import { SiGooglemybusiness } from "react-icons/si";
 import DigitalScreenSettings from "../settings/DigitalScreenSettings";
-import OBPLinkCard from "./OBPLinkCard";
-import TempStatusCard from "./TempStatusCard";
 import {
     AnalyticsTab,
     BasicInfoTab,
@@ -547,16 +545,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
         >
-            <OBPLinkCard storeDetails={storeDetails} />
-            {FEATURE_FLAGS.ENABLE_TEMP_STATUS && (
-                <TempStatusCard storeDetails={storeDetails} setStoreDetails={setStoreDetails} />
-            )}
             <Card title={t('title')}>
                 <Flex
                     gap={16}
                     style={{
                         width: "100%",
-                        height: "calc(100vh - 175px)",
+                        height: "calc(100vh - 120px)",
                         position: "relative",
                     }}
                 >

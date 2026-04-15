@@ -4,18 +4,20 @@ import { FEATURE_FLAGS } from '@config/features';
 import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { updateStore } from '@database/stores';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
+import { trackOBPShare } from '@lib/analytics/unified';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { getHoursConfidenceState } from '@lib/outputControl';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName } from '@util/campaignUtils';
-import { getHoursConfidenceState } from '@lib/outputControl';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuBarChart3, LuCalendarCheck, LuClock, LuDownload, LuEye, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Flex, List, Text, Title, Toast } from '../antd';
+import { LuAlertTriangle, LuBarChart3, LuClock, LuCopy, LuDownload, LuExternalLink, LuEye, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
+import { Button, Card, Dialog, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
 
 type TodayStatus = 'open' | 'closed_today';
 
@@ -32,6 +34,9 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const obpUrl = generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain);
+    const currentTempStatus = storeDetails?.tempStatus;
+    const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);
     const [originalTodayHours, setOriginalTodayHours] = useState<string | null>(null);
     const todayKey = getTodayKey();
@@ -41,6 +46,9 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const [nudgeInitialized, setNudgeInitialized] = useState(false);
     const [isDownloadingTent, setIsDownloadingTent] = useState(false);
     const [isDownloadingSticker, setIsDownloadingSticker] = useState(false);
+    const [tempStatusType, setTempStatusType] = useState<string>('closed_today');
+    const [isTempStatusLoading, setIsTempStatusLoading] = useState(false);
+    const [obpCopied, setObpCopied] = useState(false);
     const menuUrl = generateProjectUrl(
         storeDetails?.subdomain,
         storeDetails?.customDomain,
@@ -196,6 +204,70 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
         window.location.hash = '#mobile/more/hoursEdit';
     };
 
+    const TEMP_STATUS_OPTIONS = [
+        { value: 'closed_today', label: 'Closed Today', icon: '🔒', defaultMsg: 'Closed today' },
+        { value: 'opening_late', label: 'Opening Late', icon: '🕐', defaultMsg: 'Opening late today' },
+        { value: 'closing_early', label: 'Closing Early', icon: '🕕', defaultMsg: 'Closing early today' },
+        { value: 'kitchen_closed', label: 'Kitchen Closed', icon: '🍳', defaultMsg: 'Kitchen is closed' },
+        { value: 'special_menu', label: 'Special Menu', icon: '🍽️', defaultMsg: 'Special menu today' },
+    ] as const;
+
+    const handleSetTempStatus = async () => {
+        setIsTempStatusLoading(true);
+        const selected = TEMP_STATUS_OPTIONS.find(o => o.value === tempStatusType);
+        const message = selected?.defaultMsg || tempStatusType;
+        const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+        const newStatus = { type: tempStatusType, message, expiresAt, createdAt: new Date().toISOString() };
+        const prevStatus = storeDetails?.tempStatus;
+        setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
+        Toast.show({ content: 'Status set', icon: 'success', duration: 1500 });
+        try {
+            const res = await fetch('/api/store/temp-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set', type: tempStatusType, expiresAt }) });
+            if (!res.ok) throw new Error();
+        } catch {
+            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
+            Toast.show({ content: 'Failed to set status', duration: 2000 });
+        } finally {
+            setIsTempStatusLoading(false);
+        }
+    };
+
+    const handleClearTempStatus = async () => {
+        setIsTempStatusLoading(true);
+        const prevStatus = storeDetails?.tempStatus;
+        setStoreDetails((prev: any) => { const { tempStatus, ...rest } = prev; return rest; });
+        Toast.show({ content: 'Status cleared', icon: 'success', duration: 1500 });
+        try {
+            const res = await fetch('/api/store/temp-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'clear' }) });
+            if (!res.ok) throw new Error();
+        } catch {
+            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
+            Toast.show({ content: 'Failed to clear status', duration: 2000 });
+        } finally {
+            setIsTempStatusLoading(false);
+        }
+    };
+
+    const handleCopyObpLink = async () => {
+        if (!obpUrl) return;
+        try {
+            await navigator.clipboard.writeText(obpUrl);
+            setObpCopied(true);
+            Toast.show({ content: 'Link copied', icon: 'success', duration: 1500 });
+            setTimeout(() => setObpCopied(false), 2500);
+            if (storeDetails?.storeId) trackOBPShare(storeDetails.storeId, 'copy_link').catch(() => { });
+        } catch {
+            Toast.show({ content: 'Could not copy', duration: 1500 });
+        }
+    };
+
+    const handleWhatsAppObp = () => {
+        if (!obpUrl) return;
+        const name = storeDetails?.name || 'our business';
+        window.open(`https://wa.me/?text=${encodeURIComponent(`${name} — menu, timings & contact:\n${obpUrl}`)}`, '_blank');
+        if (storeDetails?.storeId) trackOBPShare(storeDetails.storeId, 'whatsapp').catch(() => { });
+    };
+
     const handleDownloadTentCard = async () => {
         const tentCard = physicalSurfaces?.tentCard;
         if (!tentCard?.eligible) return;
@@ -305,6 +377,75 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     )}
                 </Flex>
             </Card>
+
+            {/* Temp Status Quick-Action — set "Closed Today" etc. right from Today tab */}
+            {FEATURE_FLAGS.ENABLE_TEMP_STATUS && (
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" gap={8}>
+                            <LuAlertTriangle color="#d97706" size={16} />
+                            <Text strong>Temporary Status</Text>
+                            {isTempActive ? <Tag color="warning">Active</Tag> : null}
+                        </Flex>
+                        {isTempActive && currentTempStatus ? (
+                            <Flex gap={10} vertical>
+                                <Card style={{ background: '#fff7e6', borderColor: '#ffd591' }}>
+                                    <Text strong>{`${TEMP_STATUS_OPTIONS.find(o => o.value === currentTempStatus.type)?.icon || 'ℹ️'} ${currentTempStatus.message}`}</Text>
+                                </Card>
+                                <Button block color="danger" fill="outline" loading={isTempStatusLoading} onClick={() => void handleClearTempStatus()} size="large">
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuX size={14} />
+                                        <Text>Clear Status</Text>
+                                    </Flex>
+                                </Button>
+                            </Flex>
+                        ) : (
+                            <Flex gap={10} vertical>
+                                <Text type="secondary" style={{ fontSize: 13 }}>Customers see a banner on your page for 12 hours.</Text>
+                                <Flex gap={6} wrap="wrap">
+                                    {TEMP_STATUS_OPTIONS.map(opt => (
+                                        <Tag
+                                            key={opt.value}
+                                            color={tempStatusType === opt.value ? 'warning' : 'default'}
+                                            onClick={() => setTempStatusType(opt.value)}
+                                            style={{ cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}
+                                        >
+                                            {`${opt.icon} ${opt.label}`}
+                                        </Tag>
+                                    ))}
+                                </Flex>
+                                <Button block color="warning" loading={isTempStatusLoading} onClick={() => void handleSetTempStatus()} size="large">
+                                    Set Status
+                                </Button>
+                            </Flex>
+                        )}
+                    </Flex>
+                </Card>
+            )}
+
+            {/* OBP Quick Share — send link to WhatsApp or copy */}
+            {FEATURE_FLAGS.ENABLE_OBP && obpUrl ? (
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" gap={8}>
+                            <LuExternalLink color="#1677ff" size={16} />
+                            <Text strong>Your Business Link</Text>
+                        </Flex>
+                        <Text type="secondary" style={{ fontSize: 12 }} ellipsis>{obpUrl}</Text>
+                        <Flex gap={8}>
+                            <Button block color="primary" fill="outline" onClick={() => void handleCopyObpLink()} size="large">
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuCopy size={14} />
+                                    <Text>{obpCopied ? 'Copied!' : 'Copy Link'}</Text>
+                                </Flex>
+                            </Button>
+                            <Button block color="success" onClick={handleWhatsAppObp} size="large">
+                                <Text style={{ color: '#fff' }}>WhatsApp</Text>
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </Card>
+            ) : null}
 
             {physicalSurfaces?.tentCard?.eligible ? (
                 <Card>

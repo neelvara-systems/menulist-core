@@ -29,6 +29,16 @@ import { ALL_PRODUCT_DOMAINS } from './productDomains';
 export const PLATFORM_DOMAIN = 'menulist.ai';
 
 /**
+ * Alias domains that behave identically to PLATFORM_DOMAIN.
+ * Used for staging/testing environments (e.g., menulist.online).
+ * These serve the same marketing website — no redirect.
+ */
+export const PLATFORM_DOMAIN_ALIASES = [
+    'menulist.online',
+    'www.menulist.online',
+] as const;
+
+/**
  * Vercel deployment URLs — needed for preview/staging environments.
  * Set NEXT_PUBLIC_APP_URL per environment:
  *   Production: https://menulist.ai
@@ -56,7 +66,9 @@ const getHostnameFromUrl = (value?: string | null): string => {
 };
 
 const isCanonicalPublicHost = (hostname: string): boolean =>
-    hostname === PLATFORM_DOMAIN || hostname === `www.${PLATFORM_DOMAIN}`;
+    hostname === PLATFORM_DOMAIN
+    || hostname === `www.${PLATFORM_DOMAIN}`
+    || PLATFORM_DOMAIN_ALIASES.some(alias => hostname === alias);
 
 const isLocalhostHost = (hostname: string): boolean =>
     hostname === 'localhost'
@@ -195,6 +207,8 @@ export const PLATFORM_DOMAINS = [
     `${HELP_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
     `${SUPPORT_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
     `msg.${PLATFORM_DOMAIN}`,
+    // Alias domains (staging/testing environments)
+    ...PLATFORM_DOMAIN_ALIASES,
     // All product website domains (canonica.app, surfaceos.app, etc.)
     ...ALL_PRODUCT_DOMAINS,
 ];

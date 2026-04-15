@@ -40,29 +40,45 @@ const getInitials = (name: string) => {
 interface Props {
     selectedProjectId: string | null;
     onProjectChange: (projectId: string, projectName: string) => void;
+    onReady?: () => void;
 }
 
 export const DashboardProjectSelector: React.FC<Props> = ({
     selectedProjectId,
     onProjectChange,
+    onReady,
 }) => {
     const { token } = useToken();
     const session = useClientAuthSession();
 
+    const sessionLoading = session === null;
+    const sessionReady = session != null && session.sId != null && session.tId != null;
+
     const { data, isLoading } = useSWR(
-        session?.sId ? `dashboard-projects-${session.tId}-${session.sId}` : null,
+        sessionReady ? `dashboard-projects-${session!.tId}-${session!.sId}` : null,
         () => getMetadataProjectsList(),
-        { dedupingInterval: 60000, revalidateOnFocus: false }
+        { dedupingInterval: 3600000, revalidateOnFocus: false, revalidateOnMount: false }
     );
 
     const projects: ProjectMetadata[] = data?.projects || [];
 
     useEffect(() => {
+        // Don't do anything while session is still loading
+        if (sessionLoading) return;
+        // Don't do anything while SWR is still fetching
+        if (isLoading) return;
+
         if (!selectedProjectId && projects.length > 0) {
             const def = projects.find(p => p.isDefault) || projects[0];
-            if (def.projectId) onProjectChange(def.projectId, def.name);
+            if (def.projectId) {
+                onProjectChange(def.projectId, def.name);
+                return;
+            }
         }
-    }, [selectedProjectId, projects, onProjectChange]);
+
+        // Session resolved + projects fetched (even if empty) — unblock dashboard
+        onReady?.();
+    }, [selectedProjectId, projects, sessionLoading, isLoading, onProjectChange, onReady]);
 
     const selectedProject = projects.find(p => p.projectId === selectedProjectId);
 

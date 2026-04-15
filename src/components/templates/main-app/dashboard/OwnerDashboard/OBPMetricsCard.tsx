@@ -13,12 +13,11 @@
 import { FEATURE_FLAGS } from '@config/features';
 import {
     getOBPDashboardData,
-    OBPDashboardData,
     OBPHistoricalWeek
 } from '@database/ownerDashboard';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Card, Col, Divider, Flex, Row, Statistic, Tag, Typography } from 'antd';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext } from 'react';
 import {
     LuArrowDownRight,
     LuArrowUpRight,
@@ -30,6 +29,7 @@ import {
     LuPhone,
     LuTrendingUp
 } from 'react-icons/lu';
+import useSWR from 'swr';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text } = Typography;
@@ -102,25 +102,24 @@ function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
 
 const OBPMetricsCard: React.FC = () => {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
-    const [data, setData] = useState<OBPDashboardData | null>(null);
-    const [loading, setLoading] = useState(true);
 
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
+    const canFetch = FEATURE_FLAGS.ENABLE_OBP && !!tId && !!sId;
 
-    useEffect(() => {
-        if (!FEATURE_FLAGS.ENABLE_OBP || !tId || !sId) {
-            setLoading(false);
-            return;
+    const { data, isLoading } = useSWR(
+        canFetch ? ['obpDashboard', tId, sId] : null,
+        () => getOBPDashboardData(tId!, sId!),
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+            revalidateOnMount: false,
+            dedupingInterval: 3600000,
+            errorRetryCount: 1,
         }
+    );
 
-        getOBPDashboardData(tId, sId)
-            .then(result => setData(result))
-            .catch(() => setData(null))
-            .finally(() => setLoading(false));
-    }, [tId, sId]);
-
-    if (!FEATURE_FLAGS.ENABLE_OBP || loading) return null;
+    if (!FEATURE_FLAGS.ENABLE_OBP || isLoading) return null;
 
     const overview = data?.overview;
     const overall = data?.overall;

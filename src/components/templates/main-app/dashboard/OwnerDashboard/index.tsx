@@ -38,6 +38,7 @@ import ViewModeTabs from './ViewModeTabs';
 import WeeklyView from './WeeklyView';
 
 import OBPLinkCard from '../../businessSettings/OBPLinkCard';
+import TempStatusCard from '../../businessSettings/TempStatusCard';
 import ReputationGuard from '../../reviews/ReputationGuard';
 import ReviewReplyTool from '../../reviews/ReviewReplyTool';
 import MenuQualitySignals from '../MenuQualitySignals';
@@ -51,13 +52,25 @@ import styles from './OwnerDashboard.module.scss';
 const { Text } = Typography;
 
 const OwnerDashboard: React.FC = () => {
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
-    // Project selection state
+    // Derive a fallback projectId from storeDetails immediately (no SWR wait needed)
+    const fallbackProjectId = storeDetails?.storeId
+        ? `${storeDetails.tenantId}-default-${storeDetails.storeId}`
+        : null;
+
+    // Project selection state — seed with fallback so dashboard can start fetching immediately
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+    // Use selector-chosen project if available, otherwise fall back to derived default
+    const activeProjectId = selectedProjectId || fallbackProjectId;
 
     const handleProjectChange = useCallback((projectId: string, _projectName: string) => {
         setSelectedProjectId(projectId);
+    }, []);
+
+    const handleProjectSelectorReady = useCallback(() => {
+        // no-op — we no longer block on selector ready
     }, []);
 
     const {
@@ -69,10 +82,10 @@ const OwnerDashboard: React.FC = () => {
         loadingDaily,
         loadingWeekly,
         loadingMonthly,
-    } = useOwnerDashboard({ projectId: selectedProjectId || undefined });
+    } = useOwnerDashboard({ projectId: activeProjectId || undefined });
 
-    // Show loading while project is being selected or data is loading
-    if (!selectedProjectId || loading) {
+    // Show loading while storeDetails hasn't loaded yet OR data is still fetching
+    if (!storeDetails?.storeId || loading) {
         return <LoadingState />;
     }
 
@@ -133,8 +146,9 @@ const OwnerDashboard: React.FC = () => {
                     <Flex align="center" gap={8}>
                         <Text type="secondary" style={{ fontSize: 13 }}>Viewing:</Text>
                         <DashboardProjectSelector
-                            selectedProjectId={selectedProjectId}
+                            selectedProjectId={activeProjectId}
                             onProjectChange={handleProjectChange}
+                            onReady={handleProjectSelectorReady}
                         />
                     </Flex>
 
@@ -175,6 +189,9 @@ const OwnerDashboard: React.FC = () => {
 
                 {/* Google Listing Card - Pre-API bridge for GBP link control */}
                 {storeDetails && <GoogleListingCard storeDetails={storeDetails} />}
+
+                {/* Temporary Status Card - Daily operational action for public status banners */}
+                {storeDetails && <TempStatusCard storeDetails={storeDetails} setStoreDetails={setStoreDetails} />}
 
                 {/* OBP Link Card - Persistent visibility for link sharing habit */}
                 {storeDetails && <OBPLinkCard storeDetails={storeDetails} />}
