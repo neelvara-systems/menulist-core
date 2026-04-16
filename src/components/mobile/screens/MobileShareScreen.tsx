@@ -202,13 +202,13 @@ export default function MobileShareScreen() {
             <LinkCard
                 description={t('offeringPageDesc', { offering: labels.offeringLower })}
                 icon={<LuExternalLink color={token.colorPrimary} size={18} />}
-                label={t('yourOfferingPage', { offering: labels.offeringTitle })}
-                onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('offeringPageCopyLabel', { offering: labels.offeringTitle }))}
+                label={t('officialBusinessLink')}
+                onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('officialBusinessLink'))}
                 onOpen={() => window.open(withSource(data.obpLink, 'direct'), '_blank')}
                 onShowQr={() => handleOpenQr({
-                    filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-page`, 'qr'),
+                    filename: buildQrCodeFilename(`${data.storeName}-official-page`, 'qr'),
                     helperText: t('offeringPageDesc', { offering: labels.offeringLower }),
-                    title: t('yourOfferingPage', { offering: labels.offeringTitle }),
+                    title: t('officialBusinessLink'),
                     url: withSource(data.obpLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}

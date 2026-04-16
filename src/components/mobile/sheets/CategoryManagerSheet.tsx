@@ -25,6 +25,8 @@ export type MobileCategoryReorderItem = {
     name: string;
     active: boolean;
     price?: number;
+    hasImage?: boolean;
+    hasDescription?: boolean;
 };
 
 interface CategoryManagerSheetProps {
@@ -67,6 +69,7 @@ export default function CategoryManagerSheet({
         active: '#22c55e',
         inactive: '#94a3b8',
         soldOut: '#f59e0b',
+        missing: '#ef4444',
     };
     const sectionCardStyle = {
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -349,9 +352,9 @@ export default function CategoryManagerSheet({
                                         setItemReorderDraft([]);
                                         setSelectedReorderCategoryId(null);
                                     }
-                                : selectedCategoryId
-                                    ? closeCategoryEditor
-                                    : onClose
+                                    : selectedCategoryId
+                                        ? closeCategoryEditor
+                                        : onClose
                     }
                 >
                     {isReorderMode
@@ -362,7 +365,7 @@ export default function CategoryManagerSheet({
                                 ? t('reorderMenu')
                                 : selectedCategoryId
                                     ? (selectedCategory?.name || t('categoriesTitle'))
-                                : t('categoriesTitle')}
+                                    : t('categoriesTitle')}
                 </NavBar>
 
                 {isReorderMode ? (
@@ -455,6 +458,9 @@ export default function CategoryManagerSheet({
                                     <Flex align="center" gap={10} wrap="wrap">
                                         {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
                                         {renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut)}
+                                        {renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missing)}
+                                        {renderStatusBadge(t('missingDescription'), STATUS_COLORS.missing)}
+                                        {renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing)}
                                     </Flex>
 
                                     <List>
@@ -462,6 +468,9 @@ export default function CategoryManagerSheet({
                                             const statusBits = [];
                                             if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
                                             if (item.available === false) statusBits.push(renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut));
+                                            if (item.hasImage === false) statusBits.push(renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missing));
+                                            if (item.hasDescription === false) statusBits.push(renderStatusBadge(t('missingDescription'), STATUS_COLORS.missing));
+                                            if (!(item.price && item.price > 0)) statusBits.push(renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing));
 
                                             return (
                                                 <List.Item

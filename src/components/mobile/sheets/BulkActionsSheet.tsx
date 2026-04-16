@@ -1,8 +1,8 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
-import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
 import { Popover, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -527,39 +527,39 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         <Flex gap={8} style={{ minWidth: 240 }} vertical>
             <Flex gap={4} vertical>
                 <Text strong type="secondary">{t('filters')}</Text>
-            {([
-                { key: 'all', label: t('allStatuses') },
-                { key: 'active', label: t('shownOnMenu') },
-                { key: 'inactive', label: t('hiddenFromMenu') },
-                { key: 'soldOut', label: availabilityLabels.unavailable },
-            ] as const).map((option) => (
-                <Flex
-                    align="center"
-                    gap={10}
-                    key={option.key}
-                    onClick={() => handleStatusFilterChange(option.key)}
-                    style={{
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        padding: '10px 12px',
-                    }}
-                >
+                {([
+                    { key: 'all', label: t('allStatuses') },
+                    { key: 'active', label: t('shownOnMenu') },
+                    { key: 'inactive', label: t('hiddenFromMenu') },
+                    { key: 'soldOut', label: availabilityLabels.unavailable },
+                ] as const).map((option) => (
                     <Flex
                         align="center"
-                        justify="center"
+                        gap={10}
+                        key={option.key}
+                        onClick={() => handleStatusFilterChange(option.key)}
                         style={{
-                            border: `1px solid ${statusFilter === option.key ? token.colorPrimary : unselectedFilterColor}`,
-                            borderRadius: '999px',
-                            color: statusFilter === option.key ? token.colorPrimary : unselectedFilterColor,
-                            height: 18,
-                            width: 18,
+                            borderRadius: 10,
+                            cursor: 'pointer',
+                            padding: '10px 12px',
                         }}
                     >
-                        <LuCheckCheck size={11} />
+                        <Flex
+                            align="center"
+                            justify="center"
+                            style={{
+                                border: `1px solid ${statusFilter === option.key ? token.colorPrimary : unselectedFilterColor}`,
+                                borderRadius: '999px',
+                                color: statusFilter === option.key ? token.colorPrimary : unselectedFilterColor,
+                                height: 18,
+                                width: 18,
+                            }}
+                        >
+                            <LuCheckCheck size={11} />
+                        </Flex>
+                        <Text style={{ color: statusFilter === option.key ? token.colorPrimary : undefined }}>{option.label}</Text>
                     </Flex>
-                    <Text style={{ color: statusFilter === option.key ? token.colorPrimary : undefined }}>{option.label}</Text>
-                </Flex>
-            ))}
+                ))}
             </Flex>
             <Flex
                 style={{
@@ -595,7 +595,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     {actionTitle}
                 </NavBar>
 
-                <Flex gap={10} style={{ padding: '12px 12px 10px' }} vertical>
+                <Flex gap={10} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 10px' }} vertical>
                     {action === 'pricing' ? (
                         <Card size="small" style={{ borderColor: token.colorBorderSecondary }}>
                             <Flex gap={10} vertical>

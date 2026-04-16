@@ -3,37 +3,37 @@
 import { getOwnerLabels } from '@config/businessLabels';
 import GlobalLanguagesList from '@data/languages';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
-import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
+import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
-import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { associateItemImagesWithProject } from '../../templates/main-app/projects/editorView/utils/associateItemImages';
-import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
-import { clearStaleCategoryTranslations, clearStaleTranslations } from '../../templates/main-app/projects/utils/translationsUtils';
-import type { BatchImageGenerationJobType, ItemForDropdown, Project } from '../../templates/main-app/projects/types';
-import type {
-    ExtractedDataAttribute,
-    ExtractedDataCategory,
-    ExtractedDataItem,
-} from '../../templates/main-app/projects/types/extractedData.types';
 import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCamera, LuCheck, LuFileText, LuFilter, LuLanguages, LuPencil, LuSettings2, LuX } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { associateItemImagesWithProject } from '../../templates/main-app/projects/editorView/utils/associateItemImages';
+import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
+import type { BatchImageGenerationJobType, ItemForDropdown, Project } from '../../templates/main-app/projects/types';
+import type {
+    ExtractedDataAttribute,
+    ExtractedDataCategory,
+    ExtractedDataItem,
+} from '../../templates/main-app/projects/types/extractedData.types';
+import { clearStaleCategoryTranslations, clearStaleTranslations } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
-import type { MobileMenuItemType as MenuItemType } from '../types';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
+import type { MobileMenuItemType as MenuItemType } from '../types';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
 const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr: false });
@@ -945,11 +945,16 @@ export default function MobileMenuScreen() {
             stats: languageStats.find((entry) => entry.code === code) || null,
         }));
     }, [activeProjectLanguages, languageStats]);
-    const listingStatusLegend = useMemo(() => ([
-        { color: token.colorTextQuaternary, key: 'hidden', label: t('hidden') },
-        { color: token.colorWarning, key: 'sold-out', label: availabilityLabels.unavailable },
-        { color: token.colorPrimary, key: 'translation-missing', label: t('missingTranslation') },
-    ]), [availabilityLabels.unavailable, t, token.colorPrimary, token.colorTextQuaternary, token.colorWarning]);
+    const listingStatusLegend = useMemo(() => {
+        const entries = [
+            { color: token.colorTextQuaternary, key: 'hidden', label: t('hidden') },
+            { color: token.colorWarning, key: 'sold-out', label: availabilityLabels.unavailable },
+        ];
+        if (activeProjectLanguages.length > 1) {
+            entries.push({ color: token.colorPrimary, key: 'translation-missing', label: t('missingTranslation') });
+        }
+        return entries;
+    }, [activeProjectLanguages.length, availabilityLabels.unavailable, t, token.colorPrimary, token.colorTextQuaternary, token.colorWarning]);
 
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
@@ -1158,6 +1163,18 @@ export default function MobileMenuScreen() {
         ].filter(Boolean).length;
     }, [filters]);
 
+    const menuIssueCounts = useMemo(() => {
+        const scopedItems = draftFilters.categoryIds.length > 0
+            ? menuItems.filter((item) => item.categoryId && draftFilters.categoryIds.includes(item.categoryId))
+            : menuItems;
+        return {
+            missingPhoto: scopedItems.filter((item) => !item.image).length,
+            missingDescription: scopedItems.filter((item) => !item.description?.trim()).length,
+            missingPrice: scopedItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
+            missingTranslation: scopedItems.filter((item) => item.translationMissing).length,
+        };
+    }, [draftFilters.categoryIds, menuItems]);
+
     useEffect(() => {
         if (!isFilterSheetOpen) return;
         setDraftFilters(filters);
@@ -1242,20 +1259,20 @@ export default function MobileMenuScreen() {
         setIsMenuQualityExpanded(false);
         setFilters(() => {
             switch (signal.id) {
-            case 'descriptions':
-                return { ...DEFAULT_FILTERS, hasDescription: false };
-            case 'images':
-                return { ...DEFAULT_FILTERS, hasImage: false };
-            case 'prices':
-                return { ...DEFAULT_FILTERS, hasPrice: false };
-            case 'hidden':
-                return { ...DEFAULT_FILTERS, activeStatus: false };
-            case 'priceOutliers':
-                return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
-            case 'translations':
-                return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
-            default:
-                return DEFAULT_FILTERS;
+                case 'descriptions':
+                    return { ...DEFAULT_FILTERS, hasDescription: false };
+                case 'images':
+                    return { ...DEFAULT_FILTERS, hasImage: false };
+                case 'prices':
+                    return { ...DEFAULT_FILTERS, hasPrice: false };
+                case 'hidden':
+                    return { ...DEFAULT_FILTERS, activeStatus: false };
+                case 'priceOutliers':
+                    return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
+                case 'translations':
+                    return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
+                default:
+                    return DEFAULT_FILTERS;
             }
         });
         requestAnimationFrame(() => {
@@ -1450,6 +1467,8 @@ export default function MobileMenuScreen() {
                     name: resolveItemName(item, displayLanguage, t('unnamedItem')),
                     active: item.active !== false,
                     price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
+                    hasImage: Boolean(item.images?.[0]?.url),
+                    hasDescription: Boolean(resolveItemDescription(item, displayLanguage).trim()),
                 });
             });
         });
@@ -1764,6 +1783,42 @@ export default function MobileMenuScreen() {
                                     {t('generateImages')}
                                 </Button>
                             ) : null}
+                            {filters.hasDescription === false && filteredItems.length > 0 ? (
+                                <Button
+                                    color="primary"
+                                    fill="outline"
+                                    onClick={() => setIsGenerateDescriptionsOpen(true)}
+                                    size="small"
+                                >
+                                    {t('generateDescriptions')}
+                                </Button>
+                            ) : null}
+                            {filters.availability === false && filteredItems.length > 0 ? (
+                                <Button
+                                    color="primary"
+                                    fill="outline"
+                                    onClick={() => {
+                                        setBulkActionType('availability');
+                                        setIsBulkActionsOpen(true);
+                                    }}
+                                    size="small"
+                                >
+                                    {t('markAvailable')}
+                                </Button>
+                            ) : null}
+                            {filters.activeStatus === false && filteredItems.length > 0 ? (
+                                <Button
+                                    color="primary"
+                                    fill="outline"
+                                    onClick={() => {
+                                        setBulkActionType('showHide');
+                                        setIsBulkActionsOpen(true);
+                                    }}
+                                    size="small"
+                                >
+                                    {t('showOnMenu')}
+                                </Button>
+                            ) : null}
                             <Button
                                 color="danger"
                                 fill="none"
@@ -1778,69 +1833,64 @@ export default function MobileMenuScreen() {
                         </Flex>
                     ) : null}
 
-                    {!isFirstRunProject ? (
-                        <Flex align="center" justify="space-between">
-                            <Flex gap={8} style={{ flex: 1, minWidth: 0 }} vertical>
-                                <Text type="secondary">
-                                    {t('categoriesSummary', {
-                                        items: `${menuItems.length} ${labels.itemsPlural}`,
-                                        categories: t('categoriesCount', { count: categoryCount }),
-                                    })}
-                                </Text>
-                                {languageLabels.length > 0 ? (
-                                    <Flex align="center" gap={6} wrap="wrap">
-                                        <Flex align="center" gap={6}>
-                                            <LuLanguages size={14} />
-                                            <Text type="secondary">{t('menuLanguages')}</Text>
-                                        </Flex>
-                                        {languageLabels.map((language) => {
-                                            const isSelected = displayLanguage === language.code;
-                                            const completionLabel = !language.isPrimary && language.stats && language.stats.total > 0
-                                                ? ` · ${language.stats.percentage}%`
-                                                : '';
-
-                                            return (
-                                                <Tag
-                                                    color={isSelected ? 'primary' : undefined}
-                                                    key={language.code}
-                                                    onClick={() => setDisplayLanguage(language.code)}
-                                                    style={{
-                                                        borderWidth: isSelected ? 2 : 1,
-                                                        cursor: 'pointer',
-                                                        marginRight: 0,
-                                                    }}
-                                                >
-                                                    {`${language.label}${completionLabel}`}
-                                                </Tag>
-                                            );
-                                        })}
-                                    </Flex>
-                                ) : null}
-                                <Flex align="center" gap={12} wrap="wrap">
-                                    {listingStatusLegend.map((status) => (
-                                        <StatusDot color={status.color} key={status.key} label={status.label} />
-                                    ))}
-                                </Flex>
-                            </Flex>
-                            <Flex align="center" gap={8}>
-                                {orderedCategorySections.length > 0 ? (
-                                    <Button
-                                        fill="none"
-                                        onClick={() => {
-                                            setExpandedCategoryKeys((current) => current.length === orderedCategorySections.length ? [] : orderedCategorySections.map((section) => section.id));
-                                        }}
-                                        size="small"
-                                    >
-                                        {expandedCategoryKeys.length === orderedCategorySections.length ? 'Collapse all' : 'Expand all'}
-                                    </Button>
-                                ) : null}
-                                {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
-                            </Flex>
-                        </Flex>
-                    ) : null}
-
                 </Flex>
             </Card>
+
+            {!isFirstRunProject ? (
+                <Flex align="center" justify="space-between" style={{ paddingInline: 16, paddingTop: 4 }}>
+                    <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
+                        <Text type="secondary">
+                            {t('categoriesSummary', {
+                                items: `${menuItems.length} ${labels.itemsPlural}`,
+                                categories: t('categoriesCount', { count: categoryCount }),
+                            })}
+                        </Text>
+                        {languageLabels.length > 1 ? (
+                            <Flex align="center" gap={6} wrap="wrap">
+                                <Flex align="center" gap={6}>
+                                    <LuLanguages size={14} />
+                                    <Text type="secondary">{t('menuLanguages')}</Text>
+                                </Flex>
+                                {languageLabels.map((language) => {
+                                    const isSelected = displayLanguage === language.code;
+                                    const completionLabel = !language.isPrimary && language.stats && language.stats.total > 0
+                                        ? ` · ${language.stats.percentage}%`
+                                        : '';
+                                    return (
+                                        <Tag
+                                            color={isSelected ? 'primary' : undefined}
+                                            key={language.code}
+                                            onClick={() => setDisplayLanguage(language.code)}
+                                            style={{ borderWidth: isSelected ? 2 : 1, cursor: 'pointer', marginRight: 0 }}
+                                        >
+                                            {`${language.label}${completionLabel}`}
+                                        </Tag>
+                                    );
+                                })}
+                            </Flex>
+                        ) : null}
+                        <Flex align="center" gap={12} wrap="wrap">
+                            {listingStatusLegend.map((status) => (
+                                <StatusDot color={status.color} key={status.key} label={status.label} />
+                            ))}
+                        </Flex>
+                    </Flex>
+                    <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
+                        {orderedCategorySections.length > 0 ? (
+                            <Button
+                                fill="none"
+                                onClick={() => {
+                                    setExpandedCategoryKeys((current) => current.length === orderedCategorySections.length ? [] : orderedCategorySections.map((section) => section.id));
+                                }}
+                                size="small"
+                            >
+                                {expandedCategoryKeys.length === orderedCategorySections.length ? t('collapseAll') : t('expandAll')}
+                            </Button>
+                        ) : null}
+                        {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
+                    </Flex>
+                </Flex>
+            ) : null}
 
             <PullToRefresh onRefresh={handleRefresh}>
                 <Flex gap={16} style={{ padding: 16 }} vertical>
@@ -2192,209 +2242,219 @@ export default function MobileMenuScreen() {
                         </Button>
                     </Flex>
 
-                    <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Flex gap={2} vertical>
-                                <Text strong>{t('whereToLook')}</Text>
-                                <Text type="secondary">{t('chooseCategoryToNarrowList')}</Text>
-                            </Flex>
-                            <Flex gap={10} vertical>
-                                {categoryOptions.length === 0 ? (
-                                    <Text type="secondary">{t('allCategories')}</Text>
-                                ) : (
-                                    categoryOptions.map((option) => (
-                                        <div
-                                            key={option.id}
-                                            onClick={() => {
-                                                setDraftFilters((prev) => ({
-                                                    ...prev,
-                                                    categoryIds: prev.categoryIds.includes(option.id) ? [] : [option.id],
-                                                }));
-                                            }}
-                                            style={{
-                                                backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimaryBg : token.colorBgContainer,
-                                                border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
-                                                borderRadius: 12,
-                                                cursor: 'pointer',
-                                                padding: '12px 14px',
-                                            }}
-                                        >
-                                            <Flex align="center" gap={12} justify="space-between">
-                                                <Text style={{ color: draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : undefined }}>
-                                                    {option.name}
-                                                </Text>
-                                                <Flex
-                                                    align="center"
-                                                    justify="center"
-                                                    style={{
-                                                        backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : 'transparent',
-                                                        border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
-                                                        borderRadius: '999px',
-                                                        color: draftFilters.categoryIds.includes(option.id) ? token.colorTextLightSolid : token.colorTextQuaternary,
-                                                        flexShrink: 0,
-                                                        height: 20,
-                                                        width: 20,
-                                                    }}
-                                                >
-                                                    {draftFilters.categoryIds.includes(option.id) ? <LuCheck size={12} /> : null}
+                        <Card>
+                            <Flex gap={12} vertical>
+                                <Flex gap={2} vertical>
+                                    <Text strong>{t('whereToLook')}</Text>
+                                    <Text type="secondary">{t('chooseCategoryToNarrowList')}</Text>
+                                </Flex>
+                                <Flex gap={10} vertical>
+                                    {categoryOptions.length === 0 ? (
+                                        <Text type="secondary">{t('allCategories')}</Text>
+                                    ) : (
+                                        categoryOptions.map((option) => (
+                                            <div
+                                                key={option.id}
+                                                onClick={() => {
+                                                    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                                                    setDraftFilters((prev) => ({
+                                                        ...prev,
+                                                        categoryIds: prev.categoryIds.includes(option.id) ? [] : [option.id],
+                                                    }));
+                                                }}
+                                                style={{
+                                                    backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimaryBg : token.colorBgContainer,
+                                                    border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                    borderRadius: 12,
+                                                    cursor: 'pointer',
+                                                    padding: '12px 14px',
+                                                }}
+                                            >
+                                                <Flex align="center" gap={12} justify="space-between">
+                                                    <Text style={{ color: draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : undefined }}>
+                                                        {option.name}
+                                                    </Text>
+                                                    <Flex
+                                                        align="center"
+                                                        justify="center"
+                                                        style={{
+                                                            backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : 'transparent',
+                                                            border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                            borderRadius: '999px',
+                                                            color: draftFilters.categoryIds.includes(option.id) ? token.colorTextLightSolid : token.colorTextQuaternary,
+                                                            flexShrink: 0,
+                                                            height: 20,
+                                                            width: 20,
+                                                        }}
+                                                    >
+                                                        {draftFilters.categoryIds.includes(option.id) ? <LuCheck size={12} /> : null}
+                                                    </Flex>
                                                 </Flex>
-                                            </Flex>
-                                        </div>
-                                    ))
-                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </Flex>
                             </Flex>
-                        </Flex>
-                    </Card>
+                        </Card>
 
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Flex gap={2} vertical>
-                                <Text strong>{t('findItemsWith')}</Text>
-                                <Text type="secondary">{t('findItemsWithHint')}</Text>
-                            </Flex>
-                            <Flex gap={8} vertical>
-                                {renderIssueToggle(
-                                    t('missingPhoto'),
-                                    draftFilters.hasImage === false,
-                                    () => setDraftFilters((prev) => ({ ...prev, hasImage: prev.hasImage === false ? null : false }))
-                                )}
-                                {renderIssueToggle(
-                                    t('missingDescription'),
-                                    draftFilters.hasDescription === false,
-                                    () => setDraftFilters((prev) => ({ ...prev, hasDescription: prev.hasDescription === false ? null : false }))
-                                )}
-                                {renderIssueToggle(
-                                    t('missingPrice'),
-                                    draftFilters.hasPrice === false,
-                                    () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
-                                )}
-                                {activeProjectLanguages.length > 1 ? renderIssueToggle(
-                                    t('missingTranslation'),
-                                    draftFilters.qualityIssue === 'translationMissing',
-                                    () => setDraftFilters((prev) => ({
-                                        ...prev,
-                                        qualityIssue: prev.qualityIssue === 'translationMissing' ? null : 'translationMissing',
-                                    }))
-                                ) : null}
-                            </Flex>
-                            {(draftFilters.hasImage === false || draftFilters.hasDescription === false) ? (
-                                <Flex gap={8} wrap="wrap">
-                                    {draftFilters.hasImage === false ? (
-                                        <Button
-                                            fill="outline"
-                                            onClick={() => {
-                                                setFilters({ ...draftFilters, hasImage: false });
-                                                setIsFilterSheetOpen(false);
-                                                openImageUploadModal(
-                                                    undefined,
-                                                    'filters',
-                                                    'generate',
-                                                    menuItems
-                                                        .filter((item) => {
-                                                            const q = searchQuery.toLowerCase().trim();
-                                                            if (q && !item.name.toLowerCase().includes(q) && !item.categoryName?.toLowerCase().includes(q)) {
-                                                                return false;
-                                                            }
-                                                            if (draftFilters.categoryIds.length > 0 && (!item.categoryId || !draftFilters.categoryIds.includes(item.categoryId))) {
-                                                                return false;
-                                                            }
-                                                            if (draftFilters.hasImage !== null) {
-                                                                const hasImage = Boolean(item.image);
-                                                                if (hasImage !== draftFilters.hasImage) return false;
-                                                            }
-                                                            if (draftFilters.hasDescription !== null) {
-                                                                const hasDescription = Boolean(item.description?.trim());
-                                                                if (hasDescription !== draftFilters.hasDescription) return false;
-                                                            }
-                                                            if (draftFilters.hasPrice !== null) {
-                                                                const hasPrice = item.price > 0;
-                                                                if (hasPrice !== draftFilters.hasPrice) return false;
-                                                            }
-                                                            if (draftFilters.availability !== null && item.available !== draftFilters.availability) {
-                                                                return false;
-                                                            }
-                                                            if (draftFilters.activeStatus !== null && item.active !== draftFilters.activeStatus) {
-                                                                return false;
-                                                            }
-                                                            if (draftFilters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
-                                                                return false;
-                                                            }
-                                                            if (draftFilters.qualityIssue === 'translationMissing' && !item.translationMissing) {
-                                                                return false;
-                                                            }
-                                                            return !item.image;
-                                                        })
-                                                        .map((item) => item.id),
-                                                );
-                                            }}
-                                            size="small"
-                                        >
-                                            {t('generateImages')}
-                                        </Button>
+                        <Card>
+                            <Flex gap={12} vertical>
+                                <Flex gap={2} vertical>
+                                    <Text strong>{t('findItemsWith')}</Text>
+                                    <Text type="secondary">{t('findItemsWithHint')}</Text>
+                                </Flex>
+                                <Flex gap={8} vertical>
+                                    {(menuIssueCounts.missingPhoto > 0 || draftFilters.hasImage === false) ? renderIssueToggle(
+                                        `${t('missingPhoto')} (${menuIssueCounts.missingPhoto})`,
+                                        draftFilters.hasImage === false,
+                                        () => setDraftFilters((prev) => ({ ...prev, hasImage: prev.hasImage === false ? null : false }))
                                     ) : null}
-                                    {draftFilters.hasDescription === false ? (
-                                        <Button
-                                            fill="outline"
-                                            onClick={() => {
-                                                setFilters({ ...draftFilters, hasDescription: false });
-                                                setIsFilterSheetOpen(false);
-                                                setIsGenerateDescriptionsOpen(true);
-                                            }}
-                                            size="small"
-                                        >
-                                            {t('generateDescriptions')}
-                                        </Button>
+                                    {(menuIssueCounts.missingDescription > 0 || draftFilters.hasDescription === false) ? renderIssueToggle(
+                                        `${t('missingDescription')} (${menuIssueCounts.missingDescription})`,
+                                        draftFilters.hasDescription === false,
+                                        () => setDraftFilters((prev) => ({ ...prev, hasDescription: prev.hasDescription === false ? null : false }))
+                                    ) : null}
+                                    {(menuIssueCounts.missingPrice > 0 || draftFilters.hasPrice === false) ? renderIssueToggle(
+                                        `${t('missingPrice')} (${menuIssueCounts.missingPrice})`,
+                                        draftFilters.hasPrice === false,
+                                        () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
+                                    ) : null}
+                                    {activeProjectLanguages.length > 1 && (menuIssueCounts.missingTranslation > 0 || draftFilters.qualityIssue === 'translationMissing') ? renderIssueToggle(
+                                        `${t('missingTranslation')} (${menuIssueCounts.missingTranslation})`,
+                                        draftFilters.qualityIssue === 'translationMissing',
+                                        () => setDraftFilters((prev) => ({
+                                            ...prev,
+                                            qualityIssue: prev.qualityIssue === 'translationMissing' ? null : 'translationMissing',
+                                        }))
                                     ) : null}
                                 </Flex>
-                            ) : null}
-                        </Flex>
-                    </Card>
+                                {(draftFilters.hasImage === false || draftFilters.hasDescription === false) ? (
+                                    <Flex gap={8} wrap="wrap">
+                                        {draftFilters.hasImage === false ? (
+                                            <Button
+                                                fill="outline"
+                                                onClick={() => {
+                                                    setFilters({ ...draftFilters, hasImage: false });
+                                                    setIsFilterSheetOpen(false);
+                                                    openImageUploadModal(
+                                                        undefined,
+                                                        'filters',
+                                                        'generate',
+                                                        menuItems
+                                                            .filter((item) => {
+                                                                const q = searchQuery.toLowerCase().trim();
+                                                                if (q && !item.name.toLowerCase().includes(q) && !item.categoryName?.toLowerCase().includes(q)) {
+                                                                    return false;
+                                                                }
+                                                                if (draftFilters.categoryIds.length > 0 && (!item.categoryId || !draftFilters.categoryIds.includes(item.categoryId))) {
+                                                                    return false;
+                                                                }
+                                                                if (draftFilters.hasImage !== null) {
+                                                                    const hasImage = Boolean(item.image);
+                                                                    if (hasImage !== draftFilters.hasImage) return false;
+                                                                }
+                                                                if (draftFilters.hasDescription !== null) {
+                                                                    const hasDescription = Boolean(item.description?.trim());
+                                                                    if (hasDescription !== draftFilters.hasDescription) return false;
+                                                                }
+                                                                if (draftFilters.hasPrice !== null) {
+                                                                    const hasPrice = item.price > 0;
+                                                                    if (hasPrice !== draftFilters.hasPrice) return false;
+                                                                }
+                                                                if (draftFilters.availability !== null && item.available !== draftFilters.availability) {
+                                                                    return false;
+                                                                }
+                                                                if (draftFilters.activeStatus !== null && item.active !== draftFilters.activeStatus) {
+                                                                    return false;
+                                                                }
+                                                                if (draftFilters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
+                                                                    return false;
+                                                                }
+                                                                if (draftFilters.qualityIssue === 'translationMissing' && !item.translationMissing) {
+                                                                    return false;
+                                                                }
+                                                                return !item.image;
+                                                            })
+                                                            .map((item) => item.id),
+                                                    );
+                                                }}
+                                                size="small"
+                                            >
+                                                {t('generateImages')}
+                                            </Button>
+                                        ) : null}
+                                        {draftFilters.hasDescription === false ? (
+                                            <Button
+                                                fill="outline"
+                                                onClick={() => {
+                                                    setFilters({ ...draftFilters, hasDescription: false });
+                                                    setIsFilterSheetOpen(false);
+                                                    setIsGenerateDescriptionsOpen(true);
+                                                }}
+                                                size="small"
+                                            >
+                                                {t('generateDescriptions')}
+                                            </Button>
+                                        ) : null}
+                                    </Flex>
+                                ) : null}
+                            </Flex>
+                        </Card>
 
-                    {renderSingleChoiceFilter(
-                        t('availability'),
-                        draftFilters.availability === null ? '' : draftFilters.availability ? 'available' : 'soldOut',
-                        [
-                            { label: availabilityLabels.available, value: 'available' },
-                            { label: availabilityLabels.unavailable, value: 'soldOut' },
-                        ],
-                        null,
-                        (value) => setDraftFilters((prev) => ({ ...prev, availability: value === '' ? null : value === 'available' }))
-                    )}
+                        {renderSingleChoiceFilter(
+                            t('availability'),
+                            draftFilters.availability === null ? '' : draftFilters.availability ? 'available' : 'soldOut',
+                            [
+                                { label: availabilityLabels.available, value: 'available' },
+                                { label: availabilityLabels.unavailable, value: 'soldOut' },
+                            ],
+                            null,
+                            (value) => setDraftFilters((prev) => ({ ...prev, availability: value === '' ? null : value === 'available' }))
+                        )}
 
-                    {renderSingleChoiceFilter(
-                        t('visibility'),
-                        draftFilters.activeStatus === null ? '' : draftFilters.activeStatus ? 'active' : 'hidden',
-                        [
-                            { label: t('shownOnMenu'), value: 'active' },
-                            { label: t('hiddenFromMenu'), value: 'hidden' },
-                        ],
-                        null,
-                        (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === '' ? null : value === 'active' }))
-                    )}
+                        {renderSingleChoiceFilter(
+                            t('visibility'),
+                            draftFilters.activeStatus === null ? '' : draftFilters.activeStatus ? 'active' : 'hidden',
+                            [
+                                { label: t('shownOnMenu'), value: 'active' },
+                                { label: t('hiddenFromMenu'), value: 'hidden' },
+                            ],
+                            null,
+                            (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === '' ? null : value === 'active' }))
+                        )}
 
-                    <Flex gap={8}>
-                        <Button
-                            block
-                            color="danger"
-                            fill="outline"
-                            onClick={() => {
-                                setDraftFilters(DEFAULT_FILTERS);
-                                setFilters(DEFAULT_FILTERS);
+                    </Flex>
+
+                    <div style={{
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        flexShrink: 0,
+                        padding: '12px 16px',
+                        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+                    }}>
+                        <Flex gap={8}>
+                            <Button
+                                block
+                                color="danger"
+                                fill="outline"
+                                onClick={() => {
+                                    setDraftFilters(DEFAULT_FILTERS);
+                                    setFilters(DEFAULT_FILTERS);
+                                    setIsFilterSheetOpen(false);
+                                }}
+                            >
+                                {t('clearAll')}
+                            </Button>
+                            <Button block onClick={() => {
+                                setFilters(draftFilters);
                                 setIsFilterSheetOpen(false);
-                            }}
-                        >
-                            {t('clearAll')}
-                        </Button>
-                        <Button block onClick={() => {
-                            setFilters(draftFilters);
-                            setIsFilterSheetOpen(false);
-                        }}>
-                            {t('applyFilters')}
-                        </Button>
-                    </Flex>
-                    </Flex>
+                            }}>
+                                {t('applyFilters')}
+                            </Button>
+                        </Flex>
+                    </div>
                 </Flex>
             </Popup>
 

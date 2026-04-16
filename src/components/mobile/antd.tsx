@@ -3,38 +3,38 @@
 import { getMobileUiLocaleText } from '@lib/localization/mobileUiLocale';
 import {
     App as AntApp,
-    Avatar,
-    Badge,
     Button as AntButton,
     Card as AntCard,
     Checkbox as AntCheckbox,
     Collapse as AntCollapse,
-    Divider,
-    Drawer,
     Empty as AntEmpty,
-    Flex,
-    FloatButton,
-    Image,
     Input as AntInput,
     List as AntList,
-    Modal,
-    Progress,
     Result as AntResult,
     Select as AntSelect,
     Space as AntSpace,
-    Spin,
     Switch as AntSwitch,
     Tabs as AntTabs,
     Tag as AntTag,
+    Upload as AntUpload,
+    Avatar,
+    Badge,
+    Divider,
+    Drawer,
+    Flex,
+    FloatButton,
+    Image,
+    Modal,
+    Progress,
+    Spin,
     theme,
     Typography,
-    Upload as AntUpload,
 } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
-import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
-import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 import { useLocale } from 'next-intl';
+import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
+import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
 type AnyStyle = CSSProperties & Record<string, any>;
 
@@ -186,7 +186,7 @@ type ButtonProps = {
 
 export function Button({ block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style }: ButtonProps) {
     const { token } = theme.useToken();
-    const antType = fill === 'solid' && color !== 'warning' ? 'primary' : 'default';
+    const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
 
     return (

@@ -153,7 +153,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             {onBack ? <NavBar onBack={onBack} /> : null}
-            <Flex gap={12} style={{ padding: 16 }} vertical>
+            <Flex gap={12} style={{ padding: 16, paddingTop: onBack ? 16 : 24 }} vertical>
                 <MobileScreenIntro
                     subtitle={t('subtitle')}
                     title={t('title')}

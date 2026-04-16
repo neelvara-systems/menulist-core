@@ -1,21 +1,21 @@
 'use client'
 
+import { getOwnerLabels } from '@config/businessLabels';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
-import { getOwnerLabels } from '@config/businessLabels';
-import { AICapacityError } from '@services/ai/capacityError';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import getNewItemMetadataViaAPI from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { theme, type UploadFile, type UploadProps } from 'antd';
-import { useMemo, useState, useContext, useEffect } from 'react';
-import { LuCamera, LuLanguages, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
-import type { Project, ProjectFileType, ExtractedDataAttribute, ExtractedDataItem } from '../../templates/main-app/projects/types';
-import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
-import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast, Upload } from '../antd';
-import type { MobileMenuItemType } from '../types';
+import { AICapacityError } from '@services/ai/capacityError';
+import getNewItemMetadataViaAPI from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { LuCamera, LuLanguages, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
+import type { ExtractedDataAttribute, ExtractedDataItem, Project, ProjectFileType } from '../../templates/main-app/projects/types';
+import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
+import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
+import type { MobileMenuItemType } from '../types';
 
 type LocalizedAttribute = ExtractedDataAttribute & {
     price: string;
@@ -110,6 +110,7 @@ export default function ItemEditSheet({
     const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const [isSaving, setIsSaving] = useState(false);
     const [isAiWorking, setIsAiWorking] = useState(false);
+    const imageInputRef = useRef<HTMLInputElement | null>(null);
 
     const collapseKeyboard = () => {
         const activeElement = document.activeElement;
@@ -146,32 +147,20 @@ export default function ItemEditSheet({
     }, [draftItem.images, imagePreview]);
     const imageActionLabel = itemImagePreviews.length > 0 ? t('editImages') : t('addImages');
 
-    const uploadProps: UploadProps = useMemo(() => ({
-        accept: 'image/*',
-        beforeUpload: (file) => {
-            if (file.size > 5 * 1024 * 1024) {
-                Toast.show({ content: t('imageTooLarge'), duration: 2000 });
-                return Upload.LIST_IGNORE;
-            }
-
-            const reader = new FileReader();
-            reader.onload = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-            return false;
-        },
-        fileList: imagePreview
-            ? [{ uid: item?.id || 'draft-item', name: `${item?.name || 'item'}.jpg`, status: 'done', url: imagePreview } as UploadFile]
-            : [],
-        listType: 'picture',
-        maxCount: 1,
-        onRemove: () => {
-            setImagePreview(null);
-            return true;
-        },
-        showUploadList: false,
-    }), [imagePreview, item?.id, item?.name, t]);
+    const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            Toast.show({ content: t('imageTooLarge'), duration: 2000 });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+    };
 
     const updateLocalizedField = (language: string, field: 'name' | 'description', value: string) => {
         setDraftItem((previous) => ({
@@ -511,14 +500,21 @@ export default function ItemEditSheet({
                                         </Card>
                                     )}
                                     {isAddMode || !onManageImages ? (
-                                        <Upload {...uploadProps}>
-                                            <Button fill="outline" size="small">
+                                        <>
+                                            <input
+                                                accept="image/*"
+                                                onChange={handleImageInputChange}
+                                                ref={imageInputRef}
+                                                style={{ display: 'none' }}
+                                                type="file"
+                                            />
+                                            <Button fill="outline" onClick={() => imageInputRef.current?.click()} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuCamera size={14} />
                                                     <Text>{imageActionLabel}</Text>
                                                 </Flex>
                                             </Button>
-                                        </Upload>
+                                        </>
                                     ) : (
                                         <Flex gap={8} wrap="wrap">
                                             <Button fill="outline" onClick={onManageImages} size="small">

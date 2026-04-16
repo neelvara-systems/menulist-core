@@ -3,15 +3,15 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
-import { LuCheck, LuLanguages, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
+import { LuCheck, LuLanguages, LuTrash2 } from 'react-icons/lu';
 import type { Project } from '../../templates/main-app/projects/types';
 import { translateFile } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Dialog, Flex, NavBar, Popup, Select, Text, Toast } from '../antd';
@@ -170,7 +170,7 @@ export default function ManageLanguagesSheet({
                     {t('manageLanguages')}
                 </NavBar>
 
-                <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     {isSaving ? (
                         <AiActionProgressPanel
                             detail={pendingLanguageCode

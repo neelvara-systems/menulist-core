@@ -472,3 +472,11 @@
   font-size: 13px;
   color: var(--adm-color-weak);
 }
+
+/* Fix sheet height in mobile browsers where URL bar eats into vh units.
+   dvh = dynamic viewport height (excludes URL bar). vh is the fallback. */
+@supports (max-height: 1dvh) {
+  .adm-popup-body {
+    max-height: min(var(--popup-max-height, 88dvh), 88dvh);
+  }
+}
