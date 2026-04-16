@@ -1,6 +1,6 @@
 import { APP_LANGUAGES } from "@constant/common";
 import { setUserLocale } from "@lib/localization";
-import { defaultLocale, Locale } from "@lib/localization/config";
+import { Locale } from "@lib/localization/config";
 import { Flex, Select, Typography } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -27,7 +27,6 @@ function LanguageSwitcher() {
                 optionFilterProp="label"
                 showSearch
                 loading={isPending}
-                defaultValue={defaultLocale}
                 value={locale}
                 style={{ width: "100%" }}
                 onChange={(value) => onChangeLocale(value)}

@@ -55,12 +55,18 @@ export async function checkPublicRateLimit(
 ): Promise<NextResponse | null> {
     const ip = getClientIp(req);
     const config = getRateLimitForFeature(feature);
+    let result;
 
-    const result = await checkRateLimit({
-        key: `public:${feature}:${ip}`,
-        limit: config.limit,
-        window: config.window,
-    });
+    try {
+        result = await checkRateLimit({
+            key: `public:${feature}:${ip}`,
+            limit: config.limit,
+            window: config.window,
+        });
+    } catch (error) {
+        console.error('[Public API] Rate limit check failed, allowing request:', error);
+        return null;
+    }
 
     if (!result.allowed) {
         const waitSeconds = Math.ceil((result.resetAt - Date.now()) / 1000);

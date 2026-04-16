@@ -10,6 +10,7 @@ export interface ProjectLink {
     isDefault: boolean;
     url: string;
     feedbackUrl: string;
+    feedbackQrUrl: string;
 }
 
 export interface UseMenuListData {
@@ -17,6 +18,7 @@ export interface UseMenuListData {
     obpLink: string;
     menuLink: string;
     feedbackLink: string;
+    feedbackQrLink: string;
 
     // Screen
     screenToken: string | null;

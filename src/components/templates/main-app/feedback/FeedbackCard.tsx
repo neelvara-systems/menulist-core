@@ -18,13 +18,13 @@ import { Button, Card, Tag, Tooltip, message } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import {
-    FaCheck,
-    FaEnvelope,
-    FaPhone,
-    FaUndo,
-    FaUser,
-    FaWhatsapp,
-} from 'react-icons/fa';
+    LuCheck,
+    LuMail,
+    LuMessageCircle,
+    LuPhone,
+    LuRotateCcw,
+    LuUser,
+} from 'react-icons/lu';
 
 interface FeedbackCardProps {
     /** Feedback data */
@@ -85,7 +85,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                     {hasContactInfo && (
                         <Tooltip title={t('contactProvided' as any)}>
                             <Tag color="blue" className="flex items-center gap-1">
-                                <FaPhone size={10} />
+                                <LuPhone size={10} />
                                 {t('contact' as any)}
                             </Tag>
                         </Tooltip>
@@ -125,14 +125,14 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                     <div className="flex flex-wrap gap-4">
                         {feedback.customerName && (
                             <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <FaUser size={12} className="text-gray-400" />
+                                <LuUser size={12} className="text-gray-400" />
                                 {feedback.customerName}
                             </div>
                         )}
 
                         {feedback.customerPhone && (
                             <div className="flex items-center gap-2">
-                                <FaPhone size={12} className="text-gray-400" />
+                                <LuPhone size={12} className="text-gray-400" />
                                 <span className="text-sm text-gray-600">
                                     {formatPhoneForDisplay(feedback.customerPhone)}
                                 </span>
@@ -149,7 +149,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
                                         >
-                                            <FaWhatsapp size={14} />
+                                            <LuMessageCircle size={14} />
                                         </a>
                                     </Tooltip>
                                 )}
@@ -158,7 +158,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
                         {feedback.customerEmail && (
                             <div className="flex items-center gap-2">
-                                <FaEnvelope size={12} className="text-gray-400" />
+                                <LuMail size={12} className="text-gray-400" />
                                 <a
                                     href={`mailto:${feedback.customerEmail}`}
                                     className="text-sm text-blue-600 hover:underline"
@@ -174,13 +174,13 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             {/* Actions */}
             <div className="flex items-center justify-between">
                 <div className="text-xs text-gray-400">
-                    via {feedback.source === 'feedback_qr' ? 'QR Code' : 'Menu'}
+                    via {feedback.source === 'feedback_qr' ? 'QR Code' : feedback.source === 'direct_link' ? 'Direct Link' : 'Menu Footer'}
                 </div>
 
                 <Button
                     size="small"
                     type={isResolved ? 'default' : 'primary'}
-                    icon={isResolved ? <FaUndo size={12} /> : <FaCheck size={12} />}
+                    icon={isResolved ? <LuRotateCcw size={12} /> : <LuCheck size={12} />}
                     loading={isUpdating}
                     onClick={handleStatusToggle}
                 >

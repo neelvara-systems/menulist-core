@@ -179,7 +179,9 @@ function getFormErrors(values: FormState, settings: FeedbackDefaults): FormError
         customerPhone: settings.collectPhone
             ? (!values.customerPhone.trim() && settings.collectPhoneRequired ? 'Phone is required.' : validateField('customerPhone', values.customerPhone))
             : '',
-        message: validateField('message', values.message),
+        message: settings.collectComment
+            ? (!values.message.trim() && settings.collectCommentRequired ? 'Comment is required.' : validateField('message', values.message))
+            : '',
     };
 }
 
@@ -259,7 +261,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                     projectId,
                     source,
                     rating,
-                    message: formValues.message.trim() || undefined,
+                    message: settings.collectComment ? formValues.message.trim() || undefined : undefined,
                     customerName: formValues.customerName.trim() || undefined,
                     customerPhone: formValues.customerPhone.trim() || undefined,
                     customerEmail: formValues.customerEmail.trim() || undefined,
@@ -459,6 +461,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                             ) : null}
                         </section>
 
+                        {settings.collectComment ? (
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <div className={styles.panelIcon}>
@@ -467,7 +470,9 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                 <div>
                                 <h2 className={styles.panelTitle}>Tell us more</h2>
                                 <p className={styles.panelText}>
-                                    Optional. Share what stood out or what could be better.
+                                    {settings.collectCommentRequired
+                                        ? 'Required. Share what stood out or what could be better.'
+                                        : 'Optional. Share what stood out or what could be better.'}
                                 </p>
                             </div>
                         </div>
@@ -495,6 +500,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                 </div>
                             </div>
                         </section>
+                        ) : null}
 
                         {(settings.collectName || settings.collectPhone || settings.collectEmail) ? (
                             <section className={`${styles.panel} ${styles.panelMuted}`}>

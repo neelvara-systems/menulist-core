@@ -1,23 +1,35 @@
 import TIMEZONES_LIST from "@data/timeZones";
 import { setUserTimezone } from "@lib/localization";
-import { defaultTimezone } from "@lib/localization/config";
+import { APP_TIMEZONE_COOKIES_KEY, defaultTimezone } from "@lib/localization/config";
 import { getUTCDate } from "@util/dateTime";
 import { Flex, Select, Typography } from "antd";
+import { getCookie } from "cookies-next";
 import { useFormatter, useTimeZone, useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 const { Text } = Typography;
 
 function TimezoneSwitcher() {
 
     const t = useTranslations('Settings');
     const timezone = useTimeZone();
+    const [currentTimezone, setCurrentTimezone] = useState<string>(() => {
+        const tz = getCookie(APP_TIMEZONE_COOKIES_KEY);
+        return (typeof tz === 'string' && tz) ? tz : (timezone || defaultTimezone);
+    });
     const [isPending, startTransition] = useTransition();
     const format = useFormatter();
 
+    useEffect(() => {
+        const tz = getCookie(APP_TIMEZONE_COOKIES_KEY);
+        if (typeof tz === 'string' && tz) {
+            setCurrentTimezone(tz);
+        }
+    }, []);
+
     const onChange = (value: string) => {
-        const tz = value as string;
+        setCurrentTimezone(value);
         startTransition(() => {
-            setUserTimezone(tz);
+            setUserTimezone(value);
         });
     }
 
@@ -29,8 +41,7 @@ function TimezoneSwitcher() {
                 placeholder={t('selectTimezone')}
                 optionFilterProp="label"
                 loading={isPending}
-                defaultValue={defaultTimezone}
-                value={timezone}
+                value={currentTimezone}
                 style={{ width: "100%" }}
                 onChange={(value) => onChange(value)}
                 optionLabelProp="label"

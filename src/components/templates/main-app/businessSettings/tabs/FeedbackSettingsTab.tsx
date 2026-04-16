@@ -49,6 +49,8 @@ interface FeedbackSettingsTabProps {
     feedbackEnabled?: boolean;
     setFeedbackEnabled: (enabled: boolean) => void;
     feedbackDefaults?: {
+        collectComment: boolean;
+        collectCommentRequired: boolean;
         collectName: boolean;
         collectNameRequired: boolean;
         collectPhone: boolean;
@@ -57,6 +59,8 @@ interface FeedbackSettingsTabProps {
         collectEmailRequired: boolean;
     };
     setFeedbackDefaults: (defaults: {
+        collectComment: boolean;
+        collectCommentRequired: boolean;
         collectName: boolean;
         collectNameRequired: boolean;
         collectPhone: boolean;
@@ -73,6 +77,8 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
     feedbackEnabled = true,
     setFeedbackEnabled,
     feedbackDefaults = {
+        collectComment: true,
+        collectCommentRequired: false,
         collectName: false,
         collectNameRequired: false,
         collectPhone: true,
@@ -108,7 +114,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
     }: {
         checked: boolean;
         description: string;
-        keyName: 'collectName' | 'collectPhone' | 'collectEmail';
+        keyName: 'collectComment' | 'collectName' | 'collectPhone' | 'collectEmail';
         mandatoryChecked: boolean;
         mandatoryDescription: string;
         mandatoryLabel: string;
@@ -183,6 +189,15 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                     </Paragraph>
                 </Flex>
                 {renderContactField({
+                    checked: feedbackDefaults.collectComment,
+                    description: t('collectCommentDesc'),
+                    keyName: 'collectComment',
+                    mandatoryChecked: feedbackDefaults.collectCommentRequired,
+                    mandatoryDescription: t('requireCommentDesc'),
+                    mandatoryLabel: t('requireComment'),
+                    label: t('collectComment'),
+                })}
+                {renderContactField({
                     checked: feedbackDefaults.collectName,
                     description: t('collectNameDesc'),
                     keyName: 'collectName',
@@ -221,7 +236,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                     <Form.Item
                         style={{ margin: 0 }}
                         validateStatus={showUrlError ? 'error' : showUrlSuccess ? 'success' : undefined}
-                        help={showUrlError ? 'Please enter a valid Google review or Maps URL' : undefined}
+                        help={showUrlError ? t('googleReviewUrlError') : undefined}
                     >
                         <Input
                             placeholder={t('googleReviewUrlPlaceholder')}
@@ -250,13 +265,13 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                             type="info"
                             showIcon
                             icon={<LuInfo size={14} />}
-                            message="How to get your Google Review link"
+                            message={t('googleReviewHowToTitle')}
                             description={
                                 <ol style={{ margin: '4px 0 0 0', paddingLeft: 16, fontSize: 12 }}>
-                                    <li>Search your business on Google Maps</li>
-                                    <li>Click your business listing</li>
-                                    <li>Copy the URL from the address bar</li>
-                                    <li>Paste it here</li>
+                                    <li>{t('googleReviewHowToStep1')}</li>
+                                    <li>{t('googleReviewHowToStep2')}</li>
+                                    <li>{t('googleReviewHowToStep3')}</li>
+                                    <li>{t('googleReviewHowToStep4')}</li>
                                 </ol>
                             }
                             style={{ borderRadius: 8 }}
@@ -266,7 +281,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                     {/* Confirmation: What this enables */}
                     {showUrlSuccess && (
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            Customers who give positive feedback will be redirected to leave a Google review.
+                            {t('googleReviewConfirm')}
                         </Text>
                     )}
                 </Flex>

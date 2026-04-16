@@ -33,8 +33,18 @@ function parseProjectId(projectId: string): { tId: number; sId: number } | null 
     return { tId, sId };
 }
 
+type FeedbackSource = 'menu_footer' | 'feedback_qr' | 'direct_link';
+
+const VALID_SOURCES: FeedbackSource[] = ['menu_footer', 'feedback_qr', 'direct_link'];
+
+function parseSource(raw: string | undefined): FeedbackSource {
+    if (raw && (VALID_SOURCES as string[]).includes(raw)) return raw as FeedbackSource;
+    return 'feedback_qr';
+}
+
 interface PageProps {
     params: { projectId: string };
+    searchParams?: { source?: string };
 }
 
 /**
@@ -116,13 +126,18 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
         }
 
         const storeData = storeDoc.data();
+        const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
+        const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';
+        const displayStoreName = tenantName && businessName
+            ? `${tenantName} - ${businessName}`
+            : businessName || tenantName || undefined;
 
         // Check if feedback is enabled at store level (default: true)
         const feedbackEnabled = storeData.feedbackEnabled !== false;
 
         return {
             accentColor: storeData.publicPresence?.accentColor as string | undefined,
-            storeName: `${storeData.tenantName} - ${storeData.name}` as string | undefined,
+            storeName: displayStoreName,
             feedbackEnabled,
             feedbackDefaults: {
                 ...DEFAULT_FEEDBACK_SETTINGS,
@@ -140,7 +155,7 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
     }
 }
 
-export default async function FeedbackPage({ params }: PageProps) {
+export default async function FeedbackPage({ params, searchParams }: PageProps) {
     // Check feature flag
     if (!FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK) {
         notFound();
@@ -168,7 +183,7 @@ export default async function FeedbackPage({ params }: PageProps) {
                     tId={project.tId}
                     sId={project.sId}
                     projectId={project.projectId}
-                    source="feedback_qr"
+                    source={parseSource(searchParams?.source)}
                     storeName={storeInfo.storeName}
                     feedbackDefaults={storeInfo.feedbackDefaults}
                     logoUrl={storeInfo.logoUrl}

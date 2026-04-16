@@ -139,7 +139,7 @@ export default function FeedbackNudge({
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
                 {/* Positive → Google review (if URL set) or feedback form */}
                 <a
-                    href={reviewUrl || `/feedback/${projectId}`}
+                    href={reviewUrl || `/feedback/${projectId}?source=menu_footer`}
                     target={reviewUrl ? '_blank' : '_self'}
                     rel={reviewUrl ? 'noopener noreferrer' : undefined}
                     style={{
@@ -164,7 +164,7 @@ export default function FeedbackNudge({
 
                 {/* Negative/Neutral → Internal feedback */}
                 <a
-                    href={`/feedback/${projectId}`}
+                    href={`/feedback/${projectId}?source=menu_footer`}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',

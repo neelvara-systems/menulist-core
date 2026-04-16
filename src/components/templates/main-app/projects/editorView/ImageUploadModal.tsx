@@ -38,6 +38,7 @@ interface ImageUploadModalProps {
     onImageUpload: (item: ItemForDropdown, imagesToUse?: UserUploadedFileType[]) => Promise<void>;
     from: string;
     preferredInitialTab?: 'upload' | 'generate';
+    initialBatchItemIds?: string[];
     /** Multi-outlet: Item inheritance states for governance filtering */
     itemStates?: Record<string, InheritanceState>;
     /** Multi-outlet: Whether this store is linked to a master */
@@ -68,6 +69,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     onImageUpload,
     from,
     preferredInitialTab = 'upload',
+    initialBatchItemIds = [],
     itemStates,
     isMasterLinked = false
 }) => {
@@ -112,6 +114,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         setBatchGenerationConfig(configWithPrefs);
         setActiveTab(preferredInitialTab);
         setSelectedImages([]);
+        setSelectedItemsForBatch([]);
     }, [preferredInitialTab, storeDetails?.tenantId, storeDetails?.storeId]);
 
     const closeModal = useCallback(() => {
@@ -179,22 +182,30 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
     useEffect(() => {
         if (open) {
+            resetGenerateState();
             if (Boolean(activeBatchImageJob)) {
                 setModalView('batchResult');
             } else {
                 if (itemToUpdate) {
                     setModalView('singleItemSetup');
+                } else if (initialBatchItemIds.length > 0) {
+                    setModalView('batchAIConfig');
+                    setSelectedItemsForBatch(
+                        items
+                            .filter((item) => initialBatchItemIds.includes(item.id))
+                            .map((item) => item.id)
+                    );
                 } else {
                     setModalView('initialChoice');
                     setSelectedItem(null);
                 }
             }
-            resetGenerateState();
         } else {
             setModalView('initialChoice');
             setSelectedItem(null);
+            setSelectedItemsForBatch([]);
         }
-    }, [open, itemToUpdate, activeBatchImageJob]);
+    }, [activeBatchImageJob, initialBatchItemIds, itemToUpdate, items, open, resetGenerateState]);
 
     useEffect(() => {
         if (activeProject && selectedItem) {

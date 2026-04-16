@@ -108,6 +108,8 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         storeDetails?.feedbackEnabled !== false
     );
     const [feedbackDefaults, setFeedbackDefaults] = useState({
+        collectComment: storeDetails?.feedbackDefaults?.collectComment ?? true,
+        collectCommentRequired: storeDetails?.feedbackDefaults?.collectCommentRequired ?? false,
         collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
         collectNameRequired: storeDetails?.feedbackDefaults?.collectNameRequired ?? false,
         collectPhone: storeDetails?.feedbackDefaults?.collectPhone ?? true,

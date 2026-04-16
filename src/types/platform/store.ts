@@ -218,6 +218,11 @@ export type StoreDataType = {
      * Applied to ALL menus in this store that have feedback enabled.
      */
     feedbackDefaults?: {
+        /** Show comment field on feedback form (default: true) */
+        collectComment?: boolean;
+        /** Require comment when shown (default: false) */
+        collectCommentRequired?: boolean;
+
         /** Collect customer name (default: false) */
         collectName: boolean;
         /** Require customer name when shown (default: false) */

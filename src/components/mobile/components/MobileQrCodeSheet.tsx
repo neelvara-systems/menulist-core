@@ -40,11 +40,14 @@ export default function MobileQrCodeSheet({
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!visible) {
+            setIsLoading(false);
+        }
         setQrDataUrl(null);
-    }, [url]);
+    }, [url, visible]);
 
     useEffect(() => {
-        if (!visible || !url || qrDataUrl || isLoading) return;
+        if (!visible || !url) return;
 
         let cancelled = false;
 
@@ -72,7 +75,7 @@ export default function MobileQrCodeSheet({
         return () => {
             cancelled = true;
         };
-    }, [visible, url, qrDataUrl, isLoading, qrErrorMessage, onClose]);
+    }, [visible, url, qrErrorMessage, onClose]);
 
     const handleCopy = async () => {
         try {

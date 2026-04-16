@@ -208,7 +208,7 @@ export default function MenuFooter({
             {/* Shows only if both store and project have feedback enabled */}
             {showFeedback && (
                 <a
-                    href={`/feedback/${projectId}`}
+                    href={`/feedback/${projectId}?source=menu_footer`}
                     style={{
                         display: 'inline-block',
                         color: moodConfig.bodyColor,

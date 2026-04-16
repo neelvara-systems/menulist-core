@@ -15,6 +15,8 @@ interface MobileAdvancedSettingsScreenProps {
 }
 
 type FeedbackDraft = {
+    collectComment: boolean;
+    collectCommentRequired: boolean;
     collectEmail: boolean;
     collectEmailRequired: boolean;
     collectName: boolean;
@@ -26,6 +28,8 @@ type FeedbackDraft = {
 
 function getInitialFeedbackDraft(storeDetails: any): FeedbackDraft {
     return {
+        collectComment: storeDetails?.feedbackDefaults?.collectComment ?? true,
+        collectCommentRequired: storeDetails?.feedbackDefaults?.collectCommentRequired ?? false,
         collectEmail: storeDetails?.feedbackDefaults?.collectEmail ?? true,
         collectEmailRequired: storeDetails?.feedbackDefaults?.collectEmailRequired ?? false,
         collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
@@ -44,6 +48,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
     const [originalSocialMedia, setOriginalSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
     const [feedbackEnabled, setFeedbackEnabled] = useState(storeDetails?.feedbackEnabled !== false);
+    const [collectComment, setCollectComment] = useState(storeDetails?.feedbackDefaults?.collectComment ?? true);
+    const [collectCommentRequired, setCollectCommentRequired] = useState(storeDetails?.feedbackDefaults?.collectCommentRequired ?? false);
     const [collectName, setCollectName] = useState(storeDetails?.feedbackDefaults?.collectName ?? false);
     const [collectNameRequired, setCollectNameRequired] = useState(storeDetails?.feedbackDefaults?.collectNameRequired ?? false);
     const [collectPhone, setCollectPhone] = useState(storeDetails?.feedbackDefaults?.collectPhone ?? true);
@@ -187,6 +193,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     };
 
     const handleToggleCollectField = (field: string, value: boolean) => {
+        if (field === 'collectComment') setCollectComment(value);
+        if (field === 'collectComment' && !value) setCollectCommentRequired(false);
         if (field === 'collectName') setCollectName(value);
         if (field === 'collectName' && !value) setCollectNameRequired(false);
         if (field === 'collectPhone') setCollectPhone(value);
@@ -196,6 +204,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     };
 
     const handleToggleRequiredField = (field: string, value: boolean) => {
+        if (field === 'collectCommentRequired') setCollectCommentRequired(value);
         if (field === 'collectNameRequired') setCollectNameRequired(value);
         if (field === 'collectPhoneRequired') setCollectPhoneRequired(value);
         if (field === 'collectEmailRequired') setCollectEmailRequired(value);
@@ -223,8 +232,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         mandatoryLabel: string;
         requiredValue: boolean;
         showDescription?: boolean;
-        toggleField: 'collectName' | 'collectPhone' | 'collectEmail';
-        toggleRequiredField: 'collectNameRequired' | 'collectPhoneRequired' | 'collectEmailRequired';
+        toggleField: 'collectComment' | 'collectName' | 'collectPhone' | 'collectEmail';
+        toggleRequiredField: 'collectCommentRequired' | 'collectNameRequired' | 'collectPhoneRequired' | 'collectEmailRequired';
         value: boolean;
     }) => (
         <Flex gap={10} style={{ ...feedbackFieldCardStyle, opacity: isEnabled ? 1 : 0.55 }} vertical>
@@ -258,6 +267,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
     const filledSocialCount = linkedSocialPlatforms.length;
     const feedbackDraft: FeedbackDraft = {
+        collectComment,
+        collectCommentRequired,
         collectEmail,
         collectEmailRequired,
         collectName,
@@ -291,6 +302,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         }
         if (showFeedback) {
             setFeedbackEnabled(originalFeedbackDraft.feedbackEnabled);
+            setCollectComment(originalFeedbackDraft.collectComment);
+            setCollectCommentRequired(originalFeedbackDraft.collectCommentRequired);
             setCollectName(originalFeedbackDraft.collectName);
             setCollectNameRequired(originalFeedbackDraft.collectNameRequired);
             setCollectPhone(originalFeedbackDraft.collectPhone);
@@ -310,6 +323,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         if (showFeedback && isFeedbackDirty) {
             updates.feedbackEnabled = feedbackEnabled;
             updates.feedbackDefaults = {
+                collectComment,
+                collectCommentRequired,
                 collectEmail,
                 collectEmailRequired,
                 collectName,
@@ -444,6 +459,15 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                         >
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('feedbackFormFieldsDesc')}</Text>
+                                {renderFeedbackField({
+                                    isEnabled: feedbackEnabled,
+                                    label: t('askForComment'),
+                                    mandatoryLabel: t('makeCommentRequired'),
+                                    requiredValue: collectCommentRequired,
+                                    toggleField: 'collectComment',
+                                    toggleRequiredField: 'collectCommentRequired',
+                                    value: collectComment,
+                                })}
                                 {renderFeedbackField({
                                     isEnabled: feedbackEnabled,
                                     label: t('askForName'),

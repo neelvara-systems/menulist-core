@@ -113,7 +113,37 @@ export async function POST(req: NextRequest) {
     // 7. Sanitize message (XSS prevention)
     const sanitizedMessage = sanitizeString(data.message);
 
-    // 8. Submit feedback
+    // 8. Validate store-level feedback defaults
+    let storeFeedbackDefaults: { collectComment?: boolean; collectCommentRequired?: boolean } | null = null;
+    try {
+        const storeDoc = await firestoreAdmin
+            .collection(DB_COLLECTIONS.STORES)
+            .doc(String(data.sId))
+            .get();
+
+        if (storeDoc.exists) {
+            const storeData = storeDoc.data();
+            storeFeedbackDefaults = storeData?.feedbackDefaults || null;
+        }
+    } catch (error) {
+        console.error('[PublicFeedback] Store settings verification error:', error);
+    }
+
+    const commentEnabled = storeFeedbackDefaults?.collectComment !== false;
+    const effectiveMessage = commentEnabled ? sanitizedMessage : undefined;
+
+    if (commentEnabled && storeFeedbackDefaults?.collectCommentRequired && !effectiveMessage) {
+        return NextResponse.json(
+            {
+                success: false,
+                error: 'Validation failed.',
+                details: [{ field: 'message', message: 'Comment is required.' }],
+            },
+            { status: 400 }
+        );
+    }
+
+    // 9. Submit feedback
     try {
         const feedback = await submitGuestFeedback({
             tId: data.tId,
@@ -121,13 +151,13 @@ export async function POST(req: NextRequest) {
             projectId: data.projectId,
             rating: data.rating as 1 | 2 | 3 | 4 | 5,
             source: data.source,
-            message: sanitizedMessage,
+            message: effectiveMessage,
             customerName: sanitizeString(data.customerName),
             customerPhone: data.customerPhone,
             customerEmail: data.customerEmail?.toLowerCase(),
         });
 
-        // 9. Get store's Google Review URL (if available)
+        // 10. Get store's Google Review URL (if available)
         // Direct doc fetch - storeId is the document ID
         let reviewUrl: string | null = null;
         try {

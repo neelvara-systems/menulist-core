@@ -12,19 +12,19 @@ export async function getUserLocale() {
 }
 
 export async function setUserLocale(locale: Locale) {
-    cookies().set(APP_LOCALE_COOKIES_KEY, locale);
+    cookies().set(APP_LOCALE_COOKIES_KEY, locale, { path: '/', maxAge: 60 * 60 * 24 * 365 });
 }
 
 export async function setUserTimezone(timeZone: string) {
-    cookies().set(APP_TIMEZONE_COOKIES_KEY, timeZone);
+    cookies().set(APP_TIMEZONE_COOKIES_KEY, timeZone, { path: '/', maxAge: 60 * 60 * 24 * 365 });
 }
 
 export async function setUserDateFormat(format: string) {
-    cookies().set(APP_DATE_FORMAT_COOKIES_KEY, format);
+    cookies().set(APP_DATE_FORMAT_COOKIES_KEY, format, { path: '/', maxAge: 60 * 60 * 24 * 365 });
 }
 
 export async function setUserTimeFormat(format: string) {
-    cookies().set(APP_TIME_FORMAT_COOKIES_KEY, format);
+    cookies().set(APP_TIME_FORMAT_COOKIES_KEY, format, { path: '/', maxAge: 60 * 60 * 24 * 365 });
 }
 
 export async function getUserDateFormat(): Promise<DateTimeFormatOptions> {

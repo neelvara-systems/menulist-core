@@ -34,11 +34,13 @@ const getBaseUrl = (): string => {
  * Generate feedback URL for a project
  * 
  * @param projectId - Project ID (consistent with menu URLs)
+ * @param source - Optional source tracking param
  * @returns Full feedback URL
  */
-export function getFeedbackUrl(projectId: string): string {
+export function getFeedbackUrl(projectId: string, source?: 'feedback_qr' | 'menu_footer' | 'direct_link'): string {
     const baseUrl = getBaseUrl();
-    return `${baseUrl}/feedback/${projectId}`;
+    const base = `${baseUrl}/feedback/${projectId}`;
+    return source ? `${base}?source=${source}` : base;
 }
 
 /**
@@ -58,7 +60,7 @@ export async function generateFeedbackQrCode(
     projectId: string,
     options?: QrCodeOptions
 ): Promise<string> {
-    const feedbackUrl = getFeedbackUrl(projectId);
+    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr');
 
     const qrOptions = {
         width: options?.width || 1024,
@@ -85,7 +87,7 @@ export async function generateFeedbackQrCodeBuffer(
     projectId: string,
     options?: QrCodeOptions
 ): Promise<Buffer> {
-    const feedbackUrl = getFeedbackUrl(projectId);
+    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr');
 
     const qrOptions = {
         width: options?.width || 1024,

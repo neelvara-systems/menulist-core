@@ -73,8 +73,13 @@ export const submitGuestFeedback = async (
     // Compute needsAttention: rating <= 3 AND status == 'new'
     const needsAttention = data.rating <= 3;
 
+    // Firestore rejects undefined field values, so strip unset optional fields.
+    const sanitizedData = Object.fromEntries(
+        Object.entries(data).filter(([, value]) => value !== undefined)
+    ) as Omit<GuestFeedback, 'id' | 'createdOn' | 'createdBy' | 'expiresOn' | 'status' | 'needsAttention'>;
+
     const feedbackData: Omit<GuestFeedback, 'id'> = {
-        ...data,
+        ...sanitizedData,
         status: 'new',
         needsAttention,
         createdOn: now,

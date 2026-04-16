@@ -31,7 +31,7 @@ export type MobileFeedbackItemType = {
     customerName: string;
     rating: number;
     message: string;
-    status: 'new' | 'read' | 'resolved';
+    status: 'new' | 'resolved';
     createdAt: string;
     needsAttention?: boolean;
     email?: string;

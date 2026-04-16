@@ -5,11 +5,11 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuExternalLink, LuQrCode, LuStar } from 'react-icons/lu';
-import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -31,6 +31,7 @@ const FEEDBACK_LIST_CARD_STYLE = {
 export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
     const { token } = theme.useToken();
+    const format = useFormatter();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { selectedProjectId } = useMobileProjects();
     const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
@@ -44,7 +45,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             setIsLoading(true);
             const result = await getFeedbackList(targetFilter, 50);
             const items: FeedbackItem[] = (result?.items || []).map((fb: any) => ({
-                createdAt: fb.createdOn?.toDate?.()?.toLocaleDateString?.() || '',
+                createdAt: fb.createdOn?.toDate?.()?.toISOString?.() || '',
                 customerName: fb.customerName || 'Anonymous',
                 email: fb.customerEmail || '',
                 id: fb.id || fb.feedbackId,
@@ -69,7 +70,10 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     }, [fetchFeedback, storeDetails?.storeId]);
 
     const handleStatusUpdate = useCallback((feedbackId: string, newStatus: 'new' | 'resolved') => {
-        setFeedbackList((previous) => previous.map((item) => item.id === feedbackId ? { ...item, status: newStatus } : item));
+        setFeedbackList((previous) => previous.map((item) => item.id === feedbackId
+            ? { ...item, needsAttention: newStatus === 'new' ? item.rating <= 3 : false, status: newStatus }
+            : item
+        ));
         Toast.show({ content: newStatus === 'resolved' ? t('resolved') : t('new'), duration: 1000 });
     }, [t]);
 
@@ -78,6 +82,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         try {
             await updateFeedbackStatus(feedbackId, 'resolved');
         } catch {
+            handleStatusUpdate(feedbackId, 'new');
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         }
     }, [handleStatusUpdate, t]);
@@ -90,7 +95,8 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         setIsQrOpen(true);
     };
 
-    const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId) : '';
+    const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'direct_link') : '';
+    const feedbackQrUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'feedback_qr') : '';
 
     const handleCopyFeedbackLink = async () => {
         if (!feedbackUrl) return;
@@ -217,7 +223,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                                 <Flex gap={8} vertical>
                                                     <Flex align="center" gap={8}>
                                                         {stars(feedback.rating)}
-                                                        <Text type="secondary">{feedback.createdAt}</Text>
+                                                        <Text type="secondary">{feedback.createdAt ? format.dateTime(new Date(feedback.createdAt), 'date') : ''}</Text>
                                                     </Flex>
                                                     <Text
                                                         style={{
@@ -290,7 +296,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 onClose={() => setIsQrOpen(false)}
                 qrErrorMessage={t('failedToUpdate')}
                 title={t('feedbackQrTitle')}
-                url={feedbackUrl}
+                url={feedbackQrUrl}
                 visible={isQrOpen}
             />
         </Flex>

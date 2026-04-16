@@ -9,6 +9,7 @@ import { setUserDateFormat, setUserLocale, setUserTimeFormat, setUserTimezone } 
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
     APP_TIME_FORMAT_COOKIES_KEY,
+    APP_TIMEZONE_COOKIES_KEY,
     DATE_FORMATS,
     defaultDateFormatString,
     defaultLocale,
@@ -29,10 +30,10 @@ import {
     updateLightThemeColor,
 } from '@reduxSlices/clientThemeConfig';
 import { getCookie } from 'cookies-next';
+import { useFormatter, useLocale, useTimeZone, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { LuCalendarRange, LuClock3, LuGlobe, LuMoon, LuPalette, LuSun, LuType, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, NavBar, Popup, Select, Switch, Text, Title } from '../antd';
-import { useFormatter, useLocale, useTimeZone, useTranslations } from 'next-intl';
+import { Button, Card, Flex, NavBar, Popup, Select, Switch, Text } from '../antd';
 
 interface AppSettingsSheetProps {
     visible: boolean;
@@ -55,6 +56,10 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
     const [isLocalePending, startLocaleTransition] = useTransition();
     const [selectedDateFormat, setSelectedDateFormat] = useState(defaultDateFormatString);
     const [selectedTimeFormat, setSelectedTimeFormat] = useState(defaultTimeFormatString);
+    const [selectedTimezone, setSelectedTimezone] = useState(() => {
+        const tz = getCookie(APP_TIMEZONE_COOKIES_KEY);
+        return (typeof tz === 'string' && tz) ? tz : (activeTimeZone || defaultTimezone);
+    });
 
     const activeThemeColor = isDarkMode ? darkThemeColor : lightThemeColor;
     const availableColors = useMemo(() => (isDarkMode ? DARK_COLORS : LIGHT_COLORS), [isDarkMode]);
@@ -85,6 +90,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
     useEffect(() => {
         const currentDateFormat = getCookie(APP_DATE_FORMAT_COOKIES_KEY);
         const currentTimeFormat = getCookie(APP_TIME_FORMAT_COOKIES_KEY);
+        const currentTimezone = getCookie(APP_TIMEZONE_COOKIES_KEY);
 
         if (typeof currentDateFormat === 'string' && currentDateFormat) {
             setSelectedDateFormat(currentDateFormat);
@@ -93,11 +99,15 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
         if (typeof currentTimeFormat === 'string' && currentTimeFormat) {
             setSelectedTimeFormat(currentTimeFormat);
         }
+
+        if (typeof currentTimezone === 'string' && currentTimezone) {
+            setSelectedTimezone(currentTimezone);
+        }
     }, []);
 
     const selectedLanguageOption = languageOptions.find((option) => option.value === locale);
     const selectedLanguageLabel = selectedLanguageOption?.label || tSettings('selectLanguage');
-    const selectedTimezoneLabel = TIMEZONES_LIST.find((option) => option.tzCode === activeTimeZone)?.label || activeTimeZone || defaultTimezone;
+    const selectedTimezoneLabel = TIMEZONES_LIST.find((option) => option.tzCode === selectedTimezone)?.label || selectedTimezone || defaultTimezone;
     const selectedDateFormatLabel = useMemo(() => {
         const option = DATE_FORMATS.find((item) => item.label === selectedDateFormat);
         if (!option) return selectedDateFormat;
@@ -113,12 +123,12 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
             return new Intl.DateTimeFormat(locale, {
                 dateStyle: 'medium',
                 timeStyle: 'short',
-                timeZone: activeTimeZone || defaultTimezone,
+                timeZone: selectedTimezone || defaultTimezone,
             }).format(previewDate);
         } catch {
             return '';
         }
-    }, [activeTimeZone, locale, previewDate]);
+    }, [selectedTimezone, locale, previewDate]);
 
     const handleDarkMode = useCallback((checked: boolean) => {
         dispatch(toggleDarkMode(checked));
@@ -145,6 +155,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
 
     const handleTimezoneChange = useCallback((value: string[]) => {
         const nextTimezone = value[0] || defaultTimezone;
+        setSelectedTimezone(nextTimezone);
         startLocaleTransition(() => {
             setUserTimezone(nextTimezone);
         });
@@ -188,125 +199,125 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                 </NavBar>
 
                 <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
-                <Card>
-                    <Flex align="center" justify="space-between">
-                        <Flex align="center" gap={8}>
-                            {isDarkMode ? <LuMoon size={16} /> : <LuSun size={16} />}
-                            <Text strong>{t('darkMode')}</Text>
+                    <Card>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                {isDarkMode ? <LuMoon size={16} /> : <LuSun size={16} />}
+                                <Text strong>{t('darkMode')}</Text>
+                            </Flex>
+                            <Switch checked={isDarkMode} onChange={handleDarkMode} />
                         </Flex>
-                        <Switch checked={isDarkMode} onChange={handleDarkMode} />
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" gap={8}>
-                            <LuPalette size={16} />
-                            <Text strong>{t('themeColors')}</Text>
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuPalette size={16} />
+                                <Text strong>{t('themeColors')}</Text>
+                            </Flex>
+                            <Flex gap={8} wrap>
+                                {availableColors.map((color) => (
+                                    <Button
+                                        key={color}
+                                        fill={activeThemeColor === color ? 'solid' : 'outline'}
+                                        onClick={() => handleThemeColor(color)}
+                                        size="small"
+                                        style={{
+                                            backgroundColor: color,
+                                            borderColor: color,
+                                            color: '#fff',
+                                            minWidth: 44,
+                                        }}
+                                    >
+                                        {activeThemeColor === color ? '•' : ' '}
+                                    </Button>
+                                ))}
+                            </Flex>
                         </Flex>
-                        <Flex gap={8} wrap>
-                            {availableColors.map((color) => (
-                                <Button
-                                    key={color}
-                                    fill={activeThemeColor === color ? 'solid' : 'outline'}
-                                    onClick={() => handleThemeColor(color)}
-                                    size="small"
-                                    style={{
-                                        backgroundColor: color,
-                                        borderColor: color,
-                                        color: '#fff',
-                                        minWidth: 44,
-                                    }}
-                                >
-                                    {activeThemeColor === color ? '•' : ' '}
-                                </Button>
-                            ))}
-                        </Flex>
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" gap={8}>
-                            <LuGlobe size={16} />
-                            <Text strong>{`Language (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuGlobe size={16} />
+                                <Text strong>{`Language (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
+                            </Flex>
+                            <Select
+                                onChange={(value) => handleLocaleChange([value])}
+                                options={languageOptions.map((option) => ({ label: option.label, value: option.value }))}
+                                placeholder={tSettings('selectLanguage')}
+                                value={locale}
+                            />
                         </Flex>
-                        <Select
-                            onChange={(value) => handleLocaleChange([value])}
-                            options={languageOptions.map((option) => ({ label: option.label, value: option.value }))}
-                            placeholder={tSettings('selectLanguage')}
-                            value={locale}
-                        />
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" gap={8}>
-                            <LuGlobe size={16} />
-                            <Text strong>{`${tSettings('timezone')} (${selectedTimezonePreview || selectedTimezoneLabel})`}</Text>
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuGlobe size={16} />
+                                <Text strong>{`${tSettings('timezone')} (${selectedTimezonePreview || selectedTimezoneLabel})`}</Text>
+                            </Flex>
+                            <Select
+                                onChange={(value) => handleTimezoneChange([value])}
+                                options={TIMEZONES_LIST.map((option) => ({ label: option.label, value: option.tzCode }))}
+                                placeholder={tSettings('selectTimezone')}
+                                value={selectedTimezone}
+                            />
                         </Flex>
-                        <Select
-                            onChange={(value) => handleTimezoneChange([value])}
-                            options={TIMEZONES_LIST.map((option) => ({ label: option.label, value: option.tzCode }))}
-                            placeholder={tSettings('selectTimezone')}
-                            value={activeTimeZone || defaultTimezone}
-                        />
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" gap={8}>
-                            <LuCalendarRange size={16} />
-                            <Text strong>{`${tSettings('dateFormat')} (${selectedDateFormatLabel})`}</Text>
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuCalendarRange size={16} />
+                                <Text strong>{`${tSettings('dateFormat')} (${selectedDateFormatLabel})`}</Text>
+                            </Flex>
+                            <Select
+                                onChange={(value) => handleDateFormatChange([value])}
+                                options={DATE_FORMATS.map((option) => ({
+                                    label: format.dateTime(previewDate, option.value),
+                                    value: option.label,
+                                }))}
+                                placeholder={tSettings('selectDateFormat')}
+                                value={selectedDateFormat}
+                            />
                         </Flex>
-                        <Select
-                            onChange={(value) => handleDateFormatChange([value])}
-                            options={DATE_FORMATS.map((option) => ({
-                                label: format.dateTime(previewDate, option.value),
-                                value: option.label,
-                            }))}
-                            placeholder={tSettings('selectDateFormat')}
-                            value={selectedDateFormat}
-                        />
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" gap={8}>
-                            <LuClock3 size={16} />
-                            <Text strong>{`${tSettings('timeFormat')} (${selectedTimeFormatLabel})`}</Text>
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuClock3 size={16} />
+                                <Text strong>{`${tSettings('timeFormat')} (${selectedTimeFormatLabel})`}</Text>
+                            </Flex>
+                            <Select
+                                onChange={(value) => handleTimeFormatChange([value])}
+                                options={TIME_FORMATS.map((option) => ({
+                                    label: `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`,
+                                    value: option.label,
+                                }))}
+                                placeholder={tSettings('selectTimeFormat')}
+                                value={selectedTimeFormat}
+                            />
                         </Flex>
-                        <Select
-                            onChange={(value) => handleTimeFormatChange([value])}
-                            options={TIME_FORMATS.map((option) => ({
-                                label: `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`,
-                                value: option.label,
-                            }))}
-                            placeholder={tSettings('selectTimeFormat')}
-                            value={selectedTimeFormat}
-                        />
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex align="center" justify="space-between">
-                        <Flex align="center" gap={8}>
-                            <LuType size={16} />
-                            <Text strong>{t('rtlToggle')}</Text>
+                    <Card>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuType size={16} />
+                                <Text strong>{t('rtlToggle')}</Text>
+                            </Flex>
+                            <Switch checked={isRTL} onChange={handleRTL} />
                         </Flex>
-                        <Switch checked={isRTL} onChange={handleRTL} />
-                    </Flex>
-                </Card>
+                    </Card>
 
-                <Card>
-                    <Flex align="center" justify="space-between">
-                        <Text strong>{t('useFullScreen')}</Text>
-                        <Switch checked={isFullscreen} onChange={() => void toggleFullscreen()} />
-                    </Flex>
-                </Card>
+                    <Card>
+                        <Flex align="center" justify="space-between">
+                            <Text strong>{t('useFullScreen')}</Text>
+                            <Switch checked={isFullscreen} onChange={() => void toggleFullscreen()} />
+                        </Flex>
+                    </Card>
                 </Flex>
             </Flex>
         </Popup>

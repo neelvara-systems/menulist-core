@@ -17,7 +17,7 @@ import {
 } from '@lib/utils/feedbackQrCode';
 import { Button, Modal, Spin, message } from 'antd';
 import React, { useState } from 'react';
-import { FaDownload, FaQrcode } from 'react-icons/fa';
+import { LuDownload, LuQrCode } from 'react-icons/lu';
 
 interface FeedbackQrDownloadProps {
     /** Project ID for QR code URL */
@@ -59,12 +59,12 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
         }
     };
 
-    const feedbackUrl = getFeedbackUrl(projectId);
+    const feedbackUrl = getFeedbackUrl(projectId, 'direct_link');
 
     return (
         <>
             <Button
-                icon={<FaQrcode />}
+                icon={<LuQrCode />}
                 onClick={handleOpenModal}
             >
                 Download QR Code
@@ -81,7 +81,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                     <Button
                         key="download"
                         type="primary"
-                        icon={<FaDownload />}
+                        icon={<LuDownload />}
                         onClick={handleDownload}
                         disabled={!qrDataUrl}
                     >

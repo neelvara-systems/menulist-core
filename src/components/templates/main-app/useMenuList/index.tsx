@@ -21,7 +21,6 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
@@ -51,6 +50,7 @@ import {
     LuQrCode,
     LuShield,
 } from 'react-icons/lu';
+import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import CommunicationKit from './CommunicationKit';
 import PresenceMonitor from './PresenceMonitor';
 import { PageState, ProjectLink, UseMenuListData } from './types';
@@ -121,8 +121,11 @@ export default function UseMenuList() {
 
             // Build feedback link
             const feedbackLink = defaultProject.projectId
-                ? getFeedbackUrl(defaultProject.projectId)
-                : '';
+                ? getFeedbackUrl(defaultProject.projectId, 'direct_link')
+                : ''
+            const feedbackQrLink = defaultProject.projectId
+                ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr')
+                : ''
 
             // Build multi-project links
             const allProjects: ProjectLink[] = projects.map((p: any) => ({
@@ -130,7 +133,8 @@ export default function UseMenuList() {
                 name: p.name || 'Untitled',
                 isDefault: p.isDefault || false,
                 url: generateProjectUrl(subdomain, customDomain, p.isDefault ? undefined : p.name, p.isDefault),
-                feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId) : '',
+                feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link') : '',
+                feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr') : '',
             }));
 
             // POS Sync status (if enabled)
@@ -141,6 +145,7 @@ export default function UseMenuList() {
                 obpLink,
                 menuLink,
                 feedbackLink,
+                feedbackQrLink,
                 screenToken,
                 menuBoardLink: screenToken ? buildScreenUrl(screenToken) : null,
                 highlightsLink: screenToken ? `${buildScreenUrl(screenToken)}?mode=highlights` : null,
@@ -171,6 +176,9 @@ export default function UseMenuList() {
     }
 
     // ── Action handlers ──────────────────────────────────────────
+
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'whatsapp') =>
+        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
 
     const handleCopy = async (text: string, label: string) => {
         try {
@@ -306,6 +314,7 @@ export default function UseMenuList() {
             isDefaultProject: project.isDefault,
             menuLink: project.url,
             feedbackLink: project.feedbackUrl,
+            feedbackQrLink: project.feedbackQrUrl,
         } : prev);
         setIsProjectSelectorOpen(false);
     };
@@ -349,7 +358,7 @@ export default function UseMenuList() {
                             block
                             type="primary"
                             icon={<LuCopy size={16} />}
-                            onClick={() => handleCopy(data.menuLink, `${labels.offeringTitle} link`)}
+                            onClick={() => handleCopy(withSource(data.menuLink, 'copy'), `${labels.offeringTitle} link`)}
                             size="large"
                         >
                             Copy {labels.offeringTitle} Link
@@ -359,7 +368,7 @@ export default function UseMenuList() {
                         <Button
                             block
                             icon={<LuExternalLink size={16} />}
-                            onClick={() => handleOpen(data.menuLink)}
+                            onClick={() => handleOpen(withSource(data.menuLink, 'direct'))}
                             size="large"
                         >
                             Open {labels.offeringTitle}
@@ -414,8 +423,8 @@ export default function UseMenuList() {
                         shortUrl={data.obpLink.replace(/^https?:\/\//, '')}
                         storeName={data.storeName}
                         sharePrefix={labels.shareMessagePrefix}
-                        onCopy={() => handleCopy(data.obpLink, `${labels.offeringTitle} page link`)}
-                        onOpen={() => handleOpen(data.obpLink)}
+                        onCopy={() => handleCopy(withSource(data.obpLink, 'copy'), `${labels.offeringTitle} page link`)}
+                        onOpen={() => handleOpen(withSource(data.obpLink, 'direct'))}
                         onGuide={() => setGuideModal({
                             title: `Where to share your ${labels.offeringLower}`,
                             content: (
@@ -439,8 +448,8 @@ export default function UseMenuList() {
                         shortUrl={shortMenuLink}
                         storeName={data.storeName}
                         sharePrefix={labels.shareMessagePrefix}
-                        onCopy={() => handleCopy(data.menuLink, `Direct ${labels.offeringLower} link`)}
-                        onOpen={() => handleOpen(data.menuLink)}
+                        onCopy={() => handleCopy(withSource(data.menuLink, 'copy'), `Direct ${labels.offeringLower} link`)}
+                        onOpen={() => handleOpen(withSource(data.menuLink, 'direct'))}
                         themeToken={themeToken}
                     />
                 </Col>
@@ -855,13 +864,16 @@ interface LinkCardProps {
 }
 
 function LinkCard({ title, description, url, shortUrl, storeName, sharePrefix, onCopy, onOpen, onGuide, themeToken }: LinkCardProps) {
+    const withSrc = (src: 'copy' | 'whatsapp' | 'qr') =>
+        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
+
     const handleWhatsApp = () => {
-        const msg = `${sharePrefix}\n${url}`;
+        const msg = `${sharePrefix}\n${withSrc('whatsapp')}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     const handleCopyMessage = async () => {
-        const msg = `${sharePrefix}\n${url}`;
+        const msg = `${sharePrefix}\n${withSrc('copy')}`;
         try {
             await navigator.clipboard.writeText(msg);
             message.success('Message copied — paste it in WhatsApp or anywhere');

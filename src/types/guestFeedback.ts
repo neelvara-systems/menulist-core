@@ -110,6 +110,11 @@ export type GuestFeedbackSort = 'newest' | 'oldest' | 'rating_low' | 'rating_hig
  * Controls which contact fields are shown in the feedback form
  */
 export interface FeedbackDefaults {
+    /** Show comment field on feedback form (default: true) */
+    collectComment?: boolean;
+    /** Require comment when shown (default: false) */
+    collectCommentRequired?: boolean;
+
     /** Collect customer name (default: false) */
     collectName: boolean;
     /** Require customer name when shown (default: false) */
@@ -130,6 +135,8 @@ export interface FeedbackDefaults {
  * Default values for FeedbackDefaults when not set
  */
 export const DEFAULT_FEEDBACK_SETTINGS: FeedbackDefaults = {
+    collectComment: true,
+    collectCommentRequired: false,
     collectName: false,
     collectNameRequired: false,
     collectPhone: true,

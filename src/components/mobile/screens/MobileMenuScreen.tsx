@@ -346,6 +346,7 @@ export default function MobileMenuScreen() {
     const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
     const [imageModalItem, setImageModalItem] = useState<ExtractedDataItem | null>(null);
     const [imageModalInitialTab, setImageModalInitialTab] = useState<'upload' | 'generate'>('upload');
+    const [imageModalInitialBatchItemIds, setImageModalInitialBatchItemIds] = useState<string[]>([]);
     const [imageModalSource, setImageModalSource] = useState<string>('');
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [returnToCommandMenu, setReturnToCommandMenu] = useState(false);
@@ -626,10 +627,16 @@ export default function MobileMenuScreen() {
             });
     }, [t, updateItemImageFromUpload]);
 
-    const openImageUploadModal = useCallback((itemId?: string, source = '', preferredInitialTab: 'upload' | 'generate' = 'upload') => {
+    const openImageUploadModal = useCallback((
+        itemId?: string,
+        source = '',
+        preferredInitialTab: 'upload' | 'generate' = 'upload',
+        initialBatchItemIds: string[] = [],
+    ) => {
         const matchedItem = itemId ? findExtractedItemById(menuDataRef.current, itemId) : null;
         setImageModalItem(matchedItem);
         setImageModalInitialTab(preferredInitialTab);
+        setImageModalInitialBatchItemIds(initialBatchItemIds);
         setImageModalSource(source);
         setIsImageUploadOpen(true);
     }, []);
@@ -1746,10 +1753,15 @@ export default function MobileMenuScreen() {
                                 <Button
                                     color="primary"
                                     fill="outline"
-                                    onClick={() => openImageUploadModal(undefined, 'filter-missing-image')}
+                                    onClick={() => openImageUploadModal(
+                                        undefined,
+                                        'filter-missing-image',
+                                        'generate',
+                                        filteredItems.filter((item) => !item.image).map((item) => item.id),
+                                    )}
                                     size="small"
                                 >
-                                    {t('addImages')}
+                                    {t('generateImages')}
                                 </Button>
                             ) : null}
                             <Button
@@ -2275,7 +2287,47 @@ export default function MobileMenuScreen() {
                                             onClick={() => {
                                                 setFilters({ ...draftFilters, hasImage: false });
                                                 setIsFilterSheetOpen(false);
-                                                openImageUploadModal(undefined, 'filters', 'generate');
+                                                openImageUploadModal(
+                                                    undefined,
+                                                    'filters',
+                                                    'generate',
+                                                    menuItems
+                                                        .filter((item) => {
+                                                            const q = searchQuery.toLowerCase().trim();
+                                                            if (q && !item.name.toLowerCase().includes(q) && !item.categoryName?.toLowerCase().includes(q)) {
+                                                                return false;
+                                                            }
+                                                            if (draftFilters.categoryIds.length > 0 && (!item.categoryId || !draftFilters.categoryIds.includes(item.categoryId))) {
+                                                                return false;
+                                                            }
+                                                            if (draftFilters.hasImage !== null) {
+                                                                const hasImage = Boolean(item.image);
+                                                                if (hasImage !== draftFilters.hasImage) return false;
+                                                            }
+                                                            if (draftFilters.hasDescription !== null) {
+                                                                const hasDescription = Boolean(item.description?.trim());
+                                                                if (hasDescription !== draftFilters.hasDescription) return false;
+                                                            }
+                                                            if (draftFilters.hasPrice !== null) {
+                                                                const hasPrice = item.price > 0;
+                                                                if (hasPrice !== draftFilters.hasPrice) return false;
+                                                            }
+                                                            if (draftFilters.availability !== null && item.available !== draftFilters.availability) {
+                                                                return false;
+                                                            }
+                                                            if (draftFilters.activeStatus !== null && item.active !== draftFilters.activeStatus) {
+                                                                return false;
+                                                            }
+                                                            if (draftFilters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
+                                                                return false;
+                                                            }
+                                                            if (draftFilters.qualityIssue === 'translationMissing' && !item.translationMissing) {
+                                                                return false;
+                                                            }
+                                                            return !item.image;
+                                                        })
+                                                        .map((item) => item.id),
+                                                );
                                             }}
                                             size="small"
                                         >
@@ -2697,9 +2749,11 @@ export default function MobileMenuScreen() {
                                 setIsImageUploadOpen(false);
                                 setImageModalItem(null);
                                 setImageModalInitialTab('upload');
+                                setImageModalInitialBatchItemIds([]);
                                 setImageModalSource('');
                             });
                         }}
+                        initialBatchItemIds={imageModalInitialBatchItemIds}
                         onImageUpload={handleModalImageUpload}
                         open={isImageUploadOpen}
                         preferredInitialTab={imageModalInitialTab}

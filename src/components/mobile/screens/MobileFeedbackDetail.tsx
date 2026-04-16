@@ -2,7 +2,7 @@
 
 import { updateFeedbackStatus } from '@database/guestFeedback';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCheck, LuMail, LuPhone, LuStar } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Tag, Text, TextArea, Title, Toast } from '../antd';
@@ -17,12 +17,13 @@ interface MobileFeedbackDetailProps {
 export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate }: MobileFeedbackDetailProps) {
     const t = useTranslations('MobileFeedbackDetail');
     const { token } = theme.useToken();
+    const format = useFormatter();
     const [replyText, setReplyText] = useState('');
     const [isSending, setIsSending] = useState(false);
 
     const statusTag = feedback.status === 'resolved'
         ? <Tag color="success">{t('resolve')}</Tag>
-        : <Tag color={feedback.needsAttention ? 'warning' : 'primary'}>{feedback.needsAttention ? 'Needs Attention' : 'New'}</Tag>;
+        : <Tag color={feedback.needsAttention ? 'warning' : 'primary'}>{feedback.needsAttention ? t('needsAttention') : t('statusNew')}</Tag>;
 
     const handleResolve = async () => {
         onStatusUpdate(feedback.id, 'resolved');
@@ -30,6 +31,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
         try {
             await updateFeedbackStatus(feedback.id, 'resolved');
         } catch {
+            onStatusUpdate(feedback.id, 'new');
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
     };
@@ -58,7 +60,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                         <Flex align="center" justify="space-between">
                             <Flex gap={4} vertical>
                                 <Title level={4} style={{ margin: 0 }}>{feedback.customerName || t('anonymous')}</Title>
-                                <Text type="secondary">{feedback.createdAt}</Text>
+                                <Text type="secondary">{feedback.createdAt ? format.dateTime(new Date(feedback.createdAt), 'date') : ''}</Text>
                             </Flex>
                             {statusTag}
                         </Flex>
@@ -82,7 +84,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                         </Flex>
 
                         <Flex gap={8} vertical>
-                            <Text strong>Feedback</Text>
+                                <Text strong>{t('feedbackLabel')}</Text>
                             <div
                                 style={{
                                     background: token.colorBgContainer,
@@ -94,7 +96,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                                     whiteSpace: 'pre-wrap',
                                 }}
                             >
-                                {feedback.message || t('anonymous')}
+                                {feedback.message || 'No comment provided.'}
                             </div>
                         </Flex>
                     </Flex>
@@ -103,7 +105,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                 {feedback.email || feedback.phone ? (
                     <Card style={{ borderRadius: 20 }}>
                         <Flex gap={10} vertical>
-                            <Text strong>Contact</Text>
+                            <Text strong>{t('contactLabel')}</Text>
                             {feedback.email ? (
                                 <Button fill="outline" onClick={() => window.location.href = `mailto:${feedback.email}`} style={{ justifyContent: 'flex-start' }}>
                                     <Flex align="center" gap={8}>
@@ -129,7 +131,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                         <Flex gap={12} vertical>
                             <Flex gap={4} vertical>
                                 <Title level={5} style={{ margin: 0 }}>{t('reply')}</Title>
-                                <Text type="secondary">Reply and resolve in one step, or mark this feedback handled automatically.</Text>
+                                <Text type="secondary">{t('replyHint')}</Text>
                             </Flex>
                             <TextArea
                                 maxLength={500}
@@ -155,7 +157,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                     </Card>
                 ) : (
                     <Card style={{ borderRadius: 20 }}>
-                        <Text type="secondary">No action needed. This feedback is already resolved.</Text>
+                        <Text type="secondary">{t('alreadyResolved')}</Text>
                     </Card>
                 )}
             </Flex>

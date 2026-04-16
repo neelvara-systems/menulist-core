@@ -9,17 +9,17 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
-import MobilePresenceMonitor from '../components/PresenceMonitor';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
+import MobilePresenceMonitor from '../components/PresenceMonitor';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 
 type ProjectLink = {
     feedbackUrl: string;
@@ -33,6 +33,7 @@ type ShareData = {
     allProjects: ProjectLink[];
     businessType: string;
     feedbackLink: string;
+    feedbackQrLink: string;
     hasFeedbackEnabled: boolean;
     hasPosSync: boolean;
     hasPublishedMenu: boolean;
@@ -52,7 +53,7 @@ type QrSheetState = {
     helperText: string;
     title: string;
     url: string;
-} | null;
+};
 
 export default function MobileShareScreen() {
     const { token } = theme.useToken();
@@ -64,75 +65,77 @@ export default function MobileShareScreen() {
     const [data, setData] = useState<ShareData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
-    const [qrSheet, setQrSheet] = useState<QrSheetState>(null);
+    const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
+    const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
 
     const loadData = useCallback(async () => {
         if (!storeDetails) return;
 
-            setIsLoading(true);
-            try {
-                const projects = projectsList;
-                const defaultProject = projects.find((project: any) => project.projectId === selectedProjectId) || null;
+        setIsLoading(true);
+        try {
+            const projects = projectsList;
+            const defaultProject = projects.find((project: any) => project.projectId === selectedProjectId) || null;
 
-                if (!defaultProject) {
-                    setData(null);
-                    return;
-                }
-
-                const subdomain = storeDetails.subdomain || storeDetails.subDomain || '';
-                const customDomain = storeDetails.customDomain;
-                const obpLink = generateOBPUrl(subdomain, customDomain);
-                const menuLink = generateProjectUrl(
-                    subdomain,
-                    customDomain,
-                    defaultProject.isDefault ? undefined : defaultProject.name,
-                    defaultProject.isDefault
-                );
-
-                let menuBoardLink: string | null = null;
-                let highlightsLink: string | null = null;
-                try {
-                    const screenState = await getScreenState();
-                    if (screenState?.screenToken) {
-                        menuBoardLink = buildScreenUrl(screenState.screenToken);
-                        highlightsLink = `${menuBoardLink}?mode=highlights`;
-                    }
-                } catch {
-                    menuBoardLink = null;
-                    highlightsLink = null;
-                }
-
-                const allProjects: ProjectLink[] = projects.map((project: any) => ({
-                    feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId) : '',
-                    isDefault: project.isDefault || false,
-                    name: project.name || tProjectSelector('untitled'),
-                    projectId: project.projectId,
-                    url: generateProjectUrl(subdomain, customDomain, project.isDefault ? undefined : project.name, project.isDefault),
-                }));
-
-                const posSync = storeDetails.posSync;
-                const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
-
-                setData({
-                    allProjects,
-                    businessType: storeDetails.businessType || '',
-                    feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId) : '',
-                    hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
-                    hasPosSync,
-                    hasPublishedMenu: !!obpLink,
-                    hasScreen: !!menuBoardLink,
-                    highlightsLink,
-                    menuBoardLink,
-                    menuLink,
-                    obpLink,
-                    posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
-                    projectId: defaultProject.projectId || null,
-                    projectName: defaultProject.name || null,
-                    storeName: storeDetails.name || t('yourBusiness'),
-                });
-            } finally {
-                setIsLoading(false);
+            if (!defaultProject) {
+                setData(null);
+                return;
             }
+
+            const subdomain = storeDetails.subdomain || storeDetails.subDomain || '';
+            const customDomain = storeDetails.customDomain;
+            const obpLink = generateOBPUrl(subdomain, customDomain);
+            const menuLink = generateProjectUrl(
+                subdomain,
+                customDomain,
+                defaultProject.isDefault ? undefined : defaultProject.name,
+                defaultProject.isDefault
+            );
+
+            let menuBoardLink: string | null = null;
+            let highlightsLink: string | null = null;
+            try {
+                const screenState = await getScreenState();
+                if (screenState?.screenToken) {
+                    menuBoardLink = buildScreenUrl(screenState.screenToken);
+                    highlightsLink = `${menuBoardLink}?mode=highlights`;
+                }
+            } catch {
+                menuBoardLink = null;
+                highlightsLink = null;
+            }
+
+            const allProjects: ProjectLink[] = projects.map((project: any) => ({
+                feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link') : "",
+                isDefault: project.isDefault || false,
+                name: project.name || tProjectSelector('untitled'),
+                projectId: project.projectId,
+                url: generateProjectUrl(subdomain, customDomain, project.isDefault ? undefined : project.name, project.isDefault),
+            }));
+
+            const posSync = storeDetails.posSync;
+            const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
+
+            setData({
+                allProjects,
+                businessType: storeDetails.businessType || '',
+                feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'direct_link') : '',
+                feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr') : '',
+                hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+                hasPosSync,
+                hasPublishedMenu: !!obpLink,
+                hasScreen: !!menuBoardLink,
+                highlightsLink,
+                menuBoardLink,
+                menuLink,
+                obpLink,
+                posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
+                projectId: defaultProject.projectId || null,
+                projectName: defaultProject.name || null,
+                storeName: storeDetails.name || t('yourBusiness'),
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }, [projectsList, selectedProjectId, storeDetails, t, tProjectSelector]);
 
     useEffect(() => {
@@ -145,6 +148,9 @@ export default function MobileShareScreen() {
         [data]
     );
 
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr') =>
+        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
+
     const handleCopy = async (value: string, label: string) => {
         try {
             await navigator.clipboard.writeText(value);
@@ -156,6 +162,7 @@ export default function MobileShareScreen() {
 
     const handleOpenQr = (qrConfig: QrSheetState) => {
         setQrSheet(qrConfig);
+        setIsQrSheetOpen(true);
     };
 
     if (isLoading || loadingProjects) {
@@ -196,13 +203,13 @@ export default function MobileShareScreen() {
                 description={t('offeringPageDesc', { offering: labels.offeringLower })}
                 icon={<LuExternalLink color={token.colorPrimary} size={18} />}
                 label={t('yourOfferingPage', { offering: labels.offeringTitle })}
-                onCopy={() => void handleCopy(data.obpLink, t('offeringPageCopyLabel', { offering: labels.offeringTitle }))}
-                onOpen={() => window.open(data.obpLink, '_blank')}
+                onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('offeringPageCopyLabel', { offering: labels.offeringTitle }))}
+                onOpen={() => window.open(withSource(data.obpLink, 'direct'), '_blank')}
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-page`, 'qr'),
                     helperText: t('offeringPageDesc', { offering: labels.offeringLower }),
                     title: t('yourOfferingPage', { offering: labels.offeringTitle }),
-                    url: data.obpLink,
+                    url: withSource(data.obpLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}
                 value={data.obpLink}
@@ -212,13 +219,13 @@ export default function MobileShareScreen() {
                 description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
                 icon={<LuCopy color={token.colorSuccess} size={18} />}
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
-                onCopy={() => void handleCopy(data.menuLink, t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
-                onOpen={() => window.open(data.menuLink, '_blank')}
+                onCopy={() => void handleCopy(withSource(data.menuLink, 'copy'), t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
+                onOpen={() => window.open(withSource(data.menuLink, 'direct'), '_blank')}
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-direct-link`, 'qr'),
                     helperText: t('directOfferingLinkDesc', { offering: labels.offeringLower }),
                     title: t('directOfferingLink', { offering: labels.offeringTitle }),
-                    url: data.menuLink,
+                    url: withSource(data.menuLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}
                 value={data.menuLink}
@@ -235,7 +242,7 @@ export default function MobileShareScreen() {
                         filename: buildQrCodeFilename(`${data.storeName}-feedback`, 'qr'),
                         helperText: t('feedbackLinkDesc'),
                         title: t('feedbackLink'),
-                        url: data.feedbackLink,
+                        url: data.feedbackQrLink,
                     })}
                     showQrLabel={t('showQr')}
                     value={data.feedbackLink}
@@ -317,22 +324,20 @@ export default function MobileShareScreen() {
                 visible={isProjectSelectorOpen}
             />
 
-            {qrSheet ? (
-                <MobileQrCodeSheet
-                    copyErrorMessage={t('couldNotCopy')}
-                    copySuccessMessage={t('linkCopied')}
-                    downloadSuccessMessage={t('qrDownloaded')}
-                    filename={qrSheet.filename}
-                    generatingLabel={t('generatingQr')}
-                    helperText={qrSheet.helperText}
-                    imageAlt={qrSheet.title}
-                    onClose={() => setQrSheet(null)}
-                    qrErrorMessage={t('qrFailed')}
-                    title={qrSheet.title}
-                    url={qrSheet.url}
-                    visible={!!qrSheet}
-                />
-            ) : null}
+            <MobileQrCodeSheet
+                copyErrorMessage={t('couldNotCopy')}
+                copySuccessMessage={t('linkCopied')}
+                downloadSuccessMessage={t('qrDownloaded')}
+                filename={qrSheet?.filename || buildQrCodeFilename(data.storeName || 'menu', 'qr')}
+                generatingLabel={t('generatingQr')}
+                helperText={qrSheet?.helperText}
+                imageAlt={qrSheet?.title || t('showQr')}
+                onClose={() => setIsQrSheetOpen(false)}
+                qrErrorMessage={t('qrFailed')}
+                title={qrSheet?.title || t('showQr')}
+                url={qrSheet?.url || ''}
+                visible={isQrSheetOpen}
+            />
         </Flex>
     );
 }
