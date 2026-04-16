@@ -11,9 +11,9 @@
  * OWASP A06: Protection against automated attacks
  */
 
-import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
-import { firebaseApp } from './firebaseClient';
 import { FEATURE_FLAGS } from '@config/features';
+import { CustomProvider, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { firebaseApp } from './firebaseClient';
 
 const appCheckDebugToken = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
 const APP_CHECK_BADGE = 'background: #14532d; color: #bbf7d0; padding: 2px 6px; border-radius: 999px; font-weight: 700;';
@@ -28,8 +28,7 @@ function isLocalOrPreviewHost(hostname: string): boolean {
     if (
         normalizedHost === 'localhost' ||
         normalizedHost === '0.0.0.0' ||
-        normalizedHost.endsWith('.local') ||
-        normalizedHost.endsWith('.vercel.app')
+        normalizedHost.endsWith('.local')
     ) {
         return true;
     }
@@ -90,7 +89,7 @@ export function initAppCheck() {
     try {
         appCheckInstance = initializeAppCheck(firebaseApp, {
             provider: new ReCaptchaV3Provider(recaptchaSiteKey),
-            
+
             // Automatically refresh tokens before they expire
             isTokenAutoRefreshEnabled: true
         });

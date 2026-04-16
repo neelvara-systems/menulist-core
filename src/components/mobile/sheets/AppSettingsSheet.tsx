@@ -312,12 +312,14 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                         </Flex>
                     </Card>
 
-                    <Card>
-                        <Flex align="center" justify="space-between">
-                            <Text strong>{t('useFullScreen')}</Text>
-                            <Switch checked={isFullscreen} onChange={() => void toggleFullscreen()} />
-                        </Flex>
-                    </Card>
+                    {typeof document !== 'undefined' && 'requestFullscreen' in document.documentElement ? (
+                        <Card>
+                            <Flex align="center" justify="space-between">
+                                <Text strong>{t('useFullScreen')}</Text>
+                                <Switch checked={isFullscreen} onChange={() => void toggleFullscreen()} />
+                            </Flex>
+                        </Card>
+                    ) : null}
                 </Flex>
             </Flex>
         </Popup>

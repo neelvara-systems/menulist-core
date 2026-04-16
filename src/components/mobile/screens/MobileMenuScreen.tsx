@@ -2425,6 +2425,10 @@ export default function MobileMenuScreen() {
                             (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === '' ? null : value === 'active' }))
                         )}
 
+                        <Text style={{ fontSize: 12 }} type="secondary">
+                            {t('filterTerminologyHelp', { unavailable: availabilityLabels.unavailable })}
+                        </Text>
+
                     </Flex>
 
                     <div style={{

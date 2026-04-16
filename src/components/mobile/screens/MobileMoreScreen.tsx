@@ -173,7 +173,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
-        { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: 'Locations / Branches / Outlets', description: t('locationsDesc'), onClick: () => openSubScreen('locations') },
+        { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, label: t('locations'), description: t('locationsDesc'), onClick: () => openSubScreen('locations') },
         { key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, label: t('staff'), description: t('staffDesc'), onClick: () => openSubScreen('users') },
         { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') },
     ];
@@ -181,12 +181,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
     const businessPresenceItems = [
         { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), onClick: () => openSubScreen('domainSettings') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openSubScreen('officialPage') }] : []),
-        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), description: 'Public social links shown across your business presence.', onClick: () => openSubScreen('socialSettings') },
+        { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') },
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
-        { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, label: 'SEO', description: 'Manage search title, description, keywords, and canonical URL.', onClick: () => openSubScreen('seoSettings') },
-        { key: 'analyticsSettings', icon: <LuBarChart3 color="#16a34a" size={20} />, label: 'Analytics Settings', description: 'Manage analytics IDs, verification, and tracking options.', onClick: () => openSubScreen('analyticsSettings') },
+        { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
+        { key: 'analyticsSettings', icon: <LuBarChart3 color="#16a34a" size={20} />, label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') },
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
-        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: 'Store-level guest feedback collection and review destination settings.', onClick: () => openSubScreen('feedbackSettings') },
+        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), onClick: () => openSubScreen('feedbackSettings') },
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
     ];
 

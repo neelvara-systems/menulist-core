@@ -9,7 +9,7 @@
  * Only allows requests from authorized domains
  */
 
-import { DASHBOARD_URL, PLATFORM_URL, VERCEL_URLS } from '@constant/urls';
+import { DASHBOARD_URL, PLATFORM_URL } from '@constant/urls';
 import { NextResponse } from 'next/server';
 import { secureLog } from './secureLogger';
 
@@ -22,7 +22,6 @@ const ALLOWED_ORIGINS = [
     'http://localhost:3000',
     PLATFORM_URL,
     DASHBOARD_URL,
-    ...VERCEL_URLS,
 ].filter(Boolean) as string[]; // Remove undefined values
 
 /**

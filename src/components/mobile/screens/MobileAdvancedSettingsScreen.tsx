@@ -4,7 +4,7 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
-import { LuExternalLink, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuX } from 'react-icons/lu';
+import { LuExternalLink, LuMessageSquare, LuPlus, LuShare2, LuX } from 'react-icons/lu';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -152,7 +152,26 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     const handleSaveEditedPlatform = () => {
         if (!editingPlatformKey) return;
         const normalizedLabel = editingPlatformLabel.trim();
-        const normalizedValue = editingPlatformValue.trim();
+        const rawValue = editingPlatformValue.trim();
+
+        let normalizedValue = rawValue;
+        if (normalizedValue && !/^https?:\/\//i.test(normalizedValue)) {
+            normalizedValue = `https://${normalizedValue}`;
+        }
+
+        if (normalizedValue) {
+            try {
+                const url = new URL(normalizedValue);
+                if (url.hostname.length < 3 || !url.hostname.includes('.')) {
+                    Toast.show({ content: 'Please enter a valid link (e.g. https://instagram.com/yourbusiness)', duration: 2500 });
+                    return;
+                }
+            } catch {
+                Toast.show({ content: 'Please enter a valid link (e.g. https://instagram.com/yourbusiness)', duration: 2500 });
+                return;
+            }
+        }
+
         const isKnownPlatform = knownPlatformMap.has(editingPlatformKey);
         const nextSocialMedia = { ...socialMedia };
 
@@ -441,13 +460,13 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
                 {showFeedback ? (
                     <Card size="small" title={<Text strong>{t('guestFeedback')}</Text>}>
-                    <List>
-                        <List.Item
-                            prefix={<LuMessageSquare color="#16a34a" size={18} />}
-                            extra={<Switch checked={feedbackEnabled} onChange={handleToggleFeedback} />}
-                            title={<Text>{t('enableFeedback')}</Text>}
-                        />
-                    </List>
+                        <List>
+                            <List.Item
+                                prefix={<LuMessageSquare color="#16a34a" size={18} />}
+                                extra={<Switch checked={feedbackEnabled} onChange={handleToggleFeedback} />}
+                                title={<Text>{t('enableFeedback')}</Text>}
+                            />
+                        </List>
                     </Card>
                 ) : null}
 

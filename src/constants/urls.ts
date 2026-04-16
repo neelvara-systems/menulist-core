@@ -38,18 +38,6 @@ export const PLATFORM_DOMAIN_ALIASES = [
     'www.menulist.online',
 ] as const;
 
-/**
- * Vercel deployment URLs — needed for preview/staging environments.
- * Set NEXT_PUBLIC_APP_URL per environment:
- *   Production: https://menulist.ai
- *   Staging:    https://menulist-ai.vercel.app
- *   Local:      http://localhost:3000
- */
-export const VERCEL_URLS = [
-    'https://menulistai.vercel.app',
-    'https://menulist-ai.vercel.app',
-] as const;
-
 /** Full root URL with protocol */
 export const PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
 
@@ -75,9 +63,6 @@ const isLocalhostHost = (hostname: string): boolean =>
     || hostname === '127.0.0.1'
     || hostname.startsWith('192.168.');
 
-const isPreviewLikeHost = (hostname: string): boolean =>
-    hostname.endsWith('.vercel.app');
-
 export const normalizeBaseUrl = (value?: string | null): string => {
     if (!value) return '';
     const trimmed = value.trim();
@@ -92,7 +77,7 @@ export const getPublicBaseUrl = (): string => {
         const currentOrigin = stripTrailingSlashes(window.location.origin);
         const currentHostname = window.location.hostname.toLowerCase();
 
-        if (isLocalhostHost(currentHostname) || isPreviewLikeHost(currentHostname)) {
+        if (isLocalhostHost(currentHostname)) {
             return currentOrigin;
         }
 
@@ -154,11 +139,13 @@ export const getMenuUrl = (subdomain: string): string => {
     const publicBaseUrl = getPublicBaseUrl();
     const publicHostname = getHostnameFromUrl(publicBaseUrl);
 
-    if (isCanonicalPublicHost(publicHostname)) {
-        return normalizeBaseUrl(`https://${normalizedSubdomain}.${PLATFORM_DOMAIN}`);
+    // Always use canonical subdomain URL except on localhost where subdomains
+    // can't be resolved. Vercel deployments should still produce {sub}.menulist.ai.
+    if (isLocalhostHost(publicHostname)) {
+        return `${publicBaseUrl}/_client/${encodeURIComponent(normalizedSubdomain)}`;
     }
 
-    return `${publicBaseUrl}/_client/${encodeURIComponent(normalizedSubdomain)}`;
+    return normalizeBaseUrl(`https://${normalizedSubdomain}.${PLATFORM_DOMAIN}`);
 };
 
 /** Build a customer-facing tenant root URL from either custom domain or subdomain */
@@ -198,8 +185,6 @@ export const PLATFORM_DOMAINS = [
     PLATFORM_DOMAIN,
     `www.${PLATFORM_DOMAIN}`,
     `${DASHBOARD_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
-    'menulistai.vercel.app',
-    'menulist-ai.vercel.app',
     'localhost',
     'localhost:3000',
     '127.0.0.1',
