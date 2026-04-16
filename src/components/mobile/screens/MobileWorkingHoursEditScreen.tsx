@@ -208,7 +208,19 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                     );
                 })}
 
-                <Flex gap={8}>
+                <Flex
+                    gap={8}
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        background: 'var(--adm-color-background)',
+                        borderTop: '1px solid var(--adm-color-border)',
+                        bottom: 0,
+                        marginInline: -16,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                        position: 'sticky',
+                        zIndex: 20,
+                    }}
+                >
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large" style={{ minHeight: 44 }}>
                         {t('reset')}
                     </Button>

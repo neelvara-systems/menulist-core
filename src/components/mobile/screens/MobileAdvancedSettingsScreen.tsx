@@ -40,6 +40,28 @@ function getInitialFeedbackDraft(storeDetails: any): FeedbackDraft {
     };
 }
 
+function normalizeAndValidateSocialLink(value: string, platformKey: string): { normalized: string; valid: boolean } {
+    const trimmed = value.trim();
+    if (!trimmed) return { normalized: '', valid: true };
+
+    if (platformKey === 'whatsapp') {
+        const digits = trimmed.replace(/[^\d]/g, '');
+        if (digits.length < 8 || digits.length > 15) return { normalized: trimmed, valid: false };
+        return { normalized: `https://wa.me/${digits}`, valid: true };
+    }
+
+    const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+        const parsed = new URL(normalized);
+        if (!parsed.hostname || !parsed.hostname.includes('.')) {
+            return { normalized, valid: false };
+        }
+        return { normalized: parsed.toString(), valid: true };
+    } catch {
+        return { normalized, valid: false };
+    }
+}
+
 export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
@@ -154,22 +176,13 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         const normalizedLabel = editingPlatformLabel.trim();
         const rawValue = editingPlatformValue.trim();
 
-        let normalizedValue = rawValue;
-        if (normalizedValue && !/^https?:\/\//i.test(normalizedValue)) {
-            normalizedValue = `https://${normalizedValue}`;
-        }
-
-        if (normalizedValue) {
-            try {
-                const url = new URL(normalizedValue);
-                if (url.hostname.length < 3 || !url.hostname.includes('.')) {
-                    Toast.show({ content: 'Please enter a valid link (e.g. https://instagram.com/yourbusiness)', duration: 2500 });
-                    return;
-                }
-            } catch {
-                Toast.show({ content: 'Please enter a valid link (e.g. https://instagram.com/yourbusiness)', duration: 2500 });
-                return;
-            }
+        const { normalized: normalizedValue, valid } = normalizeAndValidateSocialLink(rawValue, editingPlatformKey);
+        if (!valid) {
+            const validationHint = editingPlatformKey === 'whatsapp'
+                ? 'Please enter a valid WhatsApp number with country code.'
+                : 'Please enter a valid link (e.g. https://instagram.com/yourbusiness)';
+            Toast.show({ content: validationHint, duration: 2500 });
+            return;
         }
 
         const isKnownPlatform = knownPlatformMap.has(editingPlatformKey);
@@ -521,7 +534,19 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                     </>
                 ) : null}
 
-                <Flex gap={8}>
+                <Flex
+                    gap={8}
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        background: 'var(--adm-color-background)',
+                        borderTop: '1px solid var(--adm-color-border)',
+                        bottom: 0,
+                        marginInline: -16,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                        position: 'sticky',
+                        zIndex: 20,
+                    }}
+                >
                     <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} fill="outline" onClick={handleReset} size="large">
                         Reset
                     </Button>

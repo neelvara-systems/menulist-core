@@ -96,7 +96,7 @@ export default function MobileShareScreen() {
             try {
                 const screenState = await getScreenState();
                 if (screenState?.screenToken) {
-                    menuBoardLink = buildScreenUrl(screenState.screenToken);
+                    menuBoardLink = buildScreenUrl(screenState.screenToken, obpLink);
                     highlightsLink = `${menuBoardLink}?mode=highlights`;
                 }
             } catch {
@@ -105,7 +105,7 @@ export default function MobileShareScreen() {
             }
 
             const allProjects: ProjectLink[] = projects.map((project: any) => ({
-                feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link') : "",
+                feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : "",
                 isDefault: project.isDefault || false,
                 name: project.name || tProjectSelector('untitled'),
                 projectId: project.projectId,
@@ -118,8 +118,8 @@ export default function MobileShareScreen() {
             setData({
                 allProjects,
                 businessType: storeDetails.businessType || '',
-                feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'direct_link') : '',
-                feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr') : '',
+                feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'direct_link', obpLink) : '',
+                feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr', obpLink) : '',
                 hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
                 hasPosSync,
                 hasPublishedMenu: !!obpLink,

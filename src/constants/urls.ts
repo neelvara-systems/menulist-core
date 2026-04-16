@@ -136,15 +136,6 @@ export const getMenuUrl = (subdomain: string): string => {
     const normalizedSubdomain = subdomain.trim().toLowerCase();
     if (!normalizedSubdomain) return getPublicBaseUrl();
 
-    const publicBaseUrl = getPublicBaseUrl();
-    const publicHostname = getHostnameFromUrl(publicBaseUrl);
-
-    // Always use canonical subdomain URL except on localhost where subdomains
-    // can't be resolved. Vercel deployments should still produce {sub}.menulist.ai.
-    if (isLocalhostHost(publicHostname)) {
-        return `${publicBaseUrl}/_client/${encodeURIComponent(normalizedSubdomain)}`;
-    }
-
     return normalizeBaseUrl(`https://${normalizedSubdomain}.${PLATFORM_DOMAIN}`);
 };
 

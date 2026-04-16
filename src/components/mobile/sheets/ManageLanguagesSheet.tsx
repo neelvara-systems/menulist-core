@@ -186,95 +186,99 @@ export default function ManageLanguagesSheet({
                         />
                     ) : null}
 
-                    <Card size="small" style={sectionCardStyle}>
-                        <Flex gap={6} vertical>
-                            <Flex align="center" gap={8}>
-                                <LuLanguages size={16} />
-                                <Text strong>{t('availableLanguages')}</Text>
-                            </Flex>
-                            <Text type="secondary">
-                                {t('menuLanguagesDesc')}
-                            </Text>
-                        </Flex>
-                    </Card>
+                    {!isSaving ? (
+                        <>
+                            <Card size="small" style={sectionCardStyle}>
+                                <Flex gap={6} vertical>
+                                    <Flex align="center" gap={8}>
+                                        <LuLanguages size={16} />
+                                        <Text strong>{t('availableLanguages')}</Text>
+                                    </Flex>
+                                    <Text type="secondary">
+                                        {t('menuLanguagesDesc')}
+                                    </Text>
+                                    <Text type="secondary">
+                                        Added languages become selectable during translation and editing across this {labels.offeringLower}.
+                                    </Text>
+                                </Flex>
+                            </Card>
 
-                    <Card size="small" style={sectionCardStyle}>
-                        <Flex gap={12} vertical>
-                            {currentLanguages.map((language, index) => (
-                                <Flex
-                                    align="center"
-                                    justify="space-between"
-                                    key={language!.code}
-                                    style={index > 0 ? { borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 } : undefined}
-                                >
+                            <Card size="small" style={sectionCardStyle}>
+                                <Flex gap={12} vertical>
+                                    {currentLanguages.map((language, index) => (
+                                        <Flex
+                                            align="center"
+                                            justify="space-between"
+                                            key={language!.code}
+                                            style={index > 0 ? { borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 } : undefined}
+                                        >
+                                            <Flex gap={4} vertical>
+                                                <Text strong>
+                                                    {language!.name} {language!.nativeName !== language!.name ? `(${language!.nativeName})` : ''}
+                                                </Text>
+                                                <Text type="secondary">
+                                                    {index === 0 ? t('primaryLanguage') : t('languageActive', { code: language!.code.toUpperCase() })}
+                                                </Text>
+                                            </Flex>
+                                            {index === 0 ? (
+                                                <Flex align="center" gap={6}>
+                                                    <LuCheck size={16} />
+                                                    <Text type="secondary">{t('primary')}</Text>
+                                                </Flex>
+                                            ) : (
+                                                <Flex align="center" gap={6}>
+                                                    <Button
+                                                        fill="outline"
+                                                        onClick={() => void handleMakePrimary(language!.code)}
+                                                        size="small"
+                                                    >
+                                                        {t('primary')}
+                                                    </Button>
+                                                    <Button
+                                                        color="danger"
+                                                        fill="none"
+                                                        onClick={() => void handleRemove(language!.code)}
+                                                        size="small"
+                                                    >
+                                                        <LuTrash2 size={16} />
+                                                    </Button>
+                                                </Flex>
+                                            )}
+                                        </Flex>
+                                    ))}
+                                </Flex>
+                            </Card>
+
+                            <Card size="small" style={sectionCardStyle}>
+                                <Flex gap={10} vertical>
                                     <Flex gap={4} vertical>
-                                        <Text strong>
-                                            {language!.name} {language!.nativeName !== language!.name ? `(${language!.nativeName})` : ''}
-                                        </Text>
+                                        <Text strong>{t('addLanguage')}</Text>
                                         <Text type="secondary">
-                                            {index === 0 ? t('primaryLanguage') : t('languageActive', { code: language!.code.toUpperCase() })}
+                                            {t('languagesLimit', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}
                                         </Text>
                                     </Flex>
-                                    {index === 0 ? (
-                                        <Flex align="center" gap={6}>
-                                            <LuCheck size={16} />
-                                            <Text type="secondary">{t('primary')}</Text>
-                                        </Flex>
-                                    ) : (
-                                        <Flex align="center" gap={6}>
-                                            <Button
-                                                disabled={isSaving}
-                                                fill="outline"
-                                                onClick={() => void handleMakePrimary(language!.code)}
-                                                size="small"
-                                            >
-                                                {t('primary')}
-                                            </Button>
-                                            <Button
-                                                color="danger"
-                                                disabled={isSaving}
-                                                fill="none"
-                                                onClick={() => void handleRemove(language!.code)}
-                                                size="small"
-                                            >
-                                                <LuTrash2 size={16} />
-                                            </Button>
-                                        </Flex>
-                                    )}
+                                    <Select
+                                        onChange={setPendingLanguageCode}
+                                        options={addableLanguages.map((language) => ({
+                                            label: language.nativeName !== language.name ? `${language.name} (${language.nativeName})` : language.name,
+                                            value: language.code,
+                                        }))}
+                                        placeholder={t('chooseLanguage')}
+                                        value={pendingLanguageCode || undefined}
+                                    />
+                                    <Button
+                                        block
+                                        color="primary"
+                                        disabled={!pendingLanguageCode}
+                                        onClick={() => void handleAdd()}
+                                        size="large"
+                                    >
+                                        {t('addLanguageAction')}
+                                    </Button>
                                 </Flex>
-                            ))}
-                        </Flex>
-                    </Card>
-
-                    <Card size="small" style={sectionCardStyle}>
-                        <Flex gap={10} vertical>
-                            <Flex gap={4} vertical>
-                                <Text strong>{t('addLanguage')}</Text>
-                                <Text type="secondary">
-                                    {t('languagesLimit', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}
-                                </Text>
-                            </Flex>
-                            <Select
-                                onChange={setPendingLanguageCode}
-                                options={addableLanguages.map((language) => ({
-                                    label: language.nativeName !== language.name ? `${language.name} (${language.nativeName})` : language.name,
-                                    value: language.code,
-                                }))}
-                                placeholder={t('chooseLanguage')}
-                                value={pendingLanguageCode || undefined}
-                            />
-                            <Button
-                                block
-                                color="primary"
-                                disabled={!pendingLanguageCode || isSaving}
-                                loading={isSaving}
-                                onClick={() => void handleAdd()}
-                                size="large"
-                            >
-                                {t('addLanguageAction')}
-                            </Button>
-                        </Flex>
-                    </Card>
+                            </Card>
+                        </>
+                    ) : null}
                 </Flex>
             </Flex>
 

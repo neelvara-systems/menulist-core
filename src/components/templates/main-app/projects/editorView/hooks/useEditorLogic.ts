@@ -148,9 +148,11 @@ export const useEditorLogic = ({
                 filters?.activeStatus !== null &&
                 filters?.activeStatus !== undefined
             ) {
-                filtered = filtered.filter(
-                    (item) => item.active === filters.activeStatus,
-                );
+                filtered = filtered.filter((item) => {
+                    const category = categories.find((cat) => cat.id === item.category);
+                    const effectiveActive = item.active !== false && (category?.active !== false);
+                    return effectiveActive === filters.activeStatus;
+                });
             }
 
             return filtered;

@@ -1,9 +1,9 @@
 'use client'
 
 import { BRAND_COLOR_PRESETS } from '@config/designSystem';
-import { theme } from 'antd';
+import { ColorPicker, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LuCheck, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Popup, Text, Toast } from '../antd';
 
@@ -24,6 +24,10 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 18,
     } as const;
+
+    useEffect(() => {
+        setHexInput(value || '');
+    }, [value, visible]);
 
     const handleHexSubmit = () => {
         const hex = hexInput.trim();
@@ -70,9 +74,17 @@ export default function ColorPickerSheet({ defaultMoodColor, onChange, onClose, 
                 </Card>
 
                 <Card style={sectionCardStyle} title={t('customColor')}>
-                    <Flex gap={8}>
+                    <Flex align="center" gap={8}>
                         <Input onChange={setHexInput} placeholder="#FF5500" style={{ flex: 1 }} value={hexInput} />
                         <Button onClick={handleHexSubmit} size="small">{t('applyColor')}</Button>
+                        <ColorPicker
+                            onChange={(color) => {
+                                const nextHex = color.toHexString().toUpperCase();
+                                setHexInput(nextHex);
+                                onChange(nextHex);
+                            }}
+                            value={activeColor}
+                        />
                     </Flex>
                 </Card>
 

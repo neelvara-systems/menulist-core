@@ -598,45 +598,62 @@ export default function ItemEditSheet({
                         </Button>
                     ) : null}
 
-                    <Flex gap={12}>
-                        <Button block disabled={isSaving} fill="outline" onClick={onClose} size="large">
-                            {t('cancel')}
-                        </Button>
-                        <Button
-                            block
-                            color="primary"
-                            disabled={!getLocalizedValue(draftItem.name, primaryLanguage).trim() || isSaving}
-                            loading={isSaving}
-                            onClick={() => {
-                                void handleSave();
-                            }}
-                            size="large"
-                        >
-                            {isAddMode ? t('addItem') : t('save')}
-                        </Button>
-                    </Flex>
+                    <div
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            bottom: 0,
+                            marginInline: -16,
+                            marginTop: 'auto',
+                            padding: '12px 16px',
+                            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+                            position: 'sticky',
+                            zIndex: 5,
+                        }}
+                    >
+                        <Flex gap={12} vertical>
+                            <Flex gap={12}>
+                                <Button block disabled={isSaving} fill="outline" onClick={onClose} size="large">
+                                    {t('cancel')}
+                                </Button>
+                                <Button
+                                    block
+                                    color="primary"
+                                    disabled={!getLocalizedValue(draftItem.name, primaryLanguage).trim() || isSaving}
+                                    loading={isSaving}
+                                    onClick={() => {
+                                        void handleSave();
+                                    }}
+                                    size="large"
+                                >
+                                    {isAddMode ? t('addItem') : t('save')}
+                                </Button>
+                            </Flex>
 
-                    {!isAddMode && onDelete && item?.id ? (
-                        <Button
-                            block
-                            color="danger"
-                            disabled={isSaving}
-                            fill="outline"
-                            onClick={() => {
-                                if (isSaving) return;
-                                Dialog.confirm({
-                                    title: t('deleteItemTitle'),
-                                    content: t('deleteItemConfirm', { item: item.name }),
-                                    confirmText: t('delete'),
-                                    cancelText: t('cancel'),
-                                    onConfirm: () => onDelete(item.id),
-                                });
-                            }}
-                            size="large"
-                        >
-                            {t('deleteItemAction')}
-                        </Button>
-                    ) : null}
+                            {!isAddMode && onDelete && item?.id ? (
+                                <Button
+                                    block
+                                    color="danger"
+                                    disabled={isSaving}
+                                    fill="outline"
+                                    onClick={() => {
+                                        if (isSaving) return;
+                                        Dialog.confirm({
+                                            title: t('deleteItemTitle'),
+                                            content: t('deleteItemConfirm', { item: item.name }),
+                                            confirmText: t('delete'),
+                                            cancelText: t('cancel'),
+                                            onConfirm: () => onDelete(item.id),
+                                        });
+                                    }}
+                                    size="large"
+                                >
+                                    {t('deleteItemAction')}
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    </div>
                 </Flex>
             </Flex>
         </Popup>

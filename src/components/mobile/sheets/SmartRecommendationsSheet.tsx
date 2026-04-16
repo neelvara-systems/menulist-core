@@ -284,14 +284,29 @@ export default function SmartRecommendationsSheet({
                             />
                         ) : null}
 
-                        <Flex gap={8}>
-                            <Button block fill="outline" onClick={onClose}>
-                                {t('cancel')}
-                            </Button>
-                            <Button block disabled={!hasChanges} loading={isSaving} onClick={() => void handleSave()}>
-                                {t('save')}
-                            </Button>
-                        </Flex>
+                        <div
+                            style={{
+                                backdropFilter: 'blur(10px)',
+                                backgroundColor: token.colorBgContainer,
+                                borderTop: `1px solid ${token.colorBorderSecondary}`,
+                                bottom: 0,
+                                marginInline: -12,
+                                marginTop: 'auto',
+                                padding: '12px 16px',
+                                paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+                                position: 'sticky',
+                                zIndex: 5,
+                            }}
+                        >
+                            <Flex gap={8}>
+                                <Button block fill="outline" onClick={onClose}>
+                                    {t('cancel')}
+                                </Button>
+                                <Button block disabled={!hasChanges} loading={isSaving} onClick={() => void handleSave()}>
+                                    {t('save')}
+                                </Button>
+                            </Flex>
+                        </div>
                     </Flex>
                 </Flex>
             </Popup>

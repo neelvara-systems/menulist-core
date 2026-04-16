@@ -1,7 +1,7 @@
 'use client'
 
 import { theme } from 'antd';
-import { Badge, Button, Flex, Text } from './antd';
+import { Button, Flex, Text } from './antd';
 import { LuCalendarCheck, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
 
 export type MobileTab = 'today' | 'menu' | 'share' | 'more';
@@ -39,9 +39,6 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
             <Flex align="center" gap={0} justify="space-between" style={{ padding: '4px 8px 8px', width: '100%' }}>
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.key;
-                    const iconNode = tab.key === 'more' && feedbackCount
-                        ? <Badge count={feedbackCount} size="small">{tab.icon}</Badge>
-                        : tab.icon;
 
                     return (
                         <Button
@@ -72,7 +69,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                 vertical
                             >
                                 <Flex align="center" justify="center" style={{ color: 'inherit', lineHeight: 1 }}>
-                                    {iconNode}
+                                    {tab.icon}
                                 </Flex>
                                 <Text
                                     style={{

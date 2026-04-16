@@ -42,12 +42,15 @@ export function buildSelectableItems(
         if (!file.extractedData?.data) return;
         const categories = file.extractedData.data.categories || [];
         const catMap: Record<string, string> = {};
+        const catActiveMap: Record<string, boolean> = {};
         categories.forEach((cat) => {
             catMap[cat.id] = cat.name?.[activeLang] || cat.name?.['en'] || 'Untitled';
+            catActiveMap[cat.id] = cat.active !== false;
         });
 
         file.extractedData.data.items?.forEach((item) => {
             const isLocked = !!(isMasterLinked && itemStates?.[item.id] === 'inherited');
+            const categoryActive = catActiveMap[item.category] !== false;
             items.push({
                 id: item.id,
                 name: item.name?.[activeLang] || item.name?.['en'] || 'Untitled',
@@ -55,7 +58,7 @@ export function buildSelectableItems(
                 category: item.category,
                 categoryName: catMap[item.category] || 'Uncategorized',
                 fileUid: file.uid,
-                active: item.active ?? true,
+                active: (item.active !== false) && categoryActive,
                 available: item.available !== false,
                 isLocked,
                 attributes: item.attributes?.map((attr) => ({
@@ -409,15 +412,29 @@ export function applyBulkActiveInactive(
 ): Project {
     const updated: Project = removeObjRef(project);
     const targetBool = target === 'show';
+    const selectedCategoryIds = new Set<string>();
 
     updated.files?.forEach((file) => {
         if (!file.extractedData?.data?.items) return;
 
         file.extractedData.data.items = file.extractedData.data.items.map((item) => {
             if (!selectedItemIds.has(item.id)) return item;
+            if (targetBool && item.category) {
+                selectedCategoryIds.add(item.category);
+            }
             return { ...item, active: targetBool };
         });
     });
+
+    if (targetBool && selectedCategoryIds.size > 0) {
+        updated.files?.forEach((file) => {
+            if (!file.extractedData?.data?.categories) return;
+            file.extractedData.data.categories = file.extractedData.data.categories.map((category) => {
+                if (!selectedCategoryIds.has(category.id)) return category;
+                return { ...category, active: true };
+            });
+        });
+    }
 
     return updated;
 }

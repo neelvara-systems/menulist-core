@@ -7,7 +7,7 @@
  * @see __docs__/projects/internal-feedback-system/
  */
 
-import { getPublicBaseUrl } from '@constant/urls';
+import { getPublicBaseUrl, normalizeBaseUrl } from '@constant/urls';
 import QRCode from 'qrcode';
 /**
  * QR code generation options
@@ -26,8 +26,8 @@ export interface QrCodeOptions {
 /**
  * Get the base URL for the application
  */
-const getBaseUrl = (): string => {
-    return getPublicBaseUrl();
+const getBaseUrl = (baseUrlOverride?: string): string => {
+    return normalizeBaseUrl(baseUrlOverride) || getPublicBaseUrl();
 };
 
 /**
@@ -37,8 +37,12 @@ const getBaseUrl = (): string => {
  * @param source - Optional source tracking param
  * @returns Full feedback URL
  */
-export function getFeedbackUrl(projectId: string, source?: 'feedback_qr' | 'menu_footer' | 'direct_link'): string {
-    const baseUrl = getBaseUrl();
+export function getFeedbackUrl(
+    projectId: string,
+    source?: 'feedback_qr' | 'menu_footer' | 'direct_link',
+    baseUrlOverride?: string,
+): string {
+    const baseUrl = getBaseUrl(baseUrlOverride);
     const base = `${baseUrl}/feedback/${projectId}`;
     return source ? `${base}?source=${source}` : base;
 }
@@ -58,9 +62,10 @@ export function getFeedbackUrl(projectId: string, source?: 'feedback_qr' | 'menu
  */
 export async function generateFeedbackQrCode(
     projectId: string,
-    options?: QrCodeOptions
+    options?: QrCodeOptions,
+    baseUrlOverride?: string,
 ): Promise<string> {
-    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr');
+    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr', baseUrlOverride);
 
     const qrOptions = {
         width: options?.width || 1024,
@@ -85,9 +90,10 @@ export async function generateFeedbackQrCode(
  */
 export async function generateFeedbackQrCodeBuffer(
     projectId: string,
-    options?: QrCodeOptions
+    options?: QrCodeOptions,
+    baseUrlOverride?: string,
 ): Promise<Buffer> {
-    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr');
+    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr', baseUrlOverride);
 
     const qrOptions = {
         width: options?.width || 1024,

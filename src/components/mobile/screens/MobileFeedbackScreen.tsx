@@ -1,6 +1,7 @@
 'use client'
 
-import { getFeedbackList, updateFeedbackStatus } from '@database/guestFeedback';
+import { getFeedbackList } from '@database/guestFeedback';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -39,6 +40,10 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>(DEFAULT_FEEDBACK_FILTER);
     const [isQrOpen, setIsQrOpen] = useState(false);
+    const publicBaseUrl = generateOBPUrl(
+        storeDetails?.subdomain || storeDetails?.subDomain || '',
+        storeDetails?.customDomain
+    );
 
     const fetchFeedback = useCallback(async (targetFilter = filter) => {
         try {
@@ -77,16 +82,6 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         Toast.show({ content: newStatus === 'resolved' ? t('resolved') : t('new'), duration: 1000 });
     }, [t]);
 
-    const handleQuickResolve = useCallback(async (feedbackId: string) => {
-        handleStatusUpdate(feedbackId, 'resolved');
-        try {
-            await updateFeedbackStatus(feedbackId, 'resolved');
-        } catch {
-            handleStatusUpdate(feedbackId, 'new');
-            Toast.show({ content: t('failedToUpdate'), duration: 1500 });
-        }
-    }, [handleStatusUpdate, t]);
-
     const handleOpenQr = () => {
         if (!selectedProjectId) {
             Toast.show({ content: t('noFeedback'), duration: 1500 });
@@ -95,8 +90,8 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         setIsQrOpen(true);
     };
 
-    const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'direct_link') : '';
-    const feedbackQrUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'feedback_qr') : '';
+    const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'direct_link', publicBaseUrl) : '';
+    const feedbackQrUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'feedback_qr', publicBaseUrl) : '';
 
     const handleCopyFeedbackLink = async () => {
         if (!feedbackUrl) return;
@@ -238,19 +233,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                                     </Text>
                                                 </Flex>
                                             )}
-                                            extra={feedback.status !== 'resolved' ? (
-                                                <Button
-                                                    fill="outline"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        void handleQuickResolve(feedback.id);
-                                                    }}
-                                                    size="small"
-                                                    style={{ borderColor: '#16a34a', color: '#16a34a', flexShrink: 0 }}
-                                                >
-                                                    {t('resolved')}
-                                                </Button>
-                                            ) : null}
+                                            extra={null}
                                             key={feedback.id}
                                             onClick={() => setSelectedFeedback(feedback)}
                                             prefix={(

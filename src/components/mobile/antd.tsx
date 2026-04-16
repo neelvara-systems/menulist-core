@@ -32,13 +32,13 @@ import {
 } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useLocale } from 'next-intl';
-import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
+import type { ComponentProps, CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
 import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
 type AnyStyle = CSSProperties & Record<string, any>;
 
-const { Text, Title } = Typography;
+const { Text: AntText, Title } = Typography;
 const MobileSheetContext = createContext(false);
 let activePopupScrollLocks = 0;
 let lockedShellScrollTop = 0;
@@ -188,6 +188,10 @@ export function Button({ block, children, className, color, disabled, fill = 'so
     const { token } = theme.useToken();
     const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
+    const touchMinHeight = antSize === 'large' ? 50 : antSize === 'small' ? 40 : 46;
+    const touchSafeStyle = fill !== 'none'
+        ? { minHeight: touchMinHeight, paddingInline: (block || antSize !== 'small') ? 14 : undefined }
+        : undefined;
 
     return (
         <AntButton
@@ -200,7 +204,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
             loading={loading}
             onClick={onClick}
             size={antSize}
-            style={{ ...buttonStyles(token, fill, color), ...sanitizeStyle(style) }}
+            style={{ ...buttonStyles(token, fill, color), ...touchSafeStyle, ...sanitizeStyle(style) }}
             type={antType}
         >
             {children}
@@ -467,6 +471,14 @@ export function Select({
     style,
     value,
 }: SingleSelectProps | MultiSelectProps) {
+    const handleChange = (nextValue: string | string[]) => {
+        if (typeof document !== 'undefined') {
+            const activeElement = document.activeElement as HTMLElement | null;
+            activeElement?.blur?.();
+        }
+        onChange?.(nextValue as any);
+    };
+
     return (
         <AntSelect
             allowClear={false}
@@ -478,7 +490,7 @@ export function Select({
             getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
             maxCount={maxCount}
             mode={mode}
-            onChange={onChange}
+            onChange={handleChange}
             optionFilterProp="label"
             options={options}
             placeholder={placeholder}
@@ -498,6 +510,12 @@ export function Select({
             value={value}
         />
     );
+}
+
+export function Text(props: ComponentProps<typeof AntText>) {
+    const hasExplicitColor = props.style && typeof (props.style as AnyStyle).color !== 'undefined';
+    const shouldInherit = !props.type && !hasExplicitColor;
+    return <AntText {...props} style={shouldInherit ? { color: 'inherit', ...(props.style || {}) } : props.style} />;
 }
 
 export function Switch({ checked, loading, onChange }: { checked?: boolean; loading?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
@@ -529,6 +547,13 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
     const { token } = theme.useToken();
     const isInsideSheet = useContext(MobileSheetContext);
+    const [isPwa, setIsPwa] = useState(false);
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const standaloneMatch = window.matchMedia?.('(display-mode: standalone)')?.matches;
+        const navStandalone = (window.navigator as any)?.standalone === true;
+        setIsPwa(Boolean(standaloneMatch || navStandalone));
+    }, []);
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
@@ -544,7 +569,9 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 flex: '0 0 auto',
                 minHeight: navHeight,
-                padding: isInsideSheet ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
+                padding: isInsideSheet
+                    ? (isPwa ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`)
+                    : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 width: '100%',
@@ -850,4 +877,4 @@ export function SafeArea({ position = 'top' }: { position?: 'top' | 'bottom' }) 
     return <AntSpace style={position === 'top' ? { paddingTop: 'env(safe-area-inset-top)' } : { paddingBottom: 'env(safe-area-inset-bottom)' }} />;
 }
 
-export { Avatar, Badge, Divider, Flex, Image, Text, Title };
+export { Avatar, Badge, Divider, Flex, Image, Title };

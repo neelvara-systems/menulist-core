@@ -121,10 +121,10 @@ export default function UseMenuList() {
 
             // Build feedback link
             const feedbackLink = defaultProject.projectId
-                ? getFeedbackUrl(defaultProject.projectId, 'direct_link')
+                ? getFeedbackUrl(defaultProject.projectId, 'direct_link', obpLink)
                 : ''
             const feedbackQrLink = defaultProject.projectId
-                ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr')
+                ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr', obpLink)
                 : ''
 
             // Build multi-project links
@@ -133,8 +133,8 @@ export default function UseMenuList() {
                 name: p.name || 'Untitled',
                 isDefault: p.isDefault || false,
                 url: generateProjectUrl(subdomain, customDomain, p.isDefault ? undefined : p.name, p.isDefault),
-                feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link') : '',
-                feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr') : '',
+                feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
+                feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr', obpLink) : '',
             }));
 
             // POS Sync status (if enabled)
@@ -147,8 +147,8 @@ export default function UseMenuList() {
                 feedbackLink,
                 feedbackQrLink,
                 screenToken,
-                menuBoardLink: screenToken ? buildScreenUrl(screenToken) : null,
-                highlightsLink: screenToken ? `${buildScreenUrl(screenToken)}?mode=highlights` : null,
+                menuBoardLink: screenToken ? buildScreenUrl(screenToken, obpLink) : null,
+                highlightsLink: screenToken ? `${buildScreenUrl(screenToken, obpLink)}?mode=highlights` : null,
                 screenLastSeenAt,
                 storeName: storeDetails.name || 'Your Business',
                 storeLogo: storeDetails.logo || null,

@@ -3,6 +3,7 @@
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { BUSINESS_TYPES } from '@constant/common';
 import { updateStore } from '@database/stores';
+import { updateTenant } from '@database/tenants';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
@@ -38,6 +39,7 @@ function getInitialFormData(storeDetails: any) {
         latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
         longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
         name: storeDetails?.name || '',
+        tenantName: storeDetails?.tenantName || '',
         phoneNumber: storeDetails?.phoneNumber || '',
         postalCode: storeDetails?.postalCode || '',
         state: storeDetails?.state || '',
@@ -48,7 +50,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
     const { token } = theme.useToken();
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails, tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [selectedLogo, setSelectedLogo] = useState<UserUploadedFileType | null>(
@@ -89,6 +91,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             email: formData.email,
             gstn: formData.gstn,
             name: formData.name,
+            tenantName: formData.tenantName,
             phoneNumber: formData.phoneNumber,
             postalCode: formData.postalCode,
             state: formData.state,
@@ -114,6 +117,13 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 tenantId: storeDetails.tenantId,
                 ...updates,
             } as any);
+            if (formData.tenantName && formData.tenantName !== tenantDetails?.name && storeDetails?.tenantId) {
+                await updateTenant({
+                    name: formData.tenantName,
+                    tenantId: storeDetails.tenantId,
+                });
+                setTenantDetails((previous: any) => ({ ...(previous || {}), name: formData.tenantName }));
+            }
             setStoreDetails((previous: any) => ({
                 ...previous,
                 ...optimisticUpdates,
@@ -147,6 +157,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 geo: storeDetails.geo,
                 gstn: storeDetails.gstn,
                 name: storeDetails.name,
+                tenantName: storeDetails.tenantName,
                 postalCode: storeDetails.postalCode,
                 phoneNumber: storeDetails.phoneNumber,
                 state: storeDetails.state,
@@ -155,7 +166,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         } finally {
             setIsSaving(false);
         }
-    }, [formData, selectedLogo, setStoreDetails, storeDetails, t]);
+    }, [formData, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
@@ -184,8 +195,8 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             <NavBar onBack={onBack} />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileScreenIntro
-                    subtitle={t('basicSettingsSubtitle')}
-                    title={t('basicSettings')}
+                    subtitle="Manage your brand profile, business identity, contact details, and address."
+                    title="Brand Settings"
                 />
                 <Card>
                     <Flex align="center" gap={10} justify="center" style={{ minHeight: 120 }} vertical>
@@ -226,6 +237,16 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                                 </Button>
                             </>
                         )}
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuBuilding2 size={14} />
+                            <Text type="secondary">Brand Name</Text>
+                        </Flex>
+                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, tenantName: value }))} placeholder="Brand / chain name" value={formData.tenantName} />
                     </Flex>
                 </Card>
 
@@ -384,7 +405,19 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     </Flex>
                 </Card>
 
-                <Flex gap={8}>
+                <Flex
+                    gap={8}
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        background: 'var(--adm-color-background)',
+                        borderTop: '1px solid var(--adm-color-border)',
+                        bottom: 0,
+                        marginInline: -16,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                        position: 'sticky',
+                        zIndex: 20,
+                    }}
+                >
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large" style={{ minHeight: 44 }}>
                         {t('reset')}
                     </Button>

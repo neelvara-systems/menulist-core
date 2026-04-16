@@ -29,6 +29,7 @@ import {
     updateDarkThemeColor,
     updateLightThemeColor,
 } from '@reduxSlices/clientThemeConfig';
+import { ColorPicker } from 'antd';
 import { getCookie } from 'cookies-next';
 import { useFormatter, useLocale, useTimeZone, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
@@ -63,6 +64,24 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
 
     const activeThemeColor = isDarkMode ? darkThemeColor : lightThemeColor;
     const availableColors = useMemo(() => (isDarkMode ? DARK_COLORS : LIGHT_COLORS), [isDarkMode]);
+    const supportsFullscreen = useMemo(() => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+        const doc = document as Document & {
+            fullscreenEnabled?: boolean;
+            webkitFullscreenEnabled?: boolean;
+            msFullscreenEnabled?: boolean;
+        };
+        const root = document.documentElement as HTMLElement & {
+            webkitRequestFullscreen?: () => Promise<void> | void;
+            msRequestFullscreen?: () => Promise<void> | void;
+        };
+
+        return Boolean(
+            (doc.fullscreenEnabled && typeof root.requestFullscreen === 'function')
+            || (doc.webkitFullscreenEnabled && typeof root.webkitRequestFullscreen === 'function')
+            || (doc.msFullscreenEnabled && typeof root.msRequestFullscreen === 'function')
+        );
+    }, []);
     const previewDate = useMemo(() => new Date(), []);
     const languageOptions = useMemo(() => APP_LANGUAGES.map((option) => {
         const labelMatch = option.label.match(/^(.+?)\s+\((.+)\)$/);
@@ -233,6 +252,13 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                     </Button>
                                 ))}
                             </Flex>
+                            <Flex align="center" justify="space-between">
+                                <Text type="secondary">{activeThemeColor?.toUpperCase()}</Text>
+                                <ColorPicker
+                                    onChange={(color) => handleThemeColor(color.toHexString())}
+                                    value={activeThemeColor}
+                                />
+                            </Flex>
                         </Flex>
                     </Card>
 
@@ -312,7 +338,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                         </Flex>
                     </Card>
 
-                    {typeof document !== 'undefined' && 'requestFullscreen' in document.documentElement ? (
+                    {supportsFullscreen ? (
                         <Card>
                             <Flex align="center" justify="space-between">
                                 <Text strong>{t('useFullScreen')}</Text>

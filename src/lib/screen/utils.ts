@@ -4,7 +4,7 @@
  */
 
 import { Timestamp } from "@firebase/firestore";
-import { getPublicBaseUrl } from "@constant/urls";
+import { normalizeBaseUrl, getPublicBaseUrl } from "@constant/urls";
 import { DigitalScreenState, ScreenSlide } from "@type/campaigns";
 
 /**
@@ -69,8 +69,8 @@ export function filterExpiredSlides(slides: ScreenSlide[]): ScreenSlide[] {
 /**
  * Screen URL builder
  */
-export function buildScreenUrl(token: string): string {
-    const baseUrl = getPublicBaseUrl();
+export function buildScreenUrl(token: string, baseUrlOverride?: string): string {
+    const baseUrl = normalizeBaseUrl(baseUrlOverride) || getPublicBaseUrl();
     return `${baseUrl}/screen/${token}`;
 }
 

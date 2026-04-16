@@ -17,7 +17,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCamera, LuCheck, LuFileText, LuFilter, LuLanguages, LuPencil, LuSettings2, LuX } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuFileText, LuFilter, LuInfo, LuLanguages, LuPencil, LuSettings2, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { associateItemImagesWithProject } from '../../templates/main-app/projects/editorView/utils/associateItemImages';
 import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
@@ -335,6 +335,7 @@ export default function MobileMenuScreen() {
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
     const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | null>(null);
+    const [bulkActionInitialSelectedIds, setBulkActionInitialSelectedIds] = useState<string[]>([]);
     const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
     const [categorySheetMode, setCategorySheetMode] = useState<'manage' | 'reorder'>('manage');
     const [categorySheetInitialCategoryId, setCategorySheetInitialCategoryId] = useState<string | null>(null);
@@ -1030,6 +1031,21 @@ export default function MobileMenuScreen() {
         return items;
     }, [activeProjectLanguages, displayLanguage, menuData, primaryLang, t, uncategorizedLabel]);
 
+    const categoryActiveById = useMemo(() => {
+        const map = new Map<string, boolean>();
+        menuData?.files?.forEach((file: any) => {
+            toArray<ExtractedDataCategory>(file.extractedData?.data?.categories).forEach((category) => {
+                map.set(category.id, category.active !== false);
+            });
+        });
+        return map;
+    }, [menuData?.files]);
+
+    const isItemEffectivelyActive = useCallback((item: MenuItemType) => {
+        const categoryActive = item.categoryId ? categoryActiveById.get(item.categoryId) !== false : true;
+        return item.active !== false && categoryActive;
+    }, [categoryActiveById]);
+
     const priceOutlierItemIds = useMemo(() => {
         const LOW_FACTOR = 0.35;
         const HIGH_FACTOR = 3;
@@ -1037,7 +1053,7 @@ export default function MobileMenuScreen() {
         const groupedPrices = new Map<string, { id: string; price: number }[]>();
 
         menuItems.forEach((item) => {
-            if (!item.active || item.attributes?.length) return;
+            if (!isItemEffectivelyActive(item) || item.attributes?.length) return;
             if (!item.categoryId || !(item.price > 0)) return;
             const items = groupedPrices.get(item.categoryId) || [];
             items.push({ id: item.id, price: item.price });
@@ -1063,7 +1079,7 @@ export default function MobileMenuScreen() {
         });
 
         return outliers;
-    }, [menuItems]);
+    }, [isItemEffectivelyActive, menuItems]);
 
     const categoryIssueSummary = useMemo(() => {
         const map = new Map<string, CategoryIssueSummary>();
@@ -1090,12 +1106,12 @@ export default function MobileMenuScreen() {
             if (!item.description?.trim()) summary.missingDescriptions += 1;
             if (!item.image) summary.missingImages += 1;
             if (!(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
-            if (!item.active) summary.hidden += 1;
+            if (!isItemEffectivelyActive(item)) summary.hidden += 1;
             if (priceOutlierItemIds.has(item.id)) summary.priceOutliers += 1;
         });
 
         return map;
-    }, [menuItems, priceOutlierItemIds]);
+    }, [isItemEffectivelyActive, menuItems, priceOutlierItemIds]);
 
     const categoryHasSignals = useMemo(() => {
         const map = new Map<string, boolean>();
@@ -1138,7 +1154,7 @@ export default function MobileMenuScreen() {
             if (filters.availability !== null && item.available !== filters.availability) {
                 return false;
             }
-            if (filters.activeStatus !== null && item.active !== filters.activeStatus) {
+            if (filters.activeStatus !== null && isItemEffectivelyActive(item) !== filters.activeStatus) {
                 return false;
             }
             if (filters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
@@ -1149,7 +1165,7 @@ export default function MobileMenuScreen() {
             }
             return true;
         });
-    }, [filters, menuItems, priceOutlierItemIds, searchQuery]);
+    }, [filters, isItemEffectivelyActive, menuItems, priceOutlierItemIds, searchQuery]);
 
     const appliedFilterCount = useMemo(() => {
         return [
@@ -1465,7 +1481,7 @@ export default function MobileMenuScreen() {
                     available: item.available !== false,
                     id: item.id,
                     name: resolveItemName(item, displayLanguage, t('unnamedItem')),
-                    active: item.active !== false,
+                    active: (item.active !== false) && (categoryId === 'uncategorized' || categoryActiveById.get(categoryId) !== false),
                     price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
                     hasImage: Boolean(item.images?.[0]?.url),
                     hasDescription: Boolean(resolveItemDescription(item, displayLanguage).trim()),
@@ -1473,7 +1489,7 @@ export default function MobileMenuScreen() {
             });
         });
         return grouped;
-    }, [displayLanguage, menuData?.files, t]);
+    }, [categoryActiveById, displayLanguage, menuData?.files, t]);
     const categorySummaryById = useMemo(() => {
         const map = new Map<string, CategorySummary>();
         categorySummary.forEach((category) => map.set(category.id, category));
@@ -1799,6 +1815,7 @@ export default function MobileMenuScreen() {
                                     fill="outline"
                                     onClick={() => {
                                         setBulkActionType('availability');
+                                        setBulkActionInitialSelectedIds(filteredItems.filter((item) => !item.available).map((item) => item.id));
                                         setIsBulkActionsOpen(true);
                                     }}
                                     size="small"
@@ -1812,6 +1829,7 @@ export default function MobileMenuScreen() {
                                     fill="outline"
                                     onClick={() => {
                                         setBulkActionType('showHide');
+                                        setBulkActionInitialSelectedIds(filteredItems.filter((item) => !isItemEffectivelyActive(item)).map((item) => item.id));
                                         setIsBulkActionsOpen(true);
                                     }}
                                     size="small"
@@ -1837,45 +1855,86 @@ export default function MobileMenuScreen() {
             </Card>
 
             {!isFirstRunProject ? (
-                <Flex align="center" justify="space-between" style={{ paddingInline: 16, paddingTop: 4 }}>
-                    <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
-                        <Text type="secondary">
+                <Flex
+                    gap={8}
+                    style={{
+                        backgroundColor: token.colorBgContainer,
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                        padding: '8px 16px 10px',
+                    }}
+                    vertical
+                >
+                    {languageLabels.length > 1 ? (
+                        <Flex
+                            align="center"
+                            gap={6}
+                            style={{
+                                WebkitOverflowScrolling: 'touch',
+                                flexWrap: 'nowrap',
+                                overflowX: 'auto',
+                                paddingBottom: 2,
+                                scrollbarWidth: 'none',
+                            }}
+                        >
+                            <Flex align="center" gap={6} style={{ flexShrink: 0 }}>
+                                <LuLanguages size={14} />
+                                <Text type="secondary">{t('menuLanguages')}</Text>
+                            </Flex>
+                            {languageLabels.map((language) => {
+                                const isSelected = displayLanguage === language.code;
+                                const completionLabel = !language.isPrimary && language.stats && language.stats.total > 0
+                                    ? ` · ${language.stats.percentage}%`
+                                    : '';
+                                return (
+                                    <Tag
+                                        color={isSelected ? 'primary' : undefined}
+                                        key={language.code}
+                                        onClick={() => setDisplayLanguage(language.code)}
+                                        style={{ borderWidth: isSelected ? 2 : 1, cursor: 'pointer', flexShrink: 0, marginRight: 0 }}
+                                    >
+                                        {`${language.label}${completionLabel}`}
+                                    </Tag>
+                                );
+                            })}
+                        </Flex>
+                    ) : null}
+
+                    <Flex
+                        align="center"
+                        gap={12}
+                        style={{
+                            WebkitOverflowScrolling: 'touch',
+                            flexWrap: 'nowrap',
+                            overflowX: 'auto',
+                            paddingBottom: 2,
+                            scrollbarWidth: 'none',
+                        }}
+                    >
+                        {listingStatusLegend.map((status) => (
+                            <StatusDot color={status.color} key={status.key} label={status.label} />
+                        ))}
+                        <Button
+                            fill="none"
+                            onClick={() => {
+                                Toast.show({
+                                    content: t('filterTerminologyHelp', { unavailable: availabilityLabels.unavailable }),
+                                    duration: 2200,
+                                });
+                            }}
+                            size="mini"
+                            style={{ flexShrink: 0, minWidth: 24, paddingInline: 0 }}
+                        >
+                            <LuInfo size={14} />
+                        </Button>
+                    </Flex>
+
+                    <Flex align="center" justify="space-between">
+                        <Text style={{ lineHeight: 1.25 }} type="secondary">
                             {t('categoriesSummary', {
                                 items: `${menuItems.length} ${labels.itemsPlural}`,
                                 categories: t('categoriesCount', { count: categoryCount }),
                             })}
                         </Text>
-                        {languageLabels.length > 1 ? (
-                            <Flex align="center" gap={6} wrap="wrap">
-                                <Flex align="center" gap={6}>
-                                    <LuLanguages size={14} />
-                                    <Text type="secondary">{t('menuLanguages')}</Text>
-                                </Flex>
-                                {languageLabels.map((language) => {
-                                    const isSelected = displayLanguage === language.code;
-                                    const completionLabel = !language.isPrimary && language.stats && language.stats.total > 0
-                                        ? ` · ${language.stats.percentage}%`
-                                        : '';
-                                    return (
-                                        <Tag
-                                            color={isSelected ? 'primary' : undefined}
-                                            key={language.code}
-                                            onClick={() => setDisplayLanguage(language.code)}
-                                            style={{ borderWidth: isSelected ? 2 : 1, cursor: 'pointer', marginRight: 0 }}
-                                        >
-                                            {`${language.label}${completionLabel}`}
-                                        </Tag>
-                                    );
-                                })}
-                            </Flex>
-                        ) : null}
-                        <Flex align="center" gap={12} wrap="wrap">
-                            {listingStatusLegend.map((status) => (
-                                <StatusDot color={status.color} key={status.key} label={status.label} />
-                            ))}
-                        </Flex>
-                    </Flex>
-                    <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
                         {orderedCategorySections.length > 0 ? (
                             <Button
                                 fill="none"
@@ -1883,11 +1942,11 @@ export default function MobileMenuScreen() {
                                     setExpandedCategoryKeys((current) => current.length === orderedCategorySections.length ? [] : orderedCategorySections.map((section) => section.id));
                                 }}
                                 size="small"
+                                style={{ minHeight: 28, paddingInline: 4 }}
                             >
                                 {expandedCategoryKeys.length === orderedCategorySections.length ? t('collapseAll') : t('expandAll')}
                             </Button>
                         ) : null}
-                        {searchQuery ? <Tag>{t('itemsCount', { count: filteredItems.length })}</Tag> : null}
                     </Flex>
                 </Flex>
             ) : null}
@@ -1977,10 +2036,10 @@ export default function MobileMenuScreen() {
                                 <Flex align="center" gap={12} vertical>
                                     <Card
                                         size="small"
-                                        style={{ backgroundColor: '#e6f7ff', borderRadius: 999, height: 80, width: 80 }}
+                                        style={{ backgroundColor: token.colorPrimaryBg, borderRadius: 999, height: 80, width: 80 }}
                                     >
                                         <Flex align="center" justify="center" style={{ height: '100%' }}>
-                                            <LuCamera color="#1677ff" size={36} />
+                                            <LuCamera color={token.colorPrimary} size={36} />
                                         </Flex>
                                     </Card>
                                     <Title level={4} style={{ margin: 0 }}>
@@ -2109,7 +2168,7 @@ export default function MobileMenuScreen() {
                                                                 {item.name}
                                                             </Text>
                                                             <Flex align="center" gap={6} style={{ flexShrink: 0 }}>
-                                                                {!item.active ? <StatusDot color={token.colorTextQuaternary} /> : null}
+                                                                {!isItemEffectivelyActive(item) ? <StatusDot color={token.colorTextQuaternary} /> : null}
                                                                 {item.available === false ? <StatusDot color={token.colorWarning} /> : null}
                                                                 {item.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
                                                             </Flex>
@@ -2330,76 +2389,6 @@ export default function MobileMenuScreen() {
                                         }))
                                     ) : null}
                                 </Flex>
-                                {(draftFilters.hasImage === false || draftFilters.hasDescription === false) ? (
-                                    <Flex gap={8} wrap="wrap">
-                                        {draftFilters.hasImage === false ? (
-                                            <Button
-                                                fill="outline"
-                                                onClick={() => {
-                                                    setFilters({ ...draftFilters, hasImage: false });
-                                                    setIsFilterSheetOpen(false);
-                                                    openImageUploadModal(
-                                                        undefined,
-                                                        'filters',
-                                                        'generate',
-                                                        menuItems
-                                                            .filter((item) => {
-                                                                const q = searchQuery.toLowerCase().trim();
-                                                                if (q && !item.name.toLowerCase().includes(q) && !item.categoryName?.toLowerCase().includes(q)) {
-                                                                    return false;
-                                                                }
-                                                                if (draftFilters.categoryIds.length > 0 && (!item.categoryId || !draftFilters.categoryIds.includes(item.categoryId))) {
-                                                                    return false;
-                                                                }
-                                                                if (draftFilters.hasImage !== null) {
-                                                                    const hasImage = Boolean(item.image);
-                                                                    if (hasImage !== draftFilters.hasImage) return false;
-                                                                }
-                                                                if (draftFilters.hasDescription !== null) {
-                                                                    const hasDescription = Boolean(item.description?.trim());
-                                                                    if (hasDescription !== draftFilters.hasDescription) return false;
-                                                                }
-                                                                if (draftFilters.hasPrice !== null) {
-                                                                    const hasPrice = item.price > 0;
-                                                                    if (hasPrice !== draftFilters.hasPrice) return false;
-                                                                }
-                                                                if (draftFilters.availability !== null && item.available !== draftFilters.availability) {
-                                                                    return false;
-                                                                }
-                                                                if (draftFilters.activeStatus !== null && item.active !== draftFilters.activeStatus) {
-                                                                    return false;
-                                                                }
-                                                                if (draftFilters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
-                                                                    return false;
-                                                                }
-                                                                if (draftFilters.qualityIssue === 'translationMissing' && !item.translationMissing) {
-                                                                    return false;
-                                                                }
-                                                                return !item.image;
-                                                            })
-                                                            .map((item) => item.id),
-                                                    );
-                                                }}
-                                                size="small"
-                                            >
-                                                {t('generateImages')}
-                                            </Button>
-                                        ) : null}
-                                        {draftFilters.hasDescription === false ? (
-                                            <Button
-                                                fill="outline"
-                                                onClick={() => {
-                                                    setFilters({ ...draftFilters, hasDescription: false });
-                                                    setIsFilterSheetOpen(false);
-                                                    setIsGenerateDescriptionsOpen(true);
-                                                }}
-                                                size="small"
-                                            >
-                                                {t('generateDescriptions')}
-                                            </Button>
-                                        ) : null}
-                                    </Flex>
-                                ) : null}
                             </Flex>
                         </Card>
 
@@ -2432,11 +2421,15 @@ export default function MobileMenuScreen() {
                     </Flex>
 
                     <div style={{
+                        backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
                         flexShrink: 0,
                         padding: '12px 16px',
                         paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+                        position: 'sticky',
+                        bottom: 0,
+                        zIndex: 5,
                     }}>
                         <Flex gap={8}>
                             <Button
@@ -2850,6 +2843,7 @@ export default function MobileMenuScreen() {
 
             <BulkActionsSheet
                 initialAction={bulkActionType}
+                initialSelectedIds={bulkActionInitialSelectedIds}
                 onApply={(updatedProject, context) => {
                     applyUndoableBulkMenuUpdate(updatedProject, context?.previousProject, context?.updatedCount);
                     resetCommandActionFlow();
@@ -2860,6 +2854,7 @@ export default function MobileMenuScreen() {
                     handleCommandActionBack(() => {
                         setIsBulkActionsOpen(false);
                         setBulkActionType(null);
+                        setBulkActionInitialSelectedIds([]);
                     });
                 }}
             />

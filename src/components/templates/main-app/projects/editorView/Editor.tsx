@@ -466,9 +466,13 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const filteredItemsForNavigation = useMemo((): NavigableItem[] => {
         const allItems: ItemWithFile[] = [];
         const defaultLang = projectData.languages?.[0] || "en";
+        const categoryActiveById: Record<string, boolean> = {};
 
         // Collect all items with file references
         projectData?.files?.forEach((file) => {
+            file.extractedData?.data?.categories?.forEach((category) => {
+                categoryActiveById[category.id] = category.active !== false;
+            });
             file.extractedData?.data?.items?.forEach((item) => {
                 allItems.push({ item, file });
             });
@@ -479,6 +483,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             searchTerm,
             filters,
             activeLanguage: defaultLang,
+            categoryActiveById,
         });
     }, [projectData, searchTerm, filters]);
 

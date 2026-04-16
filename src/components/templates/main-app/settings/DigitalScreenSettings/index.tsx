@@ -17,10 +17,12 @@ import { CheckCircleOutlined } from "@ant-design/icons";
 import { FEATURE_FLAGS } from "@config/features";
 import { getScreenState, initializeScreenState, updateScreenSettings } from "@database/campaigns";
 import { trackOwnerControlUsage } from "@database/ownerControlUsage";
+import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
+import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ScreenSlide } from "@type/campaigns";
 import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import CurrentSlides from "./CurrentSlides";
 import OwnerUploads from "./OwnerUploads";
 import ScreenLink from "./ScreenLink";
@@ -40,6 +42,11 @@ interface ScreenSettingsData {
 
 export default function DigitalScreenSettings() {
     const { token } = theme.useToken();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const publicBaseUrl = useMemo(
+        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
+        [storeDetails?.customDomain, storeDetails?.subdomain, storeDetails?.subDomain]
+    );
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -47,7 +54,7 @@ export default function DigitalScreenSettings() {
     // Fetch settings on mount
     useEffect(() => {
         fetchSettings();
-    }, []);
+    }, [publicBaseUrl]);
 
     const fetchSettings = async () => {
         try {
@@ -63,7 +70,7 @@ export default function DigitalScreenSettings() {
             setSettings({
                 enabled: screenState.enabled,
                 screenToken: screenState.screenToken,
-                screenUrl: buildScreenUrl(screenState.screenToken),
+                screenUrl: buildScreenUrl(screenState.screenToken, publicBaseUrl),
                 ownerOverrideEnabled: screenState.ownerOverrideEnabled,
                 pinnedSlides: screenState.pinnedSlides || [],
                 maxUploads: FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS,

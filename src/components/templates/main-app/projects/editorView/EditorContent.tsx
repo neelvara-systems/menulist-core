@@ -162,6 +162,7 @@ const EditorItem = memo(
         confirmAttributeDeletion,
         isSelected,
         onSelect,
+        categoryActive,
         // Multi-outlet props
         inheritanceState,
         isMasterLinked,
@@ -251,9 +252,14 @@ const EditorItem = memo(
                                     ))}
                                 </Flex>
                             )}
-                            {!item.active && (
+                            {item.active === false && (
                                 <Tag color="error" style={{ margin: 0 }}>
                                     Inactive
+                                </Tag>
+                            )}
+                            {item.active !== false && categoryActive === false && (
+                                <Tag color="error" style={{ margin: 0 }}>
+                                    Hidden by category
                                 </Tag>
                             )}
                         </Flex>
@@ -723,6 +729,7 @@ export function EditorContent({
                                                         confirmAttributeDeletion={confirmAttributeDeletion}
                                                         isSelected={selectedItemId === item.id}
                                                         onSelect={() => setSelectedItemId?.(item.id)}
+                                                        categoryActive={category.active !== false}
                                                         // Multi-outlet props
                                                         inheritanceState={itemStates?.[item.id]}
                                                         isMasterLinked={isMasterLinked}

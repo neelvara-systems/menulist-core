@@ -29,6 +29,7 @@ interface BulkActionsSheetProps {
     onApply: (updatedProject: Project, context?: { previousProject?: Project; updatedCount?: number }) => void;
     projectData: Project | null;
     initialAction?: BulkAction;
+    initialSelectedIds?: string[];
 }
 
 type BulkAction = 'availability' | 'showHide' | 'pricing' | 'moveCategory' | null;
@@ -53,7 +54,14 @@ const STATUS_COLORS = {
     inactive: '#9ca3af',
 } as const;
 
-export default function BulkActionsSheet({ visible, onApply, onClose, projectData, initialAction = null }: BulkActionsSheetProps) {
+export default function BulkActionsSheet({
+    visible,
+    onApply,
+    onClose,
+    projectData,
+    initialAction = null,
+    initialSelectedIds = [],
+}: BulkActionsSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -85,7 +93,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
     useEffect(() => {
         if (!visible) return;
         setWorkingProject(projectData ? removeObjRef(projectData) : null);
-        setSelectedIds(new Set());
+        setSelectedIds(new Set(initialSelectedIds));
         setAction(initialAction);
         setSearch('');
         setPricingMethod('increasePercent');
@@ -93,7 +101,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         setDestinationCategoryId(null);
         setStatusFilter('all');
         setIsStatusFilterOpen(false);
-    }, [initialAction, projectData, visible]);
+    }, [initialAction, initialSelectedIds, projectData, visible]);
 
     const items: ItemEntry[] = useMemo(() => {
         if (!workingProject) return [];
@@ -103,8 +111,10 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
         workingProject.files?.forEach((file: any) => {
             if (!file.extractedData?.data) return;
             const catMap: Record<string, string> = {};
+            const catActiveMap: Record<string, boolean> = {};
             (file.extractedData.data.categories || []).forEach((category: any) => {
                 catMap[category.id] = category.name?.[activeLang] || category.name?.en || 'Untitled';
+                catActiveMap[category.id] = category.active !== false;
             });
 
             (file.extractedData.data.items || []).forEach((item: any) => {
@@ -117,7 +127,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                     category: item.category,
                     categoryName: catMap[item.category] || 'Uncategorized',
                     available: item.available !== false,
-                    active: item.active ?? true,
+                    active: (item.active !== false) && (catActiveMap[item.category] !== false),
                     fileUid: file.uid,
                     attributes: item.attributes?.map((attr: any) => ({
                         id: attr.id,
@@ -891,7 +901,19 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                 </Flex>
 
                 {selectedIds.size > 0 ? (
-                    <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderBottom: 0 }}>
+                    <div
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            bottom: 0,
+                            flexShrink: 0,
+                            padding: '12px 16px',
+                            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+                            position: 'sticky',
+                            zIndex: 5,
+                        }}
+                    >
                         {action === 'availability' ? (
                             <Flex gap={12}>
                                 <Button
@@ -962,7 +984,7 @@ export default function BulkActionsSheet({ visible, onApply, onClose, projectDat
                                 {action === 'pricing' ? t('applyToItems', { count: selectedIds.size }) : t('moveSelectedItems')}
                             </Button>
                         )}
-                    </Card>
+                    </div>
                 ) : null}
             </Flex>
         </Popup>

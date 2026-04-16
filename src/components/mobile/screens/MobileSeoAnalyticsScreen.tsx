@@ -53,6 +53,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
     const [wizardStep, setWizardStep] = useState(0);
+    const [guideTab, setGuideTab] = useState<'quick' | 'complete'>('quick');
 
     useEffect(() => {
         if (!storeDetails) return;
@@ -386,6 +387,11 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         }
     };
 
+    const openGuide = () => {
+        setGuideTab('quick');
+        setIsGuideOpen(true);
+    };
+
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack} />
@@ -419,7 +425,19 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 </FieldGroup>
                             </Flex>
                         </Card>
-                        <Flex gap={8}>
+                        <Flex
+                            gap={8}
+                            style={{
+                                backdropFilter: 'blur(10px)',
+                                background: 'var(--adm-color-background)',
+                                borderTop: '1px solid var(--adm-color-border)',
+                                bottom: 0,
+                                marginInline: -16,
+                                padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                                position: 'sticky',
+                                zIndex: 20,
+                            }}
+                        >
                             <Button block disabled={!isSeoDirty || isSeoSaving} fill="outline" onClick={resetSeoSettings}>
                                 Reset
                             </Button>
@@ -440,7 +458,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     <Button block icon={<LuRocket size={16} />} onClick={openSetupWizard}>
                                         {tAnalytics('setupWizard')}
                                     </Button>
-                                    <Button block fill="outline" icon={<LuBookOpen size={16} />} onClick={() => setIsGuideOpen(true)}>
+                                    <Button block fill="outline" icon={<LuBookOpen size={16} />} onClick={openGuide}>
                                         {tAnalytics('viewGuide')}
                                     </Button>
                                 </Flex>
@@ -488,7 +506,19 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             </Flex>
                         </Card>
 
-                        <Flex gap={8}>
+                        <Flex
+                            gap={8}
+                            style={{
+                                backdropFilter: 'blur(10px)',
+                                background: 'var(--adm-color-background)',
+                                borderTop: '1px solid var(--adm-color-border)',
+                                bottom: 0,
+                                marginInline: -16,
+                                padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                                position: 'sticky',
+                                zIndex: 20,
+                            }}
+                        >
                             <Button block disabled={!isAnalyticsDirty || isAnalyticsSaving} fill="outline" onClick={resetAnalyticsSettings}>
                                 Reset
                             </Button>
@@ -525,7 +555,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             </NavBar>
 
                             <Flex style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} vertical>
-                                <Tabs activeKey="quick">
+                                <Tabs activeKey={guideTab} onChange={(key) => setGuideTab(key as 'quick' | 'complete')}>
                                     <Tabs.Tab key="quick" title="Quick Start Guide">
                                         <Flex gap={12} style={{ paddingTop: 12 }} vertical>
                                             <GuideSection

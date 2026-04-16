@@ -2,12 +2,14 @@
 
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { getScreenState, initializeScreenState, removePinnedSlide, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { ScreenSlide } from '@type/campaigns';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -29,6 +31,11 @@ function getDaysRemaining(validUntil?: any): number {
 export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScreensScreenProps) {
     const t = useTranslations('MobileDigitalScreens');
     const { token } = theme.useToken();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const publicBaseUrl = generateOBPUrl(
+        storeDetails?.subdomain || storeDetails?.subDomain || '',
+        storeDetails?.customDomain
+    );
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -54,7 +61,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setLoading(true);
             let state = await getScreenState();
             if (!state) state = await initializeScreenState();
-            setScreenUrl(buildScreenUrl(state.screenToken));
+            setScreenUrl(buildScreenUrl(state.screenToken, publicBaseUrl));
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
         } catch {
@@ -66,7 +73,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     useEffect(() => {
         void fetchState();
-    }, []);
+    }, [publicBaseUrl]);
 
     const handleCopy = async (url: string, type: 'menu' | 'highlights') => {
         try {

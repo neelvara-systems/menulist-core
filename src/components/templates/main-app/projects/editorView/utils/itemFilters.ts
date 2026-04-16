@@ -17,6 +17,7 @@ export interface FilterItemsOptions {
     filters?: EditorFilters;
     activeLanguage?: string;
     hideInactiveItems?: boolean;
+    categoryActiveById?: Record<string, boolean>;
     /** If provided, only include items from this category */
     categoryId?: string;
 }
@@ -33,7 +34,9 @@ export function itemMatchesFilters(
     item: ExtractedDataItem,
     options: FilterItemsOptions
 ): boolean {
-    const { searchTerm, filters, activeLanguage = 'en', hideInactiveItems, categoryId } = options;
+    const { searchTerm, filters, activeLanguage = 'en', hideInactiveItems, categoryActiveById, categoryId } = options;
+    const categoryActive = item.category ? (categoryActiveById?.[item.category] !== false) : true;
+    const effectiveActive = item.active !== false && categoryActive;
 
     // Category filter
     if (categoryId && item.category !== categoryId) {
@@ -66,11 +69,11 @@ export function itemMatchesFilters(
 
     // Active status filter
     if (filters?.activeStatus !== null && filters?.activeStatus !== undefined) {
-        if (item.active !== filters.activeStatus) return false;
+        if (effectiveActive !== filters.activeStatus) return false;
     }
 
     // Hide inactive items toggle
-    if (hideInactiveItems && item.active === false) {
+    if (hideInactiveItems && !effectiveActive) {
         return false;
     }
 

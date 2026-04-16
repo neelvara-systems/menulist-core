@@ -2,16 +2,15 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
+import { updateStore } from '@database/stores';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
-import { trackOBPShare } from '@lib/analytics/unified';
-import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName } from '@util/campaignUtils';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useMemo, useState } from 'react';
-import { LuAlertTriangle, LuCalendarOff, LuCheck, LuClock, LuCopy, LuExternalLink, LuMessageCircle, LuSkipForward, LuX } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, NavBar, Tag, Text, Title, Toast } from '../antd';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { LuAlertTriangle, LuCalendarOff, LuCheck, LuClock, LuMessageCircle, LuSkipForward, LuX } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Tag, Text, Title, Toast } from '../antd';
 
 interface MobileTodayScreenProps {
     onBack?: () => void;
@@ -25,6 +24,22 @@ const STATUS_OPTIONS = [
     { value: 'special_menu', label: 'Special Menu', icon: '🍽️', defaultMsg: 'Special menu available today' },
 ] as const;
 
+const TODAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+const getTodayKey = () => TODAY_KEYS[new Date().getDay()];
+
+function getTodayTimeRange(value?: string) {
+    const normalized = value?.trim() || '';
+    if (!normalized || normalized.toLowerCase() === 'closed') {
+        return { closeTime: '22:00', openTime: '09:00' };
+    }
+    const [openTime, closeTime] = normalized.split('-');
+    return {
+        openTime: /^\d{2}:\d{2}$/.test(openTime || '') ? openTime : '09:00',
+        closeTime: /^\d{2}:\d{2}$/.test(closeTime || '') ? closeTime : '22:00',
+    };
+}
+
 export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const t = useTranslations('MobileToday');
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
@@ -33,15 +48,40 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const [postAction, setPostAction] = useState<'shared' | 'skipped' | null>(null);
     const [statusType, setStatusType] = useState<string>('closed_today');
     const [isTempStatusLoading, setIsTempStatusLoading] = useState(false);
-    const [copied, setCopied] = useState(false);
-
-    const obpUrl = useMemo(
-        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
-        [storeDetails?.subdomain, storeDetails?.subDomain, storeDetails?.customDomain]
-    );
+    const [isSavingTodayHours, setIsSavingTodayHours] = useState(false);
+    const todayKey = getTodayKey();
+    const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
+    const [todayOpenTime, setTodayOpenTime] = useState(todayRange.openTime);
+    const [todayCloseTime, setTodayCloseTime] = useState(todayRange.closeTime);
 
     const currentStatus = storeDetails?.tempStatus;
     const isTempActive = currentStatus && new Date(currentStatus.expiresAt).getTime() > Date.now();
+
+    useEffect(() => {
+        setTodayOpenTime(todayRange.openTime);
+        setTodayCloseTime(todayRange.closeTime);
+    }, [todayRange.closeTime, todayRange.openTime]);
+
+    const saveTodayHours = useCallback(async () => {
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        const nextRange = `${todayOpenTime}-${todayCloseTime}`;
+        const nextHours = { ...(storeDetails.workingHours || {}), [todayKey]: nextRange };
+        setIsSavingTodayHours(true);
+        setStoreDetails((previous: any) => ({ ...previous, workingHours: nextHours }));
+        try {
+            await updateStore({
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                workingHours: nextHours,
+            } as any);
+            Toast.show({ content: 'Today timings updated', duration: 1400 });
+        } catch {
+            setStoreDetails((previous: any) => ({ ...previous, workingHours: storeDetails.workingHours }));
+            Toast.show({ content: 'Failed to update timings', duration: 1800 });
+        } finally {
+            setIsSavingTodayHours(false);
+        }
+    }, [setStoreDetails, storeDetails, todayCloseTime, todayKey, todayOpenTime]);
 
     const handleSetTempStatus = useCallback(async () => {
         setIsTempStatusLoading(true);
@@ -87,26 +127,35 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
         }
     }, [storeDetails, setStoreDetails]);
 
-    const handleCopyLink = useCallback(async () => {
-        if (!obpUrl) return;
-        try {
-            await navigator.clipboard.writeText(obpUrl);
-            setCopied(true);
-            Toast.show({ content: 'Link copied', icon: 'success', duration: 1500 });
-            setTimeout(() => setCopied(false), 2000);
-            if (storeDetails?.storeId) trackOBPShare(storeDetails.storeId, 'copy_link').catch(() => { });
-        } catch {
-            Toast.show({ content: 'Could not copy', duration: 1500 });
-        }
-    }, [obpUrl, storeDetails?.storeId]);
-
-    const handleWhatsApp = useCallback(() => {
-        if (!obpUrl) return;
-        const name = storeDetails?.name || 'our business';
-        const msg = `${name} — menu, timings & contact:\n${obpUrl}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        if (storeDetails?.storeId) trackOBPShare(storeDetails.storeId, 'whatsapp').catch(() => { });
-    }, [obpUrl, storeDetails]);
+    const todayHoursCard = (
+        <Card>
+            <Flex gap={10} vertical>
+                <Flex align="center" gap={8}>
+                    <LuClock color="#6366f1" size={16} />
+                    <Text strong>Today&apos;s Timings</Text>
+                </Flex>
+                <Flex gap={8}>
+                    <Flex style={{ flex: 1 }} vertical>
+                        <Text type="secondary">Open</Text>
+                        <Input onChange={setTodayOpenTime} type="time" value={todayOpenTime} />
+                    </Flex>
+                    <Flex style={{ flex: 1 }} vertical>
+                        <Text type="secondary">Close</Text>
+                        <Input onChange={setTodayCloseTime} type="time" value={todayCloseTime} />
+                    </Flex>
+                </Flex>
+                <Button
+                    block
+                    disabled={isSavingTodayHours || !todayOpenTime || !todayCloseTime}
+                    fill="outline"
+                    loading={isSavingTodayHours}
+                    onClick={() => void saveTodayHours()}
+                >
+                    Save Today Timings
+                </Button>
+            </Flex>
+        </Card>
+    );
 
     const handleComplete = async (campaign: TodayCampaignSummary) => {
         setIsProcessing(true);
@@ -176,6 +225,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
             <Flex style={{ minHeight: '100%' }} vertical>
                 {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
                 <Flex gap={12} style={{ padding: 16 }} vertical>
+                    {todayHoursCard}
                     {/* Status Banner */}
                     <Card style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
                         <Flex align="center" gap={10}>
@@ -235,29 +285,6 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                         </Card>
                     )}
 
-                    {/* OBP Quick Share */}
-                    {FEATURE_FLAGS.ENABLE_OBP && obpUrl && (
-                        <Card>
-                            <Flex gap={12} vertical>
-                                <Flex align="center" gap={8}>
-                                    <LuExternalLink color="#1677ff" size={16} />
-                                    <Text strong>Your Business Link</Text>
-                                </Flex>
-                                <Text type="secondary" style={{ fontSize: 12 }}>{obpUrl}</Text>
-                                <Flex gap={8}>
-                                    <Button block color="primary" fill="outline" onClick={() => void handleCopyLink()} size="large">
-                                        <Flex align="center" gap={6} justify="center">
-                                            <LuCopy size={14} />
-                                            <Text>{copied ? 'Copied!' : 'Copy Link'}</Text>
-                                        </Flex>
-                                    </Button>
-                                    <Button block color="success" onClick={handleWhatsApp} size="large">
-                                        <Text style={{ color: '#fff' }}>Send via WhatsApp</Text>
-                                    </Button>
-                                </Flex>
-                            </Flex>
-                        </Card>
-                    )}
                 </Flex>
             </Flex>
         );
@@ -271,6 +298,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
         <Flex style={{ minHeight: '100%' }} vertical>
             {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                {todayHoursCard}
                 {primary ? (
                     <Card>
                         <Flex gap={12} vertical>

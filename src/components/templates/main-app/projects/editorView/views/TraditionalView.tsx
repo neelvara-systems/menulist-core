@@ -256,6 +256,14 @@ export const TraditionalView = ({
         return items;
     }, [projectData?.files]);
 
+    const categoryActiveById = useMemo(() => {
+        const map: Record<string, boolean> = {};
+        allCategoriesWithFiles.forEach(({ category }) => {
+            map[category.id] = category.active !== false;
+        });
+        return map;
+    }, [allCategoriesWithFiles]);
+
     // Filter categories based on search/filters
     const filteredCategories = useMemo(() => {
         let categories = allCategoriesWithFiles;
@@ -298,8 +306,9 @@ export const TraditionalView = ({
             filters,
             activeLanguage,
             hideInactiveItems,
+            categoryActiveById,
         }),
-        [searchTerm, filters, activeLanguage, hideInactiveItems],
+        [searchTerm, filters, activeLanguage, hideInactiveItems, categoryActiveById],
     );
 
     // Filter items based on search/filters and selected category
@@ -320,6 +329,12 @@ export const TraditionalView = ({
             ({ item }) => item.category === selectedCategoryId,
         ).length;
     }, [allItemsWithFiles, selectedCategoryId]);
+
+    const selectedCategoryIsActive = useMemo(() => {
+        if (!selectedCategoryId) return true;
+        const selected = allCategoriesWithFiles.find(({ category }) => category.id === selectedCategoryId);
+        return selected?.category?.active !== false;
+    }, [allCategoriesWithFiles, selectedCategoryId]);
 
     // Get filtered item count for a specific category (uses shared filter utility)
     const getFilteredItemCountForCategory = useMemo(() => {
@@ -1054,12 +1069,20 @@ export const TraditionalView = ({
                                                                                 No price
                                                                             </Tag>
                                                                         )}
-                                                                        {!item.active && (
+                                                                        {item.active === false && (
                                                                             <Tag
                                                                                 color="error"
                                                                                 style={{ borderRadius: 12 }}
                                                                             >
                                                                                 Inactive
+                                                                            </Tag>
+                                                                        )}
+                                                                        {item.active !== false && !selectedCategoryIsActive && (
+                                                                            <Tag
+                                                                                color="error"
+                                                                                style={{ borderRadius: 12 }}
+                                                                            >
+                                                                                Hidden by category
                                                                             </Tag>
                                                                         )}
                                                                     </Flex>

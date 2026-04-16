@@ -77,6 +77,7 @@ interface MobileDesignEditorScreenProps {
 
 export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
+    const tSettings = useTranslations('Settings');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { isLoading: loadingProjects, selectedProject, upsertCachedProject } = useMobileProjects();
@@ -180,7 +181,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         Toast.show({ content: t('appliedStyle', { name: preset.label }), duration: 1500 });
     };
 
-    const handlePublish = async () => {
+    const handleSave = async () => {
         if (!projectData) return;
         setIsPublishing(true);
         try {
@@ -215,6 +216,11 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         } finally {
             setIsPublishing(false);
         }
+    };
+
+    const handleReset = () => {
+        if (!originalData || isPublishing || !hasChanges) return;
+        setProjectData(JSON.parse(JSON.stringify(originalData)));
     };
 
     if (loadingProjects) {
@@ -449,17 +455,16 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     borderLeft: 0,
                     borderRight: 0,
                     borderBottom: 0,
+                    paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+                    zIndex: 30,
                 }}
             >
                 <Flex gap={12}>
-                    <Button block fill="outline" onClick={() => window.open(menuUrl, '_blank')}>
-                        <Flex align="center" gap={6} justify="center">
-                            <LuExternalLink size={16} />
-                            <Text>{t('preview')}</Text>
-                        </Flex>
+                    <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset}>
+                        {tSettings('reset')}
                     </Button>
-                    <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={handlePublish}>
-                        {hasChanges ? t('publishChanges') : t('noChanges')}
+                    <Button block color="primary" disabled={!hasChanges} loading={isPublishing} onClick={handleSave}>
+                        {tSettings('saveChanges')}
                     </Button>
                 </Flex>
             </Card>
