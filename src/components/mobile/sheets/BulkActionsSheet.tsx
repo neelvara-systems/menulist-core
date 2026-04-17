@@ -915,6 +915,7 @@ export default function BulkActionsSheet({
                             borderTop: `1px solid ${token.colorBorderSecondary}`,
                             bottom: 0,
                             flexShrink: 0,
+                            marginBottom: -16,
                             padding: '12px 16px',
                             position: 'sticky',
                             zIndex: 5,

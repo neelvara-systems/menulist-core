@@ -291,6 +291,7 @@ export default function SmartRecommendationsSheet({
                                 borderTop: `1px solid ${token.colorBorderSecondary}`,
                                 bottom: 0,
                                 marginInline: -12,
+                                marginBottom: -16,
                                 marginTop: 'auto',
                                 padding: '12px 16px',
                                 position: 'sticky',

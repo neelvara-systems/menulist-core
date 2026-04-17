@@ -327,6 +327,7 @@ function containsElementType(node: ReactNode, targetType: unknown): boolean {
 }
 
 export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visible }: PopupProps) {
+    const [isPwa, setIsPwa] = useState(false);
     const drawerStyle = sanitizeStyle(bodyStyle);
     const hasNavBar = containsElementType(children, NavBar);
     const {
@@ -369,10 +370,17 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     if (paddingBottom !== undefined) normalizedPadding.paddingBottom = paddingBottom;
     if (paddingLeft !== undefined) normalizedPadding.paddingLeft = paddingLeft;
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const standaloneMatch = window.matchMedia?.('(display-mode: standalone)')?.matches;
+        const navStandalone = (window.navigator as any)?.standalone === true;
+        setIsPwa(Boolean(standaloneMatch || navStandalone));
+    }, []);
+
     const popupHeight = (height as string | number | undefined) ?? 'auto';
     const normalizeViewportHeight = (value: string | number | undefined) => {
         if (typeof value === 'string' && value.includes('vh')) {
-            return value.replace(/vh/g, 'dvh');
+            return value.replace(/vh/g, isPwa ? 'dvh' : 'svh');
         }
         return value;
     };

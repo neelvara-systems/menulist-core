@@ -25,6 +25,7 @@ interface ItemEditSheetProps {
     item?: MobileMenuItemType | null;
     categories: { id: string; name: string }[];
     currencySymbol: string;
+    initialCategoryId?: string;
     mode?: 'add' | 'edit';
     onClose: () => void;
     onGenerateImage?: () => void;
@@ -37,9 +38,11 @@ interface ItemEditSheetProps {
 }
 
 function createDraftItem({
+    initialCategoryId,
     item,
     languages,
 }: {
+    initialCategoryId?: string;
     item?: MobileMenuItemType | null;
     languages: string[];
 }): ExtractedDataItem {
@@ -55,7 +58,7 @@ function createDraftItem({
             price: String(attribute.price || ''),
         })),
         available: item?.available ?? true,
-        category: item?.rawItem?.category || item?.categoryId || '',
+        category: item?.rawItem?.category || item?.categoryId || initialCategoryId || '',
         description: item?.rawItem?.description
             ? { ...item.rawItem.description }
             : Object.fromEntries(languages.map((lang) => [lang, lang === primaryLanguage ? (item?.description || '') : ''])),
@@ -77,6 +80,7 @@ export default function ItemEditSheet({
     item,
     categories,
     currencySymbol,
+    initialCategoryId,
     mode = 'edit',
     onClose,
     onGenerateImage,
@@ -105,7 +109,7 @@ export default function ItemEditSheet({
     const isAddMode = mode === 'add';
     const primaryLanguage = selectedLanguages[0] || 'en';
     const hasMultipleLanguages = selectedLanguages.length > 1;
-    const [draftItem, setDraftItem] = useState<ExtractedDataItem>(() => createDraftItem({ item, languages: selectedLanguages }));
+    const [draftItem, setDraftItem] = useState<ExtractedDataItem>(() => createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
     const [imagePreview, setImagePreview] = useState<string | null>(item?.image || null);
     const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const [isSaving, setIsSaving] = useState(false);
@@ -124,9 +128,9 @@ export default function ItemEditSheet({
     }, [item?.image]);
 
     useEffect(() => {
-        setDraftItem(createDraftItem({ item, languages: selectedLanguages }));
+        setDraftItem(createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
         setActiveLanguageKey([selectedLanguages[0] || 'en']);
-    }, [item, selectedLanguages]);
+    }, [initialCategoryId, item, selectedLanguages]);
 
     const itemImagePreviews = useMemo(() => {
         const normalizedImages = Array.isArray(draftItem.images)
@@ -490,7 +494,7 @@ export default function ItemEditSheet({
             position="bottom"
             visible
         >
-            <Flex style={{ maxHeight: '85vh', overflowY: 'auto' }} vertical>
+            <Flex style={{ maxHeight: '85vh', overflowX: 'hidden', overflowY: 'auto' }} vertical>
                 <NavBar onBack={() => {
                     if (!isSaving) onClose();
                 }}>
@@ -644,6 +648,7 @@ export default function ItemEditSheet({
                             borderTop: `1px solid ${token.colorBorderSecondary}`,
                             bottom: 0,
                             marginInline: -16,
+                            marginBottom: -16,
                             marginTop: 'auto',
                             padding: '12px 16px',
                             position: 'sticky',

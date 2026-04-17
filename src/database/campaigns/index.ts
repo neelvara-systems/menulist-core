@@ -620,18 +620,92 @@ export const getMenuItemsForScreen = async (
     try {
         if (!tenantId) return [];
 
-        // 1. Find default/first active project metadata
+        const extractMenuItemsFromProject = (projectData: any) => {
+            const extractedItems: Array<{
+                id: string;
+                name: string;
+                imageUrl?: string;
+                price?: number;
+                available: boolean;
+                isBestSeller?: boolean;
+                categoryName?: string;
+                description?: string;
+                tags?: string[];
+            }> = [];
+
+            const resolveLocalizedText = (value: unknown): string => {
+                if (typeof value === 'string') return value.trim();
+                if (!value || typeof value !== 'object') return '';
+                const localized = Object.values(value as Record<string, unknown>).find(
+                    (entry) => typeof entry === 'string' && entry.trim().length > 0
+                );
+                return typeof localized === 'string' ? localized.trim() : '';
+            };
+
+            for (const file of (projectData?.files || [])) {
+                const categories = Array.isArray(file?.extractedData?.data?.categories)
+                    ? file.extractedData.data.categories
+                    : [];
+                const categoryMap = categories.reduce((acc: Record<string, string>, category: any) => {
+                    const categoryName = resolveLocalizedText(category?.name);
+                    if (category?.id && categoryName) {
+                        acc[category.id] = categoryName;
+                    }
+                    return acc;
+                }, {});
+
+                const items = Array.isArray(file?.extractedData?.data?.items)
+                    ? file.extractedData.data.items
+                    : [];
+
+                for (const item of items) {
+                    const itemName = resolveLocalizedText(item?.name);
+                    if (!itemName) continue;
+
+                    const itemDesc = resolveLocalizedText(item?.description) || undefined;
+                    const parsedPrice = typeof item?.price === 'string' ? parseFloat(item.price) : item?.price;
+
+                    extractedItems.push({
+                        id: item?.id || `item-${extractedItems.length}`,
+                        name: itemName,
+                        imageUrl: item?.images?.[0]?.url,
+                        price: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+                        available: item?.available !== false,
+                        isBestSeller: item?.isBestSeller || false,
+                        categoryName: categoryMap[item?.category] || item?.category || undefined,
+                        description: itemDesc,
+                        tags: item?.tags?.length ? item.tags : undefined,
+                    });
+                }
+            }
+
+            return extractedItems;
+        };
+
+        // 1. Prefer default active project metadata
         const metadataRef = collection(
             firebaseClient,
             `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}/metadata`
         );
-        const metaQuery = query(
+        const defaultMetaQuery = query(
             metadataRef,
             where('deleted', '==', false),
             where('active', '==', true),
+            where('isDefault', '==', true),
             limit(1)
         );
-        const metaSnap = await getDocs(metaQuery);
+        let metaSnap = await getDocs(defaultMetaQuery);
+
+        // Fallback: first active project if default not found
+        if (metaSnap.empty) {
+            const activeMetaQuery = query(
+                metadataRef,
+                where('deleted', '==', false),
+                where('active', '==', true),
+                limit(1)
+            );
+            metaSnap = await getDocs(activeMetaQuery);
+        }
 
         if (metaSnap.empty) return [];
 
@@ -648,49 +722,43 @@ export const getMenuItemsForScreen = async (
 
         if (!dataSnap.exists()) return [];
 
-        const projectData = dataSnap.data();
+        // 3. Extract items from chosen project
+        const items = extractMenuItemsFromProject(dataSnap.data());
+        if (items.length > 0) {
+            return items;
+        }
 
-        // 3. Extract items from project files
-        const items: Array<{
-            id: string;
-            name: string;
-            imageUrl?: string;
-            price?: number;
-            available: boolean;
-            isBestSeller?: boolean;
-            categoryName?: string;
-            description?: string;
-            tags?: string[];
-        }> = [];
+        // 4. Defensive fallback: if chosen project has no items, try a few active projects
+        // (prevents "Preparing your menu..." when default project is empty)
+        const fallbackMetaQuery = query(
+            metadataRef,
+            where('deleted', '==', false),
+            where('active', '==', true),
+            limit(5)
+        );
+        const fallbackMetaSnap = await getDocs(fallbackMetaQuery);
 
-        for (const file of (projectData?.files || [])) {
-            for (const item of (file?.extractedData?.data?.items || [])) {
-                const itemName = typeof item.name === 'string'
-                    ? item.name
-                    : Object.values(item.name || {})[0] as string || '';
+        for (const fallbackDoc of fallbackMetaSnap.docs) {
+            const fallbackMeta = fallbackDoc.data();
+            const fallbackProjectId = fallbackMeta.projectId || fallbackDoc.id;
+            if (!fallbackProjectId || fallbackProjectId === projectId) continue;
 
-                if (itemName && item.available !== false) {
-                    // v2.2: Extract description (primary language) and tags for richer screen display
-                    const itemDesc = typeof item.description === 'string'
-                        ? item.description
-                        : item.description ? Object.values(item.description)[0] as string : undefined;
+            const fallbackDataRef = doc(
+                firebaseClient,
+                `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`,
+                fallbackProjectId
+            );
+            const fallbackDataSnap = await getDoc(fallbackDataRef);
+            if (!fallbackDataSnap.exists()) continue;
 
-                    items.push({
-                        id: item.id || `item-${items.length}`,
-                        name: itemName,
-                        imageUrl: item.images?.[0]?.url,
-                        price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
-                        available: item.available !== false,
-                        isBestSeller: item.isBestSeller || false,
-                        categoryName: item.category,
-                        description: itemDesc || undefined,
-                        tags: item.tags?.length ? item.tags : undefined,
-                    });
-                }
+            const fallbackItems = extractMenuItemsFromProject(fallbackDataSnap.data());
+            if (fallbackItems.length > 0) {
+                console.log(`[getMenuItemsForScreen] Fallback project used: ${fallbackProjectId}`);
+                return fallbackItems;
             }
         }
 
-        return items;
+        return [];
     } catch (error) {
         console.error('[getMenuItemsForScreen] Error:', error);
         return [];

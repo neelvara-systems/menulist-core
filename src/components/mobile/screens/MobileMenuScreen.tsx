@@ -12,7 +12,7 @@ import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
-import { removeObjRef } from '@util/utils';
+import { getUID, removeObjRef } from '@util/utils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -280,6 +280,35 @@ function findFileForCategory(projectData: Project | null | undefined, categoryId
     return projectData.files[0] || null;
 }
 
+function ensurePrimaryMenuFile(projectData: Project | null | undefined): Project['files'][number] | null {
+    if (!projectData) return null;
+    if (!Array.isArray(projectData.files)) {
+        projectData.files = [];
+    }
+
+    if (!projectData.files.length) {
+        projectData.files.push({
+            uid: getUID(),
+            extractedData: {
+                data: {
+                    categories: [],
+                    items: [],
+                    languages: [],
+                },
+            },
+        });
+    }
+
+    const primaryFile = projectData.files[0];
+    if (!primaryFile.extractedData) primaryFile.extractedData = { data: { categories: [], items: [], languages: [] } };
+    if (!primaryFile.extractedData.data) primaryFile.extractedData.data = { categories: [], items: [], languages: [] };
+    if (!Array.isArray(primaryFile.extractedData.data.categories)) primaryFile.extractedData.data.categories = [];
+    if (!Array.isArray(primaryFile.extractedData.data.items)) primaryFile.extractedData.data.items = [];
+    if (!Array.isArray(primaryFile.extractedData.data.languages)) primaryFile.extractedData.data.languages = [];
+
+    return primaryFile;
+}
+
 function StatusDot({
     color,
     label,
@@ -332,6 +361,7 @@ export default function MobileMenuScreen() {
     const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+    const [addSheetInitialCategoryId, setAddSheetInitialCategoryId] = useState<string | null>(null);
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
     const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | null>(null);
@@ -1410,7 +1440,6 @@ export default function MobileMenuScreen() {
         () => selectedProjectSummary || projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
         [menuData?.projectId, projectsList, selectedProjectSummary]
     );
-    const isFirstRunProject = Boolean(menuData?.projectId) && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
     const categorySummary = useMemo(() => {
         if (!menuData?.files) return [];
         const map = new Map<string, CategorySummary>();
@@ -1443,6 +1472,7 @@ export default function MobileMenuScreen() {
     }, [displayLanguage, menuData?.files, primaryLang, uncategorizedLabel]);
     const hasCategories = categorySummary.length > 0;
     const categoryCount = useMemo(() => categorySummary.length, [categorySummary.length]);
+    const isFirstRunProject = Boolean(menuData?.projectId) && !hasCategories && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
 
     const orderedCategorySections = useMemo(() => {
         const itemsByCategory = new Map<string, MenuItemType[]>();
@@ -1510,11 +1540,8 @@ export default function MobileMenuScreen() {
         const presets = storeDetails?.timeSlotPresets || [];
         const previous = menuData;
         const updated = removeObjRef(menuData);
-        const targetFile = updated.files?.[0];
+        const targetFile = ensurePrimaryMenuFile(updated);
         if (!targetFile) return;
-        if (!targetFile.extractedData) targetFile.extractedData = { data: { categories: [], items: [], languages: [] } };
-        if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
-        if (!targetFile.extractedData.data.categories) targetFile.extractedData.data.categories = [];
         const languageCodes = menuData.languages?.length
             ? menuData.languages
             : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
@@ -2096,7 +2123,10 @@ export default function MobileMenuScreen() {
                                         <Button
                                             block
                                             fill="outline"
-                                            onClick={() => setIsAddSheetOpen(true)}
+                                            onClick={() => {
+                                                setAddSheetInitialCategoryId(null);
+                                                setIsAddSheetOpen(true);
+                                            }}
                                             size="large"
                                             style={{
                                                 backgroundColor: token.colorBgElevated,
@@ -2207,7 +2237,22 @@ export default function MobileMenuScreen() {
                                     )}
                                 >
                                     {items.length === 0 ? (
-                                        <Empty description={t('noItemsToShow')} />
+                                        <Flex align="center" gap={8} style={{ padding: '8px 0 2px' }} vertical>
+                                            <Text type="secondary">{t('noItemsToShow')}</Text>
+                                            {id !== 'uncategorized' ? (
+                                                <Button
+                                                    fill="outline"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        setAddSheetInitialCategoryId(id);
+                                                        setIsAddSheetOpen(true);
+                                                    }}
+                                                    size="small"
+                                                >
+                                                    {t('addItem')}
+                                                </Button>
+                                            ) : null}
+                                        </Flex>
                                     ) : (
                                         <List>
                                             {items.map((item) => (
@@ -2571,7 +2616,10 @@ export default function MobileMenuScreen() {
             <MobileMenuCommandSheet
                 businessType={storeDetails?.businessType}
                 labels={labels}
-                onAddItem={() => launchCommandAction(() => setIsAddSheetOpen(true))}
+                onAddItem={() => launchCommandAction(() => {
+                    setAddSheetInitialCategoryId(null);
+                    setIsAddSheetOpen(true);
+                })}
                 onCategories={() => launchCommandAction(() => {
                     setCategorySheetMode('manage');
                     setCategorySheetInitialCategoryId(null);
@@ -2794,8 +2842,12 @@ export default function MobileMenuScreen() {
                 <ItemEditSheet
                     categories={categoryOptions}
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
+                    initialCategoryId={addSheetInitialCategoryId || undefined}
                     mode="add"
-                    onClose={() => handleCommandActionBack(() => setIsAddSheetOpen(false))}
+                    onClose={() => handleCommandActionBack(() => {
+                        setIsAddSheetOpen(false);
+                        setAddSheetInitialCategoryId(null);
+                    })}
                     projectData={menuData}
                     onSave={async (newItem) => {
                         if (!menuData) return;
@@ -2805,11 +2857,10 @@ export default function MobileMenuScreen() {
                         }
                         const updated = removeObjRef(menuData);
                         let targetFile = findFileForCategory(updated, newItem.categoryId);
+                        if (!targetFile) {
+                            targetFile = ensurePrimaryMenuFile(updated);
+                        }
                         if (!targetFile) return;
-                        if (!targetFile.extractedData) targetFile.extractedData = { data: { categories: [], items: [], languages: [] } };
-                        if (!targetFile.extractedData.data) targetFile.extractedData.data = { categories: [], items: [], languages: [] };
-                        if (!targetFile.extractedData.data.categories) targetFile.extractedData.data.categories = [];
-                        if (!targetFile.extractedData.data.items) targetFile.extractedData.data.items = [];
                         const languageCodes = menuData.languages?.length
                             ? menuData.languages
                             : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
@@ -2870,6 +2921,7 @@ export default function MobileMenuScreen() {
                         applyLocalMenuUpdate(updated);
                         Toast.show({ content: t('itemAdded'), duration: 1000 });
                         setIsAddSheetOpen(false);
+                        setAddSheetInitialCategoryId(null);
                         resetCommandActionFlow();
 
                         if (shouldUploadImage && pendingImage) {
