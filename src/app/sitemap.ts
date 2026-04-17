@@ -10,7 +10,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
  * - joespizza.menulist.ai → Client menu (subdomain)
  * - joespizza.com → Client menu (custom domain)
  * 
- * Each client has their own sitemap at their domain (see /app/_client/sitemap.ts)
+ * Each client has their own sitemap at their domain (see /app/client/sitemap.ts)
  * 
  * See: __docs__/SEO-IMPLEMENTATION-GUIDE.md for full architecture
  */

@@ -2,7 +2,7 @@
  * Menu Correctness Engine (MCE) — Utilities
  *
  * Centralized sanitization utility extracted from
- * src/app/_client/[[...slug]]/page.tsx for all surface data paths.
+ * src/app/client/[[...slug]]/page.tsx for all surface data paths.
  *
  * INVARIANT: Any customer-facing render MUST pass through sanitizeForClient().
  * No surface may read project data and expose it to customers without calling
@@ -16,7 +16,7 @@
  * Prevents leaking AI processing costs, internal IDs, MCE metadata,
  * and inactive items to end users.
  *
- * Same logic as the original function in _client/[[...slug]]/page.tsx,
+ * Same logic as the original function in client/[[...slug]]/page.tsx,
  * extracted to shared location for all surface data paths.
  *
  * @param projectData - Raw project data from Firestore

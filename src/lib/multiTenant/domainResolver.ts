@@ -135,22 +135,22 @@ export function getClientRewritePath(
     subdomain?: string,
     customDomain?: string
 ): string {
-    // For client domains, we rewrite to /_client/[domain] internally
-    // This allows us to handle the routing in the (client) route group
+    // For client domains, we rewrite to /client/[domain] internally
+    // This allows us to handle the routing in the /client namespace
     const domainKey = subdomain || customDomain || 'unknown';
 
     // If already accessing a client path, don't double-rewrite
-    if (pathname.startsWith('/_client/')) {
+    if (pathname.startsWith('/client/')) {
         return pathname;
     }
 
     // Rewrite root to client page
     if (pathname === '/' || pathname === '') {
-        return `/_client/${domainKey}`;
+        return `/client/${domainKey}`;
     }
 
     // Rewrite other paths under client
-    return `/_client/${domainKey}${pathname}`;
+    return `/client/${domainKey}${pathname}`;
 }
 
 /**

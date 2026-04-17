@@ -5,7 +5,7 @@
  * Routing Priority:
  * 1. Product website domains (canonica.app → /_sites/canonica)
  * 2. Dev path prefixes (/__canonica → /_sites/canonica) — local dev only
- * 3. Client tenant domains (*.menulist.ai → /_client)
+ * 3. Client tenant domains (*.menulist.ai → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
  * OWASP Compliance:
@@ -148,6 +148,17 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(url, 301);
     }
 
+    // Block direct access to /client/* on platform domain (only reachable via middleware rewrite)
+    // Tenant traffic arrives here via NextResponse.rewrite() with host = subdomain/custom domain.
+    // Direct hits like menulist.ai/client/... should not leak the internal route structure.
+    if (pathname === '/client' || pathname.startsWith('/client/')) {
+        if (!domainInfo.isClient) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/';
+            return NextResponse.redirect(url, 301);
+        }
+    }
+
     // 1a. Production: hostname-based product routing (canonica.app → /sites/canonica)
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
@@ -208,9 +219,9 @@ export function middleware(request: NextRequest) {
     let response: NextResponse;
 
     if (domainInfo.isClient) {
-        // Client domain - rewrite to (client) route group
+        // Client domain - rewrite to /client route namespace
         const url = request.nextUrl.clone();
-        url.pathname = `/_client${pathname === '/' ? '' : pathname}`;
+        url.pathname = `/client${pathname === '/' ? '' : pathname}`;
 
         response = NextResponse.rewrite(url);
 

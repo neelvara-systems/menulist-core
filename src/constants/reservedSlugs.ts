@@ -48,7 +48,7 @@ export const RESERVED_PROJECT_SLUGS: readonly string[] = [
     'manifest',
     'sw',              // service worker
     '_next',
-    '_client',
+    'client',
 ] as const;
 
 /**
