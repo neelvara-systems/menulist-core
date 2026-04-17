@@ -293,7 +293,6 @@ export default function SmartRecommendationsSheet({
                                 marginInline: -12,
                                 marginTop: 'auto',
                                 padding: '12px 16px',
-                                paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
                                 position: 'sticky',
                                 zIndex: 5,
                             }}

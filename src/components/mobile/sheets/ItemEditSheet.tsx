@@ -292,6 +292,45 @@ export default function ItemEditSheet({
     const handleSave = async () => {
         if (isSaving || !getLocalizedValue(draftItem.name, primaryLanguage).trim()) return;
 
+        const normalizedAttributes = (draftItem.attributes || []).map((attribute) => ({
+            ...attribute,
+            localizedName: getLocalizedValue(attribute.name, primaryLanguage).trim(),
+            priceValue: String(attribute.price ?? '').trim(),
+        }));
+
+        const seenAttributeNames = new Set<string>();
+        for (let index = 0; index < normalizedAttributes.length; index += 1) {
+            const attribute = normalizedAttributes[index];
+            if (!attribute.localizedName) {
+                Toast.show({ content: `Attribute ${index + 1} name is required.`, duration: 1800 });
+                return;
+            }
+
+            const attributeNameKey = attribute.localizedName.toLowerCase();
+            if (seenAttributeNames.has(attributeNameKey)) {
+                Toast.show({ content: `Attribute names must be unique.`, duration: 1800 });
+                return;
+            }
+            seenAttributeNames.add(attributeNameKey);
+
+            if (attribute.priceValue.length > 0) {
+                const parsedAttributePrice = Number(attribute.priceValue);
+                if (!Number.isFinite(parsedAttributePrice) || parsedAttributePrice < 0) {
+                    Toast.show({ content: `Attribute ${index + 1} price must be 0 or more.`, duration: 1800 });
+                    return;
+                }
+            }
+        }
+
+        const rawItemPrice = String(draftItem.price ?? '').trim();
+        if (!normalizedAttributes.length && rawItemPrice.length > 0) {
+            const parsedItemPrice = Number(rawItemPrice);
+            if (!Number.isFinite(parsedItemPrice) || parsedItemPrice < 0) {
+                Toast.show({ content: 'Item price must be 0 or more.', duration: 1800 });
+                return;
+            }
+        }
+
         const chosenCategory = categories.find((category) => category.id === draftItem.category);
         const categoryName = chosenCategory?.name || item?.categoryName || t('uncategorized');
         setIsSaving(true);
@@ -299,11 +338,11 @@ export default function ItemEditSheet({
         try {
             await onSave({
                 active: draftItem.active !== false,
-                attributes: (draftItem.attributes || []).map((attribute) => ({
+                attributes: normalizedAttributes.map((attribute) => ({
                     active: attribute.active !== false,
                     id: attribute.id,
-                    name: getLocalizedValue(attribute.name, primaryLanguage),
-                    price: parseFloat(String(attribute.price || 0)) || 0,
+                    name: attribute.localizedName,
+                    price: parseFloat(attribute.priceValue || '0') || 0,
                 })),
                 available: draftItem.available !== false,
                 categoryId: draftItem.category || undefined,
@@ -607,7 +646,6 @@ export default function ItemEditSheet({
                             marginInline: -16,
                             marginTop: 'auto',
                             padding: '12px 16px',
-                            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
                             position: 'sticky',
                             zIndex: 5,
                         }}

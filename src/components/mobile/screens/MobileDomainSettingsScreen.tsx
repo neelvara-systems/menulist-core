@@ -1,6 +1,6 @@
 'use client'
 
-import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -231,7 +231,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                         ) : (
                             <>
                                 <AntInput
-                                    addonAfter=".menulist.ai"
+                                    addonAfter={`.${PLATFORM_DOMAIN}`}
                                     onChange={(event) => {
                                         setSubdomainValue(event.target.value.toLowerCase().trim());
                                         setAvailability(null);

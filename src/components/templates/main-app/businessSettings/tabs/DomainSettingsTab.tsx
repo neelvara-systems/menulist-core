@@ -1,6 +1,6 @@
 'use client';
 
-import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { Alert, Button, Card, Divider, Input, List, Space, Steps, Tag, Typography } from 'antd';
 import axios from 'axios';
@@ -252,7 +252,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                         ) : null}
 
                         <Input
-                            addonAfter=".menulist.ai"
+                            addonAfter={`.${PLATFORM_DOMAIN}`}
                             placeholder={t('subdomainPlaceholder')}
                             value={subdomainValue}
                             onBlur={(event) => void checkAvailability(event.target.value)}

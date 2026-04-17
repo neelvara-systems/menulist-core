@@ -409,11 +409,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     gap={8}
                     style={{
                         backdropFilter: 'blur(10px)',
-                        background: 'var(--adm-color-background)',
-                        borderTop: '1px solid var(--adm-color-border)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
-                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                        padding: '12px 16px',
                         position: 'sticky',
                         zIndex: 20,
                     }}

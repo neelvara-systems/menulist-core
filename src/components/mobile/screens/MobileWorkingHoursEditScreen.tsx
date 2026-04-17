@@ -44,6 +44,15 @@ const parseDayValue = (value: string | undefined): DaySchedule => {
 
 const serializeDay = (schedule: DaySchedule) => schedule.isClosed ? '' : `${schedule.open}-${schedule.close}`;
 
+const toMinutes = (value: string): number | null => {
+    const [hoursText, minutesText] = value.split(':');
+    const hours = Number(hoursText);
+    const minutes = Number(minutesText);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return (hours * 60) + minutes;
+};
+
 export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHoursEditScreenProps) {
     const t = useTranslations('MobileWorkingHoursEdit');
     const { token } = theme.useToken();
@@ -74,6 +83,19 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
+
+        for (const { key } of DAYS) {
+            const daySchedule = schedule[key];
+            if (daySchedule.isClosed) continue;
+
+            const openMinutes = toMinutes(daySchedule.open);
+            const closeMinutes = toMinutes(daySchedule.close);
+            if (openMinutes === null || closeMinutes === null || openMinutes === closeMinutes) {
+                Toast.show({ content: 'Open and close times must be valid and different.', duration: 1800 });
+                return;
+            }
+        }
+
         setIsSaving(true);
         const workingHours: Record<string, string> = {};
         DAYS.forEach(({ key }) => { workingHours[key] = serializeDay(schedule[key]); });
@@ -212,11 +234,11 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                     gap={8}
                     style={{
                         backdropFilter: 'blur(10px)',
-                        background: 'var(--adm-color-background)',
-                        borderTop: '1px solid var(--adm-color-border)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
-                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                        padding: '12px 16px',
                         position: 'sticky',
                         zIndex: 20,
                     }}

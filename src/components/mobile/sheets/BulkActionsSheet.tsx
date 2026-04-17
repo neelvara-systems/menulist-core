@@ -510,6 +510,12 @@ export default function BulkActionsSheet({
                 ? availabilityLabels.unavailable
                 : t('allStatuses');
 
+    const unavailableItems = searchScopedItems.filter((item) => !item.available);
+    const hiddenItems = searchScopedItems.filter((item) => !item.active);
+    const missingPriceItems = searchScopedItems.filter(hasMissingPrice);
+    const missingDescriptionItems = searchScopedItems.filter(hasMissingDescription);
+    const missingImageItems = searchScopedItems.filter(hasMissingImage);
+
     const renderSelectionShortcut = (label: string, nextItems: ItemEntry[]) => (
         <Flex
             align="center"
@@ -580,12 +586,12 @@ export default function BulkActionsSheet({
                 vertical
             >
                 <Text strong type="secondary">{t('selectionShortcuts')}</Text>
-                {renderSelectionShortcut(t('selectVisibleResults', { count: filteredItems.length }), filteredItems)}
-                {renderSelectionShortcut(`${availabilityLabels.unavailable} (${searchScopedItems.filter((item) => !item.available).length})`, searchScopedItems.filter((item) => !item.available))}
-                {renderSelectionShortcut(t('selectHiddenItems', { count: searchScopedItems.filter((item) => !item.active).length }), searchScopedItems.filter((item) => !item.active))}
-                {renderSelectionShortcut(t('selectMissingPriceItems', { count: searchScopedItems.filter(hasMissingPrice).length }), searchScopedItems.filter(hasMissingPrice))}
-                {renderSelectionShortcut(`${t('missingDescription')} (${searchScopedItems.filter(hasMissingDescription).length})`, searchScopedItems.filter(hasMissingDescription))}
-                {renderSelectionShortcut(`${t('missingPhoto')} (${searchScopedItems.filter(hasMissingImage).length})`, searchScopedItems.filter(hasMissingImage))}
+                {filteredItems.length > 0 ? renderSelectionShortcut(t('selectVisibleResults', { count: filteredItems.length }), filteredItems) : null}
+                {unavailableItems.length > 0 ? renderSelectionShortcut(`${availabilityLabels.unavailable} (${unavailableItems.length})`, unavailableItems) : null}
+                {hiddenItems.length > 0 ? renderSelectionShortcut(t('selectHiddenItems', { count: hiddenItems.length }), hiddenItems) : null}
+                {missingPriceItems.length > 0 ? renderSelectionShortcut(t('selectMissingPriceItems', { count: missingPriceItems.length }), missingPriceItems) : null}
+                {missingDescriptionItems.length > 0 ? renderSelectionShortcut(`${t('missingDescription')} (${missingDescriptionItems.length})`, missingDescriptionItems) : null}
+                {missingImageItems.length > 0 ? renderSelectionShortcut(`${t('missingPhoto')} (${missingImageItems.length})`, missingImageItems) : null}
             </Flex>
         </Flex>
     );
@@ -754,7 +760,8 @@ export default function BulkActionsSheet({
                         >
                             <Button
                                 fill="outline"
-                                style={{ minWidth: 98 }}
+                                size="middle"
+                                style={{ height: 32, minHeight: 32, minWidth: 98 }}
                             >
                                 <Flex align="center" gap={6}>
                                     <LuFilter size={16} />
@@ -909,7 +916,6 @@ export default function BulkActionsSheet({
                             bottom: 0,
                             flexShrink: 0,
                             padding: '12px 16px',
-                            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
                             position: 'sticky',
                             zIndex: 5,
                         }}

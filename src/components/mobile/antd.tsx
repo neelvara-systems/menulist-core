@@ -432,6 +432,7 @@ export function SearchBar({ onChange, placeholder, style, value }: { onChange?: 
             onChange={(event) => onChange?.(event.target.value)}
             placeholder={placeholder}
             prefix={<LuSearch size={16} />}
+            size="middle"
             style={sanitizeStyle(style)}
             value={value}
         />

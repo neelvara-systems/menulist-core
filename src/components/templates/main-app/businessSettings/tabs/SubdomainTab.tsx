@@ -1,5 +1,5 @@
 'use client';
-import { getMenuUrl } from '@constant/urls';
+import { getMenuUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { Alert, Button, Card, Col, Divider, Form, Input, Row, Space, Tag, Typography } from 'antd';
 import axios from 'axios';
 import { useTranslations } from 'next-intl';
@@ -152,7 +152,7 @@ function SubdomainTab({ scrollRef, currentSubdomain, isMaster }: SubdomainTabPro
                     >
                         <Input
                             addonBefore="https://"
-                            addonAfter=".menulist.ai"
+                            addonAfter={`.${PLATFORM_DOMAIN}`}
                             placeholder="your-business"
                             onBlur={(e) => checkAvailability(e.target.value)}
                             style={{ maxWidth: 500 }}

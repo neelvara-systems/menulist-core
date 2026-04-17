@@ -25,18 +25,39 @@ import { ALL_PRODUCT_DOMAINS } from './productDomains';
 // Base Domain
 // ═══════════════════════════════════════════════════════════════
 
+const sanitizeDomain = (value?: string | null): string => {
+    if (!value) return '';
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/\/.*$/, '');
+};
+
 /** Root domain — used for marketing site, SEO, and canonical URLs */
-export const PLATFORM_DOMAIN = 'menulist.ai';
+export const PLATFORM_DOMAIN = sanitizeDomain(process.env.NEXT_PUBLIC_PLATFORM_DOMAIN) || 'menulist.ai';
 
 /**
  * Alias domains that behave identically to PLATFORM_DOMAIN.
  * Used for staging/testing environments (e.g., menulist.online).
  * These serve the same marketing website — no redirect.
  */
-export const PLATFORM_DOMAIN_ALIASES = [
+const envDomainAliases = (process.env.NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES || '')
+    .split(',')
+    .map((entry) => sanitizeDomain(entry))
+    .filter(Boolean);
+
+const defaultDomainAliases = [
+    'menulist.ai',
+    'www.menulist.ai',
     'menulist.online',
     'www.menulist.online',
-] as const;
+].filter((alias) => alias !== PLATFORM_DOMAIN && alias !== `www.${PLATFORM_DOMAIN}`);
+
+export const PLATFORM_DOMAIN_ALIASES = Array.from(new Set([
+    ...defaultDomainAliases,
+    ...envDomainAliases.filter((alias) => alias !== PLATFORM_DOMAIN && alias !== `www.${PLATFORM_DOMAIN}`),
+]));
 
 /** Full root URL with protocol */
 export const PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;

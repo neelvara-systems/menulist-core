@@ -433,7 +433,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 borderTop: '1px solid var(--adm-color-border)',
                                 bottom: 0,
                                 marginInline: -16,
-                                padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                                padding: '12px 16px',
                                 position: 'sticky',
                                 zIndex: 20,
                             }}
@@ -514,7 +514,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 borderTop: '1px solid var(--adm-color-border)',
                                 bottom: 0,
                                 marginInline: -16,
-                                padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                                padding: '12px 16px',
                                 position: 'sticky',
                                 zIndex: 20,
                             }}

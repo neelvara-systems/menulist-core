@@ -1184,12 +1184,21 @@ export default function MobileMenuScreen() {
             ? menuItems.filter((item) => item.categoryId && draftFilters.categoryIds.includes(item.categoryId))
             : menuItems;
         return {
+            available: scopedItems.filter((item) => item.available).length,
+            hidden: scopedItems.filter((item) => !isItemEffectivelyActive(item)).length,
             missingPhoto: scopedItems.filter((item) => !item.image).length,
             missingDescription: scopedItems.filter((item) => !item.description?.trim()).length,
             missingPrice: scopedItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
             missingTranslation: scopedItems.filter((item) => item.translationMissing).length,
+            shown: scopedItems.filter((item) => isItemEffectivelyActive(item)).length,
+            unavailable: scopedItems.filter((item) => !item.available).length,
         };
-    }, [draftFilters.categoryIds, menuItems]);
+    }, [draftFilters.categoryIds, isItemEffectivelyActive, menuItems]);
+
+    const filterHealthHints = useMemo(() => ({
+        showAllAvailable: menuIssueCounts.available > 0 && menuIssueCounts.unavailable === 0 && draftFilters.availability === null,
+        showAllShownOnMenu: menuIssueCounts.shown > 0 && menuIssueCounts.hidden === 0 && draftFilters.activeStatus === null,
+    }), [draftFilters.activeStatus, draftFilters.availability, menuIssueCounts.available, menuIssueCounts.hidden, menuIssueCounts.shown, menuIssueCounts.unavailable]);
 
     useEffect(() => {
         if (!isFilterSheetOpen) return;
@@ -1741,7 +1750,13 @@ export default function MobileMenuScreen() {
                                 />
                             </Flex>
                             <Flex style={{ flexShrink: 0 }}>
-                                <Button block fill="outline" onClick={() => setIsFilterSheetOpen(true)} style={{ justifyContent: 'flex-start' }}>
+                                <Button
+                                    block
+                                    fill="outline"
+                                    onClick={() => setIsFilterSheetOpen(true)}
+                                    size="middle"
+                                    style={{ height: 32, justifyContent: 'flex-start', minHeight: 32 }}
+                                >
                                     <Flex align="center" gap={8}>
                                         <LuFilter size={16} />
                                         <Text>{t('filters')}</Text>
@@ -1916,9 +1931,74 @@ export default function MobileMenuScreen() {
                         <Button
                             fill="none"
                             onClick={() => {
-                                Toast.show({
-                                    content: t('filterTerminologyHelp', { unavailable: availabilityLabels.unavailable }),
-                                    duration: 2200,
+                                Dialog.alert({
+                                    content: (
+                                        <Flex gap={10} vertical>
+                                            <Card size="small" style={{ margin: 0 }}>
+                                                <Flex gap={8} vertical>
+                                                    <Text strong>Visibility status</Text>
+                                                    <Flex align="center" gap={10}>
+                                                        <StatusDot color={token.colorSuccess} />
+                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                                            <Text strong>{t('shownOnMenu')}</Text>
+                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
+                                                                Customers can see this on your menu.
+                                                            </Text>
+                                                        </Flex>
+                                                    </Flex>
+                                                    <Flex align="center" gap={10}>
+                                                        <StatusDot color={token.colorTextQuaternary} />
+                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                                            <Text strong>{t('hiddenFromMenu')}</Text>
+                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
+                                                                Not shown to customers on your menu.
+                                                            </Text>
+                                                        </Flex>
+                                                    </Flex>
+                                                </Flex>
+                                            </Card>
+
+                                            <Card size="small" style={{ margin: 0 }}>
+                                                <Flex gap={8} vertical>
+                                                    <Text strong>Ordering status</Text>
+                                                    <Flex align="center" gap={10}>
+                                                        <StatusDot color={token.colorSuccess} />
+                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                                            <Text strong>{availabilityLabels.available}</Text>
+                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
+                                                                Customers can order this item now.
+                                                            </Text>
+                                                        </Flex>
+                                                    </Flex>
+                                                    <Flex align="center" gap={10}>
+                                                        <StatusDot color={token.colorWarning} />
+                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                                            <Text strong>{availabilityLabels.unavailable}</Text>
+                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
+                                                                Still visible, but customers cannot order it.
+                                                            </Text>
+                                                        </Flex>
+                                                    </Flex>
+                                                </Flex>
+                                            </Card>
+
+                                            {activeProjectLanguages.length > 1 ? (
+                                                <Card size="small" style={{ margin: 0 }}>
+                                                    <Flex align="center" gap={10}>
+                                                        <StatusDot color={token.colorPrimary} />
+                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                                            <Text strong>{t('missingTranslation')}</Text>
+                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
+                                                                Needs translation in the selected language.
+                                                            </Text>
+                                                        </Flex>
+                                                    </Flex>
+                                                </Card>
+                                            ) : null}
+
+                                        </Flex>
+                                    ),
+                                    title: t('filters'),
                                 });
                             }}
                             size="mini"
@@ -2106,13 +2186,14 @@ export default function MobileMenuScreen() {
                                                     style={{ flexShrink: 0 }}
                                                 >
                                                     <Button
-                                                        fill="outline"
+                                                        fill="none"
                                                         onClick={() => {
                                                             setCategorySheetMode('manage');
                                                             setCategorySheetInitialCategoryId(id);
                                                             setIsCategorySheetOpen(true);
                                                         }}
                                                         size="small"
+                                                        style={{ minHeight: 34, minWidth: 34, paddingInline: 0 }}
                                                     >
                                                         <LuPencil size={14} />
                                                     </Button>
@@ -2143,12 +2224,13 @@ export default function MobileMenuScreen() {
                                                                 <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
                                                             </div>
                                                             <Button
-                                                                fill="outline"
+                                                                fill="none"
                                                                 onClick={(event) => {
                                                                     event.stopPropagation();
                                                                     setEditingItem(item);
                                                                 }}
                                                                 size="small"
+                                                                style={{ minHeight: 34, minWidth: 34, paddingInline: 0 }}
                                                             >
                                                                 <LuPencil size={14} />
                                                             </Button>
@@ -2392,31 +2474,63 @@ export default function MobileMenuScreen() {
                             </Flex>
                         </Card>
 
-                        {renderSingleChoiceFilter(
-                            t('availability'),
-                            draftFilters.availability === null ? '' : draftFilters.availability ? 'available' : 'soldOut',
-                            [
-                                { label: availabilityLabels.available, value: 'available' },
-                                { label: availabilityLabels.unavailable, value: 'soldOut' },
-                            ],
-                            null,
-                            (value) => setDraftFilters((prev) => ({ ...prev, availability: value === '' ? null : value === 'available' }))
-                        )}
+                        {(() => {
+                            const availabilityOptions: Array<{ label: string; value: string }> = [];
+                            if (menuIssueCounts.available > 0 || draftFilters.availability === true) {
+                                availabilityOptions.push({ label: availabilityLabels.available, value: 'available' });
+                            }
+                            if (menuIssueCounts.unavailable > 0 || draftFilters.availability === false) {
+                                availabilityOptions.push({ label: availabilityLabels.unavailable, value: 'soldOut' });
+                            }
 
-                        {renderSingleChoiceFilter(
-                            t('visibility'),
-                            draftFilters.activeStatus === null ? '' : draftFilters.activeStatus ? 'active' : 'hidden',
-                            [
-                                { label: t('shownOnMenu'), value: 'active' },
-                                { label: t('hiddenFromMenu'), value: 'hidden' },
-                            ],
-                            null,
-                            (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === '' ? null : value === 'active' }))
-                        )}
+                            const hasBothAvailabilityStates = menuIssueCounts.available > 0 && menuIssueCounts.unavailable > 0;
+                            const shouldShowAvailabilityFilter = hasBothAvailabilityStates || draftFilters.availability !== null;
+                            if (!shouldShowAvailabilityFilter || availabilityOptions.length === 0) return null;
+
+                            return renderSingleChoiceFilter(
+                                t('availability'),
+                                draftFilters.availability === null ? '' : draftFilters.availability ? 'available' : 'soldOut',
+                                availabilityOptions,
+                                null,
+                                (value) => setDraftFilters((prev) => ({ ...prev, availability: value === '' ? null : value === 'available' }))
+                            );
+                        })()}
+
+                        {(() => {
+                            const visibilityOptions: Array<{ label: string; value: string }> = [];
+                            if (menuIssueCounts.shown > 0 || draftFilters.activeStatus === true) {
+                                visibilityOptions.push({ label: t('shownOnMenu'), value: 'active' });
+                            }
+                            if (menuIssueCounts.hidden > 0 || draftFilters.activeStatus === false) {
+                                visibilityOptions.push({ label: t('hiddenFromMenu'), value: 'hidden' });
+                            }
+
+                            const hasBothVisibilityStates = menuIssueCounts.shown > 0 && menuIssueCounts.hidden > 0;
+                            const shouldShowVisibilityFilter = hasBothVisibilityStates || draftFilters.activeStatus !== null;
+                            if (!shouldShowVisibilityFilter || visibilityOptions.length === 0) return null;
+
+                            return renderSingleChoiceFilter(
+                                t('visibility'),
+                                draftFilters.activeStatus === null ? '' : draftFilters.activeStatus ? 'active' : 'hidden',
+                                visibilityOptions,
+                                null,
+                                (value) => setDraftFilters((prev) => ({ ...prev, activeStatus: value === '' ? null : value === 'active' }))
+                            );
+                        })()}
 
                         <Text style={{ fontSize: 12 }} type="secondary">
                             {t('filterTerminologyHelp', { unavailable: availabilityLabels.unavailable })}
                         </Text>
+                        {filterHealthHints.showAllShownOnMenu ? (
+                            <Text style={{ fontSize: 12 }} type="secondary">
+                                All items are shown on menu.
+                            </Text>
+                        ) : null}
+                        {filterHealthHints.showAllAvailable ? (
+                            <Text style={{ fontSize: 12 }} type="secondary">
+                                All items are available.
+                            </Text>
+                        ) : null}
 
                     </Flex>
 
@@ -2426,7 +2540,6 @@ export default function MobileMenuScreen() {
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
                         flexShrink: 0,
                         padding: '12px 16px',
-                        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
                         position: 'sticky',
                         bottom: 0,
                         zIndex: 5,
