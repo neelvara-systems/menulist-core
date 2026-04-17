@@ -11,10 +11,12 @@ import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { resolveDomain } from "@lib/multiTenant/domainResolver";
 import { generateMenuUrl, generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { buildFaqSchema } from "@lib/schema";
+import { formatClockTime } from '@util/dateTime';
 import {
     collection,
     doc,
@@ -24,9 +26,8 @@ import {
     query,
     where,
 } from "firebase/firestore";
-import { unstable_cache } from "next/cache";
 import { getTranslations } from "next-intl/server";
-import { formatClockTime } from '@util/dateTime';
+import { unstable_cache } from "next/cache";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -157,9 +158,20 @@ const countActiveStoresForTenant = unstable_cache(
 
 async function getTenantFromHeaders() {
     const headersList = headers();
-    const subdomain = headersList.get("x-tenant-subdomain");
-    const customDomain = headersList.get("x-tenant-custom-domain");
-    const tenantType = headersList.get("x-tenant-type");
+    const tenantSubdomain = headersList.get("x-tenant-subdomain");
+    const tenantCustomDomain = headersList.get("x-tenant-custom-domain");
+    const tenantTypeHeader = headersList.get("x-tenant-type");
+    const requestHost =
+        headersList.get("x-forwarded-host") ||
+        headersList.get("host");
+    const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
+
+    // Fallback to resolveDomain if headers not set (middleware cache/header issues)
+    const resolvedDomain = resolveDomain(host);
+    const tenantType = tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null);
+    const subdomain = tenantSubdomain || resolvedDomain.subdomain || null;
+    const customDomain = tenantCustomDomain || resolvedDomain.customDomain || null;
+
     return { subdomain, customDomain, tenantType };
 }
 

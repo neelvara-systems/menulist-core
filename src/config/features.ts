@@ -2073,6 +2073,14 @@ export const FEATURE_FLAGS = {
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */
     ENABLE_PUBLIC_MENU_ENTRY: true,
+
+    /**
+     * Deployment build visibility for internal debugging.
+     *
+     * true: Allow on-demand build badge via ?v=1 query param
+     * false: Disable badge rendering everywhere
+     */
+    ENABLE_DEPLOYMENT_BUILD_BADGE: true,
 } as const;
 
 /**

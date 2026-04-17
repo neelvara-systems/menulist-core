@@ -5,6 +5,7 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { interFont } from 'src/fonts/inter';
 import AntdRegistry from '../lib/AntdRegistry';
+import DeploymentBuildBadge from '../components/common/DeploymentBuildBadge';
 import ServerSidePageLoader from './loading';
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
@@ -158,6 +159,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     <Suspense fallback={<ServerSidePageLoader page="App Layout" />}>
                         {children}
                     </Suspense>
+                    <DeploymentBuildBadge />
                 </AntdRegistry>
             </body>
         </html>

@@ -10,6 +10,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { resolveDomain } from "@lib/multiTenant/domainResolver";
 import {
     collection,
     doc,
@@ -67,9 +68,20 @@ const getStoreByCustomDomain = cache(
 
 async function getTenantFromHeaders() {
     const headersList = headers();
-    const subdomain = headersList.get("x-tenant-subdomain");
-    const customDomain = headersList.get("x-tenant-custom-domain");
-    const tenantType = headersList.get("x-tenant-type");
+    const tenantSubdomain = headersList.get("x-tenant-subdomain");
+    const tenantCustomDomain = headersList.get("x-tenant-custom-domain");
+    const tenantTypeHeader = headersList.get("x-tenant-type");
+    const requestHost =
+        headersList.get("x-forwarded-host") ||
+        headersList.get("host");
+    const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
+
+    // Fallback to resolveDomain if headers not set (middleware cache/header issues)
+    const resolvedDomain = resolveDomain(host);
+    const tenantType = tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null);
+    const subdomain = tenantSubdomain || resolvedDomain.subdomain || null;
+    const customDomain = tenantCustomDomain || resolvedDomain.customDomain || null;
+
     return { subdomain, customDomain, tenantType };
 }
 
