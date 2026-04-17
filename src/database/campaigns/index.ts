@@ -578,7 +578,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
             name: storeData?.name || storeData?.businessName || 'Menu',
             logoUrl: storeData?.logo || undefined,
             menuQrUrl: generateMenuUrl(
-                storeData?.subdomain || storeData?.subDomain || storeId,
+                storeData?.subdomain || storeId,
                 storeData?.customDomain,
             ),
         };
