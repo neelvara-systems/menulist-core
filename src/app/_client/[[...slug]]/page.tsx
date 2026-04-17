@@ -53,10 +53,26 @@ async function getTenantFromHeaders() {
     const tenantSubdomain = headersList.get("x-tenant-subdomain");
     const tenantCustomDomain = headersList.get("x-tenant-custom-domain");
     const tenantTypeHeader = headersList.get("x-tenant-type");
+
+    // Multiple fallback headers for host detection (Vercel + standard)
     const requestHost =
-        headersList.get("x-forwarded-host") ||
-        headersList.get("host");
+        headersList.get("x-forwarded-host") ||      // Standard proxy header
+        headersList.get("host") ||                   // Standard host header
+        headersList.get("x-vercel-proxied-host") ||  // Vercel specific
+        headersList.get("x-vercel-deployment-url") || // Vercel deployment URL
+        process.env.VERCEL_URL;                      // Vercel env fallback
+
     const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
+
+    // If still no host, we're in a broken state - log and return nulls
+    if (!host) {
+        console.error("[ClientPage] No host header found. Headers:", {
+            forwardedHost: headersList.get("x-forwarded-host"),
+            host: headersList.get("host"),
+            vercelHost: headersList.get("x-vercel-proxied-host"),
+            vercelUrl: headersList.get("x-vercel-deployment-url"),
+        });
+    }
 
     const resolvedDomain = resolveDomain(host);
     const tenantType = tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null);
