@@ -57,6 +57,9 @@ import { PageState, ProjectLink, UseMenuListData } from './types';
 
 const { Title, Text, Paragraph } = Typography;
 
+const isDefaultLikeProject = (project: any): boolean =>
+    Boolean(project?.isDefault) || String(project?.projectId || '').includes('-default-');
+
 export default function UseMenuList() {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token: themeToken } = theme.useToken();
@@ -102,8 +105,8 @@ export default function UseMenuList() {
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
-                defaultProject.isDefault ? undefined : defaultProject.name,
-                defaultProject.isDefault
+                isDefaultLikeProject(defaultProject) ? undefined : defaultProject.name,
+                isDefaultLikeProject(defaultProject)
             );
 
             // Get screen state
@@ -128,14 +131,17 @@ export default function UseMenuList() {
                 : ''
 
             // Build multi-project links
-            const allProjects: ProjectLink[] = projects.map((p: any) => ({
-                projectId: p.projectId,
-                name: p.name || 'Untitled',
-                isDefault: p.isDefault || false,
-                url: generateProjectUrl(subdomain, customDomain, p.isDefault ? undefined : p.name, p.isDefault),
-                feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
-                feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr', obpLink) : '',
-            }));
+            const allProjects: ProjectLink[] = projects.map((p: any) => {
+                const defaultLike = isDefaultLikeProject(p);
+                return {
+                    projectId: p.projectId,
+                    name: p.name || 'Untitled',
+                    isDefault: p.isDefault || false,
+                    url: generateProjectUrl(subdomain, customDomain, defaultLike ? undefined : p.name, defaultLike),
+                    feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
+                    feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr', obpLink) : '',
+                };
+            });
 
             // POS Sync status (if enabled)
             const posSync = storeDetails.posSync;

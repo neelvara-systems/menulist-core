@@ -52,8 +52,12 @@ async function getTenantFromHeaders() {
     const subdomain = headersList.get("x-tenant-subdomain");
     const customDomain = headersList.get("x-tenant-custom-domain");
     const tenantType = headersList.get("x-tenant-type");
+    const requestHost =
+        headersList.get("x-forwarded-host") ||
+        headersList.get("host");
+    const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
 
-    return { subdomain, customDomain, tenantType };
+    return { subdomain, customDomain, tenantType, host };
 }
 
 // Timeout wrapper — prevents infinite SSR hangs if Firestore is unresponsive (GPT FIX 4)
@@ -444,7 +448,7 @@ function mergeOverlayMenu(baseProject: any, specialProject: any): any {
 
 // Generate metadata for SEO
 export async function generateMetadata(): Promise<Metadata> {
-    const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
+    const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
 
     // Lookup store based on tenant type (with retry for transient failures - TASK 4)
     let storeData: any = null;
@@ -482,7 +486,9 @@ export async function generateMetadata(): Promise<Metadata> {
     // Build canonical URL based on domain type
     const canonicalBase = customDomain
         ? `https://${customDomain}`
-        : `https://${subdomain}.menulist.ai`;
+        : host
+            ? `https://${host}`
+            : `https://${subdomain}.menulist.ai`;
 
     return {
         title,
@@ -796,7 +802,7 @@ function MenuSkeleton() {
 // Async data fetcher — streams after skeleton (Customer Infra Hardening - TASK 5)
 // All Firestore reads happen here so Suspense boundary can show skeleton instantly
 async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSegments?: string[] }) {
-    const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
+    const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
 
     // Lookup store — withTimeout prevents infinite SSR hang (GPT FIX 4), withRetry handles transients (TASK 4)
     let storeData: any = null;
@@ -887,7 +893,9 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     if (redirectSlug && slug && redirectSlug !== slug.toLowerCase()) {
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : `https://${subdomain}.menulist.ai`;
+            : host
+                ? `https://${host}`
+                : `https://${subdomain}.menulist.ai`;
         redirect(`${baseUrl}/${redirectSlug}`);
     }
 
@@ -911,7 +919,9 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     const baseUrl =
         tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : `https://${subdomain}.menulist.ai`;
+            : host
+                ? `https://${host}`
+                : `https://${subdomain}.menulist.ai`;
 
     // Add slug to canonical if not default project
     const canonicalUrl =

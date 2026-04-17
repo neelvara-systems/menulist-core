@@ -17,6 +17,7 @@ import {
 } from "@constant/productDomains";
 import {
     PLATFORM_DOMAIN,
+    PLATFORM_DOMAIN_ALIASES,
     PLATFORM_DOMAINS,
     RESERVED_SUBDOMAINS,
 } from "@constant/urls";
@@ -72,10 +73,19 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
         };
     }
 
-    // Check if it's a subdomain of the platform domain
-    const domainSuffix = `.${PLATFORM_DOMAIN}`;
-    if (normalizedHost.endsWith(domainSuffix)) {
-        const subdomain = normalizedHost.replace(domainSuffix, '');
+    // Check if it's a subdomain of any supported platform base domain
+    // (production + aliases like menulist.online).
+    const platformBaseDomains = Array.from(
+        new Set(
+            [PLATFORM_DOMAIN, ...PLATFORM_DOMAIN_ALIASES]
+                .map((domain) => domain.replace(/^www\./, ''))
+                .filter(Boolean)
+        )
+    );
+
+    const matchedBaseDomain = platformBaseDomains.find((baseDomain) => normalizedHost.endsWith(`.${baseDomain}`));
+    if (matchedBaseDomain) {
+        const subdomain = normalizedHost.slice(0, -(matchedBaseDomain.length + 1));
 
         // Check if it's a reserved subdomain
         if (RESERVED_SUBDOMAINS.includes(subdomain)) {

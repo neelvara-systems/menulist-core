@@ -55,6 +55,9 @@ type QrSheetState = {
     url: string;
 };
 
+const isDefaultLikeProject = (project: any): boolean =>
+    Boolean(project?.isDefault) || String(project?.projectId || '').includes('-default-');
+
 export default function MobileShareScreen() {
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -87,8 +90,8 @@ export default function MobileShareScreen() {
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
-                defaultProject.isDefault ? undefined : defaultProject.name,
-                defaultProject.isDefault
+                isDefaultLikeProject(defaultProject) ? undefined : defaultProject.name,
+                isDefaultLikeProject(defaultProject)
             );
 
             let menuBoardLink: string | null = null;
@@ -104,13 +107,16 @@ export default function MobileShareScreen() {
                 highlightsLink = null;
             }
 
-            const allProjects: ProjectLink[] = projects.map((project: any) => ({
-                feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : "",
-                isDefault: project.isDefault || false,
-                name: project.name || tProjectSelector('untitled'),
-                projectId: project.projectId,
-                url: generateProjectUrl(subdomain, customDomain, project.isDefault ? undefined : project.name, project.isDefault),
-            }));
+            const allProjects: ProjectLink[] = projects.map((project: any) => {
+                const defaultLike = isDefaultLikeProject(project);
+                return {
+                    feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : "",
+                    isDefault: project.isDefault || false,
+                    name: project.name || tProjectSelector('untitled'),
+                    projectId: project.projectId,
+                    url: generateProjectUrl(subdomain, customDomain, defaultLike ? undefined : project.name, defaultLike),
+                };
+            });
 
             const posSync = storeDetails.posSync;
             const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;

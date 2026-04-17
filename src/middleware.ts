@@ -181,6 +181,10 @@ export function middleware(request: NextRequest) {
     // URL normalization — API routes like /api/WebhookPayload must not
     // be 301-redirected to lowercase.
     const skipRouting = shouldBypassDomainRouting(pathname) ||
+        pathname === '/feedback' ||
+        pathname.startsWith('/feedback/') ||
+        pathname === '/screen' ||
+        pathname.startsWith('/screen/') ||
         pathname.startsWith('/(main)') ||
         pathname.startsWith('/(global-pages)');
 
