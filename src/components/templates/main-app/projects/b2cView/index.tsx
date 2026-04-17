@@ -67,7 +67,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
             // Runs in background — does NOT block UI or affect success toast
             try {
                 const { verifyMenuPublish } = await import('@lib/firebase/functions');
-                const slug = storeDetails?.subdomain || storeDetails?.subDomain;
+                const slug = storeDetails?.subdomain;
                 if (slug && storeDetails?.storeId && storeDetails?.tenantId) {
                     const { getMenuUrl } = await import('@constant/urls');
                     const publicMenuUrl = getMenuUrl(slug);

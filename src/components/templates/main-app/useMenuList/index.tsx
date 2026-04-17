@@ -98,7 +98,7 @@ export default function UseMenuList() {
             }
 
             // Build links
-            const subdomain = storeDetails.subdomain || storeDetails.subDomain || '';
+            const subdomain = storeDetails.subdomain || '';
             const customDomain = storeDetails.customDomain;
 
             const obpLink = generateOBPUrl(subdomain, customDomain);

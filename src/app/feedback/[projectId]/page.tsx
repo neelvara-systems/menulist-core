@@ -144,7 +144,7 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
                 ...storeData.feedbackDefaults,
             },
             logoUrl: (storeData.logo || '') as string | undefined,
-            officialPageUrl: generateOBPUrl(storeData.subdomain || storeData.subDomain, storeData.customDomain),
+            officialPageUrl: generateOBPUrl(storeData.subdomain, storeData.customDomain),
             phoneNumber: (storeData.phoneNumber || '') as string | undefined,
             tagline: (storeData.tagline || storeData.description || '') as string | undefined,
             whatsappNumber: (storeData.publicPresence?.whatsappNumber || '') as string | undefined,

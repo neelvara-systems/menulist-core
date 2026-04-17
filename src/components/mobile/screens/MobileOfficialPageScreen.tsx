@@ -1,8 +1,8 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { updateStore } from '@database/stores';
+import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -10,14 +10,11 @@ import { ColorPicker, InputNumber, Upload } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import {
-    LuCalendar,
-    LuExternalLink,
     LuMapPin,
     LuMessageSquare,
     LuPhone,
-    LuStar,
     LuTrash2,
-    LuUpload,
+    LuUpload
 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -56,8 +53,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
     const officialPageUrl = useMemo(
-        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
-        [storeDetails?.customDomain, storeDetails?.subdomain, storeDetails?.subDomain]
+        () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
+        [storeDetails?.customDomain, storeDetails?.subdomain]
     );
 
     const [formData, setFormData] = useState(getInitialPresenceForm(storeDetails));

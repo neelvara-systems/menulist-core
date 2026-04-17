@@ -33,7 +33,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const publicBaseUrl = generateOBPUrl(
-        storeDetails?.subdomain || storeDetails?.subDomain || '',
+        storeDetails?.subdomain || '',
         storeDetails?.customDomain
     );
     const fileInputRef = useRef<HTMLInputElement | null>(null);

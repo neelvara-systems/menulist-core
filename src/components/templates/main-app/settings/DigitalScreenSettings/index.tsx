@@ -44,8 +44,8 @@ export default function DigitalScreenSettings() {
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const publicBaseUrl = useMemo(
-        () => generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain),
-        [storeDetails?.customDomain, storeDetails?.subdomain, storeDetails?.subDomain]
+        () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
+        [storeDetails?.customDomain, storeDetails?.subdomain]
     );
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);

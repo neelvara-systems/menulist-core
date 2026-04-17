@@ -34,7 +34,6 @@ export type StoreDataType = {
     description?: string;
     gstn?: string;
     domain?: string;
-    subDomain?: string;
     url?: string;
     createdBy?: string;
     createdOn?: string;

@@ -34,7 +34,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
-    const obpUrl = generateOBPUrl(storeDetails?.subdomain || storeDetails?.subDomain || '', storeDetails?.customDomain);
+    const obpUrl = generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain);
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);

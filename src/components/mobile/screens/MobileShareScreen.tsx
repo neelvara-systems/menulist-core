@@ -84,7 +84,7 @@ export default function MobileShareScreen() {
                 return;
             }
 
-            const subdomain = storeDetails.subdomain || storeDetails.subDomain || '';
+            const subdomain = storeDetails.subdomain || '';
             const customDomain = storeDetails.customDomain;
             const obpLink = generateOBPUrl(subdomain, customDomain);
             const menuLink = generateProjectUrl(

@@ -19,9 +19,9 @@ import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuExternalLink, LuPalette } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
 
@@ -194,7 +194,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
             try {
                 const { verifyMenuPublish } = await import('@lib/firebase/functions');
-                const slug = storeDetails?.subdomain || storeDetails?.subDomain;
+                const slug = storeDetails?.subdomain;
                 if (slug && storeDetails?.storeId && storeDetails?.tenantId) {
                     verifyMenuPublish({
                         storeId: String(storeDetails.storeId),

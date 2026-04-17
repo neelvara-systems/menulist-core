@@ -41,7 +41,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>(DEFAULT_FEEDBACK_FILTER);
     const [isQrOpen, setIsQrOpen] = useState(false);
     const publicBaseUrl = generateOBPUrl(
-        storeDetails?.subdomain || storeDetails?.subDomain || '',
+        storeDetails?.subdomain || '',
         storeDetails?.customDomain
     );
 
