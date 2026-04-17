@@ -11,6 +11,7 @@ import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { resolveDomain } from "@lib/multiTenant/domainResolver";
 import { generateMenuUrl, generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
@@ -119,7 +120,8 @@ const checkHasPublishedMenu = unstable_cache(
             );
             const summarySnap = await getDoc(summaryRef);
             if (!summarySnap.exists()) return false;
-            const projects = summarySnap.data()?.projects || {};
+            // Handles both nested and legacy flat dot-notation formats.
+            const projects = parseSummaryProjects(summarySnap.data());
             return Object.values(projects).some((p: any) => p.active !== false);
         } catch {
             return false;

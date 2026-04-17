@@ -26,6 +26,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { resolveDomain } from "@lib/multiTenant/domainResolver";
@@ -223,7 +224,9 @@ async function getProjectBySlugOrDefault(
         `projects_${storeId}`,
     );
     const summarySnap = await getDoc(summaryDocRef);
-    const summaryProjects = summarySnap.exists() ? summarySnap.data()?.projects || {} : {};
+    // Handles both storage formats: nested `{ projects: { id: {...} } }`
+    // and legacy flat `{ "projects.id": {...} }` created by Admin SDK set() writes.
+    const summaryProjects = summarySnap.exists() ? parseSummaryProjects(summarySnap.data()) : {};
 
     // Build projects list from summary (preferred) or fallback to data collection
     let projects: Array<{
