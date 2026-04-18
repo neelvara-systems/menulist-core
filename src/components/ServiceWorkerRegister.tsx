@@ -1,35 +1,104 @@
 'use client';
 
+/**
+ * Service Worker Registration (Per-Tenant)
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * MenuList runs TWO PWAs from one Next.js build:
+ *
+ *   1. Owner Dashboard PWA   → platform origins (menulist.ai, app.menulist.ai)
+ *      Registers `/sw.js` (next-pwa generated, Workbox, runtime caching).
+ *
+ *   2. Customer App PWA      → tenant origins ({subdomain}.menulist.ai,
+ *                              verified custom domains)
+ *      Registers `/sw-customer.js` (hand-rolled, minimal, no caching).
+ *
+ * Registration is conditional on the current origin's tenant type, which
+ * is derived client-side from `window.location.host` via the same
+ * `resolveDomain` utility the middleware uses. This keeps the two SW
+ * scopes strictly separated — a customer origin NEVER registers the
+ * Workbox-based `sw.js`, and vice versa.
+ *
+ * Migration safety: If the browser has a stale registration pointing to
+ * a different script URL (e.g. a customer who previously had `sw.js`
+ * from the old auto-register config), we unregister it before installing
+ * the correct one. `skipWaiting` + `clientsClaim` in both SWs ensure the
+ * new SW takes over on the next load.
+ *
+ * @see next.config.js § Service Worker Strategy
+ * @see public/sw-customer.js
+ * @see src/lib/multiTenant/domainResolver.ts
+ */
+
+import { resolveDomain } from '@lib/multiTenant/domainResolver';
 import { useEffect } from 'react';
+
+const OWNER_SW_URL = '/sw.js';
+const CUSTOMER_SW_URL = '/sw-customer.js';
+
+function getTargetSwUrl(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const resolved = resolveDomain(window.location.host);
+        // Customer tenants (subdomain or custom domain) → minimal SW
+        if (resolved.isClient) return CUSTOMER_SW_URL;
+        // Platform / owner dashboard origins → next-pwa SW
+        return OWNER_SW_URL;
+    } catch {
+        // If domain resolution fails for any reason, fall back to the
+        // safer minimal SW (no caching) rather than risk caching menu
+        // content on an unidentified origin.
+        return CUSTOMER_SW_URL;
+    }
+}
 
 export default function ServiceWorkerRegister() {
     useEffect(() => {
-        // Only register service worker in production
-        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    if (registrations.length === 0) {
-                        navigator.serviceWorker.register('/sw.js')
-                            .then(registration => {
-                                console.log('Service Worker registered in production:', registration);
-                            })
-                            .catch(error => {
-                                console.error('Service Worker registration failed:', error);
-                            });
+        if (typeof window === 'undefined') return;
+        if (process.env.NODE_ENV !== 'production') return;
+        if (!('serviceWorker' in navigator)) return;
+
+        const targetUrl = getTargetSwUrl();
+        if (!targetUrl) return;
+
+        // Resolve the target URL to an absolute form for comparison against
+        // existing registrations (which store `active.scriptURL` as absolute).
+        const absoluteTargetUrl = new URL(targetUrl, window.location.origin).href;
+
+        (async () => {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+
+                // Unregister any existing SW that doesn't match the target
+                // script. This handles migration from the legacy auto-register
+                // setup where customer tenants may have `sw.js` registered.
+                for (const reg of registrations) {
+                    const activeUrl = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL;
+                    if (activeUrl && activeUrl !== absoluteTargetUrl) {
+                        await reg.unregister().catch(() => { });
                     }
+                }
+
+                // If the correct SW is already registered, nothing to do.
+                const alreadyRegistered = registrations.some((reg) => {
+                    const activeUrl = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL;
+                    return activeUrl === absoluteTargetUrl;
                 });
+
+                if (!alreadyRegistered) {
+                    await navigator.serviceWorker.register(targetUrl, { scope: '/' });
+                }
+            } catch (error) {
+                // Non-fatal: registration failures don't break the page,
+                // they just mean the PWA install / offline fallback won't
+                // work on this session.
+                if (process.env.NODE_ENV !== 'production') {
+                    // eslint-disable-next-line no-console
+                    console.warn('[SW] Registration failed:', error);
+                }
             }
-        }
+        })();
     }, []);
 
     return null;
-}
-
-// Add TypeScript declaration for window.workbox
-declare global {
-    interface Window {
-        workbox?: {
-            register: () => void;
-        };
-    }
 }

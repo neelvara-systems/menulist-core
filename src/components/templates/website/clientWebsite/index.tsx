@@ -1,4 +1,5 @@
 "use client";
+import { useMenuFreshness } from "@/hooks/useMenuFreshness";
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
@@ -47,6 +48,12 @@ function ClientMenuRenderer({
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>(
         DEVICE_TYPES_LIST.MOBILE,
     );
+
+    // Menu Freshness (frozen policy — customer-app_spec.md § Menu Update Behavior)
+    // Refresh server components when the tab returns after ≥60s hidden,
+    // or when the network reconnects. No listeners, no polling, no new
+    // Firestore reads — relies on existing unstable_cache + revalidateTag.
+    useMenuFreshness();
 
     // Effect for device type
     useEffect(() => {

@@ -77,25 +77,50 @@ Alternatively, Next.js `app/manifest.ts` convention may be used if it supports d
 
 ---
 
-## next-pwa Scoping (Critical Conflict)
+## next-pwa Scoping (Resolved — Option A Implemented)
 
-**Current state (`next.config.js:145-231`):** `next-pwa` is installed and wraps the entire app. It registers a Workbox service worker with runtime caching for:
+**Status:** ✅ Resolved. Option A from the original decision matrix has been implemented.
 
-- `/_client/*` (client menu pages) — `NetworkFirst`, 24h cache
-- `/dashboard`, `/billing`, `/projects`, etc. (owner surfaces)
-- Firestore API, Firebase Storage images, fonts, static assets
+### What Was Done
 
-**Conflict:** The Customer App requires **no caching** for the customer-facing menu. The existing `/_client/*` runtime cache directly caches what the Customer App surfaces. This must be resolved before shipping.
+1. **`next.config.js`** — `next-pwa` config updated:
+   - `register: false` (manual registration, no auto-register on tenant origins)
+   - Customer-facing URL patterns removed from `runtimeCaching`:
+     - ❌ Removed `/_client/*` (client menu pages)
+     - ❌ Removed `firestore.googleapis.com` (API responses)
+     - ❌ Removed `/api/public/*` (public API cache)
+   - Owner-only patterns retained: dashboard pages, signin, screen pages, fonts, static assets, Firebase Storage images.
 
-**Resolution options (pick one at implementation time):**
+2. **`public/sw-customer.js`** — Hand-rolled minimal service worker:
+   - Precaches only `/offline` fallback page
+   - Network-first on navigations, passthrough everything else
+   - NO content caching, NO Firestore cache, NO menu page cache
+   - `skipWaiting` + `clientsClaim` for clean migration
 
-| Option        | Approach                                                                                                                                                                                      | Tradeoff                                                            |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| A (Preferred) | Remove customer-facing URL patterns from `next-pwa` `runtimeCaching`. Keep `next-pwa` for owner dashboard only. Ship a hand-rolled `sw-customer-app.js` for Customer App install reliability. | Two SWs; requires scope discipline. Cleanest alignment with policy. |
-| B             | Replace `next-pwa` entirely with hand-rolled SW for both surfaces.                                                                                                                            | Larger refactor; affects owner dashboard offline behavior.          |
-| C             | Keep `next-pwa` as-is and rely on its generated SW.                                                                                                                                           | **Rejected** — violates no-caching policy for Customer App.         |
+3. **`src/components/ServiceWorkerRegister.tsx`** — Per-tenant registration:
+   - Uses `resolveDomain(window.location.host)` to detect tenant type
+   - Registers `/sw.js` on platform / owner origins
+   - Registers `/sw-customer.js` on customer tenant origins (subdomain / custom domain)
+   - Unregisters any stale SW from previous auto-register config
+   - Mounted in `src/app/layout.tsx` (runs on every page load in production)
 
-**Governance rule (frozen):** No `next-pwa` or Workbox plugin may register runtime caching against tenant-facing URL patterns without architecture review. Enforce via code review.
+4. **`src/middleware.ts`** + **`src/lib/multiTenant/domainResolver.ts`** — Added `/sw-customer.js` to matcher exclusions and `shouldBypassDomainRouting` so it is always served as a static asset from `public/`.
+
+5. **`src/hooks/useMenuFreshness.ts`** — Client freshness hook (no new Firebase cost):
+   - Listens for `visibilitychange` + `online` events
+   - Calls `router.refresh()` when tab returns after ≥60s hidden, or on network reconnect
+   - Mounted in `src/components/templates/website/clientWebsite/index.tsx` (ClientMenuRenderer)
+   - Relies on existing `unstable_cache` + `revalidateTag('menu-store-{id}')` infrastructure for freshness with zero incremental reads for unchanged menus.
+
+### Why Not Option B or C
+
+| Option | Approach                                                      | Decision                                                                                                                 |
+| ------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| A ✅   | Two SWs, `next-pwa` scoped to owner, hand-rolled for customer | **Chosen.** Cleanest alignment with spec. Owner keeps offline dashboard behavior. Customer gets zero-caching minimal SW. |
+| B      | Replace `next-pwa` entirely with hand-rolled SW everywhere    | Rejected — larger refactor, no benefit.                                                                                  |
+| C      | Keep `next-pwa` as-is                                         | Rejected — violated spec § 8 Plugin Governance Rule.                                                                     |
+
+**Governance rule (frozen, still applies):** No `next-pwa` or Workbox plugin may register runtime caching against tenant-facing URL patterns without architecture review. Enforce via code review.
 
 ---
 

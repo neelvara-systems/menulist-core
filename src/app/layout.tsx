@@ -4,8 +4,9 @@ import 'antd/dist/reset.css';
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { interFont } from 'src/fonts/inter';
-import AntdRegistry from '../lib/AntdRegistry';
 import DeploymentBuildBadge from '../components/common/DeploymentBuildBadge';
+import ServiceWorkerRegister from '../components/ServiceWorkerRegister';
+import AntdRegistry from '../lib/AntdRegistry';
 import ServerSidePageLoader from './loading';
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
@@ -160,6 +161,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                         {children}
                     </Suspense>
                     <DeploymentBuildBadge />
+                    <ServiceWorkerRegister />
                 </AntdRegistry>
             </body>
         </html>

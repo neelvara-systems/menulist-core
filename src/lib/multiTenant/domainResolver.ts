@@ -171,6 +171,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/sitemap.xml',
         '/manifest.json',
         '/sw.js',
+        '/sw-customer.js',
         '/workbox-',
     ];
 

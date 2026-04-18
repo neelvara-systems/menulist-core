@@ -142,20 +142,48 @@ const nextConfig = {
     },
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Service Worker Strategy (Customer App Architecture Decision)
+// ═══════════════════════════════════════════════════════════════
+// MenuList runs TWO PWAs from one Next.js build:
+//
+//   1. Owner Dashboard PWA   → app.menulist.ai, menulist.ai
+//      Uses next-pwa generated `sw.js` with runtime caching for
+//      dashboard pages, auth, fonts, static assets, images.
+//
+//   2. Customer App PWA      → {subdomain}.menulist.ai, custom domains
+//      Uses hand-rolled `sw-customer.js` — install reliability only.
+//      NO content caching. NO Firestore cache. NO menu page cache.
+//      Server-side freshness is guaranteed by unstable_cache +
+//      revalidateTag('menu-store-{id}') on every owner save.
+//
+// Registration is handled manually in ServiceWorkerRegister.tsx
+// based on the origin's tenant type (from domainResolver).
+//
+// @see __docs__/customer-app/customer-app_spec.md § Menu Update Behavior
+// @see __docs__/customer-app/customer-app_impl.md § next-pwa Scoping
+// @see public/sw-customer.js
+// @see src/components/ServiceWorkerRegister.tsx
+// ═══════════════════════════════════════════════════════════════
 const withPWA = require("next-pwa")({
     dest: "public",
     disable: isVercelPreview || process.env.NODE_ENV === "development",
-    register: process.env.NODE_ENV !== "development",
+    // Manual registration — we register the correct SW per tenant type
+    // in ServiceWorkerRegister.tsx (sw.js for owner, sw-customer.js for customers).
+    register: false,
     skipWaiting: true,
     maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-    // Offline fallback page served by the service worker when a document
-    // navigation fails due to no network. The Customer App (PWA) depends on
-    // this — installed customers opening the app offline should see a friendly
-    // branded message instead of a raw browser error.
-    // @see src/app/offline/page.tsx
+    // Offline fallback page served by sw.js when a navigation fails.
+    // sw-customer.js ships its own equivalent for customer tenants.
     fallbacks: {
         document: '/offline',
     },
+    // Owner-dashboard-only runtime caching.
+    // Customer-facing URL patterns (/_client/*, Firestore API, /api/public/*)
+    // are intentionally NOT cached here — they are served only on customer
+    // tenant origins where sw-customer.js (no caching) is registered.
+    // This is defense-in-depth: even if sw.js were ever to register on a
+    // customer origin, no menu content would be cached.
     runtimeCaching: [
         {
             urlPattern: /^\/(dashboard|billing|business-settings|projects|feedback|qr-code)\/?$/i,
@@ -176,38 +204,11 @@ const withPWA = require("next-pwa")({
             },
         },
         {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'firestore-api',
-                expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 },
-                networkTimeoutSeconds: 10,
-            },
-        },
-        {
-            urlPattern: /^\/_client\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'client-menu-pages',
-                expiration: { maxEntries: 32, maxAgeSeconds: 24 * 60 * 60 },
-                networkTimeoutSeconds: 10,
-            },
-        },
-        {
             urlPattern: /^\/screen\/.*/i,
             handler: 'NetworkFirst',
             options: {
                 cacheName: 'screen-pages',
                 expiration: { maxEntries: 10, maxAgeSeconds: 7 * 24 * 60 * 60 },
-                networkTimeoutSeconds: 10,
-            },
-        },
-        {
-            urlPattern: /^\/api\/public\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'public-api-cache',
-                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 },
                 networkTimeoutSeconds: 10,
             },
         },

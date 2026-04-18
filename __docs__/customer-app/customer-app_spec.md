@@ -321,6 +321,63 @@ New customers see updated branding
 
 **No `next-pwa`, Workbox plugin, or equivalent caching framework may be introduced for the Customer App surface without explicit architecture review.** The Customer App requires hand-controlled service worker and manifest generation — any plugin that auto-configures runtime caching violates the no-caching philosophy. The existing `next-pwa` configuration in `next.config.js` applies to the owner dashboard only and must be scoped away from customer tenant origins (see `customer-app_impl.md`).
 
+### 8.1 Menu Update Behavior (Frozen Policy)
+
+**The customer's installed Customer App must reflect menu changes — including availability changes (sold out / unavailable) — without listeners, polling, or new Firebase cost.** This policy is frozen and must not be revisited without explicit architecture review.
+
+#### Policy Rules
+
+| Rule                                            | Status    |
+| ----------------------------------------------- | --------- |
+| Launch online → always fetch latest menu        | Mandatory |
+| Launch offline → branded offline page           | Mandatory |
+| Mid-browse session → menu does not mutate       | Mandatory |
+| Tab returns visible after ≥60s hidden → refresh | Mandatory |
+| Network reconnects (offline → online) → refresh | Mandatory |
+| Firestore real-time listeners in Customer App   | Rejected  |
+| Periodic background polling                     | Rejected  |
+| Version-check endpoint / version collection     | Rejected  |
+| Update notification banner                      | Rejected  |
+| Long-lived content cache on customer origins    | Rejected  |
+
+#### How Freshness Is Achieved (Zero New Firebase Cost)
+
+Three existing infrastructure layers combined:
+
+1. **Server-side edge cache** — `src/app/client/[[...slug]]/page.tsx` wraps all menu fetches in `unstable_cache` with `{ revalidate: 60, tags: ['menu-store-{storeId}'] }`. Unchanged menus serve infinitely from Vercel Edge Data Cache with zero Firestore reads.
+2. **Instant invalidation on owner save** — every `updateProject()` call invokes `revalidateMenuCache(storeId)` (`src/lib/actions/revalidateMenuCache.ts`), which invalidates the per-store tag. This includes availability toggles (sold out / unavailable).
+3. **Client-side visibility refresh** — `useMenuFreshness` hook (`src/hooks/useMenuFreshness.ts`) calls `router.refresh()` when the tab returns after ≥60s hidden, or when the network reconnects. `router.refresh()` hits the edge cache first (free if tag valid) and only runs fresh SSR if the owner actually changed data. No new endpoint, no new collection, no background work.
+
+#### Availability / Sold-Out Flow (Critical Path)
+
+```
+Owner marks item unavailable
+  → updateProject() writes to Firestore (1 write, existing cost)
+  → revalidateMenuCache(storeId) invalidates edge cache tag (free)
+  → Next request for that store → fresh SSR → availability = false
+
+Customer with Customer App open, menu already rendered
+  → Switches tabs / locks phone (app becomes hidden)
+  → Returns to Customer App after ≥60s
+  → useMenuFreshness fires router.refresh()
+  → Edge cache returns fresh HTML (tag was invalidated)
+  → Item now shows sold-out without full page reload
+  → Scroll position, language selection, open modals preserved
+```
+
+**Maximum visible staleness for an actively returning customer: ≈0 seconds after refocus.**
+
+#### Cost at Scale (Frozen Commitment)
+
+| Scenario                                        | Incremental Firestore Reads                                                              |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Customer opens app, menu unchanged              | 0 (edge cache hit)                                                                       |
+| Customer returns to tab, menu unchanged         | 0 (edge cache hit)                                                                       |
+| Owner changes menu, 1000 customers each refresh | ≤ standard SSR reads × N cache misses (same as normal traffic pattern — not incremental) |
+| Customer never returns                          | 0                                                                                        |
+
+Zero new collections. Zero new endpoints. Zero background polling. Zero listeners.
+
 ### 9. Surface Analytics (Day-One, Mandatory)
 
 **Principle:** Customer App is a **surface**. Every surface in MenuList has lifecycle analytics. This reverses the earlier "no analytics day one" policy, which was appropriate only while the classification was undecided.
