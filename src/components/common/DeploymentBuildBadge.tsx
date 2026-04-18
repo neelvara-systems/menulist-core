@@ -101,8 +101,9 @@ export default function DeploymentBuildBadge() {
             aria-live="polite"
             style={{
                 position: 'fixed',
-                right: 12,
-                bottom: 12,
+                left: '50%',
+                top: 'calc(env(safe-area-inset-top) + 8px)',
+                transform: 'translateX(-50%)',
                 zIndex: 2147483647,
                 fontSize: 11,
                 lineHeight: 1.2,
@@ -114,6 +115,8 @@ export default function DeploymentBuildBadge() {
                 pointerEvents: 'none',
                 userSelect: 'text',
                 fontFamily: 'monospace',
+                textAlign: 'center',
+                maxWidth: 'calc(100vw - 16px)',
             }}
             title={process.env.NEXT_PUBLIC_DEPLOYMENT_URL || undefined}
         >

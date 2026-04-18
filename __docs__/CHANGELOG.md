@@ -6,6 +6,87 @@
 
 ---
 
+## April 18, 2026 — Customer App Analytics: Full Surface Lifecycle Tracking
+
+### Reversed
+
+- **Customer App analytics scope reversed from "none on day one" to "full surface lifecycle tracking"** — The earlier decision to cut analytics was scope protection for an undecided classification. Now that Customer App is formally classified as a **surface** (alongside Digital Menu, PDF Menu, Digital Screens, Official Business Page), it receives the same lifecycle analytics every surface gets. This is not a new feature — it's alignment with existing MenuList surface doctrine.
+
+### New
+
+- **8 Customer App tracking events** added to `TrackingEvent` enum in `src/lib/analytics/unified.ts`:
+  - Install funnel: `CUSTOMER_APP_PROMPT_SHOWN`, `CUSTOMER_APP_PROMPT_DISMISSED`, `CUSTOMER_APP_INSTALL_STARTED`, `CUSTOMER_APP_INSTALLED`
+  - Usage: `CUSTOMER_APP_OPENED` (fires only in `display-mode: standalone`)
+  - Shortcuts: `CUSTOMER_APP_SHORTCUT_MENU`, `CUSTOMER_APP_SHORTCUT_CALL`, `CUSTOMER_APP_SHORTCUT_DIRECTIONS`
+- **Reused existing analytics collection** — Uses `projectId='customerApp'` (following the OBP precedent). No new Firestore collection, no new Cloud Function. Existing `aggregateCustomerAnalytics` nightly rollup picks up `customerApp` daily docs automatically.
+- **Owner Dashboard card** — New `CustomerAppMetrics.tsx` mounted in `AnalyticsDashboard`. Shows 4 metrics only: Installed Customers, App Opens (30d), Install Conversion, Top Shortcut Used. No heatmaps. No session duration. No customer identity.
+- **Per-device install dedupe** — `fireInstalledEventOnce()` uses `localStorage` to prevent reinstalls from inflating install counts. `uniqueInstallSessions` tracked separately from raw `totalInstalled`.
+
+### Decisions (Frozen)
+
+- **Analytics scope: 4 layers only** — Surface Availability (config read), Install Funnel (4 events), Usage (1 event), Shortcut Utility (3 events). Nothing below the surface layer.
+- **Privacy: session-level only** — Uses existing `getSessionId()`. No user identity, no device fingerprinting, no heatmaps. Respects existing `storeDetails.analytics.trackMenuViews` flag.
+- **One toggle governs all analytics** — When owner disables `trackMenuViews`, Customer App events suppress too. No separate Customer App analytics toggle.
+- **Unique installs ≠ raw install events** — Must be tracked separately to prevent reinstall inflation.
+
+### Cost Impact
+
+- ~$2.97/month per 1,000 active stores (100 installs × 10 opens/month each)
+- ~$29.71/month per 10,000 active stores
+- Analytics events inherit existing `shouldDebounce` (1s) and `shouldRateLimit` (30/min/session) optimization
+
+### Reviewed
+
+- **ChatGPT review of analytics scope** — Validated MOL-style event model (8 events), 4-layer tracking doctrine, unique-vs-raw install separation, surface-analytics-not-marketing-vanity principle. Codebase verification: existing `trackEvent()` infrastructure in `src/lib/analytics/unified.ts`, OBP precedent for `projectId`-based surface routing, `aggregateCustomerAnalytics` Cloud Function already handles pattern-based doc enumeration, `useAnalyticsData` hook accepts `projectId` parameter. Zero new infrastructure needed.
+
+### Documentation Updated
+
+- `customer-app_spec.md` — Added Feature 9 (Surface Analytics), reversed Open Questions 1 & 2, added frozen privacy rule (Q5)
+- `customer-app_impl.md` — Added event enum, switch cases, client trigger points, dashboard component path, Sequence 2b (analytics), updated Sequence 5 testing
+- `customer-app_firebase.md` — Reinstated write tracking (projectId='customerApp'), updated cost estimates ($2.97/mo per 1k stores), added debounce/dedupe/standalone-only warnings
+- `customer-app_helpdoc.md` — Added "Analytics: What You'll See" section with owner-facing metric explanations
+
+---
+
+## April 18, 2026 — Customer App: Installable Menu for Repeat Customers
+
+### New
+
+- **Customer App Surface** — Your customers can add your menu to their home screen as your branded app. They see your logo and restaurant name — not MenuList. One tap opens your live menu. Works on iPhone and Android without app store downloads. Includes app shortcuts: View Menu, Call Store, Get Directions. [Help doc](./customer-app/customer-app_helpdoc.md)
+- **Dynamic PWA Manifest** — Each store gets a unique web app manifest generated from store data. Controls app name, icons, start URL, and shortcuts. Updates automatically when you change your branding.
+- **Smart Install Prompt** — Suggests app installation to repeat customers on their 3rd visit. 30-day dismissal memory prevents nagging. Respects owner toggle settings.
+- **App Icon Generation** — System automatically generates app icons from your store logo. Optional override upload for custom app icons. Generates 192x192, 512x512, and 180x180 (Apple touch) sizes with maskable variants.
+- **Minimal Service Worker** — Enables install reliability on Android without caching. No offline storage, no precache, no runtime cache. Menu updates always reflect current state.
+
+### Decisions (Frozen Day-One Policies)
+
+- **Routing model** — Customer App manifest is served at the **tenant origin root** (`{subdomain}.menulist.ai/manifest.webmanifest` or verified custom domain), matching the existing subdomain-per-tenant architecture in `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts`. Path-based manifests rejected — they would break install scope and identity.
+- **Visit persistence** — Install-prompt visit count uses `localStorage` (not `sessionStorage`) and is namespaced per store. Ensures the 3rd-visit trigger works across sessions.
+- **No install analytics on day one** — No Firestore writes on install, dismiss, or app-open events. No `pwaAnalytics` collection. Install state lives only in `localStorage` for suppression logic. Privacy, cost, and complexity protection.
+- **No custom shortcut icons on day one** — Shortcuts are text-only (View Menu, Call, Directions). No per-store shortcut asset pipeline.
+- **No manifest screenshots on day one** — Rejected (not deferred) to keep asset pipeline minimal.
+- **Display override** — `["standalone", "minimal-ui"]` only. `window-controls-overlay` removed for consistency.
+- **Eligibility gate** — Customer App is only active when the store is `active: true` with a published menu. Otherwise manifest returns 404 and owner toggle is disabled.
+- **Churn behavior** — When a merchant leaves the platform, installed apps show a deterministic "This business is currently unavailable." screen. No silent redirects.
+- **`next-pwa` scoping** — Existing `next-pwa` configuration in `next.config.js` (which caches `/_client/*` and other tenant traffic) must be scoped away from Customer App origins. A hand-rolled minimal service worker replaces it for customer-facing tenants.
+- **Plugin governance rule (frozen)** — No `next-pwa` or Workbox plugin may register runtime caching against tenant-facing URL patterns without explicit architecture review.
+
+### Reviewed
+
+- **ChatGPT review of documentation** — Second-pass review of the customer-app doc set. Accepted: routing correction (subdomain-based, not path), `sessionStorage` → `localStorage` fix, removal of phase/week language, removal of install analytics scope, removal of manifest screenshots and per-store shortcut icons, simplification of `display_override`, addition of explicit eligibility gate, frozen churn policy, and plugin governance rule. Codebase validation confirmed subdomain routing via `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts`, and identified an existing `next-pwa` runtime cache on `/_client/*` in `next.config.js:145-231` that directly conflicts with the no-caching philosophy — now called out explicitly in the implementation plan.
+
+### Documentation
+
+- **Customer App Specification** — Complete product requirements at `__docs__/customer-app/customer-app_spec.md`
+- **Implementation Blueprint** — Technical implementation plan at `__docs__/customer-app/customer-app_impl.md`
+- **Marketing & Sales Collateral** — Sales strategy and positioning at `__docs__/customer-app/customer-app_marketing.md`
+- **Website Content** — Public website copy at `__docs__/customer-app/customer-app_website.md`
+- **Help Documentation** — Customer help guide at `__docs__/customer-app/customer-app_helpdoc.md`
+- **Firebase Cost Tracking** — Cost analysis at `__docs__/customer-app/customer-app_firebase.md`
+- **Mobile Support Assessment** — Mobile relevance evaluation at `__docs__/customer-app/customer-app_mobile-support.md`
+
+---
+
 ## March 22, 2026 — Production Readiness: Dev/Prod Environment Guide + Audit
 
 ### Added
