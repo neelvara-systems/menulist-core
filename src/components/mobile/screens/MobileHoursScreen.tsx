@@ -17,9 +17,39 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
 
-type TodayStatus = 'open' | 'closed_today';
+type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
 
 const getTodayKey = () => ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+const parseTimeToMinutes = (value?: string): number | null => {
+    if (!value) return null;
+    const [hoursRaw, minutesRaw] = value.split(':');
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+};
+
+const getCurrentMinutesForTimeZone = (timeZone?: string): number => {
+    try {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
+            hour12: false,
+            minute: '2-digit',
+            timeZone: timeZone || undefined,
+        }).formatToParts(new Date());
+        const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? '0');
+        const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? '0');
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+            throw new Error('invalid time parts');
+        }
+        return hour * 60 + minute;
+    } catch {
+        const now = new Date();
+        return now.getHours() * 60 + now.getMinutes();
+    }
+};
+
 const getTodayTimeRange = (value?: string) => {
     if (!value || value.toLowerCase() === 'closed') {
         return { closeTime: '', isClosed: true, openTime: '' };
@@ -94,8 +124,31 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
 
     const todayStatus = useMemo((): TodayStatus => {
         const todayValue = storeDetails?.workingHours?.[todayKey];
-        return !todayValue || todayValue.toLowerCase() === 'closed' ? 'closed_today' : 'open';
-    }, [storeDetails?.workingHours, todayKey]);
+        if (!todayValue || todayValue.toLowerCase() === 'closed') {
+            return 'closed_today';
+        }
+
+        const todayRange = getTodayTimeRange(todayValue);
+        if (todayRange.isClosed) {
+            return 'closed_today';
+        }
+
+        const openMinutes = parseTimeToMinutes(todayRange.openTime);
+        const closeMinutes = parseTimeToMinutes(todayRange.closeTime);
+        if (openMinutes === null || closeMinutes === null) {
+            return 'closed_today';
+        }
+
+        const currentMinutes = getCurrentMinutesForTimeZone(storeDetails?.timeZone);
+        const isOvernight = closeMinutes <= openMinutes;
+        const isOpenNow = isOvernight
+            ? (currentMinutes >= openMinutes || currentMinutes < closeMinutes)
+            : (currentMinutes >= openMinutes && currentMinutes < closeMinutes);
+
+        if (isOpenNow) return 'open';
+        if (!isOvernight && currentMinutes >= closeMinutes) return 'closed_after_hours';
+        return 'closed_today';
+    }, [storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
 
     const handleCloseToday = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -172,6 +225,8 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
 
     const status = todayStatus === 'open'
         ? { color: '#16a34a', icon: <LuPower color="#16a34a" size={18} />, label: t('open'), sublabel: 'Customers can currently view your menu.' }
+        : todayStatus === 'closed_after_hours'
+            ? { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: 'Today’s serving time is over. Update timings if you are still open.' }
         : { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
     const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
     const todayTimingsLabel = todayRange.isClosed

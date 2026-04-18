@@ -37,14 +37,17 @@ export default function OfflinePage() {
     return (
         <div
             style={{
+                position: 'fixed',
+                inset: 0,
                 minHeight: '100vh',
-                background: '#f8fafc',
+                background: 'linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: 24,
                 fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
                 color: '#0f172a',
+                zIndex: 2147483647,
             }}
         >
             <div
@@ -56,6 +59,7 @@ export default function OfflinePage() {
                     padding: '32px 28px',
                     textAlign: 'center',
                     boxShadow: '0 10px 40px rgba(15, 23, 42, 0.08)',
+                    border: '1px solid #e2e8f0',
                 }}
             >
                 <div
@@ -91,6 +95,9 @@ export default function OfflinePage() {
                 <OfflineClient />
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 16 }}>
                     Reconnect to see the latest live menu.
+                </p>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, marginBottom: 0 }}>
+                    If this screen appears inside the installed app, the menu will load again as soon as the connection returns.
                 </p>
             </div>
         </div>

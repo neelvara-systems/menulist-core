@@ -102,6 +102,11 @@ export default function UseMenuList() {
             const customDomain = storeDetails.customDomain;
 
             const obpLink = generateOBPUrl(subdomain, customDomain);
+            const installAppLink =
+                FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA &&
+                    (storeDetails as any).pwaSettings?.enableInstallableApp !== false
+                    ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
+                    : null;
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
@@ -150,6 +155,7 @@ export default function UseMenuList() {
             const outputData: UseMenuListData = {
                 obpLink,
                 menuLink,
+                installAppLink,
                 feedbackLink,
                 feedbackQrLink,
                 screenToken,
@@ -421,7 +427,7 @@ export default function UseMenuList() {
             <Title level={5} style={{ marginBottom: 12 }}>Share Your {labels.offeringTitle}</Title>
 
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={data.installAppLink ? 8 : 12}>
                     <LinkCard
                         title={`Your ${labels.offeringTitle} Page`}
                         description={`Share this with customers — always shows ${labels.yourLatest}`}
@@ -446,7 +452,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={data.installAppLink ? 8 : 12}>
                     <LinkCard
                         title={`Direct ${labels.offeringTitle} Link`}
                         description={`Opens ${labels.offeringLower} immediately — best for quick sharing`}
@@ -459,6 +465,32 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
+                {data.installAppLink ? (
+                    <Col xs={24} sm={8}>
+                        <LinkCard
+                            title="Customer App Install Link"
+                            description="Share this when you want customers to install your menu app directly"
+                            url={data.installAppLink}
+                            shortUrl={data.installAppLink.replace(/^https?:\/\//, '')}
+                            storeName={data.storeName}
+                            sharePrefix={`Install ${data.storeName} on your phone:`}
+                            onCopy={() => handleCopy(withSource(data.installAppLink!, 'copy'), 'Customer App install link')}
+                            onOpen={() => handleOpen(withSource(data.installAppLink!, 'direct'))}
+                            onGuide={() => setGuideModal({
+                                title: 'Where to share the Customer App install link',
+                                content: (
+                                    <ul style={{ paddingLeft: 20, lineHeight: 2.2 }}>
+                                        <li>Send directly on <strong>WhatsApp</strong> when customers ask for the menu</li>
+                                        <li>Use it on a <strong>QR poster</strong> for loyal repeat customers</li>
+                                        <li>Share with <strong>staff</strong> so they can help customers install the app</li>
+                                        <li>Use the normal menu link for casual browsing; use this when you want installation</li>
+                                    </ul>
+                                ),
+                            })}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                ) : null}
             </Row>
 
             {/* Google Business hint */}

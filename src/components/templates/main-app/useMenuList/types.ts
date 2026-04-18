@@ -17,6 +17,7 @@ export interface UseMenuListData {
     // Links
     obpLink: string;
     menuLink: string;
+    installAppLink: string | null;
     feedbackLink: string;
     feedbackQrLink: string;
 

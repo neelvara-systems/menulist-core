@@ -42,6 +42,15 @@ This document should be checked line-by-line before go-live.
 | Icon flow changed to preview-first (no direct upload on select) | ✅ Done | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
 | Icon URL input removed from Customer App UI (internal URL no longer exposed) | ✅ Done | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
 | Mobile More-tab Customer App now supports Save + Reset for all settings including pending icon upload/removal | ✅ Done | `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Customer App browser/status bar color now defaults to white when no accent color is set | ✅ Done | `src/lib/pwa/manifestGenerator.ts`, `src/app/client/[[...slug]]/page.tsx` |
+| iOS manual installs now count from first standalone open even without native `appinstalled` support | ✅ Done | `src/lib/pwa/standaloneDetector.ts`, `src/lib/pwa/installTracker.ts`, `src/components/templates/main-app/dashboard/AnalyticsDashboard/CustomerAppMetrics.tsx`, `src/components/mobile/screens/dashboardSections/MobileCustomerAppMetrics.tsx` |
+| Customer App install/platform/source breakdowns now roll up into summary docs correctly | ✅ Done | `functions/src/aggregateCustomerAnalytics.ts` |
+| Install Conversion now excludes manual iOS standalone installs that did not come through the prompt funnel | ✅ Done | `src/components/templates/main-app/dashboard/AnalyticsDashboard/CustomerAppMetrics.tsx`, `src/components/mobile/screens/dashboardSections/MobileCustomerAppMetrics.tsx` |
+| Customer App settings now include an owner-facing install guide on desktop and mobile | ✅ Done | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Offline fallback page hardened to render a visible full-screen message instead of an ambiguous blank screen | ✅ Done | `src/app/offline/page.tsx` |
+| Customer App install identity remains store-level, not project-level, across project switching | ✅ Done | `src/app/manifest.webmanifest/route.ts`, `src/lib/pwa/manifestGenerator.ts`, `src/app/client/[[...slug]]/page.tsx` |
+| Mobile Share tab now exposes the Customer App install link using the same link-card pattern as OBP/menu links | ✅ Done | `src/components/mobile/screens/MobileShareScreen.tsx` |
+| Desktop Use MenuList screen now exposes the Customer App install link using the same share-card pattern as OBP/menu links | ✅ Done | `src/components/templates/main-app/useMenuList/index.tsx`, `src/components/templates/main-app/useMenuList/types.ts` |
 
 ### Icon Upload Regression Note (Resolved)
 
@@ -57,6 +66,89 @@ This document should be checked line-by-line before go-live.
 - rejects only truly invalid inputs (non-image, oversize, too-small images)
 
 **Expected behavior now:** non-square logos should upload successfully and be auto-adjusted.
+
+### Theme Color Regression Note (Resolved)
+
+**Issue observed during device QA:** the top mobile browser/app bar could appear black.
+
+**Root cause:** Customer App PWA/runtime theme color fallback still defaulted to `#0f172a` in the manifest path, while page metadata could omit `themeColor` entirely when no store accent color existed.
+
+**Fix applied:** both manifest generation and tenant page metadata now fall back to the shared MenuList platform theme constant (`APP_THEME_COLOR = #0054D0`) when no store accent color is configured.
+
+**Expected behavior now:** when no custom accent color is configured, the mobile top bar should use the MenuList blue fallback instead of black.
+
+### iOS Install KPI Note (Resolved)
+
+**Issue observed during QA review:** iOS Safari does not emit a native `appinstalled` event, so installed-customer KPI risked undercounting manual "Add to Home Screen" installs.
+
+**Root cause:** the previous iOS heuristic only counted an install if the first standalone launch happened within the prompt-history window after our install prompt was shown.
+
+**Fix applied:** iOS now records `CUSTOMER_APP_INSTALLED` on the first standalone launch per device/store even when no prompt history exists. Source tagging distinguishes prompted iOS installs (`ios-inferred`) from manual/direct installs (`ios-standalone`).
+
+**Expected behavior now:** iPhone/iPad installs done via Safari Share → Add to Home Screen should appear in dashboard install KPIs after the first standalone launch.
+
+### KPI Rollup Integrity Note (Resolved)
+
+**Issue found during analytics review:** Customer App event writes already stored `installsByPlatform`, `installsBySource`, and `appOpensByPlatform` on daily analytics docs, but the shared aggregation pipeline was not carrying those maps into weekly/monthly/summary rollups.
+
+**Fix applied:** the customer-app aggregation path now merges those map fields the same additive way as other Customer App KPI maps.
+
+**Expected behavior now:** platform/source KPI breakdowns shown in the owner dashboard should remain accurate after nightly aggregation, not only in raw daily docs.
+
+### Install Conversion Semantics Note (Resolved)
+
+**Issue found during analytics review:** after adding iOS manual-install inference, `Install Conversion` could become inflated because manual standalone installs without prompt history were being counted in the numerator.
+
+**Fix applied:** dashboard conversion now uses prompt-attributable installs and excludes `ios-standalone` manual installs from the prompt funnel metric.
+
+**Expected behavior now:** `Install Conversion` should represent prompt effectiveness, while `iOS manual installs` remains visible as a separate supporting KPI.
+
+### Install Guide Surface Note (Resolved)
+
+**Request:** owners need a quick way to explain manual installation when customers ask, especially on iPhone Safari.
+
+**Fix applied:** Customer App settings now show a dedicated install-help card in both desktop and mobile settings with Android and iPhone steps plus the recommended “share install link” explanation.
+
+**Expected behavior now:** the owner can open Customer App settings and immediately tell a customer how to install on Android or iPhone without guessing the steps.
+
+### Offline Fallback Visibility Note (Hardened)
+
+**Issue observed during QA:** offline launches could appear as a white screen, making it unclear whether the offline fallback page was rendering correctly.
+
+**Fix applied:** the offline route now uses an explicit fixed full-screen shell with high-contrast inline styling and visible explanatory copy.
+
+**Expected behavior now:** when the offline fallback route is served, the customer should see a clear offline message and retry button rather than a blank white screen.
+
+### Project Switching / PWA Identity Note (Confirmed)
+
+**Architecture decision:** Customer App is **one installed app per store**, not one app per project/menu slug.
+
+**Why this is correct:** the client-menu system is store-first and project slugs are internal menu surfaces under the same tenant origin. Creating a separate installed identity per project would break the original client-menu routing model, fragment install KPIs, and confuse customers with multiple apps for one restaurant.
+
+**Confirmed implementation:** the manifest is generated per store at the tenant origin root, `start_url` remains `/`, `scope` remains `/`, and the install link is store-root based rather than slug-based.
+
+**Expected behavior now:**
+
+- Installing from `/` or from any project slug still creates the same store app
+- Opening the installed app returns to the store-level default menu entry
+- Project switching happens inside the installed app via normal client-menu navigation
+- Special menu replace/overlay logic still applies because it resolves within the same store/project resolver
+
+### Share Tab Install Link Note (Resolved)
+
+**Decision:** show the Customer App install link in the mobile Share tab when Customer App is enabled for the store.
+
+**Why:** the install link is a distribution asset, same as the official business link and direct menu link. Settings remains the place to configure the app; Share is the place to copy/open/show QR for customer distribution.
+
+**Expected behavior now:** owners can copy, open, or show a QR for the Customer App install link from the mobile Share tab using the same card pattern as the existing OBP/menu links.
+
+### Desktop Use MenuList Install Link Note (Resolved)
+
+**Decision:** show the Customer App install link in the desktop Use MenuList screen when Customer App is enabled for the store.
+
+**Why:** desktop Use MenuList is the owner output center for shareable links and printed/distribution assets. The install link belongs beside the OBP and direct menu links, not hidden only inside settings.
+
+**Expected behavior now:** desktop owners can copy, open, share by WhatsApp, copy a message, and view sharing guidance for the Customer App install link using the same link-card pattern as the existing OBP/menu links.
 
 ---
 
@@ -429,11 +521,16 @@ Verify event writes and dashboard visibility for `projectId='customerApp'`.
 - [ ] `CUSTOMER_APP_SHORTCUT_MENU` writes correctly
 - [ ] `CUSTOMER_APP_SHORTCUT_CALL` writes correctly
 - [ ] `CUSTOMER_APP_SHORTCUT_DIRECTIONS` writes correctly
+- [ ] `CUSTOMER_APP_SHORTCUT_WHATSAPP` writes correctly when WhatsApp shortcut exists
+- [ ] `CUSTOMER_APP_SHORTCUT_RESERVATION` writes correctly when reservation shortcut exists
+- [ ] `CUSTOMER_APP_SHORTCUT_ORDER` writes correctly when order shortcut exists
 - [ ] Reinstall on same device does not double-count when local storage is intact
 - [ ] Owner analytics dashboard shows installs
 - [ ] Owner analytics dashboard shows app opens
 - [ ] Owner analytics dashboard shows conversion
 - [ ] Owner analytics dashboard shows top shortcut
+- [ ] Owner analytics dashboard shows install platform breakdown
+- [ ] Owner analytics dashboard shows iOS manual installs when applicable
 
 ### K. Aggregation / Rollup Verification
 
@@ -443,6 +540,95 @@ Verify event writes and dashboard visibility for `projectId='customerApp'`.
 - [ ] Monthly rollup contains Customer App fields
 - [ ] Summary increments lifetime install/open fields correctly
 - [ ] Menu-only Gemini summary logic does not interfere with `customerApp`
+
+### L. KPI Production Signoff
+
+This is the final analytics truth table. Each KPI is production-ready only when all three layers pass:
+
+- event capture
+- rollup / summary aggregation
+- dashboard rendering
+
+#### Installed Customers
+
+- [ ] Android install increments `totalInstalled`
+- [ ] Android install increments `uniqueInstallSessions`
+- [ ] iOS first standalone launch increments install KPI once per device/store
+- [ ] Reopen after install does not increase Installed Customers again
+- [ ] Summary doc shows `lifetimeUniqueInstalls`
+- [ ] Dashboard Installed Customers matches summary
+
+#### App Opens (30 Days)
+
+- [ ] Standalone launch writes `CUSTOMER_APP_OPENED`
+- [ ] Browser-tab menu visit does not write `CUSTOMER_APP_OPENED`
+- [ ] Re-navigation inside the same standalone session does not overcount opens
+- [ ] Daily docs contain `totalAppOpens`
+- [ ] 30-day dashboard App Opens matches summed daily docs for selected range
+
+#### Installs (30 Days)
+
+- [ ] Install events appear in daily docs for the correct date
+- [ ] 30-day dashboard Installs matches summed daily `totalInstalled`
+- [ ] iOS manual installs appear after first home-screen open, not before
+
+#### Install Conversion
+
+- [ ] `CUSTOMER_APP_PROMPT_SHOWN` increments when prompt is actually visible
+- [ ] `CUSTOMER_APP_INSTALL_STARTED` increments when install CTA is tapped
+- [ ] Prompt-based installs affect conversion numerator correctly
+- [ ] Manual iOS `ios-standalone` installs do not inflate prompt conversion
+- [ ] Dashboard Conversion matches prompt-attributable installs divided by prompt shown
+
+#### Shortcuts
+
+- [ ] View Menu shortcut increments `shortcutClicks.menu`
+- [ ] Call shortcut increments `shortcutClicks.call`
+- [ ] Directions shortcut increments `shortcutClicks.directions`
+- [ ] WhatsApp shortcut increments `shortcutClicks.whatsapp` when enabled
+- [ ] Reservation shortcut increments `shortcutClicks.reservation` when enabled
+- [ ] Order shortcut increments `shortcutClicks.order` when enabled
+- [ ] Summary doc preserves shortcut breakdown after nightly aggregation
+- [ ] Dashboard Top Shortcut matches highest shortcut count
+- [ ] Dashboard Total Shortcut Uses equals sum of all shortcut buckets
+
+#### Install Breakdown
+
+- [ ] Install events write `installsByPlatform`
+- [ ] Install events write `installsBySource`
+- [ ] Summary doc preserves `installsByPlatform`
+- [ ] Summary doc preserves `installsBySource`
+- [ ] Dashboard Installs by platform matches summary counts
+- [ ] Dashboard iOS manual installs equals `ios-inferred + ios-standalone`
+
+#### App Open Breakdown
+
+- [ ] Standalone app opens write `appOpensByPlatform`
+- [ ] Summary doc preserves `appOpensByPlatform`
+- [ ] Platform open breakdown remains correct after nightly aggregation
+
+### M. KPI Test Method
+
+Use this sequence for each KPI verification pass:
+
+1. Trigger the customer action on a real device or localhost tenant simulation.
+2. Confirm the daily analytics doc under `projectId='customerApp'` changed as expected.
+3. Confirm the relevant summary fields changed after aggregation or via existing summary path.
+4. Confirm the owner dashboard card shows the same number.
+5. Record platform, browser, store, date, and whether the origin was localhost or deployed.
+
+### N. Production Analytics Signoff Rule
+
+Analytics is production-ready only if all are true:
+
+- [ ] Android native install flow verified end to end
+- [ ] iOS manual install flow verified end to end
+- [ ] At least one shortcut launch verified end to end
+- [ ] Daily doc, summary doc, and dashboard numbers match for installs
+- [ ] Daily doc, summary doc, and dashboard numbers match for app opens
+- [ ] Conversion metric validated against prompt-attributable installs
+- [ ] Nightly aggregation verified not to drop platform/source breakdown fields
+- [ ] No duplicate install counting on reinstall with intact storage
 
 ---
 

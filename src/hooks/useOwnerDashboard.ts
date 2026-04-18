@@ -61,7 +61,9 @@ interface UseOwnerDashboardOptions {
 const SWR_CONFIG = {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
-    revalidateOnMount: false,
+    // Let SWR start the initial request. `cachedFetcher` still prevents
+    // same-day Firestore reads when localStorage has fresh dashboard data.
+    revalidateOnMount: true,
     dedupingInterval: 86400000, // 24 hours - scheduler data
     errorRetryCount: 2,
     focusThrottleInterval: 3600000, // 1 hour throttle

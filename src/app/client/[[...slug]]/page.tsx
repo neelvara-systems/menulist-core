@@ -23,6 +23,7 @@
 import TempStatusBanner from "@atoms/TempStatusBanner";
 import TrustSignals from "@atoms/TrustSignals";
 import { FEATURE_FLAGS } from "@config/features";
+import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -426,7 +427,7 @@ export async function generateMetadata(): Promise<Metadata> {
     const appleWebAppTitle =
         storeData.pwaSettings?.pwaShortName?.trim() ||
         storeName;
-    const themeColor: string | undefined = storeData.publicPresence?.accentColor;
+    const themeColor = storeData.publicPresence?.accentColor || APP_THEME_COLOR;
 
     return {
         title,
@@ -468,9 +469,7 @@ export async function generateMetadata(): Promise<Metadata> {
                 },
             }
             : {}),
-        ...(themeColor
-            ? { themeColor }
-            : {}),
+        themeColor,
     };
 }
 

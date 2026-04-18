@@ -11,6 +11,7 @@
  *   - Shortcuts built via shortcutsBuilder.ts (Menu shortcut on day one)
  */
 
+import { APP_THEME_COLOR } from '@constant/common';
 import { buildShortcuts, type ShortcutStoreInfo } from './shortcutsBuilder';
 
 export interface ManifestStoreInput {
@@ -19,7 +20,7 @@ export interface ManifestStoreInput {
     displayName: string;
     /** Optional short name (max 12 chars recommended). Falls back to first word of displayName. */
     shortName?: string;
-    /** Theme color for browser chrome — hex, e.g., "#0f172a". */
+    /** Theme color for browser chrome — hex, e.g., "#0054D0". */
     themeColor?: string;
     /** Background color for splash screen — hex. */
     backgroundColor?: string;
@@ -102,7 +103,7 @@ function deriveShortName(displayName: string, override?: string): string {
 export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const startUrl = input.startUrl && input.startUrl.length > 0 ? input.startUrl : '/';
     const shortName = deriveShortName(input.displayName, input.shortName);
-    const themeColor = input.themeColor || '#0f172a';
+    const themeColor = input.themeColor || APP_THEME_COLOR;
     const backgroundColor = input.backgroundColor || '#ffffff';
 
     // Icon endpoint — same-origin, so subdomain/custom-domain routing works.

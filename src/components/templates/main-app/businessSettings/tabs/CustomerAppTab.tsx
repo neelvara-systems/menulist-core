@@ -21,7 +21,7 @@ import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import type { UserUploadedFileType } from '@type/common';
 import { Alert, Button, Card, Flex, Input, Space, Switch, Typography, message } from 'antd';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCopy, LuImage, LuRefreshCw, LuSmartphone, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuCopy, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -515,25 +515,50 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     </div>
                 ) : null}
 
-                <Alert
-                    type="info"
-                    showIcon
-                    style={{ marginTop: 28 }}
-                    message="How it looks to customers"
-                    description={
-                        <Space direction="vertical" size={4}>
-                            <Text>
-                                • Android / Chrome: native install popup with your icon and name
+                <Card
+                    size="small"
+                    style={{
+                        marginTop: 28,
+                        borderRadius: 14,
+                        borderColor: '#dbeafe',
+                        background: 'linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)',
+                    }}
+                >
+                    <Flex align="center" gap={10} style={{ marginBottom: 10 }}>
+                        <LuSmartphone size={18} color="#1d4ed8" />
+                        <Text strong>How customers install it</Text>
+                    </Flex>
+                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                        <div>
+                            <Text strong style={{ display: 'block', marginBottom: 2 }}>Android / Chrome</Text>
+                            <Text type="secondary">
+                                Customer opens the menu, taps Install, then accepts the browser prompt.
                             </Text>
-                            <Text>
-                                • iPhone Safari: step-by-step guide to &ldquo;Add to Home Screen&rdquo;
+                        </div>
+                        <div>
+                            <Text strong style={{ display: 'block', marginBottom: 2 }}>iPhone / Safari</Text>
+                            <Text type="secondary">
+                                Customer opens the menu in Safari, taps Share, then taps Add to Home Screen.
                             </Text>
-                            <Text>
-                                • Once installed, the app opens full-screen from the home screen
+                        </div>
+                        <div>
+                            <Text strong style={{ display: 'block', marginBottom: 2 }}>What to tell customers</Text>
+                            <Text type="secondary">
+                                Share the install link above for the fastest path. Once installed, the menu opens full-screen from the home screen.
                             </Text>
-                        </Space>
-                    }
-                />
+                        </div>
+                    </Space>
+                    <Flex gap={18} wrap="wrap" style={{ marginTop: 14 }}>
+                        <Flex align="center" gap={8}>
+                            <LuShare2 size={15} color="#64748b" />
+                            <Text type="secondary">Safari: Share</Text>
+                        </Flex>
+                        <Flex align="center" gap={8}>
+                            <LuSquare size={15} color="#64748b" />
+                            <Text type="secondary">Add to Home Screen</Text>
+                        </Flex>
+                    </Flex>
+                </Card>
             </Card>
             <ImageUploadInput
                 fileInputRef={fileInputRef}

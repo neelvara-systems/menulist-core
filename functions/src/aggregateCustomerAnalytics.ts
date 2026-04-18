@@ -80,6 +80,9 @@ interface DailyMetrics {
     shortcutClicks?: Record<string, number>;      // { menu, call, directions }
     installsByDevice?: Record<string, number>;
     installsByLocation?: Record<string, number>;
+    installsByPlatform?: Record<string, number>;
+    installsBySource?: Record<string, number>;
+    appOpensByPlatform?: Record<string, number>;
     hourlyPromptShown?: Record<string, number>;
     hourlyAppOpens?: Record<string, number>;
 }
@@ -440,6 +443,27 @@ async function updateSummaryDocument(
             }
         }
     }
+    if (dailyData.installsByPlatform) {
+        for (const [key, value] of Object.entries(dailyData.installsByPlatform)) {
+            if (typeof value === 'number') {
+                updates[`installsByPlatform.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+    if (dailyData.installsBySource) {
+        for (const [key, value] of Object.entries(dailyData.installsBySource)) {
+            if (typeof value === 'number') {
+                updates[`installsBySource.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+    if (dailyData.appOpensByPlatform) {
+        for (const [key, value] of Object.entries(dailyData.appOpensByPlatform)) {
+            if (typeof value === 'number') {
+                updates[`appOpensByPlatform.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
 
     await summaryRef.set(updates, { merge: true });
 }
@@ -587,6 +611,9 @@ function aggregateDailyDocs(docs: any[]): any {
         shortcutClicks: {},
         installsByDevice: {},
         installsByLocation: {},
+        installsByPlatform: {},
+        installsBySource: {},
+        appOpensByPlatform: {},
     };
 
     for (const doc of docs) {
@@ -622,6 +649,9 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.shortcutClicks, doc.shortcutClicks);
         mergeMapField(result.installsByDevice, doc.installsByDevice);
         mergeMapField(result.installsByLocation, doc.installsByLocation);
+        mergeMapField(result.installsByPlatform, doc.installsByPlatform);
+        mergeMapField(result.installsBySource, doc.installsBySource);
+        mergeMapField(result.appOpensByPlatform, doc.appOpensByPlatform);
     }
 
     return result;

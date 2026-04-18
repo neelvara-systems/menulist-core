@@ -208,10 +208,11 @@ export interface TrackingData {
 
   /**
    * Install source tag — 'native' (browser prompt accepted) | 'ios-inferred'
-   * (iOS heuristic: standalone launch shortly after prompt shown) | 'unknown'.
-   * Lets the dashboard distinguish confirmed installs from heuristic ones.
+   * (iOS standalone launch shortly after prompt shown) | 'ios-standalone'
+   * (iOS first standalone open without prompt history) | 'unknown'.
+   * Lets the dashboard distinguish confirmed installs from heuristic/manual ones.
    */
-  pwaInstallSource?: 'native' | 'ios-inferred' | 'unknown';
+  pwaInstallSource?: 'native' | 'ios-inferred' | 'ios-standalone' | 'unknown';
 
   // Additional properties
   [key: string]: any;         // Any other custom properties

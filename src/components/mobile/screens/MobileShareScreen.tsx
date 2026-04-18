@@ -12,7 +12,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield } from 'react-icons/lu';
+import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield, LuSmartphone } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
@@ -38,6 +38,7 @@ type ShareData = {
     hasPosSync: boolean;
     hasPublishedMenu: boolean;
     hasScreen: boolean;
+    installAppLink: string | null;
     highlightsLink: string | null;
     menuBoardLink: string | null;
     menuLink: string;
@@ -87,6 +88,11 @@ export default function MobileShareScreen() {
             const subdomain = storeDetails.subdomain || '';
             const customDomain = storeDetails.customDomain;
             const obpLink = generateOBPUrl(subdomain, customDomain);
+            const installAppLink =
+                FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA &&
+                    (storeDetails as any).pwaSettings?.enableInstallableApp !== false
+                    ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
+                    : null;
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
@@ -130,6 +136,7 @@ export default function MobileShareScreen() {
                 hasPosSync,
                 hasPublishedMenu: !!obpLink,
                 hasScreen: !!menuBoardLink,
+                installAppLink,
                 highlightsLink,
                 menuBoardLink,
                 menuLink,
@@ -236,6 +243,24 @@ export default function MobileShareScreen() {
                 showQrLabel={t('showQr')}
                 value={data.menuLink}
             />
+
+            {data.installAppLink ? (
+                <LinkCard
+                    description="Share this when you want customers to install your menu app directly. It opens the install prompt right away."
+                    icon={<LuSmartphone color={token.colorPrimary} size={18} />}
+                    label="Customer App install link"
+                    onCopy={() => void handleCopy(withSource(data.installAppLink as string, 'copy'), 'Customer App install link')}
+                    onOpen={() => window.open(withSource(data.installAppLink as string, 'direct'), '_blank')}
+                    onShowQr={() => handleOpenQr({
+                        filename: buildQrCodeFilename(`${data.storeName}-customer-app-install`, 'qr'),
+                        helperText: 'Customers can scan this QR to install your menu app.',
+                        title: 'Customer App install link',
+                        url: withSource(data.installAppLink as string, 'qr'),
+                    })}
+                    showQrLabel={t('showQr')}
+                    value={data.installAppLink}
+                />
+            ) : null}
 
             {data.hasFeedbackEnabled && data.feedbackLink ? (
                 <LinkCard

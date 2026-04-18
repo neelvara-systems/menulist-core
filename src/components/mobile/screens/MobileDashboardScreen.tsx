@@ -4,10 +4,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import type { OwnerDashboardViewMode } from '@template/main-app/projects/types';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useCallback, useContext, useState } from 'react';
-import { LuBarChart3, LuCalendar, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -26,18 +28,32 @@ interface MobileDashboardScreenProps {
     onBack: () => void;
 }
 
-const TRUST_COLORS: Record<string, string> = { strong: '#10b981', stable: '#3b82f6', weak: '#f59e0b' };
-const RISK_COLORS: Record<string, string> = { stable: '#10b981', watch: '#f59e0b', at_risk: '#ef4444' };
 const RISK_LABELS: Record<string, string> = { stable: 'Stable', watch: 'Watch', at_risk: 'At Risk' };
+const FULL_WIDTH_TAG_STYLE = {
+    display: 'block',
+    fontSize: 13,
+    marginInlineEnd: 0,
+    padding: '6px 10px',
+    textAlign: 'center' as const,
+    width: '100%',
+};
 
 export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
-    const tProjectSelector = useTranslations('MobileProjectSelector');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
     const { isLoading: loadingProjects, projectsList, selectedProjectId, selectedProjectSummary, selectProject } = useMobileProjects();
-    const [viewMode, setViewMode] = useState<'overview' | 'daily' | 'weekly' | 'monthly'>('overview');
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+
+    const {
+        data,
+        loading,
+        refetch,
+        viewMode,
+        setViewMode,
+    } = useOwnerDashboard(selectedProjectId ? { projectId: selectedProjectId } : undefined);
+
     const viewModeLabel = viewMode === 'overview'
         ? t('overview')
         : viewMode === 'daily'
@@ -45,8 +61,6 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
             : viewMode === 'weekly'
                 ? t('weekly')
                 : t('monthly');
-
-    const { data, loading, refetch } = useOwnerDashboard(selectedProjectId ? { projectId: selectedProjectId } : undefined);
 
     const handleRefresh = useCallback(async () => {
         try {
@@ -56,6 +70,24 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
             Toast.show({ content: t('failedToRefresh'), duration: 1500 });
         }
     }, [refetch]);
+
+    const handleViewModeChange = useCallback((key: string) => {
+        setViewMode(key as OwnerDashboardViewMode);
+    }, [setViewMode]);
+
+    const currentViewData = useMemo(() => {
+        switch (viewMode) {
+            case 'daily':
+                return data?.daily || null;
+            case 'weekly':
+                return data?.weekly || null;
+            case 'monthly':
+                return data?.monthly || null;
+            case 'overview':
+            default:
+                return data?.overview || null;
+        }
+    }, [data?.daily, data?.monthly, data?.overview, data?.weekly, viewMode]);
 
     if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
@@ -73,7 +105,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={onBack} />
                 <Flex align="center" gap={12} justify="center" style={{ flex: 1 }} vertical>
-                    <LuBarChart3 color="#d1d5db" size={36} />
+                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
                     <Text type="secondary" style={{ textAlign: 'center' }}>
                         {t('noProjects', { offering: labels.offeringLower })}
                     </Text>
@@ -82,21 +114,135 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
         );
     }
 
-    const isLoading = loading && !data;
     const overview = data?.overview;
     const overall = data?.overall;
     const wtd = overview?.wtd;
     const mtd = overview?.mtd;
     const historicalWeeks = overview?.historicalWeeks || data?.historicalWeeks || [];
+    const isLoading = viewMode === 'overview'
+        ? loading && !data
+        : loading && !currentViewData;
 
-    const getStatus = () => {
-        if (!overview) return { icon: <LuInfo size={24} />, text: t('noDataYet'), color: '#9ca3af', bg: '#f3f4f6' };
-        if (overview.status === 'working') return { icon: <LuCheck size={24} />, text: t('menuWorking', { offering: labels.offeringLower }), color: '#16a34a', bg: '#ecfdf5' };
-        if (overview.status === 'low_activity') return { icon: <LuInfo size={24} />, text: t('lowActivity'), color: '#f59e0b', bg: '#fffbeb' };
-        return { icon: <LuInfo size={24} />, text: t('waitingFirstScan'), color: '#9ca3af', bg: '#f3f4f6' };
+    const overviewStatus = (() => {
+        if (!overview) return { color: 'default', text: t('noDataYet') };
+        if (overview.status === 'working') return { color: 'success', text: t('menuWorking', { offering: labels.offeringLower }) };
+        if (overview.status === 'low_activity') return { color: 'warning', text: t('lowActivity') };
+        return { color: 'default', text: t('waitingFirstScan') };
+    })();
+    const trustColors: Record<string, string> = {
+        stable: token.colorPrimary,
+        strong: token.colorSuccess,
+        weak: token.colorWarning,
+    };
+    const riskColors: Record<string, string> = {
+        at_risk: token.colorError,
+        stable: token.colorSuccess,
+        watch: token.colorWarning,
     };
 
-    const status = getStatus();
+    const renderMetricTile = (
+        label: ReactNode,
+        value: ReactNode,
+        icon?: ReactNode,
+        titleLevel: 3 | 4 = 3,
+    ) => (
+        <div
+            style={{
+                background: token.colorFillAlter,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: token.borderRadiusLG,
+                flex: '1 1 45%',
+                minWidth: 0,
+                padding: 12,
+            }}
+        >
+            <Flex align="center" gap={8}>
+                {icon}
+                <Text type="secondary">{label}</Text>
+            </Flex>
+            <Title level={titleLevel} style={{ margin: 0 }}>
+                {value}
+            </Title>
+        </div>
+    );
+
+    const renderMetricsCards = (metrics?: any) => (
+        <Flex gap={12} wrap>
+            {renderMetricTile(labels.scansLabel, (metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={14} />)}
+            {renderMetricTile(t('itemTaps'), (metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={14} />)}
+            {metrics?.smartPicksRendered > 0 ? (
+                <>
+                    {renderMetricTile(t('smartPicks'), metrics.smartPicksRendered.toLocaleString(), <LuZap color={token.colorInfo} size={14} />)}
+                    {renderMetricTile(t('spClicks'), (metrics.smartPicksClicks || 0).toLocaleString(), <LuZap color={token.colorSuccess} size={14} />)}
+                </>
+            ) : null}
+        </Flex>
+    );
+
+    const renderTopItems = (items?: any[]) => items?.length ? (
+        <Card size="small" title={<Text strong>{t('topItems')}</Text>}>
+            <List>
+                {items.slice(0, 5).map((item: any, index: number) => (
+                    <List.Item
+                        key={item.itemId || index}
+                        prefix={<Tag>{index + 1}</Tag>}
+                        extra={<Tag>{`${item.clicks} clicks`}</Tag>}
+                        title={<Text>{item.name || item.itemId}</Text>}
+                    />
+                ))}
+            </List>
+        </Card>
+    ) : null;
+
+    const renderAiSummary = (summary?: any) => summary?.bulletPoints?.length ? (
+        <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
+            <List>
+                {summary.bulletPoints.map((bullet: string, index: number) => (
+                    <List.Item key={`${bullet}-${index}`} title={<Text>{bullet}</Text>} />
+                ))}
+            </List>
+        </Card>
+    ) : null;
+
+    const renderPeriodView = () => {
+        const periodData = currentViewData as any;
+
+        if (!periodData || viewMode === 'overview') return null;
+
+        const dateLabel = viewMode === 'daily' && periodData.date
+            ? new Date(periodData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'long' })
+            : viewMode === 'weekly' && periodData.weekStart && periodData.weekEnd
+                ? `${new Date(periodData.weekStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${new Date(periodData.weekEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                : viewMode === 'monthly' && periodData.monthStart
+                    ? new Date(periodData.monthStart).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+                    : viewModeLabel;
+
+        return (
+            <>
+                <Tag
+                    color={viewMode === 'daily' && periodData.isLowActivity ? 'warning' : 'processing'}
+                    style={FULL_WIDTH_TAG_STYLE}
+                >
+                    {viewMode === 'daily' && periodData.isLowActivity
+                        ? `${dateLabel} · ${t('lowActivity')}`
+                        : dateLabel}
+                </Tag>
+
+                {renderAiSummary(periodData.aiSummary)}
+
+                <Card size="small" title={<Text strong>{viewModeLabel}</Text>}>
+                    {renderMetricsCards(periodData.metrics)}
+                    {viewMode === 'monthly' && periodData.daysWithData > 0 ? (
+                        <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
+                            {`${periodData.daysWithData} active days this month`}
+                        </Text>
+                    ) : null}
+                </Card>
+
+                {renderTopItems(periodData.topItems)}
+            </>
+        );
+    };
 
     return (
         <Flex style={{ height: '100%' }} vertical>
@@ -105,7 +251,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 right={
                     <Flex align="center" gap={8}>
                         <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
-                            <LuRefreshCw size={18} color="#9ca3af" />
+                            <LuRefreshCw size={18} color={token.colorTextTertiary} />
                         </Button>
                     </Flex>
                 }
@@ -124,17 +270,25 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         name: selectedProjectSummary?.name || t('unnamedProject'),
                     }}
                     onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
-                    rightContent={<Tag>{viewModeLabel}</Tag>}
                 />
 
                 <Card size="small">
-                    <Tabs activeKey={viewMode} onChange={(key) => setViewMode(key as any)}>
+                    <Tabs activeKey={viewMode} onChange={handleViewModeChange}>
                         <Tabs.Tab title={t('overview')} key="overview" />
                         <Tabs.Tab title={t('daily')} key="daily" />
                         <Tabs.Tab title={t('weekly')} key="weekly" />
                         <Tabs.Tab title={t('monthly')} key="monthly" />
                     </Tabs>
                 </Card>
+
+                {viewMode === 'overview' ? (
+                    <Tag
+                        color={overviewStatus.color}
+                        style={FULL_WIDTH_TAG_STYLE}
+                    >
+                        {overviewStatus.text}
+                    </Tag>
+                ) : null}
 
                 {isLoading ? (
                     <Card>
@@ -143,64 +297,40 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                             <Text type="secondary">{t('loading')}</Text>
                         </Flex>
                     </Card>
+                ) : viewMode !== 'overview' ? (
+                    <>
+                        {renderPeriodView()}
+
+                        {overall?.lifetimeMetrics ? (
+                            <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
+                                <Flex gap={12} wrap>
+                                    {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
+                                </Flex>
+                                {overall.firstDataDate ? (
+                                    <Text type="secondary">
+                                        {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                    </Text>
+                                ) : null}
+                            </Card>
+                        ) : null}
+
+                        {!currentViewData ? (
+                            <Card>
+                                <Flex align="center" gap={12} vertical>
+                                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
+                                    <Text type="secondary" style={{ textAlign: 'center' }}>
+                                        {t('noAnalyticsYet', { offering: labels.offeringLower })}
+                                    </Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                    </>
                 ) : (
                     <>
-                        <Card style={{ backgroundColor: status.bg }}>
-                            <Flex align="center" justify="space-between">
-                                <Flex align="center" gap={12}>
-                                    {status.icon}
-                                    <Title level={4} style={{ color: status.color, margin: 0 }}>
-                                        {status.text}
-                                    </Title>
-                                </Flex>
-                                <Tag>{viewModeLabel}</Tag>
-                            </Flex>
-                        </Card>
-
                         {wtd ? (
                             <Card size="small" title={<Text strong>{t('last7Days')}</Text>}>
-                                <Flex gap={12} wrap>
-                                    <Card size="small" style={{ flex: '1 1 45%' }}>
-                                        <Flex align="center" gap={8}>
-                                            <LuEye color="#3b82f6" size={14} />
-                                            <Text type="secondary">{labels.scansLabel}</Text>
-                                        </Flex>
-                                        <Title level={3} style={{ margin: 0 }}>
-                                            {wtd.metrics?.menuVisits?.toLocaleString() || '0'}
-                                        </Title>
-                                    </Card>
-                                    <Card size="small" style={{ flex: '1 1 45%' }}>
-                                        <Flex align="center" gap={8}>
-                                            <LuFlame color="#f97316" size={14} />
-                                            <Text type="secondary">{t('itemTaps')}</Text>
-                                        </Flex>
-                                        <Title level={3} style={{ margin: 0 }}>
-                                            {wtd.metrics?.itemClicks?.toLocaleString() || '0'}
-                                        </Title>
-                                    </Card>
-                                    {wtd.metrics?.smartPicksRendered > 0 ? (
-                                        <>
-                                            <Card size="small" style={{ flex: '1 1 45%' }}>
-                                                <Flex align="center" gap={8}>
-                                                    <LuZap color="#a855f7" size={14} />
-                                                    <Text type="secondary">{t('smartPicks')}</Text>
-                                                </Flex>
-                                                <Title level={3} style={{ margin: 0 }}>
-                                                    {wtd.metrics.smartPicksRendered.toLocaleString()}
-                                                </Title>
-                                            </Card>
-                                            <Card size="small" style={{ flex: '1 1 45%' }}>
-                                                <Flex align="center" gap={8}>
-                                                    <LuZap color="#22c55e" size={14} />
-                                                    <Text type="secondary">{t('spClicks')}</Text>
-                                                </Flex>
-                                                <Title level={3} style={{ margin: 0 }}>
-                                                    {wtd.metrics.smartPicksClicks.toLocaleString()}
-                                                </Title>
-                                            </Card>
-                                        </>
-                                    ) : null}
-                                </Flex>
+                                {renderMetricsCards(wtd.metrics)}
                             </Card>
                         ) : null}
 
@@ -224,7 +354,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                             return (
                                 <Card size="small" title={
                                     <Flex align="center" gap={6}>
-                                        <LuTrendingUp color="#3b82f6" size={14} />
+                                        <LuTrendingUp color={token.colorPrimary} size={14} />
                                         <Text strong>4-Week Trend</Text>
                                     </Flex>
                                 }>
@@ -234,9 +364,9 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                                             return (
                                                 <Flex key={idx} align="center" gap={8}>
                                                     <Text type="secondary" style={{ fontSize: 11, minWidth: 56 }}>{week.weekLabel}</Text>
-                                                    <div style={{ flex: 1, background: '#f3f4f6', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                                                    <div style={{ flex: 1, background: token.colorFillSecondary, borderRadius: 4, height: 8, overflow: 'hidden' }}>
                                                         <div style={{
-                                                            background: week.isCurrentWeek ? '#3b82f6' : '#93c5fd',
+                                                            background: week.isCurrentWeek ? token.colorPrimary : token.colorPrimaryBorder,
                                                             borderRadius: 4,
                                                             height: '100%',
                                                             width: `${pct}%`,
@@ -259,25 +389,13 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         {mtd ? (
                             <Card size="small" title={
                                 <Flex align="center" gap={6}>
-                                    <LuCalendar color="#8b5cf6" size={14} />
+                                    <LuCalendar color={token.colorInfo} size={14} />
                                     <Text strong>This Month</Text>
                                 </Flex>
                             }>
                                 <Flex gap={12} wrap>
-                                    <Card size="small" style={{ flex: '1 1 45%' }}>
-                                        <Flex align="center" gap={6}>
-                                            <LuEye color="#3b82f6" size={12} />
-                                            <Text type="secondary" style={{ fontSize: 11 }}>{labels.scansLabel}</Text>
-                                        </Flex>
-                                        <Title level={4} style={{ margin: 0 }}>{(mtd.metrics?.menuVisits || 0).toLocaleString()}</Title>
-                                    </Card>
-                                    <Card size="small" style={{ flex: '1 1 45%' }}>
-                                        <Flex align="center" gap={6}>
-                                            <LuFlame color="#f97316" size={12} />
-                                            <Text type="secondary" style={{ fontSize: 11 }}>Item Taps</Text>
-                                        </Flex>
-                                        <Title level={4} style={{ margin: 0 }}>{(mtd.metrics?.itemClicks || 0).toLocaleString()}</Title>
-                                    </Card>
+                                    {renderMetricTile(labels.scansLabel, (mtd.metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={12} />, 4)}
+                                    {renderMetricTile(t('itemTaps'), (mtd.metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={12} />, 4)}
                                 </Flex>
                                 {mtd.daysWithData > 0 ? (
                                     <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
@@ -300,7 +418,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                                             {showTrust && hs.trust ? (
                                                 <List.Item
                                                     key="trust"
-                                                    prefix={<LuShield color={TRUST_COLORS[hs.trust.state] || '#3b82f6'} size={14} />}
+                                                    prefix={<LuShield color={trustColors[hs.trust.state] || token.colorPrimary} size={14} />}
                                                     extra={<Tag color="processing">{hs.trust.state}</Tag>}
                                                     title={<Text>{t('trust')}</Text>}
                                                 />
@@ -308,7 +426,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                                             {showLoyalty && hs.loyalty ? (
                                                 <List.Item
                                                     key="loyalty"
-                                                    prefix={<LuHeart color={TRUST_COLORS[hs.loyalty.state] || '#3b82f6'} size={14} />}
+                                                    prefix={<LuHeart color={trustColors[hs.loyalty.state] || token.colorPrimary} size={14} />}
                                                     extra={<Tag color="processing">{hs.loyalty.state}</Tag>}
                                                     title={<Text>{t('loyalty')}</Text>}
                                                 />
@@ -316,7 +434,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                                             {showRisk && hs.risk ? (
                                                 <List.Item
                                                     key="risk"
-                                                    prefix={<LuTrendingDown color={RISK_COLORS[hs.risk.state] || '#22c55e'} size={14} />}
+                                                    prefix={<LuTrendingDown color={riskColors[hs.risk.state] || token.colorSuccess} size={14} />}
                                                     extra={<Tag color="warning">{RISK_LABELS[hs.risk.state] || hs.risk.state}</Tag>}
                                                     title={<Text>{t('health')}</Text>}
                                                 />
@@ -345,18 +463,8 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         {overall?.lifetimeMetrics ? (
                             <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
                                 <Flex gap={12} wrap>
-                                    <Card size="small" style={{ flex: '1 1 45%' }}>
-                                        <Title level={4} style={{ margin: 0 }}>
-                                            {overall.lifetimeMetrics.totalViews?.toLocaleString() || '0'}
-                                        </Title>
-                                        <Text type="secondary">{t('totalScans')}</Text>
-                                    </Card>
-                                    <Card size="small" style={{ flex: '1 1 45%' }}>
-                                        <Title level={4} style={{ margin: 0 }}>
-                                            {overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0'}
-                                        </Title>
-                                        <Text type="secondary">{t('totalClicks')}</Text>
-                                    </Card>
+                                    {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
                                 </Flex>
                                 {overall.firstDataDate ? (
                                     <Text type="secondary">
@@ -369,7 +477,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         {!overview && !overall ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
-                                    <LuBarChart3 color="#d1d5db" size={36} />
+                                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
                                     <Text type="secondary" style={{ textAlign: 'center' }}>
                                         {t('noAnalyticsYet', { offering: labels.offeringLower })}
                                     </Text>

@@ -100,9 +100,16 @@ export default function MobileCustomerAppMetrics() {
     const installedCustomers = summary?.lifetimeUniqueInstalls ?? summary?.lifetimeTotalInstalled ?? 0;
     const appOpens30d = sumLastNDays(daily, 'totalAppOpens', 30);
     const installs30d = sumLastNDays(daily, 'totalInstalled', 30);
+    const iosManualInstalls =
+        (summary?.installsBySource?.['ios-inferred'] ?? 0) +
+        (summary?.installsBySource?.['ios-standalone'] ?? 0);
     const totalPromptShown = summary?.lifetimeTotalPromptShown ?? 0;
     const totalInstalled = summary?.lifetimeTotalInstalled ?? 0;
-    const conversionPct = totalPromptShown > 0 ? Math.round((totalInstalled / totalPromptShown) * 100) : 0;
+    const promptedInstalls = Math.max(
+        0,
+        totalInstalled - (summary?.installsBySource?.['ios-standalone'] ?? 0),
+    );
+    const conversionPct = totalPromptShown > 0 ? Math.round((promptedInstalls / totalPromptShown) * 100) : 0;
     const top = topShortcutLabel(summary?.shortcutClicks);
     const hasAnyData = installedCustomers > 0 || appOpens30d > 0 || installs30d > 0 || daily.length > 0;
 
@@ -260,10 +267,10 @@ export default function MobileCustomerAppMetrics() {
                                     : '0.0'}
                             </Text>
                         </Flex>
-                        {(summary?.installsBySource?.['ios-inferred'] ?? 0) > 0 ? (
+                        {iosManualInstalls > 0 ? (
                             <Flex align="center" justify="space-between">
-                                <Text type="secondary" style={{ fontSize: 12 }}>iOS (inferred)</Text>
-                                <Text style={{ fontSize: 12 }}>{summary?.installsBySource?.['ios-inferred'] ?? 0}</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>iOS manual installs</Text>
+                                <Text style={{ fontSize: 12 }}>{iosManualInstalls}</Text>
                             </Flex>
                         ) : null}
                     </Flex>

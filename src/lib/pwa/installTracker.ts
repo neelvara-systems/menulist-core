@@ -40,8 +40,8 @@ export interface InstallTrackerOptions {
   /** Owner opt-out flag. When explicitly `false` (trackMenuViews === false), the
    *  event is suppressed entirely, matching the OBP/menu-view privacy precedent. */
   trackingEnabled?: boolean;
-  /** Source of the install — 'native' (browser prompt) or 'ios-inferred' (heuristic). */
-  source?: 'native' | 'ios-inferred' | 'unknown';
+  /** Source of the install — native prompt, iOS prompted/manual heuristic, or unknown. */
+  source?: 'native' | 'ios-inferred' | 'ios-standalone' | 'unknown';
 }
 
 /**

@@ -777,15 +777,23 @@ export function TextArea({ autoSize, maxLength, onChange, placeholder, rows, sho
 
 type TabPaneProps = { children?: ReactNode; key?: string; title?: ReactNode };
 
+function normalizeTabKey(key: string | null, fallback: string): string {
+    return key?.replace(/^\.\$/, '') || fallback;
+}
+
 function TabsComponent({ activeKey, children, onChange, style }: { activeKey?: string; children?: ReactNode; onChange?: (key: string) => void; style?: AnyStyle }) {
     const items = useMemo(
         () => Children.toArray(children)
             .filter((child): child is ReactElement<TabPaneProps> => isValidElement(child))
-            .map((child, index) => ({ key: child.key?.toString() || `${index}`, label: child.props.title, children: child.props.children ?? null })),
+            .map((child, index) => ({
+                key: normalizeTabKey(child.key?.toString() || null, `${index}`),
+                label: child.props.title,
+                children: child.props.children ?? null,
+            })),
         [children]
     );
 
-    return <AntTabs activeKey={activeKey} items={items} onChange={onChange} style={sanitizeStyle(style)} />;
+    return <AntTabs activeKey={activeKey} items={items} onChange={(key) => onChange?.(normalizeTabKey(key, key))} style={sanitizeStyle(style)} />;
 }
 
 function TabPane(_: TabPaneProps) {

@@ -78,27 +78,29 @@ export async function detectAndTrackAppOpen(
     });
 
     // iOS install inference — closes the "iOS never fires appinstalled" gap.
-    // If this is an iOS standalone launch that happened shortly after we
-    // showed the install prompt, treat it as a confirmed install and fire
-    // CUSTOMER_APP_INSTALLED with source='ios-inferred'. Dedup by the same
-    // localStorage guard that protects native installs.
+    // Any first standalone launch on iOS is the best available install proxy:
+    // Safari can only reach standalone mode after "Add to Home Screen".
+    // If that launch happened shortly after our prompt, label it as
+    // `ios-inferred`; otherwise keep it explicit as `ios-standalone` so the
+    // dashboard can separate prompted installs from manual/share-link installs.
     if (platform === 'ios') {
       try {
         const promptShownRaw = window.localStorage.getItem(
           `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`,
         );
         const promptShownAt = promptShownRaw ? parseInt(promptShownRaw, 10) : 0;
-        if (
+        const source =
           Number.isFinite(promptShownAt) &&
           promptShownAt > 0 &&
           Date.now() - promptShownAt < IOS_INSTALL_INFERENCE_WINDOW_MS
-        ) {
-          void fireInstalledEventOnce(storeId, {
-            tenantId,
-            trackingEnabled: true,
-            source: 'ios-inferred',
-          });
-        }
+            ? 'ios-inferred'
+            : 'ios-standalone';
+
+        void fireInstalledEventOnce(storeId, {
+          tenantId,
+          trackingEnabled: true,
+          source,
+        });
       } catch {
         /* non-fatal — analytics should never break the customer experience */
       }

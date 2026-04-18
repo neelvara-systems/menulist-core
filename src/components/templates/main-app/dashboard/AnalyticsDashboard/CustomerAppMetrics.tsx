@@ -35,7 +35,7 @@ interface CustomerAppSummaryShape {
     installsByLocation?: Record<string, number>;
     /** Per-platform install counts — iOS / Android / Desktop / Other. */
     installsByPlatform?: Record<string, number>;
-    /** Install source — 'native' (browser prompt) vs 'ios-inferred' (heuristic). */
+    /** Install source — native prompt vs iOS heuristic/manual standalone inference. */
     installsBySource?: Record<string, number>;
     /** Per-platform app-open counts — powers the retention row. */
     appOpensByPlatform?: Record<string, number>;
@@ -169,6 +169,13 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     const installedCustomers = summary?.lifetimeUniqueInstalls ?? summary?.lifetimeTotalInstalled ?? 0;
     const totalPromptShown = summary?.lifetimeTotalPromptShown ?? 0;
     const totalInstalled = summary?.lifetimeTotalInstalled ?? 0;
+    const iosManualInstalls =
+        (summary?.installsBySource?.['ios-inferred'] ?? 0) +
+        (summary?.installsBySource?.['ios-standalone'] ?? 0);
+    const promptedInstalls = Math.max(
+        0,
+        totalInstalled - (summary?.installsBySource?.['ios-standalone'] ?? 0),
+    );
 
     // 30-day rollup from daily docs (works even if summary is stale)
     const appOpens30d = sumLastNDays(daily, 'totalAppOpens', 30);
@@ -177,7 +184,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     // Install conversion — how many of the customers who saw the prompt installed
     const conversionPct =
         totalPromptShown > 0
-            ? Math.round((totalInstalled / totalPromptShown) * 100)
+            ? Math.round((promptedInstalls / totalPromptShown) * 100)
             : 0;
 
     const topShortcutResult = topShortcut(summary?.shortcutClicks);
@@ -310,11 +317,11 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                             }
                         />
                     </Col>
-                    {(summary?.installsBySource?.['ios-inferred'] ?? 0) > 0 ? (
+                    {iosManualInstalls > 0 ? (
                         <Col xs={24} sm={8}>
                             <Statistic
-                                title="iOS (inferred installs)"
-                                value={summary?.installsBySource?.['ios-inferred'] ?? 0}
+                                title="iOS manual installs"
+                                value={iosManualInstalls}
                             />
                         </Col>
                     ) : null}

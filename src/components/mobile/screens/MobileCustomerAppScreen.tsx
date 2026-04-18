@@ -22,14 +22,16 @@ import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
+import { theme } from 'antd';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCopy, LuImage, LuRefreshCw, LuSmartphone, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuCopy, LuDownload, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload, LuX } from 'react-icons/lu';
 import {
     Button,
     Card,
     Flex,
     Input,
     NavBar,
+    Popup,
     Switch,
     Text,
     Title,
@@ -42,6 +44,7 @@ interface Props {
 
 export default function MobileCustomerAppScreen({ onBack }: Props) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { token } = theme.useToken();
 
     // ── Settings state ──
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
@@ -68,6 +71,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     );
     const [removeIconOnSave, setRemoveIconOnSave] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const selectedIconUrl = (selectedIcon?.url || '').trim();
     const currentIconUrl = removeIconOnSave ? '' : selectedIconUrl;
@@ -306,27 +310,22 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                 pointerEvents: enableInstallableApp ? 'auto' : 'none',
                             }}
                         >
-                            <div
-                                style={{
-                                    padding: '10px 12px',
-                                    background: '#f1f5f9',
-                                    borderRadius: 8,
-                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                                    fontSize: 12,
-                                    wordBreak: 'break-all',
-                                    color: '#334155',
-                                }}
-                            >
-                                {installLink}
-                            </div>
-                            <Button
-                                block
-                                color="primary"
-                                onClick={handleCopyInstallLink}
-                                style={{ marginTop: 12, minHeight: 44 }}
-                            >
-                                Copy link
-                            </Button>
+                            <Card size="small" style={{ background: '#f1f5f9' }}>
+                                <Text style={{ wordBreak: 'break-all' }}>{installLink}</Text>
+                            </Card>
+                            <Flex gap={8} style={{ marginTop: 12 }}>
+                                <Button
+                                    block
+                                    fill="outline"
+                                    onClick={handleCopyInstallLink}
+                                    size="small"
+                                >
+                                    <Flex align="center" gap={6}>
+                                        <LuCopy size={14} />
+                                        <Text>Copy</Text>
+                                    </Flex>
+                                </Button>
+                            </Flex>
                         </div>
                     </Card>
                 ) : null}
@@ -389,10 +388,10 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                         {currentIconUrl ? (
                             <div
                                 style={{
-                                    border: '1px solid #e2e8f0',
+                                    border: `1px solid ${token.colorBorderSecondary}`,
                                     borderRadius: 14,
                                     padding: '12px',
-                                    background: '#ffffff',
+                                    background: token.colorBgContainer,
                                 }}
                             >
                                 <Flex align="center" gap={12}>
@@ -405,8 +404,9 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                             height: 64,
                                             borderRadius: 16,
                                             objectFit: 'cover',
-                                            background: '#f1f5f9',
+                                            background: token.colorFillAlter,
                                             flexShrink: 0,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
                                         }}
                                     />
                                     <Flex style={{ flex: 1 }} vertical>
@@ -420,7 +420,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                                 fill="none"
                                                 onClick={() => fileInputRef.current?.click()}
                                                 size="small"
-                                                style={{ color: '#0f172a', minWidth: 0 }}
+                                                style={{ color: token.colorText, minWidth: 0 }}
                                             >
                                                 <Flex align="center" gap={6}>
                                                     <LuRefreshCw size={14} />
@@ -435,7 +435,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                                     setRemoveIconOnSave(!!savedIconUrl.trim());
                                                 }}
                                                 size="small"
-                                                style={{ color: '#b91c1c', minWidth: 0 }}
+                                                style={{ color: token.colorError, minWidth: 0 }}
                                             >
                                                 <Flex align="center" gap={6}>
                                                     <LuTrash2 size={14} />
@@ -462,10 +462,10 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                     }
                                 }}
                                 style={{
-                                    border: '1px dashed #94a3b8',
+                                    border: `1px dashed ${token.colorBorder}`,
                                     borderRadius: 12,
                                     padding: '12px',
-                                    background: '#f8fafc',
+                                    background: token.colorFillAlter,
                                     marginBottom: 12,
                                     cursor: !enableInstallableApp || saving ? 'not-allowed' : 'pointer',
                                 }}
@@ -476,11 +476,12 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                             width: 34,
                                             height: 34,
                                             borderRadius: 10,
-                                            background: '#e2e8f0',
+                                            background: token.colorBgContainer,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            color: '#334155',
+                                            color: token.colorTextSecondary,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
                                         }}
                                     >
                                         <LuUpload size={17} />
@@ -506,9 +507,9 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                             onClick={handleReset}
                             style={{
                                 minHeight: 44,
-                                background: hasUnsavedChanges && !saving ? '#ffffff' : '#f1f5f9',
-                                borderColor: hasUnsavedChanges && !saving ? '#cbd5e1' : '#e2e8f0',
-                                color: hasUnsavedChanges && !saving ? '#0f172a' : '#94a3b8',
+                                background: hasUnsavedChanges && !saving ? token.colorBgContainer : token.colorFillAlter,
+                                borderColor: hasUnsavedChanges && !saving ? token.colorBorder : token.colorBorderSecondary,
+                                color: hasUnsavedChanges && !saving ? token.colorText : token.colorTextDisabled,
                             }}
                         >
                             Reset
@@ -526,22 +527,216 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     </Flex>
                 </Card>
 
-                {/* How it looks — mobile cheat-sheet */}
-                <Card>
-                    <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>How it looks to customers</Title>
-                    <Text type="secondary">• Android / Chrome: native install popup with your icon</Text>
-                    <br />
-                    <Text type="secondary">• iPhone Safari: step-by-step &ldquo;Add to Home Screen&rdquo; guide</Text>
-                    <br />
-                    <Text type="secondary">• Once installed, opens full-screen from the home screen</Text>
+                <Card onClick={() => setIsInstallGuideOpen(true)} style={{ cursor: 'pointer' }}>
+                    <Flex align="center" gap={10}>
+                        <div
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 12,
+                                background: token.colorPrimaryBg,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: token.colorPrimary,
+                                flexShrink: 0,
+                            }}
+                        >
+                            <LuSmartphone size={18} />
+                        </div>
+                        <Flex style={{ flex: 1, minWidth: 0 }} vertical>
+                            <Title level={5} style={{ margin: 0 }}>How customers install it</Title>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Android and iPhone steps. Tap to open guide.
+                            </Text>
+                        </Flex>
+                    </Flex>
                 </Card>
             </Flex>
+            <Popup
+                bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }}
+                destroyOnClose
+                onMaskClick={() => setIsInstallGuideOpen(false)}
+                visible={isInstallGuideOpen}
+            >
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar
+                        right={(
+                            <Button
+                                fill="none"
+                                onClick={() => setIsInstallGuideOpen(false)}
+                                style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            >
+                                <LuX size={18} />
+                            </Button>
+                        )}
+                    >
+                        How customers install it
+                    </NavBar>
+
+                    <Flex style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} gap={12} vertical>
+                        <Card
+                            style={{
+                                borderRadius: 16,
+                                background: token.colorPrimaryBg,
+                                borderColor: token.colorPrimaryBorder,
+                            }}
+                        >
+                            <Flex align="center" gap={10} style={{ marginBottom: 8 }}>
+                                <div
+                                    style={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: 12,
+                                        background: token.colorBgContainer,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: token.colorPrimary,
+                                    }}
+                                >
+                                    <LuDownload size={16} />
+                                </div>
+                                <Flex vertical>
+                                    <Text strong>Android / Chrome</Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        Native browser install prompt
+                                    </Text>
+                                </Flex>
+                            </Flex>
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                                Open the menu, tap <Text style={{ fontSize: 13, color: token.colorText }}>Install</Text>, then accept the browser prompt.
+                            </Text>
+                        </Card>
+
+                        <Card
+                            style={{
+                                borderRadius: 16,
+                                background: token.colorWarningBg,
+                                borderColor: token.colorWarningBorder,
+                            }}
+                        >
+                            <Flex align="center" gap={10} style={{ marginBottom: 10 }}>
+                                <div
+                                    style={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: 12,
+                                        background: token.colorBgContainer,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: token.colorWarning,
+                                    }}
+                                >
+                                    <LuShare2 size={16} />
+                                </div>
+                                <Flex vertical>
+                                    <Text strong>iPhone / Safari</Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        Manual Add to Home Screen flow
+                                    </Text>
+                                </Flex>
+                            </Flex>
+
+                            <Flex gap={8} vertical>
+                                <InstallGuideStep
+                                    accentColor={token.colorWarning}
+                                    icon={<LuShare2 size={14} />}
+                                    step="Step 1"
+                                    text="Tap the Share button in Safari"
+                                    tokenBg={token.colorBgContainer}
+                                    tokenBorder={token.colorWarningBorder}
+                                />
+                                <InstallGuideStep
+                                    accentColor={token.colorWarning}
+                                    icon={<LuSquare size={14} />}
+                                    step="Step 2"
+                                    text="Choose Add to Home Screen"
+                                    tokenBg={token.colorBgContainer}
+                                    tokenBorder={token.colorWarningBorder}
+                                />
+                                <InstallGuideStep
+                                    accentColor={token.colorWarning}
+                                    icon={<LuSmartphone size={14} />}
+                                    step="Step 3"
+                                    text="Tap Add, then open it from the home screen"
+                                    tokenBg={token.colorBgContainer}
+                                    tokenBorder={token.colorWarningBorder}
+                                />
+                            </Flex>
+                        </Card>
+
+                        <Card
+                            style={{
+                                borderRadius: 16,
+                                background: token.colorFillAlter,
+                                borderColor: token.colorBorderSecondary,
+                            }}
+                        >
+                            <Text strong style={{ display: 'block', marginBottom: 4 }}>What to tell customers</Text>
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                                Use the share install link from this screen for the fastest path. Once installed, it opens full-screen from the phone home screen.
+                            </Text>
+                        </Card>
+                    </Flex>
+                </Flex>
+            </Popup>
             <ImageUploadInput
                 fileInputRef={fileInputRef}
                 onUploadFile={handleIconSelected}
                 compression={false}
                 maxSizeMB={10}
             />
+        </Flex>
+    );
+}
+
+function InstallGuideStep({
+    accentColor,
+    icon,
+    step,
+    text,
+    tokenBg,
+    tokenBorder,
+}: {
+    accentColor: string;
+    icon: React.ReactNode;
+    step: string;
+    text: string;
+    tokenBg: string;
+    tokenBorder: string;
+}) {
+    return (
+        <Flex
+            align="center"
+            gap={10}
+            style={{
+                padding: '10px 12px',
+                borderRadius: 12,
+                background: tokenBg,
+                border: `1px solid ${tokenBorder}`,
+            }}
+        >
+            <div
+                style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 9,
+                    background: `${accentColor}14`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: accentColor,
+                    flexShrink: 0,
+                }}
+            >
+                {icon}
+            </div>
+            <Flex style={{ flex: 1, minWidth: 0 }} vertical>
+                <Text strong style={{ fontSize: 13 }}>{step}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>{text}</Text>
+            </Flex>
         </Flex>
     );
 }
