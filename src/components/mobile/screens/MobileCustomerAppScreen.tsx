@@ -11,15 +11,19 @@
  *
  * Writes via:
  *   - updatePWASettings()       → pwaSettings.*
- *   - updatePWAIconOverride()   → publicPresence.pwaIcon*
+ *   - updatePWAIconOverride()   → publicPresence.pwaIcon* (on Save)
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
-import { resolvePWASettings, updatePWAIconOverride, updatePWASettings } from '@database/pwa';
+import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
+import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCopy, LuImage, LuSmartphone } from 'react-icons/lu';
+import type { UserUploadedFileType } from '@type/common';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { LuCopy, LuImage, LuRefreshCw, LuSmartphone, LuTrash2, LuUpload } from 'react-icons/lu';
 import {
     Button,
     Card,
@@ -45,37 +49,178 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     const [enableInstallableApp, setEnableInstallableApp] = useState(initial.enableInstallableApp);
     const [promoteInstallation, setPromoteInstallation] = useState(initial.promoteInstallation);
     const [pwaShortName, setPwaShortName] = useState(initial.pwaShortName);
-    const [iconOverrideUrl, setIconOverrideUrl] = useState<string>(initialIconUrl);
+    const [originalDraft, setOriginalDraft] = useState({
+        enableInstallableApp: initial.enableInstallableApp,
+        promoteInstallation: initial.promoteInstallation,
+        pwaShortName: initial.pwaShortName,
+        iconUrl: initialIconUrl,
+    });
+    const [savedIconUrl, setSavedIconUrl] = useState<string>(initialIconUrl);
+    const [selectedIcon, setSelectedIcon] = useState<UserUploadedFileType | null>(
+        initialIconUrl
+            ? {
+                name: 'customer-app-icon',
+                size: 0,
+                type: '',
+                url: initialIconUrl,
+            }
+            : null,
+    );
+    const [removeIconOnSave, setRemoveIconOnSave] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [savingIcon, setSavingIcon] = useState(false);
-    const [dirty, setDirty] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const selectedIconUrl = (selectedIcon?.url || '').trim();
+    const currentIconUrl = removeIconOnSave ? '' : selectedIconUrl;
+    const hasSettingsChanges = (
+        enableInstallableApp !== originalDraft.enableInstallableApp
+        || promoteInstallation !== originalDraft.promoteInstallation
+        || pwaShortName.trim() !== originalDraft.pwaShortName
+    );
+    const hasIconChanges = removeIconOnSave || selectedIconUrl !== originalDraft.iconUrl;
+    const hasUnsavedChanges = hasSettingsChanges || hasIconChanges;
 
     useEffect(() => {
         setEnableInstallableApp(initial.enableInstallableApp);
         setPromoteInstallation(initial.promoteInstallation);
         setPwaShortName(initial.pwaShortName);
-        setIconOverrideUrl(initialIconUrl);
-        setDirty(false);
+        setOriginalDraft({
+            enableInstallableApp: initial.enableInstallableApp,
+            promoteInstallation: initial.promoteInstallation,
+            pwaShortName: initial.pwaShortName,
+            iconUrl: initialIconUrl,
+        });
+        setSavedIconUrl(initialIconUrl);
+        setSelectedIcon(
+            initialIconUrl
+                ? {
+                    name: 'customer-app-icon',
+                    size: 0,
+                    type: '',
+                    url: initialIconUrl,
+                }
+                : null,
+        );
+        setRemoveIconOnSave(false);
     }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName, initialIconUrl]);
 
-    const markDirty = () => setDirty(true);
-
     const handleSave = async () => {
-        if (!storeDetails?.storeId) return;
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
         setSaving(true);
         try {
-            await updatePWASettings(storeDetails.storeId, {
+            const nextShortName = (pwaShortName || '').trim();
+            const settingsPatch: {
+                enableInstallableApp?: boolean;
+                promoteInstallation?: boolean;
+                pwaShortName?: string;
+            } = {};
+            if (enableInstallableApp !== originalDraft.enableInstallableApp) {
+                settingsPatch.enableInstallableApp = enableInstallableApp;
+            }
+            if (promoteInstallation !== originalDraft.promoteInstallation) {
+                settingsPatch.promoteInstallation = promoteInstallation;
+            }
+            if (nextShortName !== originalDraft.pwaShortName) {
+                settingsPatch.pwaShortName = nextShortName;
+            }
+            if (Object.keys(settingsPatch).length > 0) {
+                await updatePWASettings(storeDetails.storeId, settingsPatch);
+            }
+
+            let nextIconUrl = savedIconUrl.trim();
+            if (!removeIconOnSave && selectedIconUrl && selectedIconUrl !== originalDraft.iconUrl) {
+                if (!selectedIconUrl.startsWith('data:')) {
+                    throw new Error('Selected icon format is invalid. Please reselect the icon.');
+                }
+                const rawFile = dataUrlToFile(
+                    selectedIconUrl,
+                    selectedIcon?.name || 'customer-app-icon.png',
+                    selectedIcon?.type || undefined,
+                );
+                const prepared = await preparePWAIconFile(rawFile);
+                const uploadedUrl = await uploadPWAIconOverride({
+                    file: prepared.file,
+                    tenantId: storeDetails.tenantId,
+                    storeId: storeDetails.storeId,
+                });
+                await updatePWAIconOverride(storeDetails.storeId, {
+                    pwaIconOverrideUrl: uploadedUrl,
+                    pwaIconMode: 'override',
+                });
+                if (nextIconUrl && nextIconUrl !== uploadedUrl && nextIconUrl.includes('firebasestorage.googleapis.com')) {
+                    void deleteFileByUrl(nextIconUrl);
+                }
+                nextIconUrl = uploadedUrl;
+            } else if (removeIconOnSave && nextIconUrl) {
+                await updatePWAIconOverride(storeDetails.storeId, {
+                    pwaIconOverrideUrl: null,
+                    pwaIconMode: 'generated',
+                });
+                if (nextIconUrl.includes('firebasestorage.googleapis.com')) {
+                    void deleteFileByUrl(nextIconUrl);
+                }
+                nextIconUrl = '';
+            }
+
+            setSavedIconUrl(nextIconUrl);
+            setSelectedIcon(
+                nextIconUrl
+                    ? {
+                        name: 'customer-app-icon',
+                        size: 0,
+                        type: '',
+                        url: nextIconUrl,
+                    }
+                    : null,
+            );
+            setRemoveIconOnSave(false);
+            setOriginalDraft({
                 enableInstallableApp,
                 promoteInstallation,
-                pwaShortName: (pwaShortName || '').trim(),
+                pwaShortName: nextShortName,
+                iconUrl: nextIconUrl,
             });
             Toast.show({ content: 'Customer App settings saved', duration: 1500 });
-            setDirty(false);
-        } catch {
+        } catch (err) {
+            console.error('[MobileCustomerAppScreen] save failed:', err);
             Toast.show({ content: 'Could not save. Please try again.', duration: 2000 });
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleReset = () => {
+        if (!hasUnsavedChanges || saving) return;
+        setEnableInstallableApp(originalDraft.enableInstallableApp);
+        setPromoteInstallation(originalDraft.promoteInstallation);
+        setPwaShortName(originalDraft.pwaShortName);
+        setSavedIconUrl(originalDraft.iconUrl);
+        setSelectedIcon(
+            originalDraft.iconUrl
+                ? {
+                    name: 'customer-app-icon',
+                    size: 0,
+                    type: '',
+                    url: originalDraft.iconUrl,
+                }
+                : null,
+        );
+        setRemoveIconOnSave(false);
+    };
+
+    const dataUrlToFile = (dataUrl: string, fileName: string, fallbackMime?: string): File => {
+        const parts = dataUrl.split(',');
+        if (parts.length !== 2) {
+            throw new Error('Invalid icon data format');
+        }
+        const mimeFromData = parts[0].match(/data:(.*?);base64/)?.[1];
+        const mime = fallbackMime || mimeFromData || 'image/png';
+        const binary = atob(parts[1]);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return new File([bytes], fileName, { type: mime });
     };
 
     // Direct-install link (?pwa=install) — bypasses 3-visit threshold for
@@ -102,28 +247,11 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
         }
     };
 
-    const handleSaveIcon = async (explicitUrl?: string) => {
-        if (!storeDetails?.storeId) return;
-        const url = (explicitUrl ?? iconOverrideUrl).trim();
-        if (url && !/^https:\/\/.+\.(png|jpg|jpeg|webp)(\?|$)/i.test(url)) {
-            Toast.show({ content: 'Icon URL must be https and end with .png / .jpg / .webp', duration: 2000 });
-            return;
-        }
-        setSavingIcon(true);
-        try {
-            await updatePWAIconOverride(storeDetails.storeId, {
-                pwaIconOverrideUrl: url || null,
-                pwaIconMode: url ? 'override' : 'generated',
-            });
-            Toast.show({
-                content: url ? 'Custom icon saved' : 'Reverted to auto-generated icon',
-                duration: 1500,
-            });
-        } catch {
-            Toast.show({ content: 'Could not save icon. Please try again.', duration: 2000 });
-        } finally {
-            setSavingIcon(false);
-        }
+    const handleIconSelected = async (file: UserUploadedFileType) => {
+        if (!file?.url) return;
+        setSelectedIcon(file);
+        setRemoveIconOnSave(false);
+        Toast.show({ content: 'Icon selected. Tap Save to apply.', duration: 1500 });
     };
 
     // ── Global kill-switch guard ──
@@ -159,125 +287,6 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                         Install stats live in the Dashboard screen.
                     </Text>
-                </Card>
-
-                {/* Settings */}
-                <Card>
-                    <Title level={5} style={{ marginTop: 0, marginBottom: 4 }}>Settings</Title>
-
-                    <ToggleRow
-                        label="Enable Customer App"
-                        description="Make your menu installable as an app. Turn off to hide completely."
-                        checked={enableInstallableApp}
-                        onChange={(v) => { setEnableInstallableApp(v); markDirty(); }}
-                    />
-
-                    <ToggleRow
-                        label="Show install prompt"
-                        description="Invite customers to install after the 3rd visit."
-                        checked={promoteInstallation}
-                        disabled={!enableInstallableApp}
-                        onChange={(v) => { setPromoteInstallation(v); markDirty(); }}
-                    />
-
-                    <div
-                        style={{
-                            marginTop: 12,
-                            opacity: enableInstallableApp ? 1 : 0.5,
-                            pointerEvents: enableInstallableApp ? 'auto' : 'none',
-                        }}
-                    >
-                        <Text strong>Home screen name</Text>
-                        <Text type="secondary" style={{ display: 'block', margin: '4px 0 8px', fontSize: 13 }}>
-                            Short label under the icon. Max 12 characters. Blank = first word of your business name.
-                        </Text>
-                        <Input
-                            value={pwaShortName}
-                            maxLength={12}
-                            placeholder="e.g. Joe's"
-                            onChange={(v) => {
-                                setPwaShortName(v);
-                                markDirty();
-                            }}
-                        />
-                    </div>
-
-                    <Button
-                        block
-                        color="primary"
-                        disabled={!dirty || saving}
-                        loading={saving}
-                        onClick={handleSave}
-                        style={{ marginTop: 16, minHeight: 44 }}
-                    >
-                        {saving ? 'Saving…' : 'Save'}
-                    </Button>
-                </Card>
-
-                {/* Icon override */}
-                <Card>
-                    <Flex align="center" gap={10} style={{ marginBottom: 4 }}>
-                        <LuImage size={18} />
-                        <Title level={5} style={{ margin: 0 }}>Custom app icon</Title>
-                    </Flex>
-                    <Text type="secondary" style={{ display: 'block', fontSize: 13, marginBottom: 12 }}>
-                        Paste a public HTTPS URL for a square PNG/JPG/WEBP (recommended 512×512). Leave
-                        blank to use your logo, or the auto-generated letter icon.
-                    </Text>
-
-                    <div
-                        style={{
-                            opacity: enableInstallableApp ? 1 : 0.5,
-                            pointerEvents: enableInstallableApp ? 'auto' : 'none',
-                        }}
-                    >
-                        <Input
-                            value={iconOverrideUrl}
-                            placeholder="https://firebasestorage.googleapis.com/.../icon.png"
-                            onChange={(v) => setIconOverrideUrl(v)}
-                        />
-                        <Flex gap={8} style={{ marginTop: 12 }}>
-                            <Button
-                                color="primary"
-                                disabled={iconOverrideUrl === initialIconUrl}
-                                loading={savingIcon}
-                                onClick={() => handleSaveIcon()}
-                                style={{ flex: 1, minHeight: 44 }}
-                            >
-                                Save icon
-                            </Button>
-                            {initialIconUrl ? (
-                                <Button
-                                    disabled={savingIcon}
-                                    onClick={() => {
-                                        setIconOverrideUrl('');
-                                        void handleSaveIcon('');
-                                    }}
-                                    style={{ minHeight: 44 }}
-                                >
-                                    Clear
-                                </Button>
-                            ) : null}
-                        </Flex>
-
-                        {initialIconUrl ? (
-                            <Flex align="center" gap={12} style={{ marginTop: 12 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Current:</Text>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={initialIconUrl}
-                                    alt="Custom PWA icon"
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 14,
-                                        objectFit: 'cover',
-                                        background: '#f1f5f9',
-                                    }}
-                                />
-                            </Flex>
-                        ) : null}
-                    </div>
                 </Card>
 
                 {/* Direct install link — bypasses 3-visit threshold */}
@@ -322,6 +331,201 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     </Card>
                 ) : null}
 
+                {/* Settings */}
+                <Card>
+                    <Title level={5} style={{ marginTop: 0, marginBottom: 4 }}>Settings</Title>
+
+                    <ToggleRow
+                        label="Enable Customer App"
+                        description="Make your menu installable as an app. Turn off to hide completely."
+                        checked={enableInstallableApp}
+                        onChange={(v) => setEnableInstallableApp(v)}
+                    />
+
+                    <ToggleRow
+                        label="Show install prompt"
+                        description="Invite customers to install after the 3rd visit."
+                        checked={promoteInstallation}
+                        disabled={!enableInstallableApp}
+                        onChange={(v) => setPromoteInstallation(v)}
+                    />
+
+                    <div
+                        style={{
+                            marginTop: 12,
+                            opacity: enableInstallableApp ? 1 : 0.5,
+                            pointerEvents: enableInstallableApp ? 'auto' : 'none',
+                        }}
+                    >
+                        <Text strong>Home screen name</Text>
+                        <Text type="secondary" style={{ display: 'block', margin: '4px 0 8px', fontSize: 13 }}>
+                            Short label under the icon. Max 12 characters. Blank = first word of your business name.
+                        </Text>
+                        <Input
+                            value={pwaShortName}
+                            maxLength={12}
+                            placeholder="e.g. Joe's"
+                            onChange={(v) => setPwaShortName(v)}
+                        />
+                    </div>
+
+                    <div
+                        style={{
+                            marginTop: 16,
+                            opacity: enableInstallableApp ? 1 : 0.5,
+                            pointerEvents: enableInstallableApp ? 'auto' : 'none',
+                        }}
+                    >
+                        <Flex align="center" gap={10} style={{ marginBottom: 4 }}>
+                            <LuImage size={18} />
+                            <Text strong>Custom app icon</Text>
+                        </Flex>
+                        <Text type="secondary" style={{ display: 'block', fontSize: 13, marginBottom: 12 }}>
+                            Select an image from your device, then tap Save.
+                            We auto-adjust uploads into app icon format. Leave empty to use your logo,
+                            or the auto-generated letter icon.
+                        </Text>
+
+                        {currentIconUrl ? (
+                            <div
+                                style={{
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 14,
+                                    padding: '12px',
+                                    background: '#ffffff',
+                                }}
+                            >
+                                <Flex align="center" gap={12}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={currentIconUrl}
+                                        alt="Custom PWA icon"
+                                        style={{
+                                            width: 64,
+                                            height: 64,
+                                            borderRadius: 16,
+                                            objectFit: 'cover',
+                                            background: '#f1f5f9',
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                    <Flex style={{ flex: 1 }} vertical>
+                                        <Text strong>Current icon</Text>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Replace or remove it, then tap Save to apply.
+                                        </Text>
+                                        <Flex gap={8} style={{ marginTop: 10 }}>
+                                            <Button
+                                                disabled={saving}
+                                                fill="none"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                size="small"
+                                                style={{ color: '#0f172a', minWidth: 0 }}
+                                            >
+                                                <Flex align="center" gap={6}>
+                                                    <LuRefreshCw size={14} />
+                                                    <span>Replace</span>
+                                                </Flex>
+                                            </Button>
+                                            <Button
+                                                disabled={saving}
+                                                fill="none"
+                                                onClick={() => {
+                                                    setSelectedIcon(null);
+                                                    setRemoveIconOnSave(!!savedIconUrl.trim());
+                                                }}
+                                                size="small"
+                                                style={{ color: '#b91c1c', minWidth: 0 }}
+                                            >
+                                                <Flex align="center" gap={6}>
+                                                    <LuTrash2 size={14} />
+                                                    <span>Remove</span>
+                                                </Flex>
+                                            </Button>
+                                        </Flex>
+                                    </Flex>
+                                </Flex>
+                            </div>
+                        ) : (
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => {
+                                    if (!enableInstallableApp || saving) return;
+                                    fileInputRef.current?.click();
+                                }}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        if (!enableInstallableApp || saving) return;
+                                        fileInputRef.current?.click();
+                                    }
+                                }}
+                                style={{
+                                    border: '1px dashed #94a3b8',
+                                    borderRadius: 12,
+                                    padding: '12px',
+                                    background: '#f8fafc',
+                                    marginBottom: 12,
+                                    cursor: !enableInstallableApp || saving ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                <Flex align="center" gap={10}>
+                                    <div
+                                        style={{
+                                            width: 34,
+                                            height: 34,
+                                            borderRadius: 10,
+                                            background: '#e2e8f0',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#334155',
+                                        }}
+                                    >
+                                        <LuUpload size={17} />
+                                    </div>
+                                    <Flex style={{ flex: 1 }} vertical>
+                                        <Text strong>
+                                            {hasIconChanges ? 'Icon selected. Tap Save to apply.' : 'Tap to select app icon'}
+                                        </Text>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            PNG/JPG/WEBP, same flow as Brand Settings
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+                            </div>
+                        )}
+                    </div>
+
+                    <Flex gap={8} style={{ marginTop: 16 }}>
+                        <Button
+                            block
+                            disabled={!hasUnsavedChanges || saving}
+                            fill={hasUnsavedChanges && !saving ? 'outline' : 'solid'}
+                            onClick={handleReset}
+                            style={{
+                                minHeight: 44,
+                                background: hasUnsavedChanges && !saving ? '#ffffff' : '#f1f5f9',
+                                borderColor: hasUnsavedChanges && !saving ? '#cbd5e1' : '#e2e8f0',
+                                color: hasUnsavedChanges && !saving ? '#0f172a' : '#94a3b8',
+                            }}
+                        >
+                            Reset
+                        </Button>
+                        <Button
+                            block
+                            color="primary"
+                            disabled={!hasUnsavedChanges || saving}
+                            loading={saving}
+                            onClick={handleSave}
+                            style={{ minHeight: 44 }}
+                        >
+                            {saving ? 'Saving…' : 'Save'}
+                        </Button>
+                    </Flex>
+                </Card>
+
                 {/* How it looks — mobile cheat-sheet */}
                 <Card>
                     <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>How it looks to customers</Title>
@@ -332,6 +536,12 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     <Text type="secondary">• Once installed, opens full-screen from the home screen</Text>
                 </Card>
             </Flex>
+            <ImageUploadInput
+                fileInputRef={fileInputRef}
+                onUploadFile={handleIconSelected}
+                compression={false}
+                maxSizeMB={10}
+            />
         </Flex>
     );
 }

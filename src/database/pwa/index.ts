@@ -16,6 +16,8 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requestBodyComposer } from '@lib/apiHelper';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { uploadFile } from '@lib/firebase/storage';
+import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { doc, updateDoc } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.STORES;
@@ -39,9 +41,16 @@ export interface PWASettings {
 export type PWAIconMode = 'generated' | 'override';
 
 export interface PWAIconOverride {
-    /** Full Firebase Storage URL for an owner-uploaded icon. Must be square, >= 512px. */
+    /** Full Firebase Storage URL for an owner-uploaded icon. */
     pwaIconOverrideUrl: string | null;
     pwaIconMode: PWAIconMode;
+}
+
+export interface PWAIconUploadInput {
+    file: File;
+    tenantId: string | number;
+    storeId: string | number;
+    onProgress?: (progress: number) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -100,6 +109,30 @@ export const updatePWAIconOverride = async (
         { storeId, override },
         'updatePWAIconOverride',
     );
+};
+
+/**
+ * Upload a custom PWA icon to Firebase Storage using the same tenant/store
+ * isolation pattern used elsewhere in the codebase.
+ */
+export const uploadPWAIconOverride = async ({
+    file,
+    tenantId,
+    storeId,
+    onProgress,
+}: PWAIconUploadInput): Promise<string> => {
+    const extFromType = file.type.split('/')[1] || 'png';
+    const safeExt = extFromType.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+    const fileId = `${Date.now()}-pwa-icon.${safeExt}`;
+    const storagePath = generateStoragePath({
+        collection: 'stores',
+        fileType: 'pwa-icons',
+        session: { tId: tenantId, sId: storeId },
+        fileId,
+    });
+
+    const result = await uploadFile(storagePath, file, onProgress || (() => { }));
+    return result.downloadURL;
 };
 
 // ─────────────────────────────────────────────────────────────

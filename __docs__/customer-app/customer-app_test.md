@@ -38,6 +38,25 @@ This document should be checked line-by-line before go-live.
 | Customer menu refresh hardening for state + scroll preservation | ✅ Done | `src/hooks/useMenuFreshness.ts`, `src/components/templates/website/clientWebsite/index.tsx` |
 | Offline page warning removed (`themeColor` moved to `viewport`) | ✅ Done | `src/app/offline/page.tsx` |
 | Offline copy aligned with frozen “never stale menu offline” policy | ✅ Done | `src/app/offline/page.tsx` |
+| Icon upload no longer hard-fails on non-square images | ✅ Done | `src/lib/pwa/iconUploadUtils.ts`, `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Icon flow changed to preview-first (no direct upload on select) | ✅ Done | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Icon URL input removed from Customer App UI (internal URL no longer exposed) | ✅ Done | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Mobile More-tab Customer App now supports Save + Reset for all settings including pending icon upload/removal | ✅ Done | `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+
+### Icon Upload Regression Note (Resolved)
+
+**Issue observed during device QA:** upload flow repeatedly showed `App icon must be square`.
+
+**Root cause:** desktop and mobile upload handlers were still enforcing strict square validation.
+
+**Fix applied:** uploads now pass through a shared pre-upload normalizer (`preparePWAIconFile`) that:
+
+- accepts image files (PNG/JPG/WEBP)
+- auto-converts to a square PNG app icon canvas
+- centers the source image with safe padding
+- rejects only truly invalid inputs (non-image, oversize, too-small images)
+
+**Expected behavior now:** non-square logos should upload successfully and be auto-adjusted.
 
 ---
 
@@ -229,6 +248,11 @@ For speed, use this sequence:
 ### Localhost Checklist
 
 - [x] `localhost:3000` works for platform-side checks
+- [ ] Icon upload tested with a non-square image (should auto-adjust, not reject)
+- [ ] Icon selection shows local preview first (no upload until Save)
+- [ ] Icon URL input is hidden after icon workflow update
+- [ ] Mobile Save button applies pending icon upload/removal together with settings
+- [ ] Mobile Reset button restores unsaved settings/icon changes
 - [ ] Tenant-origin simulation tested via `Host` header
 - [ ] Tenant-origin simulation tested via `/etc/hosts`
 - [ ] Manifest verified locally with tenant host

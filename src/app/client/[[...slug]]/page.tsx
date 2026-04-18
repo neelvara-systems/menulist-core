@@ -423,6 +423,9 @@ export async function generateMetadata(): Promise<Metadata> {
     const appleTouchIconUrl = pwaEnabled
         ? `/api/app-icons/${storeData.id}/180`
         : undefined;
+    const appleWebAppTitle =
+        storeData.pwaSettings?.pwaShortName?.trim() ||
+        storeName;
     const themeColor: string | undefined = storeData.publicPresence?.accentColor;
 
     return {
@@ -453,6 +456,11 @@ export async function generateMetadata(): Promise<Metadata> {
         // Per-tenant PWA metadata — overrides defaults from client/layout.tsx
         ...(appleTouchIconUrl
             ? {
+                appleWebApp: {
+                    capable: true,
+                    statusBarStyle: "default",
+                    title: appleWebAppTitle,
+                },
                 icons: {
                     apple: [
                         { url: appleTouchIconUrl, sizes: "180x180" },

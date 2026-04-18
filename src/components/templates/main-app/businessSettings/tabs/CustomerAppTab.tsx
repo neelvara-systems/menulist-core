@@ -6,20 +6,22 @@
  * Self-contained (manages its own state + save). Reads initial values from
  * storeDetails and calls:
  *   - updatePWASettings() DAL on Save (toggles + short name)
- *   - updatePWAIconOverride() DAL on icon save/clear (icon override URL)
+ *   - updatePWAIconOverride() DAL on Save (icon upload/clear)
  *
- * Owners can paste a Firebase Storage URL for a custom PWA icon. Full upload
- * widget is a Day-Three polish; the URL field already covers the common case
- * (owner uploads elsewhere, pastes the link).
+ * Owners select an icon, preview it, and then save all changes in one action.
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
-import { resolvePWASettings, updatePWAIconOverride, updatePWASettings } from '@database/pwa';
+import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
+import type { UserUploadedFileType } from '@type/common';
 import { Alert, Button, Card, Flex, Input, Space, Switch, Typography, message } from 'antd';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCopy, LuImage, LuSmartphone } from 'react-icons/lu';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { LuCopy, LuImage, LuRefreshCw, LuSmartphone, LuTrash2, LuUpload } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -35,33 +37,173 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
     const [enableInstallableApp, setEnableInstallableApp] = useState(initial.enableInstallableApp);
     const [promoteInstallation, setPromoteInstallation] = useState(initial.promoteInstallation);
     const [pwaShortName, setPwaShortName] = useState(initial.pwaShortName);
-    const [iconOverrideUrl, setIconOverrideUrl] = useState<string>(initialIconUrl);
-    const [savingIcon, setSavingIcon] = useState(false);
+    const [originalDraft, setOriginalDraft] = useState({
+        enableInstallableApp: initial.enableInstallableApp,
+        promoteInstallation: initial.promoteInstallation,
+        pwaShortName: initial.pwaShortName,
+        iconUrl: initialIconUrl,
+    });
+    const [savedIconUrl, setSavedIconUrl] = useState<string>(initialIconUrl);
+    const [selectedIcon, setSelectedIcon] = useState<UserUploadedFileType | null>(
+        initialIconUrl
+            ? {
+                name: 'customer-app-icon',
+                size: 0,
+                type: '',
+                url: initialIconUrl,
+            }
+            : null,
+    );
+    const [removeIconOnSave, setRemoveIconOnSave] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [dirty, setDirty] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const selectedIconUrl = (selectedIcon?.url || '').trim();
+    const currentIconUrl = removeIconOnSave ? '' : selectedIconUrl;
+    const hasSettingsChanges = (
+        enableInstallableApp !== originalDraft.enableInstallableApp
+        || promoteInstallation !== originalDraft.promoteInstallation
+        || pwaShortName.trim() !== originalDraft.pwaShortName
+    );
+    const hasIconChanges = removeIconOnSave || selectedIconUrl !== originalDraft.iconUrl;
+    const hasUnsavedChanges = hasSettingsChanges || hasIconChanges;
 
     // Re-sync when storeDetails changes (e.g., store switch)
     useEffect(() => {
         setEnableInstallableApp(initial.enableInstallableApp);
         setPromoteInstallation(initial.promoteInstallation);
         setPwaShortName(initial.pwaShortName);
-        setIconOverrideUrl(initialIconUrl);
-        setDirty(false);
+        setOriginalDraft({
+            enableInstallableApp: initial.enableInstallableApp,
+            promoteInstallation: initial.promoteInstallation,
+            pwaShortName: initial.pwaShortName,
+            iconUrl: initialIconUrl,
+        });
+        setSavedIconUrl(initialIconUrl);
+        setSelectedIcon(
+            initialIconUrl
+                ? {
+                    name: 'customer-app-icon',
+                    size: 0,
+                    type: '',
+                    url: initialIconUrl,
+                }
+                : null,
+        );
+        setRemoveIconOnSave(false);
     }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName, initialIconUrl]);
 
-    const markDirty = () => setDirty(true);
+    const handleReset = () => {
+        if (!hasUnsavedChanges || saving) return;
+        setEnableInstallableApp(originalDraft.enableInstallableApp);
+        setPromoteInstallation(originalDraft.promoteInstallation);
+        setPwaShortName(originalDraft.pwaShortName);
+        setSavedIconUrl(originalDraft.iconUrl);
+        setSelectedIcon(
+            originalDraft.iconUrl
+                ? {
+                    name: 'customer-app-icon',
+                    size: 0,
+                    type: '',
+                    url: originalDraft.iconUrl,
+                }
+                : null,
+        );
+        setRemoveIconOnSave(false);
+    };
+
+    const dataUrlToFile = (dataUrl: string, fileName: string, fallbackMime?: string): File => {
+        const parts = dataUrl.split(',');
+        if (parts.length !== 2) {
+            throw new Error('Invalid icon data format');
+        }
+        const mimeFromData = parts[0].match(/data:(.*?);base64/)?.[1];
+        const mime = fallbackMime || mimeFromData || 'image/png';
+        const binary = atob(parts[1]);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return new File([bytes], fileName, { type: mime });
+    };
 
     const handleSave = async () => {
-        if (!storeDetails?.storeId) return;
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
         setSaving(true);
         try {
-            await updatePWASettings(storeDetails.storeId, {
+            const nextShortName = pwaShortName.trim();
+            const settingsPatch: {
+                enableInstallableApp?: boolean;
+                promoteInstallation?: boolean;
+                pwaShortName?: string;
+            } = {};
+            if (enableInstallableApp !== originalDraft.enableInstallableApp) {
+                settingsPatch.enableInstallableApp = enableInstallableApp;
+            }
+            if (promoteInstallation !== originalDraft.promoteInstallation) {
+                settingsPatch.promoteInstallation = promoteInstallation;
+            }
+            if (nextShortName !== originalDraft.pwaShortName) {
+                settingsPatch.pwaShortName = nextShortName;
+            }
+            if (Object.keys(settingsPatch).length > 0) {
+                await updatePWASettings(storeDetails.storeId, settingsPatch);
+            }
+
+            let nextIconUrl = savedIconUrl.trim();
+            if (!removeIconOnSave && selectedIconUrl && selectedIconUrl !== originalDraft.iconUrl) {
+                if (!selectedIconUrl.startsWith('data:')) {
+                    throw new Error('Selected icon format is invalid. Please reselect the icon.');
+                }
+                const rawFile = dataUrlToFile(
+                    selectedIconUrl,
+                    selectedIcon?.name || 'customer-app-icon.png',
+                    selectedIcon?.type || undefined,
+                );
+                const prepared = await preparePWAIconFile(rawFile);
+                const uploadedUrl = await uploadPWAIconOverride({
+                    file: prepared.file,
+                    tenantId: storeDetails.tenantId,
+                    storeId: storeDetails.storeId,
+                });
+                await updatePWAIconOverride(storeDetails.storeId, {
+                    pwaIconOverrideUrl: uploadedUrl,
+                    pwaIconMode: 'override',
+                });
+                if (nextIconUrl && nextIconUrl !== uploadedUrl && nextIconUrl.includes('firebasestorage.googleapis.com')) {
+                    void deleteFileByUrl(nextIconUrl);
+                }
+                nextIconUrl = uploadedUrl;
+            } else if (removeIconOnSave && nextIconUrl) {
+                await updatePWAIconOverride(storeDetails.storeId, {
+                    pwaIconOverrideUrl: null,
+                    pwaIconMode: 'generated',
+                });
+                if (nextIconUrl.includes('firebasestorage.googleapis.com')) {
+                    void deleteFileByUrl(nextIconUrl);
+                }
+                nextIconUrl = '';
+            }
+
+            setSavedIconUrl(nextIconUrl);
+            setSelectedIcon(
+                nextIconUrl
+                    ? {
+                        name: 'customer-app-icon',
+                        size: 0,
+                        type: '',
+                        url: nextIconUrl,
+                    }
+                    : null,
+            );
+            setRemoveIconOnSave(false);
+            setOriginalDraft({
                 enableInstallableApp,
                 promoteInstallation,
-                pwaShortName: pwaShortName.trim(),
+                pwaShortName: nextShortName,
+                iconUrl: nextIconUrl,
             });
             message.success('Customer App settings saved');
-            setDirty(false);
         } catch (err) {
             console.error('[CustomerAppTab] save failed:', err);
             message.error('Could not save. Please try again.');
@@ -96,27 +238,11 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         }
     };
 
-    const handleSaveIcon = async () => {
-        if (!storeDetails?.storeId) return;
-        const url = iconOverrideUrl.trim();
-        // Basic validation — accept Firebase Storage / https URLs ending in image extensions.
-        if (url && !/^https:\/\/.+\.(png|jpg|jpeg|webp)(\?|$)/i.test(url)) {
-            message.error('Icon URL must be https and end with .png / .jpg / .webp');
-            return;
-        }
-        setSavingIcon(true);
-        try {
-            await updatePWAIconOverride(storeDetails.storeId, {
-                pwaIconOverrideUrl: url || null,
-                pwaIconMode: url ? 'override' : 'generated',
-            });
-            message.success(url ? 'Custom icon saved' : 'Reverted to auto-generated icon');
-        } catch (err) {
-            console.error('[CustomerAppTab] icon save failed:', err);
-            message.error('Could not save icon. Please try again.');
-        } finally {
-            setSavingIcon(false);
-        }
+    const handleIconSelected = async (file: UserUploadedFileType) => {
+        if (!file?.url) return;
+        setSelectedIcon(file);
+        setRemoveIconOnSave(false);
+        message.success('Icon selected. Click Save to apply.');
     };
 
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) {
@@ -144,23 +270,37 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     </Flex>
                 }
                 extra={
-                    <button
-                        type="button"
-                        disabled={!dirty || saving}
-                        onClick={handleSave}
-                        style={{
-                            padding: '8px 18px',
-                            background: dirty ? '#0f172a' : '#cbd5e1',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 8,
-                            cursor: dirty && !saving ? 'pointer' : 'not-allowed',
-                            fontSize: 14,
-                            fontWeight: 600,
-                        }}
-                    >
-                        {saving ? 'Saving…' : 'Save'}
-                    </button>
+                    <Flex align="center" gap={8}>
+                        <Button
+                            onClick={handleReset}
+                            disabled={!hasUnsavedChanges || saving}
+                            style={{
+                                background: hasUnsavedChanges && !saving ? '#ffffff' : '#f1f5f9',
+                                borderColor: hasUnsavedChanges && !saving ? '#cbd5e1' : '#e2e8f0',
+                                color: hasUnsavedChanges && !saving ? '#0f172a' : '#94a3b8',
+                                cursor: hasUnsavedChanges && !saving ? 'pointer' : 'not-allowed',
+                            }}
+                        >
+                            Reset
+                        </Button>
+                        <button
+                            type="button"
+                            disabled={!hasUnsavedChanges || saving}
+                            onClick={handleSave}
+                            style={{
+                                padding: '8px 18px',
+                                background: hasUnsavedChanges ? '#0f172a' : '#cbd5e1',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 8,
+                                cursor: hasUnsavedChanges && !saving ? 'pointer' : 'not-allowed',
+                                fontSize: 14,
+                                fontWeight: 600,
+                            }}
+                        >
+                            {saving ? 'Saving…' : 'Save'}
+                        </button>
+                    </Flex>
                 }
             >
                 <Paragraph type="secondary" style={{ marginBottom: 24 }}>
@@ -180,10 +320,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     </div>
                     <Switch
                         checked={enableInstallableApp}
-                        onChange={(v) => {
-                            setEnableInstallableApp(v);
-                            markDirty();
-                        }}
+                        onChange={(v) => setEnableInstallableApp(v)}
                     />
                 </Flex>
 
@@ -199,10 +336,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     <Switch
                         checked={promoteInstallation}
                         disabled={!enableInstallableApp}
-                        onChange={(v) => {
-                            setPromoteInstallation(v);
-                            markDirty();
-                        }}
+                        onChange={(v) => setPromoteInstallation(v)}
                     />
                 </Flex>
 
@@ -218,10 +352,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         maxLength={12}
                         placeholder="e.g. Joe's"
                         disabled={!enableInstallableApp}
-                        onChange={(e) => {
-                            setPwaShortName(e.target.value);
-                            markDirty();
-                        }}
+                        onChange={(e) => setPwaShortName(e.target.value)}
                         style={{ maxWidth: 280 }}
                         showCount
                     />
@@ -234,48 +365,121 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         <Text strong>Custom app icon (optional)</Text>
                     </Flex>
                     <Paragraph type="secondary" style={{ margin: '4px 0 12px' }}>
-                        Paste a public HTTPS URL for a square PNG/JPG/WEBP (recommended 512×512). Leave
-                        blank to use your logo — or an auto-generated letter icon if no logo is set.
+                        Select an image from your device, then click Save.
+                        We auto-adjust uploads into app icon format. Leave empty to use your logo —
+                        or an auto-generated letter icon if no logo is set.
                     </Paragraph>
-                    <Flex gap={8} align="center" wrap="wrap">
-                        <Input
-                            value={iconOverrideUrl}
-                            placeholder="https://firebasestorage.googleapis.com/.../icon.png"
-                            disabled={!enableInstallableApp}
-                            onChange={(e) => setIconOverrideUrl(e.target.value)}
-                            style={{ flex: 1, minWidth: 280, maxWidth: 560 }}
-                        />
-                        <Button
-                            onClick={handleSaveIcon}
-                            loading={savingIcon}
-                            disabled={!enableInstallableApp || iconOverrideUrl === initialIconUrl}
-                            type="primary"
+                    {currentIconUrl ? (
+                        <div
+                            style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 14,
+                                padding: '12px',
+                                background: '#ffffff',
+                                maxWidth: 560,
+                            }}
                         >
-                            Save icon
-                        </Button>
-                        {initialIconUrl ? (
-                            <Button
-                                onClick={() => {
-                                    setIconOverrideUrl('');
-                                    // Persist clear immediately (no separate confirm).
-                                    void handleSaveIcon();
-                                }}
-                                disabled={!enableInstallableApp || savingIcon}
-                            >
-                                Clear
-                            </Button>
-                        ) : null}
-                    </Flex>
-                    {initialIconUrl ? (
-                        <div style={{ marginTop: 12 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Preview:</Text>
-                            <img
-                                src={initialIconUrl}
-                                alt="Custom PWA icon preview"
-                                style={{ display: 'block', width: 72, height: 72, borderRadius: 16, marginTop: 6, objectFit: 'cover', background: '#f1f5f9' }}
-                            />
+                            <Flex align="center" gap={12}>
+                                <img
+                                    src={currentIconUrl}
+                                    alt="Custom PWA icon preview"
+                                    style={{
+                                        width: 72,
+                                        height: 72,
+                                        borderRadius: 16,
+                                        objectFit: 'cover',
+                                        background: '#f1f5f9',
+                                        flexShrink: 0,
+                                    }}
+                                />
+                                <div style={{ minWidth: 0 }}>
+                                    <Text strong>Current icon</Text>
+                                    <div>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Replace or remove it, then save to apply.
+                                        </Text>
+                                    </div>
+                                    <Flex gap={8} align="center" wrap="wrap" style={{ marginTop: 10 }}>
+                                        <Button
+                                            size="small"
+                                            type="text"
+                                            icon={<LuRefreshCw size={14} />}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={!enableInstallableApp || saving}
+                                            style={{ color: '#0f172a', paddingInline: 8 }}
+                                        >
+                                            Replace
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            type="text"
+                                            icon={<LuTrash2 size={14} />}
+                                            onClick={() => {
+                                                setSelectedIcon(null);
+                                                setRemoveIconOnSave(!!savedIconUrl.trim());
+                                            }}
+                                            disabled={!enableInstallableApp || saving}
+                                            style={{ color: '#b91c1c', paddingInline: 8 }}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </Flex>
+                                </div>
+                            </Flex>
                         </div>
-                    ) : null}
+                    ) : (
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                                if (!enableInstallableApp || saving) return;
+                                fileInputRef.current?.click();
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    if (!enableInstallableApp || saving) return;
+                                    fileInputRef.current?.click();
+                                }
+                            }}
+                            style={{
+                                border: '1px dashed #94a3b8',
+                                borderRadius: 12,
+                                padding: '12px 14px',
+                                background: '#f8fafc',
+                                cursor: !enableInstallableApp || saving ? 'not-allowed' : 'pointer',
+                                opacity: !enableInstallableApp ? 0.6 : 1,
+                                maxWidth: 560,
+                            }}
+                        >
+                            <Flex align="center" gap={10}>
+                                <div
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 10,
+                                        background: '#e2e8f0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#334155',
+                                    }}
+                                >
+                                    <LuUpload size={18} />
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <Text strong>
+                                        {hasIconChanges ? 'Icon selected. Click Save to apply.' : 'Click to select app icon'}
+                                    </Text>
+                                    <div>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            PNG/JPG/WEBP, same flow as Brand Settings
+                                        </Text>
+                                    </div>
+                                </div>
+                            </Flex>
+                        </div>
+                    )}
                 </div>
 
                 {/* Direct install link — bypasses the 3-visit threshold when an
@@ -331,6 +535,12 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     }
                 />
             </Card>
+            <ImageUploadInput
+                fileInputRef={fileInputRef}
+                onUploadFile={handleIconSelected}
+                compression={false}
+                maxSizeMB={10}
+            />
         </div>
     );
 }
