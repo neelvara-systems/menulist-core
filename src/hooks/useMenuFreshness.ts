@@ -47,6 +47,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
+export const CUSTOMER_MENU_REFRESH_EVENT = 'menulist:customer-menu-refresh';
+
 export interface UseMenuFreshnessOptions {
     /**
      * Minimum number of milliseconds the tab must have been hidden
@@ -55,6 +57,14 @@ export interface UseMenuFreshnessOptions {
      * Default: 60_000 (60 seconds).
      */
     minHiddenMs?: number;
+    /**
+     * Global cooldown between consecutive refreshes, regardless of
+     * trigger (visibility or network reconnect). Protects against
+     * repeated `router.refresh()` calls when a user rapidly
+     * app-switches (e.g. WhatsApp ↔ menu ↔ WhatsApp) or toggles
+     * airplane mode. Default: 60_000 (60 seconds).
+     */
+    minRefreshIntervalMs?: number;
     /**
      * Whether to refresh when the network transitions offline → online.
      * Default: true.
@@ -71,16 +81,38 @@ export interface UseMenuFreshnessOptions {
 export function useMenuFreshness(options: UseMenuFreshnessOptions = {}): void {
     const {
         minHiddenMs = 60_000,
+        minRefreshIntervalMs = 60_000,
         refreshOnReconnect = true,
         enabled = true,
     } = options;
 
     const router = useRouter();
     const hiddenAtRef = useRef<number | null>(null);
+    const lastRefreshAtRef = useRef<number>(0);
 
     useEffect(() => {
         if (!enabled) return;
         if (typeof document === 'undefined') return;
+
+        // Debounced refresh — respects the global cooldown regardless of
+        // which trigger fired. Prevents repeated refreshes when a user
+        // rapidly app-switches (e.g. every few seconds between WhatsApp
+        // and the menu). Cooldown starts from the LAST successful refresh.
+        const triggerRefresh = () => {
+            const now = Date.now();
+            if (now - lastRefreshAtRef.current < minRefreshIntervalMs) {
+                return; // suppressed by cooldown
+            }
+            lastRefreshAtRef.current = now;
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent(CUSTOMER_MENU_REFRESH_EVENT));
+            }
+            // router.refresh() re-runs server components for the current
+            // route. Hits Vercel Edge Data Cache first (free if tag still
+            // valid), only touches Firestore if owner actually changed
+            // menu data and the tag was invalidated.
+            router.refresh();
+        };
 
         const onVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
@@ -93,12 +125,7 @@ export function useMenuFreshness(options: UseMenuFreshnessOptions = {}): void {
                 if (hiddenAt === null) return;
                 const hiddenFor = Date.now() - hiddenAt;
                 if (hiddenFor >= minHiddenMs) {
-                    // router.refresh() re-runs server components for the
-                    // current route. Hits Vercel Edge Data Cache first
-                    // (free if tag still valid), only touches Firestore
-                    // if owner actually changed menu data and the tag
-                    // was invalidated.
-                    router.refresh();
+                    triggerRefresh();
                 }
             }
         };
@@ -106,7 +133,7 @@ export function useMenuFreshness(options: UseMenuFreshnessOptions = {}): void {
         const onOnline = () => {
             if (!refreshOnReconnect) return;
             if (document.visibilityState !== 'visible') return;
-            router.refresh();
+            triggerRefresh();
         };
 
         document.addEventListener('visibilitychange', onVisibilityChange);
@@ -120,7 +147,7 @@ export function useMenuFreshness(options: UseMenuFreshnessOptions = {}): void {
                 window.removeEventListener('online', onOnline);
             }
         };
-    }, [router, minHiddenMs, refreshOnReconnect, enabled]);
+    }, [router, minHiddenMs, minRefreshIntervalMs, refreshOnReconnect, enabled]);
 }
 
 export default useMenuFreshness;

@@ -166,19 +166,24 @@ Phone home screens only show about 12 characters under app icons.
 ### Problem: Customer says the app shows old menu
 
 **Why this happens:**
-The customer's phone may have cached an old version. This is rare but can happen.
+The customer opened your app while online, then left it open in the background for a while. When they came back, they saw the version from when they first opened it. The app fetches fresh data when:
+
+- They first open the app (always fetches latest)
+- They return to the app after switching away for 60+ seconds
+- Their internet reconnects after being offline
+
+If they never left the app (kept it visible the whole time), they won't see updates until they close and reopen.
 
 **How to fix it:**
 
 Tell the customer:
 
-1. Remove the app from home screen (long-press → Remove)
-2. Visit your menu link again
-3. Add to home screen again
+1. Close the app completely (swipe it away from recent apps)
+2. Reopen the app with internet on
 
-This gives them the freshest version.
+That's it — they'll see your latest menu immediately.
 
-> 💡 **Note:** Normally the app updates automatically when you change your menu. Only old installs occasionally need a refresh.
+> 💡 **Note:** The app never caches your menu for offline use. If they're offline, they'll see an "offline" screen, not a stale menu. This prevents showing wrong prices or sold-out items.
 
 ### Problem: "Enable Installable App" toggle is grayed out
 

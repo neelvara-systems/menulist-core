@@ -97,6 +97,31 @@ interface AggregationResults {
 }
 
 /**
+ * Customer App (`projectId='customerApp'`) reuses the shared analytics
+ * collection and rollup pipeline, but the Gemini owner-dashboard summaries
+ * remain menu-specific. Keep that boundary explicit so Customer App is fully
+ * aggregated without being forced through menu-only AI prompts.
+ */
+function isMenuAnalyticsProject(projectId: string): boolean {
+    return projectId !== 'customerApp';
+}
+
+function hasMenuAnalyticsActivity(data: DailyMetrics | Record<string, any> | null | undefined): boolean {
+    if (!data) return false;
+
+    return Boolean(
+        (typeof data.totalViews === 'number' && data.totalViews > 0)
+        || (typeof data.totalClicks === 'number' && data.totalClicks > 0)
+        || (typeof data.totalSessions === 'number' && data.totalSessions > 0)
+        || (typeof data.totalOrders === 'number' && data.totalOrders > 0)
+        || (typeof data.totalRevenue === 'number' && data.totalRevenue > 0)
+        || (typeof data.totalSearches === 'number' && data.totalSearches > 0)
+        || (typeof data.totalRecommendationClicks === 'number' && data.totalRecommendationClicks > 0)
+        || (typeof data.totalDecisionBlocksRendered === 'number' && data.totalDecisionBlocksRendered > 0)
+    );
+}
+
+/**
  * Main scheduled function - runs daily at 3:00 AM UTC
  */
 export const aggregateCustomerAnalytics = onSchedule({
@@ -184,8 +209,8 @@ export const aggregateCustomerAnalytics = onSchedule({
                     results.weeklyRollups++;
                     console.log(`  ✓ Weekly rollup created for ${projectKey}`);
 
-                    // 2b. Generate Weekly AI summary (only on Mondays, after weekly rollup)
-                    if (weeklyAggregated.aggregated.totalViews > 0) {
+                    // 2b. Generate Weekly AI summary (menu analytics only).
+                    if (isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(weeklyAggregated.aggregated)) {
                         try {
                             await generateAndSaveWeeklyAISummary(
                                 db, tId, sId, projectId,
@@ -208,8 +233,8 @@ export const aggregateCustomerAnalytics = onSchedule({
                     results.monthlyRollups++;
                     console.log(`  ✓ Monthly rollup created for ${projectKey}`);
 
-                    // 3b. Generate Monthly AI summary
-                    if (monthlyAggregated.aggregated.totalViews > 0) {
+                    // 3b. Generate Monthly AI summary (menu analytics only).
+                    if (isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(monthlyAggregated.aggregated)) {
                         try {
                             await generateAndSaveMonthlyAISummary(
                                 db, tId, sId, projectId,
@@ -226,8 +251,8 @@ export const aggregateCustomerAnalytics = onSchedule({
                     }
                 }
 
-                // 4. Generate Daily AI summary (every night)
-                if (yesterdayDoc && yesterdayDoc.data.totalViews > 0) {
+                // 4. Generate Daily AI summary (menu analytics only).
+                if (isMenuAnalyticsProject(projectId) && yesterdayDoc && hasMenuAnalyticsActivity(yesterdayDoc.data)) {
                     try {
                         await generateAndSaveDailyAISummary(db, tId, sId, projectId, yesterdayDoc.data, yesterdayStr);
                         results.dailyAiSummaries++;

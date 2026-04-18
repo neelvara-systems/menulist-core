@@ -608,15 +608,15 @@ src/database/
 │   └── index.ts                       # PWA settings DAL
 
 public/
-├── sw-customer-app.js                 # Minimal service worker (no caching)
+├── sw-customer.js                     # Minimal service worker (no caching) - customer tenants only
 └── apple-touch-icon.png               # Default Apple touch icon (per-tenant served via icon route)
 ```
 
 ### Modified Files
 
 ```
-src/app/_client/[[...slug]]/page.tsx    # Add install prompt injection, standalone/shortcut event firing
-src/app/_client/layout.tsx             # Add manifest link, service worker registration
+src/app/client/[[...slug]]/page.tsx     # Add install prompt injection, standalone/shortcut event firing
+src/app/client/layout.tsx              # Add manifest link (ServiceWorkerRegister is in root layout.tsx)
 src/database/stores/index.ts           # Add PWA settings to store DAL
 src/config/features.ts                 # Add feature flags
 src/lib/analytics/unified.ts           # Add 8 CUSTOMER_APP_* events + switch cases
@@ -627,36 +627,94 @@ functions/src/aggregateCustomerAnalytics.ts  # Extend DailyMetrics, aggregateDai
 
 ---
 
-## Service Worker (Minimal)
+## Service Worker (Minimal, Per-Tenant)
 
-**File:** `public/sw-customer-app.js`
+**Files:**
+
+- `public/sw.js` — next-pwa generated (owner dashboard origins: menulist.ai, app.menulist.ai)
+- `public/sw-customer.js` — Hand-rolled minimal (customer tenant origins: {subdomain}.menulist.ai, custom domains)
+
+**Customer SW (`public/sw-customer.js`):**
 
 ```javascript
-// MINIMAL SERVICE WORKER — No caching logic
-// Purpose: Install reliability only
+/**
+ * Customer App Service Worker (Hand-Rolled, Minimal)
+ * Frozen Policy: NO menu caching. NO Firestore caching.
+ * Purpose: Install reliability + branded offline fallback only.
+ * @see customer-app_spec.md § 8.1 Hardening Rules
+ */
+const OFFLINE_URL = "/offline";
+const OFFLINE_CACHE = "customer-app-offline-v1";
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(OFFLINE_CACHE);
+      await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+      await self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key !== OFFLINE_CACHE)
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
+  );
 });
 
-// NO fetch handler — no caching
-// NO precache — no asset caching
-// This SW exists solely to satisfy install criteria on Android
+// Navigation-only fallback. Non-navigation requests passthrough with
+// NO caching. Offline = branded offline page only, NEVER stale menu.
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.mode !== "navigate") return;
+  event.respondWith(
+    (async () => {
+      try {
+        return await fetch(request);
+      } catch (err) {
+        const cache = await caches.open(OFFLINE_CACHE);
+        const cached = await cache.match(OFFLINE_URL);
+        if (cached) return cached;
+        return new Response(
+          '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
+            '<p style="font-family:system-ui;padding:2rem;text-align:center">' +
+            "You are offline. Please reconnect and try again.</p>",
+          { headers: { "Content-Type": "text/html; charset=utf-8" } },
+        );
+      }
+    })(),
+  );
+});
 ```
 
 **Registration:**
 
+Per-tenant registration is handled by `src/components/ServiceWorkerRegister.tsx`, mounted in `src/app/layout.tsx`:
+
 ```typescript
-// src/app/_client/layout.tsx
-useEffect(() => {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw-customer-app.js");
-  }
-}, []);
+// Uses resolveDomain(window.location.host) to detect tenant type
+// - Owner origins (menulist.ai, app.menulist.ai) → register /sw.js
+// - Customer origins (subdomain.menulist.ai, custom domains) → register /sw-customer.js
+// Auto-unregisters stale SW from previous auto-register config for migration safety.
+```
+
+**Client Freshness Hook (`src/hooks/useMenuFreshness.ts`):**
+
+```typescript
+// Mounted in ClientMenuRenderer (src/components/templates/website/clientWebsite/index.tsx)
+// Refreshes server components on:
+// - visibilitychange → visible after ≥60s hidden (configurable via minHiddenMs)
+// - network reconnect while visible (if refreshOnReconnect enabled)
+// Global cooldown: minRefreshIntervalMs (default 60s) prevents refresh loops
+// Relies on existing unstable_cache + revalidateTag — zero new Firebase cost
 ```
 
 ---
@@ -1130,19 +1188,19 @@ open https://localhost:3000/api/app-icons/123/192
 
 ### Sequence 1: Foundation
 
-| Task                                                                    | File(s)                                           | Status |
-| ----------------------------------------------------------------------- | ------------------------------------------------- | ------ |
-| [ ] Resolve `next-pwa` scoping (remove customer-facing runtime caching) | `next.config.js`                                  | ⏳     |
-| [ ] Dynamic manifest route at tenant origin                             | `src/app/manifest.webmanifest/route.ts`           | ⏳     |
-| [ ] Eligibility gate (active + published)                               | `src/lib/pwa/eligibility.ts`                      | ⏳     |
-| [ ] Icon generation endpoint                                            | `src/app/api/app-icons/[storeId]/[size]/route.ts` | ⏳     |
-| [ ] Minimal service worker (no caching)                                 | `public/sw-customer-app.js`                       | ⏳     |
-| [ ] Manifest `<link>` in tenant layout                                  | `src/app/client/layout.tsx` or equivalent         | ⏳     |
-| [ ] Service worker registration (tenant origin only)                    | `src/app/client/layout.tsx`                       | ⏳     |
-| [ ] Apple touch icon route                                              | `src/app/apple-touch-icon.png/route.ts`           | ⏳     |
-| [ ] DB schema additions                                                 | `stores.branding.pwa*`, `stores.pwaSettings`      | ⏳     |
-| [ ] Firestore rules for new fields                                      | `firestore.rules`                                 | ⏳     |
-| [ ] Unavailable-store screen (churn policy)                             | `src/app/client/_components/Unavailable.tsx`      | ⏳     |
+| Task                                                                    | File(s)                                                                    | Status |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------ |
+| [ ] Resolve `next-pwa` scoping (remove customer-facing runtime caching) | `next.config.js`                                                           | ⏳     |
+| [ ] Dynamic manifest route at tenant origin                             | `src/app/manifest.webmanifest/route.ts`                                    | ⏳     |
+| [ ] Eligibility gate (active + published)                               | `src/lib/pwa/eligibility.ts`                                               | ⏳     |
+| [ ] Icon generation endpoint                                            | `src/app/api/app-icons/[storeId]/[size]/route.ts`                          | ⏳     |
+| [x] Minimal service worker (no caching)                                 | `public/sw-customer.js`                                                    | ✅     |
+| [ ] Manifest `<link>` in tenant layout                                  | `src/app/client/layout.tsx` or equivalent                                  | ⏳     |
+| [x] Service worker registration (per-tenant, auto-detect)               | `src/components/ServiceWorkerRegister.tsx` mounted in `src/app/layout.tsx` | ✅     |
+| [ ] Apple touch icon route                                              | `src/app/apple-touch-icon.png/route.ts`                                    | ⏳     |
+| [ ] DB schema additions                                                 | `stores.branding.pwa*`, `stores.pwaSettings`                               | ⏳     |
+| [ ] Firestore rules for new fields                                      | `firestore.rules`                                                          | ⏳     |
+| [ ] Unavailable-store screen (churn policy)                             | `src/app/client/_components/Unavailable.tsx`                               | ⏳     |
 
 ### Sequence 2: Install Prompt
 

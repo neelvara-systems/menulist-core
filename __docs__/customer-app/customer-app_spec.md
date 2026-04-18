@@ -327,18 +327,20 @@ New customers see updated branding
 
 #### Policy Rules
 
-| Rule                                            | Status    |
-| ----------------------------------------------- | --------- |
-| Launch online → always fetch latest menu        | Mandatory |
-| Launch offline → branded offline page           | Mandatory |
-| Mid-browse session → menu does not mutate       | Mandatory |
-| Tab returns visible after ≥60s hidden → refresh | Mandatory |
-| Network reconnects (offline → online) → refresh | Mandatory |
-| Firestore real-time listeners in Customer App   | Rejected  |
-| Periodic background polling                     | Rejected  |
-| Version-check endpoint / version collection     | Rejected  |
-| Update notification banner                      | Rejected  |
-| Long-lived content cache on customer origins    | Rejected  |
+| Rule                                                     | Status    |
+| -------------------------------------------------------- | --------- |
+| Launch online → always fetch latest menu                 | Mandatory |
+| Launch offline → branded offline page (never stale menu) | Mandatory |
+| Mid-browse session → menu does not mutate                | Mandatory |
+| Tab returns visible after ≥60s hidden → refresh          | Mandatory |
+| Network reconnects (offline → online) → refresh          | Mandatory |
+| Global refresh cooldown ≥60s (debounce)                  | Mandatory |
+| Firestore real-time listeners in Customer App            | Rejected  |
+| Periodic background polling                              | Rejected  |
+| Version-check endpoint / version collection              | Rejected  |
+| Update notification banner                               | Rejected  |
+| Long-lived content cache on customer origins             | Rejected  |
+| Cached stale menu as offline fallback                    | Rejected  |
 
 #### How Freshness Is Achieved (Zero New Firebase Cost)
 
@@ -377,6 +379,78 @@ Customer with Customer App open, menu already rendered
 | Customer never returns                          | 0                                                                                        |
 
 Zero new collections. Zero new endpoints. Zero background polling. Zero listeners.
+
+#### Hardening Rules (Frozen)
+
+Four explicit guardrails that must not drift over time:
+
+##### H1. Offline = offline page only. Never cached menu fallback.
+
+When the customer is offline, the service worker serves `/offline` — a branded screen that says "You're offline." It NEVER serves a stale cached menu. A trustworthy offline screen beats a plausible-looking stale menu every time, because a cached menu could show items that are now sold out, have new prices, or no longer exist.
+
+**Do not drift into:** "Maybe we should cache the last menu so something shows offline." The answer is permanently no.
+
+##### H2. Refresh cooldown (debounce).
+
+`useMenuFreshness` enforces a global cooldown of 60 seconds between any two `router.refresh()` calls, regardless of what triggered them (visibility return or network reconnect). This prevents refresh loops when a customer rapidly app-switches (e.g. WhatsApp ↔ menu ↔ WhatsApp every few seconds) or toggles airplane mode.
+
+- Cooldown: 60s (configurable via `minRefreshIntervalMs`)
+- Hidden threshold before visibility refresh fires: 60s (configurable via `minHiddenMs`)
+- These are independent — a refresh may be suppressed by the cooldown even if the hidden-threshold was met.
+
+##### H3. Refresh scope is "whole menu", not "only availability".
+
+`router.refresh()` re-runs the server component and returns fresh HTML for the entire menu — availability flags, prices, descriptions, categories, order. This is deliberate.
+
+**Why not narrow to "only availability"?** A narrower refresh would require a separate lightweight endpoint returning just availability flags, plus client-side merging logic. That is exactly the version-endpoint-style infrastructure rejected in this policy. We use `router.refresh()` because it piggybacks on the existing edge cache — narrowing scope would require net-new infra and net-new cost.
+
+**Consequence:** If the owner changes a price mid-day and a customer returns to the tab after being away 5 minutes, the customer sees the new price. This is accepted: if the owner published a change, customers who come back should see it. Session stability is protected during active browsing (no refresh fires while the tab is visible) — only return-from-hidden or network reconnect trigger a refresh.
+
+##### H4. Visibility refresh is a safeguard, not pseudo-real-time sync.
+
+The visibility-refresh mechanism must remain narrowly defined as a **return-from-hidden freshness safeguard**. It must not evolve into periodic background syncing, foreground polling, or any listener-like behavior. Any change that moves it toward real-time updates requires architecture review.
+
+**Protected boundary:** The hook fires only on (a) `visibilitychange` → visible after ≥60s hidden, and (b) network reconnect while visible. No timers. No intervals. No background sync API. No push triggers.
+
+#### QA Checklist (Mandatory Before Shipping)
+
+Four tests that must be executed and pass before this feature is shipped. Do not assume — verify.
+
+##### QA-1. `router.refresh()` state preservation
+
+With the customer app open on a tenant origin, verify the following state survives a `router.refresh()` call (trigger by toggling tab hidden/visible for 65+ seconds):
+
+- [ ] Selected language (`activeLanguage` state)
+- [ ] Scroll position (window scroll + any internal scroll containers)
+- [ ] Expanded/collapsed category state
+- [ ] Open item detail modal (if any)
+- [ ] Active page (`activePage` state — HOME vs other)
+- [ ] Selected device type view (`activeDeviceType`)
+- [ ] Any cart / selection state (if present)
+
+If any of these reset on refresh, the hook must be revised (lift state out of components that re-render on SSR, or move to Redux).
+
+##### QA-2. SW scope migration — owner origin
+
+- [ ] Install owner dashboard as PWA on platform origin (e.g. `app.menulist.ai`)
+- [ ] Verify `navigator.serviceWorker.getRegistrations()` returns exactly one registration with `scriptURL` ending in `/sw.js`
+- [ ] Verify it is NOT `sw-customer.js`
+
+##### QA-3. SW scope migration — customer origin
+
+- [ ] Open a customer tenant origin (e.g. `demo.menulist.ai`) that previously had `sw.js` registered (simulate by manually registering before the fix)
+- [ ] Reload the page after the fix is deployed
+- [ ] Verify `navigator.serviceWorker.getRegistrations()` returns exactly one registration with `scriptURL` ending in `/sw-customer.js`
+- [ ] Verify the old `sw.js` registration was unregistered (migration path in `ServiceWorkerRegister.tsx`)
+- [ ] Verify no menu content is stored in Cache Storage (check DevTools → Application → Cache Storage — only `customer-app-offline-v1` should exist)
+
+##### QA-4. Cross-origin SW isolation
+
+- [ ] Install Customer App on `demo.menulist.ai`
+- [ ] Navigate to `app.menulist.ai` (owner dashboard) in the same browser
+- [ ] Verify the owner dashboard registers `sw.js` (not `sw-customer.js`) on its own origin
+- [ ] Verify the customer tenant's `sw-customer.js` is still registered on its origin (not overwritten)
+- [ ] Verify no menu data from the customer origin ever lands in the owner origin's caches (they are separate origins, so this should be impossible by browser design — but verify anyway)
 
 ### 9. Surface Analytics (Day-One, Mandatory)
 

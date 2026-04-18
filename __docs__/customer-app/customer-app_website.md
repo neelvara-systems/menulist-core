@@ -11,15 +11,18 @@
 ## Hero Section
 
 **Headline:**
+
 > Stay one tap away from repeat customers.
 
 **Subheadline:**
+
 > Your customers can add your menu to their home screen as your branded app — your logo, your name, one-tap access. No app store. No download. Works on iPhone and Android automatically.
 
 **CTA Text:** See How It Works
 **CTA Link:** #how-it-works
 
 **Visual Description:**
+
 - Split screen: Left side shows phone home screen with restaurant app icon among other apps (WhatsApp, Instagram, Camera, "Joe's Pizza" with logo)
 - Right side shows the same phone with the restaurant's menu open in standalone mode
 - Subtle animation: Icon tap → menu opens
@@ -42,7 +45,7 @@ QR codes get buried. Links get forgotten. Bookmarks are too much work.
 
 **Copy:**
 
-MenuList creates your **Customer App** automatically. When customers visit your menu a few times, we invite them to save it to their home screen. 
+MenuList creates your **Customer App** automatically. When customers visit your menu a few times, we invite them to save it to their home screen.
 
 They see **your logo**. They see **your restaurant name**. They tap it — your live menu opens instantly.
 
@@ -144,11 +147,11 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ### Stat Block
 
-| Stat | Value |
-|------|-------|
-| Customer App installs | Growing daily |
-| Average app opens per month | 3+ per customer |
-| Repeat visit lift | +20% with Customer App |
+| Stat                        | Value                  |
+| --------------------------- | ---------------------- |
+| Customer App installs       | Growing daily          |
+| Average app opens per month | 3+ per customer        |
+| Repeat visit lift           | +20% with Customer App |
 
 ---
 
@@ -168,7 +171,7 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ### Q: Is this a real app or just a shortcut?
 
-**A:** It's a real installable app. It opens without browser chrome. It works offline (shows cached menu). It has app shortcuts (long-press for "Call" or "Directions"). The only difference from "native apps" — customers don't go to an app store to get it.
+**A:** It's a real installable app. It opens without browser chrome. It works offline (shows a branded offline page when you have no signal — never a stale menu). It has app shortcuts (long-press for "Call" or "Directions"). The only difference from "native apps" — customers don't go to an app store to get it.
 
 ### Q: Can I customize how it looks?
 
@@ -187,6 +190,7 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 **OG Description:** Your customers can add your menu to their home screen as your branded app. One tap access. No download needed. Included with MenuList.
 
 **Target Keywords:**
+
 - restaurant customer app
 - menu app for customers
 - installable menu
@@ -223,14 +227,14 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ## Related Documents
 
-| Document | Purpose |
-|----------|---------|
-| `customer-app_spec.md` | Product requirements |
-| `customer-app_impl.md` | Technical implementation |
-| `customer-app_marketing.md` | Sales/marketing strategy |
-| `customer-app_helpdoc.md` | Customer help documentation |
-| `customer-app_firebase.md` | Firebase cost tracking |
-| `customer-app_mobile-support.md` | Mobile assessment |
+| Document                         | Purpose                     |
+| -------------------------------- | --------------------------- |
+| `customer-app_spec.md`           | Product requirements        |
+| `customer-app_impl.md`           | Technical implementation    |
+| `customer-app_marketing.md`      | Sales/marketing strategy    |
+| `customer-app_helpdoc.md`        | Customer help documentation |
+| `customer-app_firebase.md`       | Firebase cost tracking      |
+| `customer-app_mobile-support.md` | Mobile assessment           |
 
 ---
 

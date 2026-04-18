@@ -1,5 +1,6 @@
 "use client";
 import { useMenuFreshness } from "@/hooks/useMenuFreshness";
+import { CUSTOMER_MENU_REFRESH_EVENT } from "@/hooks/useMenuFreshness";
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
@@ -35,16 +36,55 @@ interface ClientMenuRendererProps {
     projectId?: string; // Required for project-wise analytics
 }
 
+const PAGE_KEY = "activePage";
+const LANGUAGE_KEY = "activeLanguage";
+const SCROLL_KEY = "scrollY";
+
+function getCustomerMenuStateKey(
+    storeId: string | number | undefined,
+    suffix: string,
+): string | null {
+    if (!storeId) return null;
+    return `menulist_customerMenu_${storeId}_${suffix}`;
+}
+
+function readSessionValue(key: string | null): string | null {
+    if (!key || typeof window === "undefined") return null;
+    try {
+        return window.sessionStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writeSessionValue(key: string | null, value: string): void {
+    if (!key || typeof window === "undefined") return;
+    try {
+        window.sessionStorage.setItem(key, value);
+    } catch {
+        // Ignore storage failures — state still lives in React.
+    }
+}
+
 function ClientMenuRenderer({
     projectData,
     storeDetails,
     precomputedBlocks,
     projectId,
 }: ClientMenuRendererProps) {
-    const [activePage, setActivePage] = useState<PageType>(PageType.HOME);
-    const [activeLanguage, setActiveLanguage] = useState<string>(
-        projectData?.languages?.[0]?.code || "en",
-    );
+    const storeId = storeDetails?.storeId;
+    const defaultLanguage = projectData?.languages?.[0]?.code || "en";
+    const pageStorageKey = getCustomerMenuStateKey(storeId, PAGE_KEY);
+    const languageStorageKey = getCustomerMenuStateKey(storeId, LANGUAGE_KEY);
+    const scrollStorageKey = getCustomerMenuStateKey(storeId, SCROLL_KEY);
+
+    const [activePage, setActivePage] = useState<PageType>(() => {
+        const stored = readSessionValue(pageStorageKey);
+        return stored === PageType.MENU ? PageType.MENU : PageType.HOME;
+    });
+    const [activeLanguage, setActiveLanguage] = useState<string>(() => {
+        return readSessionValue(languageStorageKey) || defaultLanguage;
+    });
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>(
         DEVICE_TYPES_LIST.MOBILE,
     );
@@ -54,6 +94,43 @@ function ClientMenuRenderer({
     // or when the network reconnects. No listeners, no polling, no new
     // Firestore reads — relies on existing unstable_cache + revalidateTag.
     useMenuFreshness();
+
+    // Persist top-level client state so a router.refresh() remount does not
+    // drop the current page/language or bounce the user back to the top.
+    useEffect(() => {
+        writeSessionValue(pageStorageKey, activePage);
+    }, [pageStorageKey, activePage]);
+
+    useEffect(() => {
+        writeSessionValue(languageStorageKey, activeLanguage);
+    }, [languageStorageKey, activeLanguage]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const saveScrollPosition = () => {
+            writeSessionValue(scrollStorageKey, String(window.scrollY));
+        };
+
+        const restoreScrollPosition = () => {
+            const raw = readSessionValue(scrollStorageKey);
+            if (!raw) return;
+            const scrollY = parseInt(raw, 10);
+            if (!Number.isFinite(scrollY) || scrollY < 0) return;
+            window.requestAnimationFrame(() => {
+                window.scrollTo({ top: scrollY, behavior: "auto" });
+            });
+        };
+
+        restoreScrollPosition();
+        window.addEventListener("scroll", saveScrollPosition, { passive: true });
+        window.addEventListener(CUSTOMER_MENU_REFRESH_EVENT, saveScrollPosition);
+
+        return () => {
+            window.removeEventListener("scroll", saveScrollPosition);
+            window.removeEventListener(CUSTOMER_MENU_REFRESH_EVENT, saveScrollPosition);
+        };
+    }, [scrollStorageKey]);
 
     // Effect for device type
     useEffect(() => {
@@ -130,9 +207,9 @@ function ClientMenuRenderer({
             {/* Customer App (PWA) — install prompt + standalone/shortcut analytics.
                 Renders nothing unless feature flag + store-level opt-in + visit threshold
                 are all satisfied. Fixed-position overlay; does not affect menu layout. */}
-            {storeDetails?.storeId && (
+            {storeId && (
                 <CustomerAppController
-                    storeId={storeDetails.storeId}
+                    storeId={storeId}
                     tenantId={storeDetails.tenantId}
                     storeName={storeDetails.name || "Menu"}
                     promoteInstallation={

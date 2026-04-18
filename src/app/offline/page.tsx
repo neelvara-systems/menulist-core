@@ -14,14 +14,17 @@
  * Privacy: no analytics from here — we may not have network to send them.
  */
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import OfflineClient from './OfflineClient';
 
 export const metadata: Metadata = {
     title: "You're offline",
     description: 'No internet connection. Try again shortly.',
-    themeColor: '#0f172a',
     robots: { index: false, follow: false },
+};
+
+export const viewport: Viewport = {
+    themeColor: '#0f172a',
 };
 
 export const dynamic = 'force-static';
@@ -87,7 +90,7 @@ export default function OfflinePage() {
                 </p>
                 <OfflineClient />
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 16 }}>
-                    Some parts of the menu may be available from earlier visits.
+                    Reconnect to see the latest live menu.
                 </p>
             </div>
         </div>

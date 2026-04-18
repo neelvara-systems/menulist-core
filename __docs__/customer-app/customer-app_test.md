@@ -1,0 +1,507 @@
+# Customer App — Pre-Production Test & Go-Live Checklist
+
+**Feature Name:** Customer App (Installable Customer-Facing Menu)  
+**Document Type:** Release Test Plan / Go-Live Checklist  
+**Status:** 🚧 Pre-Production Validation Required  
+**Last Updated:** April 18, 2026  
+**Audience:** Engineering, QA, Founder
+
+---
+
+## Purpose
+
+This document is the **release gate** for the Customer App feature.
+
+It separates:
+
+- what is already verified in the local codebase
+- what must still be verified manually before production
+- what must be deployed before the feature can be considered stable under the 3-year freeze standard
+
+This document should be checked line-by-line before go-live.
+
+---
+
+## Current Release State
+
+### Implementation Status
+
+**Code implementation is broadly in place.** The main customer-app architecture exists and the previously identified hardening gaps were addressed.
+
+### Hardenings Completed
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Customer App analytics rollups supported in shared aggregation pipeline | ✅ Done | `functions/src/aggregateCustomerAnalytics.ts` |
+| Menu-only AI summary logic isolated from `projectId='customerApp'` | ✅ Done | `functions/src/aggregateCustomerAnalytics.ts` |
+| Per-origin service worker registration tightened | ✅ Done | `src/components/ServiceWorkerRegister.tsx` |
+| Customer menu refresh hardening for state + scroll preservation | ✅ Done | `src/hooks/useMenuFreshness.ts`, `src/components/templates/website/clientWebsite/index.tsx` |
+| Offline page warning removed (`themeColor` moved to `viewport`) | ✅ Done | `src/app/offline/page.tsx` |
+| Offline copy aligned with frozen “never stale menu offline” policy | ✅ Done | `src/app/offline/page.tsx` |
+
+---
+
+## Local Verification Log
+
+These checks were executed in the current workspace on **April 18, 2026**.
+
+| Check | Command | Result | Notes |
+| --- | --- | --- | --- |
+| Type safety | `npx tsc --noEmit` | ✅ PASS | No type errors |
+| ESLint | `npm run lint` | ✅ PASS | No warnings or errors |
+| Production build | `npm run build` | ✅ PASS | Next.js production build completed successfully |
+
+### Build Notes
+
+- Production build completed successfully after allowing network access for external Google Fonts fetches during build.
+- The earlier Next.js warning on `/offline` was fixed by moving `themeColor` from `metadata` to `viewport`.
+
+---
+
+## Localhost Testing Guide
+
+This feature can be tested **substantially** on localhost, but not **completely**.
+
+The key rule is:
+
+- `localhost:3000` by itself is treated as a **platform** origin
+- Customer App behavior is tenant-origin behavior, so the best local simulation uses a **tenant Host header**
+
+### What You Can Reliably Test On Localhost
+
+- Type checking
+- Linting
+- Production build
+- Customer menu rendering
+- Dynamic manifest route behavior
+- Eligibility gate behavior
+- Service worker route serving
+- Offline page rendering
+- Basic analytics event wiring
+- Rollup logic in code
+- Owner dashboard metric rendering against local/emulator data
+
+### What You Cannot Fully Trust On Plain Localhost
+
+- Real PWA install behavior
+- Real iPhone Safari “Add to Home Screen”
+- Real `appinstalled` behavior
+- Real standalone launch behavior
+- Real OS-level icon/name install results
+- Final HTTPS-origin browser install criteria
+
+For those, use a deployed tenant origin or a true local HTTPS tenant-domain setup.
+
+### Local Mode 1 — Fast Developer Checks
+
+Use this for daily implementation work.
+
+1. Start the app:
+
+   `npm run dev`
+
+2. Run static gates:
+
+   `npx tsc --noEmit`
+
+   `npm run lint`
+
+3. Open platform locally:
+
+   [http://localhost:3000](http://localhost:3000)
+
+This is enough for:
+
+- owner settings UI
+- dashboard card rendering
+- code-path checks
+- general component behavior
+
+### Local Mode 2 — Tenant-Origin Simulation With Host Header
+
+This is the most useful local mode for Customer App work.
+
+The middleware and manifest route read the request `Host`, so you can simulate a tenant origin locally.
+
+#### Option A: Browser testing with `/etc/hosts`
+
+Add a hosts entry:
+
+```txt
+127.0.0.1 demo.menulist.ai
+127.0.0.1 app.menulist.ai
+```
+
+Then run:
+
+`npm run dev`
+
+Open:
+
+- `http://demo.menulist.ai:3000/`
+- `http://demo.menulist.ai:3000/manifest.webmanifest`
+- `http://app.menulist.ai:3000/`
+
+This lets you test:
+
+- tenant routing logic
+- customer origin rendering
+- manifest generation
+- service-worker URL selection logic
+- customer-vs-owner origin separation logic
+
+#### Option B: `curl` testing with explicit Host header
+
+Useful when you want to inspect responses without editing `/etc/hosts`.
+
+Examples:
+
+```bash
+curl -H "Host: demo.menulist.ai:3000" http://127.0.0.1:3000/manifest.webmanifest
+curl -I -H "Host: demo.menulist.ai:3000" http://127.0.0.1:3000/
+curl -I -H "Host: demo.menulist.ai:3000" http://127.0.0.1:3000/sw-customer.js
+curl -I -H "Host: app.menulist.ai:3000" http://127.0.0.1:3000/sw.js
+```
+
+Use this for:
+
+- manifest status checks
+- eligibility-gate checks
+- service-worker asset checks
+- header-level routing sanity checks
+
+### Local Mode 3 — HTTPS Local Testing
+
+If you want to test closer to real browser install rules:
+
+1. Start HTTPS dev mode:
+
+   `npm run devhttps`
+
+2. Visit:
+
+   [https://localhost:3000](https://localhost:3000)
+
+This is useful for:
+
+- general HTTPS behavior
+- offline page checks
+- some service worker behavior
+
+But there is an important limit:
+
+- `https://localhost:3000` is still **not** a true tenant origin
+- `npm run devhttps` gives you HTTPS for `localhost`, not for `demo.menulist.ai`
+
+So it is **not enough** for final Customer App install validation.
+
+### Advanced Local HTTPS Tenant Setup
+
+If you want near-production local testing, set up:
+
+- `/etc/hosts` mapping a tenant hostname to `127.0.0.1`
+- a local HTTPS reverse proxy with a trusted cert for that hostname
+
+Example target hostnames:
+
+- `demo.menulist.ai`
+- `app.menulist.ai`
+
+Typical tools:
+
+- `mkcert`
+- `Caddy`
+- `nginx`
+
+This is optional, but it is the only meaningful way to test local HTTPS tenant-origin install behavior without waiting for Vercel.
+
+### Recommended Local Workflow
+
+For speed, use this sequence:
+
+1. Run `npm run dev`
+2. Test routing and manifest with `Host` header or `/etc/hosts`
+3. Run `npx tsc --noEmit`
+4. Run `npm run lint`
+5. Run `npm run build`
+6. Use deployed tenant origin only for final install/device validation
+
+### Localhost Checklist
+
+- [x] `localhost:3000` works for platform-side checks
+- [ ] Tenant-origin simulation tested via `Host` header
+- [ ] Tenant-origin simulation tested via `/etc/hosts`
+- [ ] Manifest verified locally with tenant host
+- [ ] `sw-customer.js` verified locally with tenant host
+- [ ] `sw.js` verified locally with owner host
+- [ ] Eligibility gate verified locally with tenant host
+- [ ] Final install flow verified on real HTTPS tenant origin
+
+---
+
+## Freeze Readiness Summary
+
+### Ready
+
+- Core implementation exists
+- Local compile/lint/build gates pass
+- Customer App analytics rollups are structurally in place
+- Customer vs owner service worker separation is explicitly enforced
+- Offline behavior now matches the frozen policy
+
+### Not Yet Ready For Production
+
+The following items are still required before this can be called **production-ready under the 3-year freeze standard**:
+
+1. Real-device install-flow QA
+2. Real tenant-origin manifest/icon validation
+3. Customer App analytics event smoke testing end-to-end
+4. Production deployment of code changes, especially Cloud Functions
+5. Eligibility-gate verification on real store states
+
+---
+
+## Mandatory Go-Live Checklist
+
+### A. Build & Static Checks
+
+- [x] `npx tsc --noEmit` passes
+- [x] `npm run lint` passes
+- [x] `npm run build` passes
+- [ ] Review build output for unexpected new warnings
+- [ ] Confirm no unrelated regressions were introduced in modified files
+
+### B. Deployment Checklist
+
+- [ ] Deploy web app changes
+- [ ] Deploy Cloud Function changes:
+  `firebase deploy --only functions:aggregateCustomerAnalytics`
+- [ ] Confirm `public/sw.js` and `public/sw-customer.js` are both present in deployed output
+- [ ] Confirm deployed app is serving the latest Customer App code paths
+
+### C. Tenant-Origin PWA Verification
+
+Perform these checks on a real tenant origin such as `https://demo.menulist.ai/` or a verified custom domain.
+
+- [ ] `GET /manifest.webmanifest` returns `200`
+- [ ] Manifest is store-specific, not platform-generic
+- [ ] `name` matches the restaurant identity
+- [ ] `short_name` uses override when configured
+- [ ] `start_url` points to tenant origin
+- [ ] `scope` is tenant origin
+- [ ] `display` is standalone
+- [ ] `display_override` is correct
+- [ ] Icon URLs load correctly
+- [ ] `apple-touch-icon.png` resolves correctly
+- [ ] Ineligible tenant returns manifest `404`
+
+### D. Service Worker Verification
+
+#### Owner Origin
+
+- [ ] On platform origin, only `/sw.js` is registered
+- [ ] `/sw-customer.js` is not registered on platform origin
+
+#### Customer Origin
+
+- [ ] On customer tenant origin, only `/sw-customer.js` is registered
+- [ ] `/sw.js` is not registered on tenant origin
+- [ ] Previously stale `/sw.js` registrations are removed on customer origins
+- [ ] Cache Storage contains only the expected offline cache for customer origin
+- [ ] No menu HTML or Firestore data is cached on customer origins
+
+#### Cross-Origin Isolation
+
+- [ ] Customer-origin SW remains isolated from owner-origin SW
+- [ ] Owner-origin cache never contains customer menu data
+- [ ] Customer-origin cache never contains owner dashboard data
+
+### E. Offline Behavior Verification
+
+- [ ] With customer app installed, open while offline
+- [ ] Offline page appears instead of stale menu
+- [ ] Offline page copy is correct and neutral
+- [ ] “Try again” works after reconnect
+- [ ] No old menu content is shown while offline
+
+### F. Install Prompt / Install Flow Verification
+
+#### Visit Gating
+
+- [ ] Prompt does not show on first visit
+- [ ] Prompt does not show on second visit
+- [ ] Prompt can show on third visit
+- [ ] Prompt does not show after recent dismissal
+- [ ] Prompt can show again after dismissal window expires
+- [ ] Prompt never shows when already installed
+- [ ] Prompt does not show when owner promotion is disabled
+
+#### Android Chrome
+
+- [ ] Prompt appears at the correct time
+- [ ] Install CTA triggers native `beforeinstallprompt`
+- [ ] Installed app uses restaurant identity
+- [ ] App launches in standalone mode
+
+#### Samsung Internet
+
+- [ ] Install flow behaves correctly
+- [ ] Fallback/manual behavior is acceptable if native prompt differs
+- [ ] Installed app still launches correctly
+
+#### Safari iPhone
+
+- [ ] iOS instructions modal appears
+- [ ] Instructions are clear and correct
+- [ ] App can be added through Safari Share menu
+- [ ] Installed icon and name appear correctly
+- [ ] App opens in standalone mode after install
+
+### G. Freshness / No-Stale-Menu Verification
+
+- [ ] Open menu online
+- [ ] Change menu data from owner side
+- [ ] Return to customer tab after 60+ seconds hidden
+- [ ] Customer menu refreshes to latest data
+- [ ] Sold-out / unavailable state is reflected correctly
+- [ ] Reconnect after offline state triggers refresh
+- [ ] No polling or listener behavior occurs in background
+
+### H. State Preservation Verification
+
+These are mandatory because the feature relies on `router.refresh()` rather than a full reload.
+
+- [ ] Active page remains correct after refresh
+- [ ] Active language remains correct after refresh
+- [ ] Window scroll position remains correct after refresh
+- [ ] Expanded/collapsed category state remains correct after refresh
+- [ ] Open item detail modal remains correct after refresh
+- [ ] Internal scroll containers remain stable after refresh
+- [ ] Device-type view remains stable after refresh
+- [ ] Any cart/selection state remains correct if applicable
+
+### I. Eligibility-Gate Verification
+
+#### Eligible Store
+
+- [ ] `active: true` + published menu → Customer App available
+
+#### Ineligible States
+
+- [ ] `active: false` → manifest `404`, no prompt
+- [ ] Unpublished menu → manifest `404`, no prompt
+- [ ] Invalid public origin case → Customer App unavailable
+- [ ] Owner settings reflect disabled/ineligible state clearly
+
+### J. Analytics Event Verification
+
+Verify event writes and dashboard visibility for `projectId='customerApp'`.
+
+- [ ] `CUSTOMER_APP_PROMPT_SHOWN` writes correctly
+- [ ] `CUSTOMER_APP_PROMPT_DISMISSED` writes correctly
+- [ ] `CUSTOMER_APP_INSTALL_STARTED` writes correctly
+- [ ] `CUSTOMER_APP_INSTALLED` writes correctly
+- [ ] `CUSTOMER_APP_OPENED` writes correctly
+- [ ] `CUSTOMER_APP_SHORTCUT_MENU` writes correctly
+- [ ] `CUSTOMER_APP_SHORTCUT_CALL` writes correctly
+- [ ] `CUSTOMER_APP_SHORTCUT_DIRECTIONS` writes correctly
+- [ ] Reinstall on same device does not double-count when local storage is intact
+- [ ] Owner analytics dashboard shows installs
+- [ ] Owner analytics dashboard shows app opens
+- [ ] Owner analytics dashboard shows conversion
+- [ ] Owner analytics dashboard shows top shortcut
+
+### K. Aggregation / Rollup Verification
+
+- [ ] Daily analytics doc written under `projectId='customerApp'`
+- [ ] Summary doc updated correctly
+- [ ] Weekly rollup contains Customer App fields
+- [ ] Monthly rollup contains Customer App fields
+- [ ] Summary increments lifetime install/open fields correctly
+- [ ] Menu-only Gemini summary logic does not interfere with `customerApp`
+
+---
+
+## Recommended Test Data Setup
+
+Before executing the checklist, prepare:
+
+1. One eligible demo store with:
+   - published menu
+   - active status
+   - logo uploaded
+   - phone and address present
+2. One ineligible demo store with:
+   - unpublished menu or inactive status
+3. One tenant subdomain
+4. One verified custom domain, if available
+5. One Android Chrome device
+6. One Samsung Internet device
+7. One iPhone with Safari
+
+---
+
+## Known Non-Issues / Accepted Behaviors
+
+These are not bugs and should not block release:
+
+- Existing installs may keep the old icon after a merchant logo change
+- Existing installs may keep the old app name after a merchant rename
+- iOS install detection relies partly on inferred install behavior because Safari does not emit `appinstalled`
+- Customer App does **not** support offline menu browsing by design
+
+---
+
+## Go-Live Decision Rule
+
+### Ship Only If All Are True
+
+- local compile, lint, and build checks pass
+- no unresolved production warnings remain in Customer App paths
+- Cloud Function deployment is completed
+- tenant-origin manifest and icon checks pass
+- Android, Samsung Internet, and iPhone install flows pass
+- offline fallback passes
+- analytics event writes and dashboard visibility pass
+- eligibility gate passes
+- freshness/state-preservation checks pass
+
+### Do Not Ship If Any Are True
+
+- service worker scope is ambiguous
+- menu content is cached on customer origin
+- manifest is platform-generic or path-scoped
+- installed app shows stale menu offline
+- analytics writes happen but rollups/dashboard stay wrong
+- tenant eligibility can leak Customer App to inactive/unpublished stores
+
+---
+
+## Signoff
+
+| Area | Owner | Status | Date | Notes |
+| --- | --- | --- | --- | --- |
+| Local code verification | Engineering | ✅ Ready | 2026-04-18 | `tsc`, `lint`, `build` passed |
+| Tenant-origin PWA verification | QA / Engineering | ⬜ Pending |  |  |
+| Device install verification | QA | ⬜ Pending |  |  |
+| Analytics verification | Engineering / QA | ⬜ Pending |  |  |
+| Deployment verification | Engineering | ⬜ Pending |  |  |
+| Go-live approval | Founder / Product | ⬜ Pending |  |  |
+
+---
+
+## Related Documents
+
+| Document | Purpose |
+| --- | --- |
+| `customer-app_spec.md` | Product requirements |
+| `customer-app_impl.md` | Technical implementation blueprint |
+| `customer-app_firebase.md` | Firebase cost / storage / function model |
+| `customer-app_mobile-support.md` | Mobile scope and install prompt behavior |
+| `customer-app_helpdoc.md` | Owner-facing help content |
+| `customer-app_website.md` | Public site copy |
+
+---
+
+_Document Status: 🚧 PRE-PRODUCTION VALIDATION REQUIRED_  
+_Last Updated: April 18, 2026_

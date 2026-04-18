@@ -22,6 +22,14 @@
  *   - Nothing else. If you're thinking about caching anything here,
  *     read customer-app_spec.md § 8 "Plugin Governance Rule" first.
  *
+ * FROZEN: Offline page only. NEVER cached menu fallback.
+ *   When offline, the customer sees the branded /offline page.
+ *   We NEVER serve a stale cached menu — it would show items that
+ *   may be sold out, priced differently, or no longer on the menu.
+ *   A trustworthy "offline" screen beats a plausible-looking but
+ *   stale menu every time. This boundary is frozen and must not
+ *   drift ("maybe we should cache last menu too…" → NO).
+ *
  * @see __docs__/customer-app/customer-app_spec.md
  * @see next.config.js § Service Worker Strategy
  */

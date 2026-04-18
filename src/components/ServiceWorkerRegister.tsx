@@ -40,15 +40,20 @@ function getTargetSwUrl(): string | null {
     if (typeof window === 'undefined') return null;
     try {
         const resolved = resolveDomain(window.location.host);
-        // Customer tenants (subdomain or custom domain) → minimal SW
-        if (resolved.isClient) return CUSTOMER_SW_URL;
-        // Platform / owner dashboard origins → next-pwa SW
-        return OWNER_SW_URL;
+        // Customer tenants (subdomain or custom domain) → minimal SW.
+        if (resolved.type === 'subdomain' || resolved.type === 'custom') {
+            return CUSTOMER_SW_URL;
+        }
+        // Platform / owner dashboard origins → next-pwa SW.
+        if (resolved.type === 'platform') {
+            return OWNER_SW_URL;
+        }
+        // Product sites and localhost should not register either worker.
+        return null;
     } catch {
-        // If domain resolution fails for any reason, fall back to the
-        // safer minimal SW (no caching) rather than risk caching menu
-        // content on an unidentified origin.
-        return CUSTOMER_SW_URL;
+        // Unknown origin → register nothing. Safer than attaching either
+        // worker to the wrong scope.
+        return null;
     }
 }
 
