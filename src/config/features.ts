@@ -1528,6 +1528,50 @@ export const FEATURE_FLAGS = {
     ENABLE_CUSTOMER_COMMUNICATION_KIT: true,
 
     // ═══════════════════════════════════════════════════════════════
+    // CUSTOMER APP — Installable PWA Surface
+    // @see __docs__/customer-app/
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Customer App (Installable PWA) — master toggle.
+     *
+     * When enabled:
+     * - Dynamic manifest served at `{tenant-origin}/manifest.webmanifest`
+     * - PWA icons served at `/api/app-icons/{storeId}/{size}`
+     * - Customer menu layout advertises manifest + apple-touch-icon
+     * - Install prompt eligible (customer-side visit threshold + dismissal rules still apply)
+     * - 8 CUSTOMER_APP_* analytics events write to `analytics` collection
+     *   under `projectId='customerApp'`
+     *
+     * When disabled:
+     * - Manifest route returns 404 (prevents install prompt from appearing)
+     * - Icon endpoint still works (idempotent, no harm)
+     * - Analytics events still fire (they are additive in the collection)
+     *
+     * Firebase cost: ~$0.05/month per 1000 installs — analytics writes dominate
+     * and share the existing `analytics` collection cost envelope. Icon egress
+     * is CDN-cached (Firebase Storage for owner overrides; edge-cached otherwise).
+     *
+     * Privacy: session-level IDs only. No user identity, no device fingerprinting.
+     * Respects existing `storeDetails.analytics.trackMenuViews` flag.
+     *
+     * @see __docs__/customer-app/customer-app_spec.md
+     * @see __docs__/customer-app/customer-app_impl.md
+     */
+    ENABLE_CUSTOMER_APP_PWA: true,
+
+    /**
+     * Customer App — Install prompt eligibility threshold.
+     *
+     * Number of menu visits before the install prompt may appear.
+     * Default: 3. Lowering this increases conversion but risks annoyance.
+     *
+     * Per-store override: NOT available day-one. Tenant-level only.
+     * See `src/lib/pwa/visitCounter.ts` for the client-side implementation.
+     */
+    CUSTOMER_APP_PROMPT_VISIT_THRESHOLD: 3 as number,
+
+    // ═══════════════════════════════════════════════════════════════
     // BUSINESS TRUTH GRAPH — Accepted Improvements
     // @see __docs__/business-truth-graph/_archive/chatgpt-review-session13.md
     // ═══════════════════════════════════════════════════════════════

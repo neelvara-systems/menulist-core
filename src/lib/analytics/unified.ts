@@ -132,6 +132,16 @@ export enum TrackingEvent {
 
   // Owner-side events (lightweight, GA4-only — no Firestore writes)
   MENU_KIT_DOWNLOAD = 'menu_kit_download',  // Owner downloaded Menu Kit ZIP or shared individual asset
+
+  // Customer App (installable PWA surface) events — stored with projectId='customerApp'
+  CUSTOMER_APP_PROMPT_SHOWN = 'customer_app_prompt_shown',          // Install prompt rendered to customer
+  CUSTOMER_APP_PROMPT_DISMISSED = 'customer_app_prompt_dismissed',  // Customer dismissed install prompt
+  CUSTOMER_APP_INSTALL_STARTED = 'customer_app_install_started',    // Customer tapped "Install" (before native prompt)
+  CUSTOMER_APP_INSTALLED = 'customer_app_installed',                // appinstalled event fired — deduped per-device via localStorage
+  CUSTOMER_APP_OPENED = 'customer_app_opened',                      // App launched in display-mode: standalone
+  CUSTOMER_APP_SHORTCUT_MENU = 'customer_app_shortcut_menu',        // Menu shortcut launched (?source=shortcut-menu)
+  CUSTOMER_APP_SHORTCUT_CALL = 'customer_app_shortcut_call',        // Call shortcut launched (?source=shortcut-call)
+  CUSTOMER_APP_SHORTCUT_DIRECTIONS = 'customer_app_shortcut_directions', // Directions shortcut launched
 }
 
 /**
@@ -418,14 +428,69 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // GA4 tracking happens separately below, so just return early
         return;
 
+      // ── Customer App (installable PWA surface) — always stored under projectId='customerApp' ──
+      case TrackingEvent.CUSTOMER_APP_PROMPT_SHOWN:
+        updateData.totalPromptShown = 1;
+        updateData[`hourlyPromptShown.${hour}`] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_PROMPT_DISMISSED:
+        updateData.totalPromptDismissed = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_INSTALL_STARTED:
+        updateData.totalInstallStarted = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_INSTALLED:
+        // Fired once per device per store via fireInstalledEventOnce() localStorage guard.
+        updateData.totalInstalled = 1;
+        updateData.uniqueInstallSessions = 1;
+        updateData[`installsByDevice.${deviceKey}`] = 1;
+        updateData[`installsByLocation.${locationKey}`] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_OPENED:
+        updateData.totalAppOpens = 1;
+        updateData[`viewsByDevice.${deviceKey}`] = 1;
+        updateData[`viewsByLocation.${locationKey}`] = 1;
+        updateData[`hourlyAppOpens.${hour}`] = 1;
+        updateData.totalSessions = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_SHORTCUT_MENU:
+        updateData['shortcutClicks.menu'] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_SHORTCUT_CALL:
+        updateData['shortcutClicks.call'] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_SHORTCUT_DIRECTIONS:
+        updateData['shortcutClicks.directions'] = 1;
+        break;
+
       default:
         // For other events, just track the occurrence
         updateData[`events.${eventName}`] = 1;
     }
 
+    // Customer App events always write under the reserved 'customerApp' project segment,
+    // regardless of which menu projectId the page is currently viewing.
+    const isCustomerAppEvent =
+      eventName === TrackingEvent.CUSTOMER_APP_PROMPT_SHOWN ||
+      eventName === TrackingEvent.CUSTOMER_APP_PROMPT_DISMISSED ||
+      eventName === TrackingEvent.CUSTOMER_APP_INSTALL_STARTED ||
+      eventName === TrackingEvent.CUSTOMER_APP_INSTALLED ||
+      eventName === TrackingEvent.CUSTOMER_APP_OPENED ||
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_MENU ||
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_CALL ||
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_DIRECTIONS;
+    const effectiveProjectId = isCustomerAppEvent ? 'customerApp' : data.projectId;
+
     // Use the database function to track the event
     // Pass projectId and tenantId for project-wise analytics storage
-    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, data.projectId);
+    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId);
   } catch (error) {
     console.error('Error tracking Firebase event:', error);
     throw error;

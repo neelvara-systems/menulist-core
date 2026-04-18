@@ -49,6 +49,10 @@ export const RESERVED_PROJECT_SLUGS: readonly string[] = [
     'sw',              // service worker
     '_next',
     'client',
+
+    // Customer App (PWA surface) — analytics project segment + shortcut handoff routes
+    'customerapp',     // analytics projectId='customerApp' (lowercase match in checks)
+    'pwa',             // future shortcut handoff base path
 ] as const;
 
 /**

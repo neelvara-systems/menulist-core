@@ -68,6 +68,20 @@ interface DailyMetrics {
     recommendationClicks?: Record<string, number>;
     recommendationClicksByItem?: Record<string, number>;
     searchTerms?: Record<string, number>;
+
+    // ── Customer App (installable PWA surface) fields — additive-only, projectId='customerApp' ──
+    // All optional so existing menu analytics projects (obp, menu slugs) are unaffected.
+    totalPromptShown?: number;
+    totalPromptDismissed?: number;
+    totalInstallStarted?: number;
+    totalInstalled?: number;
+    uniqueInstallSessions?: number;
+    totalAppOpens?: number;
+    shortcutClicks?: Record<string, number>;      // { menu, call, directions }
+    installsByDevice?: Record<string, number>;
+    installsByLocation?: Record<string, number>;
+    hourlyPromptShown?: Record<string, number>;
+    hourlyAppOpens?: Record<string, number>;
 }
 
 interface AggregationResults {
@@ -358,6 +372,50 @@ async function updateSummaryDocument(
         }
     }
 
+    // ── Customer App (projectId='customerApp') lifetime totals ──
+    // All guarded — only increment when source field is present, so other projects are unaffected.
+    if (dailyData.totalPromptShown) {
+        updates.lifetimeTotalPromptShown = FieldValue.increment(dailyData.totalPromptShown);
+    }
+    if (dailyData.totalPromptDismissed) {
+        updates.lifetimeTotalPromptDismissed = FieldValue.increment(dailyData.totalPromptDismissed);
+    }
+    if (dailyData.totalInstallStarted) {
+        updates.lifetimeTotalInstallStarted = FieldValue.increment(dailyData.totalInstallStarted);
+    }
+    if (dailyData.totalInstalled) {
+        updates.lifetimeTotalInstalled = FieldValue.increment(dailyData.totalInstalled);
+    }
+    if (dailyData.uniqueInstallSessions) {
+        updates.lifetimeUniqueInstalls = FieldValue.increment(dailyData.uniqueInstallSessions);
+    }
+    if (dailyData.totalAppOpens) {
+        updates.lifetimeTotalAppOpens = FieldValue.increment(dailyData.totalAppOpens);
+    }
+
+    // Customer App map rollups (additive merge via FieldValue.increment on each key)
+    if (dailyData.shortcutClicks) {
+        for (const [key, value] of Object.entries(dailyData.shortcutClicks)) {
+            if (typeof value === 'number') {
+                updates[`shortcutClicks.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+    if (dailyData.installsByDevice) {
+        for (const [key, value] of Object.entries(dailyData.installsByDevice)) {
+            if (typeof value === 'number') {
+                updates[`installsByDevice.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+    if (dailyData.installsByLocation) {
+        for (const [key, value] of Object.entries(dailyData.installsByLocation)) {
+            if (typeof value === 'number') {
+                updates[`installsByLocation.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+
     await summaryRef.set(updates, { merge: true });
 }
 
@@ -493,6 +551,17 @@ function aggregateDailyDocs(docs: any[]): any {
         recommendationClicks: {},
         decisionBlocksRendered: {},
         recommendationClicksByItem: {},
+        // ── Customer App (projectId='customerApp') fields ──
+        // Stay zero for all other projects; summed only when daily docs contain these keys.
+        totalPromptShown: 0,
+        totalPromptDismissed: 0,
+        totalInstallStarted: 0,
+        totalInstalled: 0,
+        uniqueInstallSessions: 0,
+        totalAppOpens: 0,
+        shortcutClicks: {},
+        installsByDevice: {},
+        installsByLocation: {},
     };
 
     for (const doc of docs) {
@@ -507,6 +576,14 @@ function aggregateDailyDocs(docs: any[]): any {
         // Decision Blocks rendered
         if (doc.totalDecisionBlocksRendered) result.totalDecisionBlocksRendered += doc.totalDecisionBlocksRendered;
 
+        // Customer App numeric totals (additive; zero when field absent)
+        if (doc.totalPromptShown) result.totalPromptShown += doc.totalPromptShown;
+        if (doc.totalPromptDismissed) result.totalPromptDismissed += doc.totalPromptDismissed;
+        if (doc.totalInstallStarted) result.totalInstallStarted += doc.totalInstallStarted;
+        if (doc.totalInstalled) result.totalInstalled += doc.totalInstalled;
+        if (doc.uniqueInstallSessions) result.uniqueInstallSessions += doc.uniqueInstallSessions;
+        if (doc.totalAppOpens) result.totalAppOpens += doc.totalAppOpens;
+
         // Merge map fields
         mergeMapField(result.viewsByDevice, doc.viewsByDevice);
         mergeMapField(result.viewsByLocation, doc.viewsByLocation);
@@ -516,6 +593,10 @@ function aggregateDailyDocs(docs: any[]): any {
         // Decision Blocks breakdown
         mergeMapField(result.decisionBlocksRendered, doc.decisionBlocksRendered);
         mergeMapField(result.recommendationClicksByItem, doc.recommendationClicksByItem);
+        // Customer App map fields (additive merge — keys summed, never replaced)
+        mergeMapField(result.shortcutClicks, doc.shortcutClicks);
+        mergeMapField(result.installsByDevice, doc.installsByDevice);
+        mergeMapField(result.installsByLocation, doc.installsByLocation);
     }
 
     return result;

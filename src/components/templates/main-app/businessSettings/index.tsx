@@ -38,6 +38,7 @@ import {
     LuSave,
     LuSearch,
     LuShield,
+    LuSmartphone,
     LuTimer,
     LuTv,
     LuUpload,
@@ -50,6 +51,7 @@ import {
     BasicInfoTab,
     BusinessAttributesTab,
     ContactPersonTab,
+    CustomerAppTab,
     DomainSettingsTab,
     FeedbackSettingsTab,
     IntegrationsTab,
@@ -316,6 +318,23 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 />
             ),
         },
+        // Customer App (PWA) — appended last so existing scrollRef indices above
+        // remain stable regardless of which feature flags are toggled.
+        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? [{
+            key: "customer-app",
+            label: "Customer App",
+            icon: <LuSmartphone />,
+            tab: (
+                <CustomerAppTab
+                    scrollRef={
+                        scrollRefs.current[
+                        (FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 16 : 15) +
+                        (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)
+                        ]
+                    }
+                />
+            ),
+        }] : []),
     ];
     scrollRefs.current = TAB_ITEMS_LIST.map(
         (_, i) => scrollRefs.current[i] ?? createRef(),

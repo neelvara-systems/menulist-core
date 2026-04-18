@@ -19,6 +19,14 @@ const GoogleAnalytics = dynamic(() => import("./GoogleAnalytics"), { ssr: false 
 const FacebookPixel = dynamic(() => import("./FacebookPixel"), { ssr: false });
 const EnhancedEcommerce = dynamic(() => import("./EnhancedEcommerce"), { ssr: false });
 
+// Customer App (Installable PWA) — install prompt + standalone/shortcut analytics.
+// Lazy-loaded to keep the menu render lean; the controller itself renders nothing
+// when the feature flag is off or the customer is already in standalone mode.
+const CustomerAppController = dynamic(
+    () => import("@/components/customerApp/CustomerAppController"),
+    { ssr: false },
+);
+
 interface ClientMenuRendererProps {
     projectData: any;
     storeDetails: StoreDataType;
@@ -111,6 +119,21 @@ function ClientMenuRenderer({
                     precomputedBlocks={precomputedBlocks}
                 />
             </UnifiedAnalyticsTracking>
+
+            {/* Customer App (PWA) — install prompt + standalone/shortcut analytics.
+                Renders nothing unless feature flag + store-level opt-in + visit threshold
+                are all satisfied. Fixed-position overlay; does not affect menu layout. */}
+            {storeDetails?.storeId && (
+                <CustomerAppController
+                    storeId={storeDetails.storeId}
+                    tenantId={storeDetails.tenantId}
+                    storeName={storeDetails.name || "Menu"}
+                    promoteInstallation={
+                        (storeDetails as any)?.pwaSettings?.promoteInstallation !== false
+                    }
+                    trackingEnabled={storeDetails?.analytics?.trackMenuViews !== false}
+                />
+            )}
         </>
     );
 }

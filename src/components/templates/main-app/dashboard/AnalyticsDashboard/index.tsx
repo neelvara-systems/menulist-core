@@ -1,4 +1,5 @@
 
+import { FEATURE_FLAGS } from '@config/features';
 import { ECOMSAI_PLATFORM_STORE_ID } from '@constant/user';
 import useAnalyticsData from '@hook/useAnalyticsData';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -16,6 +17,8 @@ const LocationBreakdown = dynamic(() => import('./LocationBreakdown'), { ssr: fa
 const SourceBreakdown = dynamic(() => import('./SourceBreakdown'), { ssr: false, loading: () => <Spin /> });
 const MediumBreakdown = dynamic(() => import('./MediumBreakdown'), { ssr: false, loading: () => <Spin /> });
 const CampaignBreakdown = dynamic(() => import('./CampaignBreakdown'), { ssr: false, loading: () => <Spin /> });
+// Customer App (PWA) analytics — separate analytics doc (projectId='customerApp').
+const CustomerAppMetrics = dynamic(() => import('./CustomerAppMetrics'), { ssr: false, loading: () => <Spin /> });
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -86,6 +89,10 @@ function AnalyticsDashboard() {
                 ) : (
                     <>
                         <OverallMetrics data={data} />
+
+                        {FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && (
+                            <CustomerAppMetrics dateRange={dateRange} />
+                        )}
 
                         <Row gutter={[16, 16]}>
                             <Col xs={24} lg={16}>

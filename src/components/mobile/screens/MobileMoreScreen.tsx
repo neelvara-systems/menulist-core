@@ -11,8 +11,8 @@ import {
     LuAlertTriangle,
     LuBarChart3,
     LuBuilding2,
-    LuClock3,
     LuClock,
+    LuClock3,
     LuCreditCard,
     LuGlobe,
     LuHelpCircle,
@@ -23,6 +23,7 @@ import {
     LuReceipt,
     LuSettings,
     LuShield,
+    LuSmartphone,
     LuSparkles,
     LuTv,
     LuUsers,
@@ -54,6 +55,7 @@ const MobileBusinessAttributesScreen = dynamic(() => import('./MobileBusinessAtt
 const MobileIntegrationsScreen = dynamic(() => import('./MobileIntegrationsScreen'), { ssr: false });
 const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr: false });
 const MobileTodayHistoryScreen = dynamic(() => import('./MobileTodayHistoryScreen'), { ssr: false });
+const MobileCustomerAppScreen = dynamic(() => import('./MobileCustomerAppScreen'), { ssr: false });
 
 export type MoreSubScreen =
     | 'main'
@@ -84,7 +86,8 @@ export type MoreSubScreen =
     | 'domainSettings'
     | 'integrations'
     | 'posSync'
-    | 'todayHistory';
+    | 'todayHistory'
+    | 'customerApp';
 
 interface MobileMoreScreenProps {
     initialScreen?: MoreSubScreen;
@@ -173,6 +176,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     if (subScreen === 'integrations') return <MobileIntegrationsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'posSync') return <MobilePosSyncScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'todayHistory') return <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'customerApp') return <MobileCustomerAppScreen onBack={() => setSubScreen('main')} />;
 
     const moduleItems = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') },
@@ -206,6 +210,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
         { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), onClick: () => openSubScreen('feedbackSettings') },
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? [{ key: 'customerApp', icon: <LuSmartphone color="#8b5cf6" size={20} />, label: 'Customer App', description: 'Installable menu app — settings and live install analytics.', onClick: () => openSubScreen('customerApp') }] : []),
     ];
 
     const handleLogout = () => {

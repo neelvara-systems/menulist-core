@@ -155,6 +155,20 @@ service firebase.storage {
       allow delete: if isAuthenticated();
     }
     
+    /**
+     * Customer App (PWA) — Icon Overrides
+     *
+     * Day-one: Customer App icons are either GENERATED on-the-fly by the
+     * /api/app-icons/{storeId}/{size} route (no storage involved) or redirect
+     * to the existing store.logo URL (already covered by logo upload rules).
+     *
+     * When owner-uploaded PWA icon overrides ship (Phase 7B), they will reuse
+     * the existing `MenuListAi/project/custom/` path via the same upload flow
+     * used for item images — no new storage rule required.
+     *
+     * @see __docs__/customer-app/customer-app_firebase.md §Storage
+     */
+
     // ═══════════════════════════════════════════════════════════
     // DEFAULT DENY (Security First)
     // ═══════════════════════════════════════════════════════════

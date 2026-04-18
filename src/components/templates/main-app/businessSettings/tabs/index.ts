@@ -3,6 +3,7 @@ export { default as BasicInfoTab } from "./BasicInfoTab";
 export { default as BusinessAttributesTab } from "./BusinessAttributesTab";
 export { default as ContactPersonTab } from "./ContactPersonTab";
 export { default as CustomDomainTab } from "./CustomDomainTab";
+export { default as CustomerAppTab } from "./CustomerAppTab";
 export { default as DomainSettingsTab } from "./DomainSettingsTab";
 export { default as FeedbackSettingsTab } from "./FeedbackSettingsTab";
 export { default as IntegrationsTab } from "./IntegrationsTab";
@@ -15,3 +16,4 @@ export { default as SocialMediaTab } from "./SocialMediaTab";
 export { default as SubdomainTab } from "./SubdomainTab";
 export { default as TimeSlotPresetsTab } from "./TimeSlotPresetsTab";
 export { default as WorkingHoursTab } from "./WorkingHoursTab";
+

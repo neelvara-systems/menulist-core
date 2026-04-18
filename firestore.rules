@@ -190,6 +190,14 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     
     // Analytics — Customer-facing menu analytics
+    // Also covers Customer App (installable PWA) lifecycle events:
+    //   - Doc ID pattern:  {tId}_{sId}_customerApp_daily_{YYYY-MM-DD}
+    //   - Doc ID pattern:  {tId}_{sId}_customerApp_overall_summary
+    //   - Doc ID pattern:  {tId}_{sId}_customerApp_weekly_*
+    //   - Doc ID pattern:  {tId}_{sId}_customerApp_monthly_*
+    // These events are written by the client `trackAnalyticsEvent()` and
+    // rolled up nightly by `aggregateCustomerAnalytics` (Cloud Function).
+    // @see __docs__/customer-app/customer-app_firebase.md
     match /analytics/{docId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
