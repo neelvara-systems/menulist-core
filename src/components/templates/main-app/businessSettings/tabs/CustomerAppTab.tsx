@@ -4,18 +4,22 @@
  * Customer App — Business Settings tab
  *
  * Self-contained (manages its own state + save). Reads initial values from
- * storeDetails and calls updatePWASettings() DAL on save. Icon override UI is
- * NOT included here on day one — if owners want a custom PWA icon they can do
- * so via Public Presence / logo; the generated letter-icon fallback covers the
- * rest. Adding override upload is a Phase 7B enhancement.
+ * storeDetails and calls:
+ *   - updatePWASettings() DAL on Save (toggles + short name)
+ *   - updatePWAIconOverride() DAL on icon save/clear (icon override URL)
+ *
+ * Owners can paste a Firebase Storage URL for a custom PWA icon. Full upload
+ * widget is a Day-Three polish; the URL field already covers the common case
+ * (owner uploads elsewhere, pastes the link).
  */
 
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Flex, Input, Space, Switch, Typography, message } from 'antd';
-import { LuSmartphone } from 'react-icons/lu';
 import { FEATURE_FLAGS } from '@config/features';
-import { updatePWASettings, resolvePWASettings } from '@database/pwa';
+import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { resolvePWASettings, updatePWAIconOverride, updatePWASettings } from '@database/pwa';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { Alert, Button, Card, Flex, Input, Space, Switch, Typography, message } from 'antd';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { LuCopy, LuImage, LuSmartphone } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -27,9 +31,12 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
 
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
+    const initialIconUrl = (storeDetails as any)?.publicPresence?.pwaIconOverrideUrl || '';
     const [enableInstallableApp, setEnableInstallableApp] = useState(initial.enableInstallableApp);
     const [promoteInstallation, setPromoteInstallation] = useState(initial.promoteInstallation);
     const [pwaShortName, setPwaShortName] = useState(initial.pwaShortName);
+    const [iconOverrideUrl, setIconOverrideUrl] = useState<string>(initialIconUrl);
+    const [savingIcon, setSavingIcon] = useState(false);
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
 
@@ -38,8 +45,9 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         setEnableInstallableApp(initial.enableInstallableApp);
         setPromoteInstallation(initial.promoteInstallation);
         setPwaShortName(initial.pwaShortName);
+        setIconOverrideUrl(initialIconUrl);
         setDirty(false);
-    }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName]);
+    }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName, initialIconUrl]);
 
     const markDirty = () => setDirty(true);
 
@@ -59,6 +67,55 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
             message.error('Could not save. Please try again.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Direct-install link — bypasses the 3-visit threshold so owners can
+    // share a "tap to install" URL via WhatsApp, QR, Google Business, etc.
+    // Built from the tenant's own origin (custom domain takes precedence over subdomain).
+    const installLink = useMemo(() => {
+        const customDomain: string | undefined = (storeDetails as any)?.customDomain;
+        const subdomain: string | undefined = storeDetails?.subdomain;
+        const base = customDomain
+            ? normalizeBaseUrl(customDomain)
+            : subdomain
+                ? getMenuUrl(subdomain)
+                : null;
+        if (!base) return null;
+        const clean = base.replace(/\/$/, '');
+        return `${clean}/?pwa=install`;
+    }, [storeDetails]);
+
+    const handleCopyInstallLink = async () => {
+        if (!installLink) return;
+        try {
+            await navigator.clipboard.writeText(installLink);
+            message.success('Install link copied');
+        } catch {
+            message.error('Could not copy — please select and copy manually.');
+        }
+    };
+
+    const handleSaveIcon = async () => {
+        if (!storeDetails?.storeId) return;
+        const url = iconOverrideUrl.trim();
+        // Basic validation — accept Firebase Storage / https URLs ending in image extensions.
+        if (url && !/^https:\/\/.+\.(png|jpg|jpeg|webp)(\?|$)/i.test(url)) {
+            message.error('Icon URL must be https and end with .png / .jpg / .webp');
+            return;
+        }
+        setSavingIcon(true);
+        try {
+            await updatePWAIconOverride(storeDetails.storeId, {
+                pwaIconOverrideUrl: url || null,
+                pwaIconMode: url ? 'override' : 'generated',
+            });
+            message.success(url ? 'Custom icon saved' : 'Reverted to auto-generated icon');
+        } catch (err) {
+            console.error('[CustomerAppTab] icon save failed:', err);
+            message.error('Could not save icon. Please try again.');
+        } finally {
+            setSavingIcon(false);
         }
     };
 
@@ -169,6 +226,90 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         showCount
                     />
                 </div>
+
+                {/* Custom icon override (Day-Two) */}
+                <div style={{ marginTop: 24, opacity: enableInstallableApp ? 1 : 0.5 }}>
+                    <Flex align="center" gap={10} style={{ marginBottom: 4 }}>
+                        <LuImage size={18} />
+                        <Text strong>Custom app icon (optional)</Text>
+                    </Flex>
+                    <Paragraph type="secondary" style={{ margin: '4px 0 12px' }}>
+                        Paste a public HTTPS URL for a square PNG/JPG/WEBP (recommended 512×512). Leave
+                        blank to use your logo — or an auto-generated letter icon if no logo is set.
+                    </Paragraph>
+                    <Flex gap={8} align="center" wrap="wrap">
+                        <Input
+                            value={iconOverrideUrl}
+                            placeholder="https://firebasestorage.googleapis.com/.../icon.png"
+                            disabled={!enableInstallableApp}
+                            onChange={(e) => setIconOverrideUrl(e.target.value)}
+                            style={{ flex: 1, minWidth: 280, maxWidth: 560 }}
+                        />
+                        <Button
+                            onClick={handleSaveIcon}
+                            loading={savingIcon}
+                            disabled={!enableInstallableApp || iconOverrideUrl === initialIconUrl}
+                            type="primary"
+                        >
+                            Save icon
+                        </Button>
+                        {initialIconUrl ? (
+                            <Button
+                                onClick={() => {
+                                    setIconOverrideUrl('');
+                                    // Persist clear immediately (no separate confirm).
+                                    void handleSaveIcon();
+                                }}
+                                disabled={!enableInstallableApp || savingIcon}
+                            >
+                                Clear
+                            </Button>
+                        ) : null}
+                    </Flex>
+                    {initialIconUrl ? (
+                        <div style={{ marginTop: 12 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Preview:</Text>
+                            <img
+                                src={initialIconUrl}
+                                alt="Custom PWA icon preview"
+                                style={{ display: 'block', width: 72, height: 72, borderRadius: 16, marginTop: 6, objectFit: 'cover', background: '#f1f5f9' }}
+                            />
+                        </div>
+                    ) : null}
+                </div>
+
+                {/* Direct install link — bypasses the 3-visit threshold when an
+                    owner shares it directly (WhatsApp, QR, GBP, etc.) */}
+                {installLink ? (
+                    <div style={{ marginTop: 28, opacity: enableInstallableApp ? 1 : 0.5 }}>
+                        <Flex align="center" gap={10} style={{ marginBottom: 4 }}>
+                            <LuCopy size={18} />
+                            <Text strong>Share install link</Text>
+                        </Flex>
+                        <Paragraph type="secondary" style={{ margin: '4px 0 12px' }}>
+                            Share this link on WhatsApp, QR codes, or Google Business. Anyone who
+                            opens it sees the &ldquo;Install app&rdquo; prompt immediately — no need to
+                            visit your menu a few times first.
+                        </Paragraph>
+                        <Flex gap={8} align="center" wrap="wrap">
+                            <Input
+                                value={installLink}
+                                readOnly
+                                disabled={!enableInstallableApp}
+                                onFocus={(e) => e.currentTarget.select()}
+                                style={{ flex: 1, minWidth: 280, maxWidth: 560 }}
+                            />
+                            <Button
+                                icon={<LuCopy />}
+                                onClick={handleCopyInstallLink}
+                                disabled={!enableInstallableApp}
+                                type="primary"
+                            >
+                                Copy link
+                            </Button>
+                        </Flex>
+                    </div>
+                ) : null}
 
                 <Alert
                     type="info"

@@ -35,6 +35,7 @@ import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
 import { buildAddress, buildBreadcrumbList, buildGeoCoordinates, buildOpeningHours, buildSameAs, getMenuSchemaType } from "@lib/schema";
 import { slugify } from "@lib/utils/slugify";
 import ClientMenuRenderer from "@template/website/clientWebsite";
@@ -413,6 +414,17 @@ export async function generateMetadata(): Promise<Metadata> {
             ? `https://${host}`
             : `https://${subdomain}.menulist.ai`;
 
+    // Customer App (PWA) — per-tenant apple-touch-icon + theme color.
+    // Dynamic icon route handles override / logo / letter fallback.
+    // iOS Safari uses apple-touch-icon when the customer taps "Add to Home Screen".
+    const pwaEnabled =
+        FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA &&
+        storeData.pwaSettings?.enableInstallableApp !== false;
+    const appleTouchIconUrl = pwaEnabled
+        ? `/api/app-icons/${storeData.id}/180`
+        : undefined;
+    const themeColor: string | undefined = storeData.publicPresence?.accentColor;
+
     return {
         title,
         description,
@@ -438,6 +450,19 @@ export async function generateMetadata(): Promise<Metadata> {
             index: true,
             follow: true,
         },
+        // Per-tenant PWA metadata — overrides defaults from client/layout.tsx
+        ...(appleTouchIconUrl
+            ? {
+                icons: {
+                    apple: [
+                        { url: appleTouchIconUrl, sizes: "180x180" },
+                    ],
+                },
+            }
+            : {}),
+        ...(themeColor
+            ? { themeColor }
+            : {}),
     };
 }
 
@@ -863,6 +888,24 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     const menuName = projectMetadata?.name || 'Menu';
     const breadcrumbJsonLd = buildBreadcrumbList(storeName, baseUrl, menuName);
 
+    // Customer App (PWA) schema — tells search engines this menu is also an
+    // installable WebApplication. Gated on the global + per-store PWA flag so
+    // disabled tenants don't falsely signal installability.
+    const pwaEnabled =
+        FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA &&
+        storeDetails?.pwaSettings?.enableInstallableApp !== false;
+    const pwaSchemaJsonLd = pwaEnabled
+        ? buildMobileAppSchema({
+            name: storeName,
+            description:
+                (typeof storeDetails?.tagline === 'string' && storeDetails.tagline.trim().length > 0)
+                    ? storeDetails.tagline.trim().slice(0, 160)
+                    : `${storeName} — digital menu`,
+            baseUrl,
+            themeColor: storeDetails?.publicPresence?.accentColor,
+        })
+        : null;
+
     return (
         <>
             {/* Schema.org JSON-LD for SEO */}
@@ -875,6 +918,13 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
+            {/* Customer App (PWA) — signals installability to search engines */}
+            {pwaSchemaJsonLd ? (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(pwaSchemaJsonLd) }}
+                />
+            ) : null}
             {/* ── Temporary Status Banner ── */}
             {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeDetails?.tempStatus && (
                 <TempStatusBanner tempStatus={storeDetails.tempStatus} />

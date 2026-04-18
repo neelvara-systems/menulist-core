@@ -19,11 +19,12 @@
  * Design: minimal inline styles, no external UI dep, mobile-first sheet.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { getSessionId } from '@lib/analytics/session';
+import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import type { BeforeInstallPromptEvent } from '@lib/pwa/installDetection';
+import { recordPromptShown } from '@lib/pwa/installTracker';
 import { detectPlatform } from '@lib/pwa/platformDetection';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import InstallInstructions from './InstallInstructions';
 
 interface Props {
@@ -52,6 +53,9 @@ export default function InstallPrompt({
 
     // Fire PROMPT_SHOWN exactly once when the banner mounts (trackEvent's built-in
     // debounce will swallow any accidental re-fire).
+    // Also stamp localStorage — iOS install inference in standaloneDetector.ts
+    // checks this timestamp to decide whether a later standalone launch
+    // qualifies as a confirmed install.
     useEffect(() => {
         if (!trackingEnabled) return;
         void trackEvent(TrackingEvent.CUSTOMER_APP_PROMPT_SHOWN, {
@@ -59,6 +63,7 @@ export default function InstallPrompt({
             tenantId,
             sessionId: getSessionId(),
         });
+        recordPromptShown(storeId);
     }, [storeId, tenantId, trackingEnabled]);
 
     const handleDismiss = useCallback(() => {

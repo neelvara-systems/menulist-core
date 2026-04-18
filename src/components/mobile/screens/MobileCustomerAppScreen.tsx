@@ -1,40 +1,28 @@
 'use client';
 
 /**
- * Mobile Customer App Screen
+ * Mobile Customer App Settings Screen
  *
- * Combined settings + live analytics view for the Customer App (installable PWA).
+ * Settings-only (toggles + short name + icon override URL). Matches the
+ * separation used by feedback on mobile:
+ *   - Settings → this screen (under More → Business Presence)
+ *   - Analytics → MobileCustomerAppMetrics, rendered inside MobileDashboardScreen
+ *     alongside menu analytics.
  *
- * Matches the owner experience but adapted for mobile:
- *   - Settings toggles (enable app, prompt promotion, home-screen name)
- *   - Live metrics card (Installed Customers, App Opens 30d, Install Conversion %, Top Shortcut)
- *
- * All data comes from the same backend paths used by desktop:
- *   - Settings write via `updatePWASettings()` DAL → `pwaSettings.*` on the store doc
- *   - Analytics read via `useAnalyticsData(dateRange, 'customerApp')`
- *
- * This screen intentionally keeps settings + analytics together so owners
- * don't have to hop between two mobile screens to understand the feature.
+ * Writes via:
+ *   - updatePWASettings()       → pwaSettings.*
+ *   - updatePWAIconOverride()   → publicPresence.pwaIcon*
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { resolvePWASettings, updatePWASettings } from '@database/pwa';
-import useAnalyticsData from '@hook/useAnalyticsData';
+import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { resolvePWASettings, updatePWAIconOverride, updatePWASettings } from '@database/pwa';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { theme } from 'antd';
-import dayjs from 'dayjs';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import {
-    LuDownload,
-    LuEye,
-    LuRocket,
-    LuSmartphone,
-    LuStar,
-} from 'react-icons/lu';
+import { LuCopy, LuImage, LuSmartphone } from 'react-icons/lu';
 import {
     Button,
     Card,
-    DotLoading,
     Flex,
     Input,
     NavBar,
@@ -48,71 +36,27 @@ interface Props {
     onBack: () => void;
 }
 
-type DailyShape = {
-    date: string;
-    totalInstalled?: number;
-    totalAppOpens?: number;
-    shortcutClicks?: Record<string, number>;
-};
-
-type SummaryShape = {
-    lifetimeTotalPromptShown?: number;
-    lifetimeTotalInstalled?: number;
-    lifetimeUniqueInstalls?: number;
-    lifetimeTotalAppOpens?: number;
-    shortcutClicks?: Record<string, number>;
-};
-
-function sumLastNDays(daily: DailyShape[], field: keyof DailyShape, days: number): number {
-    const cutoff = dayjs().subtract(days, 'day').startOf('day');
-    let total = 0;
-    for (const d of daily) {
-        if (!d?.date) continue;
-        if (dayjs(d.date).isBefore(cutoff)) continue;
-        const v = d[field];
-        if (typeof v === 'number') total += v;
-    }
-    return total;
-}
-
-function topShortcutLabel(clicks?: Record<string, number>): { key: string; count: number } {
-    if (!clicks) return { key: '—', count: 0 };
-    let bestKey = '';
-    let bestCount = -1;
-    for (const [k, v] of Object.entries(clicks)) {
-        if (typeof v === 'number' && v > bestCount) {
-            bestKey = k;
-            bestCount = v;
-        }
-    }
-    if (bestCount <= 0) return { key: '—', count: 0 };
-    const label =
-        bestKey === 'menu' ? 'View Menu' :
-            bestKey === 'call' ? 'Call' :
-                bestKey === 'directions' ? 'Directions' :
-                    bestKey === 'whatsapp' ? 'WhatsApp' :
-                        bestKey;
-    return { key: label, count: bestCount };
-}
-
 export default function MobileCustomerAppScreen({ onBack }: Props) {
-    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
 
     // ── Settings state ──
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
+    const initialIconUrl = (storeDetails as any)?.publicPresence?.pwaIconOverrideUrl || '';
     const [enableInstallableApp, setEnableInstallableApp] = useState(initial.enableInstallableApp);
     const [promoteInstallation, setPromoteInstallation] = useState(initial.promoteInstallation);
     const [pwaShortName, setPwaShortName] = useState(initial.pwaShortName);
+    const [iconOverrideUrl, setIconOverrideUrl] = useState<string>(initialIconUrl);
     const [saving, setSaving] = useState(false);
+    const [savingIcon, setSavingIcon] = useState(false);
     const [dirty, setDirty] = useState(false);
 
     useEffect(() => {
         setEnableInstallableApp(initial.enableInstallableApp);
         setPromoteInstallation(initial.promoteInstallation);
         setPwaShortName(initial.pwaShortName);
+        setIconOverrideUrl(initialIconUrl);
         setDirty(false);
-    }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName]);
+    }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName, initialIconUrl]);
 
     const markDirty = () => setDirty(true);
 
@@ -134,25 +78,53 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
         }
     };
 
-    // ── Analytics state (last 30 days window for mobile) ──
-    const dateRange = useMemo(() => ({
-        startDate: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
-        endDate: dayjs().format('YYYY-MM-DD'),
-    }), []);
-    const { data, loading: analyticsLoading } = useAnalyticsData(dateRange, 'customerApp');
+    // Direct-install link (?pwa=install) — bypasses 3-visit threshold for
+    // intentional sharing (WhatsApp, QR, GBP). Mirrors desktop behavior.
+    const installLink = useMemo(() => {
+        const customDomain: string | undefined = (storeDetails as any)?.customDomain;
+        const subdomain: string | undefined = storeDetails?.subdomain;
+        const base = customDomain
+            ? normalizeBaseUrl(customDomain)
+            : subdomain
+                ? getMenuUrl(subdomain)
+                : null;
+        if (!base) return null;
+        return `${base.replace(/\/$/, '')}/?pwa=install`;
+    }, [storeDetails]);
 
-    const summary = (data?.summary ?? null) as unknown as SummaryShape | null;
-    const daily = (data?.daily ?? []) as unknown as DailyShape[];
+    const handleCopyInstallLink = async () => {
+        if (!installLink) return;
+        try {
+            await navigator.clipboard.writeText(installLink);
+            Toast.show({ content: 'Install link copied', duration: 1500 });
+        } catch {
+            Toast.show({ content: 'Could not copy — please select and copy manually.', duration: 2000 });
+        }
+    };
 
-    const installedCustomers = summary?.lifetimeUniqueInstalls ?? summary?.lifetimeTotalInstalled ?? 0;
-    const appOpens30d = sumLastNDays(daily, 'totalAppOpens', 30);
-    const installs30d = sumLastNDays(daily, 'totalInstalled', 30);
-    const totalPromptShown = summary?.lifetimeTotalPromptShown ?? 0;
-    const totalInstalled = summary?.lifetimeTotalInstalled ?? 0;
-    const conversionPct = totalPromptShown > 0 ? Math.round((totalInstalled / totalPromptShown) * 100) : 0;
-    const top = topShortcutLabel(summary?.shortcutClicks);
-
-    const hasAnyData = installedCustomers > 0 || appOpens30d > 0 || daily.length > 0;
+    const handleSaveIcon = async (explicitUrl?: string) => {
+        if (!storeDetails?.storeId) return;
+        const url = (explicitUrl ?? iconOverrideUrl).trim();
+        if (url && !/^https:\/\/.+\.(png|jpg|jpeg|webp)(\?|$)/i.test(url)) {
+            Toast.show({ content: 'Icon URL must be https and end with .png / .jpg / .webp', duration: 2000 });
+            return;
+        }
+        setSavingIcon(true);
+        try {
+            await updatePWAIconOverride(storeDetails.storeId, {
+                pwaIconOverrideUrl: url || null,
+                pwaIconMode: url ? 'override' : 'generated',
+            });
+            Toast.show({
+                content: url ? 'Custom icon saved' : 'Reverted to auto-generated icon',
+                duration: 1500,
+            });
+        } catch {
+            Toast.show({ content: 'Could not save icon. Please try again.', duration: 2000 });
+        } finally {
+            setSavingIcon(false);
+        }
+    };
 
     // ── Global kill-switch guard ──
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) {
@@ -177,58 +149,19 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                 {/* Intro */}
                 <Card>
                     <Flex align="center" gap={10} style={{ marginBottom: 8 }}>
-                        <LuSmartphone color={token.colorPrimary} size={20} />
+                        <LuSmartphone color="#8b5cf6" size={20} />
                         <Title level={5} style={{ margin: 0 }}>Customer App</Title>
                     </Flex>
                     <Text type="secondary">
                         Let customers install your menu as an app on their phone home screen.
                         One tap to reopen. No app store required.
                     </Text>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                        Install stats live in the Dashboard screen.
+                    </Text>
                 </Card>
 
-                {/* ── Live Analytics ── */}
-                <Card>
-                    <Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>Live Stats</Title>
-                    {analyticsLoading && !data ? (
-                        <Flex align="center" justify="center" style={{ padding: 24 }}>
-                            <DotLoading color="primary" />
-                        </Flex>
-                    ) : !hasAnyData ? (
-                        <Text type="secondary">
-                            No installs yet. Numbers appear here once customers start installing your menu app.
-                        </Text>
-                    ) : (
-                        <Flex gap={12} vertical>
-                            <StatRow
-                                icon={<LuDownload color="#16a34a" size={18} />}
-                                label="Installed Customers"
-                                value={String(installedCustomers)}
-                            />
-                            <StatRow
-                                icon={<LuEye color="#0ea5e9" size={18} />}
-                                label="App Opens (30d)"
-                                value={String(appOpens30d)}
-                            />
-                            <StatRow
-                                icon={<LuRocket color="#f97316" size={18} />}
-                                label="Installs (30d)"
-                                value={String(installs30d)}
-                            />
-                            <StatRow
-                                icon={<LuRocket color={conversionPct >= 20 ? '#3f8600' : conversionPct >= 5 ? '#d48806' : '#cf1322'} size={18} />}
-                                label="Install Conversion"
-                                value={`${conversionPct}%`}
-                            />
-                            <StatRow
-                                icon={<LuStar color="#eab308" size={18} />}
-                                label="Top Shortcut"
-                                value={`${top.key}${top.count > 0 ? ` · ${top.count}` : ''}`}
-                            />
-                        </Flex>
-                    )}
-                </Card>
-
-                {/* ── Settings ── */}
+                {/* Settings */}
                 <Card>
                     <Title level={5} style={{ marginTop: 0, marginBottom: 4 }}>Settings</Title>
 
@@ -281,20 +214,122 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     </Button>
                 </Card>
 
+                {/* Icon override */}
+                <Card>
+                    <Flex align="center" gap={10} style={{ marginBottom: 4 }}>
+                        <LuImage size={18} />
+                        <Title level={5} style={{ margin: 0 }}>Custom app icon</Title>
+                    </Flex>
+                    <Text type="secondary" style={{ display: 'block', fontSize: 13, marginBottom: 12 }}>
+                        Paste a public HTTPS URL for a square PNG/JPG/WEBP (recommended 512×512). Leave
+                        blank to use your logo, or the auto-generated letter icon.
+                    </Text>
+
+                    <div
+                        style={{
+                            opacity: enableInstallableApp ? 1 : 0.5,
+                            pointerEvents: enableInstallableApp ? 'auto' : 'none',
+                        }}
+                    >
+                        <Input
+                            value={iconOverrideUrl}
+                            placeholder="https://firebasestorage.googleapis.com/.../icon.png"
+                            onChange={(v) => setIconOverrideUrl(v)}
+                        />
+                        <Flex gap={8} style={{ marginTop: 12 }}>
+                            <Button
+                                color="primary"
+                                disabled={iconOverrideUrl === initialIconUrl}
+                                loading={savingIcon}
+                                onClick={() => handleSaveIcon()}
+                                style={{ flex: 1, minHeight: 44 }}
+                            >
+                                Save icon
+                            </Button>
+                            {initialIconUrl ? (
+                                <Button
+                                    disabled={savingIcon}
+                                    onClick={() => {
+                                        setIconOverrideUrl('');
+                                        void handleSaveIcon('');
+                                    }}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    Clear
+                                </Button>
+                            ) : null}
+                        </Flex>
+
+                        {initialIconUrl ? (
+                            <Flex align="center" gap={12} style={{ marginTop: 12 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Current:</Text>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={initialIconUrl}
+                                    alt="Custom PWA icon"
+                                    style={{
+                                        width: 56,
+                                        height: 56,
+                                        borderRadius: 14,
+                                        objectFit: 'cover',
+                                        background: '#f1f5f9',
+                                    }}
+                                />
+                            </Flex>
+                        ) : null}
+                    </div>
+                </Card>
+
+                {/* Direct install link — bypasses 3-visit threshold */}
+                {installLink ? (
+                    <Card>
+                        <Flex align="center" gap={10} style={{ marginBottom: 4 }}>
+                            <LuCopy size={18} />
+                            <Title level={5} style={{ margin: 0 }}>Share install link</Title>
+                        </Flex>
+                        <Text type="secondary" style={{ display: 'block', fontSize: 13, marginBottom: 12 }}>
+                            Share this link on WhatsApp, QR codes, or Google Business. Anyone who
+                            opens it sees the &ldquo;Install app&rdquo; prompt right away.
+                        </Text>
+                        <div
+                            style={{
+                                opacity: enableInstallableApp ? 1 : 0.5,
+                                pointerEvents: enableInstallableApp ? 'auto' : 'none',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    padding: '10px 12px',
+                                    background: '#f1f5f9',
+                                    borderRadius: 8,
+                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                    fontSize: 12,
+                                    wordBreak: 'break-all',
+                                    color: '#334155',
+                                }}
+                            >
+                                {installLink}
+                            </div>
+                            <Button
+                                block
+                                color="primary"
+                                onClick={handleCopyInstallLink}
+                                style={{ marginTop: 12, minHeight: 44 }}
+                            >
+                                Copy link
+                            </Button>
+                        </div>
+                    </Card>
+                ) : null}
+
                 {/* How it looks — mobile cheat-sheet */}
                 <Card>
                     <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>How it looks to customers</Title>
-                    <Text type="secondary">
-                        • Android / Chrome: native install popup with your icon and name
-                    </Text>
+                    <Text type="secondary">• Android / Chrome: native install popup with your icon</Text>
                     <br />
-                    <Text type="secondary">
-                        • iPhone Safari: step-by-step &ldquo;Add to Home Screen&rdquo; guide
-                    </Text>
+                    <Text type="secondary">• iPhone Safari: step-by-step &ldquo;Add to Home Screen&rdquo; guide</Text>
                     <br />
-                    <Text type="secondary">
-                        • Once installed, the app opens full-screen from the home screen
-                    </Text>
+                    <Text type="secondary">• Once installed, opens full-screen from the home screen</Text>
                 </Card>
             </Flex>
         </Flex>
@@ -302,22 +337,6 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Small presentational helpers (local — not worth promoting yet)
-// ─────────────────────────────────────────────────────────────
-
-function StatRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-    return (
-        <Flex align="center" gap={12} style={{ padding: '8px 0' }}>
-            <div style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {icon}
-            </div>
-            <Flex style={{ flex: 1 }} vertical>
-                <Text type="secondary" style={{ fontSize: 13 }}>{label}</Text>
-                <Text strong style={{ fontSize: 17 }}>{value}</Text>
-            </Flex>
-        </Flex>
-    );
-}
 
 function ToggleRow({
     label,

@@ -69,6 +69,10 @@ export async function GET() {
         const showDirections = store.publicPresence?.showDirections !== false;
         const showWhatsApp = store.publicPresence?.showWhatsApp !== false;
 
+        // Reservation + Order have no explicit toggle — presence of URL implies intent.
+        const reservationUrl: string | undefined = store.publicPresence?.reservationUrl;
+        const orderUrl: string | undefined = store.publicPresence?.orderUrl;
+
         // Tel number: prefer full E.164 with dial code; fall back to raw phone.
         const rawPhone: string | undefined = store.phoneNumber;
         const dialCode: string | undefined = store.dialCode || store.countryCode;
@@ -77,16 +81,26 @@ export async function GET() {
                 ? `${dialCode.startsWith('+') ? '' : '+'}${dialCode}${rawPhone.replace(/^0+/, '')}`
                 : rawPhone;
 
+        // Description — short snippet for install dialogs & PWA listings.
+        // `store.tagline` is the owner-edited short tagline; fall back to a sensible default.
+        const description: string =
+            (typeof store.tagline === 'string' && store.tagline.trim().length > 0)
+                ? store.tagline.trim().slice(0, 120)
+                : `${displayName} — digital menu`;
+
         const manifest = buildManifest({
             id: store.id,
             displayName,
             shortName,
             themeColor,
+            description,
             shortcutInfo: {
                 menuPath: '/',
                 phone: showCall ? phoneForTel || null : null,
                 mapsUrl: showDirections ? store.publicPresence?.googleMapsUrl || null : null,
                 whatsappNumber: showWhatsApp ? store.publicPresence?.whatsappNumber || null : null,
+                reservationUrl: reservationUrl || null,
+                orderUrl: orderUrl || null,
             },
         });
 

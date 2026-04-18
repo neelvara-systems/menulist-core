@@ -12,8 +12,16 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectInstalled } from './installDetection';
+import { fireInstalledEventOnce, PROMPT_SHOWN_AT_KEY_PREFIX } from './installTracker';
+import { detectPlatform } from './platformDetection';
 
 const OPENED_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_openedFired_';
+
+// iOS never fires `appinstalled`. If an iOS device launches the app in
+// standalone mode within this window of a prompt-shown event, we treat it as
+// a confirmed install. 48h comfortably covers "saw prompt, decided later"
+// without capturing unrelated re-opens weeks later.
+const IOS_INSTALL_INFERENCE_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 function isSessionStorageAvailable(): boolean {
   if (typeof window === 'undefined') return false;
@@ -59,12 +67,43 @@ export async function detectAndTrackAppOpen(
     }
   }
 
+  const { platform } = detectPlatform();
+
   try {
     await trackEvent(TrackingEvent.CUSTOMER_APP_OPENED, {
       storeId: String(storeId),
       tenantId,
       sessionId: getSessionId(),
+      pwaPlatform: platform,
     });
+
+    // iOS install inference — closes the "iOS never fires appinstalled" gap.
+    // If this is an iOS standalone launch that happened shortly after we
+    // showed the install prompt, treat it as a confirmed install and fire
+    // CUSTOMER_APP_INSTALLED with source='ios-inferred'. Dedup by the same
+    // localStorage guard that protects native installs.
+    if (platform === 'ios') {
+      try {
+        const promptShownRaw = window.localStorage.getItem(
+          `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`,
+        );
+        const promptShownAt = promptShownRaw ? parseInt(promptShownRaw, 10) : 0;
+        if (
+          Number.isFinite(promptShownAt) &&
+          promptShownAt > 0 &&
+          Date.now() - promptShownAt < IOS_INSTALL_INFERENCE_WINDOW_MS
+        ) {
+          void fireInstalledEventOnce(storeId, {
+            tenantId,
+            trackingEnabled: true,
+            source: 'ios-inferred',
+          });
+        }
+      } catch {
+        /* non-fatal — analytics should never break the customer experience */
+      }
+    }
+
     return true;
   } catch (err) {
     console.warn('[pwa] detectAndTrackAppOpen failed:', err);

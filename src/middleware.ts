@@ -196,6 +196,7 @@ export function middleware(request: NextRequest) {
         pathname.startsWith('/feedback/') ||
         pathname === '/screen' ||
         pathname.startsWith('/screen/') ||
+        pathname === '/offline' ||
         pathname.startsWith('/(main)') ||
         pathname.startsWith('/(global-pages)');
 

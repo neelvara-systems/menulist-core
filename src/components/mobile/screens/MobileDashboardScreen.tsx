@@ -5,6 +5,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
 import { useCallback, useContext, useState } from 'react';
 import { LuBarChart3, LuCalendar, LuCheck, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
@@ -12,6 +13,14 @@ import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, T
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+
+// Customer App (installable PWA) metrics — store-scoped (projectId='customerApp').
+// Renders nothing when feature-flag off or no data yet, so it's safe to mount
+// unconditionally here alongside menu analytics.
+const MobileCustomerAppMetrics = dynamic(
+    () => import('./dashboardSections/MobileCustomerAppMetrics'),
+    { ssr: false },
+);
 
 interface MobileDashboardScreenProps {
     onBack: () => void;
@@ -194,6 +203,10 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                                 </Flex>
                             </Card>
                         ) : null}
+
+                        {/* Customer App (installable PWA) — store-scoped analytics.
+                            Sits alongside menu analytics on purpose: owners see both in one place. */}
+                        <MobileCustomerAppMetrics />
 
                         {overview?.aiSummary?.bulletPoints?.length ? (
                             <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>

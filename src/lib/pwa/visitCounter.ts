@@ -99,14 +99,41 @@ export function isPromptSuppressedByDismissal(storeId: string | number): boolean
 }
 
 /**
+ * Direct-install intent from a URL query param.
+ *
+ * When an owner shares "install my app" via WhatsApp, QR, or a CTA button,
+ * the landing URL includes `?pwa=install`. That signal is proof of explicit
+ * intent — we bypass the visit-count gate and show the prompt immediately.
+ *
+ * The dismissal-window is still honored (if they dismissed recently, we don't
+ * spam them — the owner can resend later).
+ */
+export function hasDirectInstallIntent(search?: string): boolean {
+  const src = typeof search === 'string' ? search : (typeof window !== 'undefined' ? window.location.search : '');
+  if (!src) return false;
+  try {
+    const params = new URLSearchParams(src.startsWith('?') ? src : `?${src}`);
+    const v = params.get('pwa');
+    return v === 'install' || v === '1' || v === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Central gate for whether the install prompt can show right now.
  * Caller must ALSO check detectInstalled() — that is intentionally kept
  * separate so this module stays pure-storage and has no DOM dependency.
+ *
+ * When `directIntent` is true (e.g., `?pwa=install` was on the URL), skip
+ * the visit-count threshold. We still respect the dismissal window to avoid
+ * spamming customers who explicitly said "no" recently.
  */
-export function canShowPrompt(storeId: string | number): boolean {
+export function canShowPrompt(storeId: string | number, directIntent: boolean = false): boolean {
+  if (isPromptSuppressedByDismissal(storeId)) return false;
+  if (directIntent) return true;
   const visits = getVisitCount(storeId);
   if (visits < getPromptThreshold()) return false;
-  if (isPromptSuppressedByDismissal(storeId)) return false;
   return true;
 }
 

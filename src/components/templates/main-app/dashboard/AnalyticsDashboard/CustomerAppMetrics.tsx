@@ -33,6 +33,12 @@ interface CustomerAppSummaryShape {
     shortcutClicks?: Record<string, number>;
     installsByDevice?: Record<string, number>;
     installsByLocation?: Record<string, number>;
+    /** Per-platform install counts — iOS / Android / Desktop / Other. */
+    installsByPlatform?: Record<string, number>;
+    /** Install source — 'native' (browser prompt) vs 'ios-inferred' (heuristic). */
+    installsBySource?: Record<string, number>;
+    /** Per-platform app-open counts — powers the retention row. */
+    appOpensByPlatform?: Record<string, number>;
     last30Days?: { totalAppOpens?: number; totalInstalled?: number };
 }
 
@@ -70,13 +76,32 @@ function topShortcut(clicks?: Record<string, number>): { key: string; count: num
         }
     }
     if (bestCount <= 0) return { key: '—', count: 0 };
-    const label =
-        bestKey === 'menu' ? 'View Menu' :
-        bestKey === 'call' ? 'Call' :
-        bestKey === 'directions' ? 'Directions' :
-        bestKey === 'whatsapp' ? 'WhatsApp' :
-        bestKey;
+    const label = shortcutLabel(bestKey) || bestKey;
     return { key: label, count: bestCount };
+}
+
+// Central label map — covers the 6 shortcut surfaces we ship with.
+function shortcutLabel(key: string): string | null {
+    switch (key) {
+        case 'menu': return 'View Menu';
+        case 'call': return 'Call';
+        case 'directions': return 'Directions';
+        case 'whatsapp': return 'WhatsApp';
+        case 'reservation': return 'Reservation';
+        case 'order': return 'Order Online';
+        default: return null;
+    }
+}
+
+// Human-readable label for the platform breakdown rows.
+function platformLabel(key: string): string {
+    switch (key) {
+        case 'ios': return 'iOS (iPhone / iPad)';
+        case 'android': return 'Android';
+        case 'desktop': return 'Desktop';
+        case 'other': return 'Other';
+        default: return key;
+    }
 }
 
 interface Props {
@@ -208,11 +233,93 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 </Col>
                 <Col xs={24} sm={12}>
                     <Statistic
-                        title="Shortcut Uses"
-                        value={topShortcutResult.count}
+                        title="Total Shortcut Uses"
+                        value={Object.values(summary?.shortcutClicks || {}).reduce(
+                            (sum, v) => sum + (typeof v === 'number' ? v : 0),
+                            0,
+                        )}
                     />
                 </Col>
             </Row>
+
+            {/* Shortcut breakdown — helps owners see which quick-actions customers value most */}
+            {summary?.shortcutClicks && Object.keys(summary.shortcutClicks).length > 0 ? (
+                <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+                    <Col span={24}>
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                            Shortcut breakdown
+                        </Text>
+                    </Col>
+                    {(['menu', 'call', 'directions', 'whatsapp', 'reservation', 'order'] as const).map((key) => {
+                        const count = summary.shortcutClicks?.[key] ?? 0;
+                        // Hide zero-count rows for shortcuts the store doesn't expose,
+                        // to keep the card tight.
+                        if (count === 0) return null;
+                        return (
+                            <Col key={key} xs={12} sm={6}>
+                                <Statistic title={shortcutLabel(key) || key} value={count} />
+                            </Col>
+                        );
+                    })}
+                </Row>
+            ) : null}
+
+            {/* Platform breakdown — iOS vs Android vs Desktop installs */}
+            {summary?.installsByPlatform && Object.keys(summary.installsByPlatform).length > 0 ? (
+                <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+                    <Col span={24}>
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                            Installs by platform
+                        </Text>
+                    </Col>
+                    {(['ios', 'android', 'desktop', 'other'] as const).map((key) => {
+                        const count = summary.installsByPlatform?.[key] ?? 0;
+                        if (count === 0) return null;
+                        return (
+                            <Col key={key} xs={12} sm={6}>
+                                <Statistic title={platformLabel(key)} value={count} />
+                            </Col>
+                        );
+                    })}
+                </Row>
+            ) : null}
+
+            {/* Retention signal — directional read on how "sticky" the app is.
+                avg opens/install above ~3 is healthy; below 1 suggests installs
+                aren't translating into repeat use. */}
+            {installedCustomers > 0 ? (
+                <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+                    <Col span={24}>
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                            App stickiness
+                        </Text>
+                    </Col>
+                    <Col xs={12} sm={8}>
+                        <Statistic
+                            title="Returning opens (30d)"
+                            value={appOpens30d}
+                        />
+                    </Col>
+                    <Col xs={12} sm={8}>
+                        <Statistic
+                            title="Avg opens per install"
+                            value={
+                                (summary?.lifetimeTotalAppOpens ?? 0) > 0 && installedCustomers > 0
+                                    ? ((summary?.lifetimeTotalAppOpens ?? 0) / installedCustomers).toFixed(1)
+                                    : '0.0'
+                            }
+                        />
+                    </Col>
+                    {(summary?.installsBySource?.['ios-inferred'] ?? 0) > 0 ? (
+                        <Col xs={24} sm={8}>
+                            <Statistic
+                                title="iOS (inferred installs)"
+                                value={summary?.installsBySource?.['ios-inferred'] ?? 0}
+                            />
+                        </Col>
+                    ) : null}
+                </Row>
+            ) : null}
         </Card>
     );
 };

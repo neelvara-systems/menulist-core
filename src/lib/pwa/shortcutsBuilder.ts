@@ -24,6 +24,10 @@ export interface ShortcutStoreInfo {
   mapsUrl?: string | null;
   /** WhatsApp number (with or without +, any format); if set, adds the WhatsApp shortcut. */
   whatsappNumber?: string | null;
+  /** Reservation/booking URL (Dineout, OpenTable, own site); if set, adds Reservation shortcut. */
+  reservationUrl?: string | null;
+  /** Online ordering URL (Swiggy, Zomato, own site); if set, adds Order Online shortcut. */
+  orderUrl?: string | null;
 }
 
 export interface ManifestShortcut {
@@ -82,5 +86,26 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
     });
   }
 
+  if (info.reservationUrl) {
+    shortcuts.push({
+      name: 'Book a Table',
+      short_name: 'Reserve',
+      description: 'Make a reservation',
+      // Same same-origin handoff pattern as call/whatsapp — event first, then redirect.
+      url: withSource('/pwa/reservation', 'reservation'),
+    });
+  }
+
+  if (info.orderUrl) {
+    shortcuts.push({
+      name: 'Order Online',
+      short_name: 'Order',
+      description: 'Order for delivery or pickup',
+      url: withSource('/pwa/order', 'order'),
+    });
+  }
+
+  // Android Chrome caps shortcuts at 4. We pass more and let the browser
+  // pick the first 4 — owners who care can ask us to reorder in future.
   return shortcuts;
 }

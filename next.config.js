@@ -148,6 +148,14 @@ const withPWA = require("next-pwa")({
     register: process.env.NODE_ENV !== "development",
     skipWaiting: true,
     maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+    // Offline fallback page served by the service worker when a document
+    // navigation fails due to no network. The Customer App (PWA) depends on
+    // this — installed customers opening the app offline should see a friendly
+    // branded message instead of a raw browser error.
+    // @see src/app/offline/page.tsx
+    fallbacks: {
+        document: '/offline',
+    },
     runtimeCaching: [
         {
             urlPattern: /^\/(dashboard|billing|business-settings|projects|feedback|qr-code)\/?$/i,

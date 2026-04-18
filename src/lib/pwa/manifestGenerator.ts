@@ -30,6 +30,14 @@ export interface ManifestStoreInput {
     startUrl?: string;
     /** Shortcut info (phone / mapsUrl) — omit to render only the Menu shortcut. */
     shortcutInfo?: ShortcutStoreInfo;
+    /** Short description rendered by Android Chrome's install dialog and PWA listings. */
+    description?: string;
+    /**
+     * Optional categories — defaults to `['food', 'business', 'lifestyle']` which
+     * covers restaurants, food trucks, bakeries, and similar SMB verticals. Callers
+     * can pass a specific list based on business type if needed.
+     */
+    categories?: string[];
 }
 
 export interface WebAppManifest {
@@ -44,11 +52,34 @@ export interface WebAppManifest {
     background_color: string;
     lang: string;
     dir: 'ltr';
+    /**
+     * Categories — helps PWA listings (Android "Installed Apps" / curated PWA
+     * directories) classify the app. Restaurant-specific defaults.
+     */
+    categories?: string[];
+    /**
+     * Description used in the browser install dialog (Android Chrome) and in
+     * some PWA listings. Kept short; most browsers truncate past ~80 chars.
+     */
+    description?: string;
     icons: Array<{
         src: string;
         sizes: string;
         type: string;
         purpose?: string;
+    }>;
+    /**
+     * Screenshots shown by Android Chrome's "richer install UI" (as of Chrome
+     * 106+). When at least one `form_factor: 'narrow'` screenshot is provided,
+     * the install dialog upgrades from a minimal prompt to a Play-Store-style
+     * preview card — historically lifts install rate 2–3×.
+     */
+    screenshots?: Array<{
+        src: string;
+        sizes: string;
+        type: string;
+        form_factor: 'narrow' | 'wide';
+        label?: string;
     }>;
     shortcuts?: Array<{
         name: string;
@@ -88,6 +119,32 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
         ? buildShortcuts(input.shortcutInfo)
         : buildShortcuts({ menuPath: startUrl });
 
+    // Screenshots — one narrow (phone) and one wide (desktop) sourced from our
+    // dynamic screenshot endpoint. Android Chrome uses `narrow` for the richer
+    // install UI; desktop Chrome uses `wide` in its install dialog.
+    const screenshotBase = `/api/app-screenshots/${input.id}`;
+    const screenshots: WebAppManifest['screenshots'] = [
+        {
+            src: `${screenshotBase}/narrow`,
+            sizes: '1080x1920',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: `${input.displayName} — digital menu`,
+        },
+        {
+            src: `${screenshotBase}/wide`,
+            sizes: '1920x1080',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: `${input.displayName} — digital menu`,
+        },
+    ];
+
+    const categories =
+        input.categories && input.categories.length > 0
+            ? input.categories
+            : ['food', 'business', 'lifestyle'];
+
     return {
         name: input.displayName,
         short_name: shortName,
@@ -100,7 +157,10 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
         background_color: backgroundColor,
         lang: 'en',
         dir: 'ltr',
+        categories,
+        ...(input.description ? { description: input.description } : {}),
         icons,
+        screenshots,
         shortcuts,
     };
 }

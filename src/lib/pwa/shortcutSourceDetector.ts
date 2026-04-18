@@ -11,16 +11,24 @@ import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectInstalled } from './installDetection';
 
-export type ShortcutSource = 'menu' | 'call' | 'directions' | 'whatsapp';
+export type ShortcutSource =
+  | 'menu'
+  | 'call'
+  | 'directions'
+  | 'whatsapp'
+  | 'reservation'
+  | 'order';
 
-// WhatsApp launches are attributed to the CALL event bucket on purpose — both
-// represent the same owner intent (customer-initiated contact) and expanding
-// the analytics enum for a fourth variant adds writes without owner value.
+// One distinct event per shortcut — the dashboard breakdown needs a per-key
+// bucket. Previous versions aliased `whatsapp` into the CALL event; the
+// whatsapp column on the dashboard was therefore always zero. Fixed below.
 const SHORTCUT_EVENT_MAP: Record<ShortcutSource, TrackingEvent> = {
   menu: TrackingEvent.CUSTOMER_APP_SHORTCUT_MENU,
   call: TrackingEvent.CUSTOMER_APP_SHORTCUT_CALL,
-  whatsapp: TrackingEvent.CUSTOMER_APP_SHORTCUT_CALL,
+  whatsapp: TrackingEvent.CUSTOMER_APP_SHORTCUT_WHATSAPP,
   directions: TrackingEvent.CUSTOMER_APP_SHORTCUT_DIRECTIONS,
+  reservation: TrackingEvent.CUSTOMER_APP_SHORTCUT_RESERVATION,
+  order: TrackingEvent.CUSTOMER_APP_SHORTCUT_ORDER,
 };
 
 /**
@@ -33,7 +41,7 @@ export function parseShortcutSource(search: string): ShortcutSource | null {
     const params = new URLSearchParams(search.startsWith('?') ? search : `?${search}`);
     const raw = params.get('source');
     if (!raw) return null;
-    const match = raw.match(/^shortcut-(menu|call|directions|whatsapp)$/);
+    const match = raw.match(/^shortcut-(menu|call|directions|whatsapp|reservation|order)$/);
     if (!match) return null;
     return match[1] as ShortcutSource;
   } catch {

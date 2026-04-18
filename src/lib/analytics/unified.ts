@@ -142,6 +142,9 @@ export enum TrackingEvent {
   CUSTOMER_APP_SHORTCUT_MENU = 'customer_app_shortcut_menu',        // Menu shortcut launched (?source=shortcut-menu)
   CUSTOMER_APP_SHORTCUT_CALL = 'customer_app_shortcut_call',        // Call shortcut launched (?source=shortcut-call)
   CUSTOMER_APP_SHORTCUT_DIRECTIONS = 'customer_app_shortcut_directions', // Directions shortcut launched
+  CUSTOMER_APP_SHORTCUT_WHATSAPP = 'customer_app_shortcut_whatsapp', // WhatsApp shortcut launched — previously miscounted as CALL
+  CUSTOMER_APP_SHORTCUT_RESERVATION = 'customer_app_shortcut_reservation', // Reservation shortcut launched
+  CUSTOMER_APP_SHORTCUT_ORDER = 'customer_app_shortcut_order',      // Online order shortcut launched
 }
 
 /**
@@ -194,6 +197,21 @@ export interface TrackingData {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+
+  /**
+   * Customer App (PWA) platform tag — 'ios' | 'android' | 'desktop' | 'other'.
+   * Captured client-side via detectPlatform() and forwarded on install/open
+   * events so the owner dashboard can break installs down by platform.
+   * Only honored for CUSTOMER_APP_INSTALLED and CUSTOMER_APP_OPENED events.
+   */
+  pwaPlatform?: 'ios' | 'android' | 'desktop' | 'other';
+
+  /**
+   * Install source tag — 'native' (browser prompt accepted) | 'ios-inferred'
+   * (iOS heuristic: standalone launch shortly after prompt shown) | 'unknown'.
+   * Lets the dashboard distinguish confirmed installs from heuristic ones.
+   */
+  pwaInstallSource?: 'native' | 'ios-inferred' | 'unknown';
 
   // Additional properties
   [key: string]: any;         // Any other custom properties
@@ -448,6 +466,16 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.uniqueInstallSessions = 1;
         updateData[`installsByDevice.${deviceKey}`] = 1;
         updateData[`installsByLocation.${locationKey}`] = 1;
+        // Platform breakdown (iOS / Android / Desktop). Optional — only
+        // writes when caller supplied pwaPlatform.
+        if (data.pwaPlatform) {
+          updateData[`installsByPlatform.${data.pwaPlatform}`] = 1;
+        }
+        // Install source (native vs ios-inferred) — lets owners distinguish
+        // confirmed installs from heuristic ones.
+        if (data.pwaInstallSource) {
+          updateData[`installsBySource.${data.pwaInstallSource}`] = 1;
+        }
         break;
 
       case TrackingEvent.CUSTOMER_APP_OPENED:
@@ -456,6 +484,11 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`viewsByLocation.${locationKey}`] = 1;
         updateData[`hourlyAppOpens.${hour}`] = 1;
         updateData.totalSessions = 1;
+        // Per-platform app-open count — used by the "active by platform" row
+        // on the owner dashboard.
+        if (data.pwaPlatform) {
+          updateData[`appOpensByPlatform.${data.pwaPlatform}`] = 1;
+        }
         break;
 
       case TrackingEvent.CUSTOMER_APP_SHORTCUT_MENU:
@@ -468,6 +501,18 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.CUSTOMER_APP_SHORTCUT_DIRECTIONS:
         updateData['shortcutClicks.directions'] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_SHORTCUT_WHATSAPP:
+        updateData['shortcutClicks.whatsapp'] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_SHORTCUT_RESERVATION:
+        updateData['shortcutClicks.reservation'] = 1;
+        break;
+
+      case TrackingEvent.CUSTOMER_APP_SHORTCUT_ORDER:
+        updateData['shortcutClicks.order'] = 1;
         break;
 
       default:
@@ -485,7 +530,10 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       eventName === TrackingEvent.CUSTOMER_APP_OPENED ||
       eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_MENU ||
       eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_CALL ||
-      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_DIRECTIONS;
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_DIRECTIONS ||
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_WHATSAPP ||
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_RESERVATION ||
+      eventName === TrackingEvent.CUSTOMER_APP_SHORTCUT_ORDER;
     const effectiveProjectId = isCustomerAppEvent ? 'customerApp' : data.projectId;
 
     // Use the database function to track the event

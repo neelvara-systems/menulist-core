@@ -24,17 +24,18 @@
  * Renders nothing when feature is disabled — zero DOM cost.
  */
 
-import { useEffect, useState } from 'react';
 import { FEATURE_FLAGS } from '@config/features';
 import { detectInstalled, type BeforeInstallPromptEvent } from '@lib/pwa/installDetection';
-import { detectAndTrackAppOpen } from '@lib/pwa/standaloneDetector';
-import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
 import { fireInstalledEventOnce } from '@lib/pwa/installTracker';
+import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import { detectAndTrackAppOpen } from '@lib/pwa/standaloneDetector';
 import {
     canShowPrompt,
+    hasDirectInstallIntent,
     incrementVisitCount,
-    markPromptDismissed,
+    markPromptDismissed
 } from '@lib/pwa/visitCounter';
+import { useEffect, useState } from 'react';
 import InstallPrompt from './InstallPrompt';
 
 interface Props {
@@ -76,10 +77,14 @@ export default function CustomerAppController({
         void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled });
 
         // 4. Compute prompt eligibility AFTER incrementing visits.
+        //    Direct-install intent (?pwa=install on the URL) bypasses the visit
+        //    threshold — owner-shared links / QR codes reach intent customers
+        //    who shouldn't need to visit 3 times before they can install.
+        const directIntent = hasDirectInstallIntent(window.location.search);
         const eligible =
             promoteInstallation &&
             !detectInstalled() &&
-            canShowPrompt(storeId);
+            canShowPrompt(storeId, directIntent);
         if (eligible) setShouldShowPrompt(true);
     }, [featureOn, storeId, tenantId, trackingEnabled, promoteInstallation]);
 
