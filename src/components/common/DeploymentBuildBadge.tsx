@@ -1,5 +1,6 @@
 'use client';
 
+import { DEPLOYMENT_BADGE_STORAGE_KEY, DEPLOYMENT_BADGE_TOGGLE_EVENT } from '@constant/deploymentDebug';
 import { useEffect, useMemo, useState } from 'react';
 
 function shouldShowBadge(): boolean {
@@ -14,9 +15,13 @@ function shouldShowBadge(): boolean {
 
 export default function DeploymentBuildBadge() {
     const [isVisible, setIsVisible] = useState(false);
+    const [serverTimestamp, setServerTimestamp] = useState<string>('');
+    const [localNow, setLocalNow] = useState<string>('');
 
     useEffect(() => {
-        setIsVisible(shouldShowBadge());
+        const fromUrl = shouldShowBadge();
+        const fromStorage = typeof window !== 'undefined' && window.sessionStorage.getItem(DEPLOYMENT_BADGE_STORAGE_KEY) === '1';
+        setIsVisible(fromUrl || fromStorage);
     }, []);
 
     const buildLabel = useMemo(() => {
@@ -25,6 +30,67 @@ export default function DeploymentBuildBadge() {
         const env = process.env.NEXT_PUBLIC_ENV || 'unknown';
         return `${shortBuildId} · ${env}`;
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const onToggle = () => {
+            setIsVisible((prev) => {
+                const next = !prev;
+                window.sessionStorage.setItem(DEPLOYMENT_BADGE_STORAGE_KEY, next ? '1' : '0');
+                return next;
+            });
+        };
+
+        window.addEventListener(DEPLOYMENT_BADGE_TOGGLE_EVENT, onToggle as EventListener);
+        return () => {
+            window.removeEventListener(DEPLOYMENT_BADGE_TOGGLE_EVENT, onToggle as EventListener);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!isVisible) return;
+
+        let isMounted = true;
+        const loadServerVersion = async () => {
+            try {
+                const res = await fetch('/api/version', { cache: 'no-store' });
+                if (!res.ok) return;
+                const data = await res.json() as { timestamp?: string };
+                if (isMounted) {
+                    setServerTimestamp(data?.timestamp || '');
+                }
+            } catch {
+                if (isMounted) {
+                    setServerTimestamp('');
+                }
+            }
+        };
+
+        void loadServerVersion();
+        return () => {
+            isMounted = false;
+        };
+    }, [isVisible]);
+
+    useEffect(() => {
+        if (!isVisible) return;
+        const update = () => {
+            setLocalNow(new Date().toLocaleString());
+        };
+        update();
+        const interval = window.setInterval(update, 1000);
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, [isVisible]);
+
+    const serverTimeLabel = useMemo(() => {
+        if (!serverTimestamp) return '';
+        const parsed = new Date(serverTimestamp);
+        if (Number.isNaN(parsed.getTime())) return serverTimestamp;
+        return parsed.toLocaleString();
+    }, [serverTimestamp]);
 
     if (process.env.NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE === 'false' || !isVisible) {
         return null;
@@ -51,7 +117,9 @@ export default function DeploymentBuildBadge() {
             }}
             title={process.env.NEXT_PUBLIC_DEPLOYMENT_URL || undefined}
         >
-            {buildLabel}
+            <div>{buildLabel}</div>
+            {serverTimeLabel ? <div>Server: {serverTimeLabel}</div> : null}
+            {localNow ? <div>Now: {localNow}</div> : null}
         </div>
     );
 }

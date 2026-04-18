@@ -19,7 +19,13 @@ It answers one operational question:
 
 1. On-demand build badge in UI (hidden by default)
 - Shows `shortBuildId · env` (example: `a1b2c3d · preview`)
-- Visible only when URL contains `?v=1` (or `?v=true`)
+- Includes:
+  - `Server: <date-time>` (from `/api/version`)
+  - `Now: <date-time>` (local device time)
+- Visible when any of these triggers are used:
+  - URL contains `?v=1` (or `?v=true`)
+  - Long-press **More** tab in mobile nav
+  - Long-press **Log Out** row in mobile More screen
 
 2. Runtime verification endpoint
 - `GET /api/version`
@@ -58,13 +64,17 @@ This setup gives two levels of confidence:
 
 ### 1) Quick check in preview/prod UI
 
-Open any deployment URL with query param:
+Use any one trigger:
 
 - `https://<your-url>?v=1`
+- Long-press More tab (mobile)
+- Long-press Log Out row (mobile More screen)
 
 Expected:
 - Bottom-right internal badge appears
-- Format: `<shortBuildId> · <env>`
+- First line: `<shortBuildId> · <env>`
+- Second line: `Server: <date-time>`
+- Third line: `Now: <date-time>`
 
 ### 2) Ground-truth server verification
 
@@ -104,4 +114,3 @@ If they do not match, you are seeing a stale client state (usually cache/service
 4. If mismatch persists, hard refresh and re-open the URL in a new tab.
 
 No action needed when both values match.
-

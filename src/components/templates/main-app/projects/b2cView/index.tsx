@@ -112,6 +112,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 <MainContentRenderer
                     activeDeviceType={activeDeviceType}
                     projectData={projectData}
+                    storeDetails={storeDetails}
                     activePage={activePage}
                     setActivePage={setActivePage}
                     activeLanguage={activeLanguage}
@@ -126,6 +127,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 />
                 <PreviewModal
                     projectData={projectData}
+                    storeDetails={storeDetails}
                     previewModalOpen={previewModalOpen}
                     setPreviewModalOpen={setPreviewModalOpen}
                     activeLanguage={activeLanguage}

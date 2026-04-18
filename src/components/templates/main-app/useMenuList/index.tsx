@@ -828,8 +828,25 @@ export default function UseMenuList() {
                 onCancel={() => setGuideModal(null)}
                 footer={<Button onClick={() => setGuideModal(null)}>Got it</Button>}
                 width={480}
+                styles={{
+                    content: {
+                        background: themeToken.colorBgElevated,
+                    },
+                    header: {
+                        background: themeToken.colorBgElevated,
+                        borderBottom: `1px solid ${themeToken.colorBorderSecondary}`,
+                    },
+                    body: {
+                        color: themeToken.colorText,
+                    },
+                    footer: {
+                        borderTop: `1px solid ${themeToken.colorBorderSecondary}`,
+                    },
+                }}
             >
-                {guideModal?.content}
+                <div style={{ color: themeToken.colorText }}>
+                    {guideModal?.content}
+                </div>
             </Modal>
 
             <Modal

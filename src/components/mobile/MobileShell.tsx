@@ -1,6 +1,7 @@
 'use client'
 
 import { getFeedbackCount } from '@database/guestFeedback';
+import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
@@ -15,13 +16,14 @@ import type { MoreSubScreen } from './screens/MobileMoreScreen';
 const MobileMenuScreen = dynamic(() => import('./screens/MobileMenuScreen'), { ssr: false });
 const MobileHoursScreen = dynamic(() => import('./screens/MobileHoursScreen'), { ssr: false });
 const MobileDashboardScreen = dynamic(() => import('./screens/MobileDashboardScreen'), { ssr: false });
+const MobileTodayHistoryScreen = dynamic(() => import('./screens/MobileTodayHistoryScreen'), { ssr: false });
 const MobileShareScreen = dynamic(() => import('./screens/MobileShareScreen'), { ssr: false });
 const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { ssr: false });
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
 
-function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard'; moreScreen: MoreSubScreen } {
+function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } {
     const fallback = { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen };
     if (!hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
         return fallback;
@@ -37,7 +39,7 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
     if (tab === 'today') {
         return {
             tab,
-            todayScreen: parts[1] === 'dashboard' ? 'dashboard' : 'main',
+            todayScreen: parts[1] === 'dashboard' ? 'dashboard' : parts[1] === 'history' ? 'history' : 'main',
             moreScreen: 'main' as MoreSubScreen,
         };
     }
@@ -57,7 +59,7 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
     };
 }
 
-function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard', moreScreen: MoreSubScreen) {
+function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen) {
     if (tab === 'today' && todayScreen !== 'main') {
         return `${MOBILE_ROUTE_HASH_PREFIX}today/${todayScreen}`;
     }
@@ -72,7 +74,7 @@ export default function MobileShell() {
     const { token } = theme.useToken();
     const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseMobileRouteHash(window.location.hash);
     const [activeTab, setActiveTab] = useState<MobileTab>(initialRoute.tab);
-    const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard'>(initialRoute.todayScreen);
+    const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
     const [feedbackBadgeCount, setFeedbackBadgeCount] = useState<number>(0);
@@ -144,16 +146,24 @@ export default function MobileShell() {
         }
     }, [activeTab, moreScreen]);
 
+    const handleOpenMenuTab = useCallback(() => {
+        setActiveTab('menu');
+        setMoreScreen('main');
+        setIsMoreRootScreen(true);
+    }, []);
+
     const screen = activeTab === 'today'
         ? (
             todayScreen === 'dashboard'
                 ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} />
-                : <MobileHoursScreen onOpenDashboard={() => setTodayScreen('dashboard')} />
+                : todayScreen === 'history'
+                    ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
+                    : <MobileHoursScreen onOpenDashboard={() => setTodayScreen('dashboard')} />
         )
         : activeTab === 'share'
             ? <MobileShareScreen />
             : activeTab === 'more'
-                ? <MobileMoreScreen initialScreen={moreScreen} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
+                ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen />;
 
     if (!hasSubscription) {
@@ -232,6 +242,7 @@ export default function MobileShell() {
                     activeTab={activeTab}
                     feedbackCount={feedbackBadgeCount}
                     onTabChange={handleTabChange}
+                    onMoreTabLongPress={emitDeploymentBadgeToggle}
                 />
             </Flex>
             </MobileProjectsProvider>

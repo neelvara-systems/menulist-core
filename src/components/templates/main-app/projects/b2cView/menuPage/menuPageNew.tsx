@@ -15,9 +15,9 @@ import { FEATURE_FLAGS } from '@config/features';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { slugify } from '@lib/utils/slugify';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { StoreDataType } from '@type/platform/store';
 import Image from 'next/image';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Project } from '../../types';
 import { DEFAULTS, getMoodWithBrandColor, MENU_LAYOUTS, MenuLayout, MenuMood, SPACING } from '../designSystem';
 import BackToTop from '../output/BackToTop';
@@ -44,6 +44,12 @@ interface MenuPageNewProps {
     setActivePage?: (page: PageType) => void;
     activeLanguage: string;
     projectData: Project;
+    /**
+     * Store details are passed explicitly (not read from PlatformGlobalDataContext)
+     * so this component works identically in the public client menu (server-fetched)
+     * and the dashboard preview (context-fetched). See MainContentRenderer caller.
+     */
+    storeDetails: StoreDataType;
     setActiveLanguage: (language: string) => void;
     from: string;
     businessType?: string;
@@ -61,12 +67,12 @@ function MenuPageNew({
     setActivePage,
     activeLanguage,
     projectData,
+    storeDetails,
     setActiveLanguage,
     from,
     businessType,
     precomputedBlocks
 }: MenuPageNewProps) {
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const moodConfig = getMoodWithBrandColor(mood, brandAccentColor);
     const layoutConfig = MENU_LAYOUTS[layout];
     const spacing = SPACING[moodConfig.spacing];
@@ -577,7 +583,7 @@ function MenuPageNew({
                             businessType={businessType}
                             moodConfig={moodConfig}
                             onItemClick={handleItemClick}
-                            currency={storeDetails.currencySymbol || '$'}
+                            currency={storeDetails?.currencySymbol || '$'}
                             menuSettings={projectData?.menuSettings}
                             precomputedBlocks={precomputedBlocks}
                             analyticsIds={{

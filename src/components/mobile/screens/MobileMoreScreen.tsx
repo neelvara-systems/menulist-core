@@ -1,6 +1,7 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { signOutSession } from '@lib/auth/client';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
@@ -10,6 +11,7 @@ import {
     LuAlertTriangle,
     LuBarChart3,
     LuBuilding2,
+    LuClock3,
     LuClock,
     LuCreditCard,
     LuGlobe,
@@ -51,6 +53,7 @@ const MobileOfficialPageScreen = dynamic(() => import('./MobileOfficialPageScree
 const MobileBusinessAttributesScreen = dynamic(() => import('./MobileBusinessAttributesScreen'), { ssr: false });
 const MobileIntegrationsScreen = dynamic(() => import('./MobileIntegrationsScreen'), { ssr: false });
 const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr: false });
+const MobileTodayHistoryScreen = dynamic(() => import('./MobileTodayHistoryScreen'), { ssr: false });
 
 export type MoreSubScreen =
     | 'main'
@@ -80,15 +83,17 @@ export type MoreSubScreen =
     | 'specialMenus'
     | 'domainSettings'
     | 'integrations'
-    | 'posSync';
+    | 'posSync'
+    | 'todayHistory';
 
 interface MobileMoreScreenProps {
     initialScreen?: MoreSubScreen;
+    onOpenMenuTab?: () => void;
     onRootStateChange?: (isRoot: boolean) => void;
     onScreenChange?: (screen: MoreSubScreen) => void;
 }
 
-export default function MobileMoreScreen({ initialScreen = 'main', onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
+export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab, onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
     const t = useTranslations('MobileMore');
     const tBusiness = useTranslations('BusinessSettings');
     const tFeedback = useTranslations('FeedbackInbox');
@@ -98,6 +103,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
+    const logoutLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const suppressNextLogoutClickRef = useRef(false);
 
     const userName = session?.user?.name || 'User';
     const userEmail = session?.user?.email || '';
@@ -120,6 +127,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
             shellScrollContainer.scrollTop = mainScrollTopRef.current;
         });
     }, [subScreen]);
+
+    useEffect(() => {
+        return () => {
+            if (logoutLongPressTimerRef.current) {
+                clearTimeout(logoutLongPressTimerRef.current);
+                logoutLongPressTimerRef.current = null;
+            }
+        };
+    }, []);
 
     const openSubScreen = (nextScreen: MoreSubScreen) => {
         const shellScrollContainer = document.querySelector<HTMLElement>('[data-mobile-shell-scroll="true"]');
@@ -152,13 +168,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
     if (subScreen === 'socialSettings') return <MobileAdvancedSettingsScreen mode="social" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} onOpenMenuTab={onOpenMenuTab} />;
     if (subScreen === 'domainSettings') return <MobileDomainSettingsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'integrations') return <MobileIntegrationsScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'posSync') return <MobilePosSyncScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'todayHistory') return <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
 
     const moduleItems = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') },
+        { key: 'todayHistory', icon: <LuClock3 color="#0ea5e9" size={20} />, label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') },
         { key: 'feedback', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') },
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
@@ -204,6 +222,20 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
                 }
             },
         });
+    };
+
+    const clearLogoutLongPressTimer = () => {
+        if (!logoutLongPressTimerRef.current) return;
+        clearTimeout(logoutLongPressTimerRef.current);
+        logoutLongPressTimerRef.current = null;
+    };
+
+    const startLogoutLongPress = () => {
+        clearLogoutLongPressTimer();
+        logoutLongPressTimerRef.current = setTimeout(() => {
+            suppressNextLogoutClickRef.current = true;
+            emitDeploymentBadgeToggle();
+        }, 700);
     };
 
     return (
@@ -291,11 +323,26 @@ export default function MobileMoreScreen({ initialScreen = 'main', onRootStateCh
                         prefix={<LuSettings color="#64748b" size={20} />}
                         title={<Text strong>{t('appSettings')}</Text>}
                     />
-                    <List.Item
-                        onClick={handleLogout}
-                        prefix={<LuLogOut color="#dc2626" size={20} />}
-                        title={<Text strong style={{ color: '#dc2626' }}>{isLoggingOut ? t('loggingOut') : t('logOut')}</Text>}
-                    />
+                    <div
+                        onMouseDown={startLogoutLongPress}
+                        onMouseLeave={clearLogoutLongPressTimer}
+                        onMouseUp={clearLogoutLongPressTimer}
+                        onTouchCancel={clearLogoutLongPressTimer}
+                        onTouchEnd={clearLogoutLongPressTimer}
+                        onTouchStart={startLogoutLongPress}
+                    >
+                        <List.Item
+                            onClick={() => {
+                                if (suppressNextLogoutClickRef.current) {
+                                    suppressNextLogoutClickRef.current = false;
+                                    return;
+                                }
+                                handleLogout();
+                            }}
+                            prefix={<LuLogOut color="#dc2626" size={20} />}
+                            title={<Text strong style={{ color: '#dc2626' }}>{isLoggingOut ? t('loggingOut') : t('logOut')}</Text>}
+                        />
+                    </div>
                 </List>
             </Card>
             <AppSettingsSheet

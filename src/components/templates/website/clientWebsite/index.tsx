@@ -102,6 +102,7 @@ function ClientMenuRenderer({
                     fromPage="main-website"
                     activeDeviceType={activeDeviceType}
                     projectData={projectData}
+                    storeDetails={storeDetails}
                     activePage={activePage}
                     setActivePage={setActivePage}
                     activeLanguage={activeLanguage}

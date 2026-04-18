@@ -10,95 +10,18 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { resolveDomain } from "@lib/multiTenant/domainResolver";
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    limit,
-    query,
-    where,
-} from "firebase/firestore";
-import { unstable_cache } from "next/cache";
-import { headers } from "next/headers";
+    getStoreByCustomDomain,
+    getStoreBySubdomain,
+} from "@lib/firestore/clientStoreLookup";
+import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { doc, getDoc } from "firebase/firestore";
 import { notFound } from "next/navigation";
-import { cache } from "react";
 
-// ── Store lookup (same patterns as OBP) ──
-
-const getStoreBySubdomain = cache(
-    unstable_cache(
-        async (subdomain: string) => {
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-            const q = query(
-                storesRef,
-                where("subdomain", "==", subdomain.toLowerCase()),
-                where("active", "==", true),
-                limit(1),
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        },
-        ['compliance-store-subdomain'],
-        { revalidate: 60, tags: ['client-stores'] }
-    )
-);
-
-const getStoreByCustomDomain = cache(
-    unstable_cache(
-        async (domain: string) => {
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-            const q = query(
-                storesRef,
-                where("customDomain", "==", domain.toLowerCase()),
-                where("domainVerified", "==", true),
-                where("active", "==", true),
-                limit(1),
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        },
-        ['compliance-store-custom-domain'],
-        { revalidate: 60, tags: ['client-stores'] }
-    )
-);
+// ── Store lookup + tenant headers — shared with other client pages ──
 
 async function getTenantFromHeaders() {
-    const headersList = headers();
-    const tenantSubdomain = headersList.get("x-tenant-subdomain");
-    const tenantCustomDomain = headersList.get("x-tenant-custom-domain");
-    const tenantTypeHeader = headersList.get("x-tenant-type");
-
-    // Multiple fallback headers for host detection (Vercel + standard)
-    const requestHost =
-        headersList.get("x-forwarded-host") ||      // Standard proxy header
-        headersList.get("host") ||                   // Standard host header
-        headersList.get("x-vercel-proxied-host") ||  // Vercel specific
-        headersList.get("x-vercel-deployment-url") || // Vercel deployment URL
-        process.env.VERCEL_URL;                      // Vercel env fallback
-
-    const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
-
-    // If still no host, we're in a broken state - log and return nulls
-    if (!host) {
-        console.error("[CompliancePage] No host header found. Headers:", {
-            forwardedHost: headersList.get("x-forwarded-host"),
-            host: headersList.get("host"),
-            vercelHost: headersList.get("x-vercel-proxied-host"),
-            vercelUrl: headersList.get("x-vercel-deployment-url"),
-        });
-    }
-
-    // Fallback to resolveDomain if headers not set (middleware cache/header issues)
-    const resolvedDomain = resolveDomain(host);
-    const tenantType = tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null);
-    const subdomain = tenantSubdomain || resolvedDomain.subdomain || null;
-    const customDomain = tenantCustomDomain || resolvedDomain.customDomain || null;
-
-    return { subdomain, customDomain, tenantType };
+    return sharedGetTenantFromHeaders('CompliancePage');
 }
 
 interface CompliancePageContentProps {

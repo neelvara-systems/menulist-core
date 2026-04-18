@@ -4,10 +4,18 @@ import HomePageNew from "@template/main-app/projects/b2cView/homePage/homePageNe
 import MenuPageNew from "@template/main-app/projects/b2cView/menuPage/menuPageNew"
 import { DeviceTypes, PageType } from "@template/main-app/projects/b2cView/types"
 import { Project } from "@template/main-app/projects/types"
+import { StoreDataType } from "@type/platform/store"
 
 interface MainContentRendererProps {
   activeDeviceType: DeviceTypes;
   projectData: Project;
+  /**
+   * Store details passed explicitly so public menu rendering does not
+   * depend on PlatformGlobalDataContext (a dashboard-scoped provider).
+   * Dashboard preview passes storeDetails from its own context read;
+   * public client menu passes the server-fetched store data.
+   */
+  storeDetails: StoreDataType;
   activePage: PageType;
   setActivePage: (page: PageType) => void;
   activeLanguage: string;
@@ -20,6 +28,7 @@ interface MainContentRendererProps {
 function MainContentRenderer({
   activeDeviceType,
   projectData,
+  storeDetails,
   activePage,
   setActivePage,
   activeLanguage,
@@ -58,6 +67,7 @@ function MainContentRenderer({
           showCategoryTabs={projectData?.config?.design?.menu?.showCategoryTabs ?? false}
           activeLanguage={activeLanguage}
           projectData={projectData}
+          storeDetails={storeDetails}
           setActiveLanguage={setActiveLanguage}
           from={fromPage}
           businessType={businessType}

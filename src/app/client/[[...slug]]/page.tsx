@@ -26,61 +26,31 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import {
+    getStoreByCustomDomain,
+    getStoreByOutletSlug,
+    getStoreBySubdomain,
+} from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
-import { resolveDomain } from "@lib/multiTenant/domainResolver";
+import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { buildAddress, buildBreadcrumbList, buildGeoCoordinates, buildOpeningHours, buildSameAs, getMenuSchemaType } from "@lib/schema";
 import { slugify } from "@lib/utils/slugify";
 import ClientMenuRenderer from "@template/website/clientWebsite";
 import {
-    collection,
     doc,
-    getDoc,
-    getDocs,
-    limit,
-    query,
-    where,
+    getDoc
 } from "firebase/firestore";
 import { Metadata } from "next";
 import { unstable_cache } from "next/cache";
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { cache, Suspense } from "react";
+import { Suspense } from "react";
 
 // Get tenant info from headers (set by middleware)
+// Shared helper used across client pages — see @lib/multiTenant/getTenantFromHeaders
 async function getTenantFromHeaders() {
-    const headersList = headers();
-    const tenantSubdomain = headersList.get("x-tenant-subdomain");
-    const tenantCustomDomain = headersList.get("x-tenant-custom-domain");
-    const tenantTypeHeader = headersList.get("x-tenant-type");
-
-    // Multiple fallback headers for host detection (Vercel + standard)
-    const requestHost =
-        headersList.get("x-forwarded-host") ||      // Standard proxy header
-        headersList.get("host") ||                   // Standard host header
-        headersList.get("x-vercel-proxied-host") ||  // Vercel specific
-        headersList.get("x-vercel-deployment-url") || // Vercel deployment URL
-        process.env.VERCEL_URL;                      // Vercel env fallback
-
-    const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
-
-    // If still no host, we're in a broken state - log and return nulls
-    if (!host) {
-        console.error("[ClientPage] No host header found. Headers:", {
-            forwardedHost: headersList.get("x-forwarded-host"),
-            host: headersList.get("host"),
-            vercelHost: headersList.get("x-vercel-proxied-host"),
-            vercelUrl: headersList.get("x-vercel-deployment-url"),
-        });
-    }
-
-    const resolvedDomain = resolveDomain(host);
-    const tenantType = tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null);
-    const subdomain = tenantSubdomain || resolvedDomain.subdomain || null;
-    const customDomain = tenantCustomDomain || resolvedDomain.customDomain || null;
-
-    return { subdomain, customDomain, tenantType, host };
+    return sharedGetTenantFromHeaders('ClientPage');
 }
 
 // Timeout wrapper — prevents infinite SSR hangs if Firestore is unresponsive (GPT FIX 4)
@@ -112,71 +82,6 @@ async function withRetry<T>(
         throw error;
     }
 }
-
-// Lookup store by subdomain
-// React cache() = within-request dedup (TASK 2), unstable_cache = cross-request Vercel Data Cache (TASK 6)
-const getStoreBySubdomain = cache(
-    unstable_cache(
-        async (subdomain: string) => {
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-            const q = query(
-                storesRef,
-                where("subdomain", "==", subdomain.toLowerCase()),
-                where("active", "==", true),
-                limit(1),
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        },
-        ['client-store-subdomain'],
-        { revalidate: 60, tags: ['client-stores'] }
-    )
-);
-
-// Lookup store by custom domain
-// React cache() = within-request dedup (TASK 2), unstable_cache = cross-request Vercel Data Cache (TASK 6)
-const getStoreByCustomDomain = cache(
-    unstable_cache(
-        async (domain: string) => {
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-            const q = query(
-                storesRef,
-                where("customDomain", "==", domain.toLowerCase()),
-                where("domainVerified", "==", true),
-                where("active", "==", true),
-                limit(1),
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        },
-        ['client-store-custom-domain'],
-        { revalidate: 60, tags: ['client-stores'] }
-    )
-);
-
-// Lookup outlet store by outletSlug within a tenant (URL Routing Architecture — Gap 2)
-// Used when first path segment matches an outlet slug instead of a project slug
-const getStoreByOutletSlug = cache(
-    unstable_cache(
-        async (tenantId: number, outletSlug: string) => {
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-            const q = query(
-                storesRef,
-                where("tenantId", "==", tenantId),
-                where("outletSlug", "==", outletSlug.toLowerCase()),
-                where("active", "==", true),
-                limit(1),
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        },
-        ['client-store-outlet-slug'],
-        { revalidate: 60, tags: ['client-stores'] }
-    )
-);
 
 // Get project data by ID
 async function getProjectData(projectId: string): Promise<any> {
@@ -239,39 +144,32 @@ async function getProjectBySlugOrDefault(
         [key: string]: any;
     }> = [];
 
-    if (Object.keys(summaryProjects).length > 0) {
-        // Use projectsSummary — has slug data + is 1 read instead of N
-        // Filter out special menu projects — they are resolved separately via resolveSpecialMenuOverride
-        projects = Object.entries(summaryProjects)
-            .filter(([, data]: [string, any]) => data.active !== false && !data.isSpecialMenu)
-            .map(([projectId, data]: [string, any]) => ({
-                id: projectId,
-                projectId,
-                name: data.name,
-                isDefault: data.isDefault,
-                slug: data.slug,
-                previousSlugs: data.previousSlugs,
-                ...data,
-            }));
-    } else {
-        // Fallback: read from project data collection (legacy — no slug data)
-        const metadataRef = collection(
-            firebaseClient,
-            `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}/metadata`,
-        );
-        const q = query(
-            metadataRef,
-            where("deleted", "==", false),
-            where("active", "==", true),
-        );
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return null;
-
-        projects = snapshot.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-        })) as typeof projects;
+    if (Object.keys(summaryProjects).length === 0) {
+        // No platformSummary/projects_{storeId} doc exists. The previous fallback
+        // attempted to read `projects/{tId}/{sId}/metadata` as a collection — a
+        // 4-segment path which Firestore rejects as an invalid collection
+        // reference (collections require odd segment counts). There is no
+        // `metadata` subcollection in our schema: projects are stored at
+        // `projects/{tId}/{sId}/{projectId}` directly (see getProjectData).
+        // Returning null here surfaces the "Menu Not Found" UI cleanly instead
+        // of throwing — owners are expected to publish at least once, which
+        // generates the summary document.
+        return null;
     }
+
+    // Use projectsSummary — has slug data + is 1 read instead of N
+    // Filter out special menu projects — they are resolved separately via resolveSpecialMenuOverride
+    projects = Object.entries(summaryProjects)
+        .filter(([, data]: [string, any]) => data.active !== false && !data.isSpecialMenu)
+        .map(([projectId, data]: [string, any]) => ({
+            id: projectId,
+            projectId,
+            name: data.name,
+            isDefault: data.isDefault,
+            slug: data.slug,
+            previousSlugs: data.previousSlugs,
+            ...data,
+        }));
 
     if (projects.length === 0) return null;
 

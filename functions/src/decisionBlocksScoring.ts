@@ -983,7 +983,6 @@ export const computeDecisionBlocksScores = onSchedule({
                                     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(sId);
                                     const storeUpdate: Record<string, any> = {
                                         activeSpecialMenuId: projectId,
-                                        activeSpecialMenuMode: projData.specialMenuMode || 'overlay',
                                     };
                                     // Auto-set temp status banner
                                     if (FUNCTION_FLAGS.ENABLE_TEMP_STATUS) {
@@ -1022,7 +1021,6 @@ export const computeDecisionBlocksScores = onSchedule({
                                     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(sId);
                                     const storeUpdate: Record<string, any> = {
                                         activeSpecialMenuId: FieldValue.delete(),
-                                        activeSpecialMenuMode: FieldValue.delete(),
                                     };
                                     // Clear temp status if it was special_menu type
                                     const storeSnap = await storeRef.get();

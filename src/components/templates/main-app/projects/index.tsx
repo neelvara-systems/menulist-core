@@ -1,7 +1,7 @@
 'use client';
 
-import { FEATURE_FLAGS } from '@config/features';
 import LoadingMessage from '@antdComponent/loadingMessage';
+import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
@@ -9,8 +9,8 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import useDeviceType from '@hook/useDeviceType';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -1650,6 +1650,7 @@ function ProjectsPage() {
                 {activeProject?.projectId && currentView !== 3 && (
                     <PreviewModal
                         projectData={activeProject}
+                        storeDetails={storeDetails}
                         previewModalOpen={isPreviewModalOpen}
                         setPreviewModalOpen={setIsPreviewModalOpen}
                         activeLanguage={previewLanguage}

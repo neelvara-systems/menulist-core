@@ -1,11 +1,21 @@
 import { DEVICE_TYPES_LIST } from '@constant/builder';
 import MainContentRenderer from '@template/website/mainContentRenderer';
+import { StoreDataType } from '@type/platform/store';
 import { Button, Flex, Modal, Tooltip } from 'antd';
 import { useState } from 'react';
 import { LuMonitor, LuRectangleVertical, LuTablet } from 'react-icons/lu';
 import { DeviceTypes, PageType } from './types';
 
-function PreviewModal({ projectData, previewModalOpen, setPreviewModalOpen, activeLanguage, setActiveLanguage }) {
+interface PreviewModalProps {
+    projectData: any;
+    storeDetails: StoreDataType;
+    previewModalOpen: boolean;
+    setPreviewModalOpen: (open: boolean) => void;
+    activeLanguage: string;
+    setActiveLanguage: (language: string) => void;
+}
+
+function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewModalOpen, activeLanguage, setActiveLanguage }: PreviewModalProps) {
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>('mobile');
     const [activePage, setActivePage] = useState<PageType>(PageType.HOME);
 
@@ -56,6 +66,7 @@ function PreviewModal({ projectData, previewModalOpen, setPreviewModalOpen, acti
                 fromPage="b2c"
                 activeDeviceType={activeDeviceType}
                 projectData={projectData}
+                storeDetails={storeDetails}
                 activePage={activePage}
                 setActivePage={setActivePage}
                 activeLanguage={activeLanguage}

@@ -1,6 +1,7 @@
 'use client'
 
 import { theme } from 'antd';
+import { useEffect, useRef } from 'react';
 import { Button, Flex, Text } from './antd';
 import { LuCalendarCheck, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
 
@@ -10,6 +11,7 @@ interface MobileNavigationProps {
     activeTab: MobileTab;
     onTabChange: (tab: MobileTab) => void;
     feedbackCount?: number;
+    onMoreTabLongPress?: () => void;
 }
 
 const tabs = [
@@ -19,8 +21,30 @@ const tabs = [
     { key: 'more' as MobileTab, title: 'More', icon: <LuMoreHorizontal size={20} /> },
 ];
 
-export default function MobileNavigation({ activeTab, onTabChange, feedbackCount }: MobileNavigationProps) {
+export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, onMoreTabLongPress }: MobileNavigationProps) {
     const { token } = theme.useToken();
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const suppressNextMoreClickRef = useRef(false);
+
+    const clearLongPressTimer = () => {
+        if (!longPressTimerRef.current) return;
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+    };
+
+    const startMoreLongPress = () => {
+        clearLongPressTimer();
+        longPressTimerRef.current = setTimeout(() => {
+            suppressNextMoreClickRef.current = true;
+            onMoreTabLongPress?.();
+        }, 700);
+    };
+
+    useEffect(() => {
+        return () => {
+            clearLongPressTimer();
+        };
+    }, []);
 
     return (
         <div
@@ -39,12 +63,18 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
             <Flex align="center" gap={0} justify="space-between" style={{ padding: '4px 8px 8px', width: '100%' }}>
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.key;
-
-                    return (
+                    const isMoreTab = tab.key === 'more';
+                    const tabButton = (
                         <Button
                             key={tab.key}
                             fill="none"
-                            onClick={() => onTabChange(tab.key)}
+                            onClick={() => {
+                                if (isMoreTab && suppressNextMoreClickRef.current) {
+                                    suppressNextMoreClickRef.current = false;
+                                    return;
+                                }
+                                onTabChange(tab.key);
+                            }}
                             style={{
                                 borderRadius: 16,
                                 color: isActive ? token.colorPrimary : token.colorTextSecondary,
@@ -53,6 +83,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                 minWidth: 0,
                                 paddingBlock: 6,
                                 paddingInline: 4,
+                                width: '100%',
                             }}
                         >
                             <Flex
@@ -83,6 +114,25 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                 </Text>
                             </Flex>
                         </Button>
+                    );
+
+                    if (!isMoreTab) {
+                        return tabButton;
+                    }
+
+                    return (
+                        <div
+                            key={tab.key}
+                            onMouseDown={startMoreLongPress}
+                            onMouseLeave={clearLongPressTimer}
+                            onMouseUp={clearLongPressTimer}
+                            onTouchCancel={clearLongPressTimer}
+                            onTouchEnd={clearLongPressTimer}
+                            onTouchStart={startMoreLongPress}
+                            style={{ display: 'flex', flex: 1, minWidth: 0 }}
+                        >
+                            {tabButton}
+                        </div>
                     );
                 })}
             </Flex>

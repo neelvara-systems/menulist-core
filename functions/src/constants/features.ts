@@ -152,7 +152,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/special-menu-switching/special-menu-switching_impl.md
      */
-    ENABLE_SPECIAL_MENU_SWITCHING: false,
+    ENABLE_SPECIAL_MENU_SWITCHING: true,
 
     /**
      * Enable Temp Status auto-set when special menu activates

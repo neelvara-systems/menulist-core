@@ -13,14 +13,15 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
+import { StoreDataType } from "@type/platform/store";
 import {
     collection,
     getDocs,
     query,
     where,
 } from "firebase/firestore";
-import { unstable_cache } from "next/cache";
 import { getTranslations } from "next-intl/server";
+import { unstable_cache } from "next/cache";
 import styles from "./obp.module.scss";
 
 interface OutletInfo {
@@ -78,7 +79,7 @@ const getOutletsForTenant = unstable_cache(
 );
 
 interface BrandOBPContentProps {
-    store: any;
+    store: StoreDataType;
     baseUrl: string;
 }
 
