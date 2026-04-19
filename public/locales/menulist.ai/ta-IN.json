@@ -83,7 +83,9 @@
         "darkMode": "Dark Mode",
         "lightMode": "Light Mode",
         "darkThemeEnabled": "Dark theme mode enabled",
-        "lightThemeEnabled": "Light theme mode enabled"
+        "lightThemeEnabled": "Light theme mode enabled",
+        "reset": "மீட்டமை",
+        "saveChanges": "மாற்றங்களை சேமி"
     },
     "AppSettings": {
         "title": "App Appearance",

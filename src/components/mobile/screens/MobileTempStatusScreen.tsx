@@ -9,34 +9,21 @@
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
+import {
+    MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
+    MOBILE_TEMP_STATUS_OPTIONS,
+    getDefaultTempStatusDateTime,
+    default as MobileTempStatusConfigurator,
+} from '../components/MobileTempStatusConfigurator';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Input, NavBar, Space, Tag, Text, Title, Toast } from '../antd';
+import { Card, DotLoading, Flex, NavBar, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
 }
-
-const STATUS_OPTIONS = [
-    { value: 'closed_today', label: 'Closed Today', icon: '🔒', defaultMsg: 'Closed today' },
-    { value: 'opening_late', label: 'Opening Late', icon: '🕐', defaultMsg: 'Opening late today' },
-    { value: 'closing_early', label: 'Closing Early', icon: '🕕', defaultMsg: 'Closing early today' },
-    { value: 'kitchen_closed', label: 'Kitchen Closed', icon: '🍳', defaultMsg: 'Kitchen is closed' },
-    { value: 'special_menu', label: 'Special Menu', icon: '🍽️', defaultMsg: 'Special menu available today' },
-    { value: 'custom', label: 'Custom', icon: 'ℹ️', defaultMsg: '' },
-] as const;
-
-const EXPIRY_OPTIONS = [
-    { hours: 4, label: '4 hours' },
-    { hours: 8, label: '8 hours' },
-    { hours: 12, label: '12 hours' },
-    { hours: 24, label: '24 hours' },
-    { hours: 48, label: '2 days' },
-];
 
 export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScreenProps) {
     const t = useTranslations('MobileTempStatus');
@@ -47,18 +34,26 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
 
     const [statusType, setStatusType] = useState<string>('closed_today');
     const [customMessage, setCustomMessage] = useState('');
-    const [expiryHours, setExpiryHours] = useState<number>(24);
+    const [selectedExpiryHours, setSelectedExpiryHours] = useState<number | null>(24);
+    const [exactExpiryAt, setExactExpiryAt] = useState<string>(() => getDefaultTempStatusDateTime(24));
     const [isLoading, setIsLoading] = useState(false);
 
     const previewMessage = statusType === 'custom'
         ? (customMessage.trim() || 'Temporary notice')
-        : (STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
+        : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
 
     const handleSet = useCallback(async () => {
         setIsLoading(true);
 
-        const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString();
-        const selectedOption = STATUS_OPTIONS.find((option) => option.value === statusType);
+        const exactExpiryDate = new Date(exactExpiryAt);
+        if (!exactExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
+            Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
+            setIsLoading(false);
+            return;
+        }
+
+        const expiresAt = exactExpiryDate.toISOString();
+        const selectedOption = MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType);
         const message = statusType === 'custom'
             ? (customMessage.trim() || 'Temporary notice')
             : (selectedOption?.defaultMsg || statusType);
@@ -94,7 +89,7 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
         } finally {
             setIsLoading(false);
         }
-    }, [customMessage, expiryHours, setStoreDetails, statusType, storeDetails?.tempStatus, t]);
+    }, [exactExpiryAt, customMessage, setStoreDetails, statusType, storeDetails?.tempStatus, t]);
 
     const handleClear = useCallback(async () => {
         setIsLoading(true);
@@ -141,115 +136,44 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                     subtitle={t('subtitle')}
                     title={t('title')}
                 />
-                {isActive ? (
-                    <Card>
-                        <Flex gap={16} vertical>
-                            <Flex align="center" gap={8} wrap="wrap">
-                                <LuAlertTriangle color="#d97706" size={16} />
-                                <Text strong>{t('activeStatus')}</Text>
-                                <Tag color="warning">Active</Tag>
-                            </Flex>
-
-                            <Card size="small" style={{ backgroundColor: '#fff7e6', borderColor: '#ffd591' }}>
-                                <Flex gap={8} vertical>
-                                    <Text strong>{`${STATUS_OPTIONS.find((option) => option.value === currentStatus.type)?.icon || 'ℹ️'} ${currentStatus.message}`}</Text>
-                                    <Flex align="center" gap={6}>
-                                        <LuClock color="#ad6800" size={12} />
-                                        <Text type="secondary">{`${t('expires')} ${dayjs(currentStatus.expiresAt).format('MMM D, h:mm A')}`}</Text>
-                                    </Flex>
-                                </Flex>
-                            </Card>
-
-                            <Button
-                                block
-                                color="danger"
-                                fill="outline"
-                                loading={isLoading}
-                                onClick={handleClear}
-                                size="large"
-                            >
-                                <Flex align="center" gap={8} justify="center">
-                                    <LuX size={14} />
-                                    <Text>{t('clearStatus')}</Text>
-                                </Flex>
-                            </Button>
-                        </Flex>
-                    </Card>
-                ) : (
-                    <>
-                        <Card>
-                            <Flex gap={16} vertical>
-                                <Text type="secondary">{t('bannerNotice')}</Text>
-
-                                <Flex gap={8} vertical>
-                                    <Text strong>{t('statusType')}</Text>
-                                    <Space size={[8, 8]} wrap>
-                                        {STATUS_OPTIONS.map((option) => (
-                                            <Tag
-                                                key={option.value}
-                                                color={statusType === option.value ? 'processing' : 'default'}
-                                                onClick={() => setStatusType(option.value)}
-                                                style={{ cursor: 'pointer', padding: '6px 12px' }}
-                                            >
-                                                {`${option.icon} ${option.label}`}
-                                            </Tag>
-                                        ))}
-                                    </Space>
-                                </Flex>
-
-                                {statusType === 'custom' ? (
-                                    <Flex gap={6} vertical>
-                                        <Text strong>{t('customMessage')}</Text>
-                                        <Input
-                                            maxLength={100}
-                                            onChange={setCustomMessage}
-                                            placeholder={t('customPlaceholder')}
-                                            value={customMessage}
-                                        />
-                                    </Flex>
-                                ) : null}
-
-                                <Flex gap={8} vertical>
-                                    <Text strong>{t('expiresAfter')}</Text>
-                                    <Space size={[8, 8]} wrap>
-                                        {EXPIRY_OPTIONS.map((option) => (
-                                            <Tag
-                                                key={option.hours}
-                                                color={expiryHours === option.hours ? 'processing' : 'default'}
-                                                onClick={() => setExpiryHours(option.hours)}
-                                                style={{ cursor: 'pointer', padding: '6px 12px' }}
-                                            >
-                                                {option.label}
-                                            </Tag>
-                                        ))}
-                                    </Space>
-                                </Flex>
-                            </Flex>
-                        </Card>
-
-                        <Card>
-                            <Flex gap={8} vertical>
-                                <Text strong>{t('preview')}</Text>
-                                <Card size="small" style={{ backgroundColor: '#fff7e6', borderColor: '#ffd591' }}>
-                                    <Text strong>{`${STATUS_OPTIONS.find((option) => option.value === statusType)?.icon || 'ℹ️'} ${previewMessage}`}</Text>
-                                </Card>
-                            </Flex>
-                        </Card>
-
-                        <Button
-                            block
-                            color="warning"
-                            loading={isLoading}
-                            onClick={handleSet}
-                            size="large"
-                        >
-                            <Flex align="center" gap={8} justify="center">
-                                <LuCheck size={16} />
-                                <Text>{t('setStatus')}</Text>
-                            </Flex>
-                        </Button>
-                    </>
-                )}
+                <Card>
+                    <MobileTempStatusConfigurator
+                        activeStatusLabel={t('activeStatus')}
+                        activeTagLabel="Active"
+                        bannerNotice={isActive ? undefined : t('bannerNotice')}
+                        clearStatusLabel={t('clearStatus')}
+                        exactExpiryAt={exactExpiryAt}
+                        exactExpiryLabel="Ends At"
+                        currentStatus={currentStatus}
+                        customMessage={customMessage}
+                        customMessageLabel={t('customMessage')}
+                        customPlaceholder={t('customPlaceholder')}
+                        expiryLabel={t('expiresAfter')}
+                        expiresLabel={t('expires')}
+                        expiryOptions={MOBILE_TEMP_STATUS_EXPIRY_OPTIONS}
+                        isActive={Boolean(isActive)}
+                        isLoading={isLoading}
+                        onClear={() => void handleClear()}
+                        onExactExpiryAtChange={(value) => {
+                            setExactExpiryAt(value);
+                            setSelectedExpiryHours(null);
+                        }}
+                        onCustomMessageChange={setCustomMessage}
+                        onExpiryHoursChange={(value) => {
+                            setSelectedExpiryHours(value);
+                            setExactExpiryAt(getDefaultTempStatusDateTime(value));
+                        }}
+                        onSet={() => void handleSet()}
+                        onStatusTypeChange={setStatusType}
+                        previewLabel={t('preview')}
+                        previewMessage={previewMessage}
+                        selectedExpiryHours={selectedExpiryHours}
+                        setStatusLabel={t('setStatus')}
+                        statusOptions={MOBILE_TEMP_STATUS_OPTIONS}
+                        statusType={statusType}
+                        statusTypeLabel={t('statusType')}
+                    />
+                </Card>
             </Flex>
         </Flex>
     );

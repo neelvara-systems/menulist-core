@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
@@ -15,6 +16,8 @@ interface MobilePosSyncScreenProps {
 
 export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps) {
     const t = useTranslations('PosSync');
+    const tMobile = useTranslations('MobileSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
@@ -298,8 +301,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     gap={8}
                     style={{
                         backdropFilter: 'blur(10px)',
-                        background: 'var(--adm-color-background)',
-                        borderTop: '1px solid var(--adm-color-border)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
                         padding: '12px 16px',
@@ -308,10 +311,10 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     }}
                 >
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
-                        Reset
+                        {tMobile('reset')}
                     </Button>
                     <Button block disabled={!isDirty} loading={isSaving} onClick={() => void handleSave()} size="large">
-                        Save
+                        {tMobile('saveChanges')}
                     </Button>
                 </Flex>
             </Flex>

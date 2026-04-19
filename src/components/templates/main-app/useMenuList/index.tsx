@@ -942,19 +942,24 @@ function LinkCard({ title, description, url, shortUrl, storeName, sharePrefix, o
             <Flex vertical gap={10}>
                 <Text strong>{title}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>{description}</Text>
-                <Text
-                    type="secondary"
+                <Card
+                    size="small"
+                    styles={{ body: { padding: '6px 10px' } }}
                     style={{
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                        background: themeToken.colorBgLayout,
-                        padding: '4px 8px',
-                        borderRadius: 4,
-                        wordBreak: 'break-all',
+                        backgroundColor: themeToken.colorFillAlter,
+                        borderColor: themeToken.colorBorderSecondary,
                     }}
                 >
-                    {shortUrl}
-                </Text>
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            wordBreak: 'break-all',
+                        }}
+                    >
+                        {shortUrl}
+                    </Text>
+                </Card>
                 <Flex gap={6} align="center" wrap="wrap">
                     <Button size="small" type="primary" icon={<LuClipboard size={14} />} onClick={onCopy}>
                         Copy Link

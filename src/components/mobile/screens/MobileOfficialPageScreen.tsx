@@ -6,7 +6,7 @@ import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ColorPicker, InputNumber, Upload } from 'antd';
+import { ColorPicker, InputNumber, Upload, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import {
@@ -48,6 +48,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
     const common = useTranslations('Common');
+    const { token } = theme.useToken();
     const session = useClientAuthSession();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
@@ -360,8 +361,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     gap={8}
                     style={{
                         backdropFilter: 'blur(10px)',
-                        background: 'var(--adm-color-background)',
-                        borderTop: '1px solid var(--adm-color-border)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
                         padding: '12px 16px',

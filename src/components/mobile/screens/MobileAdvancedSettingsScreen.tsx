@@ -2,6 +2,7 @@
 
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuExternalLink, LuMessageSquare, LuPlus, LuShare2, LuX } from 'react-icons/lu';
@@ -64,6 +65,8 @@ function normalizeAndValidateSocialLink(value: string, platformKey: string): { n
 
 export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
+    const tMobile = useTranslations('MobileSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -242,7 +245,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         if (field === 'collectEmailRequired') setCollectEmailRequired(value);
     };
     const feedbackFieldCardStyle = {
-        border: '1px solid var(--adm-color-border)',
+        border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 12,
         padding: 12,
     } as const;
@@ -400,7 +403,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                         key={platform.key}
                                         gap={12}
                                         style={{
-                                            border: '1px solid var(--adm-color-border)',
+                                            border: `1px solid ${token.colorBorderSecondary}`,
                                             borderRadius: 8,
                                             padding: '12px 14px',
                                             width: '100%',
@@ -538,8 +541,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                     gap={8}
                     style={{
                         backdropFilter: 'blur(10px)',
-                        background: 'var(--adm-color-background)',
-                        borderTop: '1px solid var(--adm-color-border)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
                         padding: '12px 16px',
@@ -548,10 +551,10 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                     }}
                 >
                     <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} fill="outline" onClick={handleReset} size="large">
-                        Reset
+                        {tMobile('reset')}
                     </Button>
                     <Button block disabled={!isSocialDirty && !isFeedbackDirty} loading={isSaving} onClick={() => void handleSave()} size="large">
-                        Save
+                        {tMobile('saveChanges')}
                     </Button>
                 </Flex>
             </Flex>

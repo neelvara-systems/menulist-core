@@ -83,7 +83,9 @@
         "darkMode": "Modo oscuro",
         "lightMode": "Modo claro",
         "darkThemeEnabled": "Modo oscuro activado",
-        "lightThemeEnabled": "Modo claro activado"
+        "lightThemeEnabled": "Modo claro activado",
+        "reset": "Restablecer",
+        "saveChanges": "Guardar cambios"
     },
     "AppSettings": {
         "title": "App Appearance",

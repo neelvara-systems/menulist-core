@@ -83,7 +83,9 @@
         "darkMode": "الوضع الداكن",
         "lightMode": "الوضع الفاتح",
         "darkThemeEnabled": "تم تفعيل الوضع الداكن",
-        "lightThemeEnabled": "تم تفعيل الوضع الفاتح"
+        "lightThemeEnabled": "تم تفعيل الوضع الفاتح",
+        "reset": "إعادة تعيين",
+        "saveChanges": "حفظ التغييرات"
     },
     "AppSettings": {
         "title": "مظهر التطبيق",

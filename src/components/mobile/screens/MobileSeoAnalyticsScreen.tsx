@@ -2,6 +2,7 @@
 
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
@@ -34,6 +35,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const t = useTranslations('MobileSeoAnalytics');
     const tSeo = useTranslations('SEO');
     const tAnalytics = useTranslations('Analytics');
+    const tMobile = useTranslations('MobileSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [tagline, setTagline] = useState('');
     const [metaTitle, setMetaTitle] = useState('');
@@ -429,8 +432,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             gap={8}
                             style={{
                                 backdropFilter: 'blur(10px)',
-                                background: 'var(--adm-color-background)',
-                                borderTop: '1px solid var(--adm-color-border)',
+                                backgroundColor: token.colorBgContainer,
+                                borderTop: `1px solid ${token.colorBorderSecondary}`,
                                 bottom: 0,
                                 marginInline: -16,
                                 padding: '12px 16px',
@@ -439,10 +442,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             }}
                         >
                             <Button block disabled={!isSeoDirty || isSeoSaving} fill="outline" onClick={resetSeoSettings}>
-                                Reset
+                                {tMobile('reset')}
                             </Button>
                             <Button block disabled={!isSeoDirty} loading={isSeoSaving} onClick={() => void saveSeoSettings()}>
-                                Save
+                                {tMobile('saveChanges')}
                             </Button>
                         </Flex>
                     </>
@@ -510,8 +513,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             gap={8}
                             style={{
                                 backdropFilter: 'blur(10px)',
-                                background: 'var(--adm-color-background)',
-                                borderTop: '1px solid var(--adm-color-border)',
+                                backgroundColor: token.colorBgContainer,
+                                borderTop: `1px solid ${token.colorBorderSecondary}`,
                                 bottom: 0,
                                 marginInline: -16,
                                 padding: '12px 16px',
@@ -520,10 +523,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             }}
                         >
                             <Button block disabled={!isAnalyticsDirty || isAnalyticsSaving} fill="outline" onClick={resetAnalyticsSettings}>
-                                Reset
+                                {tMobile('reset')}
                             </Button>
                             <Button block disabled={!isAnalyticsDirty} loading={isAnalyticsSaving} onClick={() => void saveAnalyticsSettings()}>
-                                Save
+                                {tMobile('saveChanges')}
                             </Button>
                         </Flex>
                     </>

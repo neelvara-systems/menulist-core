@@ -16,6 +16,11 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobileTempStatusConfigurator, {
+    MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
+    MOBILE_TEMP_STATUS_OPTIONS,
+    getDefaultTempStatusDateTime,
+} from '../components/MobileTempStatusConfigurator';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
 
@@ -90,7 +95,8 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const [isDownloadingSticker, setIsDownloadingSticker] = useState(false);
     const [tempStatusType, setTempStatusType] = useState<string>('closed_today');
     const [customTempStatusMessage, setCustomTempStatusMessage] = useState('');
-    const [tempStatusExpiryHours, setTempStatusExpiryHours] = useState<number>(12);
+    const [selectedTempStatusExpiryHours, setSelectedTempStatusExpiryHours] = useState<number | null>(12);
+    const [exactTempStatusExpiryAt, setExactTempStatusExpiryAt] = useState<string>(() => getDefaultTempStatusDateTime(12));
     const [isTempStatusLoading, setIsTempStatusLoading] = useState(false);
     const [isTodayHoursSheetOpen, setIsTodayHoursSheetOpen] = useState(false);
     const [isSavingTodayHours, setIsSavingTodayHours] = useState(false);
@@ -313,29 +319,20 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
         }
     };
 
-    const TEMP_STATUS_OPTIONS = [
-        { value: 'closed_today', label: 'Closed Today', icon: '🔒', defaultMsg: 'Closed today' },
-        { value: 'opening_late', label: 'Opening Late', icon: '🕐', defaultMsg: 'Opening late today' },
-        { value: 'closing_early', label: 'Closing Early', icon: '🕕', defaultMsg: 'Closing early today' },
-        { value: 'kitchen_closed', label: 'Kitchen Closed', icon: '🍳', defaultMsg: 'Kitchen is closed' },
-        { value: 'special_menu', label: 'Special Menu', icon: '🍽️', defaultMsg: 'Special menu today' },
-        { value: 'custom', label: 'Custom', icon: 'ℹ️', defaultMsg: '' },
-    ] as const;
-    const TEMP_STATUS_EXPIRY_OPTIONS = [
-        { hours: 4, label: '4h' },
-        { hours: 8, label: '8h' },
-        { hours: 12, label: '12h' },
-        { hours: 24, label: '24h' },
-        { hours: 48, label: '2d' },
-    ] as const;
     const tempStatusPreviewMessage = tempStatusType === 'custom'
         ? (customTempStatusMessage.trim() || 'Temporary notice')
-        : (TEMP_STATUS_OPTIONS.find(o => o.value === tempStatusType)?.defaultMsg || tempStatusType);
+        : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === tempStatusType)?.defaultMsg || tempStatusType);
 
     const handleSetTempStatus = async () => {
+        const exactExpiryDate = new Date(exactTempStatusExpiryAt);
+        if (!exactTempStatusExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
+            Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
+            return;
+        }
+
         setIsTempStatusLoading(true);
         const message = tempStatusPreviewMessage;
-        const expiresAt = new Date(Date.now() + tempStatusExpiryHours * 60 * 60 * 1000).toISOString();
+        const expiresAt = exactExpiryDate.toISOString();
         const newStatus = { type: tempStatusType, message, expiresAt, createdAt: new Date().toISOString() };
         const prevStatus = storeDetails?.tempStatus;
         setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
@@ -606,88 +603,42 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                             <Text strong>Temporary Status</Text>
                             {isTempActive ? <Tag color="success">Active</Tag> : null}
                         </Flex>
-                        {isTempActive && currentTempStatus ? (
-                            <Flex gap={10} vertical>
-                                <Card style={{ background: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
-                                    <Flex align="center" justify="space-between">
-                                        <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
-                                            <Text strong>{`${TEMP_STATUS_OPTIONS.find(o => o.value === currentTempStatus.type)?.icon || 'ℹ️'} ${currentTempStatus.message}`}</Text>
-                                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>
-                                                Expires: {new Date(currentTempStatus.expiresAt).toLocaleString()}
-                                            </Text>
-                                        </Flex>
-                                        <Button
-                                            color="danger"
-                                            fill="outline"
-                                            loading={isTempStatusLoading}
-                                            onClick={() => void handleClearTempStatus()}
-                                            size="small"
-                                            style={{
-                                                alignSelf: 'flex-start',
-                                                borderRadius: 10,
-                                                flexShrink: 0,
-                                                marginLeft: 10,
-                                                minHeight: 30,
-                                                paddingInline: 12,
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                        >
-                                            Clear
-                                        </Button>
-                                    </Flex>
-                                </Card>
-                            </Flex>
-                        ) : (
-                            <Flex gap={10} vertical>
-                                <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-                                    Customers see this banner until the selected expiry time.
-                                </Text>
-                                <Flex gap={6} wrap="wrap">
-                                    {TEMP_STATUS_OPTIONS.map(opt => (
-                                        <Tag
-                                            key={opt.value}
-                                            color={tempStatusType === opt.value ? 'processing' : 'default'}
-                                            onClick={() => setTempStatusType(opt.value)}
-                                            style={{ cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}
-                                        >
-                                            {`${opt.icon} ${opt.label}`}
-                                        </Tag>
-                                    ))}
-                                </Flex>
-                                {tempStatusType === 'custom' ? (
-                                    <Flex gap={6} vertical>
-                                        <Text strong>Custom Message</Text>
-                                        <Input
-                                            maxLength={100}
-                                            onChange={setCustomTempStatusMessage}
-                                            placeholder="Type your custom status"
-                                            value={customTempStatusMessage}
-                                        />
-                                    </Flex>
-                                ) : null}
-                                <Flex gap={6} vertical>
-                                    <Text strong>Expires After</Text>
-                                    <Flex gap={6} wrap="wrap">
-                                        {TEMP_STATUS_EXPIRY_OPTIONS.map((option) => (
-                                            <Tag
-                                                key={option.hours}
-                                                color={tempStatusExpiryHours === option.hours ? 'processing' : 'default'}
-                                                onClick={() => setTempStatusExpiryHours(option.hours)}
-                                                style={{ cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}
-                                            >
-                                                {option.label}
-                                            </Tag>
-                                        ))}
-                                    </Flex>
-                                </Flex>
-                                <Card size="small" style={{ background: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
-                                    <Text strong>{`${TEMP_STATUS_OPTIONS.find(o => o.value === tempStatusType)?.icon || 'ℹ️'} ${tempStatusPreviewMessage}`}</Text>
-                                </Card>
-                                <Button block color="warning" loading={isTempStatusLoading} onClick={() => void handleSetTempStatus()} size="large">
-                                    Apply Status
-                                </Button>
-                            </Flex>
-                        )}
+                        <MobileTempStatusConfigurator
+                            activeStatusLabel="Temporary Status Active"
+                            activeTagLabel="Active"
+                            clearStatusLabel="Clear"
+                            exactExpiryAt={exactTempStatusExpiryAt}
+                            exactExpiryLabel="Ends At"
+                            currentStatus={currentTempStatus}
+                            customMessage={customTempStatusMessage}
+                            customMessageLabel="Custom Message"
+                            customPlaceholder="Type your custom status"
+                            expiryLabel="Expires After"
+                            expiresLabel="Expires:"
+                            expiryOptions={MOBILE_TEMP_STATUS_EXPIRY_OPTIONS}
+                            isActive={Boolean(isTempActive)}
+                            isLoading={isTempStatusLoading}
+                            onClear={() => void handleClearTempStatus()}
+                            onExactExpiryAtChange={(value) => {
+                                setExactTempStatusExpiryAt(value);
+                                setSelectedTempStatusExpiryHours(null);
+                            }}
+                            onCustomMessageChange={setCustomTempStatusMessage}
+                            onExpiryHoursChange={(value) => {
+                                setSelectedTempStatusExpiryHours(value);
+                                setExactTempStatusExpiryAt(getDefaultTempStatusDateTime(value));
+                            }}
+                            onSet={() => void handleSetTempStatus()}
+                            onStatusTypeChange={setTempStatusType}
+                            previewLabel="Preview"
+                            previewMessage={tempStatusPreviewMessage}
+                            selectedExpiryHours={selectedTempStatusExpiryHours}
+                            setStatusLabel="Apply Status"
+                            showActiveHeader={false}
+                            statusOptions={MOBILE_TEMP_STATUS_OPTIONS}
+                            statusType={tempStatusType}
+                            statusTypeLabel="Status Type"
+                        />
                     </Flex>
                 </Card>
             )}

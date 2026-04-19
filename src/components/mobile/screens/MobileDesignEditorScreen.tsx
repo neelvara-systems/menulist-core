@@ -75,6 +75,10 @@ interface MobileDesignEditorScreenProps {
     onBack: () => void;
 }
 
+function cloneProjectData<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
+}
+
 export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
     const tSettings = useTranslations('Settings');
@@ -82,25 +86,25 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { isLoading: loadingProjects, selectedProject, upsertCachedProject } = useMobileProjects();
 
-    const [projectData, setProjectData] = useState<any>(null);
-    const [originalData, setOriginalData] = useState<any>(null);
+    const [draftProjectData, setDraftProjectData] = useState<any>(null);
+    const [savedProjectData, setSavedProjectData] = useState<any>(null);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
-    const homeStyle = projectData?.config?.design?.home?.style || DEFAULTS.home.style;
-    const menuMood = projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
-    const menuLayout = projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
-    const showImages = projectData?.config?.design?.menu?.showImages ?? true;
-    const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
-    const brandAccentColor = projectData?.config?.design?.brand?.accentColor;
-    const serviceChargeNote = projectData?.menuSettings?.serviceChargeNote ?? '';
+    const homeStyle = draftProjectData?.config?.design?.home?.style || DEFAULTS.home.style;
+    const menuMood = draftProjectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
+    const menuLayout = draftProjectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
+    const showImages = draftProjectData?.config?.design?.menu?.showImages ?? true;
+    const showCategoryTabs = draftProjectData?.config?.design?.menu?.showCategoryTabs ?? false;
+    const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
+    const serviceChargeNote = draftProjectData?.menuSettings?.serviceChargeNote ?? '';
     const compatibleLayouts = useMemo(() => getCompatibleLayouts(menuMood), [menuMood]);
     const defaultMoodColor = MENU_MOODS[menuMood]?.accentColor || '#059669';
 
     const hasChanges = useMemo(() => {
-        if (!projectData || !originalData) return false;
-        return JSON.stringify(projectData) !== JSON.stringify(originalData);
-    }, [projectData, originalData]);
+        if (!draftProjectData || !savedProjectData) return false;
+        return JSON.stringify(draftProjectData) !== JSON.stringify(savedProjectData);
+    }, [draftProjectData, savedProjectData]);
 
     const menuUrl = useMemo(() => generateProjectUrl(
         storeDetails?.subdomain,
@@ -110,20 +114,20 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
     useEffect(() => {
         if (!selectedProject) {
-            setProjectData(null);
-            setOriginalData(null);
+            setDraftProjectData(null);
+            setSavedProjectData(null);
             return;
         }
 
-        const cloned = JSON.parse(JSON.stringify(selectedProject));
-        setProjectData(cloned);
-        setOriginalData(cloned);
+        const cloned = cloneProjectData(selectedProject);
+        setDraftProjectData(cloned);
+        setSavedProjectData(cloneProjectData(cloned));
     }, [selectedProject]);
 
     const updateDesign = useCallback((path: string[], value: any) => {
-        setProjectData((prev: any) => {
+        setDraftProjectData((prev: any) => {
             if (!prev) return prev;
-            const copy = JSON.parse(JSON.stringify(prev));
+            const copy = cloneProjectData(prev);
             let obj = copy;
             for (let i = 0; i < path.length - 1; i++) {
                 if (!obj[path[i]]) obj[path[i]] = {};
@@ -136,9 +140,9 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
     const handleHomeStyleChange = (style: HomeStyle) => updateDesign(['config', 'design', 'home', 'style'], style);
     const handleMoodChange = (mood: MenuMood) => {
-        setProjectData((prev: any) => {
+        setDraftProjectData((prev: any) => {
             if (!prev) return prev;
-            const copy = JSON.parse(JSON.stringify(prev));
+            const copy = cloneProjectData(prev);
             if (!copy.config) copy.config = {};
             if (!copy.config.design) copy.config.design = {};
             if (!copy.config.design.menu) copy.config.design.menu = {};
@@ -157,16 +161,16 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const handleBrandColorChange = (color: string | undefined) => updateDesign(['config', 'design', 'brand', 'accentColor'], color);
     const handleServiceChargeChange = (note: string) => {
         const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
-        setProjectData((prev: any) => ({
+        setDraftProjectData((prev: any) => ({
             ...prev,
             menuSettings: { ...prev?.menuSettings, serviceChargeNote: normalized },
         }));
     };
 
     const applyQuickPreset = (preset: QuickPreset) => {
-        setProjectData((prev: any) => {
+        setDraftProjectData((prev: any) => {
             if (!prev) return prev;
-            const copy = JSON.parse(JSON.stringify(prev));
+            const copy = cloneProjectData(prev);
             if (!copy.config) copy.config = {};
             if (!copy.config.design) copy.config.design = {};
             copy.config.design.home = { ...copy.config.design.home, style: preset.homeStyle };
@@ -182,13 +186,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     };
 
     const handleSave = async () => {
-        if (!projectData) return;
+        if (!draftProjectData || isPublishing || !hasChanges) return;
         setIsPublishing(true);
         try {
-            const updated = await publishProject(projectData);
-            const updatedCopy = JSON.parse(JSON.stringify(updated));
-            setProjectData(updatedCopy);
-            setOriginalData(updatedCopy);
+            const updated = await publishProject(draftProjectData);
+            const updatedCopy = cloneProjectData(updated);
+            setDraftProjectData(updatedCopy);
+            setSavedProjectData(cloneProjectData(updatedCopy));
             upsertCachedProject(updatedCopy);
             Toast.show({ content: t('designPublished'), icon: 'success', duration: 2000 });
 
@@ -219,8 +223,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     };
 
     const handleReset = () => {
-        if (!originalData || isPublishing || !hasChanges) return;
-        setProjectData(JSON.parse(JSON.stringify(originalData)));
+        if (!savedProjectData || isPublishing || !hasChanges) return;
+        setDraftProjectData(cloneProjectData(savedProjectData));
     };
 
     if (loadingProjects) {
@@ -234,7 +238,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         );
     }
 
-    if (!projectData) {
+    if (!draftProjectData) {
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar onBack={onBack} backIcon={<LuArrowLeft size={20} />} />
@@ -445,29 +449,25 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 </SectionCard>
             </Flex>
 
-            <Card
+            <Flex
+                gap={12}
                 style={{
-                    position: 'fixed',
+                    backdropFilter: 'blur(10px)',
+                    backgroundColor: token.colorBgContainer,
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
                     bottom: 0,
-                    left: 0,
-                    right: 0,
-                    borderRadius: 0,
-                    borderLeft: 0,
-                    borderRight: 0,
-                    borderBottom: 0,
-                    paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
-                    zIndex: 30,
+                    padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                    position: 'sticky',
+                    zIndex: 20,
                 }}
             >
-                <Flex gap={12}>
-                    <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset}>
-                        {tSettings('reset')}
-                    </Button>
-                    <Button block color="primary" disabled={!hasChanges} loading={isPublishing} onClick={handleSave}>
-                        {tSettings('saveChanges')}
-                    </Button>
-                </Flex>
-            </Card>
+                <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset} size="large">
+                    {tSettings('reset')}
+                </Button>
+                <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={() => void handleSave()} size="large">
+                    {tSettings('saveChanges')}
+                </Button>
+            </Flex>
 
             <ColorPickerSheet
                 defaultMoodColor={defaultMoodColor}

@@ -6,6 +6,7 @@ import TIMEZONES_LIST from '@data/timeZones';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import countryData from '@atoms/phoneNumberInput/countryData';
+import { theme } from 'antd';
 import {
     DATE_FORMATS,
     TIME_FORMATS,
@@ -39,6 +40,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
     const format = useFormatter();
+    const { token } = theme.useToken();
     const now = useMemo(() => getUTCDate().newDate, []);
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
@@ -246,8 +248,8 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                     gap={8}
                     style={{
                         backdropFilter: 'blur(10px)',
-                        background: 'var(--adm-color-background)',
-                        borderTop: '1px solid var(--adm-color-border)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
                         padding: '12px 16px',

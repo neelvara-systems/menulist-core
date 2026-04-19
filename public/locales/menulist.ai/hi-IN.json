@@ -83,7 +83,9 @@
         "darkMode": "डार्क मोड",
         "lightMode": "लाइट मोड",
         "darkThemeEnabled": "डार्क थीम मोड सक्षम",
-        "lightThemeEnabled": "लाइट थीम मोड सक्षम"
+        "lightThemeEnabled": "लाइट थीम मोड सक्षम",
+        "reset": "रीसेट करें",
+        "saveChanges": "परिवर्तन सहेजें"
     },
     "AppSettings": {
         "title": "ऐप दिखावट",

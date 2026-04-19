@@ -407,7 +407,13 @@ function LinkCard({
                     </Button>
                 </Flex>
                 <Text type="secondary">{description}</Text>
-                <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
+                <Card
+                    size="small"
+                    style={{
+                        backgroundColor: token.colorFillAlter,
+                        borderColor: token.colorBorderSecondary,
+                    }}
+                >
                     <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
                 </Card>
                 <Flex gap={8}>

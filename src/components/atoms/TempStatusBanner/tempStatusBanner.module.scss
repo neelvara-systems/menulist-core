@@ -24,8 +24,9 @@
 }
 
 .message {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
   max-width: 320px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
 }

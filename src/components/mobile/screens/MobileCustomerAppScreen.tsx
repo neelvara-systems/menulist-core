@@ -23,6 +23,7 @@ import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCopy, LuDownload, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload, LuX } from 'react-icons/lu';
 import {
@@ -45,6 +46,7 @@ interface Props {
 export default function MobileCustomerAppScreen({ onBack }: Props) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
+    const tMobile = useTranslations('MobileSettings');
 
     // ── Settings state ──
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
@@ -262,7 +264,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack}>Customer App</NavBar>
+                <NavBar onBack={onBack} />
                 <Flex align="center" justify="center" style={{ flex: 1, padding: 24 }} vertical>
                     <LuSmartphone color="#9ca3af" size={40} />
                     <Text style={{ marginTop: 12, textAlign: 'center' }}>
@@ -275,7 +277,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack}>Customer App</NavBar>
+            <NavBar onBack={onBack} />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 {/* Intro */}
@@ -310,8 +312,14 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                 pointerEvents: enableInstallableApp ? 'auto' : 'none',
                             }}
                         >
-                            <Card size="small" style={{ background: '#f1f5f9' }}>
-                                <Text style={{ wordBreak: 'break-all' }}>{installLink}</Text>
+                            <Card
+                                size="small"
+                                style={{
+                                    background: token.colorFillAlter,
+                                    borderColor: token.colorBorderSecondary,
+                                }}
+                            >
+                                <Text style={{ wordBreak: 'break-all', color: token.colorText }}>{installLink}</Text>
                             </Card>
                             <Flex gap={8} style={{ marginTop: 12 }}>
                                 <Button
@@ -512,7 +520,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                 color: hasUnsavedChanges && !saving ? token.colorText : token.colorTextDisabled,
                             }}
                         >
-                            Reset
+                            {tMobile('reset')}
                         </Button>
                         <Button
                             block
@@ -522,7 +530,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                             onClick={handleSave}
                             style={{ minHeight: 44 }}
                         >
-                            {saving ? 'Saving…' : 'Save'}
+                            {saving ? 'Saving…' : tMobile('saveChanges')}
                         </Button>
                     </Flex>
                 </Card>

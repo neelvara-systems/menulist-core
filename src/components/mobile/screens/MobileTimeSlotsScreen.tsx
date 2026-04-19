@@ -18,6 +18,32 @@ interface MobileTimeSlotsScreenProps {
     onBack: () => void;
 }
 
+function parseTimeToMinutes(value: string): number | null {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+    if (!match) return null;
+    return (Number(match[1]) * 60) + Number(match[2]);
+}
+
+function normalizeTimeRange(startMinutes: number, endMinutes: number): Array<{ start: number; end: number }> {
+    if (startMinutes === endMinutes) return [];
+    if (startMinutes < endMinutes) {
+        return [{ start: startMinutes, end: endMinutes }];
+    }
+    return [
+        { start: startMinutes, end: 1440 },
+        { start: 0, end: endMinutes },
+    ];
+}
+
+function rangesOverlap(
+    left: Array<{ start: number; end: number }>,
+    right: Array<{ start: number; end: number }>,
+): boolean {
+    return left.some((leftRange) => (
+        right.some((rightRange) => leftRange.start < rightRange.end && rightRange.start < leftRange.end)
+    ));
+}
+
 export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenProps) {
     const t = useTranslations('MobileTimeSlots');
     const { token } = theme.useToken();
@@ -64,9 +90,31 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
         const isDuplicate = presets.some((preset) => preset.label.toLowerCase() === label.toLowerCase() && preset.id !== editingPreset?.id);
         if (isDuplicate) return Toast.show({ content: t('duplicateName'), duration: 1500 });
 
-        const startMin = parseInt(formStart.split(':')[0]) * 60 + parseInt(formStart.split(':')[1]);
-        const endMin = parseInt(formEnd.split(':')[0]) * 60 + parseInt(formEnd.split(':')[1]);
-        if (startMin >= endMin) return Toast.show({ content: t('endAfterStart'), duration: 1500 });
+        const startMin = parseTimeToMinutes(formStart);
+        const endMin = parseTimeToMinutes(formEnd);
+        if (startMin === null || endMin === null) {
+            return Toast.show({ content: 'Enter a valid start and end time.', duration: 1500 });
+        }
+
+        if (startMin === endMin) {
+            return Toast.show({ content: 'Start and end time cannot be the same.', duration: 1500 });
+        }
+
+        const candidateRanges = normalizeTimeRange(startMin, endMin);
+        const overlappingPreset = presets.find((preset) => {
+            if (preset.id === editingPreset?.id) return false;
+            const presetStart = parseTimeToMinutes(preset.startTime);
+            const presetEnd = parseTimeToMinutes(preset.endTime);
+            if (presetStart === null || presetEnd === null || presetStart === presetEnd) return false;
+            return rangesOverlap(candidateRanges, normalizeTimeRange(presetStart, presetEnd));
+        });
+
+        if (overlappingPreset) {
+            return Toast.show({
+                content: `Time slot overlaps with ${overlappingPreset.label}.`,
+                duration: 1800,
+            });
+        }
 
         setIsSaving(true);
         try {

@@ -83,7 +83,9 @@
         "darkMode": "Dark Mode",
         "lightMode": "Light Mode",
         "darkThemeEnabled": "Dark theme mode enabled",
-        "lightThemeEnabled": "Light theme mode enabled"
+        "lightThemeEnabled": "Light theme mode enabled",
+        "reset": "రీసెట్",
+        "saveChanges": "మార్పులను సేవ్ చేయండి"
     },
     "AppSettings": {
         "title": "App Appearance",
