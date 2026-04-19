@@ -57,9 +57,6 @@ import { PageState, ProjectLink, UseMenuListData } from './types';
 
 const { Title, Text, Paragraph } = Typography;
 
-const isDefaultLikeProject = (project: any): boolean =>
-    Boolean(project?.isDefault) || String(project?.projectId || '').includes('-default-');
-
 export default function UseMenuList() {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token: themeToken } = theme.useToken();
@@ -107,11 +104,14 @@ export default function UseMenuList() {
                     (storeDetails as any).pwaSettings?.enableInstallableApp !== false
                     ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
                     : null;
+            // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): always emit
+            // the real canonical slug URL (e.g., /food-menu), never the /menu
+            // alias. Under R5, every project's canonical URL is its real slug.
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
-                isDefaultLikeProject(defaultProject) ? undefined : defaultProject.name,
-                isDefaultLikeProject(defaultProject)
+                defaultProject.name,
+                false
             );
 
             // Get screen state
@@ -137,12 +137,12 @@ export default function UseMenuList() {
 
             // Build multi-project links
             const allProjects: ProjectLink[] = projects.map((p: any) => {
-                const defaultLike = isDefaultLikeProject(p);
                 return {
                     projectId: p.projectId,
                     name: p.name || 'Untitled',
                     isDefault: p.isDefault || false,
-                    url: generateProjectUrl(subdomain, customDomain, defaultLike ? undefined : p.name, defaultLike),
+                    // R5: real canonical slug URL — no /menu alias.
+                    url: generateProjectUrl(subdomain, customDomain, p.name, false),
                     feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
                     feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr', obpLink) : '',
                 };
@@ -429,7 +429,7 @@ export default function UseMenuList() {
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={data.installAppLink ? 8 : 12}>
                     <LinkCard
-                        title={`Your ${labels.offeringTitle} Page`}
+                        title="Business Profile Link"
                         description={`Share this with customers — always shows ${labels.yourLatest}`}
                         url={data.obpLink}
                         shortUrl={data.obpLink.replace(/^https?:\/\//, '')}
@@ -454,7 +454,7 @@ export default function UseMenuList() {
                 </Col>
                 <Col xs={24} sm={data.installAppLink ? 8 : 12}>
                     <LinkCard
-                        title={`Direct ${labels.offeringTitle} Link`}
+                        title="Project Menu Link"
                         description={`Opens ${labels.offeringLower} immediately — best for quick sharing`}
                         url={data.menuLink}
                         shortUrl={shortMenuLink}

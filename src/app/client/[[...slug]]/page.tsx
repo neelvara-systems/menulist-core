@@ -117,12 +117,17 @@ async function getPrecomputedDecisionBlocks(
     }
 }
 
-// Get all projects for a store and find by slug or default
+// Get all projects for a store and find by slug or default.
+// G-05 / R5 (§9 + D-14 PUBLIC-ROUTING-DOCTRINE): when slug === 'menu' AND no
+// project claims that slug (Layer 1 miss), the existing isDefault fallback
+// serves the default project as a universal alias (Layer 2). The returned
+// `isMenuAliasFallback` flag tells MenuContent to emit a canonical tag
+// pointing at the default project's real slug URL — preserving SEO cleanliness.
 async function getProjectBySlugOrDefault(
     tenantId: number,
     storeId: number,
     slug?: string,
-): Promise<{ projectData: any; projectMetadata: any; redirectSlug: string | null } | null> {
+): Promise<{ projectData: any; projectMetadata: any; redirectSlug: string | null; isMenuAliasFallback: boolean } | null> {
     // Read projectsSummary (1 read) — contains slug, previousSlugs, name, isDefault
     // This is the primary source for URL routing data (URL Routing Architecture — ADR-3)
     const summaryDocRef = doc(
@@ -206,8 +211,16 @@ async function getProjectBySlugOrDefault(
         }
     }
 
+    // G-05 / R5 Layer 2 detection (§9 + D-14 PUBLIC-ROUTING-DOCTRINE):
+    // If slug was literal 'menu' AND all slug-match cascades above missed,
+    // we are about to serve the default project as a universal alias.
+    // Track this so MenuContent can emit `<link rel="canonical">` pointing
+    // at the default project's real slug URL — Layer 2 must not SEO-index /menu.
+    const isMenuAliasFallback = !targetProject && slug?.toLowerCase() === 'menu';
+
     if (!targetProject) {
         // No slug or no match - find default project
+        // (This is both the "no slug" path and R5 Layer 2 alias fallback for /menu)
         targetProject = projects.find((p) => p.isDefault === true) || null;
     }
 
@@ -241,7 +254,7 @@ async function getProjectBySlugOrDefault(
         }
     }
 
-    return { projectData, projectMetadata: targetProject, redirectSlug };
+    return { projectData, projectMetadata: targetProject, redirectSlug, isMenuAliasFallback };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -264,8 +277,8 @@ async function getProjectBySlugOrDefault(
  */
 async function resolveSpecialMenuOverride(
     storeData: any,
-    baseResult: { projectData: any; projectMetadata: any; redirectSlug: string | null },
-): Promise<{ projectData: any; projectMetadata: any; redirectSlug: string | null }> {
+    baseResult: { projectData: any; projectMetadata: any; redirectSlug: string | null; isMenuAliasFallback: boolean },
+): Promise<{ projectData: any; projectMetadata: any; redirectSlug: string | null; isMenuAliasFallback: boolean }> {
     if (!FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) return baseResult;
     if (!storeData?.activeSpecialMenuId) return baseResult;
 
@@ -290,7 +303,10 @@ async function resolveSpecialMenuOverride(
         const mode = specialProjectData._specialMenu.mode;
 
         if (mode === "replace") {
-            // Full replacement — return special menu as the project
+            // Full replacement — return special menu as the project.
+            // isMenuAliasFallback preserved: Layer 2 alias canonical still
+            // points at the base default project's real slug URL (not the
+            // special menu's URL), matching user expectations for /menu.
             return {
                 projectData: specialProjectData,
                 projectMetadata: {
@@ -299,6 +315,7 @@ async function resolveSpecialMenuOverride(
                     isSpecialMenu: true,
                 },
                 redirectSlug: baseResult.redirectSlug,
+                isMenuAliasFallback: baseResult.isMenuAliasFallback,
             };
         }
 
@@ -313,6 +330,7 @@ async function resolveSpecialMenuOverride(
                     specialMenuOverlay: true,
                 },
                 redirectSlug: baseResult.redirectSlug,
+                isMenuAliasFallback: baseResult.isMenuAliasFallback,
             };
         }
 
@@ -371,8 +389,49 @@ function mergeOverlayMenu(baseProject: any, specialProject: any): any {
     return merged;
 }
 
+// G-05 / R5 (§9 PUBLIC-ROUTING-DOCTRINE): Layer 2 canonical override helper.
+// Returns the default project's real slug URL when visitor arrived via /menu
+// AND no project on this store claims slug 'menu'. Cached via unstable_cache
+// so generateMetadata and MenuContent share the same summary read — no extra
+// Firestore cost vs. pre-R5 (D-15 performance bound: no additional reads).
+const getMenuAliasCanonicalSlug = unstable_cache(
+    async (storeId: number): Promise<string | null> => {
+        try {
+            const summaryRef = doc(
+                firebaseClient,
+                DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary",
+                `projects_${storeId}`,
+            );
+            const summarySnap = await getDoc(summaryRef);
+            if (!summarySnap.exists()) return null;
+            const projects = parseSummaryProjects(summarySnap.data());
+            const activeProjects = Object.values(projects).filter(
+                (p: any) => p.active !== false && !p.isSpecialMenu
+            );
+            // Layer 1 check: if any active project claims slug 'menu', /menu IS
+            // that project's canonical URL — no override needed.
+            const claimed = activeProjects.some((p: any) => p.slug === 'menu');
+            if (claimed) return null;
+            // Layer 2: return the default project's real slug for canonical.
+            const defaultProject: any =
+                activeProjects.find((p: any) => p.isDefault === true) ||
+                activeProjects[0] ||
+                null;
+            if (!defaultProject) return null;
+            const realSlug =
+                defaultProject.slug ||
+                (defaultProject.name ? slugify(defaultProject.name) : '');
+            return realSlug || null;
+        } catch {
+            return null;
+        }
+    },
+    ['menu-alias-canonical-slug'],
+    { revalidate: 60, tags: ['client-stores'] },
+);
+
 // Generate metadata for SEO
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
 
     // Lookup store based on tenant type (with retry for transient failures - TASK 4)
@@ -415,6 +474,54 @@ export async function generateMetadata(): Promise<Metadata> {
             ? `https://${host}`
             : `https://${subdomain}.menulist.ai`;
 
+    // G-05 + G-14 / R5 Layer 2 canonical override (§9 + §8 + §11 PUBLIC-ROUTING-DOCTRINE):
+    // When the request path is `/menu` or `/{outletSlug}/menu` AND no project
+    // on the target store claims slug `menu`, the page serves the default
+    // project as a universal alias. Emit a canonical tag pointing at the
+    // default project's real slug URL so Google indexes one URL per project
+    // — `/menu` is a functional alias only, not an indexed duplicate.
+    //
+    //   - Non-outlet `/menu`         → master store's default project slug.
+    //   - Outlet `/{outletSlug}/menu` → outlet store's default project slug,
+    //                                   URL kept rooted at `/{outletSlug}/...`.
+    //
+    // Both branches share the same cached helper reads as the render path, so
+    // D-15 (no extra Firestore reads on the alias path) holds.
+    const firstSlug = params?.slug?.[0]?.toLowerCase();
+    const secondSlug = params?.slug?.[1]?.toLowerCase();
+    const slugLen = params?.slug?.length ?? 0;
+    let menuAliasCanonical: string | undefined;
+
+    if (slugLen === 1 && firstSlug === 'menu' && storeData?.storeId) {
+        // Layer 2 alias on the master / single-store tenant.
+        const realDefaultSlug = await getMenuAliasCanonicalSlug(storeData.storeId).catch(() => null);
+        if (realDefaultSlug) {
+            menuAliasCanonical = `${canonicalBase}/${realDefaultSlug}`;
+        }
+    } else if (
+        // G-14: outlet Layer 2 alias. Only fires for master tenants with
+        // multi-outlet enabled — matches the MenuContent outlet-switch gating.
+        slugLen === 2
+        && secondSlug === 'menu'
+        && storeData?.isMaster
+        && FEATURE_FLAGS.ENABLE_MULTI_OUTLET
+        && firstSlug
+    ) {
+        const outletStore = await withRetry(() =>
+            getStoreByOutletSlug(storeData.tenantId, firstSlug),
+        ).catch(() => null);
+        if (outletStore?.storeId) {
+            const realDefaultSlug = await getMenuAliasCanonicalSlug(outletStore.storeId).catch(() => null);
+            if (realDefaultSlug) {
+                // Use the outlet's CURRENT canonical slug, not whatever the
+                // customer typed — this also auto-consolidates rename-chain
+                // hits on the outlet side.
+                const canonicalOutletSlug = (outletStore.outletSlug || firstSlug).toLowerCase();
+                menuAliasCanonical = `${canonicalBase}/${canonicalOutletSlug}/${realDefaultSlug}`;
+            }
+        }
+    }
+
     // Customer App (PWA) — per-tenant apple-touch-icon + theme color.
     // Dynamic icon route handles override / logo / letter fallback.
     // iOS Safari uses apple-touch-icon when the customer taps "Add to Home Screen".
@@ -429,12 +536,26 @@ export async function generateMetadata(): Promise<Metadata> {
         storeName;
     const themeColor = storeData.publicPresence?.accentColor || APP_THEME_COLOR;
 
+    // G-03 (§11 + D-10 PUBLIC-ROUTING-DOCTRINE): per-surface manifest URL.
+    // The manifest route reads `?start=<path>` and emits a manifest whose
+    // start_url + id reflect the install surface, so installs from OBP (/),
+    // outlet OBP (/{outletSlug}), and project menu (/{projectSlug} or
+    // /{outletSlug}/{projectSlug}) each yield a distinct installed PWA. This
+    // preserves "install surface = launch surface" per D-10.
+    const currentPath = params?.slug && params.slug.length > 0
+        ? `/${params.slug.join('/')}`
+        : '/';
+    const manifestUrl = `/manifest.webmanifest?start=${encodeURIComponent(currentPath)}`;
+
     return {
         title,
         description,
         keywords: storeData.keywords?.join(", "),
+        manifest: manifestUrl,
         alternates: {
-            canonical: storeData.canonicalUrl || canonicalBase,
+            // Precedence: owner-supplied custom canonical (rare) > R5 Layer 2
+            // alias override (when /menu serves default project) > tenant base.
+            canonical: storeData.canonicalUrl || menuAliasCanonical || canonicalBase,
         },
         openGraph: {
             title,
@@ -779,22 +900,71 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
         redirect(customUrl);
     }
 
-    // URL Routing Architecture — Gap 2: Outlet routing via outletSlug
-    // For multi-store brands: brand.menulist.ai/{outletSlug} or brand.menulist.ai/{outletSlug}/{projectSlug}
-    // If the slug matches an outlet's outletSlug, switch storeData to that outlet
-    // and use the remaining path segment as the project slug
+    // URL Routing Architecture — Gap 2: Outlet routing via outletSlug.
+    // For multi-store brands: brand.menulist.ai/{outletSlug} or
+    // brand.menulist.ai/{outletSlug}/{projectSlug}. When the first slug matches
+    // an outlet's outletSlug, switch storeData to that outlet and use the
+    // remaining path segment as the project slug.
+    //
+    // G-01 (§11 + D-07 PUBLIC-ROUTING-DOCTRINE): when only the outlet segment is
+    // present (`/{outletSlug}` with no further path), render the outlet's OBP
+    // surface — NOT the outlet's default project. This matches D-07: the Store
+    // surface IS the OBP for that outlet.
+    // Capture master origin context before any outlet switch — outlets don't
+    // carry subdomain/customDomain of their own, so outlet OBP rendering
+    // (G-01) needs these preserved from the pre-switch master store.
+    const masterSubdomain: string | undefined = storeData?.subdomain ?? undefined;
+    const masterCustomDomain: string | undefined = storeData?.customDomain ?? undefined;
+
     let resolvedSlug = slug;
+    let outletRenderedAsObp = false;
     if (slug && storeData.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         const outletStore = await withRetry(() =>
             withTimeout(getStoreByOutletSlug(storeData.tenantId, slug))
         ).catch(() => null);
 
         if (outletStore) {
-            // First slug was an outlet slug — switch to outlet store
+            // G-07 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): outlet slug rename
+            // chain. If the outlet was found via `previousOutletSlugs`
+            // (i.e., its CURRENT outletSlug differs from what the customer
+            // typed), 301 to the canonical outlet URL so physical QRs and
+            // printed signage keep working across renames while SEO
+            // consolidates on the canonical URL.
+            const canonicalOutletSlug = (outletStore.outletSlug || '').toLowerCase();
+            if (canonicalOutletSlug && canonicalOutletSlug !== slug.toLowerCase()) {
+                const tail = slugSegments.slice(1).join('/');
+                const canonicalPath = tail
+                    ? `/${canonicalOutletSlug}/${tail}`
+                    : `/${canonicalOutletSlug}`;
+                redirect(canonicalPath);
+            }
+
             storeData = outletStore;
-            // Use second slug segment as project slug (e.g., brand.menulist.ai/pune/food-menu)
-            resolvedSlug = slugSegments.length > 1 ? slugSegments[1] : undefined;
+            if (slugSegments.length === 1) {
+                // G-01: `/{outletSlug}` alone → outlet OBP surface.
+                outletRenderedAsObp = true;
+            } else {
+                // `/{outletSlug}/{projectSlug}` → project resolution.
+                resolvedSlug = slugSegments[1];
+            }
         }
+    }
+
+    if (outletRenderedAsObp) {
+        // G-01: defer to OBPContent with the outlet as an explicit override so
+        // the OBP render code path is single-sourced — no duplicated identity
+        // block, CTA, or analytics wiring in MenuContent. OBPContent knows to
+        // skip the BrandOBP selector branch when storeOverride is supplied.
+        // masterSubdomain / masterCustomDomain give OBPContent the origin
+        // context it needs to build absolute URLs for the outlet surface.
+        const OBPContent = require('../obp/OBPContent').default;
+        return (
+            <OBPContent
+                storeOverride={storeData}
+                masterSubdomain={masterSubdomain}
+                masterCustomDomain={masterCustomDomain}
+            />
+        );
     }
 
     // Per-store cached wrappers — tags enable precise per-store invalidation (GPT FIX 2)
@@ -841,7 +1011,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     // When active: 1 read for special menu project (replace mode) or merge with base (overlay mode)
     const result = await resolveSpecialMenuOverride(storeData, baseResult);
 
-    const { projectData: rawProjectData, projectMetadata, redirectSlug } = result;
+    const { projectData: rawProjectData, projectMetadata, redirectSlug, isMenuAliasFallback } = result;
 
     // URL Routing Architecture — ADR-3: 301 redirect from old slug to current slug
     // Preserves QR codes and shared links when project is renamed
@@ -878,11 +1048,23 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 ? `https://${host}`
                 : `https://${subdomain}.menulist.ai`;
 
-    // Add slug to canonical if not default project
-    const canonicalUrl =
-        projectMetadata?.isDefault || !slug
+    // Add slug to canonical if not default project.
+    // G-05 / R5 Layer 2 canonical (§9 + §8 PUBLIC-ROUTING-DOCTRINE):
+    // When the visitor arrived at /menu AND no project claimed slug `menu`
+    // (isMenuAliasFallback === true), we are serving the default project as
+    // a universal alias. The canonical must point at the default project's
+    // real slug URL (e.g., /food-menu, /services, /carta) so Google indexes
+    // one URL per project and /menu is not indexed as a duplicate.
+    // Layer 1 case (project slug === 'menu') does NOT trip this branch
+    // because the slug-match cascade resolved the project directly — in that
+    // case /menu IS the canonical URL and no override is needed.
+    const realDefaultSlug = projectMetadata?.slug
+        || (projectMetadata?.name ? slugify(projectMetadata.name) : '');
+    const canonicalUrl = isMenuAliasFallback && realDefaultSlug
+        ? `${baseUrl}/${realDefaultSlug}`
+        : (projectMetadata?.isDefault || !slug
             ? baseUrl
-            : `${baseUrl}/${slugify(projectMetadata.name)}`;
+            : `${baseUrl}/${slugify(projectMetadata.name)}`);
 
     const schemaOrgJsonLd = generateSchemaOrgJsonLd(
         projectData,
@@ -985,12 +1167,17 @@ export default function ClientMenuPage({ params }: PageProps) {
         );
     }
 
-    // OBP: "menu" is a reserved slug — treat as default project (no slug)
-    const menuSlug = (FEATURE_FLAGS.ENABLE_OBP && slug === 'menu') ? undefined : slug;
-
+    // G-05 / R5 two-layer /menu resolution (§9 + D-14 PUBLIC-ROUTING-DOCTRINE):
+    // Pass slug as-is. The resolver function handles both layers:
+    //   Layer 1 — if a project has slug `menu`, normal slug match resolves it
+    //             (owner-claimed canonical URL).
+    //   Layer 2 — otherwise, the existing isDefault fallback inside
+    //             getProjectBySlugOrDefault serves the default project as an
+    //             alias. MenuContent detects this case and emits a canonical
+    //             tag pointing at the default project's real slug URL.
     return (
         <Suspense fallback={<MenuSkeleton />}>
-            <MenuContent slug={menuSlug} slugSegments={allSlugs} />
+            <MenuContent slug={slug} slugSegments={allSlugs} />
         </Suspense>
     );
 }

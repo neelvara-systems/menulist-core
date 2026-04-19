@@ -68,11 +68,13 @@ function MenuHeader({
             className="flex items-center justify-between py-2 md:py-3 mb-2"
             style={{ borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}` }}
         >
-            {/* Logo */}
-            <button
-                onClick={() => setActivePage(PageType.HOME)}
-                className="flex items-center gap-2"
-            >
+            {/* Logo — decorative only.
+                G-02 (§11 PUBLIC-ROUTING-DOCTRINE): HomePageNew intro screen is
+                retired from the public path (D-01), so the header logo no longer
+                triggers a HOME transition. Header-logo destination for the public
+                surface is handled separately per D-12 when that gap ships.
+                Editor preview drives activePage via the sidebar tabs. */}
+            <div className="flex items-center gap-2">
                 <img
                     src={LOGO_SMALL}
                     alt="Logo"
@@ -81,7 +83,7 @@ function MenuHeader({
                         width: 'auto',
                     }}
                 />
-            </button>
+            </div>
 
             {/* Live Indicator - shows "🟢 Live · updated just now" */}
             <LiveIndicator modifiedOn={(projectData as any)?.modifiedOn} style={{ fontSize: isMobile ? 10 : 12 }} />

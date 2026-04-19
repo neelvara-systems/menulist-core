@@ -1,6 +1,5 @@
 "use client";
-import { useMenuFreshness } from "@/hooks/useMenuFreshness";
-import { CUSTOMER_MENU_REFRESH_EVENT } from "@/hooks/useMenuFreshness";
+import { CUSTOMER_MENU_REFRESH_EVENT, useMenuFreshness } from "@/hooks/useMenuFreshness";
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
@@ -78,10 +77,10 @@ function ClientMenuRenderer({
     const languageStorageKey = getCustomerMenuStateKey(storeId, LANGUAGE_KEY);
     const scrollStorageKey = getCustomerMenuStateKey(storeId, SCROLL_KEY);
 
-    const [activePage, setActivePage] = useState<PageType>(() => {
-        const stored = readSessionValue(pageStorageKey);
-        return stored === PageType.MENU ? PageType.MENU : PageType.HOME;
-    });
+    // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): public path opens directly to the menu.
+    // HomePageNew intro screen is retired from the public surface per D-01.
+    // Default to MENU unconditionally; ignore any legacy stored HOME value.
+    const [activePage, setActivePage] = useState<PageType>(PageType.MENU);
     const [activeLanguage, setActiveLanguage] = useState<string>(() => {
         return readSessionValue(languageStorageKey) || defaultLanguage;
     });

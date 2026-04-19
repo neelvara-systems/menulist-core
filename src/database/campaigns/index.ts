@@ -5,7 +5,7 @@ import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { generateMenuUrl } from "@lib/obp/generateOBPUrl";
+import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { generateScreenToken } from "@lib/screen/utils";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
 import {
@@ -574,12 +574,49 @@ export const getScreenDataByToken = async (token: string): Promise<{
             return null;
         }
 
+        // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): emit the real
+        // canonical slug URL for the QR, not the /menu alias. If the QR
+        // encoded /menu and an owner later named a project "Menu", Layer 1
+        // would silently hijack what the physical QR resolves to. Canonical
+        // URL is immutable (rename → previousSlugs 301 chain) and matches
+        // the "internal emitters use canonical URL" rule.
+        let defaultSlug: string | undefined;
+        try {
+            const summaryRef = doc(
+                firebaseClient,
+                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+                `projects_${storeId}`,
+            );
+            const summarySnap = await getDoc(summaryRef);
+            if (summarySnap.exists()) {
+                const raw = summarySnap.data() || {};
+                const projectsObj: any =
+                    (raw.projects && typeof raw.projects === 'object') ? raw.projects : {};
+                // Handle both nested { projects: {id: {...}} } and legacy flat
+                // { "projects.id": {...} } formats — same pattern as the
+                // parseSummaryProjects helper used on the client path.
+                const entries: any[] = [];
+                for (const [k, v] of Object.entries(raw)) {
+                    if (k.startsWith('projects.')) entries.push(v);
+                }
+                for (const v of Object.values(projectsObj)) entries.push(v);
+                const active = entries.filter(
+                    (p: any) => p?.active !== false && !p?.isSpecialMenu,
+                );
+                const def = active.find((p: any) => p?.isDefault === true) || active[0];
+                if (def?.slug) defaultSlug = def.slug;
+            }
+        } catch {
+            // Silent fallback — alias URL still works via Layer 2.
+        }
+
         const storeInfo = {
             name: storeData?.name || storeData?.businessName || 'Menu',
             logoUrl: storeData?.logo || undefined,
-            menuQrUrl: generateMenuUrl(
+            menuQrUrl: getDefaultProjectUrl(
                 storeData?.subdomain || storeId,
                 storeData?.customDomain,
+                defaultSlug,
             ),
         };
 

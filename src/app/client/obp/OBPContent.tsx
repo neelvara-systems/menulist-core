@@ -17,7 +17,7 @@ import {
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
-import { generateMenuUrl, generateOBPUrl } from "@lib/obp/generateOBPUrl";
+import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { buildFaqSchema } from "@lib/schema";
@@ -68,8 +68,26 @@ async function withRetry<T>(
 // ── Check if store has at least one published menu ──
 // OPT-2: Uses projectsSummary (1 doc read) instead of legacy metadata WHERE query (N reads)
 
-const checkHasPublishedMenu = unstable_cache(
-    async (storeId: number): Promise<boolean> => {
+/**
+ * OBP menu info — consolidated (G-05 + G-06 PUBLIC-ROUTING-DOCTRINE).
+ *
+ * Single cached read of `platformSummary/projects_{storeId}` that returns
+ * everything OBP's render needs: the hasMenu boolean (D-03 gating),
+ * the default project for the "View Menu" CTA (G-05), and the full active
+ * projects list for per-project CTA rendering (G-06).
+ *
+ * D-15 (performance bound): still 1 cached Firestore read total.
+ */
+interface ObpMenuInfo {
+    hasMenu: boolean;
+    defaultSlug: string | undefined;
+    /** Active, non-special menu projects ordered with the default first. */
+    projects: Array<{ slug: string; name: string; isDefault: boolean }>;
+}
+
+const getObpMenuInfo = unstable_cache(
+    async (storeId: number): Promise<ObpMenuInfo> => {
+        const empty: ObpMenuInfo = { hasMenu: false, defaultSlug: undefined, projects: [] };
         try {
             const summaryRef = doc(
                 firebaseClient,
@@ -77,15 +95,36 @@ const checkHasPublishedMenu = unstable_cache(
                 `projects_${storeId}`,
             );
             const summarySnap = await getDoc(summaryRef);
-            if (!summarySnap.exists()) return false;
-            // Handles both nested and legacy flat dot-notation formats.
-            const projects = parseSummaryProjects(summarySnap.data());
-            return Object.values(projects).some((p: any) => p.active !== false);
+            if (!summarySnap.exists()) return empty;
+            const raw = parseSummaryProjects(summarySnap.data());
+            const active = Object.values(raw).filter(
+                (p: any) => p.active !== false && !p.isSpecialMenu
+            );
+            if (active.length === 0) return empty;
+
+            // Order: explicit default first, then everything else.
+            const defaultProj: any = active.find((p: any) => p.isDefault === true) || active[0];
+            const others = active.filter((p: any) => p !== defaultProj);
+            const ordered = [defaultProj, ...others];
+
+            const projects = ordered
+                .map((p: any) => ({
+                    slug: (p.slug as string) || '',
+                    name: (p.name as string) || '',
+                    isDefault: p === defaultProj,
+                }))
+                .filter((p) => p.slug && p.name);
+
+            return {
+                hasMenu: true,
+                defaultSlug: (defaultProj?.slug as string) || undefined,
+                projects,
+            };
         } catch {
-            return false;
+            return empty;
         }
     },
-    ['obp-has-menu'],
+    ['obp-menu-info'],
     { revalidate: 60, tags: ['client-stores'] }
 );
 
@@ -245,25 +284,53 @@ function getFullAddress(store: any): string | null {
 
 // ── Main async component ──
 
-export default async function OBPContent() {
+interface OBPContentProps {
+    /**
+     * G-01 (§11 + D-07 PUBLIC-ROUTING-DOCTRINE): when set, OBPContent renders
+     * the given outlet's OBP instead of looking up a store from the request
+     * hostname. MenuContent uses this to render `/{outletSlug}` as the outlet
+     * OBP surface — the Store surface IS the OBP for that outlet. The
+     * multi-store BrandOBP selector branch is skipped because we are
+     * explicitly rendering a specific outlet, not the brand root.
+     */
+    storeOverride?: any;
+    /**
+     * G-01: origin context for outlet renders. Outlets don't carry their own
+     * subdomain/customDomain — those live on the master. When rendering an
+     * outlet OBP we need the master's origin to emit absolute URLs for OG,
+     * canonical, and schema markup.
+     */
+    masterSubdomain?: string;
+    masterCustomDomain?: string;
+}
+
+export default async function OBPContent({
+    storeOverride,
+    masterSubdomain,
+    masterCustomDomain,
+}: OBPContentProps = {}) {
     const t = await getTranslations({ namespace: 'BusinessSettings' });
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
 
-    // Lookup store
-    let storeData: any = null;
-    if (tenantType === "subdomain" && subdomain) {
-        storeData = await withRetry(() => withTimeout(getStoreBySubdomain(subdomain)));
-    } else if (tenantType === "custom" && customDomain) {
-        storeData = await withRetry(() => withTimeout(getStoreByCustomDomain(customDomain)));
+    // Lookup store (skipped when an outlet override is supplied by the caller)
+    let storeData: any = storeOverride ?? null;
+    if (!storeData) {
+        if (tenantType === "subdomain" && subdomain) {
+            storeData = await withRetry(() => withTimeout(getStoreBySubdomain(subdomain)));
+        } else if (tenantType === "custom" && customDomain) {
+            storeData = await withRetry(() => withTimeout(getStoreByCustomDomain(customDomain)));
+        }
     }
 
     if (!storeData) {
         notFound();
     }
 
-    // URL Routing Architecture — Phase 2: Multi-store brand detection
-    // If this master store's tenant has multiple active stores, show brand store selector
-    if (storeData.isMaster) {
+    // URL Routing Architecture — Phase 2: Multi-store brand detection.
+    // G-01: skip the BrandOBPContent short-circuit when rendering a specific
+    // outlet (storeOverride set) — we are intentionally on the outlet surface,
+    // not the brand root.
+    if (!storeOverride && storeData.isMaster) {
         const outletCount = await withTimeout(countActiveStoresForTenant(storeData.tenantId));
         if (outletCount > 1) {
             const baseUrl = customDomain
@@ -274,8 +341,12 @@ export default async function OBPContent() {
     }
 
     // OPT-1: storeData already contains full store details from subdomain/custom domain lookup
-    // Eliminated redundant getStoreById() call — saves 1 Firestore read per OBP page visit
-    const hasMenu = await withTimeout(checkHasPublishedMenu(storeData.storeId));
+    // Eliminated redundant getStoreById() call — saves 1 Firestore read per OBP page visit.
+    // G-05 + G-06: single consolidated read returns hasMenu, default-project slug,
+    // and the full active-projects list for per-project CTA rendering.
+    const menuInfo = await withTimeout(getObpMenuInfo(storeData.storeId))
+        .catch(() => ({ hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo));
+    const { hasMenu, defaultSlug, projects: activeProjects } = menuInfo;
 
     const store = storeData;
     const pp = store?.publicPresence || {};
@@ -303,8 +374,63 @@ export default async function OBPContent() {
     const todayHours = getTodayHoursDisplay(store?.workingHours, store?.timeZone, t);
     const fullAddress = getFullAddress(store);
 
-    const obpUrl = generateOBPUrl(store?.subdomain, store?.customDomain);
-    const menuUrl = generateMenuUrl(store?.subdomain, store?.customDomain);
+    // Origin resolution for URL emission. For non-outlet renders the store
+    // itself carries subdomain/customDomain. For outlet renders (G-01), those
+    // fields live on the MASTER store — passed through as
+    // masterSubdomain/masterCustomDomain props by MenuContent.
+    const originSubdomain = storeOverride
+        ? masterSubdomain
+        : (store?.subdomain ?? undefined);
+    const originCustomDomain = storeOverride
+        ? masterCustomDomain
+        : (store?.customDomain ?? undefined);
+    const outletPrefix = storeOverride && store?.outletSlug
+        ? `/${store.outletSlug}`
+        : '';
+
+    // OBP URL: outlet OBP is served at `{master-origin}/{outletSlug}`; the
+    // non-outlet OBP is served at the master root.
+    const masterBase = generateOBPUrl(originSubdomain, originCustomDomain);
+    const obpUrl = storeOverride
+        ? `${masterBase}${outletPrefix}`
+        : masterBase;
+
+    // Helper: build a project URL scoped to the current OBP surface (master
+    // or outlet). For outlets the URL is prefixed with `/{outletSlug}` so
+    // the canonical per-project URL is `/{outletSlug}/{projectSlug}`.
+    const buildProjectUrl = (slug?: string): string => {
+        if (storeOverride) {
+            // Outlet path — absolute, rooted at master origin, with outlet slug.
+            if (!slug) {
+                return masterBase
+                    ? `${masterBase}${outletPrefix}/menu`
+                    : `${outletPrefix}/menu`;
+            }
+            return masterBase
+                ? `${masterBase}${outletPrefix}/${slug}`
+                : `${outletPrefix}/${slug}`;
+        }
+        return getDefaultProjectUrl(originSubdomain, originCustomDomain, slug);
+    };
+
+    // G-05 / R5 (§9 PUBLIC-ROUTING-DOCTRINE) sub-change 3: OBP's "View Menu"
+    // CTA links to the default project's REAL canonical slug URL (e.g.,
+    // /food-menu, /services), not the /menu alias. When defaultSlug is
+    // unavailable (no published menu), falls back to /menu which Layer 2
+    // handles gracefully.
+    const menuUrl = buildProjectUrl(defaultSlug);
+
+    // G-06 (§11 + D-03): per-project-count CTA payload. Each entry carries
+    // its real canonical slug URL so clicks go straight to /{projectSlug}
+    // (or /{outletSlug}/{projectSlug} for outlet-scoped OBPs). Ordered
+    // default-first by getObpMenuInfo so the primary CTA is always the
+    // default project.
+    const ctaProjects = activeProjects.map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        isDefault: p.isDefault,
+        url: buildProjectUrl(p.slug),
+    }));
 
     // Action visibility (default to true if data exists)
     const showCall = (pp.showCall !== false) && !!store?.phoneNumber;
@@ -474,6 +600,7 @@ export default async function OBPContent() {
                             accentColor={accentColor}
                             tenantId={store?.tenantId}
                             storeId={store?.storeId}
+                            projects={ctaProjects}
                         />
                     ) : (
                         <span className={styles.menuButtonDisabled}>

@@ -85,7 +85,12 @@ interface BrandOBPContentProps {
 
 export default async function BrandOBPContent({ store, baseUrl }: BrandOBPContentProps) {
     const t = await getTranslations({ namespace: 'BusinessSettings' });
-    const outlets = await getOutletsForTenant(store.tenantId, store.storeId);
+    const allOutlets = await getOutletsForTenant(store.tenantId, store.storeId);
+    // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a real outletSlug
+    // are ever routable and linkable. The outlet-create API guarantees a slug
+    // on every new outlet; anything missing a slug here is structurally
+    // broken and should not be exposed to customers.
+    const outlets = allOutlets.filter((o: any) => !!o?.outletSlug);
 
     const pp = store?.publicPresence || {};
     const accentColor = pp.accentColor || '#111';
@@ -137,9 +142,13 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
                         ? { isOpen: hoursOutput.styleHint === 'open', statusText: hoursOutput.statusText }
                         : getStoreOpenStatus(outlet.workingHours, outlet.timeZone);
                     const showBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
-                    // Build outlet URL: use outletSlug if available, otherwise storeId
-                    const outletPath = outlet.outletSlug || `store-${outlet.storeId}`;
-                    const outletUrl = `${baseUrl}/${outletPath}`;
+                    // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): outletSlug is the
+                    // only acceptable outlet URL segment. Outlets without a
+                    // slug are filtered out earlier in this render (see the
+                    // guard above the map); the `store-${storeId}` fallback
+                    // that used to live here was removed because it would
+                    // produce indexable URLs that aren't owner-chosen.
+                    const outletUrl = `${baseUrl}/${outlet.outletSlug}`;
 
                     return (
                         <a

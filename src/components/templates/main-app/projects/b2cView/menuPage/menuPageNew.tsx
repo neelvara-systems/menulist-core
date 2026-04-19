@@ -73,6 +73,36 @@ function MenuPageNew({
     businessType,
     precomputedBlocks
 }: MenuPageNewProps) {
+    const getMenuBasePath = useCallback(() => {
+        if (typeof window === 'undefined') return '/menu';
+
+        const itemPathMatch = window.location.pathname.match(/^(.*)\/item\/[^/]+\/?$/);
+        if (itemPathMatch?.[1]) {
+            return itemPathMatch[1];
+        }
+
+        return window.location.pathname;
+    }, []);
+
+    const getScrollPosition = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (container && container.scrollHeight > container.clientHeight) {
+            return container.scrollTop;
+        }
+
+        return window.scrollY;
+    }, []);
+
+    const restoreScrollPosition = useCallback((scrollY: number) => {
+        const container = scrollContainerRef.current;
+        if (container && container.scrollHeight > container.clientHeight) {
+            container.scrollTo({ top: scrollY, behavior: 'auto' });
+            return;
+        }
+
+        window.scrollTo({ top: scrollY, behavior: 'auto' });
+    }, []);
+
     const moodConfig = getMoodWithBrandColor(mood, brandAccentColor);
     const layoutConfig = MENU_LAYOUTS[layout];
     const spacing = SPACING[moodConfig.spacing];
@@ -169,7 +199,7 @@ function MenuPageNew({
                 // Restore scroll position after content renders
                 if (scrollY && scrollY > 0) {
                     requestAnimationFrame(() => {
-                        window.scrollTo({ top: scrollY, behavior: 'auto' });
+                        restoreScrollPosition(scrollY);
                     });
                 }
             }
@@ -178,7 +208,7 @@ function MenuPageNew({
         }
 
         setStateRestored(true);
-    }, [storageKey, allCategories, stateRestored]);
+    }, [storageKey, allCategories, stateRestored, restoreScrollPosition]);
 
     // Set first category as active on mount (only if not restored from session)
     useEffect(() => {
@@ -192,13 +222,14 @@ function MenuPageNew({
         if (typeof window === 'undefined') return;
 
         let saveTimeout: NodeJS.Timeout;
+        const container = scrollContainerRef.current;
 
         const saveState = () => {
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(() => {
                 try {
                     const state = {
-                        scrollY: window.scrollY,
+                        scrollY: getScrollPosition(),
                         filter: activeFilter,
                         category: activeCategory?.id || null,
                     };
@@ -210,13 +241,15 @@ function MenuPageNew({
         };
 
         window.addEventListener('scroll', saveState, { passive: true });
+        container?.addEventListener('scroll', saveState, { passive: true });
         saveState(); // Save immediately on filter/category change
 
         return () => {
             window.removeEventListener('scroll', saveState);
+            container?.removeEventListener('scroll', saveState);
             clearTimeout(saveTimeout);
         };
-    }, [storageKey, activeFilter, activeCategory]);
+    }, [storageKey, activeFilter, activeCategory, getScrollPosition]);
 
     // B.1: Intersection Observer for tabs/FAB mutual exclusivity
     // Activates when category tabs are rendered (mobile with showCategoryTabs OR tablet always)
@@ -371,15 +404,16 @@ function MenuPageNew({
             const itemSlug = slugify(itemName);
             const shortId = item.id?.slice(-6) || '';
             const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
+            const basePath = getMenuBasePath();
 
             historyPushedRef.current = true;
             window.history.pushState(
                 { modal: 'item', itemId: item.id },
                 '',
-                `/menu/item/${urlSegment}`
+                `${basePath}/item/${urlSegment}`
             );
         }
-    }, [activeLanguage]);
+    }, [activeLanguage, getMenuBasePath]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -389,9 +423,10 @@ function MenuPageNew({
             window.history.back();
         } else {
             // Direct close without history (e.g., direct link then close)
+            window.history.replaceState({}, '', getMenuBasePath());
             setSelectedItem(null);
         }
-    }, []);
+    }, [getMenuBasePath]);
 
     // G14 - Track selected item for popstate handler (avoids stale closure)
     const selectedItemRef = useRef<any>(null);
@@ -772,6 +807,12 @@ function MenuPageNew({
                                                             key={item.id}
                                                             id={`item-${item.id}`}
                                                             onClick={() => handleItemClick(item)}
+                                                            onKeyDown={(event) => {
+                                                                if (event.key === 'Enter' || event.key === ' ') {
+                                                                    event.preventDefault();
+                                                                    handleItemClick(item);
+                                                                }
+                                                            }}
                                                             style={{
                                                                 ...getItemStyle(),
                                                                 opacity: isAvailable ? 1 : 0.5,

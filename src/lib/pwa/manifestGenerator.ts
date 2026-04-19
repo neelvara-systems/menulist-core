@@ -106,6 +106,16 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const themeColor = input.themeColor || APP_THEME_COLOR;
     const backgroundColor = input.backgroundColor || '#ffffff';
 
+    // G-03 (§11 + D-10 PUBLIC-ROUTING-DOCTRINE): the PWA `id` must be unique
+    // per install surface so the install-context = launch-context invariant
+    // (D-10) produces a distinct installed app for each surface the customer
+    // installed from. Two manifests that share `id` are treated as the same
+    // app by the browser — installing the menu would replace an earlier OBP
+    // install, which breaks the doctrine. Encoding start_url in `id` gives
+    // every surface its own identity while `scope: '/'` still permits the
+    // installed app to navigate freely within the tenant.
+    const manifestId = `/?store=${input.id}&s=${encodeURIComponent(startUrl)}`;
+
     // Icon endpoint — same-origin, so subdomain/custom-domain routing works.
     const iconBase = `/api/app-icons/${input.id}`;
 
@@ -149,7 +159,7 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     return {
         name: input.displayName,
         short_name: shortName,
-        id: `/?store=${input.id}`,
+        id: manifestId,
         start_url: startUrl,
         scope: '/',
         display: 'standalone',

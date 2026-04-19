@@ -73,20 +73,42 @@ export const getStoreByCustomDomain = cache(
 /**
  * Lookup outlet store by outletSlug within a tenant (URL Routing Architecture — Gap 2).
  * Used when the first path segment matches an outlet slug instead of a project slug.
+ *
+ * G-07 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): outlet slug rename chain. When
+ * the direct `outletSlug == slug` query misses, we fall back to querying
+ * `previousOutletSlugs array-contains slug`. That second query matches
+ * outlets whose old slug was renamed, so physical QRs / printed signage
+ * keep resolving. The caller inspects the returned store's current
+ * `outletSlug` to detect a chain hit and emit a 301 to the canonical URL.
  */
 export const getStoreByOutletSlug = cache(
     unstable_cache(
         async (tenantId: number, outletSlug: string): Promise<ClientStoreLookupResult> => {
-            const q = query(
+            const normalized = outletSlug.toLowerCase();
+            // Primary: direct match on current slug.
+            const directQuery = query(
                 buildStoreRef(),
                 where('tenantId', '==', tenantId),
-                where('outletSlug', '==', outletSlug.toLowerCase()),
+                where('outletSlug', '==', normalized),
                 where('active', '==', true),
                 limit(1),
             );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+            const directSnap = await getDocs(directQuery);
+            if (!directSnap.empty) {
+                return { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
+            }
+            // Fallback: rename-chain lookup via previousOutletSlugs[]. Mirrors
+            // the project-slug chain mechanism on outlet stores.
+            const chainQuery = query(
+                buildStoreRef(),
+                where('tenantId', '==', tenantId),
+                where('previousOutletSlugs', 'array-contains', normalized),
+                where('active', '==', true),
+                limit(1),
+            );
+            const chainSnap = await getDocs(chainQuery);
+            if (chainSnap.empty) return null;
+            return { id: chainSnap.docs[0].id, ...chainSnap.docs[0].data() };
         },
         ['client-store-outlet-slug'],
         { revalidate: 60, tags: ['client-stores'] },

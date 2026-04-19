@@ -12,8 +12,16 @@
  * These are paths that MenuList may use for platform features.
  */
 export const RESERVED_PROJECT_SLUGS: readonly string[] = [
-    // Current reserved
-    'menu',           // Reserved: default menu route when OBP enabled
+    // G-05 (§9 R5 + §11 PUBLIC-ROUTING-DOCTRINE): `menu` is NOT reserved.
+    // Under R5, /menu uses two-layer resolution:
+    //   Layer 1 — if a project on this store has slug `menu`, normal slug
+    //             lookup resolves it directly (owner-claimed canonical URL).
+    //   Layer 2 — otherwise, /menu serves the isDefault project as a
+    //             universal alias with <link rel="canonical"> pointing at
+    //             the real slug URL.
+    // Owners can therefore name a project "Menu" and own /menu as their
+    // canonical URL, while stores that don't do so still get /menu as a
+    // working universal-invariant fallback. Do NOT re-add 'menu' here.
 
     // Future platform surfaces
     'info',

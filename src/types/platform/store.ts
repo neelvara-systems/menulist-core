@@ -125,6 +125,13 @@ export type StoreDataType = {
      *  Only set on outlet stores (isMaster=false). Master store has subdomain instead. */
     outletSlug?: string;
 
+    /** G-07 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): outlet slug rename chain.
+     *  Previous outletSlug values, preserved when an outlet is renamed so
+     *  physical QRs / printed signage with the old URL still resolve via a
+     *  301 redirect to the canonical outlet URL. Capped at 5 entries;
+     *  oldest drops off, matching the project previousSlugs[] semantics. */
+    previousOutletSlugs?: string[];
+
     // Multi-Store Consistency (Feature #4)
     // First store in a chain is the master store — all its projects are master projects
     isMaster?: boolean; // Default: false. True = this store's projects are master menus

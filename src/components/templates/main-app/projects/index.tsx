@@ -13,12 +13,13 @@ import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { getBase64, removeObjRef } from '@util/utils';
-import { Button, Flex, Form, message, Spin, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Flex, Form, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
 import type { UploadFileStatus, UploadProps } from 'antd/es/upload/interface';
 import DOMPurify from 'isomorphic-dompurify';
 // pdfjs-dist is lazy loaded in processsPdf() to reduce initial bundle size
@@ -435,9 +436,71 @@ function ProjectsPage() {
             const sanitizedName = DOMPurify.sanitize(values.name, { ALLOWED_TAGS: [], KEEP_CONTENT: true }).trim();
             const sanitizedDescription = values.description ? DOMPurify.sanitize(values.description, { ALLOWED_TAGS: [], KEEP_CONTENT: true }).trim() : undefined;
 
+            // G-13 (§11 + §9 PUBLIC-ROUTING-DOCTRINE): surface the
+            // Layer-1-vs-isDefault divergence so owners choose intentionally.
+            // Scenario: owner names this project "Menu" (proposed slug = 'menu')
+            // but the isDefault project on this store is a DIFFERENT project.
+            // Customers typing /menu will see THIS project (Layer 1); clicks
+            // from OBP's "View Menu" CTA will open the DEFAULT project. Both
+            // behaviors are legitimate (stable-URL + rotating feature pattern)
+            // but owners usually only want that intentionally, so we ask.
+            const proposedSlug = slugify(sanitizedName);
+            const existingProjects = projectsData?.projects || [];
+            const editingProjectId = editingProject?.projectId;
+            const otherDefault = existingProjects.find(
+                (p: any) => p?.isDefault === true && p?.projectId !== editingProjectId,
+            );
+            const thisIsDefault = editingProject?.isDefault === true;
+            let promoteThisAsDefault = false;
+            if (proposedSlug === 'menu' && otherDefault && !thisIsDefault) {
+                const decision = await new Promise<'promote' | 'keep'>((resolve) => {
+                    Modal.confirm({
+                        title: 'Heads up — two customer paths will diverge',
+                        content: (
+                            <Flex vertical gap={8}>
+                                <Typography.Paragraph style={{ margin: 0 }}>
+                                    You&apos;re naming this {labels.offeringLower}{' '}
+                                    <strong>&ldquo;{sanitizedName}&rdquo;</strong>, so its URL will be{' '}
+                                    <code>/menu</code>.
+                                </Typography.Paragraph>
+                                <Typography.Paragraph style={{ margin: 0 }}>
+                                    But the <strong>default</strong> {labels.offeringLower} is currently{' '}
+                                    <strong>&ldquo;{otherDefault.name}&rdquo;</strong>. Customers will see:
+                                </Typography.Paragraph>
+                                <ul style={{ paddingLeft: 20, margin: 0 }}>
+                                    <li>typing <code>/menu</code> → <strong>{sanitizedName}</strong></li>
+                                    <li>tapping &ldquo;View Menu&rdquo; elsewhere → <strong>{otherDefault.name}</strong></li>
+                                </ul>
+                                <Typography.Paragraph style={{ margin: 0 }}>
+                                    If that&apos;s not what you want, set this as the default.
+                                </Typography.Paragraph>
+                            </Flex>
+                        ),
+                        okText: `Set &ldquo;${sanitizedName}&rdquo; as default`,
+                        cancelText: 'Keep as-is',
+                        width: 520,
+                        onOk: () => resolve('promote'),
+                        onCancel: () => resolve('keep'),
+                    });
+                });
+                promoteThisAsDefault = decision === 'promote';
+            }
+
             if (editingProject) {
-                const updatedProject = { ...editingProject, name: sanitizedName, description: sanitizedDescription };
-                await updateProjectMetadata(editingProject.projectId!, { name: sanitizedName, description: sanitizedDescription });
+                const updatePayload: { name?: string; description?: string; isDefault?: boolean } = {
+                    name: sanitizedName,
+                    description: sanitizedDescription,
+                };
+                if (promoteThisAsDefault) {
+                    updatePayload.isDefault = true;
+                }
+                const updatedProject = { ...editingProject, ...updatePayload };
+                await updateProjectMetadata(editingProject.projectId!, updatePayload);
+                // G-13: if this was promoted to default, flip the previous
+                // default off so there is exactly one isDefault project.
+                if (promoteThisAsDefault && otherDefault?.projectId) {
+                    await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
+                }
 
                 // Update selected project if editing current
                 if (selectedProject?.projectId === editingProject.projectId) {

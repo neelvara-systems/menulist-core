@@ -56,9 +56,6 @@ type QrSheetState = {
     url: string;
 };
 
-const isDefaultLikeProject = (project: any): boolean =>
-    Boolean(project?.isDefault) || String(project?.projectId || '').includes('-default-');
-
 export default function MobileShareScreen() {
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -93,11 +90,15 @@ export default function MobileShareScreen() {
                     (storeDetails as any).pwaSettings?.enableInstallableApp !== false
                     ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
                     : null;
+            // R5 link-emitter audit: always emit the real canonical slug URL
+            // (e.g., /food-menu), never the /menu alias. Pass project name
+            // regardless of isDefault — under R5 every project's canonical URL
+            // is its real slug.
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
-                isDefaultLikeProject(defaultProject) ? undefined : defaultProject.name,
-                isDefaultLikeProject(defaultProject)
+                defaultProject.name,
+                false
             );
 
             let menuBoardLink: string | null = null;
@@ -114,13 +115,13 @@ export default function MobileShareScreen() {
             }
 
             const allProjects: ProjectLink[] = projects.map((project: any) => {
-                const defaultLike = isDefaultLikeProject(project);
                 return {
                     feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : "",
                     isDefault: project.isDefault || false,
                     name: project.name || tProjectSelector('untitled'),
                     projectId: project.projectId,
-                    url: generateProjectUrl(subdomain, customDomain, defaultLike ? undefined : project.name, defaultLike),
+                    // R5: always real canonical slug URL — no /menu alias.
+                    url: generateProjectUrl(subdomain, customDomain, project.name, false),
                 };
             });
 

@@ -130,6 +130,13 @@ export enum TrackingEvent {
   OBP_MENU_CLICK = 'obp_menu_click',        // Customer clicked "View Menu" from OBP → measures OBP→menu conversion
   OBP_SHARE = 'obp_share',                  // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
 
+  // G-10 (§11 + D-04 PUBLIC-ROUTING-DOCTRINE): customer-side project switch.
+  // Fires when the customer switches between projects via the in-menu
+  // project switcher (D-04) or the OBP secondary-project card (G-06).
+  // Measures how often customers explore beyond the default project — key
+  // signal for deciding when to promote a "Browse all menus" affordance.
+  PROJECT_SWITCH = 'project_switch',
+
   // Owner-side events (lightweight, GA4-only — no Firestore writes)
   MENU_KIT_DOWNLOAD = 'menu_kit_download',  // Owner downloaded Menu Kit ZIP or shared individual asset
 
@@ -898,6 +905,40 @@ export const trackOBPShare = (
     storeId: String(storeId),
     projectId: 'obp',
     obpAction: shareMethod,
+    ...additionalData
+  });
+};
+
+// ============================================
+// Project Switch Tracking (G-10, customer-side)
+// ============================================
+
+/**
+ * Track when a customer switches between a store's projects.
+ *
+ * G-10 (§11 + D-04 PUBLIC-ROUTING-DOCTRINE): measures cross-project
+ * exploration. Fires from two surfaces:
+ *   - `in_menu`: the customer tapped the in-menu project switcher (D-04).
+ *   - `obp_secondary_card`: the customer tapped a secondary project card on
+ *     OBP (G-06, when the store has ≥2 projects).
+ *
+ * @param storeId Store whose projects the customer is navigating.
+ * @param toProjectId The project being switched TO.
+ * @param fromProjectId Optional — the project being switched FROM.
+ * @param source Which surface triggered the switch.
+ */
+export const trackProjectSwitch = (
+  storeId: string | number,
+  toProjectId: string,
+  fromProjectId: string | null,
+  source: 'in_menu' | 'obp_secondary_card',
+  additionalData: Partial<TrackingData> = {}
+): Promise<void> => {
+  return trackEvent(TrackingEvent.PROJECT_SWITCH, {
+    storeId: String(storeId),
+    projectId: toProjectId,
+    fromProjectId: fromProjectId || undefined,
+    projectSwitchSource: source,
     ...additionalData
   });
 };

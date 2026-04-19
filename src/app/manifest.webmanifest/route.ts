@@ -28,7 +28,7 @@ function emptyManifest() {
     });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         // Global kill switch — owner-level opt-out lives on the store doc below.
         if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return emptyManifest();
@@ -42,6 +42,21 @@ export async function GET() {
             // Manifest only meaningful on tenant domains; platform domain returns 404.
             return emptyManifest();
         }
+
+        // G-03 (§11 + D-10 PUBLIC-ROUTING-DOCTRINE): per-surface start_url.
+        // Each client page emits `<link rel="manifest" href="/manifest.webmanifest?start=/{path}">`
+        // so installs from different surfaces (OBP, outlet OBP, project menu)
+        // yield distinct PWAs whose start_url matches the install surface.
+        // Validate the `start` param: must be a same-origin path (starts with
+        // `/`, no scheme, no `..` traversal). Anything else falls back to '/'.
+        const requestUrl = new URL(request.url);
+        const rawStart = requestUrl.searchParams.get('start') || '/';
+        const isSafePath =
+            rawStart.startsWith('/') &&
+            !rawStart.startsWith('//') &&
+            !rawStart.includes('..') &&
+            !/^\/[a-z]+:/.test(rawStart); // defeats `/https://evil.com` smuggling
+        const startUrl = isSafePath ? rawStart : '/';
 
         let store = null;
         if (domain.subdomain) {
@@ -94,8 +109,17 @@ export async function GET() {
             shortName,
             themeColor,
             description,
+            // G-03 (§11 + D-10): start_url = the surface the customer installed
+            // from. Browsers will launch the installed PWA directly into this
+            // path, honouring install-context = launch-context.
+            startUrl,
             shortcutInfo: {
-                menuPath: '/',
+                // Menu shortcut points at the same install surface. For OBP
+                // installs (startUrl='/'), the shortcut also lands on '/'
+                // which is OBP → customer uses the "View Menu" CTA to reach
+                // the default project. For menu-surface installs, the
+                // shortcut lands directly on the menu.
+                menuPath: startUrl,
                 phone: showCall ? phoneForTel || null : null,
                 mapsUrl: showDirections ? store.publicPresence?.googleMapsUrl || null : null,
                 whatsappNumber: showWhatsApp ? store.publicPresence?.whatsappNumber || null : null,

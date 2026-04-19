@@ -43,11 +43,29 @@ export function slugMatches(slug: string, projectName: string): boolean {
 }
 
 /**
- * Generate a share URL for a project
+ * Generate a share URL for a project.
+ *
+ * Link-emitter audit (§9 R5 PUBLIC-ROUTING-DOCTRINE): when `projectName` is
+ * provided, the returned URL is always the project's **real canonical slug
+ * URL** — e.g., `/food-menu`, `/services`, `/carta`. This holds even for the
+ * default project, because under R5 the canonical URL of every project is
+ * its real slug (never the `/menu` alias).
+ *
+ * Callers that explicitly want the `/menu` alias URL (voice prompts,
+ * "easy-to-type" signage) should call `generateMenuUrl` from
+ * `@lib/obp/generateOBPUrl` directly — using the alias is an intentional
+ * product choice, not a fallback.
+ *
+ * When `projectName` is not provided, returns:
+ *   - under OBP: the `/menu` alias (Layer 2 of the resolver serves the
+ *     default project for that URL, so the link always works)
+ *   - without OBP: the tenant root URL
+ *
  * @param subdomain - Store subdomain (e.g., "joespizza")
  * @param customDomain - Store custom domain (e.g., "joespizza.com")
- * @param projectName - Project name to slugify
- * @param isDefault - If true, use root URL without slug
+ * @param projectName - Project name; slugified to build the canonical URL
+ * @param isDefault - Retained for non-OBP mode only; ignored under OBP since
+ *                    the default project's URL is its real slug, not root
  */
 export function generateProjectUrl(
     subdomain?: string,
@@ -62,18 +80,27 @@ export function generateProjectUrl(
     } else {
         const publicBaseUrl = getPublicBaseUrl();
         const slug = projectName ? slugify(projectName) : '';
-        return (isDefault || !slug)
-            ? appendPublicPath(publicBaseUrl, 'menu')
-            : appendPublicPath(publicBaseUrl, `menu/${slug}`);
+        if (!slug) {
+            return appendPublicPath(publicBaseUrl, 'menu');
+        }
+        // Emit the real slug URL in every case — matches R5 canonical rule.
+        return appendPublicPath(publicBaseUrl, `menu/${slug}`);
     }
 
-    // If OBP is enabled, root resolves to OBP and the default menu lives at /menu.
-    // Otherwise the root itself is the default menu.
-    if (isDefault || !projectName) {
+    const slug = projectName ? slugify(projectName) : '';
+
+    if (!slug) {
+        // No project name supplied: fall back to the `/menu` alias under
+        // OBP (Layer 2 resolves), or the tenant root without OBP.
         return FEATURE_FLAGS.ENABLE_OBP ? appendPublicPath(baseUrl, 'menu') : baseUrl;
     }
 
-    // Add slug path
-    const slug = slugify(projectName);
-    return slug ? appendPublicPath(baseUrl, slug) : baseUrl;
+    // Under OBP, every project — including the default — lives at its real
+    // canonical slug URL. `isDefault` is retained only for non-OBP mode,
+    // where the default project may still live at the tenant root.
+    if (!FEATURE_FLAGS.ENABLE_OBP && isDefault) {
+        return baseUrl;
+    }
+
+    return appendPublicPath(baseUrl, slug);
 }

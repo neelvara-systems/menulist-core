@@ -14,6 +14,7 @@ import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsConte
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useContext, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LuChevronLeft, LuChevronRight, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
@@ -31,10 +32,17 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [category, setCategory] = useState<ExtractedDataCategory>();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     useEffect(() => {
         if (item) {
             setCurrentImageIndex(0);
+            document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
 
             // Track menu item view for analytics
@@ -59,11 +67,25 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
             setCategory(file?.extractedData?.data?.categories?.find((cat: any) => cat.id === item.category));
         }
         return () => {
-            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
         };
     }, [item, language, trackMenuItemView, projectData]);
 
-    if (!item) return null;
+    useEffect(() => {
+        if (!item) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [item, onClose]);
+
+    if (!item || !mounted) return null;
 
     const images = item.images || [];
     const hasMultipleImages = images.length > 1;
@@ -77,7 +99,7 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
         setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
     };
 
-    return (
+    const modalContent = (
         <AnimatePresence>
             {item && (
                 <>
@@ -96,11 +118,12 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-4 md:inset-8 lg:inset-16 z-50 flex items-center justify-center"
+                        className="fixed inset-4 md:inset-8 lg:inset-16 z-[60] flex items-center justify-center"
                     >
                         <div
-                            className="w-full max-w-2xl max-h-full overflow-y-auto rounded-2xl"
+                            className="relative w-full max-w-2xl max-h-full overflow-y-auto rounded-2xl shadow-2xl"
                             style={{ background: moodConfig.background }}
+                            onClick={(event) => event.stopPropagation()}
                         >
                             {/* Close Button */}
                             <button
@@ -316,6 +339,8 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
             )}
         </AnimatePresence>
     );
+
+    return createPortal(modalContent, document.body);
 }
 
 export default PDPModal;

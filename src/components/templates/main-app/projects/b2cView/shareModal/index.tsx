@@ -108,13 +108,15 @@ function ShareModal({
     // Priority: customDomain → subdomain → fallback to path-based (localhost only)
     // URL structure: subdomain.menulist.ai/{project-slug} or root for default
     const getShareUrl = () => {
-        // If subdomain or custom domain is set, use slug-based URLs
+        // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): share URL is the
+        // real canonical slug URL for every project — default or not. Under
+        // R5 the default project's canonical URL is its real slug, not /menu.
         if (customDomain || subdomain) {
             return generateProjectUrl(
                 subdomain,
                 customDomain,
-                isDefaultProject ? undefined : projectName,
-                isDefaultProject
+                projectName,
+                false
             );
         }
         // Fallback for localhost/development or stores without domain setup

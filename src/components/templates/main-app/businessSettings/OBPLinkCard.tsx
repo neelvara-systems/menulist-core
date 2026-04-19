@@ -1,12 +1,14 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getProjectsList } from '@database/projects';
 import { trackOBPShare } from '@lib/analytics/unified';
-import { generateMenuUrl, generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
+import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, Segmented, Typography, message } from 'antd';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -19,12 +21,39 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const [copied, setCopied] = useState(false);
     const [showQr, setShowQr] = useState(false);
     const [qrType, setQrType] = useState<'share' | 'menu'>('share');
+    const [defaultSlug, setDefaultSlug] = useState<string | undefined>(undefined);
     const qrRef = useRef<HTMLDivElement>(null);
+
+    // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): resolve the default
+    // project's real canonical slug so the "Menu QR" points at the canonical
+    // per-project URL (e.g., /food-menu), not the /menu alias. Falls back to
+    // the alias while loading or when no default is available — Layer 2 still
+    // resolves correctly in those cases.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const result = await getProjectsList();
+                const projects = result?.projects || [];
+                const def = projects.find((p: any) => p.isDefault) || projects[0];
+                if (!def || cancelled) return;
+                const slug = def.slug || (def.name ? slugify(def.name) : undefined);
+                setDefaultSlug(slug);
+            } catch {
+                // Silent fallback — Layer 2 handles the alias URL gracefully.
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [storeDetails?.storeId]);
 
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
     const obpUrl = generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain);
-    const menuUrl = generateMenuUrl(storeDetails?.subdomain, storeDetails?.customDomain);
+    const menuUrl = getDefaultProjectUrl(
+        storeDetails?.subdomain,
+        storeDetails?.customDomain,
+        defaultSlug,
+    );
 
     if (!obpUrl) return null;
 

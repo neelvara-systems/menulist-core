@@ -1,40 +1,115 @@
 'use client';
 
 /**
- * OBP Menu CTA — Client Component for "View Menu" button with conversion tracking.
- * 
- * Fires OBP_MENU_CLICK event when customer clicks "View Menu" from OBP.
- * This measures OBP→menu conversion rate — the key OBP effectiveness metric.
+ * OBP Menu CTA — Client Component.
+ *
+ * Fires OBP_MENU_CLICK when the customer clicks any menu CTA from OBP
+ * (primary or secondary). Measures OBP → menu conversion, the key OBP
+ * effectiveness metric.
+ *
  * Uses native <a> tag for navigation (no client-side routing needed).
+ *
+ * G-06 (§11 + D-03 PUBLIC-ROUTING-DOCTRINE): per-project-count rendering.
+ *   - 0 projects → "View Menu" fallback (safety rail; hasMenu gating in
+ *     OBPContent normally prevents this branch)
+ *   - 1 project  → single big CTA reading "View [projectName]"
+ *   - ≥2 projects → default project as big CTA "View [defaultName]" +
+ *     secondary projects as smaller cards below
  */
 
 import { getSessionId } from '@lib/analytics/session';
-import { trackOBPMenuClick } from '@lib/analytics/unified';
+import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
 
+export interface OBPMenuCTAProjectEntry {
+    slug: string;
+    name: string;
+    url: string;
+    isDefault: boolean;
+}
+
 interface OBPMenuCTAProps {
+    /** Fallback URL for the "View Menu" safety rail when projects is empty. */
     menuUrl: string;
     accentColor: string;
     tenantId: number;
     storeId: number;
+    /** Ordered projects (default first). When length ≥ 2 the secondary list renders below the primary CTA. */
+    projects?: OBPMenuCTAProjectEntry[];
 }
 
-export default function OBPMenuCTA({ menuUrl, accentColor, tenantId, storeId }: OBPMenuCTAProps) {
-    const handleClick = () => {
+export default function OBPMenuCTA({
+    menuUrl,
+    accentColor,
+    tenantId,
+    storeId,
+    projects = [],
+}: OBPMenuCTAProps) {
+    const trackPrimary = () => {
         trackOBPMenuClick(storeId, {
             tenantId,
             sessionId: getSessionId(),
         }).catch(() => { });
     };
 
+    const trackSecondary = (project: OBPMenuCTAProjectEntry) => {
+        // Primary OBP→menu conversion metric.
+        trackOBPMenuClick(storeId, {
+            tenantId,
+            sessionId: getSessionId(),
+        }).catch(() => { });
+        // G-10: also tag this as a customer-side project switch so the
+        // dashboard can tell cross-project exploration apart from straight
+        // default-project opens.
+        trackProjectSwitch(
+            storeId,
+            project.slug,
+            null, // OBP is a fresh entry point; there is no "from" project.
+            'obp_secondary_card',
+            { tenantId, sessionId: getSessionId() },
+        ).catch(() => { });
+    };
+
+    // Safety rail: no projects list → render classic "View Menu" button.
+    if (projects.length === 0) {
+        return (
+            <a
+                href={menuUrl}
+                className={styles.menuButton}
+                style={{ background: accentColor }}
+                onClick={trackPrimary}
+            >
+                View Menu
+            </a>
+        );
+    }
+
+    const [primary, ...secondary] = projects;
+
     return (
-        <a
-            href={menuUrl}
-            className={styles.menuButton}
-            style={{ background: accentColor }}
-            onClick={handleClick}
-        >
-            View Menu
-        </a>
+        <>
+            <a
+                href={primary.url}
+                className={styles.menuButton}
+                style={{ background: accentColor }}
+                onClick={trackPrimary}
+            >
+                View {primary.name}
+            </a>
+            {secondary.length > 0 && (
+                <div className={styles.secondaryProjects}>
+                    {secondary.map((p) => (
+                        <a
+                            key={p.slug}
+                            href={p.url}
+                            className={styles.secondaryProjectCard}
+                            onClick={() => trackSecondary(p)}
+                        >
+                            {p.name}
+                        </a>
+                    ))}
+                </div>
+            )}
+        </>
     );
 }

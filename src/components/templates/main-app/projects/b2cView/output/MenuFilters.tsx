@@ -110,13 +110,13 @@ function MenuFilters({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowCategories(false)}
-                            className="absolute inset-0 bg-black/50 z-40"
+                            className="fixed inset-0 bg-black/50 z-40"
                         />
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="absolute bottom-16 left-4 right-4 z-50 rounded-xl overflow-hidden"
+                            className="fixed bottom-16 left-4 right-4 z-50 rounded-xl overflow-hidden"
                             style={{ background: moodConfig.background }}
                         >
                             <div className="p-3 border-b" style={{ borderColor: moodConfig.itemStyle.borderColor }}>

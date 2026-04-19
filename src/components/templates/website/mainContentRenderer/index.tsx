@@ -44,9 +44,15 @@ function MainContentRenderer({
   // Get style configs with brand color applied
   const homeStyleConfig = getHomeStyleWithBrandColor(homeStyle, brandAccentColor);
 
+  // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): HomePageNew must not render in the public
+  // path (fromPage === 'main-website'). Editor preview retains HOME mode for
+  // legacy authored designs — the editor sidebar controls activePage there.
+  const isPublicSurface = fromPage === 'main-website';
+  const effectivePage = isPublicSurface ? PageType.MENU : activePage;
+
   return (
-    <DeviceFrame fromPage={fromPage} activeDeviceType={activeDeviceType} backgroundColor={homeStyleConfig.background} activePage={activePage}>
-      {activePage === PageType.HOME ? (
+    <DeviceFrame fromPage={fromPage} activeDeviceType={activeDeviceType} backgroundColor={homeStyleConfig.background} activePage={effectivePage}>
+      {effectivePage === PageType.HOME ? (
         <HomePageNew
           activeDeviceType={activeDeviceType}
           setActivePage={setActivePage}
