@@ -667,7 +667,7 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
 // getMoodWithBrandColor blindly applies ANY color
 export function getMoodWithBrandColor(
   mood: MenuMood,
-  brandAccentColor?: string
+  brandAccentColor?: string,
 ) {
   return { ...moodConfig, accentColor: brandAccentColor }; // ❌ No validation
 }
@@ -690,7 +690,7 @@ function getLuminance(hex: string): number {
   const b = (rgb & 0xff) / 255;
 
   const [rs, gs, bs] = [r, g, b].map((c) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
   );
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
@@ -710,7 +710,7 @@ function getContrastRatio(color1: string, color2: string): number {
 export function enforceContrast(
   foreground: string,
   background: string,
-  fallback: string
+  fallback: string,
 ): string {
   const ratio = getContrastRatio(foreground, background);
 
@@ -725,7 +725,7 @@ export function enforceContrast(
 // Update getMoodWithBrandColor to use enforcement
 export function getMoodWithBrandColor(
   mood: MenuMood,
-  brandAccentColor?: string
+  brandAccentColor?: string,
 ): MenuMoodConfig {
   const moodConfig = MENU_MOODS[mood];
 
@@ -735,13 +735,13 @@ export function getMoodWithBrandColor(
   const safeAccent = enforceContrast(
     brandAccentColor,
     moodConfig.background,
-    moodConfig.accentColor // Fallback to default
+    moodConfig.accentColor, // Fallback to default
   );
 
   const safePriceColor = enforceContrast(
     brandAccentColor,
     moodConfig.background,
-    moodConfig.priceColor
+    moodConfig.priceColor,
   );
 
   return {
@@ -791,7 +791,7 @@ export const PERFORMANCE_BUDGET = {
 export function validateImageUpload(
   file: File,
   existingImagesKB: number,
-  type: "item" | "background"
+  type: "item" | "background",
 ): { allowed: boolean; reason?: string } {
   const fileSizeKB = file.size / 1024;
   const maxSize =
@@ -804,7 +804,7 @@ export function validateImageUpload(
     return {
       allowed: false,
       reason: `Image too large (${Math.round(
-        fileSizeKB
+        fileSizeKB,
       )}KB). Max: ${maxSize}KB`,
     };
   }
@@ -856,7 +856,7 @@ export const IMAGE_QUALITY_RULES = {
  * Validates image quality. Returns rejection if quality too low.
  */
 export async function validateImageQuality(
-  file: File
+  file: File,
 ): Promise<{ allowed: boolean; reason?: string }> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -878,7 +878,7 @@ export async function validateImageQuality(
       // Aspect ratio check
       const ratio = width / height;
       const validRatio = IMAGE_QUALITY_RULES.ACCEPTABLE_ASPECT_RATIOS.some(
-        (r) => ratio >= r.min && ratio <= r.max
+        (r) => ratio >= r.min && ratio <= r.max,
       );
 
       if (!validRatio) {
@@ -1175,7 +1175,7 @@ import { enforceContrast } from "@lib/colorEnforcement";
 const safeAccent = enforceContrast(
   brandAccentColor,
   moodConfig.background,
-  moodConfig.accentColor
+  moodConfig.accentColor,
 );
 ```
 
@@ -1726,12 +1726,12 @@ _Enforcement design follows Constitutional principles: impossibility over warnin
 
 ### Article V — Pricing Transparency
 
-| Rule                        | Constitution Reference   | Implementation Status | Verified File(s)        | Notes                        |
-| --------------------------- | ------------------------ | --------------------- | ----------------------- | ---------------------------- |
-| 5.1 Price Instantly Visible | "No scrolling to find"   | ✅ DONE               | `MenuItem.tsx` L70-85   | Price in first flex row      |
-| 5.2 Comparable Formatting   | "Aligned for comparison" | ✅ DONE               | `formatPrice()` L36-40  | Consistent currency format   |
-| 5.3 Modifier Honesty        | "Before selection"       | ✅ DONE               | `PDPModal.tsx`          | Attributes shown with prices |
-| 5.4 Total Cost Awareness    | "No hidden fees"         | ✅ DONE               | `ServiceChargeNote.tsx` | G06 implemented              |
+| Rule                        | Constitution Reference   | Implementation Status | Verified File(s)       | Notes                        |
+| --------------------------- | ------------------------ | --------------------- | ---------------------- | ---------------------------- |
+| 5.1 Price Instantly Visible | "No scrolling to find"   | ✅ DONE               | `MenuItem.tsx` L70-85  | Price in first flex row      |
+| 5.2 Comparable Formatting   | "Aligned for comparison" | ✅ DONE               | `formatPrice()` L36-40 | Consistent currency format   |
+| 5.3 Modifier Honesty        | "Before selection"       | ✅ DONE               | `PDPModal.tsx`         | Attributes shown with prices |
+| 5.4 Total Cost Awareness    | "No hidden fees"         | ✅ DONE               | `specialNote.tsx`      | G06 implemented              |
 
 ### Article VI — Trust Signals
 
@@ -1757,24 +1757,24 @@ _Enforcement design follows Constitutional principles: impossibility over warnin
 
 ### G1-G16 Status Matrix
 
-| ID      | Guardrail                 | Constitution              | Status  | Implementation                                             | Verified |
-| ------- | ------------------------- | ------------------------- | ------- | ---------------------------------------------------------- | -------- |
-| **G01** | No-Gate Rule              | "No login before viewing" | ✅ DONE | B2C view public                                            | ✓        |
-| **G02** | Performance Budget        | "Max image weight"        | ✅ DONE | `backgroundSettings.tsx` 2MB limit                         | ✓        |
-| **G03** | Minimum Font Safety       | "Cannot go below min"     | ✅ DONE | `text-sm md:text-base` hardcoded                           | ✓        |
-| **G04** | Contrast Enforcement      | "WCAG auto-correct"       | ✅ DONE | `colorEnforcement.ts`                                      | ✓        |
-| **G05** | Price Visibility Lock     | "Must appear in list"     | ✅ DONE | `MenuItem.tsx` ROW 1                                       | ✓        |
-| **G06** | Modifier Price Disclosure | "Add-ons show price"      | ✅ DONE | `ServiceChargeNote.tsx` + `menuSettings.serviceChargeNote` | ✓        |
-| **G07** | Category Integrity        | "Items require category"  | ✅ DONE | Category filtering logic                                   | ✓        |
-| **G08** | Long Menu Safety          | "Section headers"         | ✅ DONE | Category headers + `BackToTop.tsx`                         | ✓        |
-| **G09** | Image Quotas              | "Max per screen"          | ✅ DONE | `maxImagesPerCategory` in layouts                          | ✓        |
-| **G10** | Image Quality Control     | "Resolution check"        | ✅ DONE | Upload validation + fallback                               | ✓        |
-| **G11** | Business Identity Lock    | "Name always visible"     | ✅ DONE | `MenuFooter.tsx` L55 fallback                              | ✓        |
-| **G12** | Freshness Enforcement     | "Live badges"             | ✅ DONE | `LiveIndicator.tsx` auto-inject                            | ✓        |
-| **G13** | Feedback on Every Action  | "Tap → response"          | ✅ DONE | `active:scale-[0.98]` + `MenuSkeleton.tsx`                 | ✓        |
-| **G14** | Back Button Safety        | "History-aware"           | ✅ DONE | `handleModalClose()` with history                          | ✓        |
-| **G15** | No Forced Vibes           | "Neutral-first"           | ✅ DONE | 5 moods including CLEAN (light)                            | ✓        |
-| **G16** | Share Pride Rule          | "OG tags"                 | ✅ DONE | `SharePreviewMeta.tsx` + SEO                               | ✓        |
+| ID      | Guardrail                 | Constitution              | Status  | Implementation                                 | Verified |
+| ------- | ------------------------- | ------------------------- | ------- | ---------------------------------------------- | -------- |
+| **G01** | No-Gate Rule              | "No login before viewing" | ✅ DONE | B2C view public                                | ✓        |
+| **G02** | Performance Budget        | "Max image weight"        | ✅ DONE | `backgroundSettings.tsx` 2MB limit             | ✓        |
+| **G03** | Minimum Font Safety       | "Cannot go below min"     | ✅ DONE | `text-sm md:text-base` hardcoded               | ✓        |
+| **G04** | Contrast Enforcement      | "WCAG auto-correct"       | ✅ DONE | `colorEnforcement.ts`                          | ✓        |
+| **G05** | Price Visibility Lock     | "Must appear in list"     | ✅ DONE | `MenuItem.tsx` ROW 1                           | ✓        |
+| **G06** | Modifier Price Disclosure | "Add-ons show price"      | ✅ DONE | `specialNote.tsx` + `menuSettings.specialNote` | ✓        |
+| **G07** | Category Integrity        | "Items require category"  | ✅ DONE | Category filtering logic                       | ✓        |
+| **G08** | Long Menu Safety          | "Section headers"         | ✅ DONE | Category headers + `BackToTop.tsx`             | ✓        |
+| **G09** | Image Quotas              | "Max per screen"          | ✅ DONE | `maxImagesPerCategory` in layouts              | ✓        |
+| **G10** | Image Quality Control     | "Resolution check"        | ✅ DONE | Upload validation + fallback                   | ✓        |
+| **G11** | Business Identity Lock    | "Name always visible"     | ✅ DONE | `MenuFooter.tsx` L55 fallback                  | ✓        |
+| **G12** | Freshness Enforcement     | "Live badges"             | ✅ DONE | `LiveIndicator.tsx` auto-inject                | ✓        |
+| **G13** | Feedback on Every Action  | "Tap → response"          | ✅ DONE | `active:scale-[0.98]` + `MenuSkeleton.tsx`     | ✓        |
+| **G14** | Back Button Safety        | "History-aware"           | ✅ DONE | `handleModalClose()` with history              | ✓        |
+| **G15** | No Forced Vibes           | "Neutral-first"           | ✅ DONE | 5 moods including CLEAN (light)                | ✓        |
+| **G16** | Share Pride Rule          | "OG tags"                 | ✅ DONE | `SharePreviewMeta.tsx` + SEO                   | ✓        |
 
 ---
 
@@ -1808,19 +1808,19 @@ _Enforcement design follows Constitutional principles: impossibility over warnin
 
 ### Constitutional Components (Cannot Be Removed)
 
-| Component           | Purpose               | Auto-Injected At           | Line Reference |
-| ------------------- | --------------------- | -------------------------- | -------------- |
-| `ServiceChargeNote` | G06 pricing truth     | `menuPageNew.tsx` L600     | ✅ Verified    |
-| `MenuFooter`        | G09 business identity | `menuPageNew.tsx` L603-608 | ✅ Verified    |
-| `BackToTop`         | G07 long menu nav     | `menuPageNew.tsx` L623     | ✅ Verified    |
-| `LiveIndicator`     | G12 freshness         | `MenuHeader.tsx`           | ✅ Verified    |
-| `MenuSkeleton`      | G13 loading states    | Available for use          | ✅ Created     |
+| Component       | Purpose               | Auto-Injected At           | Line Reference |
+| --------------- | --------------------- | -------------------------- | -------------- |
+| `specialNote`   | G06 pricing truth     | `menuPageNew.tsx` L600     | ✅ Verified    |
+| `MenuFooter`    | G09 business identity | `menuPageNew.tsx` L603-608 | ✅ Verified    |
+| `BackToTop`     | G07 long menu nav     | `menuPageNew.tsx` L623     | ✅ Verified    |
+| `LiveIndicator` | G12 freshness         | `MenuHeader.tsx`           | ✅ Verified    |
+| `MenuSkeleton`  | G13 loading states    | Available for use          | ✅ Created     |
 
 ### Constitutional Order (Trust Zone)
 
 ```
 menuPageNew.tsx L592-608:
-1. ServiceChargeNote (pricing truth FIRST)
+1. specialNote (pricing truth FIRST)
 2. MenuFooter (identity SECOND)
 ```
 
@@ -1832,15 +1832,15 @@ menuPageNew.tsx L592-608:
 
 ### New Files Created ✅
 
-| File                                   | Purpose                   | Constitution Rule |
-| -------------------------------------- | ------------------------- | ----------------- |
-| `src/lib/colorEnforcement.ts`          | WCAG contrast enforcement | G04               |
-| `src/.../output/BackToTop.tsx`         | Long menu navigation      | G07, D3           |
-| `src/.../output/MenuFooter.tsx`        | Business identity display | G09, F1           |
-| `src/.../output/ServiceChargeNote.tsx` | Fee disclosure            | G06, C3           |
-| `src/.../output/MenuSkeleton.tsx`      | Loading states            | G13               |
-| `src/.../output/MenuFilterChips.tsx`   | Dietary filters           | D1                |
-| `src/.../output/MenuSearchBar.tsx`     | Search functionality      | D2                |
+| File                                 | Purpose                   | Constitution Rule |
+| ------------------------------------ | ------------------------- | ----------------- |
+| `src/lib/colorEnforcement.ts`        | WCAG contrast enforcement | G04               |
+| `src/.../output/BackToTop.tsx`       | Long menu navigation      | G07, D3           |
+| `src/.../output/MenuFooter.tsx`      | Business identity display | G09, F1           |
+| `src/.../output/specialNote.tsx`     | Fee disclosure            | G06, C3           |
+| `src/.../output/MenuSkeleton.tsx`    | Loading states            | G13               |
+| `src/.../output/MenuFilterChips.tsx` | Dietary filters           | D1                |
+| `src/.../output/MenuSearchBar.tsx`   | Search functionality      | D2                |
 
 ### Modified Files ✅
 
@@ -1850,7 +1850,7 @@ menuPageNew.tsx L592-608:
 | `output/MenuItem.tsx`              | Price-first layout, tap feedback          | G05, G13          |
 | `menuPage/menuPageNew.tsx`         | Auto-inject components                    | G06, G07, G09     |
 | `menuPage/menuPageSettingsNew.tsx` | Service charge input (140 char limit)     | G06               |
-| `types/project.types.ts`           | `menuSettings.serviceChargeNote`          | G06               |
+| `types/project.types.ts`           | `menuSettings.specialNote`                | G06               |
 | `types/theme.types.ts`             | `ThemeConfig` service charge field        | G06               |
 
 ---
@@ -1864,7 +1864,7 @@ menuPageNew.tsx L592-608:
 - [x] **G03** Minimum Font Safety — Hardcoded sizes
 - [x] **G04** Contrast Enforcement — Auto-correction
 - [x] **G05** Price Visibility Lock — ROW 1 guarantee
-- [x] **G06** Modifier Price Disclosure — ServiceChargeNote
+- [x] **G06** Modifier Price Disclosure — specialNote
 - [x] **G07** Category Integrity — Required category
 - [x] **G08** Long Menu Safety — BackToTop + headers
 - [x] **G09** Image Quotas — `maxImagesPerCategory`
@@ -1907,7 +1907,7 @@ ls -la src/components/templates/main-app/projects/b2cView/output/
 # Expected output should include:
 # - BackToTop.tsx ✅
 # - MenuFooter.tsx ✅
-# - ServiceChargeNote.tsx ✅
+# - specialNote.tsx ✅
 # - MenuSkeleton.tsx ✅
 
 # Verify colorEnforcement utility
@@ -1918,7 +1918,7 @@ grep -c "MenuMood\." src/components/templates/main-app/projects/b2cView/designSy
 # Expected: 5+ occurrences
 
 # Verify auto-injection in menuPageNew
-grep -n "ServiceChargeNote\|MenuFooter\|BackToTop" src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx
+grep -n "specialNote\|MenuFooter\|BackToTop" src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx
 ```
 
 ---

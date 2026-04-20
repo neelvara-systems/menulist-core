@@ -19,7 +19,9 @@ import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuExternalLink, LuPalette } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
@@ -82,14 +84,24 @@ function cloneProjectData<T>(value: T): T {
 export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
     const tSettings = useTranslations('Settings');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
-    const { isLoading: loadingProjects, selectedProject, upsertCachedProject } = useMobileProjects();
+    const {
+        isLoading: loadingProjects,
+        projectsList,
+        selectedProject,
+        selectedProjectId,
+        selectedProjectSummary,
+        selectProject,
+        upsertCachedProject,
+    } = useMobileProjects();
 
     const [draftProjectData, setDraftProjectData] = useState<any>(null);
     const [savedProjectData, setSavedProjectData] = useState<any>(null);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
     const homeStyle = draftProjectData?.config?.design?.home?.style || DEFAULTS.home.style;
     const menuMood = draftProjectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
@@ -97,7 +109,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const showImages = draftProjectData?.config?.design?.menu?.showImages ?? true;
     const showCategoryTabs = draftProjectData?.config?.design?.menu?.showCategoryTabs ?? false;
     const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
-    const serviceChargeNote = draftProjectData?.menuSettings?.serviceChargeNote ?? '';
+    const specialNote = draftProjectData?.menuSettings?.specialNote ?? '';
     const compatibleLayouts = useMemo(() => getCompatibleLayouts(menuMood), [menuMood]);
     const defaultMoodColor = MENU_MOODS[menuMood]?.accentColor || '#059669';
 
@@ -109,8 +121,9 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const menuUrl = useMemo(() => generateProjectUrl(
         storeDetails?.subdomain,
         storeDetails?.customDomain,
-        undefined,
-    ), [storeDetails?.subdomain, storeDetails?.customDomain]);
+        draftProjectData?.name || selectedProjectSummary?.name || undefined,
+        false,
+    ), [draftProjectData?.name, selectedProjectSummary?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
 
     useEffect(() => {
         if (!selectedProject) {
@@ -163,7 +176,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
         setDraftProjectData((prev: any) => ({
             ...prev,
-            menuSettings: { ...prev?.menuSettings, serviceChargeNote: normalized },
+            menuSettings: { ...prev?.menuSettings, specialNote: normalized },
         }));
     };
 
@@ -206,8 +219,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         publicMenuUrl: generateProjectUrl(
                             slug,
                             storeDetails?.customDomain,
-                            undefined,
-                            true,
+                            updatedCopy?.name || selectedProjectSummary?.name || undefined,
+                            false,
                         ),
                     });
                 }
@@ -268,6 +281,16 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 <MobileScreenIntro
                     subtitle={t('subtitle')}
                     title={t('title')}
+                />
+                <ProjectSelectorTrigger
+                    clickable={projectsList.length > 1 && !isPublishing}
+                    currentProject={{
+                        id: selectedProjectId || draftProjectData?.projectId || 'current',
+                        isDefault: selectedProjectSummary?.isDefault,
+                        name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
+                    }}
+                    helperText="Design changes save only to this menu."
+                    onClick={projectsList.length > 1 && !isPublishing ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
                 <Card size="small" title={<Text strong>Current style</Text>}>
                     <List>
@@ -444,7 +467,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         onChange={handleServiceChargeChange}
                         placeholder={t('pricingNotePlaceholder')}
                         showCount
-                        value={serviceChargeNote}
+                        value={specialNote}
                     />
                 </SectionCard>
             </Flex>
@@ -475,6 +498,17 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 onClose={() => setIsColorPickerOpen(false)}
                 value={brandAccentColor}
                 visible={isColorPickerOpen}
+            />
+
+            <MobileProjectSelectorSheet
+                currentProjectId={selectedProjectId}
+                currentProjectName={selectedProjectSummary?.name || draftProjectData?.name || null}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    setIsProjectSelectorOpen(false);
+                    await selectProject(preferredProjectId || null);
+                }}
+                visible={isProjectSelectorOpen}
             />
         </Flex>
     );

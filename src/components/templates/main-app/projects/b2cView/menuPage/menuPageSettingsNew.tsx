@@ -7,6 +7,7 @@
  */
 
 import { Collapse, Divider, Flex, Input, Switch, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import { LuFileText, LuImage, LuList, LuSettings2 } from 'react-icons/lu';
 import { Project } from '../../types';
 import {
@@ -29,12 +30,13 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     projectData,
     setProjectData,
 }) => {
+    const t = useTranslations('MobileDesignEditor');
     const currentMood = projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
     const currentLayout = projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
     const showImages = projectData?.config?.design?.menu?.showImages ?? true;
     const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
-    const serviceChargeNote = projectData?.menuSettings?.serviceChargeNote ?? '';
+    const specialNote = projectData?.menuSettings?.specialNote ?? '';
 
     // G06 Constitutional limit: 140 characters max
     const SERVICE_CHARGE_MAX_LENGTH = 140;
@@ -120,7 +122,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     };
 
     // G06 - Service Charge Note (Constitutional trust disclosure)
-    const handleServiceChargeNoteChange = (note: string) => {
+    const handlespecialNoteChange = (note: string) => {
         // HARD ENFORCEMENT: 140 character limit + trim whitespace
         // Prevents silent whitespace abuse and visually empty disclosures
         const normalizedNote = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
@@ -128,7 +130,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             ...projectData,
             menuSettings: {
                 ...projectData?.menuSettings,
-                serviceChargeNote: normalizedNote,
+                specialNote: normalizedNote,
             },
         });
     };
@@ -152,7 +154,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             <Flex align="center" justify="space-between">
                 <Flex align="center" gap={8}>
                     <LuImage size={16} />
-                    <Text>Show item images</Text>
+                    <Text>{t('showItemImages')}</Text>
                 </Flex>
                 <Switch
                     checked={showImages}
@@ -163,7 +165,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             <Flex align="center" justify="space-between">
                 <Flex align="center" gap={8}>
                     <LuList size={16} />
-                    <Text>Category tabs navigation</Text>
+                    <Text>{t('categoryTabsNavigation')}</Text>
                 </Flex>
                 <Switch
                     checked={showCategoryTabs}
@@ -181,7 +183,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                             <Flex align="center" gap={8}>
                                 <LuSettings2 size={14} />
                                 <Text type="secondary" style={{ fontSize: 13 }}>
-                                    Advanced (optional)
+                                    {t('advancedOptional')}
                                 </Text>
                             </Flex>
                         ),
@@ -199,24 +201,24 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                                     }}
                                 />
 
-                                {/* G06 - Service Charge / Pricing Note (Constitutional Trust Disclosure) */}
+                                {/* G06 - Special Note (Constitutional Trust Disclosure) */}
                                 <Divider style={{ margin: '8px 0' }} />
                                 <Flex vertical gap={4}>
                                     <Flex align="center" gap={8}>
                                         <LuFileText size={14} />
-                                        <Text style={{ fontSize: 13 }}>Service charge / pricing note</Text>
+                                        <Text style={{ fontSize: 13 }}>{t('pricingNote')}</Text>
                                     </Flex>
                                     <Input.TextArea
-                                        value={serviceChargeNote}
-                                        onChange={(e) => handleServiceChargeNoteChange(e.target.value)}
-                                        placeholder="e.g., All prices include 10% service charge"
+                                        value={specialNote}
+                                        onChange={(e) => handlespecialNoteChange(e.target.value)}
+                                        placeholder={t('pricingNotePlaceholder')}
                                         maxLength={SERVICE_CHARGE_MAX_LENGTH}
                                         showCount
                                         autoSize={{ minRows: 2, maxRows: 3 }}
                                         style={{ fontSize: 13 }}
                                     />
                                     <Text type="secondary" style={{ fontSize: 11 }}>
-                                        Shown at the bottom of the menu. Use for service charges, taxes, or pricing notes.
+                                        {t('specialNoteHelper')}
                                     </Text>
                                 </Flex>
                             </Flex>

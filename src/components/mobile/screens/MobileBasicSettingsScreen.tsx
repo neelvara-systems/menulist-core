@@ -246,7 +246,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuBuilding2 size={14} />
                             <Text type="secondary">Brand Name</Text>
                         </Flex>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, tenantName: value }))} placeholder="Brand / chain name" value={formData.tenantName} />
+                        <Input autoCapitalize="words" onChange={(value) => setFormData((previous) => ({ ...previous, tenantName: value }))} placeholder="Brand / chain name" value={formData.tenantName} />
                     </Flex>
                 </Card>
 
@@ -256,7 +256,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuBuilding2 size={14} />
                             <Text type="secondary">{tBusiness('businessName')}</Text>
                         </Flex>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, name: value }))} placeholder={tBusiness('businessNamePlaceholder')} value={formData.name} />
+                        <Input autoCapitalize="words" onChange={(value) => setFormData((previous) => ({ ...previous, name: value }))} placeholder={tBusiness('businessNamePlaceholder')} value={formData.name} />
                     </Flex>
                 </Card>
 
@@ -281,7 +281,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuMail size={14} />
                             <Text type="secondary">{tBusiness('businessEmail')}</Text>
                         </Flex>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, email: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.email} />
+                        <Input autoComplete="email" inputMode="email" name="businessEmail" onChange={(value) => setFormData((previous) => ({ ...previous, email: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.email} />
                     </Flex>
                 </Card>
 
@@ -291,7 +291,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuPhoneCall size={14} />
                             <Text type="secondary">{tBusiness('phoneNumber')}</Text>
                         </Flex>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))} placeholder={tBusiness('phonePlaceholder')} type="tel" value={formData.phoneNumber} />
+                        <Input autoComplete="tel" inputMode="tel" name="businessPhone" onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))} placeholder={tBusiness('phonePlaceholder')} type="tel" value={formData.phoneNumber} />
                     </Flex>
                 </Card>
 
@@ -302,17 +302,27 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <Text type="secondary">{tBusiness('contactPerson')}</Text>
                         </Flex>
                         <Input
+                            autoCapitalize="words"
+                            autoComplete="name"
+                            inputMode="text"
+                            name="contactPersonName"
                             onChange={(value) => setFormData((previous) => ({ ...previous, contactPersonName: value }))}
                             placeholder={tBusiness('fullName')}
                             value={formData.contactPersonName}
                         />
                         <Input
+                            autoComplete="email"
+                            inputMode="email"
+                            name="contactPersonEmail"
                             onChange={(value) => setFormData((previous) => ({ ...previous, contactPersonEmail: value }))}
                             placeholder={tBusiness('emailPlaceholder')}
                             type="email"
                             value={formData.contactPersonEmail}
                         />
                         <Input
+                            autoComplete="tel"
+                            inputMode="tel"
+                            name="contactPersonNumber"
                             onChange={(value) => setFormData((previous) => ({ ...previous, contactPersonNumber: value }))}
                             placeholder={tBusiness('phonePlaceholder')}
                             type="tel"

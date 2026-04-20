@@ -4,6 +4,7 @@ import { removeObjRef } from '@util/utils';
 import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, Upload, message, theme } from 'antd';
 import type { Color } from 'antd/es/color-picker';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuGalleryVerticalEnd, LuRefreshCcw, LuTrash, LuUpload } from 'react-icons/lu';
 import ColorPresetsDrawer from './colorPresetsDrawer';
@@ -21,11 +22,13 @@ interface BackgroundSettingsProps {
 const ImageUploadSection = ({
     config,
     uploadProps,
-    onOpenGallery
+    onOpenGallery,
+    t,
 }: {
     config: any;
     uploadProps: UploadProps;
     onOpenGallery: (e: React.MouseEvent) => void;
+    t: (key: string) => string;
 }) => {
     const { token } = theme.useToken();
 
@@ -37,15 +40,15 @@ const ImageUploadSection = ({
                         {!Boolean(config?.backgroundImage) ? (
                             <Flex vertical align='center' gap={8} style={{ width: '100%', padding: 8 }}>
                                 <LuUpload size={24} />
-                                <span>Click or drag image to upload as Background Image</span>
-                                <span style={{ fontSize: '12px', color: '#666' }}>PNG, JPG up to 2MB</span>
+                                <span>{t('backgroundUploadPrompt')}</span>
+                                <span style={{ fontSize: '12px', color: '#666' }}>{t('backgroundUploadFormats')}</span>
                                 <Button
                                     type='link'
                                     style={{ marginTop: "auto" }}
                                     onClick={onOpenGallery}
                                     icon={<LuGalleryVerticalEnd />}
                                 >
-                                    Explore Gallery
+                                    {t('exploreGallery')}
                                 </Button>
                             </Flex>
                         ) : (
@@ -54,7 +57,7 @@ const ImageUploadSection = ({
                                     <img src={config?.backgroundImage} alt="" style={{ width: '100%', height: "100%", objectFit: "cover" }} />
                                 </Flex>
                                 <Flex vertical gap={8} style={{ width: 'max-content' }}>
-                                    <Button type='text' icon={<LuRefreshCcw />}>Replace</Button>
+                                    <Button type='text' icon={<LuRefreshCcw />}>{t('replace')}</Button>
                                     <Button
                                         type='text'
                                         danger
@@ -64,7 +67,7 @@ const ImageUploadSection = ({
                                         }}
                                         icon={<LuTrash />}
                                     >
-                                        Remove
+                                        {t('remove')}
                                     </Button>
                                     <Button
                                         type='link'
@@ -72,7 +75,7 @@ const ImageUploadSection = ({
                                         onClick={onOpenGallery}
                                         icon={<LuGalleryVerticalEnd />}
                                     >
-                                        Gallery
+                                        {t('gallery')}
                                     </Button>
                                 </Flex>
                             </Flex>
@@ -85,6 +88,7 @@ const ImageUploadSection = ({
 };
 
 export default function BackgroundSettings({ config, onUpdate, from }: BackgroundSettingsProps) {
+    const t = useTranslations('MobileDesignEditor');
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const { token } = theme.useToken();
 
@@ -226,11 +230,11 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
         <Card size='small'>
             <Flex vertical gap={16}>
                 <Flex justify="space-between" align="center">
-                    {from == "Main" ? <Typography.Text strong>Background</Typography.Text> :
-                        <span >Background</span>
+                    {from == "Main" ? <Typography.Text strong>{t('background')}</Typography.Text> :
+                        <span >{t('background')}</span>
                     }
                     {(config?.backgroundImage || config?.background) && (
-                        <Tooltip title="Remove Background">
+                        <Tooltip title={t('removeBackground')}>
                             <Button
                                 type="text"
                                 danger
@@ -242,7 +246,7 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                     )}
                 </Flex>
                 <Typography.Text type="secondary" style={{ fontSize: 10, marginBottom: 8 }}>
-                    *Note: When an image is used, it will take priority over any color settings
+                    {t('backgroundImagePriorityNote')}
                 </Typography.Text>
                 <Tabs
                     activeKey={backgroundMode}
@@ -250,15 +254,15 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                     items={[
                         {
                             key: 'solid',
-                            label: 'Solid Color',
+                            label: t('solidColor'),
                             children: (
                                 <Flex gap={8} align="center" wrap="wrap" style={{ marginTop: 16 }}>
                                     {config?.backgroundImage && (
                                         <Typography.Text type="secondary" style={{ fontSize: 12, width: '100%', marginBottom: 8 }}>
-                                            *Note: To apply colors, you need to remove the image background
+                                            {t('removeImageBackgroundForColors')}
                                         </Typography.Text>
                                     )}
-                                    <span>Color: </span>
+                                    <span>{t('colorLabel')}</span>
                                     <ColorPicker
                                         allowClear
                                         value={colorValue}
@@ -273,19 +277,19 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                                         style={{ marginLeft: "auto" }}
                                         onClick={() => setIsColorPresetsOpen(true)}
                                     >
-                                        Explore Colors...
+                                        {t('exploreColors')}
                                     </Button>
                                 </Flex>
                             ),
                         },
                         {
                             key: 'gradient',
-                            label: 'Gradient',
+                            label: t('gradient'),
                             children: (
                                 <Flex vertical style={{ marginTop: 16 }}>
                                     {config?.backgroundImage && (
                                         <Typography.Text type="secondary" style={{ fontSize: 12, marginBottom: 16 }}>
-                                            *Note: To apply gradient, you need to remove the image background
+                                            {t('removeImageBackgroundForGradient')}
                                         </Typography.Text>
                                     )}
                                     <GradientPicker
@@ -298,13 +302,14 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                         },
                         {
                             key: 'image',
-                            label: 'Image',
+                            label: t('image'),
                             children: (
                                 <Flex vertical gap={8} style={{ marginTop: 16 }}>
                                     <ImageUploadSection
                                         config={config}
                                         uploadProps={handleImageUploadProps}
                                         onOpenGallery={handleOpenGallery}
+                                        t={t}
                                     />
                                 </Flex>
                             ),

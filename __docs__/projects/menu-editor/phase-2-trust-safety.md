@@ -16,13 +16,13 @@ Building on Phase 1's constitutional compliance, Phase 2 adds trust-critical fea
 
 ### G06: Service Charges Display ✅ COMPLETE
 
-**Data Location:** `projectData.menuSettings.serviceChargeNote`
+**Data Location:** `projectData.menuSettings.specialNote`
 
 > **CONSTITUTIONAL:** Service charge is **pricing truth**, NOT design.
 > It must live in `menuSettings`, NOT `ThemeConfig`.
 > This ensures styling-immunity for legal disclosures.
 
-- [x] Create `ServiceChargeNote.tsx` component
+- [x] Create `specialNote.tsx` component
 - [x] Add `MenuSettings` interface to `project.types.ts`
 - [x] Add `menuSettings` to `Project` interface
 - [x] Integrate into `menuPageNew.tsx` footer trust zone
@@ -34,7 +34,7 @@ Building on Phase 1's constitutional compliance, Phase 2 adds trust-critical fea
 **Files Modified:**
 
 - `src/components/templates/main-app/projects/types/project.types.ts` (MenuSettings interface)
-- `src/components/templates/main-app/projects/b2cView/output/ServiceChargeNote.tsx`
+- `src/components/templates/main-app/projects/b2cView/output/specialNote.tsx`
 - `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`
 - `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx`
 
@@ -53,7 +53,7 @@ Building on Phase 1's constitutional compliance, Phase 2 adds trust-critical fea
 ```typescript
 // project.types.ts
 export interface MenuSettings {
-  serviceChargeNote?: string; // Max 140 chars, pricing truth
+  specialNote?: string; // Max 140 chars, pricing truth
 }
 
 export interface Project {
@@ -66,7 +66,7 @@ export interface Project {
 
 ```typescript
 // menuPageNew.tsx - DO NOT CHANGE ORDER
-// 1. Pricing disclosures (G06) - ServiceChargeNote
+// 1. Pricing disclosures (G06) - specialNote
 // 2. Business identity (G09) - MenuFooter
 ```
 
@@ -112,7 +112,7 @@ export const IMAGE_QUALITY_RULES = {
 
 - [x] Define contact data model (uses existing `StoreDataType`)
 - [x] Create `MenuFooter.tsx` component
-- [x] Add to menu footer (after ServiceChargeNote)
+- [x] Add to menu footer (after specialNote)
 - [x] Design cross-vertical safe layout
 - [x] Business name enforcement with `'Menu'` fallback
 
@@ -181,18 +181,18 @@ style={{
 
 ### Created
 
-| File                           | Purpose                        |
-| ------------------------------ | ------------------------------ |
-| `output/ServiceChargeNote.tsx` | G06 trust disclosure component |
-| `output/MenuFooter.tsx`        | G09 contact/location component |
-| `output/BackToTop.tsx`         | G07 navigation component       |
-| `lib/imageQualityGuard.ts`     | G04 quality validation utility |
+| File                       | Purpose                        |
+| -------------------------- | ------------------------------ |
+| `output/specialNote.tsx`   | G06 trust disclosure component |
+| `output/MenuFooter.tsx`    | G09 contact/location component |
+| `output/BackToTop.tsx`     | G07 navigation component       |
+| `lib/imageQualityGuard.ts` | G04 quality validation utility |
 
 ### Modified
 
 | File                               | Changes                                              |
 | ---------------------------------- | ---------------------------------------------------- |
-| `types/theme.types.ts`             | Added `serviceChargeNote` to `ThemeConfig`           |
+| `types/theme.types.ts`             | Added `specialNote` to `ThemeConfig`                 |
 | `menuPage/menuPageNew.tsx`         | Integrated all Phase 2 components + runtime fallback |
 | `menuPage/menuPageSettingsNew.tsx` | Added service charge editor UI                       |
 | `menuPage/backgroundSettings.tsx`  | Added image quality validation                       |

@@ -744,11 +744,17 @@ export function Picker({
 }
 
 export function Input({
+    autoCapitalize,
+    autoComplete,
     autoFocus,
     className,
+    enterKeyHint,
+    id,
+    inputMode,
     max,
     maxLength,
     min,
+    name,
     onBlur,
     onChange,
     placeholder,
@@ -757,11 +763,17 @@ export function Input({
     type,
     value,
 }: {
+    autoCapitalize?: string;
+    autoComplete?: string;
     autoFocus?: boolean;
     className?: string;
+    enterKeyHint?: React.InputHTMLAttributes<HTMLInputElement>['enterKeyHint'];
+    id?: string;
+    inputMode?: React.InputHTMLAttributes<HTMLInputElement>['inputMode'];
     max?: string | number;
     maxLength?: number;
     min?: string | number;
+    name?: string;
     onBlur?: () => void | Promise<void>;
     onChange?: (value: string) => void;
     placeholder?: string;
@@ -771,6 +783,10 @@ export function Input({
     value?: string
 }) {
     const isTemporalInput = type === 'time' || type === 'date' || type === 'datetime-local' || type === 'month' || type === 'week';
+    const mergedStyle = sanitizeStyle({
+        ...(isTemporalInput ? { minHeight: 40 } : {}),
+        ...(style || {}),
+    });
 
     const focusTimeInput = (event: any) => {
         if (!isTemporalInput) return;
@@ -806,20 +822,25 @@ export function Input({
 
     return (
         <AntInput
+            autoCapitalize={autoCapitalize}
+            autoComplete={autoComplete}
             autoFocus={autoFocus}
             className={className}
-            inputMode={type === 'number' ? 'decimal' : undefined}
+            enterKeyHint={enterKeyHint}
+            id={id}
+            inputMode={inputMode || (type === 'number' ? 'decimal' : undefined)}
             max={max}
             maxLength={maxLength}
             min={min}
+            name={name}
             onBlur={() => void onBlur?.()}
             onClick={openNativeTimePicker}
             onChange={(event) => onChange?.(event.target.value)}
+            onInput={(event) => onChange?.((event.target as HTMLInputElement).value)}
             onFocus={focusTimeInput}
             placeholder={placeholder}
             step={step}
-            style={sanitizeStyle(style)}
-            onTouchStart={openNativeTimePicker}
+            style={mergedStyle}
             type={type}
             value={value}
         />

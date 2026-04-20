@@ -6,6 +6,7 @@
 
 import { Card, Flex, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { LuCheck, LuLayoutGrid, LuList, LuSquare } from 'react-icons/lu';
 import { MENU_LAYOUTS, MenuLayout } from './index';
 
@@ -27,11 +28,12 @@ const MenuLayoutSelector: React.FC<MenuLayoutSelectorProps> = ({
     onChange,
 }) => {
     const { token } = theme.useToken();
+    const t = useTranslations('MobileDesignEditor');
 
     return (
         <Flex vertical gap={12}>
             <Text type="secondary" style={{ fontSize: 13 }}>
-                Choose how items are displayed
+                {t('menuLayoutHelper')}
             </Text>
             <Flex gap={12} wrap="wrap">
                 {Object.entries(MENU_LAYOUTS).map(([key, config]) => {

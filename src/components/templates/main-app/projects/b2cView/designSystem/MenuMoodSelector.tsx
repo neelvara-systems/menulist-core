@@ -7,6 +7,7 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Card, Flex, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { LuCheck, LuFlame, LuSparkles, LuZap } from 'react-icons/lu';
 import { MENU_MOODS, MenuMood } from './index';
 
@@ -26,11 +27,12 @@ const MOOD_ICONS: Record<string, typeof LuSparkles> = {
 const MenuMoodSelector: React.FC<MenuMoodSelectorProps> = ({ value, onChange }) => {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
+    const t = useTranslations('MobileDesignEditor');
 
     return (
         <Flex vertical gap={12}>
             <Text type="secondary" style={{ fontSize: 13 }}>
-                Choose how your {labels.offeringLower} feels
+                {t('menuMoodHelper', { offering: labels.offeringLower })}
             </Text>
             <Flex gap={12} wrap="wrap">
                 {Object.entries(MENU_MOODS).map(([key, config]) => {

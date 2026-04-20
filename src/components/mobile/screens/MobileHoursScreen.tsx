@@ -451,13 +451,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                 </List>
             </Card>
 
-            <Card
-                style={{
-                    background: `linear-gradient(165deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 60%, ${token.colorBgElevated} 100%)`,
-                    border: `1px solid ${token.colorBorderSecondary}`,
-                    borderRadius: 20,
-                }}
-            >
+            <Card style={{ borderRadius: 20 }}>
                 <Flex align="center" gap={12} vertical>
                     <Flex align="center" gap={8} style={{ width: '100%' }}>
                         {status.icon}
@@ -487,7 +481,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     {todayStatus === 'open' ? (
                         <Button
                             block
-                            color="warning"
+                            color="danger"
                             fill="outline"
                             loading={isUpdating}
                             onClick={() => {
@@ -499,11 +493,12 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                                 });
                             }}
                             size="large"
+                            style={{ minHeight: 44 }}
                         >
                             {closeTodayCtaLabel}
                         </Button>
                     ) : (
-                        <Button block color="primary" loading={isUpdating} onClick={() => void handleReopenToday()} size="large">
+                        <Button block color="primary" loading={isUpdating} onClick={() => void handleReopenToday()} size="large" style={{ minHeight: 44 }}>
                             {reopenTodayCtaLabel}
                         </Button>
                     )}
@@ -633,6 +628,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                             previewLabel="Preview"
                             previewMessage={tempStatusPreviewMessage}
                             selectedExpiryHours={selectedTempStatusExpiryHours}
+                            setButtonColor="primary"
                             setStatusLabel="Apply Status"
                             showActiveHeader={false}
                             activeCardVariant="default"

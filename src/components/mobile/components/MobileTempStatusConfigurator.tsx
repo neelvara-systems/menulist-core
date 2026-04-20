@@ -3,7 +3,7 @@
 import { theme } from 'antd';
 import dayjs from 'dayjs';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Input, Tag, Text, Toast } from '../antd';
+import { Button, Card, Flex, Input, Tag, Text } from '../antd';
 
 export type TempStatusOption = {
     defaultMsg: string;
@@ -77,6 +77,7 @@ interface MobileTempStatusConfiguratorProps {
     onStatusTypeChange: (value: string) => void;
     previewLabel: string;
     previewMessage: string;
+    setButtonColor?: 'primary' | 'warning';
     setStatusLabel: string;
     showActiveHeader?: boolean;
     activeCardVariant?: 'warning' | 'default';
@@ -110,6 +111,7 @@ export default function MobileTempStatusConfigurator({
     onStatusTypeChange,
     previewLabel,
     previewMessage,
+    setButtonColor = 'warning',
     setStatusLabel,
     showActiveHeader = true,
     activeCardVariant = 'warning',
@@ -217,22 +219,27 @@ export default function MobileTempStatusConfigurator({
 
             <Flex gap={10} vertical>
                 <Text strong>{expiryLabel}</Text>
-                <Flex gap={8} wrap="wrap">
+                <Flex align="center" gap={10} wrap>
                     {expiryOptions.map((option) => (
                         <Tag
                             key={option.hours}
                             color={selectedExpiryHours === option.hours ? 'processing' : 'default'}
                             onClick={() => onExpiryHoursChange(option.hours)}
-                            style={{ cursor: 'pointer', padding: '6px 12px' }}
+                            style={{
+                                cursor: 'pointer',
+                                marginInlineEnd: 0,
+                                padding: '6px 10px',
+                                width: 'max-content',
+                            }}
                         >
                             {option.label}
                         </Tag>
                     ))}
-                    <div style={{ flex: '0 0 auto', maxWidth: '100%', width: 'max-content' }}>
+                    <div style={{ flex: '1 1 190px', marginLeft: 'auto', minWidth: 190, width: 'clamp(190px, 52vw, 240px)' }}>
                         <Input
                             min={minExpiryAt}
                             onChange={onExactExpiryAtChange}
-                            style={{ maxWidth: '100%', width: 'max-content' }}
+                            style={{ minHeight: 40, width: '100%' }}
                             type="datetime-local"
                             value={exactExpiryAt}
                         />
@@ -251,7 +258,7 @@ export default function MobileTempStatusConfigurator({
                 </Card>
             </Flex>
 
-            <Button block color="warning" loading={isLoading} onClick={onSet} size="large">
+            <Button block color={setButtonColor} loading={isLoading} onClick={onSet} size="large" style={{ minHeight: 44 }}>
                 <Flex align="center" gap={8} justify="center">
                     <LuCheck size={16} />
                     <Text>{setStatusLabel}</Text>

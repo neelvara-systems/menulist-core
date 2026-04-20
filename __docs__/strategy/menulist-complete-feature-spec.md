@@ -96,7 +96,7 @@ MenuPageNew renders:
 ├── Category Tabs (sticky navigation)
 ├── ⭐ DECISION BLOCKS (AI recommendations) ← THE KEY FEATURE
 ├── Menu Items (by category)
-├── ServiceChargeNote (transparency)
+├── specialNote (transparency)
 ├── MenuFooter (contact info)
 └── BackToTop (accessibility)
 ```

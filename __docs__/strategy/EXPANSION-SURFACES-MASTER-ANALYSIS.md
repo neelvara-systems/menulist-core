@@ -654,7 +654,7 @@ ChatGPT asked 6 critical questions before producing the final Pricing Integrity 
 |---|----------|--------|-------------------|
 | 1 | Do you allow **variants** (Half/Full, Small/Large)? | ✅ YES | `ExtractedDataAttribute` with `name`, `price`, `active` in `extractedData.types.ts` |
 | 2 | Do you allow **add-ons**? | ✅ YES | Same `attributes[]` field on items - supports sizes OR add-ons |
-| 3 | Is tax/service charge **inclusive** or **exclusive**? | TEXT DISCLOSURE | `serviceChargeNote?: string` (max 140 chars) - text only, not calculated |
+| 3 | Is tax/service charge **inclusive** or **exclusive**? | TEXT DISCLOSURE | `specialNote?: string` (max 140 chars) - text only, not calculated |
 | 4 | Should "Market Price" items be allowed? | ✅ YES | `price?: string` allows any value including "MP" |
 | 5 | **Multiple currencies per menu** or **one per outlet**? | ONE PER OUTLET | `currencyCode` at store level, not item level |
 | 6 | PDF regenerate **instantly** or **on-demand**? | ON-DEMAND + STALENESS | Keep on-demand, add staleness flag when price changes |
