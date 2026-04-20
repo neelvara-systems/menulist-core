@@ -744,6 +744,38 @@ export function Picker({
 }
 
 export function Input({ autoFocus, className, maxLength, onBlur, onChange, placeholder, style, type, value }: { autoFocus?: boolean; className?: string; maxLength?: number; onBlur?: () => void | Promise<void>; onChange?: (value: string) => void; placeholder?: string; style?: AnyStyle; type?: string; value?: string }) {
+    const focusTimeInput = (event: any) => {
+        if (type !== 'time') return;
+        const target = event?.target as HTMLElement | null;
+        const currentTarget = event?.currentTarget as HTMLElement | null;
+
+        const inputEl =
+            (target instanceof HTMLInputElement ? target : target?.closest?.('input[type="time"]') as HTMLInputElement | null)
+            || (currentTarget?.querySelector?.('input[type="time"]') as HTMLInputElement | null)
+            || null;
+
+        if (!inputEl) return;
+        inputEl.focus();
+    };
+
+    const openNativeTimePicker = (event: any) => {
+        if (type !== 'time') return;
+        const target = event?.target as HTMLElement | null;
+        const currentTarget = event?.currentTarget as HTMLElement | null;
+        const inputEl =
+            (target instanceof HTMLInputElement ? target : target?.closest?.('input[type="time"]') as HTMLInputElement | null)
+            || (currentTarget?.querySelector?.('input[type="time"]') as HTMLInputElement | null)
+            || null;
+        if (!inputEl) return;
+
+        inputEl.focus();
+        try {
+            (inputEl as any).showPicker?.();
+        } catch {
+            // iOS/Safari or non-gesture contexts can reject showPicker; focus is sufficient fallback.
+        }
+    };
+
     return (
         <AntInput
             autoFocus={autoFocus}
@@ -751,9 +783,12 @@ export function Input({ autoFocus, className, maxLength, onBlur, onChange, place
             inputMode={type === 'number' ? 'decimal' : undefined}
             maxLength={maxLength}
             onBlur={() => void onBlur?.()}
+            onClick={openNativeTimePicker}
             onChange={(event) => onChange?.(event.target.value)}
+            onFocus={focusTimeInput}
             placeholder={placeholder}
             style={sanitizeStyle(style)}
+            onTouchStart={openNativeTimePicker}
             type={type}
             value={value}
         />

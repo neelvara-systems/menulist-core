@@ -131,15 +131,26 @@ export default function MenuFooter({
             }}
             aria-label="Business information"
         >
-            <p style={{
-                color: moodConfig.headingColor,
-                fontWeight: 600,
-                fontSize: '14px',
-                margin: 0,
-                fontFamily: moodConfig.headingFont,
-            }}>
+            {/*
+             * T1-N-02 / A-09 + D-12 PUBLIC-ROUTING-DOCTRINE: the footer brand
+             * links to the tenant's OBP root. After G-02 made the header logo
+             * decorative on public pages, this is the canonical "back to
+             * business home" affordance — must remain a real anchor.
+             */}
+            <a
+                href="/"
+                aria-label={`${businessName} — business home`}
+                style={{
+                    color: moodConfig.headingColor,
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    fontFamily: moodConfig.headingFont,
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                }}
+            >
                 {businessName}
-            </p>
+            </a>
 
             {fullAddress && (
                 <p style={{
