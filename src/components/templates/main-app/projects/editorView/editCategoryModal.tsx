@@ -1,18 +1,25 @@
+import AIButtonIcon from '@atoms/aiButtonIcon';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { FEATURE_FLAGS } from '@config/features';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { validateTimeSlots } from '@hook/useTimedCategories';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useAppDispatch } from '@hook/useAppDispatch';
+import { startLoader, stopLoader } from '@reduxSlices/loader';
+import { AICapacityError } from '@services/ai/capacityError';
 import type { InheritanceState } from '@type/multiOutlet.types';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Flex, Input, Modal, Popover, Switch, Tag, theme, Tooltip, Typography } from 'antd';
-import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuLock, LuPlus, LuX } from 'react-icons/lu';
-import { CategoryTimeSlot, ExtractedDataCategory, ProjectFileType } from '../types';
+import { useTranslations } from 'next-intl';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuLock, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
+import GlobalLanguagesList from '@data/languages';
+import { CategoryTimeSlot, ExtractedDataCategory, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
-import { clearStaleCategoryTranslations } from '../utils/translationsUtils';
+import { clearStaleCategoryTranslations, translateCategory } from '../utils/translationsUtils';
 
 interface EditCategoryModalProps {
     modalData: { active: boolean; category: ExtractedDataCategory | null, status: 'edit' | 'add' };
@@ -20,6 +27,7 @@ interface EditCategoryModalProps {
     selectedLanguages: string[];
     setUpdatedFileData: any;
     fileData: ProjectFileType;
+    projectData: Project;
     onPreviewFile?: (file: ProjectFileType) => void;
     // Multi-outlet governance props
     inheritanceState?: InheritanceState;
@@ -32,11 +40,14 @@ const EditCategoryModal = ({
     selectedLanguages,
     setUpdatedFileData,
     fileData,
+    projectData,
     onPreviewFile,
     inheritanceState,
     isMasterLinked
 }: EditCategoryModalProps) => {
     const { token } = theme.useToken();
+    const t = useTranslations('MobileMenu');
+    const dispatch = useAppDispatch();
     // Multi-outlet governance: Determine if fields should be locked
     // Inherited/overridden categories have locked brand-critical fields (name, images)
     const isInheritedCategory = inheritanceState === 'inherited' || inheritanceState === 'overridden';
@@ -50,6 +61,12 @@ const EditCategoryModal = ({
     const [showCreatePreset, setShowCreatePreset] = useState(false);
     const [newPresetData, setNewPresetData] = useState({ label: '', startTime: '09:00', endTime: '17:00', color: DEFAULT_PRESET_COLORS[0] });
     const [savingPreset, setSavingPreset] = useState(false);
+    const primaryLanguage = selectedLanguages[0] || 'en';
+    const shouldShowGenerateTranslations = useMemo(() => {
+        if (!categoryData || selectedLanguages.length <= 1) return false;
+        if (!categoryData.name?.[primaryLanguage]?.trim()) return false;
+        return selectedLanguages.slice(1).some((language) => !categoryData.name?.[language]?.trim());
+    }, [categoryData, primaryLanguage, selectedLanguages]);
 
     useEffect(() => {
         if (modalData.active && modalData.category) {
@@ -206,8 +223,56 @@ const EditCategoryModal = ({
         onClose();
     };
 
-    const onGenerateContent = () => {
-        // TODO: Implement AI content generation for category
+    const onGenerateContent = async () => {
+        if (!categoryData || !shouldShowGenerateTranslations) return;
+
+        const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLanguage);
+        const targetLanguages = selectedLanguages
+            .slice(1)
+            .map((languageCode) => GlobalLanguagesList.find((language) => language.code === languageCode))
+            .filter(Boolean);
+
+        if (!sourceLanguage || targetLanguages.length === 0) return;
+        if (!categoryData.name?.[sourceLanguage.code]?.trim()) {
+            antdMessage.error(`Category name in ${sourceLanguage.name} is required to generate translations.`);
+            return;
+        }
+
+        dispatch(startLoader("generating_category_content"));
+        try {
+            let nextCategory = removeObjRef(categoryData);
+            let updatedCount = 0;
+
+            for (const targetLanguage of targetLanguages) {
+                const { updatedCategory, messageType } = await translateCategory(
+                    projectData,
+                    fileData,
+                    targetLanguage as any,
+                    sourceLanguage as any,
+                    AI_ACTIONS_TYPES.ITEM_TRANSLATION,
+                    nextCategory
+                );
+                nextCategory = updatedCategory;
+                if (messageType === 'success') {
+                    updatedCount += 1;
+                }
+            }
+
+            setCategoryData(nextCategory);
+            if (updatedCount > 0) {
+                antdMessage.success('Category translations updated successfully');
+            } else {
+                antdMessage.info('No missing category translations found.');
+            }
+        } catch (error) {
+            if (error instanceof AICapacityError) {
+                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+            } else {
+                antdMessage.error('Category translation failed. Please try again.');
+            }
+        } finally {
+            dispatch(stopLoader("generating_category_content"));
+        }
     }
 
 
@@ -254,9 +319,15 @@ const EditCategoryModal = ({
             footer={<>
                 <Flex gap={16} style={{ width: "100%" }} justify='flex-end'>
                     <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
-                    {/* {modalData.status == 'add' ?
-                        <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Generate Content" /> :
-                        <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Regenerate Content" />} */}
+                    {shouldShowGenerateTranslations ? (
+                        <AIButtonIcon
+                            type="default"
+                            Icon={LuSparkles}
+                            onClick={onGenerateContent}
+                            label={t('generateTranslations')}
+                            tooltip="Adds missing translations for this category."
+                        />
+                    ) : null}
                     <Button type="primary" icon={<LuCheck />} onClick={onSave}>Save</Button>
                 </Flex>
             </>}

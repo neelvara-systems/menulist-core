@@ -5,6 +5,7 @@ import { createDefaultRoles } from "@data/defaultRoles";
 import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, query, where } from "@firebase/firestore";
+import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -234,6 +235,14 @@ export const updateStore = async (data: any) => {
                             `[G-08] Blocked subdomain change on published store ${data.id}: ` +
                             `${current?.subdomain} → ${data.subdomain}. Subdomain is immutable after first publish.`,
                         );
+                        // T5-N-02: Emit analytics event for security/support signal.
+                        // Fire-and-forget: don't block the save if tracking fails.
+                        trackEvent(TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED, {
+                            storeId: data.id,
+                            tenantId: data.tenantId,
+                            attemptedSubdomain: data.subdomain,
+                            currentSubdomain: current?.subdomain,
+                        }).catch(() => { /* silent — analytics failure shouldn't block save */ });
                         delete data.subdomain;
                     }
                 } catch (e) {

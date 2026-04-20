@@ -1,42 +1,167 @@
 /**
  * Client Menu Sitemap
- * 
+ *
  * Generates a sitemap for client menus accessed via subdomain or custom domain.
- * Each client gets their own sitemap with just their menu page.
- * Uses actual store.modifiedOn timestamp for accurate freshness signals to AI crawlers.
- * 
- * Example: joespizza.menulist.ai/sitemap.xml → Just Joe's Pizza menu
- * 
- * @see __docs__/discovery-infrastructure/deep-architecture-audit.md — Sitemap freshness fix
+ * Uses actual store.modifiedOn timestamp for accurate freshness signals to AI
+ * crawlers.
+ *
+ * Example: joespizza.menulist.ai/sitemap.xml → Just Joe's Pizza OBP + menus.
+ *
+ * ─── T1-N-01 (A-08 + R5 PUBLIC-ROUTING-DOCTRINE) ───────────────────────
+ * Sitemap rules (locked):
+ *   1. Always include `/` (the OBP).
+ *   2. For each ACTIVE project on the master store, include its CANONICAL
+ *      slug URL (`/{projectSlug}`). The default project's canonical URL is
+ *      its real slug, NOT the `/menu` alias (R5 §9).
+ *   3. Include `/menu` ONLY when an owner has claimed slug `menu` (Layer 1
+ *      match). The universal Layer 2 alias MUST NOT be indexed because
+ *      every tenant would otherwise self-publish a duplicate of its default
+ *      project under `/menu`, polluting the index.
+ *   4. `previousSlugs[]` entries are NEVER indexed — they 301 to canonical.
+ *   5. For multi-outlet tenants (isMaster === true with outlets), include
+ *      each active outlet's root (`/{outletSlug}`) and its active projects
+ *      (`/{outletSlug}/{projectSlug}`). Outlets without `outletSlug` are
+ *      filtered out (G-12).
+ *
+ * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §8, A-08
+ * @see __docs__/discovery-infrastructure/deep-architecture-audit.md — freshness
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
 
-const getStoreModifiedDate = unstable_cache(
-    async (subdomain: string, customDomain: string | null): Promise<Date> => {
+type StoreSitemapSeed = {
+    storeId: string;
+    isMaster: boolean;
+    tenantId: number | null;
+    modifiedOn: Date;
+};
+
+type ProjectSitemapEntry = {
+    slug: string;
+    isDefault: boolean;
+};
+
+type OutletSitemapEntry = {
+    outletSlug: string;
+    storeId: string;
+    modifiedOn: Date;
+};
+
+const getMasterStoreSeed = unstable_cache(
+    async (subdomain: string, customDomain: string | null): Promise<StoreSitemapSeed | null> => {
         try {
             const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
             const q = customDomain
-                ? query(storesRef, where('customDomain', '==', customDomain.toLowerCase()), where('active', '==', true), limit(1))
-                : query(storesRef, where('subdomain', '==', subdomain.toLowerCase()), where('active', '==', true), limit(1));
+                ? query(
+                    storesRef,
+                    where('customDomain', '==', customDomain.toLowerCase()),
+                    where('domainVerified', '==', true),
+                    where('active', '==', true),
+                    limit(1),
+                )
+                : query(
+                    storesRef,
+                    where('subdomain', '==', subdomain.toLowerCase()),
+                    where('active', '==', true),
+                    limit(1),
+                );
             const snapshot = await getDocs(q);
-            if (snapshot.empty) return new Date();
-            const data = snapshot.docs[0].data();
-            const modifiedOn = data?.modifiedOn;
-            if (modifiedOn?.toDate) return modifiedOn.toDate();
-            if (typeof modifiedOn === 'string') return new Date(modifiedOn);
-            return new Date();
+            if (snapshot.empty) return null;
+            const storeDoc = snapshot.docs[0];
+            const data = storeDoc.data() as Record<string, any>;
+            const modifiedOn = (() => {
+                const raw = data?.modifiedOn;
+                if (raw?.toDate) return raw.toDate();
+                if (typeof raw === 'string') {
+                    const parsed = new Date(raw);
+                    if (!isNaN(parsed.getTime())) return parsed;
+                }
+                return new Date();
+            })();
+            return {
+                storeId: storeDoc.id,
+                isMaster: data?.isMaster !== false, // default true when missing (single-store)
+                tenantId: typeof data?.tenantId === 'number' ? data.tenantId : null,
+                modifiedOn,
+            };
         } catch {
-            return new Date();
+            return null;
         }
     },
-    ['sitemap-store-modified'],
-    { revalidate: 300, tags: ['client-stores'] }
+    ['sitemap-master-store-seed'],
+    { revalidate: 300, tags: ['client-stores'] },
+);
+
+const getProjectsForSitemap = unstable_cache(
+    async (storeId: string): Promise<ProjectSitemapEntry[]> => {
+        try {
+            const summaryRef = doc(
+                firebaseClient,
+                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+                `projects_${storeId}`,
+            );
+            const snap = await getDoc(summaryRef);
+            if (!snap.exists()) return [];
+            const projects = parseSummaryProjects(snap.data());
+            const entries: ProjectSitemapEntry[] = [];
+            for (const project of Object.values(projects)) {
+                const p = project as Record<string, any>;
+                if (p?.active === false) continue;
+                if (p?.deleted === true) continue;
+                const slug = typeof p?.slug === 'string' ? p.slug.trim() : '';
+                if (!slug) continue;
+                entries.push({ slug, isDefault: p?.isDefault === true });
+            }
+            return entries;
+        } catch {
+            return [];
+        }
+    },
+    ['sitemap-projects-for-store'],
+    { revalidate: 300, tags: ['client-stores', 'projects-summary'] },
+);
+
+const getOutletsForSitemap = unstable_cache(
+    async (tenantId: number, masterStoreId: string): Promise<OutletSitemapEntry[]> => {
+        try {
+            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
+            const q = query(
+                storesRef,
+                where('tenantId', '==', tenantId),
+                where('active', '==', true),
+            );
+            const snapshot = await getDocs(q);
+            const outlets: OutletSitemapEntry[] = [];
+            for (const d of snapshot.docs) {
+                if (d.id === masterStoreId) continue;
+                const data = d.data() as Record<string, any>;
+                const outletSlug = typeof data?.outletSlug === 'string' ? data.outletSlug.trim() : '';
+                // A-08 + G-12: outlets missing a slug are not routable; skip.
+                if (!outletSlug) continue;
+                const modifiedOn = (() => {
+                    const raw = data?.modifiedOn;
+                    if (raw?.toDate) return raw.toDate();
+                    if (typeof raw === 'string') {
+                        const parsed = new Date(raw);
+                        if (!isNaN(parsed.getTime())) return parsed;
+                    }
+                    return new Date();
+                })();
+                outlets.push({ outletSlug, storeId: d.id, modifiedOn });
+            }
+            return outlets;
+        } catch {
+            return [];
+        }
+    },
+    ['sitemap-outlets-for-tenant'],
+    { revalidate: 300, tags: ['client-stores'] },
 );
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -44,34 +169,62 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const subdomain = headersList.get('x-tenant-subdomain');
     const customDomain = headersList.get('x-tenant-custom-domain');
 
-    // Build base URL based on domain type
     let baseUrl: string;
     if (customDomain) {
         baseUrl = `https://${customDomain}`;
     } else if (subdomain) {
         baseUrl = `https://${subdomain}.menulist.ai`;
     } else {
-        // Fallback - shouldn't happen in production
+        // Fallback — shouldn't happen in production (middleware sets headers).
         return [];
     }
 
-    // Use actual store modification date for accurate freshness signals
-    const lastModified = await getStoreModifiedDate(subdomain || '', customDomain);
+    const seed = await getMasterStoreSeed(subdomain || '', customDomain);
+    if (!seed) return [];
 
-    // Client sitemap includes OBP (root) and menu page
-    // OBP is the canonical business identity page; /menu is the structured menu
-    return [
-        {
-            url: baseUrl,
-            lastModified,
-            changeFrequency: 'weekly',
-            priority: 1.0,
-        },
-        {
-            url: `${baseUrl}/menu`,
-            lastModified,
+    const entries: MetadataRoute.Sitemap = [];
+
+    // Rule 1: OBP root — always included, highest priority.
+    entries.push({
+        url: `${baseUrl}/`,
+        lastModified: seed.modifiedOn,
+        changeFrequency: 'weekly',
+        priority: 1.0,
+    });
+
+    // Rule 2 + 3: master-store projects at their canonical slug URLs.
+    const masterProjects = await getProjectsForSitemap(seed.storeId);
+    for (const project of masterProjects) {
+        entries.push({
+            url: `${baseUrl}/${project.slug}`,
+            lastModified: seed.modifiedOn,
             changeFrequency: 'daily',
-            priority: 0.9,
-        },
-    ];
+            priority: project.isDefault ? 0.9 : 0.7,
+        });
+    }
+
+    // Rule 5: multi-outlet tenants enumerate each outlet root + its projects.
+    // Non-master stores (themselves an outlet) never enumerate siblings.
+    if (seed.isMaster && seed.tenantId != null) {
+        const outlets = await getOutletsForSitemap(seed.tenantId, seed.storeId);
+        for (const outlet of outlets) {
+            entries.push({
+                url: `${baseUrl}/${outlet.outletSlug}`,
+                lastModified: outlet.modifiedOn,
+                changeFrequency: 'weekly',
+                priority: 0.8,
+            });
+            const outletProjects = await getProjectsForSitemap(outlet.storeId);
+            for (const project of outletProjects) {
+                entries.push({
+                    url: `${baseUrl}/${outlet.outletSlug}/${project.slug}`,
+                    lastModified: outlet.modifiedOn,
+                    changeFrequency: 'daily',
+                    priority: project.isDefault ? 0.7 : 0.6,
+                });
+            }
+        }
+    }
+
+    return entries;
 }

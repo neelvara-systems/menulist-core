@@ -1153,6 +1153,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     selectedLanguages={projectData.languages || ["en"]}
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editCategoryModalState.file}
+                    projectData={projectData}
                 />
             )}
 

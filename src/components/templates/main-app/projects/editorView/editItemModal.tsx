@@ -490,14 +490,26 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             title={modalData.status == 'edit' ? `Edit Item: ${itemData?.name?.[selectedLanguages[0]] || ''}` : "Add Item"}
             open={Boolean(modalData.active)}
             onCancel={onClose}
-            styles={{ body: { padding: 14 } }}
+            style={{ top: 20 }}
+            styles={{
+                body: {
+                    maxHeight: 'calc(100vh - 220px)',
+                    overflowY: 'auto',
+                    padding: 14,
+                }
+            }}
             footer={<>
-                <Flex gap={16}>
-                    <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
-                    {modalData.status == 'add' ?
-                        <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Generate Content" /> :
-                        <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Regenerate Content" />}
-                    <Button type="primary" icon={<LuCheck />} onClick={onSave} >Save</Button>
+                <Flex gap={8} vertical>
+                    <Flex gap={16}>
+                        <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
+                        {modalData.status == 'add' ?
+                            <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Generate Content" /> :
+                            <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Regenerate Content" />}
+                        <Button type="primary" icon={<LuCheck />} onClick={onSave} >Save</Button>
+                    </Flex>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Adds missing description and translations for this item.
+                    </Text>
                 </Flex>
             </>}
             width={600}

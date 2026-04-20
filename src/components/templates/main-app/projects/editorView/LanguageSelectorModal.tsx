@@ -44,7 +44,6 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
     // State now holds the full Language object or null
     const [languageToRemove, setLanguageToRemove] = useState<LanguageType | null>(null);
     const [languageToAdd, setLanguageToAdd] = useState<LanguageType | null>(null);
-    const [showConfirmation, setShowConfirmation] = useState(false);
 
     // Calculate translation summary
     const translationSummary = useMemo(() => {
@@ -144,7 +143,6 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
         }
         setLanguageToRemove(null);
         setLanguageToAdd(null);
-        setShowConfirmation(false);
     };
 
     // Use controlled open prop if provided, otherwise use internal state
@@ -165,11 +163,6 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
         handleClose();
     };
 
-    const handleShowConfirmation = () => {
-        if (!languageToAdd?.code) return;
-        setShowConfirmation(true);
-    };
-
     const handleConfirmAdd = () => {
         // Check if languageToAdd and its code exist
         if (!languageToAdd?.code) return;
@@ -186,7 +179,6 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
         if (!language) return; // Guard against undefined/null
         setLanguageToRemove(language);
         setLanguageToAdd(null);
-        setShowConfirmation(false);
     };
 
     // Accepts the full Language object
@@ -194,7 +186,6 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
         if (!language) return; // Guard against undefined/null
         setLanguageToAdd(language);
         setLanguageToRemove(null);
-        setShowConfirmation(false);
     };
 
     // Get native name helper
@@ -257,70 +248,8 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                     </Flex>
                 )}
 
-                {/* Pre-Translation Confirmation View */}
-                {!isTranslating && showConfirmation && languageToAdd && (
-                    <Flex vertical gap={16}>
-                        <Flex align="center" gap={12}>
-                            <div style={{ fontSize: 32 }}>🌍</div>
-                            <Flex vertical>
-                                <Text strong style={{ fontSize: 16 }}>
-                                    Add {getNativeLabel(languageToAdd)}?
-                                </Text>
-                                <Text type="secondary">
-                                    Your {labels.offeringLower} will be translated
-                                </Text>
-                            </Flex>
-                        </Flex>
-
-                        <div style={{
-                            background: token.colorBgLayout,
-                            borderRadius: 12,
-                            padding: 16
-                        }}>
-                            <Text strong style={{ marginBottom: 12, display: 'block' }}>
-                                📊 Translation Summary
-                            </Text>
-                            <Flex vertical gap={6}>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Menu files</Text>
-                                    <Text strong>{translationSummary.fileCount}</Text>
-                                </Flex>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Categories</Text>
-                                    <Text strong>{translationSummary.totalCategories}</Text>
-                                </Flex>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Items</Text>
-                                    <Text strong>{translationSummary.totalItems}</Text>
-                                </Flex>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Descriptions</Text>
-                                    <Text strong>{translationSummary.totalDescriptions}</Text>
-                                </Flex>
-                            </Flex>
-                        </div>
-
-                        <Flex gap={12}>
-                            <Button
-                                block
-                                onClick={() => setShowConfirmation(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                block
-                                icon={<LuSparkles />}
-                                onClick={handleConfirmAdd}
-                            >
-                                Start Translation
-                            </Button>
-                        </Flex>
-                    </Flex>
-                )}
-
                 {/* Main Language Selection View */}
-                {!isTranslating && !showConfirmation && (
+                {!isTranslating && (
                     <>
                         {/* Introduction Section */}
                         <div style={{ marginBottom: 16 }}>
@@ -557,7 +486,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                     <Button
                                         type="primary"
                                         icon={<LuPlusCircle />}
-                                        onClick={handleShowConfirmation}
+                                        onClick={handleConfirmAdd}
                                     >
                                         Add {languageToAdd?.nativeName || languageToAdd?.name}
                                     </Button>

@@ -49,6 +49,7 @@ import { unstable_cache } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import MenuBreadcrumb from "./MenuBreadcrumb";
+import MenuNotFoundFallback from "./MenuNotFoundFallback";
 
 // Get tenant info from headers (set by middleware)
 // Shared helper used across client pages — see @lib/multiTenant/getTenantFromHeaders
@@ -893,6 +894,21 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
         notFound();
     }
 
+    // T1-N-05 / A-03 PUBLIC-ROUTING-DOCTRINE: admin-tier rename chain.
+    // If the customer arrived via a legacy subdomain that differs from the
+    // store's current subdomain, 301 to the canonical subdomain. This is
+    // ONLY reachable via the admin rename endpoint (owner-facing rename is
+    // still blocked after first publish by G-08).
+    if (
+        tenantType === 'subdomain'
+        && subdomain
+        && storeData.subdomain
+        && storeData.subdomain.toLowerCase() !== subdomain.toLowerCase()
+    ) {
+        const canonical = `https://${storeData.subdomain}.menulist.ai${slug ? `/${slug}` : ''}`;
+        redirect(canonical);
+    }
+
     // URL Routing Architecture — Phase 2: Subdomain → custom domain 301 redirect
     // When store has a verified custom domain and visitor arrives via subdomain,
     // redirect to custom domain to consolidate SEO authority on the canonical URL
@@ -970,6 +986,9 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 storeOverride={storeData}
                 masterSubdomain={masterSubdomain}
                 masterCustomDomain={masterCustomDomain}
+                // T2-N-05 / D-12: lets the outlet OBP render the
+                // Business → Outlet breadcrumb with the correct brand name.
+                masterBrandName={masterBrandName}
             />
         );
     }
@@ -1001,15 +1020,19 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     )));
 
     if (!baseResult) {
+        // T1-N-03 / A-12 PUBLIC-ROUTING-DOCTRINE: instead of a terminal 404,
+        // degrade up the fallback ladder. The client component detects
+        // standalone PWA mode and auto-redirects after a visible 2s hint,
+        // while browser tabs show explicit navigation links. masterStoreName
+        // is captured pre-outlet-switch (see G-09) so the brand link reads
+        // correctly for multi-outlet tenants.
         return (
-            <div style={{ padding: "40px", textAlign: "center" }}>
-                <h1>Menu Not Found</h1>
-                <p>
-                    {resolvedSlug
-                        ? `No menu found matching "${resolvedSlug}".`
-                        : "This restaurant has not configured their menu yet."}
-                </p>
-            </div>
+            <MenuNotFoundFallback
+                requestedSlug={resolvedSlug || slug || ''}
+                outletSlug={storeData.isMaster === false ? storeData.outletSlug || null : null}
+                storeName={storeData.name || null}
+                brandName={masterBrandName || storeData.name || null}
+            />
         );
     }
 
@@ -1161,6 +1184,9 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 storeDetails={storeDetails}
                 precomputedBlocks={precomputedBlocks}
                 projectId={projectId}
+                // T5-N-01: R5 Layer resolution analytics — passed through to
+                // AnalyticsContext so trackMenuView can tag Layer 1 vs Layer 2.
+                menuResolutionLayer={isMenuAliasFallback ? 'layer2' : 'layer1'}
             />
         </>
     );

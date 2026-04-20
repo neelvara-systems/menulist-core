@@ -13,7 +13,7 @@ export { default as OfficialPageTab } from "./OfficialPageTab";
 export { default as PosSyncTab } from "./PosSyncTab";
 export { default as SeoTab } from "./SeoTab";
 export { default as SocialMediaTab } from "./SocialMediaTab";
-export { default as SubdomainTab } from "./SubdomainTab";
+// T3-N-02: SubdomainTab removed — superseded by DomainSettingsTab (G-08).
 export { default as TimeSlotPresetsTab } from "./TimeSlotPresetsTab";
 export { default as WorkingHoursTab } from "./WorkingHoursTab";
 

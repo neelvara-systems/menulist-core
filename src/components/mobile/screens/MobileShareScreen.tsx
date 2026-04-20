@@ -22,6 +22,7 @@ import MobilePresenceMonitor from '../components/PresenceMonitor';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 type ProjectLink = {
+    active?: boolean;
     feedbackUrl: string;
     isDefault: boolean;
     name: string;
@@ -205,6 +206,7 @@ export default function MobileShareScreen() {
                 <ProjectSelectorTrigger
                     clickable={data.allProjects.length > 1}
                     currentProject={{
+                        active: activeProject.active !== false,
                         id: activeProject.projectId,
                         isDefault: activeProject.isDefault,
                         name: activeProject.name || tProjectSelector('untitled'),

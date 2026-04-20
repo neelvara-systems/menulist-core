@@ -1,11 +1,12 @@
 "use client";
 
 import { getCampaignHistory } from "@database/campaigns";
+import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { Campaign } from "@type/campaigns";
-import { Button, Spin, Typography } from "antd";
+import { Button, Drawer, Spin, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LuArrowLeft, LuCheck, LuX } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuInfo, LuX } from "react-icons/lu";
 import styles from "../styles.module.scss";
 
 const { Title, Text } = Typography;
@@ -34,6 +35,7 @@ const PastActivityScreen = () => {
     const router = useRouter();
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
 
     useEffect(() => {
         const loadHistory = async () => {
@@ -116,10 +118,35 @@ const PastActivityScreen = () => {
                         className={styles.backButton}
                     />
                     <Title level={3}>Past activity</Title>
+                    <Button
+                        type="text"
+                        icon={<LuInfo />}
+                        onClick={() => setIsGuideOpen(true)}
+                        className={styles.infoButton}
+                    >
+                        What is this?
+                    </Button>
                 </div>
                 <div className={styles.loadingState}>
                     <Spin size="large" />
                 </div>
+                <Drawer
+                    closable={false}
+                    onClose={() => setIsGuideOpen(false)}
+                    open={isGuideOpen}
+                    placement="bottom"
+                    title={PAST_ACTIVITY_GUIDE_TITLE}
+                    height="65vh"
+                >
+                    <div className={styles.guideContent}>
+                        {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
+                            <div key={section.title} className={styles.guideSection}>
+                                <Text strong>{section.title}</Text>
+                                <Text type="secondary">{section.description}</Text>
+                            </div>
+                        ))}
+                    </div>
+                </Drawer>
             </div>
         );
     }
@@ -135,10 +162,35 @@ const PastActivityScreen = () => {
                         className={styles.backButton}
                     />
                     <Title level={3}>Past activity</Title>
+                    <Button
+                        type="text"
+                        icon={<LuInfo />}
+                        onClick={() => setIsGuideOpen(true)}
+                        className={styles.infoButton}
+                    >
+                        What is this?
+                    </Button>
                 </div>
                 <div className={styles.emptyState}>
                     <Text type="secondary">No activity yet.</Text>
                 </div>
+                <Drawer
+                    closable={false}
+                    onClose={() => setIsGuideOpen(false)}
+                    open={isGuideOpen}
+                    placement="bottom"
+                    title={PAST_ACTIVITY_GUIDE_TITLE}
+                    height="65vh"
+                >
+                    <div className={styles.guideContent}>
+                        {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
+                            <div key={section.title} className={styles.guideSection}>
+                                <Text strong>{section.title}</Text>
+                                <Text type="secondary">{section.description}</Text>
+                            </div>
+                        ))}
+                    </div>
+                </Drawer>
             </div>
         );
     }
@@ -153,6 +205,14 @@ const PastActivityScreen = () => {
                     className={styles.backButton}
                 />
                 <Title level={3}>Past activity</Title>
+                <Button
+                    type="text"
+                    icon={<LuInfo />}
+                    onClick={() => setIsGuideOpen(true)}
+                    className={styles.infoButton}
+                >
+                    What is this?
+                </Button>
             </div>
 
             <div className={styles.activityList}>
@@ -175,6 +235,23 @@ const PastActivityScreen = () => {
                     </div>
                 ))}
             </div>
+            <Drawer
+                closable={false}
+                onClose={() => setIsGuideOpen(false)}
+                open={isGuideOpen}
+                placement="bottom"
+                title={PAST_ACTIVITY_GUIDE_TITLE}
+                height="65vh"
+            >
+                <div className={styles.guideContent}>
+                    {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
+                        <div key={section.title} className={styles.guideSection}>
+                            <Text strong>{section.title}</Text>
+                            <Text type="secondary">{section.description}</Text>
+                        </div>
+                    ))}
+                </div>
+            </Drawer>
         </div>
     );
 };

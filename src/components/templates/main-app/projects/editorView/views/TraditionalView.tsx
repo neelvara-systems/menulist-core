@@ -1232,6 +1232,7 @@ export const TraditionalView = ({
                     selectedLanguages={projectData.languages}
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editCategoryModalState.file}
+                    projectData={projectData}
                     onPreviewFile={setPreviewFile}
                     // Multi-outlet governance props - categories use same pattern as items
                     inheritanceState={editCategoryModalState.category?.id ? itemStates?.[editCategoryModalState.category.id] : undefined}

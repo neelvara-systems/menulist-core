@@ -7,6 +7,7 @@
  * @see __docs__/official-business-page/official-business-page_impl.md §7
  */
 
+import MenuBreadcrumb from "@/app/client/[[...slug]]/MenuBreadcrumb";
 import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
@@ -32,6 +33,7 @@ import { notFound } from "next/navigation";
 import BrandOBPContent from "./BrandOBPContent";
 import OBPActions from "./OBPActions";
 import OBPAnalytics from "./OBPAnalytics";
+import OBPCustomerAppMount from "./OBPCustomerAppMount";
 import OBPMenuCTA from "./OBPMenuCTA";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
@@ -302,12 +304,20 @@ interface OBPContentProps {
      */
     masterSubdomain?: string;
     masterCustomDomain?: string;
+    /**
+     * T2-N-05 / D-12 PUBLIC-ROUTING-DOCTRINE: master brand display name
+     * captured pre-outlet-switch by MenuContent. Used ONLY on outlet OBP
+     * renders (storeOverride set) to show the Business → Outlet breadcrumb.
+     * Brand OBP renders don't need this — they're the top node themselves.
+     */
+    masterBrandName?: string;
 }
 
 export default async function OBPContent({
     storeOverride,
     masterSubdomain,
     masterCustomDomain,
+    masterBrandName,
 }: OBPContentProps = {}) {
     const t = await getTranslations({ namespace: 'BusinessSettings' });
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
@@ -514,6 +524,22 @@ export default async function OBPContent({
                 />
             )}
             <div className={styles.page}>
+                {/*
+                 * T2-N-05 / D-12 PUBLIC-ROUTING-DOCTRINE: visible breadcrumb
+                 * on OUTLET OBP pages only. Brand OBPs are the top node so
+                 * they never render a breadcrumb. Requires masterBrandName +
+                 * outletSlug — MenuContent passes the former; the outlet
+                 * store carries the latter. Falls back silently if either
+                 * is missing (breadcrumb is an affordance, not load-bearing).
+                 */}
+                {storeOverride && store?.outletSlug && (masterBrandName || store?.name) ? (
+                    <MenuBreadcrumb
+                        businessName={masterBrandName || store.name}
+                        outletName={store.name || undefined}
+                        outletSlug={store.outletSlug}
+                    />
+                ) : null}
+
                 {/* ── Temporary Status Banner ── */}
                 {FEATURE_FLAGS.ENABLE_TEMP_STATUS && store?.tempStatus && (
                     <TempStatusBanner tempStatus={store.tempStatus} />
@@ -601,6 +627,11 @@ export default async function OBPContent({
                             tenantId={store?.tenantId}
                             storeId={store?.storeId}
                             projects={ctaProjects}
+                            // T2-N-02 / A-07: when OBPContent renders for an
+                            // outlet URL, storeOverride is set (see G-01).
+                            // That's the signal that this is the outlet OBP
+                            // surface, not the brand root.
+                            obpSurface={storeOverride ? 'outlet' : 'brand'}
                         />
                     ) : (
                         <span className={styles.menuButtonDisabled}>
@@ -786,6 +817,27 @@ export default async function OBPContent({
                     )}
                 </footer>
             </div>
+
+            {/*
+             * T2-N-07 / A-10 PUBLIC-ROUTING-DOCTRINE: mount the Customer App
+             * controller on OBP surfaces so the install prompt respects
+             * `pwaSettings.promoteInstallation` on ALL three surfaces (obp,
+             * outlet, project). Previously the controller only mounted inside
+             * ClientMenuRenderer, leaving OBP installs unreachable. Renders
+             * nothing unless feature flag + promoteInstallation + visit
+             * threshold gates all pass.
+             */}
+            {FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && store?.storeId ? (
+                <OBPCustomerAppMount
+                    storeId={store.storeId}
+                    tenantId={store.tenantId}
+                    storeName={storeName || 'Menu'}
+                    promoteInstallation={
+                        (store as any)?.pwaSettings?.promoteInstallation !== false
+                    }
+                    trackingEnabled={trackingEnabled}
+                />
+            ) : null}
         </>
     );
 }

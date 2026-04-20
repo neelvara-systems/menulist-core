@@ -73,6 +73,7 @@ export interface ProjectMetadata {
     modifiedOn?: Timestamp;
     modifiedBy?: string;
     isDefault?: boolean; // Show at root URL when accessing via subdomain/custom domain
+    active?: boolean;
 
     // ── URL PERMANENCE (Feature: URL Routing Architecture) ──────────
     // @see __docs__/url-routing-architecture/README.md ADR-3

@@ -18,6 +18,30 @@
   }
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 24px;
+
+  h2 {
+    margin-bottom: 0 !important;
+  }
+}
+
+.guideContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guideSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 // Loading State
 .loadingState {
   display: flex;
@@ -257,6 +281,11 @@
     margin-bottom: 24px;
 
     .backButton {
+      color: var(--ant-color-text-secondary);
+    }
+
+    .infoButton {
+      margin-left: auto;
       color: var(--ant-color-text-secondary);
     }
   }

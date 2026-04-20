@@ -16,6 +16,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectPlatform } from './platformDetection';
+import { detectInstallSurface } from './surfaceDetection';
 
 const INSTALL_FIRED_KEY_PREFIX = 'menulist_customerApp_installFired_';
 // Timestamp of the last prompt shown — used by the iOS inference heuristic in
@@ -60,6 +61,10 @@ export async function fireInstalledEventOnce(
 
   const { tenantId, source = 'native' } = options;
   const { platform } = detectPlatform();
+  // T2-N-03 / §6 rule 4 PUBLIC-ROUTING-DOCTRINE: classify the surface the
+  // customer was on when the install fired. Paired with G-03's per-surface
+  // manifest, this lets the dashboard compute install conversion by surface.
+  const installSurface = detectInstallSurface();
 
   // Storage unavailable → still fire (privacy / SSR fallback), no dedup possible.
   if (!isStorageAvailable()) {
@@ -69,6 +74,7 @@ export async function fireInstalledEventOnce(
       sessionId: getSessionId(),
       pwaPlatform: platform,
       pwaInstallSource: source,
+      pwaInstallSurface: installSurface,
     });
     return;
   }
@@ -86,6 +92,7 @@ export async function fireInstalledEventOnce(
       sessionId: getSessionId(),
       pwaPlatform: platform,
       pwaInstallSource: source,
+      pwaInstallSurface: installSurface,
     });
 
     window.localStorage.setItem(key, String(Date.now()));

@@ -161,9 +161,12 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
         setIsProcessing(true);
         try {
             const method = getExportMethod(campaign.primarySurface);
-            await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
+            const result = await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
+            if (result?.today) {
+                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
+            }
             setPostAction('shared');
-            setTimeout(() => { setPostAction(null); mutate(); }, 2000);
+            setTimeout(() => { setPostAction(null); }, 2000);
         } catch {
             Toast.show({ content: t('failed'), duration: 2000 });
         } finally {
@@ -174,8 +177,10 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const handleSkip = async (campaignId: string, type: CampaignType) => {
         setIsProcessing(true);
         try {
-            await dbSkipCampaign(campaignId, type);
-            mutate();
+            const result = await dbSkipCampaign(campaignId, type);
+            if (result?.today) {
+                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
+            }
         } catch {
             Toast.show({ content: t('failedToSkip'), duration: 2000 });
         } finally {

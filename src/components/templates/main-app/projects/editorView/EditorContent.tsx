@@ -781,6 +781,7 @@ export function EditorContent({
                 selectedLanguages={selectedLanguages}
                 setUpdatedFileData={setUpdatedFileData}
                 fileData={file}
+                projectData={projectData}
             />
         </>
     );

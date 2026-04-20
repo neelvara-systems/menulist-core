@@ -202,7 +202,7 @@ export default function MobileProjectSelectorSheet({
             onClick: () => openDuplicate(managingProject),
         },
         {
-            key: 'active',
+            key: managingProject.active === false ? 'activate' : 'inactivate',
             label: managingProject.active === false ? t('activateCatalog') : t('makeInactive'),
             icon: <LuPower size={16} />,
             onClick: () => {
@@ -279,6 +279,7 @@ export default function MobileProjectSelectorSheet({
                                 id: project.projectId,
                                 isDefault: project.isDefault,
                                 name: project.name,
+                                active: project.active !== false,
                                 secondaryLabel: project.active === false ? t('inactiveCatalog') : (project.description || undefined),
                             }))}
                         />

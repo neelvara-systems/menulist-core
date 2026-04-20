@@ -40,6 +40,7 @@ interface CategoryManagerSheetProps {
     onAdd: (payload: { names: Record<string, string>; active: boolean; presetIds: string[] }) => Promise<void>;
     onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
+    onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
     onReorder: (orderedIds: string[]) => Promise<void>;
     onReorderItems: (categoryId: string, orderedItemIds: string[]) => Promise<void>;
     onClose: () => void;
@@ -57,6 +58,7 @@ export default function CategoryManagerSheet({
     onAdd,
     onUpdate,
     onDelete,
+    onGenerateContent,
     onReorder,
     onReorderItems,
     onClose,
@@ -628,6 +630,7 @@ export default function CategoryManagerSheet({
                 onDelete={async (categoryId) => {
                     await handleDelete(categoryId);
                 }}
+                onGenerateContent={onGenerateContent}
                 onSave={async (payload) => {
                     setIsSaving(true);
                     try {

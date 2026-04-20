@@ -1,6 +1,6 @@
 'use client'
 import { getSessionId, refreshSession } from '@lib/analytics/session';
-import { trackItemView, trackMenuView } from '@lib/analytics/unified';
+import { trackItemView, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
 import React, { createContext, useCallback, useEffect } from 'react';
 
@@ -31,6 +31,9 @@ interface AnalyticsProviderProps {
   children: React.ReactNode;
   storeDetails?: StoreDataType;
   projectId?: string;  // Required for project-wise analytics
+  // T5-N-01: R5 Layer resolution analytics — 'layer1' for claimed-slug match,
+  // 'layer2' for /menu universal alias fallback.
+  menuResolutionLayer?: 'layer1' | 'layer2';
 }
 
 const getUtmParams = () => {
@@ -44,7 +47,7 @@ const getUtmParams = () => {
   };
 };
 
-export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, storeDetails, projectId }) => {
+export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, storeDetails, projectId, menuResolutionLayer }) => {
   const isEnabled = storeDetails?.analytics?.trackMenuViews;
   const utmParams: UtmParams = getUtmParams();
 
@@ -65,9 +68,20 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
       // Track the menu-specific view (Firebase + GA4 via trackEvent)
       // projectId is REQUIRED for project-wise analytics storage
       if (isEnabled && projectId) {
-        trackMenuView(storeId, storeName, { sessionId, tenantId, projectId, ...utmParams }).catch(error => {
+        trackMenuView(storeId, storeName, { sessionId, tenantId, projectId, menuResolutionLayer, ...utmParams }).catch(error => {
           console.error('Error tracking menu page view:', error);
         });
+        // T5-N-04: If resolved via Layer 2 /menu alias, fire a latent PROJECT_SWITCH
+        // so we can measure how often customers "switch" via typing /menu vs explicit UI.
+        if (menuResolutionLayer === 'layer2') {
+          trackProjectSwitch(storeId, projectId, null, 'menu_alias_layer2', {
+            sessionId,
+            tenantId,
+            ...utmParams,
+          }).catch(error => {
+            console.error('Error tracking project switch for Layer 2 alias:', error);
+          });
+        }
       }
     } catch (error) {
       console.error('Error in analytics tracking setup:', error);

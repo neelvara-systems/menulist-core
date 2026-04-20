@@ -32,6 +32,7 @@ import { buildQrCodeFilename, downloadQrCode, generateQrCodeDataUrl } from '@lib
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import {
@@ -59,8 +60,10 @@ import { PageState, ProjectLink, UseMenuListData } from './types';
 const { Title, Text, Paragraph } = Typography;
 
 export default function UseMenuList() {
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, tenantDetails, isMasterUser } = useContext(PlatformGlobalDataContext);
     const { token: themeToken } = theme.useToken();
+    // T4-N-03: QR card labels + descriptions routed through i18n.
+    const t = useTranslations('UseMenuList');
     const [pageState, setPageState] = useState<PageState>('loading');
     const [data, setData] = useState<UseMenuListData | null>(null);
     const [generatingKit, setGeneratingKit] = useState(false);
@@ -142,6 +145,7 @@ export default function UseMenuList() {
                     projectId: p.projectId,
                     name: p.name || 'Untitled',
                     isDefault: p.isDefault || false,
+                    active: p.active !== false,
                     // R5: real canonical slug URL — no /menu alias.
                     url: generateProjectUrl(subdomain, customDomain, p.name, false),
                     feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
@@ -363,6 +367,7 @@ export default function UseMenuList() {
                             id: activeProject.projectId,
                             name: activeProject.name || 'Untitled',
                             isDefault: activeProject.isDefault,
+                            active: activeProject.active,
                         }}
                         helperText={data.allProjects.length > 1 ? 'Select project' : undefined}
                         onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
@@ -521,13 +526,13 @@ export default function UseMenuList() {
              * so a reprint is NEVER required when the owner renames or
              * deletes a project (R5 universal-alias guarantee).
              */}
-            <Title level={5} style={{ marginBottom: 12 }}>QR Codes</Title>
+            <Title level={5} style={{ marginBottom: 12 }}>{t('qrSectionTitle')}</Title>
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
-                        title="Store Menu QR"
-                        description="Primary — tables, signage, packaging"
+                        title={t('storeMenuQrTitle')}
+                        description={t('storeMenuQrDescription')}
                         loading={generatingAsset === 'Store Menu QR'}
                         onDownload={() => handleDownloadQr(
                             // G-04: inline Layer-2 alias URL (avoids an
@@ -544,8 +549,8 @@ export default function UseMenuList() {
                 <Col xs={24} sm={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
-                        title="Business Profile QR"
-                        description="Instagram bio, Google listing, flyers"
+                        title={t('businessProfileQrTitle')}
+                        description={t('businessProfileQrDescription')}
                         loading={generatingAsset === 'Business Profile QR'}
                         onDownload={() => handleDownloadQr(
                             data.obpLink,
@@ -558,8 +563,8 @@ export default function UseMenuList() {
                 <Col xs={24} sm={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
-                        title="Project Menu QR (advanced)"
-                        description={`Deep link to "${data.projectName || 'menu'}"`}
+                        title={t('projectMenuQrTitle')}
+                        description={t('projectMenuQrDescription', { projectName: data.projectName || t('projectFallback') })}
                         loading={generatingAsset === 'Project Menu QR'}
                         onDownload={() => handleDownloadQr(
                             data.menuLink,
@@ -570,6 +575,70 @@ export default function UseMenuList() {
                     />
                 </Col>
             </Row>
+
+            {/*
+             * T2-N-04 / D-07 + D-08 PUBLIC-ROUTING-DOCTRINE: outlet-scoped QRs.
+             * When the current tenant has multiple outlets, the master owner
+             * is the only user with dashboard access who can actually print
+             * physical QRs for every location. The QRs here target each
+             * outlet's own Store Menu alias (`/{outletSlug}/menu`) — outlet
+             * slug rename chain (G-07) keeps these resolving even after a
+             * rename, so they are safe to print and forget.
+             */}
+            {(() => {
+                const outlets = (tenantDetails?.storesList || []).filter(
+                    (s: any) => s && !s.isMaster && s.active !== false && s.outletSlug,
+                );
+                if (!isMasterUser || outlets.length === 0) return null;
+                const tenantBase = data.obpLink.replace(/\/$/, '');
+                return (
+                    <div style={{ marginBottom: 24 }}>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                            {t('outletQrSectionHelper')}
+                        </Text>
+                        <Flex vertical gap={8}>
+                            {outlets.map((outlet: any) => {
+                                const outletUrl = `${tenantBase}/${outlet.outletSlug}/menu`;
+                                const assetLabel = `Store Menu QR · ${outlet.name || outlet.outletSlug}`;
+                                return (
+                                    <Flex
+                                        key={outlet.storeId}
+                                        align="center"
+                                        justify="space-between"
+                                        gap={12}
+                                        style={{
+                                            background: themeToken.colorBgLayout,
+                                            borderRadius: 8,
+                                            padding: '10px 14px',
+                                        }}
+                                    >
+                                        <Flex vertical gap={2} style={{ minWidth: 0 }}>
+                                            <Text strong style={{ fontSize: 13 }}>
+                                                {outlet.name || outlet.outletSlug}
+                                            </Text>
+                                            <Text type="secondary" ellipsis style={{ fontSize: 12 }}>
+                                                {outletUrl}
+                                            </Text>
+                                        </Flex>
+                                        <Button
+                                            size="small"
+                                            icon={<LuDownload size={14} />}
+                                            loading={generatingAsset === assetLabel}
+                                            onClick={() => handleDownloadQr(
+                                                outletUrl,
+                                                assetLabel,
+                                                `${outlet.name || outlet.outletSlug}-store-menu-qr`,
+                                            )}
+                                        >
+                                            {t('downloadQrButton')}
+                                        </Button>
+                                    </Flex>
+                                );
+                            })}
+                        </Flex>
+                    </div>
+                );
+            })()}
 
             {/* Google Business hint */}
             <Flex
@@ -973,6 +1042,7 @@ export default function UseMenuList() {
                         id: project.projectId,
                         name: project.name || 'Untitled',
                         isDefault: project.isDefault,
+                        active: project.active,
                         secondaryLabel: project.url.replace(/^https?:\/\//, ''),
                     }))}
                 />

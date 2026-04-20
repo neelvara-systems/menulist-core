@@ -62,7 +62,6 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         && domainAvailability?.available
         && domainAvailability?.normalized === normalizedDomainInput
     );
-    const liveUrl = activeDomain ? normalizeBaseUrl(activeDomain) : subdomainUrl;
     const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
     const dnsRecords = useMemo(() => {
         const records: { type: string; name: string; value: string }[] = [];
@@ -202,22 +201,6 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     subtitle={t('domainSettingsSubtitle')}
                     title={t('domain')}
                 />
-                <Card>
-                    <Flex gap={6} vertical>
-                        <Text strong>{liveUrl ? t('yourCurrentLink') : t('domain')}</Text>
-                        {liveUrl ? <Tag color={activeDomain ? (customDomainVerified ? 'success' : 'warning') : 'processing'}>{liveUrl.replace(/^https?:\/\//, '')}</Tag> : <Text type="secondary">{t('noSubdomainDesc')}</Text>}
-                        {liveUrl ? (
-                            <Flex gap={8} wrap>
-                                <Button fill="outline" onClick={() => navigator.clipboard.writeText(liveUrl)} size="small">
-                                    <Flex align="center" gap={6}><LuCopy size={16} /><Text>{t('copy')}</Text></Flex>
-                                </Button>
-                                <Button fill="outline" onClick={() => window.open(liveUrl, '_blank')} size="small">
-                                    <Flex align="center" gap={6}><LuExternalLink size={16} /><Text>{t('open')}</Text></Flex>
-                                </Button>
-                            </Flex>
-                        ) : null}
-                    </Flex>
-                </Card>
 
                 <Card>
                     <Flex gap={8} vertical>
@@ -261,9 +244,11 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                             <Text>{t('checkAvailability')}</Text>
                                         </Flex>
                                     </Button>
-                                    <Button block color="primary" disabled={!canSaveSubdomain} loading={savingSubdomain} onClick={() => void saveSubdomain()} size="large">
-                                        {common('save')}
-                                    </Button>
+                                    {canSaveSubdomain ? (
+                                        <Button block color="primary" loading={savingSubdomain} onClick={() => void saveSubdomain()} size="large">
+                                            {common('save')}
+                                        </Button>
+                                    ) : null}
                                 </Flex>
                             </>
                         )}
@@ -353,9 +338,11 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                             <Text>{t('checkAvailability')}</Text>
                                         </Flex>
                                     </Button>
-                                    <Button block color="primary" disabled={!canConnectDomain} loading={domainLoading} onClick={() => void addDomain()} size="large">
-                                        {t('connectDomain')}
-                                    </Button>
+                                    {canConnectDomain ? (
+                                        <Button block color="primary" loading={domainLoading} onClick={() => void addDomain()} size="large">
+                                            {t('connectDomain')}
+                                        </Button>
+                                    ) : null}
                                 </Flex>
                             </>
                         )}

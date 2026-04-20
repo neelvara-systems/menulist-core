@@ -2,7 +2,7 @@ import { AICapacityError } from "@services/ai/capacityError";
 import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
 import getTranslations from "../generateTranslations";
-import { ExtractedDataItem, languageActionType, LanguageType, Project, ProjectFileType } from '../types';
+import { ExtractedDataCategory, ExtractedDataItem, languageActionType, LanguageType, Project, ProjectFileType } from '../types';
 
 /**
  * Multi-outlet translation governance options
@@ -390,6 +390,87 @@ export const mergeItemTranslations = (item: ExtractedDataItem, translations: Rec
     }
 
     return updatedItem;
+}
+
+export const mergeCategoryTranslations = (
+    category: ExtractedDataCategory,
+    translations: Record<string, string>,
+    targetLang: string,
+    sourceLang: string
+) => {
+    const translationKey = `${category.id}_c`;
+    if (!category.name?.[sourceLang] || !translations[translationKey]) {
+        return category;
+    }
+
+    return {
+        ...category,
+        name: {
+            ...category.name,
+            [targetLang]: translations[translationKey]
+        }
+    };
+}
+
+export const translateCategory = async (
+    projectData: Project,
+    file: ProjectFileType,
+    targetLanguage: LanguageType,
+    sourceLanguage: LanguageType,
+    action: keyof typeof languageActionType,
+    category: ExtractedDataCategory
+) => {
+    const sourceName = category.name?.[sourceLanguage.code]?.trim();
+    if (!sourceName) {
+        return {
+            updatedCategory: category,
+            message: `Category name in ${sourceLanguage.name} is required`,
+            messageType: 'warning'
+        };
+    }
+
+    if (category.name?.[targetLanguage.code]?.trim()) {
+        return {
+            updatedCategory: category,
+            message: `No new translatable data found for language ${targetLanguage.name} (${targetLanguage.code})`,
+            messageType: 'warning'
+        };
+    }
+
+    try {
+        const translations = await getTranslations({
+            inputJson: {
+                [`${category.id}_c`]: sourceName
+            },
+            targetLang: targetLanguage,
+            sourceLang: sourceLanguage,
+            action,
+            projectId: projectData.projectId,
+            fileId: file.uid
+        });
+
+        if (translations) {
+            return {
+                updatedCategory: mergeCategoryTranslations(category, translations, targetLanguage.code, sourceLanguage.code),
+                message: `${targetLanguage.name} (${targetLanguage.code}) translation added successfully`,
+                messageType: 'success'
+            };
+        }
+
+        return {
+            updatedCategory: category,
+            message: 'Error getting translations',
+            messageType: 'error'
+        };
+    } catch (error) {
+        if (error instanceof AICapacityError) throw error;
+        console.error(`Error getting translations for ${targetLanguage.code} → ${sourceLanguage.code}:`, error);
+        return {
+            updatedCategory: category,
+            message: 'Error getting translations',
+            messageType: 'error'
+        };
+    }
 }
 
 const extractItemTranslatableStringsJSON = (item: ExtractedDataItem, sourceLang: string) => {

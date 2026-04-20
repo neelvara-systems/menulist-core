@@ -1,10 +1,11 @@
 'use client'
 
 import { getCampaignHistory } from '@database/campaigns';
+import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from '@constant/todayFeatureGuide';
 import { Campaign } from '@type/campaigns';
 import { useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuClock, LuX } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Text, Title } from '../antd';
+import { LuArrowLeft, LuCheck, LuClock, LuInfo, LuX } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Popup, Text, Title } from '../antd';
 
 interface MobileTodayHistoryScreenProps {
     onBack: () => void;
@@ -13,6 +14,7 @@ interface MobileTodayHistoryScreenProps {
 export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryScreenProps) {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
 
     useEffect(() => {
         const loadHistory = async () => {
@@ -85,6 +87,17 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                     <LuArrowLeft size={16} />
                 </Button>
                 <Title level={4} style={{ margin: 0 }}>Past Activity</Title>
+                <Button
+                    fill="none"
+                    onClick={() => setIsGuideOpen(true)}
+                    size="small"
+                    style={{ marginLeft: 'auto', minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                >
+                    <Flex align="center" gap={6}>
+                        <LuInfo size={16} />
+                        <Text type="secondary">What is this?</Text>
+                    </Flex>
+                </Button>
             </Flex>
 
             {isLoading ? (
@@ -124,6 +137,36 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                     ))}
                 </Flex>
             )}
+
+            <Popup
+                bodyStyle={{ maxHeight: '75vh', overflowY: 'auto', paddingBottom: 12 }}
+                onMaskClick={() => setIsGuideOpen(false)}
+                visible={isGuideOpen}
+            >
+                <Flex gap={12} vertical>
+                    <Flex align="center" justify="space-between">
+                        <Text strong>{PAST_ACTIVITY_GUIDE_TITLE}</Text>
+                        <Button
+                            fill="none"
+                            onClick={() => setIsGuideOpen(false)}
+                            size="small"
+                            style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                        >
+                            ✕
+                        </Button>
+                    </Flex>
+                    <Flex gap={10} vertical>
+                        {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
+                            <Card key={section.title}>
+                                <Flex gap={4} vertical>
+                                    <Text strong>{section.title}</Text>
+                                    <Text type="secondary">{section.description}</Text>
+                                </Flex>
+                            </Card>
+                        ))}
+                    </Flex>
+                </Flex>
+            </Popup>
         </Flex>
     );
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getOwnerLabels } from '@config/businessLabels';
 import GlobalLanguagesList from '@data/languages';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
@@ -28,6 +29,7 @@ import type {
     ExtractedDataItem,
 } from '../../templates/main-app/projects/types/extractedData.types';
 import { clearStaleCategoryTranslations, clearStaleTranslations } from '../../templates/main-app/projects/utils/translationsUtils';
+import { translateCategory } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -375,6 +377,7 @@ export default function MobileMenuScreen() {
     const [isSmartRecommendationsOpen, setIsSmartRecommendationsOpen] = useState(false);
     const [isTextCaseOpen, setIsTextCaseOpen] = useState(false);
     const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+    const [isStatusLegendSheetOpen, setIsStatusLegendSheetOpen] = useState(false);
     const [imageModalItem, setImageModalItem] = useState<ExtractedDataItem | null>(null);
     const [imageModalInitialTab, setImageModalInitialTab] = useState<'upload' | 'generate'>('upload');
     const [imageModalInitialBatchItemIds, setImageModalInitialBatchItemIds] = useState<string[]>([]);
@@ -976,17 +979,6 @@ export default function MobileMenuScreen() {
             stats: languageStats.find((entry) => entry.code === code) || null,
         }));
     }, [activeProjectLanguages, languageStats]);
-    const listingStatusLegend = useMemo(() => {
-        const entries = [
-            { color: token.colorTextQuaternary, key: 'hidden', label: t('hidden') },
-            { color: token.colorWarning, key: 'sold-out', label: availabilityLabels.unavailable },
-        ];
-        if (activeProjectLanguages.length > 1) {
-            entries.push({ color: token.colorPrimary, key: 'translation-missing', label: t('missingTranslation') });
-        }
-        return entries;
-    }, [activeProjectLanguages.length, availabilityLabels.unavailable, t, token.colorPrimary, token.colorTextQuaternary, token.colorWarning]);
-
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
         const map = new Map<string, string>();
@@ -1224,6 +1216,29 @@ export default function MobileMenuScreen() {
             unavailable: scopedItems.filter((item) => !item.available).length,
         };
     }, [draftFilters.categoryIds, isItemEffectivelyActive, menuItems]);
+    const listingStatusLegend = useMemo(() => {
+        const entries: { color: string; key: string; label: string }[] = [];
+        if (menuIssueCounts.hidden > 0) {
+            entries.push({ color: token.colorTextQuaternary, key: 'hidden', label: t('hidden') });
+        }
+        if (menuIssueCounts.unavailable > 0) {
+            entries.push({ color: token.colorWarning, key: 'sold-out', label: availabilityLabels.unavailable });
+        }
+        if (activeProjectLanguages.length > 1 && menuIssueCounts.missingTranslation > 0) {
+            entries.push({ color: token.colorPrimary, key: 'translation-missing', label: t('missingTranslation') });
+        }
+        return entries;
+    }, [
+        activeProjectLanguages.length,
+        availabilityLabels.unavailable,
+        menuIssueCounts.hidden,
+        menuIssueCounts.missingTranslation,
+        menuIssueCounts.unavailable,
+        t,
+        token.colorPrimary,
+        token.colorTextQuaternary,
+        token.colorWarning
+    ]);
 
     const filterHealthHints = useMemo(() => ({
         showAllAvailable: menuIssueCounts.available > 0 && menuIssueCounts.unavailable === 0 && draftFilters.availability === null,
@@ -1597,6 +1612,56 @@ export default function MobileMenuScreen() {
         applyLocalMenuUpdate(updated);
     };
 
+    const handleCategoryGenerateContent = async ({ id: categoryId, names }: { id?: string; names: Record<string, string> }) => {
+        if (!menuData) return null;
+
+        const targetFile = ensurePrimaryMenuFile(menuData);
+        if (!targetFile) return null;
+
+        const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLang);
+        const targetLanguages = activeProjectLanguages
+            .slice(1)
+            .map((languageCode) => GlobalLanguagesList.find((language) => language.code === languageCode))
+            .filter(Boolean);
+
+        if (!sourceLanguage || targetLanguages.length === 0) return null;
+        if (!names[sourceLanguage.code]?.trim()) {
+            Toast.show({ content: `Category name in ${sourceLanguage.name} is required to generate translations.`, duration: 1800 });
+            return null;
+        }
+
+        const baseCategoryId = categoryId || `draft-category-${Date.now()}`;
+        let nextCategory: ExtractedDataCategory = {
+            active: true,
+            id: baseCategoryId,
+            name: Object.fromEntries(activeProjectLanguages.map((language) => [language, names[language] || ''])),
+        };
+
+        let translatedCount = 0;
+        for (const targetLanguage of targetLanguages) {
+            const { updatedCategory, messageType } = await translateCategory(
+                menuData,
+                targetFile,
+                targetLanguage as any,
+                sourceLanguage as any,
+                AI_ACTIONS_TYPES.ITEM_TRANSLATION,
+                nextCategory
+            );
+            nextCategory = updatedCategory;
+            if (messageType === 'success') {
+                translatedCount += 1;
+            }
+        }
+
+        if (translatedCount === 0) {
+            Toast.show({ content: 'No missing category translations found.', duration: 1500 });
+        } else {
+            Toast.show({ content: 'Category translations updated.', duration: 1200 });
+        }
+
+        return nextCategory.name;
+    };
+
     const handleCategoryDelete = async (categoryId: string) => {
         if (!menuData) return;
         const updated = removeObjRef(menuData);
@@ -1749,6 +1814,7 @@ export default function MobileMenuScreen() {
                     <ProjectSelectorTrigger
                         clickable={projectsList.length > 1 && !isBusy}
                         currentProject={{
+                            active: activeProjectSummary?.active !== false,
                             id: menuData?.projectId || 'current',
                             isDefault: activeProjectSummary?.isDefault,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
@@ -1957,77 +2023,7 @@ export default function MobileMenuScreen() {
                         ))}
                         <Button
                             fill="none"
-                            onClick={() => {
-                                Dialog.alert({
-                                    content: (
-                                        <Flex gap={10} vertical>
-                                            <Card size="small" style={{ margin: 0 }}>
-                                                <Flex gap={8} vertical>
-                                                    <Text strong>Visibility status</Text>
-                                                    <Flex align="center" gap={10}>
-                                                        <StatusDot color={token.colorSuccess} />
-                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                                            <Text strong>{t('shownOnMenu')}</Text>
-                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
-                                                                Customers can see this on your menu.
-                                                            </Text>
-                                                        </Flex>
-                                                    </Flex>
-                                                    <Flex align="center" gap={10}>
-                                                        <StatusDot color={token.colorTextQuaternary} />
-                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                                            <Text strong>{t('hiddenFromMenu')}</Text>
-                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
-                                                                Not shown to customers on your menu.
-                                                            </Text>
-                                                        </Flex>
-                                                    </Flex>
-                                                </Flex>
-                                            </Card>
-
-                                            <Card size="small" style={{ margin: 0 }}>
-                                                <Flex gap={8} vertical>
-                                                    <Text strong>Ordering status</Text>
-                                                    <Flex align="center" gap={10}>
-                                                        <StatusDot color={token.colorSuccess} />
-                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                                            <Text strong>{availabilityLabels.available}</Text>
-                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
-                                                                Customers can order this item now.
-                                                            </Text>
-                                                        </Flex>
-                                                    </Flex>
-                                                    <Flex align="center" gap={10}>
-                                                        <StatusDot color={token.colorWarning} />
-                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                                            <Text strong>{availabilityLabels.unavailable}</Text>
-                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
-                                                                Still visible, but customers cannot order it.
-                                                            </Text>
-                                                        </Flex>
-                                                    </Flex>
-                                                </Flex>
-                                            </Card>
-
-                                            {activeProjectLanguages.length > 1 ? (
-                                                <Card size="small" style={{ margin: 0 }}>
-                                                    <Flex align="center" gap={10}>
-                                                        <StatusDot color={token.colorPrimary} />
-                                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                                            <Text strong>{t('missingTranslation')}</Text>
-                                                            <Text style={{ fontSize: 12, lineHeight: 1.3 }} type="secondary">
-                                                                Needs translation in the selected language.
-                                                            </Text>
-                                                        </Flex>
-                                                    </Flex>
-                                                </Card>
-                                            ) : null}
-
-                                        </Flex>
-                                    ),
-                                    title: t('filters'),
-                                });
-                            }}
+                            onClick={() => setIsStatusLegendSheetOpen(true)}
                             size="mini"
                             style={{ flexShrink: 0, minWidth: 24, paddingInline: 0 }}
                         >
@@ -2191,7 +2187,6 @@ export default function MobileMenuScreen() {
                                                         <Text type="secondary">
                                                             {items.length} items
                                                         </Text>
-                                                        {categorySummaryById.get(id)?.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
                                                     </Flex>
                                                 ) : null}
                                             </Flex>
@@ -2400,6 +2395,104 @@ export default function MobileMenuScreen() {
                     subTitle={failureMessage}
                     title={t('processingFailedTitle')}
                 />
+            </Popup>
+
+            <Popup
+                bodyStyle={{ maxHeight: '72vh', overflowX: 'hidden', padding: 0 }}
+                onMaskClick={() => setIsStatusLegendSheetOpen(false)}
+                visible={isStatusLegendSheetOpen}
+            >
+                <Flex style={{ maxHeight: '72vh' }} vertical>
+                    <Flex
+                        align="center"
+                        justify="space-between"
+                        style={{
+                            backgroundColor: token.colorBgContainer,
+                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                            minHeight: 52,
+                            padding: '6px 12px',
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 5,
+                        }}
+                    >
+                        <div style={{ minHeight: 40, minWidth: 40 }} />
+                        <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>
+                            {t('filters')}
+                        </Title>
+                        <Button
+                            fill="none"
+                            onClick={() => setIsStatusLegendSheetOpen(false)}
+                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                        >
+                            <LuX size={18} />
+                        </Button>
+                    </Flex>
+
+                    <Flex gap={10} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Card size="small" style={{ backgroundColor: token.colorBgContainer, margin: 0 }}>
+                            <Flex gap={8} vertical>
+                                <Text strong>Visibility status</Text>
+                                <Flex align="center" gap={10}>
+                                    <StatusDot color={token.colorSuccess} />
+                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                        <Text strong>{t('shownOnMenu')}</Text>
+                                        <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                                            Customers can see this on your menu.
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+                                <Flex align="center" gap={10}>
+                                    <StatusDot color={token.colorTextQuaternary} />
+                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                        <Text strong>{t('hiddenFromMenu')}</Text>
+                                        <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                                            Not shown to customers on your menu.
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+                            </Flex>
+                        </Card>
+
+                        <Card size="small" style={{ backgroundColor: token.colorBgContainer, margin: 0 }}>
+                            <Flex gap={8} vertical>
+                                <Text strong>Ordering status</Text>
+                                <Flex align="center" gap={10}>
+                                    <StatusDot color={token.colorSuccess} />
+                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                        <Text strong>{availabilityLabels.available}</Text>
+                                        <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                                            Customers can order this item now.
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+                                <Flex align="center" gap={10}>
+                                    <StatusDot color={token.colorWarning} />
+                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                        <Text strong>{availabilityLabels.unavailable}</Text>
+                                        <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                                            Still visible, but customers cannot order it.
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+                            </Flex>
+                        </Card>
+
+                        {activeProjectLanguages.length > 1 ? (
+                            <Card size="small" style={{ backgroundColor: token.colorBgContainer, margin: 0 }}>
+                                <Flex align="center" gap={10}>
+                                    <StatusDot color={token.colorPrimary} />
+                                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                        <Text strong>{t('missingTranslation')}</Text>
+                                        <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.3 }}>
+                                            Needs translation in the selected language.
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                    </Flex>
+                </Flex>
             </Popup>
 
             <Popup
@@ -2723,6 +2816,7 @@ export default function MobileMenuScreen() {
                     setCategorySheetInitialCategoryId(null);
                 })}
                 onDelete={handleCategoryDelete}
+                onGenerateContent={handleCategoryGenerateContent}
                 onUpdate={handleCategoryUpdate}
                 onReorder={handleCategoryReorder}
                 onReorderItems={handleCategoryItemReorder}

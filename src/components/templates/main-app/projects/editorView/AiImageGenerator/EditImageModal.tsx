@@ -218,9 +218,10 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                 style={{
                     position: 'relative',
                     padding: token.paddingSM,
-                    minWidth: 180,
-                    flex: '1 1 calc(50% - 8px)',
-                    maxWidth: 'calc(50% - 4px)',
+                    minWidth: isMobile ? 0 : 180,
+                    flex: isMobile ? '0 0 calc(50% - 4px)' : '1 1 calc(50% - 8px)',
+                    width: isMobile ? 'calc(50% - 4px)' : undefined,
+                    maxWidth: isMobile ? 'calc(50% - 4px)' : 'calc(50% - 4px)',
                     borderRadius: 12,
                     textAlign: 'left',
                     transition: 'all 0.2s ease',

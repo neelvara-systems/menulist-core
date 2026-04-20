@@ -76,6 +76,15 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
     const [domainLinkCopied, setDomainLinkCopied] = useState(false);
 
     const subdomainUrl = storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null;
+    const currentSubdomain = (storeDetails?.subdomain || '').trim().toLowerCase();
+    const normalizedInputSubdomain = subdomainValue.trim().toLowerCase();
+    const hasSubdomainChanged = normalizedInputSubdomain !== currentSubdomain;
+    const canCheckSubdomain = normalizedInputSubdomain.length >= 3 && (!storeDetails?.subdomain || hasSubdomainChanged);
+    const canSaveSubdomain = Boolean(
+        availability?.available
+        && availability?.normalized === normalizedInputSubdomain
+        && (!storeDetails?.subdomain || hasSubdomainChanged)
+    );
     const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
     const normalizedDomainInput = domainInput.trim().toLowerCase();
     const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
@@ -261,8 +270,8 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                          */}
                         {storeDetails?.lastPublishedAt ? (
                             <Alert
-                                message="Your web address is set."
-                                description="This is your permanent link — customers, QR codes, and search results all point here. It cannot be changed after publish."
+                                message={t('subdomainLockedMessage')}
+                                description={t('subdomainLockedDescription')}
                                 showIcon
                                 type="info"
                             />
@@ -273,7 +282,10 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                                     placeholder={t('subdomainPlaceholder')}
                                     value={subdomainValue}
                                     onBlur={(event) => void checkAvailability(event.target.value)}
-                                    onChange={(event) => setSubdomainValue(event.target.value.toLowerCase().trim())}
+                                    onChange={(event) => {
+                                        setSubdomainValue(event.target.value.toLowerCase().trim());
+                                        setAvailability(null);
+                                    }}
                                 />
                                 <Text type="secondary">{t('subdomainHelp')}</Text>
 
@@ -285,21 +297,22 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
 
                                 <Space wrap>
                                     <Button
-                                        disabled={!subdomainValue || subdomainValue.length < 3}
+                                        disabled={!canCheckSubdomain}
                                         icon={<LuSearch />}
                                         loading={checkingSubdomain}
                                         onClick={() => void checkAvailability(subdomainValue)}
                                     >
                                         {t('checkAvailability')}
                                     </Button>
-                                    <Button
-                                        disabled={!availability?.available}
-                                        loading={savingSubdomain}
-                                        onClick={() => void saveSubdomain()}
-                                        type="primary"
-                                    >
-                                        {t('saveChanges')}
-                                    </Button>
+                                    {canSaveSubdomain ? (
+                                        <Button
+                                            loading={savingSubdomain}
+                                            onClick={() => void saveSubdomain()}
+                                            type="primary"
+                                        >
+                                            {t('saveChanges')}
+                                        </Button>
+                                    ) : null}
                                 </Space>
 
                                 {!storeDetails?.subdomain ? (
@@ -425,14 +438,15 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                             >
                                 {t('checkAvailability')}
                             </Button>
-                            <Button
-                                disabled={!canConnectDomain}
-                                loading={domainLoading}
-                                onClick={() => void handleAddDomain()}
-                                type="primary"
-                            >
-                                {t('connectDomain')}
-                            </Button>
+                            {canConnectDomain ? (
+                                <Button
+                                    loading={domainLoading}
+                                    onClick={() => void handleAddDomain()}
+                                    type="primary"
+                                >
+                                    {t('connectDomain')}
+                                </Button>
+                            ) : null}
                         </Space>
                     </Space>
                 )}

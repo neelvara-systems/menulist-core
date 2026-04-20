@@ -93,68 +93,60 @@ export default function ManageLanguagesSheet({
         const targetLang = GlobalLanguagesList.find((lang) => lang.code === pendingLanguageCode);
         if (!targetLang) return;
 
-        void Dialog.confirm({
-            cancelText: t('cancel'),
-            confirmText: t('addLanguageAction'),
-            content: `${targetLang.nativeName || targetLang.name} will be added and translated across this ${labels.offeringPhrase}. This can take a little time.`,
-            onConfirm: async () => {
-                setIsSaving(true);
-                try {
-                    let updated = removeObjRef(projectData);
-                    updated.languages = [...projectLanguages, targetLang.code];
+        setIsSaving(true);
+        try {
+            let updated = removeObjRef(projectData);
+            updated.languages = [...projectLanguages, targetLang.code];
 
-                    const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
-                    let translatedFilesCount = 0;
+            const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
+            let translatedFilesCount = 0;
 
-                    for (const file of filesToTranslate) {
-                        const fileLanguages = file.extractedData?.data?.languages || [];
-                        const hasLanguageOnFile = fileLanguages.some((language) => language.code === targetLang.code);
+            for (const file of filesToTranslate) {
+                const fileLanguages = file.extractedData?.data?.languages || [];
+                const hasLanguageOnFile = fileLanguages.some((language) => language.code === targetLang.code);
 
-                        if (!hasLanguageOnFile && file.extractedData?.data) {
-                            file.extractedData.data.languages = [
-                                ...fileLanguages,
-                                {
-                                    code: targetLang.code,
-                                    isPrimary: false,
-                                    name: targetLang.name,
-                                },
-                            ];
-                        }
-
-                        const result = await translateFile(
-                            updated,
-                            file,
-                            targetLang,
-                            sourceLang,
-                            AI_ACTIONS_TYPES.LANGUAGE_ADDITION
-                        );
-
-                        if (result.messageType === 'success') {
-                            translatedFilesCount += 1;
-                        }
-
-                        updated = result.updatedProject;
-                    }
-
-                    if (filesToTranslate.length > 0 && translatedFilesCount === 0) {
-                        throw new Error('No translations were merged for the added language.');
-                    }
-
-                    onSaved(updated);
-                    setPendingLanguageCode('');
-                    Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
-                } catch (error) {
-                    if (error instanceof AICapacityError) {
-                        Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
-                    } else {
-                        Toast.show({ content: t('languageAddFailed'), duration: 2000 });
-                    }
-                } finally {
-                    setIsSaving(false);
+                if (!hasLanguageOnFile && file.extractedData?.data) {
+                    file.extractedData.data.languages = [
+                        ...fileLanguages,
+                        {
+                            code: targetLang.code,
+                            isPrimary: false,
+                            name: targetLang.name,
+                        },
+                    ];
                 }
-            },
-            title: t('addLanguage'),
-        });
+
+                const result = await translateFile(
+                    updated,
+                    file,
+                    targetLang,
+                    sourceLang,
+                    AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+                );
+
+                if (result.messageType === 'success') {
+                    translatedFilesCount += 1;
+                }
+
+                updated = result.updatedProject;
+            }
+
+            if (filesToTranslate.length > 0 && translatedFilesCount === 0) {
+                throw new Error('No translations were merged for the added language.');
+            }
+
+            onSaved(updated);
+            setPendingLanguageCode('');
+            Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
+        } catch (error) {
+            if (error instanceof AICapacityError) {
+                Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+            } else {
+                Toast.show({ content: t('languageAddFailed'), duration: 2000 });
+            }
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleMakePrimary = async (languageCode: string) => {

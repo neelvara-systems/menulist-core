@@ -219,6 +219,8 @@
         "subdomainPlaceholder": "your-business",
         "subdomainHelp": "This is your unique link on MenuList. Customers access your menu at yourname.menulist.ai. Use lowercase letters, numbers, and hyphens only.",
         "subdomainSetupNote": "This is usually created from your business name during setup. You can change it here if needed.",
+        "subdomainLockedMessage": "Your web address is set.",
+        "subdomainLockedDescription": "This is your permanent link — customers, QR codes, and search results all point here. It cannot be changed after publish.",
         "minChars": "Must be at least 3 characters",
         "maxChars": "Must be at most 63 characters",
         "subdomainPattern": "Only lowercase letters, numbers, and hyphens. Cannot start or end with a hyphen.",
@@ -1552,9 +1554,11 @@
         "refreshDescriptionsCta": "Refresh descriptions",
         "refreshDescriptionsTitle": "Refresh descriptions?",
         "generateContent": "Generate Content",
+        "generateTranslations": "Generate Translations",
         "refreshAiText": "Regenerate content",
         "refreshTranslation": "Refresh translation",
         "regenerateContent": "Regenerate Content",
+        "contentActionHelper": "Adds missing description and translations for this item.",
         "contentUpdated": "Content updated",
         "contentGenerationFailed": "Content generation failed",
         "regenerateDescription": "Regenerate description",
@@ -2472,6 +2476,33 @@
         },
         "LanguageSwitcher": {
             "label": "Language"
+        }
+    },
+    "UseMenuList": {
+        "qrSectionTitle": "QR Codes",
+        "storeMenuQrTitle": "Store Menu QR",
+        "storeMenuQrDescription": "Primary — tables, signage, packaging",
+        "businessProfileQrTitle": "Business Profile QR",
+        "businessProfileQrDescription": "Instagram bio, Google listing, flyers",
+        "projectMenuQrTitle": "Project Menu QR (advanced)",
+        "projectMenuQrDescription": "Deep link to \"{projectName}\"",
+        "projectFallback": "menu",
+        "outletQrSectionHelper": "Other locations — print an outlet-scoped Store Menu QR",
+        "downloadQrButton": "Download QR"
+    },
+    "Projects": {
+        "divergence": {
+            "title": "Heads up — two customer paths will diverge",
+            "namingLineBefore": "You're naming this {offeringLower} ",
+            "namingLineAfter": ", so its URL will be ",
+            "defaultLineBefore": "But the default {offeringLower} is currently ",
+            "defaultLineAfter": ". Customers will see:",
+            "bulletTypingBefore": "typing ",
+            "bulletArrow": " → ",
+            "bulletTappingBefore": "tapping \"View Menu\" elsewhere",
+            "closingGuidance": "If that's not what you want, set this as the default.",
+            "setAsDefaultButton": "Set \"{name}\" as default",
+            "keepAsIsButton": "Keep as-is"
         }
     }
 }

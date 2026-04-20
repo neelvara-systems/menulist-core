@@ -399,28 +399,27 @@ export const updateSuppressionStats = async (
             const docRef = getCampaignsSummaryDocRef(session);
             const docSnap = await getDoc(docRef);
 
-            const currentStats = docSnap.exists()
-                ? (docSnap.data() as CampaignsSummaryDocument).stats
-                : {
-                    totalCompleted: 0,
-                    totalSkipped: 0,
-                    typeSkipCounts: {}
-                };
+            const summaryDoc = docSnap.exists() ? (docSnap.data() as Partial<CampaignsSummaryDocument>) : null;
+            const currentStats = summaryDoc?.stats ?? {
+                totalCompleted: 0,
+                totalSkipped: 0,
+                typeSkipCounts: {}
+            };
 
             const updatedStats = {
                 ...currentStats,
                 totalCompleted: action === 'completed'
-                    ? currentStats.totalCompleted + 1
-                    : currentStats.totalCompleted,
+                    ? (currentStats.totalCompleted || 0) + 1
+                    : (currentStats.totalCompleted || 0),
                 totalSkipped: action === 'skipped'
-                    ? currentStats.totalSkipped + 1
-                    : currentStats.totalSkipped,
+                    ? (currentStats.totalSkipped || 0) + 1
+                    : (currentStats.totalSkipped || 0),
                 lastCampaignDate: new Date().toISOString().split('T')[0],
                 typeSkipCounts: {
-                    ...currentStats.typeSkipCounts,
+                    ...(currentStats.typeSkipCounts || {}),
                     [type]: action === 'skipped'
-                        ? ((currentStats.typeSkipCounts[type] || 0) + 1)
-                        : (currentStats.typeSkipCounts[type] || 0)
+                        ? (((currentStats.typeSkipCounts || {})[type] || 0) + 1)
+                        : ((currentStats.typeSkipCounts || {})[type] || 0)
                 }
             };
 
@@ -457,31 +456,82 @@ export const completeCampaign = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            // Record export (this also updates campaign status)
-            const exportEvent = await recordExport({
+            const session = await getActiveSession();
+            const now = Timestamp.now();
+            const today = new Date().toISOString().split('T')[0];
+            const campaignDocRef = getCampaignDocRef(session, campaignId);
+            const campaignDocSnap = await getDoc(campaignDocRef);
+            const campaignsSummaryRef = getCampaignsSummaryDocRef(session);
+            const summarySnap = await getDoc(campaignsSummaryRef);
+
+            if (!campaignDocSnap.exists()) {
+                throw new Error('Campaign not found');
+            }
+
+            // Mark campaign completed
+            await setDoc(campaignDocRef, {
+                status: 'completed',
+                updatedAt: now,
+                resolvedAt: now,
+            }, { merge: true });
+
+            // Record export event
+            const timestamp = Date.now().toString(36);
+            const exportId = `${session.tId}-${timestamp}-${session.sId}`;
+            const exportEvent = await requestBodyComposer({
+                id: exportId,
+                tId: session.tId,
+                sId: session.sId,
                 campaignId,
                 projectId,
                 surface,
                 method,
-                menuLinkWithTracking
-            });
+                menuLinkWithTracking,
+                exportedAt: now,
+            }) as CampaignExport;
+            await setDoc(doc(getExportsCollectionRef(session), exportId), exportEvent);
 
-            // Update stats
-            await updateSuppressionStats(campaignType, 'completed');
+            const summaryData = summarySnap.exists()
+                ? (summarySnap.data() as Partial<CampaignsSummaryDocument>)
+                : null;
+            const currentStats = summaryData?.stats ?? {
+                totalCompleted: 0,
+                totalSkipped: 0,
+                typeSkipCounts: {},
+            };
+            const currentToday = summaryData?.today?.date === today
+                ? summaryData.today
+                : { date: today, primary: undefined, operational: [], isEmpty: true };
+            const nextPrimary = currentToday.primary?.campaignId === campaignId
+                ? undefined
+                : currentToday.primary;
+            const nextOperational = (currentToday.operational || []).filter(
+                campaign => campaign.campaignId !== campaignId
+            );
+            const nextToday = {
+                date: today,
+                primary: nextPrimary,
+                operational: nextOperational,
+                isEmpty: !nextPrimary && nextOperational.length === 0,
+            };
+            const nextStats = {
+                ...currentStats,
+                totalCompleted: (currentStats.totalCompleted || 0) + 1,
+                totalSkipped: currentStats.totalSkipped || 0,
+                lastCampaignDate: today,
+                typeSkipCounts: currentStats.typeSkipCounts || {},
+            };
 
-            // Refresh today's summary (remove completed campaign)
-            const todayData = await getTodayCampaigns();
-            if (todayData) {
-                const newPrimary = todayData.today.primary?.campaignId === campaignId
-                    ? undefined
-                    : todayData.today.primary;
-                const newOperational = todayData.today.operational.filter(
-                    c => c.campaignId !== campaignId
-                );
-                await syncTodayCampaignsToSummary(newPrimary, newOperational);
-            }
+            await setDoc(campaignsSummaryRef, {
+                lastUpdated: serverTimestamp(),
+                stats: nextStats,
+                today: {
+                    ...nextToday,
+                    primary: nextToday.primary || null,
+                },
+            }, { merge: true });
 
-            return { exportEvent };
+            return { exportEvent, today: nextToday };
         },
         { campaignId, projectId, campaignType, surface, method },
         "completeCampaign"
@@ -498,25 +548,78 @@ export const completeCampaign = async (
 export const skipCampaign = async (campaignId: string, campaignType: CampaignType) => {
     return await apiCallComposer(
         async () => {
-            // Update campaign status (may auto-suppress)
-            const updatedCampaign = await updateCampaignStatus(campaignId, 'skipped');
+            const session = await getActiveSession();
+            const now = Timestamp.now();
+            const today = new Date().toISOString().split('T')[0];
+            const campaignDocRef = getCampaignDocRef(session, campaignId);
+            const campaignDocSnap = await getDoc(campaignDocRef);
+            const campaignsSummaryRef = getCampaignsSummaryDocRef(session);
+            const summarySnap = await getDoc(campaignsSummaryRef);
 
-            // Update stats
-            await updateSuppressionStats(campaignType, 'skipped');
-
-            // Refresh today's summary (remove skipped campaign)
-            const todayData = await getTodayCampaigns();
-            if (todayData) {
-                const newPrimary = todayData.today.primary?.campaignId === campaignId
-                    ? undefined
-                    : todayData.today.primary;
-                const newOperational = todayData.today.operational.filter(
-                    c => c.campaignId !== campaignId
-                );
-                await syncTodayCampaignsToSummary(newPrimary, newOperational);
+            if (!campaignDocSnap.exists()) {
+                throw new Error('Campaign not found');
             }
 
-            return updatedCampaign;
+            const campaign = campaignDocSnap.data() as Campaign;
+            const nextSkipCount = (campaign.skipCount || 0) + 1;
+            const shouldSuppress = nextSkipCount >= 2;
+            const status: CampaignStatus = shouldSuppress ? 'suppressed' : 'skipped';
+            const updateData: Partial<Campaign> = {
+                status,
+                skipCount: nextSkipCount,
+                updatedAt: now,
+                resolvedAt: now,
+                suppressedUntil: shouldSuppress
+                    ? Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))
+                    : undefined,
+            };
+            await setDoc(campaignDocRef, updateData, { merge: true });
+
+            const summaryData = summarySnap.exists()
+                ? (summarySnap.data() as Partial<CampaignsSummaryDocument>)
+                : null;
+            const currentStats = summaryData?.stats ?? {
+                totalCompleted: 0,
+                totalSkipped: 0,
+                typeSkipCounts: {},
+            };
+            const currentToday = summaryData?.today?.date === today
+                ? summaryData.today
+                : { date: today, primary: undefined, operational: [], isEmpty: true };
+            const nextPrimary = currentToday.primary?.campaignId === campaignId
+                ? undefined
+                : currentToday.primary;
+            const nextOperational = (currentToday.operational || []).filter(
+                current => current.campaignId !== campaignId
+            );
+            const nextToday = {
+                date: today,
+                primary: nextPrimary,
+                operational: nextOperational,
+                isEmpty: !nextPrimary && nextOperational.length === 0,
+            };
+            const currentTypeSkipCounts = currentStats.typeSkipCounts || {};
+            const nextStats = {
+                ...currentStats,
+                totalCompleted: currentStats.totalCompleted || 0,
+                totalSkipped: (currentStats.totalSkipped || 0) + 1,
+                lastCampaignDate: today,
+                typeSkipCounts: {
+                    ...currentTypeSkipCounts,
+                    [campaignType]: (currentTypeSkipCounts[campaignType] || 0) + 1,
+                },
+            };
+
+            await setDoc(campaignsSummaryRef, {
+                lastUpdated: serverTimestamp(),
+                stats: nextStats,
+                today: {
+                    ...nextToday,
+                    primary: nextToday.primary || null,
+                },
+            }, { merge: true });
+
+            return { ...(campaign as Campaign), ...updateData, today: nextToday };
         },
         { campaignId, campaignType },
         "skipCampaign"
@@ -719,78 +822,64 @@ export const getMenuItemsForScreen = async (
             return extractedItems;
         };
 
-        // 1. Prefer default active project metadata
-        const metadataRef = collection(
+        // T3-N-04: project docs live at the 3-segment path
+        // `projects/{tenantId}/{storeId}` — querying that collection directly
+        // replaces the prior invalid 4-segment `.../metadata` path that would
+        // have thrown at runtime. Project data and the discriminators we
+        // filter on (`isDefault`, `active`, `deleted`) live on the same doc,
+        // so the former two-step "metadata lookup → data fetch" collapses
+        // into a single query — saves one Firestore read per screen load.
+        const projectsRef = collection(
             firebaseClient,
-            `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}/metadata`
+            `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`
         );
-        const defaultMetaQuery = query(
-            metadataRef,
+        const defaultQuery = query(
+            projectsRef,
             where('deleted', '==', false),
             where('active', '==', true),
             where('isDefault', '==', true),
             limit(1)
         );
-        let metaSnap = await getDocs(defaultMetaQuery);
+        let projectSnap = await getDocs(defaultQuery);
 
         // Fallback: first active project if default not found
-        if (metaSnap.empty) {
-            const activeMetaQuery = query(
-                metadataRef,
+        if (projectSnap.empty) {
+            const activeQuery = query(
+                projectsRef,
                 where('deleted', '==', false),
                 where('active', '==', true),
                 limit(1)
             );
-            metaSnap = await getDocs(activeMetaQuery);
+            projectSnap = await getDocs(activeQuery);
         }
 
-        if (metaSnap.empty) return [];
+        if (projectSnap.empty) return [];
 
-        const projectMeta = metaSnap.docs[0].data();
-        const projectId = projectMeta.projectId || metaSnap.docs[0].id;
+        const chosenDoc = projectSnap.docs[0];
+        const projectId = chosenDoc.id;
 
-        // 2. Fetch project data
-        const dataRef = doc(
-            firebaseClient,
-            `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`,
-            projectId
-        );
-        const dataSnap = await getDoc(dataRef);
-
-        if (!dataSnap.exists()) return [];
-
-        // 3. Extract items from chosen project
-        const items = extractMenuItemsFromProject(dataSnap.data());
+        // 2. Extract items from chosen project (data already in snapshot)
+        const items = extractMenuItemsFromProject(chosenDoc.data());
         if (items.length > 0) {
             return items;
         }
 
-        // 4. Defensive fallback: if chosen project has no items, try a few active projects
+        // 3. Defensive fallback: if chosen project has no items, try a few active projects
         // (prevents "Preparing your menu..." when default project is empty)
-        const fallbackMetaQuery = query(
-            metadataRef,
+        const fallbackQuery = query(
+            projectsRef,
             where('deleted', '==', false),
             where('active', '==', true),
             limit(5)
         );
-        const fallbackMetaSnap = await getDocs(fallbackMetaQuery);
+        const fallbackSnap = await getDocs(fallbackQuery);
 
-        for (const fallbackDoc of fallbackMetaSnap.docs) {
-            const fallbackMeta = fallbackDoc.data();
-            const fallbackProjectId = fallbackMeta.projectId || fallbackDoc.id;
-            if (!fallbackProjectId || fallbackProjectId === projectId) continue;
+        for (const fallbackDoc of fallbackSnap.docs) {
+            if (fallbackDoc.id === projectId) continue;
 
-            const fallbackDataRef = doc(
-                firebaseClient,
-                `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`,
-                fallbackProjectId
-            );
-            const fallbackDataSnap = await getDoc(fallbackDataRef);
-            if (!fallbackDataSnap.exists()) continue;
-
-            const fallbackItems = extractMenuItemsFromProject(fallbackDataSnap.data());
+            const fallbackItems = extractMenuItemsFromProject(fallbackDoc.data());
             if (fallbackItems.length > 0) {
-                console.log(`[getMenuItemsForScreen] Fallback project used: ${fallbackProjectId}`);
+                console.log(`[getMenuItemsForScreen] Fallback project used: ${fallbackDoc.id}`);
                 return fallbackItems;
             }
         }

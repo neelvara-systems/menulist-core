@@ -14,6 +14,7 @@ import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectInstalled } from './installDetection';
 import { fireInstalledEventOnce, PROMPT_SHOWN_AT_KEY_PREFIX } from './installTracker';
 import { detectPlatform } from './platformDetection';
+import { detectInstallSurface } from './surfaceDetection';
 
 const OPENED_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_openedFired_';
 
@@ -68,6 +69,10 @@ export async function detectAndTrackAppOpen(
   }
 
   const { platform } = detectPlatform();
+  // T2-N-03 / §6 rule 4: tag the launch surface. For installed PWAs this is
+  // the pathname the manifest's start_url resolved to — lets the dashboard
+  // verify the install_context == launch_context invariant (D-10).
+  const launchSurface = detectInstallSurface();
 
   try {
     await trackEvent(TrackingEvent.CUSTOMER_APP_OPENED, {
@@ -75,6 +80,7 @@ export async function detectAndTrackAppOpen(
       tenantId,
       sessionId: getSessionId(),
       pwaPlatform: platform,
+      pwaInstallSurface: launchSurface,
     });
 
     // iOS install inference — closes the "iOS never fires appinstalled" gap.
@@ -91,8 +97,8 @@ export async function detectAndTrackAppOpen(
         const promptShownAt = promptShownRaw ? parseInt(promptShownRaw, 10) : 0;
         const source =
           Number.isFinite(promptShownAt) &&
-          promptShownAt > 0 &&
-          Date.now() - promptShownAt < IOS_INSTALL_INFERENCE_WINDOW_MS
+            promptShownAt > 0 &&
+            Date.now() - promptShownAt < IOS_INSTALL_INFERENCE_WINDOW_MS
             ? 'ios-inferred'
             : 'ios-standalone';
 

@@ -1,5 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Button, Dropdown, Flex, Modal, Typography, theme } from 'antd';
+import { Button, Dropdown, Flex, Modal, Tag, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 // NOTE: Segmented and AnimatePresence removed - archive tabs functionality deprecated
@@ -64,6 +64,7 @@ const CatalogCard = ({
     const [isHovered, setIsHovered] = useState(false);
     const avatarColor = getAvatarColor(project.name);
     const initials = getInitials(project.name);
+    const isInactive = (project as any).active === false;
 
     const handleMenuClick = (info: { domEvent: React.MouseEvent }, action: () => void) => {
         info.domEvent.stopPropagation();
@@ -138,6 +139,20 @@ const CatalogCard = ({
                     }}>
                         <LuCheck size={12} color="#fff" />
                     </div>
+                )}
+
+                {isInactive && (
+                    <Tag
+                        color="warning"
+                        style={{
+                            position: 'absolute',
+                            top: 8,
+                            left: isSelected ? 34 : 8,
+                            margin: 0,
+                        }}
+                    >
+                        Inactive
+                    </Tag>
                 )}
 
                 {/* Avatar */}
@@ -294,6 +309,7 @@ export const ProjectSelector = ({
             {/* Trigger Button */}
             <Button type="default" icon={<LuFolderOpen size={18} />} onClick={() => setModalOpen(true)}>
                 {selectedProject ? selectedProject.name : `Select ${offeringName}`}
+                {selectedProject && (selectedProject as any).active === false ? ' (Inactive)' : ''}
                 <IoChevronDown style={{ marginLeft: 8 }} />
             </Button>
 

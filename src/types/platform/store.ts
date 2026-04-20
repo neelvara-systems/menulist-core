@@ -113,6 +113,29 @@ export type StoreDataType = {
     domainVerified?: boolean; // DNS verification status
     primaryProjectId?: string; // Default project to show on domain
 
+    /** T1-N-05 / A-03 PUBLIC-ROUTING-DOCTRINE: admin-tier subdomain rename
+     *  chain. The owner-facing flow blocks subdomain renames after first
+     *  publish (G-08); the only way to rename is the support-tier
+     *  `/api/admin/subdomains/rename` endpoint. Each entry records the old
+     *  subdomain value plus a 12-month expiry so legacy URLs 301 to the
+     *  current subdomain during the window. After expiry the old subdomain
+     *  stops resolving and may be claimed by another tenant.
+     *
+     *  @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-03, T1-N-05
+     */
+    previousSubdomains?: Array<{
+        /** The prior subdomain value, lowercased. */
+        subdomain: string;
+        /** When the admin-tier rename happened. */
+        renamedAt: Timestamp;
+        /** When this old-subdomain redirect stops resolving. */
+        expiresAt: Timestamp;
+        /** Free-form justification for the support log. */
+        reason?: string;
+        /** Owner-facing acknowledgement token or support-ticket reference. */
+        ackRef?: string;
+    }>;
+
     // Time Slot Presets for category time-based visibility
     timeSlotPresets?: TimeSlotPreset[];
 

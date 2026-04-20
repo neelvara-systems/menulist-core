@@ -61,6 +61,38 @@ function normalizeReferenceImages(images: unknown): UserUploadedFileType[] {
     return Array.isArray(images) ? images : [];
 }
 
+function toDropdownItem(
+    item: ExtractedDataItem,
+    file: ProjectFileType,
+    language: string
+): ItemForDropdown {
+    return {
+        ...item,
+        attributesList: Array.isArray(item.attributes) ? item.attributes.map(attr => attr.name?.[language] || attr.id || '') : [],
+        categoryName: file.extractedData.data.categories.find(cat => cat.id === item.category)?.name?.[language] || 'Uncategorized',
+        descriptionLine: item.description?.[language] || '',
+        fileId: file.uid,
+        id: item.id,
+        itemName: item.name?.[language] || item.id || '',
+    };
+}
+
+function areDropdownItemsEqual(
+    prevItem: ItemForDropdown | null | undefined,
+    nextItem: ItemForDropdown | null | undefined
+): boolean {
+    if (prevItem === nextItem) return true;
+    if (!prevItem || !nextItem) return false;
+
+    return prevItem.id === nextItem.id &&
+        prevItem.fileId === nextItem.fileId &&
+        prevItem.itemName === nextItem.itemName &&
+        prevItem.categoryName === nextItem.categoryName &&
+        prevItem.descriptionLine === nextItem.descriptionLine &&
+        JSON.stringify(prevItem.attributesList || []) === JSON.stringify(nextItem.attributesList || []) &&
+        JSON.stringify(normalizeReferenceImages(prevItem.images)) === JSON.stringify(normalizeReferenceImages(nextItem.images));
+}
+
 const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     open,
     onClose,
@@ -147,7 +179,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     const categoryName = categoryMap[itm.category] || 'Uncategorized';
                     const description = itm.description?.[language] || '';
                     if (itemId) {
-                        const itemObj: ItemForDropdown = {
+                        itemsForDropdown.push({
                             ...itm,
                             id: itemId,
                             itemName,
@@ -155,9 +187,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                             attributesList: Array.isArray(itm.attributes) ? itm.attributes.map(attr => attr.name?.[language] || attr.id || '') : [],
                             descriptionLine: description,
                             fileId: file.uid
-                        };
-
-                        itemsForDropdown.push(itemObj);
+                        });
                     }
                 });
             }
@@ -214,28 +244,20 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             });
             if (file) {
                 const item = file.extractedData.data.items.find(item => item.id === selectedItem.id)
+                if (!item) return;
                 const language = projectData?.languages?.[0] || 'en';
-                const itemName = item.name?.[language] || item.id || '';
-                const categoryName = file.extractedData.data.categories.find(cat => cat.id === item.category)?.name?.[language] || 'Uncategorized';
-                const description = item.description?.[language] || '';
-                setSelectedItem({
-                    ...item,
-                    itemName,
-                    categoryName,
-                    attributesList: item.attributes ? item.attributes?.map(attr => attr.name?.[language] || attr.id || '') || [] : [],
-                    descriptionLine: description,
-                    fileId: file.uid
-                });
+                const nextSelectedItem = toDropdownItem(item, file, language);
+                setSelectedItem((prev) => areDropdownItemsEqual(prev, nextSelectedItem) ? prev : nextSelectedItem);
             }
         }
-    }, [activeProject])
+    }, [activeProject, projectData?.languages, selectedItem])
 
     useEffect(() => {
         if (!open) return;
 
         if (itemToUpdate?.id) {
             const matchedItem = items.find((item) => item.id === itemToUpdate.id) || null;
-            setSelectedItem(matchedItem ? removeObjRef(matchedItem) : null);
+            setSelectedItem((prev) => areDropdownItemsEqual(prev, matchedItem || undefined) ? prev : (matchedItem ? removeObjRef(matchedItem) : null));
             setGenerationConfig((prev) => ({
                 ...prev,
                 referanceImages: normalizeReferenceImages(matchedItem?.images),
@@ -247,7 +269,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         if (selectedItem?.id) {
             const refreshedItem = items.find((item) => item.id === selectedItem.id) || null;
             if (refreshedItem) {
-                setSelectedItem(removeObjRef(refreshedItem));
+                setSelectedItem((prev) => areDropdownItemsEqual(prev, refreshedItem) ? prev : removeObjRef(refreshedItem));
             }
         }
     }, [itemToUpdate?.id, items, open, selectedItem?.id]);

@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import { createCampaign, getSuppressedCampaignTypes, getTodayCampaigns } from "@database/campaigns";
+import { createCampaign, getSuppressedCampaignTypes, getTodayCampaigns, syncTodayCampaignsToSummary } from "@database/campaigns";
 import { getProjectData } from "@database/projects";
 import { generateTodayCampaigns, MenuItemForCampaign, ProjectContext } from "@lib/campaigns/engine";
 import { logger } from "@lib/monitoring/logger";
@@ -200,6 +200,12 @@ export const POST = withAuth(async (request, session) => {
                 campaignId: campaign.id
             });
         }
+
+        // Keep Today UI in sync: all Today surfaces read from campaignsSummary, not raw campaigns docs.
+        await syncTodayCampaignsToSummary(
+            persistedCampaigns.primary,
+            persistedCampaigns.operational
+        );
 
         return NextResponse.json({
             data: persistedCampaigns,

@@ -137,6 +137,19 @@ export enum TrackingEvent {
   // signal for deciding when to promote a "Browse all menus" affordance.
   PROJECT_SWITCH = 'project_switch',
 
+  // T5-N-02 / §11 PUBLIC-ROUTING-DOCTRINE: G-08 subdomain immutability guard.
+  // Fires server-side when an owner attempts to mutate subdomain after first
+  // publish and the guard blocks it. Key security/support signal — repeated
+  // attempts may indicate confusion or attempted circumvention.
+  SUBDOMAIN_MUTATION_BLOCKED = 'subdomain_mutation_blocked',
+
+  // T5-N-03 / §11 PUBLIC-ROUTING-DOCTRINE: G-11 manifest degradation via A-12
+  // fallback ladder. Fires when the original install target (project URL,
+  // outlet-scoped menu, etc.) is gone and the manifest degrades start_url to
+  // a working fallback. Measures how often the A-12 ladder actually saves
+  // customer installs from becoming 404s.
+  MANIFEST_START_URL_DEGRADED = 'manifest_start_url_degraded',
+
   // Owner-side events (lightweight, GA4-only — no Firestore writes)
   MENU_KIT_DOWNLOAD = 'menu_kit_download',  // Owner downloaded Menu Kit ZIP or shared individual asset
 
@@ -220,6 +233,37 @@ export interface TrackingData {
    * Lets the dashboard distinguish confirmed installs from heuristic/manual ones.
    */
   pwaInstallSource?: 'native' | 'ios-inferred' | 'ios-standalone' | 'unknown';
+
+  /**
+   * T2-N-03 / §6 rule 4 PUBLIC-ROUTING-DOCTRINE: which surface the customer
+   * was on when the install fired (or launched into, for OPENED events).
+   * 'obp' = tenant root, 'menu-alias' = Layer 2 `/menu`, 'project' =
+   * canonical `/{slug}` or `/{outletSlug}/{slug}`, 'unknown' = unclassifiable.
+   * Paired with G-03's per-surface manifest to verify install_context ==
+   * launch_context (D-10).
+   */
+  pwaInstallSurface?: 'obp' | 'menu-alias' | 'project' | 'unknown';
+
+  /**
+   * T5-N-01 / §11 PUBLIC-ROUTING-DOCTRINE: indicates this MENU_VIEW was
+   * resolved via R5 Layer 2 universal alias (`isMenuAliasFallback=true`)
+   * rather than Layer 1 claimed-slug match. Enables measurement of:
+   *   - Layer 1 vs Layer 2 share (are owners claiming `/menu`?)
+   *   - R5 adoption rate over time
+   *   - Whether Layer 2 is cannibalizing SEO vs serving as graceful fallback.
+   */
+  menuResolutionLayer?: 'layer1' | 'layer2';
+
+  // T5-N-03: G-11 manifest degradation via A-12 fallback ladder.
+  originalPath?: string;      // Original start_url before degradation
+  degradedTo?: string;        // Final resolved start_url after degradation
+  degradationSteps?: number;  // How many rungs down the ladder we went
+
+  // T5-N-04: G-10 project switch source extension.
+  // 'menu_alias_layer2' = customer typed /menu and got served default project.
+  // This is distinct from 'obp_secondary_card' and 'in_menu' — it captures
+  // the "latent switch" from URL typed to project rendered.
+  switchSource?: 'obp_secondary_card' | 'in_menu' | 'menu_alias_layer2' | string;
 
   // Additional properties
   [key: string]: any;         // Any other custom properties
@@ -321,6 +365,11 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           }
           if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
           if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
+          // T5-N-01: R5 Layer resolution split — lets us measure how often /menu
+          // resolves via Layer 1 (owner-claimed slug) vs Layer 2 (universal alias).
+          if (data.menuResolutionLayer) {
+            updateData[`menuResolutionLayer.${data.menuResolutionLayer}`] = 1;
+          }
         }
         break;
 
@@ -416,11 +465,16 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`hourlyOBPActionClicks.${hour}`] = 1;
         break;
 
-      case TrackingEvent.OBP_MENU_CLICK:
+      case TrackingEvent.OBP_MENU_CLICK: {
         // OBP → Menu conversion click (customer clicked "View Menu" from OBP)
+        // T2-N-02 / A-07: per-surface split so brand-OBP vs outlet-OBP
+        // conversion can be measured independently.
         updateData.totalOBPMenuClicks = 1;
         updateData[`hourlyOBPMenuClicks.${hour}`] = 1;
+        const obpSurface = data.obpSurface === 'outlet' ? 'outlet' : 'brand';
+        updateData[`obpMenuClicksBySurface.${obpSurface}`] = 1;
         break;
+      }
 
       case TrackingEvent.OBP_SHARE:
         // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
@@ -484,6 +538,11 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         if (data.pwaInstallSource) {
           updateData[`installsBySource.${data.pwaInstallSource}`] = 1;
         }
+        // T2-N-03 / §6 rule 4: per-surface install breakdown so multi-outlet
+        // tenants can measure OBP vs outlet vs project install mix.
+        if (data.pwaInstallSurface) {
+          updateData[`installsBySurface.${data.pwaInstallSurface}`] = 1;
+        }
         break;
 
       case TrackingEvent.CUSTOMER_APP_OPENED:
@@ -496,6 +555,12 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // on the owner dashboard.
         if (data.pwaPlatform) {
           updateData[`appOpensByPlatform.${data.pwaPlatform}`] = 1;
+        }
+        // T2-N-03 / §6 rule 4: per-surface app-open breakdown. Comparing
+        // installsBySurface vs appOpensBySurface over time tells us whether
+        // install_surface matches launch_surface (D-10 invariant).
+        if (data.pwaInstallSurface) {
+          updateData[`appOpensBySurface.${data.pwaInstallSurface}`] = 1;
         }
         break;
 
@@ -873,18 +938,29 @@ export const trackOBPAction = (
 };
 
 /**
- * Track when a customer clicks "View Menu" from OBP page.
- * Measures OBP→menu conversion rate — the key OBP effectiveness metric.
- * @param storeId Store ID
- * @param additionalData Optional additional tracking data
+ * Track when a customer clicks "View Menu" from an OBP surface.
+ *
+ * T2-N-02 / A-07 PUBLIC-ROUTING-DOCTRINE: `obpSurface` distinguishes the
+ * brand-level OBP (tenant root `/`) from an outlet OBP (`/{outletSlug}`).
+ * Without this split, analytics cannot tell whether customers drop off at
+ * the location-selection step or after — which is the core measurement
+ * multi-outlet tenants need.
+ *
+ * @param storeId Store ID (the specific store rendering the CTA — for
+ *                outlet OBPs this is the outlet's storeId, NOT the master).
+ * @param obpSurface 'brand' when rendering the tenant root OBP, 'outlet'
+ *                   when rendering `/{outletSlug}`.
+ * @param additionalData Optional additional tracking data.
  */
 export const trackOBPMenuClick = (
   storeId: string | number,
+  obpSurface: 'brand' | 'outlet' = 'brand',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
   return trackEvent(TrackingEvent.OBP_MENU_CLICK, {
     storeId: String(storeId),
     projectId: 'obp',
+    obpSurface,
     ...additionalData
   });
 };
@@ -927,18 +1003,23 @@ export const trackOBPShare = (
  * @param fromProjectId Optional — the project being switched FROM.
  * @param source Which surface triggered the switch.
  */
+/**
+ * T5-N-04: Extended source type includes 'menu_alias_layer2' — captures the
+ * "latent switch" when customers hit `/menu` and are served the default project
+ * via R5 Layer 2 universal alias (no project claims slug `menu`).
+ */
 export const trackProjectSwitch = (
   storeId: string | number,
   toProjectId: string,
   fromProjectId: string | null,
-  source: 'in_menu' | 'obp_secondary_card',
+  source: 'in_menu' | 'obp_secondary_card' | 'menu_alias_layer2',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
   return trackEvent(TrackingEvent.PROJECT_SWITCH, {
     storeId: String(storeId),
     projectId: toProjectId,
     fromProjectId: fromProjectId || undefined,
-    projectSwitchSource: source,
+    switchSource: source,
     ...additionalData
   });
 };

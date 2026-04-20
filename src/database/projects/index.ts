@@ -301,6 +301,78 @@ const getProjectsSummaryDocRef = async () => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// SLUG RESERVATION (T1-N-04 / A-12 PUBLIC-ROUTING-DOCTRINE)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 90 days, expressed in ms. Matches the A-12 post-deletion window during
+ * which a deleted project's slug and its previousSlugs[] entries remain
+ * reserved so a same-slug replacement can't hijack incoming QR scans.
+ */
+const SLUG_RESERVATION_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+
+/**
+ * Check whether a proposed slug is currently reserved by a project that
+ * was soft-deleted within the last 90 days.
+ *
+ * Queries the projects subcollection directly (NOT the summary, which
+ * has deleted projects removed) and walks any project with
+ * `deleted === true` AND `deletedAt > now - 90d`. A match on either the
+ * deleted project's current slug OR any of its previousSlugs[] blocks
+ * re-use of the slug.
+ *
+ * Firebase cost: 1 query per create/rename; bounded (typical store has
+ * very few deleted projects in any 90-day window). Skipped entirely
+ * when the proposed slug is empty.
+ *
+ * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-12, T1-N-04
+ */
+const isSlugReservedByRecentlyDeleted = async (
+    proposedSlug: string,
+    excludeProjectId?: string,
+): Promise<boolean> => {
+    if (!proposedSlug) return false;
+    const normalized = proposedSlug.toLowerCase();
+
+    try {
+        const dataRef = await getDataCollectionRef();
+        const deletedQuery = query(
+            dataRef,
+            where('deleted', '==', true),
+            limit(50),
+        );
+        const snapshot = await getDocs(deletedQuery);
+        const cutoffMs = Date.now() - SLUG_RESERVATION_WINDOW_MS;
+
+        for (const docSnap of snapshot.docs) {
+            if (excludeProjectId && docSnap.id === excludeProjectId) continue;
+            const data = docSnap.data() as Record<string, any>;
+
+            // Reservation only applies while inside the 90-day window.
+            const deletedAt = data?.deletedAt;
+            const deletedAtMs =
+                deletedAt?.toMillis?.() ??
+                (deletedAt instanceof Date ? deletedAt.getTime() : null);
+            if (deletedAtMs == null || deletedAtMs < cutoffMs) continue;
+
+            const currentSlug = typeof data?.slug === 'string' ? data.slug.toLowerCase() : '';
+            if (currentSlug && currentSlug === normalized) return true;
+
+            const previousSlugs: string[] = Array.isArray(data?.previousSlugs)
+                ? data.previousSlugs.filter((s: unknown) => typeof s === 'string')
+                : [];
+            if (previousSlugs.some((s) => s.toLowerCase() === normalized)) return true;
+        }
+    } catch (error) {
+        // Fail-open on infrastructure errors — create/rename validation is
+        // a best-effort guard, not a security boundary. Log for visibility.
+        console.warn('[SlugReservation] Check failed (fail-open):', error);
+    }
+
+    return false;
+};
+
+// ═══════════════════════════════════════════════════════════════
 // PROJECTS SUMMARY FUNCTIONS (Summary Document Pattern)
 // ═══════════════════════════════════════════════════════════════
 
@@ -442,6 +514,12 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             if (isReservedProjectSlug(projectSlug)) {
                 projectSlug = `${projectSlug}-menu`;
             }
+            // T1-N-04 / A-12: block reuse of any slug held by a project that
+            // was soft-deleted within the last 90 days (including its
+            // previousSlugs[] chain). Suffix with a timestamp to stay unique.
+            if (await isSlugReservedByRecentlyDeleted(projectSlug)) {
+                projectSlug = `${projectSlug}-${Date.now().toString(36)}`;
+            }
 
             // Sync to projectsSummary (1 write for efficient listing)
             // Note: Firestore rejects undefined values — omit fields that may be undefined
@@ -503,6 +581,16 @@ export const updateProjectMetadata = async (
 
                 // Only update slug if it actually changed and new slug is valid
                 if (oldSlug && newSlug !== oldSlug && newSlug && !isReservedProjectSlug(newSlug)) {
+                    // T1-N-04 / A-12: if the newly derived slug is reserved
+                    // by a project soft-deleted in the last 90 days, refuse
+                    // the rename rather than silently mutate the slug. The
+                    // owner explicitly typed a new project name; silently
+                    // appending a suffix would produce a URL they never saw.
+                    if (await isSlugReservedByRecentlyDeleted(newSlug, projectId)) {
+                        throw new Error(
+                            'This name is temporarily unavailable because a recently deleted menu used it. Please choose a different name or wait until the previous URL is released.',
+                        );
+                    }
                     const existingPrevious = currentSummary?.previousSlugs || [];
                     // Cap at 5 entries — oldest drops off (URL Routing Architecture spec)
                     const updatedPrevious = [...existingPrevious, oldSlug].slice(-5);
@@ -511,7 +599,14 @@ export const updateProjectMetadata = async (
                         previousSlugs: updatedPrevious,
                     };
                 } else if (!oldSlug && newSlug && !isReservedProjectSlug(newSlug)) {
-                    // Backfill: project had no slug, assign one now
+                    // Backfill: project had no slug, assign one now.
+                    // Same 90-day reservation check applies so backfill
+                    // cannot resurrect a just-deleted sibling's URL.
+                    if (await isSlugReservedByRecentlyDeleted(newSlug, projectId)) {
+                        throw new Error(
+                            'This name is temporarily unavailable because a recently deleted menu used it. Please choose a different name or wait until the previous URL is released.',
+                        );
+                    }
                     slugUpdate = { slug: newSlug };
                 }
             }
@@ -538,188 +633,188 @@ export const updateProjectMetadata = async (
 };
 
 const runUpdateProject = async (data: Partial<Project>) => {
-            // MOL v0 + Awareness: Fetch current state for change detection (if enabled)
-            let oldProject: Project | null = null;
-            if ((FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS || FEATURE_FLAGS.ENABLE_MCE) && data.projectId) {
-                try {
-                    const docRef = await getDataDocRef(data.projectId);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        oldProject = docSnap.data() as Project;
-                    }
-                } catch (e) {
-                    // Silent fail - don't block update
-                }
+    // MOL v0 + Awareness: Fetch current state for change detection (if enabled)
+    let oldProject: Project | null = null;
+    if ((FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS || FEATURE_FLAGS.ENABLE_MCE) && data.projectId) {
+        try {
+            const docRef = await getDataDocRef(data.projectId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                oldProject = docSnap.data() as Project;
             }
+        } catch (e) {
+            // Silent fail - don't block update
+        }
+    }
 
-            // INVARIANT: All customer-facing truth must pass through updateProject().
-            // MCE validation assumes no direct Firestore writes bypass this path.
-            // Direct writes bypassing the DAL are treated as a security breach.
-            // @see __docs__/menu-correctness-engine/menu-correctness-engine_spec.md §19
+    // INVARIANT: All customer-facing truth must pass through updateProject().
+    // MCE validation assumes no direct Firestore writes bypass this path.
+    // Direct writes bypassing the DAL are treated as a security breach.
+    // @see __docs__/menu-correctness-engine/menu-correctness-engine_spec.md §19
 
-            // MCE: Validate project data BEFORE write (client-side, < 100ms)
-            // Stamps _mce verification metadata as part of the same setDoc call.
-            // Zero extra Firebase operations. Silent fail — never blocks save.
-            // @see __docs__/menu-correctness-engine/menu-correctness-engine_impl.md §5.1
-            if (FEATURE_FLAGS.ENABLE_MCE && data.projectId) {
-                try {
-                    const { mceValidate, toMCEMetadata } = await import("@lib/mce");
-                    const result = mceValidate({
-                        projectData: data as Record<string, any>,
-                        isOutlet: !!oldProject?.masterProjectId,
-                        masterProjectId: oldProject?.masterProjectId,
-                        oldProjectData: oldProject as Record<string, any> | undefined,
-                    });
-                    // Merge verification metadata into save data
-                    (data as any)._mce = toMCEMetadata(result);
-                    // Lightweight internal logging (dev console only, no UI)
-                    console.log(`[MCE] verified=${result.verified} rules=${result.rulesPassed}/${result.rulesEvaluated} warnings=${result.warnings.length} errors=${result.errors.length}`);
-                } catch (e) {
-                    // Silent fail — MCE failure never blocks owner
-                    console.warn("[MCE] Validation failed (non-blocking):", e);
-                }
-            }
-
-            const updateData = await requestBodyComposer(data);
-            await setDoc(await getDataDocRef(data.projectId), updateData, {
-                merge: true,
+    // MCE: Validate project data BEFORE write (client-side, < 100ms)
+    // Stamps _mce verification metadata as part of the same setDoc call.
+    // Zero extra Firebase operations. Silent fail — never blocks save.
+    // @see __docs__/menu-correctness-engine/menu-correctness-engine_impl.md §5.1
+    if (FEATURE_FLAGS.ENABLE_MCE && data.projectId) {
+        try {
+            const { mceValidate, toMCEMetadata } = await import("@lib/mce");
+            const result = mceValidate({
+                projectData: data as Record<string, any>,
+                isOutlet: !!oldProject?.masterProjectId,
+                masterProjectId: oldProject?.masterProjectId,
+                oldProjectData: oldProject as Record<string, any> | undefined,
             });
+            // Merge verification metadata into save data
+            (data as any)._mce = toMCEMetadata(result);
+            // Lightweight internal logging (dev console only, no UI)
+            console.log(`[MCE] verified=${result.verified} rules=${result.rulesPassed}/${result.rulesEvaluated} warnings=${result.warnings.length} errors=${result.errors.length}`);
+        } catch (e) {
+            // Silent fail — MCE failure never blocks owner
+            console.warn("[MCE] Validation failed (non-blocking):", e);
+        }
+    }
 
-            // Instantly invalidate customer menu Vercel Data Cache (GPT FIX 1)
-            // Without this, customers may see stale prices for up to 60s after owner saves.
-            // Use the authenticated API route here so browser saves do not pull in a server
-            // action module and trigger a full app refresh/remount cycle.
-            if (data.projectId && process.env.NODE_ENV === "production") {
-                try {
-                    const [, , sId] = (data.projectId as string).split("-");
-                    void fetch("/api/revalidate/menu", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ storeId: sId }),
-                    });
-                } catch {
-                    // Silent fail — cache will self-heal via 60s TTL
-                }
+    const updateData = await requestBodyComposer(data);
+    await setDoc(await getDataDocRef(data.projectId), updateData, {
+        merge: true,
+    });
+
+    // Instantly invalidate customer menu Vercel Data Cache (GPT FIX 1)
+    // Without this, customers may see stale prices for up to 60s after owner saves.
+    // Use the authenticated API route here so browser saves do not pull in a server
+    // action module and trigger a full app refresh/remount cycle.
+    if (data.projectId && process.env.NODE_ENV === "production") {
+        try {
+            const [, , sId] = (data.projectId as string).split("-");
+            void fetch("/api/revalidate/menu", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ storeId: sId }),
+            });
+        } catch {
+            // Silent fail — cache will self-heal via 60s TTL
+        }
+    }
+
+    // Multi-Outlet: Invalidate master project cache on master save
+    // This clears the client-side in-memory cache so editor previews
+    // for outlet projects immediately reflect master changes.
+    // Note: Server-side cache (SSR) has its own 30s TTL and cannot be
+    // cleared from client — this only affects client-side resolution.
+    if (
+        FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
+        data.projectId &&
+        !oldProject?.masterProjectId // No masterProjectId = this is a master project
+    ) {
+        try {
+            const { invalidateMasterCache } = await import("@lib/multiOutlet");
+            invalidateMasterCache(data.projectId as string);
+        } catch {
+            // Silent fail - don't block update
+        }
+    }
+
+    // Master Updates Awareness: Increment operationalVersion on operational changes
+    // This fires ONLY when items/categories/prices change — NOT on UI config saves.
+    // Outlets listen to this signal doc via onSnapshot for instant awareness.
+    // @see __docs__/multi-outlet-consistency/master-updates-awareness_impl.md §8
+    if (
+        FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
+        FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS &&
+        data.projectId &&
+        oldProject &&
+        !oldProject.masterProjectId // This IS a master project
+    ) {
+        try {
+            const { detectOperationalChange } = await import("@lib/multiOutlet/masterUpdateDiff");
+
+            const hasOperationalChange = detectOperationalChange(oldProject, data);
+
+            if (hasOperationalChange) {
+                const signalDocRef = doc(
+                    firebaseClient,
+                    DB_COLLECTIONS.MASTER_OPERATIONAL_STATE,
+                    data.projectId as string,
+                );
+
+                // Atomic increment — no read needed, handles concurrent saves safely.
+                // setDoc with merge: creates doc if absent (version starts at 1).
+                // increment() is a Firestore field transform — server-side atomic operation.
+                const { increment } = await import("@firebase/firestore");
+                await setDoc(
+                    signalDocRef,
+                    {
+                        operationalVersion: increment(1),
+                        lastUpdatedAt: Timestamp.now(),
+                    },
+                    { merge: true },
+                );
+            }
+        } catch (e) {
+            // Silent fail — don't block master save
+            console.warn(
+                "[MasterUpdateAwareness] Signal doc update failed (non-blocking):",
+                e,
+            );
+        }
+    }
+
+    // MOL v0: Detect and log changes (fire-and-forget, non-blocking)
+    if (data.projectId) {
+        detectAndLogChanges(data.projectId, oldProject, data);
+    }
+
+    // T10: Log MOL event with dynamic type based on project mode
+    // Determine mode from existing data (no extra Firestore reads):
+    // - masterProjectId present → OUTLET (linked to master)
+    // - masterProjectId absent + multi-outlet enabled → MASTER (or standalone, can't distinguish without store lookup)
+    // - multi-outlet disabled → STANDALONE
+    if (oldProject) {
+        try {
+            const { logMultiOutletEvent } =
+                await import("@lib/multiOutlet/molEvents");
+            const session = await getActiveSession();
+
+            // Determine event type from existing data
+            let eventType: "MASTER_MENU_UPDATED" | "OUTLET_MENU_UPDATED" | "STANDALONE_MENU_UPDATED";
+            let actionDescription: string;
+
+            if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
+                // Multi-outlet disabled = standalone store
+                eventType = "STANDALONE_MENU_UPDATED";
+                actionDescription = "standalone_content_edited";
+            } else if (oldProject.masterProjectId) {
+                // Has masterProjectId = this is an outlet project
+                eventType = "OUTLET_MENU_UPDATED";
+                actionDescription = "outlet_content_edited";
+            } else {
+                // No masterProjectId + multi-outlet enabled = master (or standalone in multi-tenant)
+                eventType = "MASTER_MENU_UPDATED";
+                actionDescription = "master_content_edited";
             }
 
-            // Multi-Outlet: Invalidate master project cache on master save
-            // This clears the client-side in-memory cache so editor previews
-            // for outlet projects immediately reflect master changes.
-            // Note: Server-side cache (SSR) has its own 30s TTL and cannot be
-            // cleared from client — this only affects client-side resolution.
-            if (
-                FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
-                data.projectId &&
-                !oldProject?.masterProjectId // No masterProjectId = this is a master project
-            ) {
-                try {
-                    const { invalidateMasterCache } = await import("@lib/multiOutlet");
-                    invalidateMasterCache(data.projectId as string);
-                } catch {
-                    // Silent fail - don't block update
-                }
-            }
+            await logMultiOutletEvent({
+                type: eventType,
+                tId: session.tId,
+                sId: session.sId,
+                projectId: data.projectId as string,
+                actorUserId: session.uId,
+                metadata: {
+                    action: actionDescription,
+                    mode: eventType.replace("_MENU_UPDATED", "").toLowerCase(),
+                    changedFields: Object.keys(data).filter((k) => k !== "projectId"),
+                },
+            });
+        } catch (e) {
+            // Silent fail - don't block update
+            console.warn("[MOL] Menu edit logging failed (non-blocking):", e);
+        }
+    }
 
-            // Master Updates Awareness: Increment operationalVersion on operational changes
-            // This fires ONLY when items/categories/prices change — NOT on UI config saves.
-            // Outlets listen to this signal doc via onSnapshot for instant awareness.
-            // @see __docs__/multi-outlet-consistency/master-updates-awareness_impl.md §8
-            if (
-                FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
-                FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS &&
-                data.projectId &&
-                oldProject &&
-                !oldProject.masterProjectId // This IS a master project
-            ) {
-                try {
-                    const { detectOperationalChange } = await import("@lib/multiOutlet/masterUpdateDiff");
-
-                    const hasOperationalChange = detectOperationalChange(oldProject, data);
-
-                    if (hasOperationalChange) {
-                        const signalDocRef = doc(
-                            firebaseClient,
-                            DB_COLLECTIONS.MASTER_OPERATIONAL_STATE,
-                            data.projectId as string,
-                        );
-
-                        // Atomic increment — no read needed, handles concurrent saves safely.
-                        // setDoc with merge: creates doc if absent (version starts at 1).
-                        // increment() is a Firestore field transform — server-side atomic operation.
-                        const { increment } = await import("@firebase/firestore");
-                        await setDoc(
-                            signalDocRef,
-                            {
-                                operationalVersion: increment(1),
-                                lastUpdatedAt: Timestamp.now(),
-                            },
-                            { merge: true },
-                        );
-                    }
-                } catch (e) {
-                    // Silent fail — don't block master save
-                    console.warn(
-                        "[MasterUpdateAwareness] Signal doc update failed (non-blocking):",
-                        e,
-                    );
-                }
-            }
-
-            // MOL v0: Detect and log changes (fire-and-forget, non-blocking)
-            if (data.projectId) {
-                detectAndLogChanges(data.projectId, oldProject, data);
-            }
-
-            // T10: Log MOL event with dynamic type based on project mode
-            // Determine mode from existing data (no extra Firestore reads):
-            // - masterProjectId present → OUTLET (linked to master)
-            // - masterProjectId absent + multi-outlet enabled → MASTER (or standalone, can't distinguish without store lookup)
-            // - multi-outlet disabled → STANDALONE
-            if (oldProject) {
-                try {
-                    const { logMultiOutletEvent } =
-                        await import("@lib/multiOutlet/molEvents");
-                    const session = await getActiveSession();
-
-                    // Determine event type from existing data
-                    let eventType: "MASTER_MENU_UPDATED" | "OUTLET_MENU_UPDATED" | "STANDALONE_MENU_UPDATED";
-                    let actionDescription: string;
-
-                    if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
-                        // Multi-outlet disabled = standalone store
-                        eventType = "STANDALONE_MENU_UPDATED";
-                        actionDescription = "standalone_content_edited";
-                    } else if (oldProject.masterProjectId) {
-                        // Has masterProjectId = this is an outlet project
-                        eventType = "OUTLET_MENU_UPDATED";
-                        actionDescription = "outlet_content_edited";
-                    } else {
-                        // No masterProjectId + multi-outlet enabled = master (or standalone in multi-tenant)
-                        eventType = "MASTER_MENU_UPDATED";
-                        actionDescription = "master_content_edited";
-                    }
-
-                    await logMultiOutletEvent({
-                        type: eventType,
-                        tId: session.tId,
-                        sId: session.sId,
-                        projectId: data.projectId as string,
-                        actorUserId: session.uId,
-                        metadata: {
-                            action: actionDescription,
-                            mode: eventType.replace("_MENU_UPDATED", "").toLowerCase(),
-                            changedFields: Object.keys(data).filter((k) => k !== "projectId"),
-                        },
-                    });
-                } catch (e) {
-                    // Silent fail - don't block update
-                    console.warn("[MOL] Menu edit logging failed (non-blocking):", e);
-                }
-            }
-
-            return updateData;
+    return updateData;
 };
 
 export const updateProject = async (data: Partial<Project>) => {

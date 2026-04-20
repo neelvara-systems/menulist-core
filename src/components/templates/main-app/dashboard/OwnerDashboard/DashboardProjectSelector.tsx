@@ -7,7 +7,7 @@ import { getMetadataProjectsList } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { ProjectMetadata } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
-import { Avatar, Dropdown, Flex, Skeleton, Typography, theme } from 'antd';
+import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { LuCheck, LuChevronDown, LuFolderOpen } from 'react-icons/lu';
 import useSWR from 'swr';
@@ -43,6 +43,8 @@ interface Props {
     onReady?: () => void;
 }
 
+type DashboardProject = ProjectMetadata & { active?: boolean };
+
 export const DashboardProjectSelector: React.FC<Props> = ({
     selectedProjectId,
     onProjectChange,
@@ -60,7 +62,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
         { dedupingInterval: 3600000, revalidateOnFocus: false, revalidateOnMount: false }
     );
 
-    const projects: ProjectMetadata[] = data?.projects || [];
+    const projects: DashboardProject[] = data?.projects || [];
 
     useEffect(() => {
         // Don't do anything while session is still loading
@@ -91,6 +93,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                         {getInitials(p.name)}
                     </Avatar>
                     <Text style={{ flex: 1 }}>{p.name}</Text>
+                    {p.active === false ? <Tag color="warning" style={{ marginInlineEnd: 0 }}>Inactive</Tag> : null}
                     {p.projectId === selectedProjectId && <LuCheck size={14} color={token.colorPrimary} />}
                 </Flex>
             ),
@@ -122,6 +125,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                 <Text strong style={{ maxWidth: 150 }} ellipsis>
                     {selectedProject?.name || 'Select catalog'}
                 </Text>
+                {selectedProject?.active === false ? <Tag color="warning" style={{ marginInlineEnd: 0 }}>Inactive</Tag> : null}
                 <LuChevronDown size={14} color={token.colorTextSecondary} />
             </Flex>
         </Dropdown>

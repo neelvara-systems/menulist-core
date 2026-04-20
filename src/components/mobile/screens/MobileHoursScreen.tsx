@@ -1,26 +1,30 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from '@constant/todayFeatureGuide';
 import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { updateStore } from '@database/stores';
-import { useTodayCampaigns } from '@hook/useTodayCampaigns';
+import { generateCampaignsForProject, useTodayCampaigns } from '@hook/useTodayCampaigns';
+import { useAppDispatch } from '@hook/useAppDispatch';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName } from '@util/campaignUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
+import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
     MOBILE_TEMP_STATUS_OPTIONS,
     getDefaultTempStatusDateTime,
 } from '../components/MobileTempStatusConfigurator';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
 
@@ -82,6 +86,8 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const dispatch = useAppDispatch();
+    const { selectedProjectId } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);
@@ -100,6 +106,8 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const [isTempStatusLoading, setIsTempStatusLoading] = useState(false);
     const [isTodayHoursSheetOpen, setIsTodayHoursSheetOpen] = useState(false);
     const [isSavingTodayHours, setIsSavingTodayHours] = useState(false);
+    const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
+    const [isTodayGuideOpen, setIsTodayGuideOpen] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
     const menuUrl = generateProjectUrl(
@@ -198,9 +206,11 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
         setIsCampaignProcessing(true);
         try {
             const method = getExportMethod(campaign.primarySurface);
-            await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
+            const result = await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
+            if (result?.today) {
+                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
+            }
             Toast.show({ content: tToday('done'), duration: 1500 });
-            mutate();
         } catch {
             Toast.show({ content: tToday('failed'), duration: 2000 });
         } finally {
@@ -211,9 +221,11 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const handleSkipCampaign = async (campaignId: string, type: CampaignType) => {
         setIsCampaignProcessing(true);
         try {
-            await dbSkipCampaign(campaignId, type);
+            const result = await dbSkipCampaign(campaignId, type);
+            if (result?.today) {
+                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
+            }
             Toast.show({ content: tToday('skipped'), duration: 1500 });
-            mutate();
         } catch {
             Toast.show({ content: tToday('failedToSkip'), duration: 2000 });
         } finally {
@@ -269,6 +281,9 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
     const primaryCampaign = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading
         ? (todayCampaigns?.primary as TodayCampaignSummary | undefined)
         : undefined;
+    const hasOperationalCampaigns = Boolean(todayCampaigns?.operational?.length);
+    const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
+    const shouldShowGenerateTodayAction = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading && !hasAnyTodayCampaign;
     const mealName = primaryCampaign ? getMealName() : '';
     const primaryTitle = primaryCampaign
         ? (ACTION_TITLES[primaryCampaign.type] || 'Share this item')
@@ -316,6 +331,26 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         } finally {
             setIsSavingTodayHours(false);
+        }
+    };
+
+    const handleGenerateTodayActions = async () => {
+        if (!selectedProjectId) {
+            Toast.show({ content: 'Select a project from Menu tab to generate today action.', duration: 1800 });
+            return;
+        }
+
+        setIsGeneratingTodayActions(true);
+        dispatch(startLoader('Generating today action'));
+        try {
+            await generateCampaignsForProject(selectedProjectId, true);
+            await mutate();
+            Toast.show({ content: 'Today action generated', duration: 1400 });
+        } catch {
+            Toast.show({ content: tToday('failed'), duration: 1800 });
+        } finally {
+            dispatch(stopLoader('Generating today action'));
+            setIsGeneratingTodayActions(false);
         }
     };
 
@@ -425,6 +460,21 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
 
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
+            <Flex align="center" justify="space-between">
+                <Title level={4} style={{ margin: 0 }}>Today</Title>
+                <Button
+                    fill="none"
+                    onClick={() => setIsTodayGuideOpen(true)}
+                    size="small"
+                    style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                >
+                    <Flex align="center" gap={6}>
+                        <LuInfo size={16} />
+                        <Text type="secondary">What is this?</Text>
+                    </Flex>
+                </Button>
+            </Flex>
+
             <Card style={{ borderRadius: 20 }}>
                 <List>
                     <List.Item
@@ -731,6 +781,26 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                 </Card>
             ) : null}
 
+            {shouldShowGenerateTodayAction ? (
+                <Card style={{ borderRadius: 20 }}>
+                    <Flex gap={10} vertical>
+                        <Text strong>No today action yet</Text>
+                        <Text type="secondary">Generate one suggested action and share it in one tap.</Text>
+                        <Button
+                            block
+                            color="primary"
+                            disabled={!selectedProjectId}
+                            loading={isGeneratingTodayActions}
+                            onClick={() => void handleGenerateTodayActions()}
+                            size="large"
+                            style={{ minHeight: 44 }}
+                        >
+                            Generate Today Action
+                        </Button>
+                    </Flex>
+                </Card>
+            ) : null}
+
             {staffPrompt?.eligible ? (
                 <Card style={{ borderRadius: 20 }}>
                     <Flex gap={12}>
@@ -775,6 +845,35 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                 </Card>
             ) : null}
 
+            <Popup
+                bodyStyle={{ maxHeight: '78vh', overflowY: 'auto', paddingBottom: 12 }}
+                onMaskClick={() => setIsTodayGuideOpen(false)}
+                visible={isTodayGuideOpen}
+            >
+                <Flex gap={12} vertical>
+                    <Flex align="center" justify="space-between">
+                        <Text strong>{TODAY_FEATURE_GUIDE_TITLE}</Text>
+                        <Button
+                            fill="none"
+                            onClick={() => setIsTodayGuideOpen(false)}
+                            size="small"
+                            style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                        >
+                            ✕
+                        </Button>
+                    </Flex>
+                    <Flex gap={10} vertical>
+                        {TODAY_FEATURE_GUIDE_SECTIONS.map((section) => (
+                            <Card key={section.title}>
+                                <Flex gap={4} vertical>
+                                    <Text strong>{section.title}</Text>
+                                    <Text type="secondary">{section.description}</Text>
+                                </Flex>
+                            </Card>
+                        ))}
+                    </Flex>
+                </Flex>
+            </Popup>
         </Flex>
     );
 }

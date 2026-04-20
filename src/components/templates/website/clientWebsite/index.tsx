@@ -33,6 +33,9 @@ interface ClientMenuRendererProps {
     storeDetails: StoreDataType;
     precomputedBlocks?: any | null; // Precomputed Decision Blocks from Cloud Function
     projectId?: string; // Required for project-wise analytics
+    // T5-N-01: R5 Layer resolution analytics — 'layer1' for claimed-slug match,
+    // 'layer2' for /menu universal alias fallback. Passed to AnalyticsContext.
+    menuResolutionLayer?: 'layer1' | 'layer2';
 }
 
 const PAGE_KEY = "activePage";
@@ -70,6 +73,7 @@ function ClientMenuRenderer({
     storeDetails,
     precomputedBlocks,
     projectId,
+    menuResolutionLayer,
 }: ClientMenuRendererProps) {
     const storeId = storeDetails?.storeId;
     const defaultLanguage = projectData?.languages?.[0]?.code || "en";
@@ -188,6 +192,7 @@ function ClientMenuRenderer({
             <UnifiedAnalyticsTracking
                 storeDetails={storeDetails}
                 projectId={projectId}
+                menuResolutionLayer={menuResolutionLayer}
             >
                 <MainContentRenderer
                     fromPage="main-website"

@@ -6,7 +6,7 @@ import { collection, getDocs, query, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.TENANTS;
 
@@ -101,6 +101,8 @@ export const updateTenant = async (data: any) => {
     return await apiCallComposer(
         async () => {
             const docId = data.tenantId//which is tenantId
+            const nextTenantName = typeof data.name === 'string' ? data.name.trim() : '';
+            let shouldPropagateTenantName = false;
             if (data.imageToUpdate) {
 
                 let logoUrl: any = data.logo;
@@ -125,7 +127,31 @@ export const updateTenant = async (data: any) => {
                 data.logo = logoUrl;
             }
             const collectionDocRef = doc(firebaseClient, `${COLLECTION}`, `${docId}`);
-            await updateDoc(collectionDocRef, await requestBodyComposer(data));
+            if (nextTenantName) {
+                const currentTenantSnap = await getDoc(collectionDocRef);
+                const currentTenantName = currentTenantSnap.exists()
+                    ? typeof currentTenantSnap.data()?.name === 'string'
+                        ? currentTenantSnap.data()?.name.trim()
+                        : ''
+                    : '';
+                shouldPropagateTenantName = currentTenantName !== nextTenantName;
+            }
+            const composedData = await requestBodyComposer(data);
+            await updateDoc(collectionDocRef, composedData);
+
+            if (shouldPropagateTenantName) {
+                const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
+                const storesQuery = query(storesRef, where("tenantId", "==", docId));
+                const storesSnapshot = await getDocs(storesQuery);
+
+                if (!storesSnapshot.empty) {
+                    const batch = writeBatch(firebaseClient);
+                    storesSnapshot.forEach((storeDoc) => {
+                        batch.update(storeDoc.ref, { tenantName: nextTenantName });
+                    });
+                    await batch.commit();
+                }
+            }
             return data;
         },
         data,

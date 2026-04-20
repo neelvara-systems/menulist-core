@@ -22,8 +22,15 @@ interface MenuBreadcrumbProps {
     outletName?: string;
     /** Outlet canonical slug — required when outletName is supplied. */
     outletSlug?: string;
-    /** Current project name — rendered as the terminal (non-link) node. */
-    projectName: string;
+    /**
+     * Current project name — rendered as the terminal (non-link) node.
+     *
+     * T2-N-05 / D-12 PUBLIC-ROUTING-DOCTRINE: when omitted AND outletName
+     * is supplied, the breadcrumb becomes Business → Outlet (2 nodes, outlet
+     * marked as current). This is the outlet-OBP variant used on
+     * `/{outletSlug}` to show the brand-level "up" path.
+     */
+    projectName?: string;
 }
 
 const linkStyle: React.CSSProperties = {
@@ -49,10 +56,24 @@ export default function MenuBreadcrumb({
     projectName,
 }: MenuBreadcrumbProps) {
     const showOutletNode = Boolean(outletName && outletSlug);
+    const hasProject = Boolean(projectName);
+
+    // Outlet-OBP variant (T2-N-05): when no projectName is provided and we
+    // have an outlet, the outlet itself is the terminal node.
+    const outletIsTerminal = showOutletNode && !hasProject;
 
     return (
         <nav
             aria-label="Breadcrumb"
+            // T4-N-02 / §4 PUBLIC-ROUTING-DOCTRINE: `dir="auto"` lets the
+            // browser derive reading direction from the first strong
+            // character in each node's text content. Arabic/Hebrew brand
+            // names render in their native direction WITHOUT hard-coding
+            // an RTL check here — the separator is already a direction-
+            // neutral `/`, and flex containers honor the parent `dir`
+            // attribute for node ordering. One-line fix covers both
+            // LTR and RTL locales.
+            dir="auto"
             style={{
                 padding: '10px 16px',
                 fontSize: 13,
@@ -73,16 +94,26 @@ export default function MenuBreadcrumb({
             {showOutletNode && (
                 <>
                     <span style={separatorStyle} aria-hidden="true">/</span>
-                    <Link href={`/${outletSlug}`} style={linkStyle} prefetch={false}>
-                        {outletName}
-                    </Link>
+                    {outletIsTerminal ? (
+                        <span aria-current="page" style={currentStyle}>
+                            {outletName}
+                        </span>
+                    ) : (
+                        <Link href={`/${outletSlug}`} style={linkStyle} prefetch={false}>
+                            {outletName}
+                        </Link>
+                    )}
                 </>
             )}
 
-            <span style={separatorStyle} aria-hidden="true">/</span>
-            <span aria-current="page" style={currentStyle}>
-                {projectName}
-            </span>
+            {hasProject && (
+                <>
+                    <span style={separatorStyle} aria-hidden="true">/</span>
+                    <span aria-current="page" style={currentStyle}>
+                        {projectName}
+                    </span>
+                </>
+            )}
         </nav>
     );
 }

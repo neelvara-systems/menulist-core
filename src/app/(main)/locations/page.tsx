@@ -9,6 +9,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import AddOutletModal from '@organisms/AddOutletModal';
 import OutletPolicyEditor from '@organisms/OutletPolicyEditor';
+import OutletRenameModal from '@organisms/OutletRenameModal';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { Badge, Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
@@ -28,6 +29,8 @@ export default function LocationsPage() {
     } = useContext(PlatformGlobalDataContext);
 
     const [addOutletOpen, setAddOutletOpen] = useState(false);
+    // T2-N-01: outlet rename modal state.
+    const [renameTarget, setRenameTarget] = useState<any | null>(null);
 
     if (!FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL || !isMasterUser || !userPermissions?.canManageOutlets) {
         return <Empty description="Chain Control Panel is not available" />;
@@ -67,12 +70,26 @@ export default function LocationsPage() {
             render: (_: any, record: any) => {
                 if (record.isMaster) return <Text type="secondary">—</Text>;
                 return (
-                    <Button
-                        size="small"
-                        onClick={() => setActiveStoreContext(record.storeId)}
-                    >
-                        View
-                    </Button>
+                    <Space size="small">
+                        <Button
+                            size="small"
+                            onClick={() => setActiveStoreContext(record.storeId)}
+                        >
+                            View
+                        </Button>
+                        {/*
+                         * T2-N-01 / G-07: owner-facing outlet rename. The
+                         * server endpoint handles the previousOutletSlugs[]
+                         * chain; the modal just collects the new values and
+                         * surfaces the 12-month redirect guarantee inline.
+                         */}
+                        <Button
+                            size="small"
+                            onClick={() => setRenameTarget(record)}
+                        >
+                            Rename URL
+                        </Button>
+                    </Space>
                 );
             },
         },
@@ -134,6 +151,21 @@ export default function LocationsPage() {
                 open={addOutletOpen}
                 onClose={() => setAddOutletOpen(false)}
                 subscription={activeSubscription}
+            />
+
+            {/*
+             * T2-N-01 / G-07 PUBLIC-ROUTING-DOCTRINE: outlet slug rename modal.
+             * Surfaces the `/api/outlets/rename` endpoint with the doctrinal
+             * 12-month redirect warning inline. Closes when the rename
+             * succeeds; onRenamed hook is available if future pages need to
+             * react (e.g., refresh cached outlet lists).
+             */}
+            <OutletRenameModal
+                open={Boolean(renameTarget)}
+                outletStoreId={renameTarget?.storeId}
+                currentOutletSlug={renameTarget?.outletSlug}
+                currentOutletName={renameTarget?.name}
+                onClose={() => setRenameTarget(null)}
             />
         </div>
     );

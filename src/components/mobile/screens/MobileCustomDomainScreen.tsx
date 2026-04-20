@@ -1,10 +1,11 @@
 'use client'
 
+import { checkCustomDomainAvailability } from '@database/stores';
 import { normalizeBaseUrl } from '@constant/urls';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCheckCircle2, LuCopy, LuExternalLink, LuGlobe, LuTrash2 } from 'react-icons/lu';
+import { LuCheckCircle2, LuCopy, LuExternalLink, LuGlobe, LuSearch, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
@@ -19,8 +20,18 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [domainInput, setDomainInput] = useState(storeDetails?.customDomain || '');
     const [loading, setLoading] = useState(false);
+    const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
+    const [domainAvailability, setDomainAvailability] = useState<{ available?: boolean; reason?: string; normalized?: string } | null>(null);
     const [domainStatus, setDomainStatus] = useState<any>(null);
+    const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
+    const normalizedDomainInput = domainInput.trim().toLowerCase();
+    const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
+    const canConnectDomain = Boolean(
+        !activeDomain
+        && domainAvailability?.available
+        && domainAvailability?.normalized === normalizedDomainInput
+    );
 
     const refreshStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
@@ -50,7 +61,7 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
             const response = await fetch('/api/domain', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ domain: domainInput.trim() }),
+                body: JSON.stringify({ domain: domainAvailability?.normalized || domainInput.trim() }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data?.error || common('error'));
@@ -62,6 +73,22 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
             Toast.show({ content: error?.message || common('error'), duration: 1800 });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const checkDomain = async () => {
+        if (!normalizedDomainInput) return;
+        setCheckingAvailability(true);
+        try {
+            const data = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            setDomainAvailability(data);
+            if (data?.normalized) {
+                setDomainInput(data.normalized);
+            }
+        } catch {
+            setDomainAvailability({ available: false, reason: common('error') });
+        } finally {
+            setCheckingAvailability(false);
         }
     };
 
@@ -80,7 +107,6 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
         }
     };
 
-    const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
     const activeDomainUrl = activeDomain ? normalizeBaseUrl(activeDomain) : '';
 
     return (
@@ -138,10 +164,25 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{t('customDomain')}</Text>
-                        <Input onChange={setDomainInput} placeholder={t('domainPlaceholder')} value={domainInput} />
-                        <Button block color="primary" loading={loading} onClick={() => void addDomain()} size="large">
-                            {t('connectDomain')}
-                        </Button>
+                        <Input onChange={(value) => {
+                            setDomainInput(value);
+                            setDomainAvailability(null);
+                        }} placeholder={t('domainPlaceholder')} value={domainInput} />
+                        {domainAvailability ? (
+                            <Text type="secondary">
+                                {domainAvailability.available ? 'Domain is available to connect' : domainAvailability.reason}
+                            </Text>
+                        ) : null}
+                        <Flex gap={8}>
+                            <Button block disabled={!canCheckDomain} fill="outline" loading={checkingAvailability} onClick={() => void checkDomain()} size="large">
+                                <Flex align="center" gap={6}><LuSearch size={16} /><Text>{t('checkAvailability')}</Text></Flex>
+                            </Button>
+                            {canConnectDomain ? (
+                                <Button block color="primary" loading={loading} onClick={() => void addDomain()} size="large">
+                                    {t('connectDomain')}
+                                </Button>
+                            ) : null}
+                        </Flex>
                     </Flex>
                 </Card>
 

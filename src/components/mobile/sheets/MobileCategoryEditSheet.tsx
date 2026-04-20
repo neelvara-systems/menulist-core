@@ -1,6 +1,7 @@
 'use client'
 
 import GlobalLanguagesList from '@data/languages';
+import { LuLanguages } from 'react-icons/lu';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import { theme } from 'antd';
@@ -22,6 +23,7 @@ interface MobileCategoryEditSheetProps {
     mode: 'add' | 'edit';
     onClose: () => void;
     onDelete?: (categoryId: string) => void;
+    onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
     onSave: (payload: SavePayload) => Promise<void>;
     presets: TimeSlotPreset[];
     selectedLanguages: string[];
@@ -33,6 +35,7 @@ export default function MobileCategoryEditSheet({
     mode,
     onClose,
     onDelete,
+    onGenerateContent,
     onSave,
     presets,
     selectedLanguages,
@@ -62,6 +65,33 @@ export default function MobileCategoryEditSheet({
 
     const selectedCount = useMemo(() => presetIds.length, [presetIds.length]);
     const hasMultipleLanguages = selectedLanguages.length > 1;
+    const hasPrimaryName = Boolean(names[primaryLanguage]?.trim());
+    const hasMissingTranslations = useMemo(() => {
+        if (!hasMultipleLanguages || !hasPrimaryName) return false;
+        return selectedLanguages.slice(1).some((language) => !names[language]?.trim());
+    }, [hasMultipleLanguages, hasPrimaryName, names, selectedLanguages]);
+
+    const handleGenerateContent = async () => {
+        if (!onGenerateContent || isSaving || !hasMissingTranslations) return;
+        setIsSaving(true);
+        try {
+            const nextNames = await onGenerateContent({
+                id: category?.id,
+                names: Object.fromEntries(
+                    selectedLanguages.map((language) => [language, names[language]?.trim() || ''])
+                ),
+            });
+
+            if (nextNames) {
+                setNames((previous) => ({
+                    ...previous,
+                    ...nextNames,
+                }));
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleSave = async () => {
         const hasName = selectedLanguages.some((language) => names[language]?.trim());
@@ -199,6 +229,14 @@ export default function MobileCategoryEditSheet({
                 <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 'auto' }}>
                     <Flex gap={8} vertical>
                         <Flex gap={8}>
+                            {hasMissingTranslations && onGenerateContent ? (
+                                <Button block disabled={isSaving} fill="outline" onClick={() => void handleGenerateContent()}>
+                                    <Flex align="center" gap={6}>
+                                        <LuLanguages size={14} />
+                                        <Text>{t('generateTranslations')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
                             <Button block disabled={isSaving} fill="outline" onClick={onClose}>
                                 {t('cancel')}
                             </Button>

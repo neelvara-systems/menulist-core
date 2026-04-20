@@ -10,6 +10,7 @@ export type ProjectSelectorItem = {
     id: string;
     name: string;
     isDefault?: boolean;
+    active?: boolean;
     secondaryLabel?: string;
 };
 
@@ -54,6 +55,7 @@ export function ProjectSelectorTrigger({
     const { token } = theme.useToken();
     const projectName = currentProject?.name || t('untitled');
     const avatarColors = getAvatarColor(projectName);
+    const isInactive = currentProject?.active === false;
 
     const content = (
         <Flex align="center" justify="space-between" style={{ width: '100%' }}>
@@ -80,6 +82,7 @@ export function ProjectSelectorTrigger({
                 </Flex>
             </Flex>
             <Flex align="center" gap={8}>
+                {isInactive ? <Tag color="warning">{t('inactiveCatalog')}</Tag> : null}
                 {currentProject?.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
                 {rightContent}
                 {clickable ? <LuChevronDown color={token.colorTextSecondary} size={14} /> : null}
@@ -131,6 +134,7 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
             {projects.map((project) => {
                 const avatarColors = getAvatarColor(project.name || t('untitled'));
                 const isSelected = project.id === currentProjectId;
+                const isInactive = project.active === false;
 
                 return (
                     <Card
@@ -148,6 +152,7 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                             borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
                             background: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
                             boxShadow: 'none',
+                            opacity: isInactive ? 0.9 : 1,
                             position: 'relative',
                         }}
                     >
@@ -163,6 +168,20 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                             >
                                 <LuMoreVertical size={16} />
                             </Button>
+                        ) : null}
+
+                        {isInactive ? (
+                            <Tag
+                                color="warning"
+                                style={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    left: isSelected ? 36 : 10,
+                                    zIndex: 1,
+                                }}
+                            >
+                                {t('inactiveCatalog')}
+                            </Tag>
                         ) : null}
 
                         {isSelected ? (

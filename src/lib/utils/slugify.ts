@@ -6,7 +6,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { appendPublicPath, getPublicBaseUrl, getTenantBaseUrl } from '@constant/urls';
+import { appendPublicPath, getTenantBaseUrl } from '@constant/urls';
 
 /**
  * Convert a string to a URL-safe slug
@@ -78,13 +78,18 @@ export function generateProjectUrl(
     if (customDomain || subdomain) {
         baseUrl = getTenantBaseUrl(subdomain, customDomain);
     } else {
-        const publicBaseUrl = getPublicBaseUrl();
-        const slug = projectName ? slugify(projectName) : '';
-        if (!slug) {
-            return appendPublicPath(publicBaseUrl, 'menu');
-        }
-        // Emit the real slug URL in every case — matches R5 canonical rule.
-        return appendPublicPath(publicBaseUrl, `menu/${slug}`);
+        // T3-N-01 / R5 PUBLIC-ROUTING-DOCTRINE: `generateProjectUrl` without
+        // tenant context is an invariant violation. Previously this branch
+        // silently emitted `/menu/{slug}` or `/menu`, both of which are R5
+        // prohibited (no URL in the product may take the `/menu/{slug}`
+        // shape, and `/menu` without a tenant has no resolver). Every
+        // call site in the codebase supplies tenant context today; if a
+        // new path ever loses it, fail loudly rather than produce a
+        // doctrine-violating URL.
+        throw new Error(
+            '[generateProjectUrl] tenant context required — ' +
+            'subdomain or customDomain must be supplied (R5 invariant).',
+        );
     }
 
     const slug = projectName ? slugify(projectName) : '';

@@ -27,20 +27,13 @@
 
 export const GEMINI_MODELS = {
     // Text Generation Models
-    FLASH_2_0: 'gemini-2.0-flash',           // Best for OCR, translation, accuracy
-    FLASH_2_5: 'gemini-2.5-flash',           // Good for creative tasks, conversations
-    PRO_2_5: 'gemini-2.5-pro',               // Best for complex reasoning
-
+    TEXT_GEN: 'gemini-3-flash-preview',
     // Image Generation Models
-    FLASH_IMAGE_GEN: 'gemini-2.5-flash-image',
+    IMAGE_GEN: 'gemini-2.5-flash-image',
     IMAGEN_3: 'imagen-3.0-generate-002',
 
     // Embedding Model
     TEXT_EMBEDDING: 'text-embedding-004',
-
-    // Legacy (not recommended)
-    FLASH_1_5: 'gemini-1.5-flash',
-    PRO_1_5: 'gemini-1.5-pro',
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -68,7 +61,7 @@ export const AI_MODELS = {
      * Config: Low temperature for accuracy, JSON output
      */
     IMAGE_PROCESSING: {
-        model: GEMINI_MODELS.FLASH_2_5,
+        model: GEMINI_MODELS.TEXT_GEN,
         config: {
             temperature: 0.2,      // Low for accuracy (was 1.0)
             topP: 0.95,
@@ -89,7 +82,7 @@ export const AI_MODELS = {
      * Config: Moderate temperature for natural language
      */
     TRANSLATION: {
-        model: GEMINI_MODELS.FLASH_2_0,
+        model: GEMINI_MODELS.TEXT_GEN,
         config: {
             temperature: 0.3,      // Low-moderate for faithful translation
             topP: 0.9,
@@ -109,7 +102,7 @@ export const AI_MODELS = {
      * Config: Higher temperature for creative, engaging descriptions
      */
     DESCRIPTION_GENERATION: {
-        model: GEMINI_MODELS.FLASH_2_5,
+        model: GEMINI_MODELS.TEXT_GEN,
         config: {
             temperature: 0.8,      // High for creativity
             topP: 0.95,
@@ -129,7 +122,7 @@ export const AI_MODELS = {
      * Config: Moderate temperature for balanced output
      */
     NEW_ITEM_METADATA: {
-        model: GEMINI_MODELS.FLASH_2_0,
+        model: GEMINI_MODELS.TEXT_GEN,
         config: {
             temperature: 0.5,
             topP: 0.9,
@@ -143,13 +136,12 @@ export const AI_MODELS = {
     /**
      * 🎨 Image Generation (Gemini Flash)
      * 
-     * Model: gemini-2.5-flash-image
      * Why: Supports reference images for editing/variations
      * 
      * Config: High temperature for creative variety
      */
     IMAGE_GENERATION: {
-        model: GEMINI_MODELS.FLASH_IMAGE_GEN,
+        model: GEMINI_MODELS.IMAGE_GEN,
         config: {
             temperature: 1.0,
         },
@@ -181,7 +173,7 @@ export const AI_MODELS = {
      * Config: Zero temperature for factual grounding
      */
     CHAT: {
-        model: GEMINI_MODELS.FLASH_2_5,
+        model: GEMINI_MODELS.TEXT_GEN,
         config: {
             temperature: 0.0,      // Zero for factual QnA
             topP: 0.9,
@@ -194,11 +186,11 @@ export const AI_MODELS = {
     /**
      * 🔍 Image to Text Query (Vision)
      * 
-     * Model: Gemini 2.5 Pro
+     * Model: Gemini 3 Flash
      * Why: Complex reasoning for understanding images + generating queries
      */
     IMAGE_TO_QUERY: {
-        model: GEMINI_MODELS.PRO_2_5,
+        model: GEMINI_MODELS.TEXT_GEN,
         config: {
             temperature: 0.3,
         },

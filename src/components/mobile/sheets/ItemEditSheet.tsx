@@ -636,19 +636,22 @@ export default function ItemEditSheet({
                     )}
 
                     {(projectData && sourceFile) ? (
-                        <Button
-                            block
-                            disabled={isAiWorking || isSaving}
-                            fill="outline"
-                            loading={isAiWorking}
-                            onClick={() => { void handleGenerateContent(); }}
-                            size="large"
-                        >
-                            <Flex align="center" gap={6}>
-                                <LuSparkles size={16} />
-                                <Text>{contentActionLabel}</Text>
-                            </Flex>
-                        </Button>
+                        <Flex gap={6} vertical>
+                            <Button
+                                block
+                                disabled={isAiWorking || isSaving}
+                                fill="outline"
+                                loading={isAiWorking}
+                                onClick={() => { void handleGenerateContent(); }}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6}>
+                                    <LuSparkles size={16} />
+                                    <Text>{contentActionLabel}</Text>
+                                </Flex>
+                            </Button>
+                            <Text type="secondary">{t('contentActionHelper')}</Text>
+                        </Flex>
                     ) : null}
 
                     <div

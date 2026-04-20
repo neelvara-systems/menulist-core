@@ -36,6 +36,13 @@ interface OBPMenuCTAProps {
     storeId: number;
     /** Ordered projects (default first). When length ≥ 2 the secondary list renders below the primary CTA. */
     projects?: OBPMenuCTAProjectEntry[];
+    /**
+     * T2-N-02 / A-07 PUBLIC-ROUTING-DOCTRINE: which OBP surface rendered this
+     * CTA. 'brand' for the tenant root (`/`), 'outlet' for `/{outletSlug}`.
+     * Forwarded to `trackOBPMenuClick` so multi-outlet conversion can be
+     * broken down by surface in the owner dashboard.
+     */
+    obpSurface?: 'brand' | 'outlet';
 }
 
 export default function OBPMenuCTA({
@@ -44,9 +51,10 @@ export default function OBPMenuCTA({
     tenantId,
     storeId,
     projects = [],
+    obpSurface = 'brand',
 }: OBPMenuCTAProps) {
     const trackPrimary = () => {
-        trackOBPMenuClick(storeId, {
+        trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
         }).catch(() => { });
@@ -54,7 +62,7 @@ export default function OBPMenuCTA({
 
     const trackSecondary = (project: OBPMenuCTAProjectEntry) => {
         // Primary OBP→menu conversion metric.
-        trackOBPMenuClick(storeId, {
+        trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
         }).catch(() => { });

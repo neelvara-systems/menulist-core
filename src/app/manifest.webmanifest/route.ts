@@ -14,6 +14,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { TrackingEvent, trackEvent } from '@lib/analytics/unified';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { getStoreByCustomDomain, getStoreByOutletSlug, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
@@ -188,6 +189,22 @@ export async function GET(request: Request) {
         // path and the customer never sees a terminal 404 from a deleted
         // project / deactivated outlet.
         const resolvedStartUrl = await resolveStartUrlWithFallback(store, startUrl);
+
+        // T5-N-03: Emit analytics event if start_url was degraded.
+        // Measures how often the A-12 ladder actually saves installs.
+        if (resolvedStartUrl !== startUrl && store.storeId) {
+            // Calculate degradation steps (distance between paths)
+            const originalDepth = startUrl.split('/').filter(Boolean).length;
+            const resolvedDepth = resolvedStartUrl.split('/').filter(Boolean).length;
+            const steps = Math.max(0, originalDepth - resolvedDepth);
+            trackEvent(TrackingEvent.MANIFEST_START_URL_DEGRADED, {
+                storeId: store.storeId,
+                tenantId: store.tenantId,
+                originalPath: startUrl,
+                degradedTo: resolvedStartUrl,
+                degradationSteps: steps,
+            }).catch(() => { /* silent — analytics failure shouldn't break manifest */ });
+        }
 
         const displayName: string = store.name || store.storeName || 'Menu';
         const shortName: string | undefined = store.pwaSettings?.pwaShortName;

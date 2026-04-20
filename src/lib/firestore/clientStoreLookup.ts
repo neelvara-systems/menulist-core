@@ -36,15 +36,51 @@ const buildStoreRef = () => collection(firebaseClient, DB_COLLECTIONS.STORES);
 export const getStoreBySubdomain = cache(
     unstable_cache(
         async (subdomain: string): Promise<ClientStoreLookupResult> => {
-            const q = query(
+            const normalized = subdomain.toLowerCase();
+            // Primary: direct match on current subdomain.
+            const directQuery = query(
                 buildStoreRef(),
-                where('subdomain', '==', subdomain.toLowerCase()),
+                where('subdomain', '==', normalized),
                 where('active', '==', true),
                 limit(1),
             );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+            const directSnap = await getDocs(directQuery);
+            if (!directSnap.empty) {
+                return { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
+            }
+            // T1-N-05 / A-03 PUBLIC-ROUTING-DOCTRINE: admin-tier rename chain.
+            // Check if any active store has this subdomain in its
+            // `previousSubdomains[].subdomain` within the 12-month window.
+            // Firestore can't index nested array fields, so we query on a
+            // denormalized shadow key `previousSubdomainSlugs` (array of
+            // strings) written alongside `previousSubdomains` by the admin
+            // rename endpoint. Each entry is filtered here against its
+            // expiresAt on the object to honor the 12-month ceiling.
+            const chainQuery = query(
+                buildStoreRef(),
+                where('previousSubdomainSlugs', 'array-contains', normalized),
+                where('active', '==', true),
+                limit(1),
+            );
+            const chainSnap = await getDocs(chainQuery);
+            if (chainSnap.empty) return null;
+            const doc = chainSnap.docs[0];
+            const data = doc.data() as Record<string, any>;
+            const history: Array<{ subdomain?: string; expiresAt?: any }> = Array.isArray(
+                data?.previousSubdomains,
+            )
+                ? data.previousSubdomains
+                : [];
+            const nowMs = Date.now();
+            const match = history.find((entry) => {
+                if ((entry?.subdomain || '').toLowerCase() !== normalized) return false;
+                const expiresAtMs =
+                    entry?.expiresAt?.toMillis?.() ??
+                    (typeof entry?.expiresAt === 'string' ? Date.parse(entry.expiresAt) : NaN);
+                return Number.isFinite(expiresAtMs) && expiresAtMs > nowMs;
+            });
+            if (!match) return null;
+            return { id: doc.id, ...data };
         },
         ['client-store-subdomain'],
         { revalidate: 60, tags: ['client-stores'] },

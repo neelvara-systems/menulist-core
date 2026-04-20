@@ -22,6 +22,7 @@ import { getBase64, removeObjRef } from '@util/utils';
 import { Button, Flex, Form, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
 import type { UploadFileStatus, UploadProps } from 'antd/es/upload/interface';
 import DOMPurify from 'isomorphic-dompurify';
+import { useTranslations } from 'next-intl';
 // pdfjs-dist is lazy loaded in processsPdf() to reduce initial bundle size
 import useMasterJobStatus from '@hook/useMasterJobStatus';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
@@ -75,6 +76,8 @@ function ProjectsPage() {
     const { token } = useToken();
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
+    // T4-N-04: divergence advisory modal (G-13) copy.
+    const tDivergence = useTranslations('Projects.divergence');
     const loggedInSession = useClientAuthSession();
     const { hasMounted, isMobile } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
@@ -455,29 +458,44 @@ function ProjectsPage() {
             if (proposedSlug === 'menu' && otherDefault && !thisIsDefault) {
                 const decision = await new Promise<'promote' | 'keep'>((resolve) => {
                     Modal.confirm({
-                        title: 'Heads up — two customer paths will diverge',
+                        title: tDivergence('title'),
                         content: (
                             <Flex vertical gap={8}>
                                 <Typography.Paragraph style={{ margin: 0 }}>
-                                    You&apos;re naming this {labels.offeringLower}{' '}
-                                    <strong>&ldquo;{sanitizedName}&rdquo;</strong>, so its URL will be{' '}
+                                    {tDivergence('namingLineBefore', {
+                                        offeringLower: labels.offeringLower,
+                                    })}
+                                    <strong>&ldquo;{sanitizedName}&rdquo;</strong>
+                                    {tDivergence('namingLineAfter')}
                                     <code>/menu</code>.
                                 </Typography.Paragraph>
                                 <Typography.Paragraph style={{ margin: 0 }}>
-                                    But the <strong>default</strong> {labels.offeringLower} is currently{' '}
-                                    <strong>&ldquo;{otherDefault.name}&rdquo;</strong>. Customers will see:
+                                    {tDivergence('defaultLineBefore', {
+                                        offeringLower: labels.offeringLower,
+                                    })}
+                                    <strong>&ldquo;{otherDefault.name}&rdquo;</strong>
+                                    {tDivergence('defaultLineAfter')}
                                 </Typography.Paragraph>
                                 <ul style={{ paddingLeft: 20, margin: 0 }}>
-                                    <li>typing <code>/menu</code> → <strong>{sanitizedName}</strong></li>
-                                    <li>tapping &ldquo;View Menu&rdquo; elsewhere → <strong>{otherDefault.name}</strong></li>
+                                    <li>
+                                        {tDivergence('bulletTypingBefore')}
+                                        <code>/menu</code>
+                                        {tDivergence('bulletArrow')}
+                                        <strong>{sanitizedName}</strong>
+                                    </li>
+                                    <li>
+                                        {tDivergence('bulletTappingBefore')}
+                                        {tDivergence('bulletArrow')}
+                                        <strong>{otherDefault.name}</strong>
+                                    </li>
                                 </ul>
                                 <Typography.Paragraph style={{ margin: 0 }}>
-                                    If that&apos;s not what you want, set this as the default.
+                                    {tDivergence('closingGuidance')}
                                 </Typography.Paragraph>
                             </Flex>
                         ),
-                        okText: `Set &ldquo;${sanitizedName}&rdquo; as default`,
-                        cancelText: 'Keep as-is',
+                        okText: tDivergence('setAsDefaultButton', { name: sanitizedName }),
+                        cancelText: tDivergence('keepAsIsButton'),
                         width: 520,
                         onOk: () => resolve('promote'),
                         onCancel: () => resolve('keep'),
