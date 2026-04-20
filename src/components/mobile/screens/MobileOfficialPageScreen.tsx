@@ -373,7 +373,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
                         {tMobile('reset')}
                     </Button>
-                    <Button block disabled={!isDirty} loading={isSaving} onClick={handleSave} size="large">
+                    <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={handleSave} size="large">
                         {tMobile('saveChanges')}
                     </Button>
                 </Flex>

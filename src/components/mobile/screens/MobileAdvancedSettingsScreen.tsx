@@ -553,7 +553,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                     <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} fill="outline" onClick={handleReset} size="large">
                         {tMobile('reset')}
                     </Button>
-                    <Button block disabled={!isSocialDirty && !isFeedbackDirty} loading={isSaving} onClick={() => void handleSave()} size="large">
+                    <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} loading={isSaving} onClick={() => void handleSave()} size="large">
                         {tMobile('saveChanges')}
                     </Button>
                 </Flex>

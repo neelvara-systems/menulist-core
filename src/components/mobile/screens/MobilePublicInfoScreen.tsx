@@ -27,6 +27,18 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
         longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
         state: storeDetails?.state || '',
     });
+    const [originalFormData, setOriginalFormData] = useState(() => ({
+        addressLine: storeDetails?.addressLine || '',
+        area: storeDetails?.area || '',
+        city: storeDetails?.city || '',
+        country: storeDetails?.country || '',
+        district: storeDetails?.district || '',
+        latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
+        postalCode: storeDetails?.postalCode || '',
+        longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
+        state: storeDetails?.state || '',
+    }));
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -59,6 +71,7 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
 
         try {
             await updateStore(nextStore as any);
+            setOriginalFormData(formData);
             Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
@@ -157,7 +170,7 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                     </Flex>
                 </Card>
 
-                <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
                     {t('saveChanges')}
                 </Button>
             </Flex>

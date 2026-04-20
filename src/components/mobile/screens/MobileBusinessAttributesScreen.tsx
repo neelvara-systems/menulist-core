@@ -108,7 +108,7 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={resetAttributes} size="large">
                         {tMobile('reset')}
                     </Button>
-                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void saveAttributes()} size="large">
+                    <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={() => void saveAttributes()} size="large">
                         {tMobile('saveChanges')}
                     </Button>
                 </Flex>

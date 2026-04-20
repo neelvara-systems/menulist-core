@@ -421,7 +421,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large" style={{ minHeight: 44 }}>
                         {t('reset')}
                     </Button>
-                    <Button block disabled={!isDirty} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                    <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
                         {t('saveChanges')}
                     </Button>
                 </Flex>

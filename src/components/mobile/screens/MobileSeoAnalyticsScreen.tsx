@@ -444,7 +444,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             <Button block disabled={!isSeoDirty || isSeoSaving} fill="outline" onClick={resetSeoSettings}>
                                 {tMobile('reset')}
                             </Button>
-                            <Button block disabled={!isSeoDirty} loading={isSeoSaving} onClick={() => void saveSeoSettings()}>
+                            <Button block disabled={!isSeoDirty || isSeoSaving} loading={isSeoSaving} onClick={() => void saveSeoSettings()}>
                                 {tMobile('saveChanges')}
                             </Button>
                         </Flex>
@@ -525,7 +525,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             <Button block disabled={!isAnalyticsDirty || isAnalyticsSaving} fill="outline" onClick={resetAnalyticsSettings}>
                                 {tMobile('reset')}
                             </Button>
-                            <Button block disabled={!isAnalyticsDirty} loading={isAnalyticsSaving} onClick={() => void saveAnalyticsSettings()}>
+                            <Button block disabled={!isAnalyticsDirty || isAnalyticsSaving} loading={isAnalyticsSaving} onClick={() => void saveAnalyticsSettings()}>
                                 {tMobile('saveChanges')}
                             </Button>
                         </Flex>
