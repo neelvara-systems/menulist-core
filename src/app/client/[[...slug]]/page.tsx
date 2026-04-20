@@ -48,6 +48,7 @@ import { Metadata } from "next";
 import { unstable_cache } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import MenuBreadcrumb from "./MenuBreadcrumb";
 
 // Get tenant info from headers (set by middleware)
 // Shared helper used across client pages — see @lib/multiTenant/getTenantFromHeaders
@@ -915,6 +916,12 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     // (G-01) needs these preserved from the pre-switch master store.
     const masterSubdomain: string | undefined = storeData?.subdomain ?? undefined;
     const masterCustomDomain: string | undefined = storeData?.customDomain ?? undefined;
+    // G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): capture the master brand name
+    // BEFORE the outlet switch so the breadcrumb's "Business" node on outlet
+    // project pages can show the tenant-level brand, not the outlet's name.
+    const masterBrandName: string | undefined = storeData?.name
+        ? String(storeData.name).replace(/ - Main Store$/, '')
+        : undefined;
 
     let resolvedSlug = slug;
     let outletRenderedAsObp = false;
@@ -1118,6 +1125,26 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
             {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeDetails?.tempStatus && (
                 <TempStatusBanner tempStatus={storeDetails.tempStatus} />
             )}
+            {/*
+              * G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): visible breadcrumb.
+              * Business → (Store →) Project. Outlet node appears only when
+              * this render is scoped to an outlet store (not the master)
+              * AND we have a real outletSlug to link to.
+              */}
+            <MenuBreadcrumb
+                businessName={masterBrandName || storeName}
+                outletName={
+                    !storeData.isMaster && storeData.outletSlug
+                        ? (storeData.name || undefined)
+                        : undefined
+                }
+                outletSlug={
+                    !storeData.isMaster && storeData.outletSlug
+                        ? storeData.outletSlug
+                        : undefined
+                }
+                projectName={menuName}
+            />
             {/* ── Menu Trust Signals — location · status · offering · freshness ── */}
             {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
                 <TrustSignals

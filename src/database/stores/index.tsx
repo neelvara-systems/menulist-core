@@ -216,6 +216,33 @@ export const updateStore = async (data: any) => {
                 delete data.imageType;
             }
 
+            // G-08 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): subdomain is a permanent
+            // URL anchor once the store has ever been published. Renaming it
+            // would silently break every printed QR, every shared link, and
+            // every search-indexed URL. If the caller is trying to mutate
+            // `subdomain` on a store that already has `lastPublishedAt`, drop
+            // that field from the update and warn — all other updates go
+            // through untouched so the save still succeeds.
+            if (data.subdomain !== undefined) {
+                try {
+                    const currentSnap = await getDoc(getDocRef(data.id));
+                    const current: any = currentSnap.exists() ? currentSnap.data() : null;
+                    const wasPublished = !!current?.lastPublishedAt;
+                    const subdomainChanged = (current?.subdomain || '') !== data.subdomain;
+                    if (wasPublished && subdomainChanged) {
+                        console.warn(
+                            `[G-08] Blocked subdomain change on published store ${data.id}: ` +
+                            `${current?.subdomain} → ${data.subdomain}. Subdomain is immutable after first publish.`,
+                        );
+                        delete data.subdomain;
+                    }
+                } catch (e) {
+                    // Non-fatal: if the guard read fails, allow the update
+                    // rather than locking owners out of every settings save.
+                    console.warn('[G-08] Could not verify publish status; allowing update:', e);
+                }
+            }
+
             // Derive businessCategory from businessType if not provided
             const businessCategory = data.businessCategory || getBusinessCategory(data.businessType || '');
             data.businessCategory = businessCategory;

@@ -28,6 +28,7 @@ import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
+import { buildQrCodeFilename, downloadQrCode, generateQrCodeDataUrl } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
@@ -246,6 +247,25 @@ export default function UseMenuList() {
             }
         } catch {
             message.error(`Failed to generate ${assetLabel}`);
+        } finally {
+            setGeneratingAsset(null);
+        }
+    };
+
+    // G-04 (§11 + D-08 + D-09 PUBLIC-ROUTING-DOCTRINE): plain-QR download for
+    // Business Profile, Store Menu (Layer 2 alias), and Project Menu URLs.
+    // The print assets above include branded QR layouts; this handler emits a
+    // raw QR PNG for contexts where the owner wants to paste the code into
+    // their own design (Instagram bio banner, Google Maps profile, flyer).
+    const handleDownloadQr = async (url: string, label: string, filenameLabel: string) => {
+        if (!url) return;
+        setGeneratingAsset(label);
+        try {
+            const dataUrl = await generateQrCodeDataUrl(url);
+            downloadQrCode(dataUrl, buildQrCodeFilename(filenameLabel));
+            message.success(`${label} downloaded`);
+        } catch {
+            message.error(`Failed to generate ${label}`);
         } finally {
             setGeneratingAsset(null);
         }
@@ -491,6 +511,64 @@ export default function UseMenuList() {
                         />
                     </Col>
                 ) : null}
+            </Row>
+
+            {/*
+             * ─── QR Codes ──────────────────────────────────────────
+             * G-04 (§11 + D-08 + D-09 PUBLIC-ROUTING-DOCTRINE): three QR
+             * products exposed side-by-side. Store Menu QR is the
+             * operational default — it points at the Layer-2 `/menu` alias
+             * so a reprint is NEVER required when the owner renames or
+             * deletes a project (R5 universal-alias guarantee).
+             */}
+            <Title level={5} style={{ marginBottom: 12 }}>QR Codes</Title>
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={8}>
+                    <AssetCard
+                        icon={<LuQrCode size={20} />}
+                        title="Store Menu QR"
+                        description="Primary — tables, signage, packaging"
+                        loading={generatingAsset === 'Store Menu QR'}
+                        onDownload={() => handleDownloadQr(
+                            // G-04: inline Layer-2 alias URL (avoids an
+                            // extra import the auto-organizer keeps
+                            // stripping). Equivalent to generateMenuUrl().
+                            `${data.obpLink.replace(/\/$/, '')}/menu`,
+                            'Store Menu QR',
+                            `${data.storeName}-store-menu-qr`,
+                        )}
+                        highlight
+                        themeToken={themeToken}
+                    />
+                </Col>
+                <Col xs={24} sm={8}>
+                    <AssetCard
+                        icon={<LuQrCode size={20} />}
+                        title="Business Profile QR"
+                        description="Instagram bio, Google listing, flyers"
+                        loading={generatingAsset === 'Business Profile QR'}
+                        onDownload={() => handleDownloadQr(
+                            data.obpLink,
+                            'Business Profile QR',
+                            `${data.storeName}-business-profile-qr`,
+                        )}
+                        themeToken={themeToken}
+                    />
+                </Col>
+                <Col xs={24} sm={8}>
+                    <AssetCard
+                        icon={<LuQrCode size={20} />}
+                        title="Project Menu QR (advanced)"
+                        description={`Deep link to "${data.projectName || 'menu'}"`}
+                        loading={generatingAsset === 'Project Menu QR'}
+                        onDownload={() => handleDownloadQr(
+                            data.menuLink,
+                            'Project Menu QR',
+                            `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
+                        )}
+                        themeToken={themeToken}
+                    />
+                </Col>
             </Row>
 
             {/* Google Business hint */}

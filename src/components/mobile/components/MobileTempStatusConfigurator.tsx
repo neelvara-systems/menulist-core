@@ -3,7 +3,7 @@
 import { theme } from 'antd';
 import dayjs from 'dayjs';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Input, Space, Tag, Text, Toast } from '../antd';
+import { Button, Card, Flex, Input, Tag, Text, Toast } from '../antd';
 
 export type TempStatusOption = {
     defaultMsg: string;
@@ -169,18 +169,33 @@ export default function MobileTempStatusConfigurator({
 
             <Flex gap={8} vertical>
                 <Text strong>{statusTypeLabel}</Text>
-                <Space size={[8, 8]} wrap>
+                <div
+                    style={{
+                        display: 'grid',
+                        gap: 8,
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        width: '100%',
+                    }}
+                >
                     {statusOptions.map((option) => (
                         <Tag
                             key={option.value}
                             color={statusType === option.value ? 'processing' : 'default'}
                             onClick={() => onStatusTypeChange(option.value)}
-                            style={{ cursor: 'pointer', padding: '6px 12px' }}
+                            style={{
+                                cursor: 'pointer',
+                                display: 'block',
+                                marginInlineEnd: 0,
+                                minHeight: 40,
+                                padding: '9px 12px',
+                                textAlign: 'center',
+                                width: '100%',
+                            }}
                         >
                             {`${option.icon} ${option.label}`}
                         </Tag>
                     ))}
-                </Space>
+                </div>
             </Flex>
 
             {statusType === 'custom' ? (

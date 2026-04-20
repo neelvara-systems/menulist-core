@@ -230,16 +230,15 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                         </Card>
 
                         <Card>
-                            <Flex gap={8} vertical>
-                                <Text strong>{t('startTime')}</Text>
-                                <Input onChange={setFormStart} type="time" value={formStart} />
-                            </Flex>
-                        </Card>
-
-                        <Card>
-                            <Flex gap={8} vertical>
-                                <Text strong>{t('endTime')}</Text>
-                                <Input onChange={setFormEnd} type="time" value={formEnd} />
+                            <Flex gap={10}>
+                                <Flex style={{ flex: 1 }} vertical>
+                                    <Text strong>{t('startTime')}</Text>
+                                    <Input onChange={setFormStart} type="time" value={formStart} />
+                                </Flex>
+                                <Flex style={{ flex: 1 }} vertical>
+                                    <Text strong>{t('endTime')}</Text>
+                                    <Input onChange={setFormEnd} type="time" value={formEnd} />
+                                </Flex>
                             </Flex>
                         </Card>
 

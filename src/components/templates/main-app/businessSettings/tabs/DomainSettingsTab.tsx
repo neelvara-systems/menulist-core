@@ -6,7 +6,7 @@ import { Alert, Button, Card, Divider, Input, List, Space, Steps, Tag, Typograph
 import axios from 'axios';
 import { useTranslations } from 'next-intl';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuRefreshCw, LuSearch, LuTrash2, LuX } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuRefreshCw, LuSearch, LuTrash2 } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -251,48 +251,67 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                             </Space>
                         ) : null}
 
-                        <Input
-                            addonAfter={`.${PLATFORM_DOMAIN}`}
-                            placeholder={t('subdomainPlaceholder')}
-                            value={subdomainValue}
-                            onBlur={(event) => void checkAvailability(event.target.value)}
-                            onChange={(event) => setSubdomainValue(event.target.value.toLowerCase().trim())}
-                        />
-                        <Text type="secondary">{t('subdomainHelp')}</Text>
-
-                        {availability ? (
-                            <Text type={availability.available ? 'success' : 'danger'}>
-                                {availability.available ? `${availability.preview} ${t('isAvailable', { name: '' }).replace(' is available', '')} ${t('open') ? '' : ''}` : availability.reason}
-                            </Text>
-                        ) : null}
-
-                        <Space wrap>
-                            <Button
-                                disabled={!subdomainValue || subdomainValue.length < 3}
-                                icon={<LuSearch />}
-                                loading={checkingSubdomain}
-                                onClick={() => void checkAvailability(subdomainValue)}
-                            >
-                                {t('checkAvailability')}
-                            </Button>
-                            <Button
-                                disabled={!availability?.available}
-                                loading={savingSubdomain}
-                                onClick={() => void saveSubdomain()}
-                                type="primary"
-                            >
-                                {t('saveChanges')}
-                            </Button>
-                        </Space>
-
-                        {!storeDetails?.subdomain ? (
+                        {/*
+                         * G-08 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): once the store
+                         * has ever been published, the subdomain is a permanent
+                         * URL anchor. Renaming it would break every printed QR,
+                         * every shared link, and every indexed page. The editor
+                         * is hidden post-publish; pre-publish stores keep the
+                         * full flow. Server-side enforcement lives in updateStore.
+                         */}
+                        {storeDetails?.lastPublishedAt ? (
                             <Alert
-                                description={t('noSubdomainDesc')}
-                                message={t('noSubdomainSet')}
+                                message="Your web address is set."
+                                description="This is your permanent link — customers, QR codes, and search results all point here. It cannot be changed after publish."
                                 showIcon
-                                type="warning"
+                                type="info"
                             />
-                        ) : null}
+                        ) : (
+                            <>
+                                <Input
+                                    addonAfter={`.${PLATFORM_DOMAIN}`}
+                                    placeholder={t('subdomainPlaceholder')}
+                                    value={subdomainValue}
+                                    onBlur={(event) => void checkAvailability(event.target.value)}
+                                    onChange={(event) => setSubdomainValue(event.target.value.toLowerCase().trim())}
+                                />
+                                <Text type="secondary">{t('subdomainHelp')}</Text>
+
+                                {availability ? (
+                                    <Text type={availability.available ? 'success' : 'danger'}>
+                                        {availability.available ? `${availability.preview} ${t('isAvailable', { name: '' }).replace(' is available', '')} ${t('open') ? '' : ''}` : availability.reason}
+                                    </Text>
+                                ) : null}
+
+                                <Space wrap>
+                                    <Button
+                                        disabled={!subdomainValue || subdomainValue.length < 3}
+                                        icon={<LuSearch />}
+                                        loading={checkingSubdomain}
+                                        onClick={() => void checkAvailability(subdomainValue)}
+                                    >
+                                        {t('checkAvailability')}
+                                    </Button>
+                                    <Button
+                                        disabled={!availability?.available}
+                                        loading={savingSubdomain}
+                                        onClick={() => void saveSubdomain()}
+                                        type="primary"
+                                    >
+                                        {t('saveChanges')}
+                                    </Button>
+                                </Space>
+
+                                {!storeDetails?.subdomain ? (
+                                    <Alert
+                                        description={t('noSubdomainDesc')}
+                                        message={t('noSubdomainSet')}
+                                        showIcon
+                                        type="warning"
+                                    />
+                                ) : null}
+                            </>
+                        )}
                     </Space>
                 )}
             </Card>
