@@ -5,9 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { buildClockTimeOptions, formatClockTime } from '@util/dateTime';
-import { Button, Card, DotLoading, Flex, NavBar, Select, Switch, Text, Toast } from '../antd';
-import { LuClock3 } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileWorkingHoursEditScreenProps {
@@ -72,8 +70,6 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         });
         return result;
     });
-
-    const pickerOptions = buildClockTimeOptions();
 
     const allDaysTemplate = DAYS.reduce<DaySchedule | null>((found, { key }) => {
         if (found) return found;
@@ -155,7 +151,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                             </Button>
                         </Flex>
                         <Flex gap={8}>
-                            <Select
+                            <Input
                                 onChange={(value) => setSchedule((previous) => {
                                     const next: Record<string, DaySchedule> = {};
                                     DAYS.forEach(({ key }) => {
@@ -163,12 +159,10 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                     });
                                     return next;
                                 })}
-                                options={pickerOptions}
-                                placeholder={t('selectOpeningTime')}
-                                showSearch={false}
+                                type="time"
                                 value={allDaysTemplate.open}
                             />
-                            <Select
+                            <Input
                                 onChange={(value) => setSchedule((previous) => {
                                     const next: Record<string, DaySchedule> = {};
                                     DAYS.forEach(({ key }) => {
@@ -176,9 +170,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                     });
                                     return next;
                                 })}
-                                options={pickerOptions}
-                                placeholder={t('selectClosingTime')}
-                                showSearch={false}
+                                type="time"
                                 value={allDaysTemplate.close}
                             />
                         </Flex>
@@ -203,24 +195,20 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                                 </Flex>
                                 {!day.isClosed ? (
                                     <Flex gap={8}>
-                                        <Select
+                                        <Input
                                             onChange={(value) => setSchedule((previous) => ({
                                                 ...previous,
                                                 [key]: { ...previous[key], open: value },
                                             }))}
-                                            options={pickerOptions}
-                                            placeholder={t('selectOpeningTime')}
-                                            showSearch={false}
+                                            type="time"
                                             value={day.open}
                                         />
-                                        <Select
+                                        <Input
                                             onChange={(value) => setSchedule((previous) => ({
                                                 ...previous,
                                                 [key]: { ...previous[key], close: value },
                                             }))}
-                                            options={pickerOptions}
-                                            placeholder={t('selectClosingTime')}
-                                            showSearch={false}
+                                            type="time"
                                             value={day.close}
                                         />
                                     </Flex>

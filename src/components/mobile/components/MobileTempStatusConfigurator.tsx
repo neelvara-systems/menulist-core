@@ -79,6 +79,7 @@ interface MobileTempStatusConfiguratorProps {
     previewMessage: string;
     setStatusLabel: string;
     showActiveHeader?: boolean;
+    activeCardVariant?: 'warning' | 'default';
     statusOptions?: TempStatusOption[];
     statusType: string;
     statusTypeLabel: string;
@@ -111,6 +112,7 @@ export default function MobileTempStatusConfigurator({
     previewMessage,
     setStatusLabel,
     showActiveHeader = true,
+    activeCardVariant = 'warning',
     statusOptions = MOBILE_TEMP_STATUS_OPTIONS,
     statusType,
     statusTypeLabel,
@@ -118,6 +120,12 @@ export default function MobileTempStatusConfigurator({
 }: MobileTempStatusConfiguratorProps) {
     const { token } = theme.useToken();
     const minExpiryAt = getMinTempStatusDateTime();
+    const activeCardStyle = activeCardVariant === 'warning'
+        ? {
+            backgroundColor: token.colorWarningBg,
+            borderColor: token.colorWarningBorder,
+        }
+        : undefined;
 
     if (isActive && currentStatus) {
         return (
@@ -132,10 +140,7 @@ export default function MobileTempStatusConfigurator({
 
                 <Card
                     size="small"
-                    style={{
-                        backgroundColor: token.colorWarningBg,
-                        borderColor: token.colorWarningBorder,
-                    }}
+                    style={activeCardStyle}
                 >
                     <Flex gap={8} vertical>
                         <Text strong>{`${statusOptions.find((option) => option.value === currentStatus.type)?.icon || 'ℹ️'} ${currentStatus.message || 'Temporary notice'}`}</Text>
@@ -223,21 +228,11 @@ export default function MobileTempStatusConfigurator({
                             {option.label}
                         </Tag>
                     ))}
-                    <div style={{ flex: '0 0 auto', width: 'max-content', maxWidth: '100%' }}>
-                        <input
+                    <div style={{ flex: '0 0 auto', maxWidth: '100%', width: 'max-content' }}>
+                        <Input
                             min={minExpiryAt}
-                            onChange={(event) => onExactExpiryAtChange(event.target.value)}
-                            style={{
-                                backgroundColor: token.colorBgContainer,
-                                border: `1px solid ${token.colorBorder}`,
-                                borderRadius: 8,
-                                color: token.colorText,
-                                font: 'inherit',
-                                maxWidth: '100%',
-                                minHeight: 36,
-                                padding: '0 12px',
-                                width: 'max-content',
-                            }}
+                            onChange={onExactExpiryAtChange}
+                            style={{ maxWidth: '100%', width: 'max-content' }}
                             type="datetime-local"
                             value={exactExpiryAt}
                         />

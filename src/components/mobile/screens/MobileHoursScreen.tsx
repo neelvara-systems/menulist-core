@@ -635,6 +635,7 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                             selectedExpiryHours={selectedTempStatusExpiryHours}
                             setStatusLabel="Apply Status"
                             showActiveHeader={false}
+                            activeCardVariant="default"
                             statusOptions={MOBILE_TEMP_STATUS_OPTIONS}
                             statusType={tempStatusType}
                             statusTypeLabel="Status Type"
