@@ -11,7 +11,7 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
-import getNewItemMetadataViaAPI from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
+import getNewItemMetadataViaAPI, { mergeGeneratedItemMetadata } from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import { UserUploadedFileType } from '@type/common';
 import type { InheritanceState } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
@@ -111,8 +111,8 @@ const ItemFormView = memo((
             <Flex gap={8} align='flex-end' justify='flex-end' style={{ width: '100%' }}>
                 {modalData.status == 'edit' && <AIButtonIcon
                     onClick={() => handleRetryTranslation(lang)}
-                    tooltip={`Regenerate content for this item's name, description, and other details into ${GlobalLanguagesList.find(l => l.code == lang)?.name}.`}
-                    label={`Regenerate ${GlobalLanguagesList.find(l => l.code == lang)?.name} Content`}
+                    tooltip={`Refresh the ${GlobalLanguagesList.find(l => l.code == lang)?.name} translation for this item.`}
+                    label={`Refresh ${GlobalLanguagesList.find(l => l.code == lang)?.name} Translation`}
                 />}
                 <Button icon={<LuPlus />} onClick={handleAddAttribute}>Add Attribute</Button>
             </Flex>
@@ -356,6 +356,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         dispatch(startLoader("generating_content"));
         try {
             const sourceLanguage = GlobalLanguagesList.find(gl => gl.code === (projectData.languages?.[0] || 'en'));
+            const targetLanguages = projectData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
 
             // Validate if item name is present in the source language
             if (!itemData.name[sourceLanguage.code]) {
@@ -363,21 +364,20 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 return;
             }
 
-            const targetLanguages = projectData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
             const payload: NewItemMetadataAPIParams = {
                 item: {
                     id: itemData.id,
                     name: itemData.name[sourceLanguage.code],
                     category: itemData.category,
-                    description: itemData.description[sourceLanguage.code],
-                    attributes: itemData.attributes.map(attr => ({
+                    description: itemData.description?.[sourceLanguage.code] || '',
+                    attributes: (itemData.attributes || []).map(attr => ({
                         id: attr.id,
-                        name: attr.name[sourceLanguage.code],
+                        name: attr.name?.[sourceLanguage.code],
                         price: attr.price
                     }))
                 },
-                targetLang: targetLanguages,
-                sourceLang: sourceLanguage,
+                targetLang: targetLanguages as any,
+                sourceLang: sourceLanguage as any,
                 projectId: projectData.projectId,
                 fileId: fileData.uid,
                 contentLength: "Standard",
@@ -386,7 +386,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             const result = await getNewItemMetadataViaAPI(payload)
             if (result) {
                 antdMessage.success("Content generated successfully")
-                setItemData({ ...itemData, ...result })
+                setItemData(mergeGeneratedItemMetadata(itemData, result))
             } else {
                 antdMessage.error("Failed to generate content. Please try again.");
             }

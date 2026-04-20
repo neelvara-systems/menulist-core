@@ -42,6 +42,8 @@ When generating a new description:
 **6. Attributes and Price Integrity:**
 *   If the input \`item.attributes\` array exists, process it. If it is missing, the \`attributes\` key should be omitted from the final output.
 *   For each attribute, the \`price\` value must be copied exactly as it appears in the input. **DO NOT** translate, format, change the currency, or modify the \`price\` string in any way.
+*   Preserve attribute order exactly as provided in the input.
+*   If you return \`attributes\`, include each original attribute \`id\` unchanged so the client can merge the result back safely.
 
 **7. Structured Item Metadata (Business-Category-Aware):**
 Based on the \`businessType\`, suggest relevant metadata fields. Only include fields that are contextually appropriate — do NOT force metadata where it doesn't make sense.
@@ -101,7 +103,7 @@ export default getMultilingualNewItemPrompt;
 //     "languageCode2": "Description in lang 2..."
 //     },
 //     attributes: [
-//         {name: {
+//         {id:"original-attribute-id", name: {
 //             "languageCode1": "name in lang 1...",
 //             "languageCode2": "name in lang 2..."
 //         },

@@ -7,12 +7,12 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
-import getNewItemMetadataViaAPI from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
+import getNewItemMetadataViaAPI, { mergeGeneratedItemMetadata } from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCamera, LuLanguages, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
-import type { ExtractedDataAttribute, ExtractedDataItem, Project, ProjectFileType } from '../../templates/main-app/projects/types';
+import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParams, Project, ProjectFileType } from '../../templates/main-app/projects/types';
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
 import type { MobileMenuItemType } from '../types';
@@ -150,6 +150,10 @@ export default function ItemEditSheet({
         return images;
     }, [draftItem.images, imagePreview]);
     const imageActionLabel = itemImagePreviews.length > 0 ? t('editImages') : t('addImages');
+    const hasAnyDescription = Object.values(draftItem.description || {}).some((description) => String(description || '').trim().length > 0);
+    const contentActionLabel = isAddMode || !hasAnyDescription
+        ? t('generateContent')
+        : t('regenerateContent');
 
     const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -225,8 +229,8 @@ export default function ItemEditSheet({
         setIsAiWorking(true);
         dispatch(startLoader('generating_content'));
         try {
-            const result = await getNewItemMetadataViaAPI({
-                businessType: storeDetails?.businessType,
+            const payload: NewItemMetadataAPIParams = {
+                businessType: storeDetails?.businessType || '',
                 contentLength: 'Standard',
                 fileId: sourceFile.uid,
                 item: {
@@ -236,24 +240,28 @@ export default function ItemEditSheet({
                         price: attribute.price,
                     })),
                     category: draftItem.category,
-                    description: getLocalizedValue(draftItem.description, primaryLanguage),
+                    description: getLocalizedValue(draftItem.description, primaryLanguage) || '',
                     id: draftItem.id,
                     name: getLocalizedValue(draftItem.name, primaryLanguage),
                 },
                 projectId: projectData.projectId,
                 sourceLang: sourceLanguage,
                 targetLang: targetLanguages as any,
-            });
+            };
+
+            const result = await getNewItemMetadataViaAPI(payload);
 
             if (result) {
-                setDraftItem((previous) => ({ ...previous, ...result }));
-                Toast.show({ content: t('descriptionsUpdated'), duration: 1400 });
+                setDraftItem((previous) => mergeGeneratedItemMetadata(previous, result));
+                Toast.show({ content: t('contentUpdated'), duration: 1400 });
+            } else {
+                Toast.show({ content: t('contentGenerationFailed'), duration: 2000 });
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
                 Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
             } else {
-                Toast.show({ content: t('descriptionGenerationFailed'), duration: 2000 });
+                Toast.show({ content: t('contentGenerationFailed'), duration: 2000 });
             }
         } finally {
             dispatch(stopLoader('generating_content'));
@@ -369,22 +377,24 @@ export default function ItemEditSheet({
         return (
             <Card key={languageCode} size="small" style={sectionCardStyle}>
                 <Flex gap={12} vertical>
-                    <Flex align="center" justify="space-between">
-                        <Text strong>{languageLabel}</Text>
-                        {!isAddMode && hasMultipleLanguages && languageCode !== primaryLanguage ? (
-                            <Button
-                                disabled={isAiWorking || isSaving}
-                                fill="outline"
-                                onClick={() => { void handleRetryTranslation(languageCode); }}
-                                size="small"
-                            >
-                                <Flex align="center" gap={6}>
-                                    <LuLanguages size={14} />
-                                    <Text>{t('refreshAiText')}</Text>
-                                </Flex>
-                            </Button>
-                        ) : null}
-                    </Flex>
+                    {hasMultipleLanguages ? (
+                        <Flex align="center" justify="space-between">
+                            <Text strong>{languageLabel}</Text>
+                            {!isAddMode && languageCode !== primaryLanguage ? (
+                                <Button
+                                    disabled={isAiWorking || isSaving}
+                                    fill="outline"
+                                    onClick={() => { void handleRetryTranslation(languageCode); }}
+                                    size="small"
+                                >
+                                    <Flex align="center" gap={6}>
+                                        <LuLanguages size={14} />
+                                        <Text>{t('refreshTranslation')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    ) : null}
 
                     <Flex gap={6} vertical>
                         <Text strong>{t('itemNameLabel')}</Text>
@@ -636,7 +646,7 @@ export default function ItemEditSheet({
                         >
                             <Flex align="center" gap={6}>
                                 <LuSparkles size={16} />
-                                <Text>{isAddMode ? t('generateDescriptionsAi') : t('refreshAiText')}</Text>
+                                <Text>{contentActionLabel}</Text>
                             </Flex>
                         </Button>
                     ) : null}

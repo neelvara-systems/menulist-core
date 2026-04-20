@@ -29,6 +29,7 @@ import MenuFooter from '../output/MenuFooter';
 import MenuHeader from '../output/MenuHeader';
 import MenuSearchBar from '../output/MenuSearchBar';
 import PDPModal from '../output/PDPModal';
+import ServiceChargeNote from '../output/ServiceChargeNote';
 import { DeviceTypes, PageType } from '../types';
 import { normalizeTags } from '../utils/normalizeItemAttributes';
 
@@ -929,7 +930,7 @@ function MenuPageNew({
                       */}
 
                     {/* G06 - Service Charge Disclosure (Trust Zone - Pricing Truth) */}
-                    <specialNote note={projectData?.menuSettings?.specialNote} />
+                    <ServiceChargeNote note={projectData?.menuSettings?.specialNote} />
 
                     {/* G09 - Contact/Location Display (Trust Zone - Business Identity) */}
                     <MenuFooter

@@ -104,7 +104,23 @@ export default function ManageLanguagesSheet({
                     updated.languages = [...projectLanguages, targetLang.code];
 
                     const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
+                    let translatedFilesCount = 0;
+
                     for (const file of filesToTranslate) {
+                        const fileLanguages = file.extractedData?.data?.languages || [];
+                        const hasLanguageOnFile = fileLanguages.some((language) => language.code === targetLang.code);
+
+                        if (!hasLanguageOnFile && file.extractedData?.data) {
+                            file.extractedData.data.languages = [
+                                ...fileLanguages,
+                                {
+                                    code: targetLang.code,
+                                    isPrimary: false,
+                                    name: targetLang.name,
+                                },
+                            ];
+                        }
+
                         const result = await translateFile(
                             updated,
                             file,
@@ -112,7 +128,16 @@ export default function ManageLanguagesSheet({
                             sourceLang,
                             AI_ACTIONS_TYPES.LANGUAGE_ADDITION
                         );
+
+                        if (result.messageType === 'success') {
+                            translatedFilesCount += 1;
+                        }
+
                         updated = result.updatedProject;
+                    }
+
+                    if (filesToTranslate.length > 0 && translatedFilesCount === 0) {
+                        throw new Error('No translations were merged for the added language.');
                     }
 
                     onSaved(updated);

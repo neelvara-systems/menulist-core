@@ -247,7 +247,7 @@ export default function GenerateDescriptionsSheet({
                             >
                                 <Flex align="center" gap={6}>
                                     <LuRefreshCcw size={16} />
-                                    <Text>{t('refreshAiText')}</Text>
+                                    <Text>{t('refreshDescriptionsCta')}</Text>
                                 </Flex>
                             </Button>
                         ) : null}

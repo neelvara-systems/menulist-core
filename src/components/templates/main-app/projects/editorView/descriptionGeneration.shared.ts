@@ -3,6 +3,7 @@ import GlobalLanguagesList from '@data/languages';
 import { updateProject } from '@database/projects';
 import { logger } from '@lib/monitoring/logger';
 import { addDescription, type DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
+import getDescriptionsViaAPI from '@services/ai/description/generateDescriptionViaAPI';
 import { removeObjRef } from '@util/utils';
 import type { ExtractedDataItem, Project, ProjectFileType } from '../types';
 
@@ -132,4 +133,107 @@ export async function runDescriptionGeneration({
 
     await updateProject({ ...nextProject, projectId: nextProject.projectId });
     return removeObjRef(nextProject);
+}
+
+type RunSingleItemDescriptionGenerationParams = {
+    contentLength: DescriptionContentLength;
+    item: ExtractedDataItem;
+    projectData: Project;
+    sourceFile: ProjectFileType;
+    tone?: DescriptionTone;
+};
+
+type SingleItemDescriptionGenerationResult = {
+    action: string;
+    reason?: 'manual_protected' | 'missing_name' | 'missing_languages' | 'no_result';
+    updatedItem: ExtractedDataItem;
+};
+
+export async function runSingleItemDescriptionGeneration({
+    contentLength,
+    item,
+    projectData,
+    sourceFile,
+    tone = DEFAULT_DESCRIPTION_TONE,
+}: RunSingleItemDescriptionGenerationParams): Promise<SingleItemDescriptionGenerationResult> {
+    const sourceLanguage = GlobalLanguagesList.find((lang) => lang.code === (projectData.languages?.[0] || 'en'));
+    const targetLanguages = projectData.languages
+        .map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang))
+        .filter(Boolean);
+
+    if (!sourceLanguage || targetLanguages.length === 0) {
+        return {
+            action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+            reason: 'missing_languages',
+            updatedItem: removeObjRef(item),
+        };
+    }
+
+    const sourceName = item.name?.[sourceLanguage.code]?.trim();
+    if (!sourceName) {
+        return {
+            action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+            reason: 'missing_name',
+            updatedItem: removeObjRef(item),
+        };
+    }
+
+    const existingDescription = item.description?.[sourceLanguage.code]?.trim() || '';
+    const action = existingDescription
+        ? AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
+        : AI_ACTIONS_TYPES.ADD_DESCRIPTION;
+
+    if (action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION && item.descriptionSource === 'manual') {
+        return {
+            action,
+            reason: 'manual_protected',
+            updatedItem: removeObjRef(item),
+        };
+    }
+
+    const categoryName = sourceFile.extractedData?.data?.categories
+        ?.find((category) => category.id === item.category)
+        ?.name?.[sourceLanguage.code] || '';
+
+    const generatedDescriptions = await getDescriptionsViaAPI({
+        action,
+        contentLength,
+        fileId: sourceFile.uid,
+        itemsList: [{
+            attributes: (item.attributes || [])
+                .map((attribute) => attribute.name?.[sourceLanguage.code]?.trim() || '')
+                .filter(Boolean)
+                .join(', '),
+            category: categoryName,
+            description: existingDescription,
+            id: item.id,
+            name: sourceName,
+        }] as any,
+        projectId: projectData.projectId,
+        sourceLang: sourceLanguage,
+        targetLang: targetLanguages as any,
+        tone,
+    });
+
+    const nextDescription = generatedDescriptions?.[item.id] as unknown as Record<string, string> | undefined;
+
+    if (!nextDescription) {
+        return {
+            action,
+            reason: 'no_result',
+            updatedItem: removeObjRef(item),
+        };
+    }
+
+    return {
+        action,
+        updatedItem: {
+            ...removeObjRef(item),
+            description: {
+                ...(item.description || {}),
+                ...nextDescription,
+            },
+            descriptionSource: 'ai',
+        },
+    };
 }
