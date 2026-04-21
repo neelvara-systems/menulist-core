@@ -1824,7 +1824,6 @@ export default function MobileMenuScreen() {
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
                         }}
                         onClick={projectsList.length > 1 && !isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
-                        rightContent={<Tag>{t('itemsCount', { count: menuItems.length })}</Tag>}
                     />
 
                     {menuData?.files && !isFirstRunProject ? (

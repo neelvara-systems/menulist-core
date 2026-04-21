@@ -1,20 +1,34 @@
 'use client'
 
 import { addProject, deleteProject, duplicateProject, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { buildQrCodeFilename } from '@lib/utils/qrCode';
+import { generateProjectUrl } from '@lib/utils/slugify';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
+import { DatePicker, theme } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState } from 'react';
-import { LuArchiveRestore, LuCopy, LuPen, LuPower, LuRotateCcw, LuTrash2 } from 'react-icons/lu';
+import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { LuArchiveRestore, LuCopy, LuExternalLink, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
+import MobileQrCodeSheet from './MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Text, TextArea, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
+import { getClockTimeInputFormat } from '@util/dateTime';
 
 type ProjectSheetProject = {
     active?: boolean;
     deleted?: boolean;
     description?: string;
     isDefault?: boolean;
+    isSpecialMenu?: boolean;
     name: string;
     projectId: string;
+    specialMenuBaseProjectId?: string;
+    specialMenuEndsAt?: string;
+    specialMenuMode?: 'replace' | 'overlay';
+    specialMenuStartsAt?: string;
+    specialMenuStatus?: 'scheduled' | 'active' | 'expired' | 'cancelled';
 };
 
 interface MobileProjectSelectorSheetProps {
@@ -26,6 +40,21 @@ interface MobileProjectSelectorSheetProps {
 }
 
 type FormMode = 'create' | 'edit' | 'duplicate' | null;
+type QrSheetState = {
+    filename: string;
+    helperText: string;
+    title: string;
+    url: string;
+};
+type ActionItem = {
+    description?: string;
+    icon: ReactNode;
+    iconBackground?: string;
+    key: string;
+    label: string;
+    labelStyle?: CSSProperties;
+    onClick: () => void;
+};
 
 export default function MobileProjectSelectorSheet({
     currentProjectId,
@@ -34,20 +63,67 @@ export default function MobileProjectSelectorSheet({
     onProjectsChanged,
     visible,
 }: MobileProjectSelectorSheetProps) {
+    const { token } = theme.useToken();
     const t = useTranslations('MobileProjectSelector');
+    const tShare = useTranslations('MobileShare');
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const labels = useOfferingLabels();
     const { isLoading, projectsList, refreshProjects, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
+    const [formStartsAt, setFormStartsAt] = useState<Dayjs | null>(null);
+    const [formEndsAt, setFormEndsAt] = useState<Dayjs | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
+    const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
+    const specialMenuDateTimeFormat = `YYYY-MM-DD ${getClockTimeInputFormat()}`;
+    const sheetCardStyle = {
+        borderRadius: Number(token.borderRadiusLG || token.borderRadius) + 4,
+        borderColor: token.colorBorderSecondary,
+        overflow: 'hidden',
+    };
+    const stickyHeaderStyle = {
+        position: 'sticky' as const,
+        top: 0,
+        zIndex: 2,
+        background: token.colorBgElevated,
+        paddingTop: 12,
+        paddingBottom: 8,
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+        marginBottom: 4,
+    };
+    const actionIconContainerStyle = {
+        width: 32,
+        height: 32,
+        minWidth: 32,
+        borderRadius: Number(token.borderRadiusSM || token.borderRadius),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center' as const,
+        background: token.colorFillTertiary,
+    };
 
     const projects = projectsList as ProjectSheetProject[];
+    const orderedProjects = useMemo(() => {
+        return [...projects].sort((a, b) => {
+            const aSpecial = a.isSpecialMenu === true ? 1 : 0;
+            const bSpecial = b.isSpecialMenu === true ? 1 : 0;
+            if (aSpecial !== bSpecial) return bSpecial - aSpecial;
+            return 0;
+        });
+    }, [projects]);
 
     const managingProject = useMemo(
-        () => projects.find((project) => project.projectId === managingProjectId) || null,
-        [managingProjectId, projects]
+        () => orderedProjects.find((project) => project.projectId === managingProjectId) || null,
+        [managingProjectId, orderedProjects]
+    );
+    const formSourceProject = useMemo(
+        () => projects.find((project) => project.projectId === formProjectId) || null,
+        [formProjectId, projects]
     );
 
     const resetFormState = () => {
@@ -55,6 +131,8 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
+        setFormStartsAt(null);
+        setFormEndsAt(null);
         setIsSubmitting(false);
     };
 
@@ -64,22 +142,26 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
+        setFormStartsAt(null);
+        setFormEndsAt(null);
     };
 
     const openEdit = (project: ProjectSheetProject) => {
-        setManagingProjectId(null);
         setFormMode('edit');
         setFormProjectId(project.projectId);
         setFormName(project.name);
         setFormDescription(project.description || '');
+        setFormStartsAt(project.specialMenuStartsAt ? dayjs(project.specialMenuStartsAt) : null);
+        setFormEndsAt(project.specialMenuEndsAt ? dayjs(project.specialMenuEndsAt) : null);
     };
 
     const openDuplicate = (project: ProjectSheetProject) => {
-        setManagingProjectId(null);
         setFormMode('duplicate');
         setFormProjectId(project.projectId);
         setFormName(`Copy of ${project.name}`);
         setFormDescription(project.description || '');
+        setFormStartsAt(null);
+        setFormEndsAt(null);
     };
 
     const refreshAndSync = async (preferredProjectId?: string | null) => {
@@ -92,12 +174,6 @@ export default function MobileProjectSelectorSheet({
     };
 
     const handleSelectProject = async (projectId: string) => {
-        const target = projects.find((project) => project.projectId === projectId);
-        if (!target || target.active === false) {
-            Toast.show({ content: t('activateBeforeUsing'), duration: 1600 });
-            return;
-        }
-
         onClose();
         await onProjectsChanged(projectId);
         Toast.show({ content: t('catalogSwitched'), duration: 1200 });
@@ -106,10 +182,23 @@ export default function MobileProjectSelectorSheet({
     const handleSubmitForm = async () => {
         const nextName = formName.trim();
         const nextDescription = formDescription.trim();
+        const isEditingSpecialMenu = formMode === 'edit' && Boolean(formSourceProject?.isSpecialMenu);
 
         if (!nextName) {
             Toast.show({ content: t('catalogNameRequired'), duration: 1600 });
             return;
+        }
+
+        if (isEditingSpecialMenu) {
+            if (!formStartsAt || !formEndsAt) {
+                Toast.show({ content: 'Set both the start and end date and time.', duration: 1800 });
+                return;
+            }
+
+            if (!formEndsAt.isAfter(formStartsAt)) {
+                Toast.show({ content: 'End date and time must be after the start date and time.', duration: 1800 });
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -136,10 +225,29 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'edit' && formProjectId) {
-                await updateProjectMetadata(formProjectId, {
+                const metadataUpdate: Record<string, any> = {
                     description: nextDescription || undefined,
                     name: nextName,
-                });
+                };
+
+                if (isEditingSpecialMenu) {
+                    metadataUpdate.specialMenuDisplayName = nextName;
+                    metadataUpdate.specialMenuStartsAt = formStartsAt!.toISOString();
+                    metadataUpdate.specialMenuEndsAt = formEndsAt!.toISOString();
+                }
+
+                await updateProjectMetadata(formProjectId, metadataUpdate);
+
+                if (isEditingSpecialMenu) {
+                    await updateProjectWithoutLoader({
+                        projectId: formProjectId,
+                        _specialMenu: {
+                            displayName: nextName,
+                            endsAt: formEndsAt!.toISOString(),
+                            startsAt: formStartsAt!.toISOString(),
+                        } as any,
+                    });
+                }
 
                 resetFormState();
                 await refreshAndSync(formProjectId);
@@ -150,6 +258,32 @@ export default function MobileProjectSelectorSheet({
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const initialFormName = formMode === 'duplicate'
+        ? `Copy of ${formSourceProject?.name || ''}`
+        : formSourceProject?.name || '';
+    const initialFormDescription = formSourceProject?.description || '';
+    const initialFormStartsAt = formSourceProject?.specialMenuStartsAt || '';
+    const initialFormEndsAt = formSourceProject?.specialMenuEndsAt || '';
+    const isEditingSpecialMenu = formMode === 'edit' && Boolean(formSourceProject?.isSpecialMenu);
+    const hasFormChanges = formMode === 'edit'
+        ? (
+            formName.trim() !== initialFormName.trim() ||
+            formDescription.trim() !== initialFormDescription.trim() ||
+            (isEditingSpecialMenu && (
+                (formStartsAt?.toISOString() || '') !== initialFormStartsAt ||
+                (formEndsAt?.toISOString() || '') !== initialFormEndsAt
+            ))
+        )
+        : true;
+
+    const handleResetEditForm = () => {
+        if (!formSourceProject) return;
+        setFormName(formSourceProject.name || '');
+        setFormDescription(formSourceProject.description || '');
+        setFormStartsAt(formSourceProject.specialMenuStartsAt ? dayjs(formSourceProject.specialMenuStartsAt) : null);
+        setFormEndsAt(formSourceProject.specialMenuEndsAt ? dayjs(formSourceProject.specialMenuEndsAt) : null);
     };
 
     const handleToggleActive = async (project: ProjectSheetProject) => {
@@ -182,30 +316,148 @@ export default function MobileProjectSelectorSheet({
 
     const handleDeleteProject = async (project: ProjectSheetProject) => {
         const isCurrent = project.projectId === currentProjectId;
-        const fallback = projects.find((entry) => entry.projectId !== project.projectId && entry.active !== false);
+        const fallback = orderedProjects.find((entry) => entry.projectId !== project.projectId && entry.active !== false);
         setManagingProjectId(null);
         await deleteProject(project.projectId);
         await refreshAndSync(isCurrent ? fallback?.projectId || null : currentProjectId || null);
         Toast.show({ content: t('catalogDeleted'), duration: 1400 });
     };
 
-    const actionItems = managingProject ? [
+    const getProjectShareUrl = (project: ProjectSheetProject) => {
+        if (!storeDetails) return null;
+        if (!project.name || project.deleted === true) return null;
+
+        const subdomain = storeDetails.subdomain || '';
+        const customDomain = storeDetails.customDomain;
+        if (!subdomain && !customDomain) return null;
+
+        try {
+            return generateProjectUrl(subdomain, customDomain, project.name, false);
+        } catch {
+            return null;
+        }
+    };
+
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr') =>
+        `${url}${url.includes('?') ? '&' : '?'}src=${src}`;
+
+    const handleCopyProjectLink = async (project: ProjectSheetProject) => {
+        const shareUrl = getProjectShareUrl(project);
+        if (!shareUrl) {
+            Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(withSource(shareUrl, 'copy'));
+            setManagingProjectId(null);
+            Toast.show({
+                content: tShare('copiedLabel', {
+                    label: tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }),
+                }),
+                duration: 1200,
+            });
+        } catch {
+            Toast.show({
+                content: tShare('copyFailedLabel', {
+                    label: tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }).toLowerCase(),
+                }),
+                duration: 1500,
+            });
+        }
+    };
+
+    const handlePreviewProject = (project: ProjectSheetProject) => {
+        const shareUrl = getProjectShareUrl(project);
+        if (!shareUrl) {
+            Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
+            return;
+        }
+
+        setManagingProjectId(null);
+        window.open(withSource(shareUrl, 'direct'), '_blank');
+    };
+
+    const handleShowProjectQr = (project: ProjectSheetProject) => {
+        const shareUrl = getProjectShareUrl(project);
+        if (!shareUrl) {
+            Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
+            return;
+        }
+
+        setQrSheet({
+            filename: buildQrCodeFilename(`${storeDetails?.name || 'menu'}-${project.name}-direct-link`, 'qr'),
+            helperText: tShare('directOfferingLinkDesc', { offering: labels.offeringLower }),
+            title: `${project.name} ${tShare('showQr')}`,
+            url: withSource(shareUrl, 'qr'),
+        });
+        setIsQrSheetOpen(true);
+    };
+
+    const managingProjectShareUrl = managingProject ? getProjectShareUrl(managingProject) : null;
+    const quickShareItems: ActionItem[] = managingProject && managingProject.deleted !== true && managingProjectShareUrl ? [
+        {
+            key: 'preview',
+            label: `Preview ${labels.offeringTitle}`,
+            description: `Open this ${labels.offeringLower} in the browser.`,
+            icon: <LuExternalLink size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
+            onClick: () => handlePreviewProject(managingProject),
+        },
+        {
+            key: 'copy-link',
+            label: tShare('copyLink'),
+            description: `Copy the public ${labels.offeringLower} link.`,
+            icon: <LuCopy size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
+            onClick: () => void handleCopyProjectLink(managingProject),
+        },
+        {
+            key: 'show-qr',
+            label: tShare('showQr'),
+            description: `Open the QR sheet for this ${labels.offeringLower}.`,
+            icon: <LuQrCode size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
+            onClick: () => handleShowProjectQr(managingProject),
+        },
+    ] : [];
+
+    const manageItems: ActionItem[] = managingProject ? [
         {
             key: 'edit',
-            label: t('editCatalog'),
+            label: 'Edit details',
+            description: 'Change the name and description.',
             icon: <LuPen size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
             onClick: () => { openEdit(managingProject); },
         },
         {
             key: 'duplicate',
             label: t('duplicateCatalog'),
+            description: 'Create a copy to reuse this setup.',
             icon: <LuCopy size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
             onClick: () => openDuplicate(managingProject),
         },
         {
             key: managingProject.active === false ? 'activate' : 'inactivate',
             label: managingProject.active === false ? t('activateCatalog') : t('makeInactive'),
-            icon: <LuPower size={16} />,
+            description: managingProject.active === false
+                ? `Make this ${labels.offeringLower} available again.`
+                : `Hide this ${labels.offeringLower} from normal use.`,
+            icon: (
+                <LuPower
+                    size={16}
+                    style={{ color: managingProject.active === false ? token.colorSuccess : token.colorError }}
+                />
+            ),
+            iconBackground: managingProject.active === false ? token.colorSuccessBg : token.colorErrorBg,
+            labelStyle: { color: managingProject.active === false ? token.colorSuccess : token.colorError },
             onClick: () => {
                 void Dialog.confirm({
                     cancelText: t('cancel'),
@@ -220,25 +472,34 @@ export default function MobileProjectSelectorSheet({
         {
             key: 'reset',
             label: t('resetCatalog'),
+            description: 'Clear uploaded files and start fresh.',
             icon: <LuRotateCcw size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
             onClick: () => {
                 void Dialog.confirm({
                     cancelText: t('cancel'),
-                    confirmText: t('reset'),
-                    content: t('resetCatalogConfirm'),
+                    confirmText: 'Reset catalog',
+                    content: `Reset "${managingProject.name}" and remove its uploaded files and extracted menu data? You can keep the catalog itself, but you will need to upload and build it again.`,
                     onConfirm: () => void handleResetProject(managingProject),
                 });
             },
         },
+    ] : [];
+
+    const dangerItems: ActionItem[] = managingProject ? [
         {
             key: 'delete',
             label: t('deleteCatalog'),
-            icon: <LuTrash2 size={16} />,
+            labelStyle: { color: token.colorError },
+            description: 'Remove this catalog permanently.',
+            icon: <LuTrash2 color={token.colorError} size={16} />,
+            iconBackground: token.colorErrorBg,
             onClick: () => {
                 void Dialog.confirm({
                     cancelText: t('cancel'),
-                    confirmText: t('delete'),
-                    content: t('deleteCatalogConfirm', { name: managingProject.name }),
+                    confirmText: 'Delete catalog',
+                    content: `Delete "${managingProject.name}" permanently? This removes the catalog, its files, and its menu data. This action cannot be undone.`,
                     onConfirm: () => void handleDeleteProject(managingProject),
                 });
             },
@@ -276,7 +537,7 @@ export default function MobileProjectSelectorSheet({
                             onCreate={openCreate}
                             onManage={(projectId) => setManagingProjectId(projectId)}
                             onSelect={(projectId) => { void handleSelectProject(projectId); }}
-                            projects={projects.map((project) => ({
+                            projects={orderedProjects.map((project) => ({
                                 id: project.projectId,
                                 isDefault: project.isDefault,
                                 name: project.name,
@@ -290,43 +551,111 @@ export default function MobileProjectSelectorSheet({
             </Popup>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 0 }}
                 onMaskClick={() => setManagingProjectId(null)}
                 position="bottom"
                 visible={Boolean(managingProject)}
             >
                 <Flex gap={12} vertical>
-                    <Title level={4} style={{ margin: 0 }}>{managingProject?.name || t('catalogActions')}</Title>
-                    <Card>
+                    <Flex
+                        align="center"
+                        justify="space-between"
+                        gap={12}
+                        style={stickyHeaderStyle}
+                    >
+                        <Flex gap={4} style={{ flex: 1 }} vertical>
+                            <Flex align="center" gap={8} wrap="wrap">
+                                <Title level={4} style={{ margin: 0 }}>
+                                    {managingProject?.name || t('catalogActions')}
+                                </Title>
+                                {managingProject ? (
+                                    <Tag color={managingProject.deleted ? 'danger' : managingProject.active === false ? 'warning' : 'success'}>
+                                        {managingProject.deleted ? 'Deleted' : managingProject.active === false ? 'Inactive' : 'Active'}
+                                    </Tag>
+                                ) : null}
+                            </Flex>
+                            {managingProject ? (
+                                <Flex align="center" gap={6} wrap="wrap">
+                                    {managingProject.isDefault ? <Tag color="primary">Default</Tag> : null}
+                                    {!managingProjectShareUrl && managingProject.deleted !== true ? (
+                                        <Tag color="default">No public link</Tag>
+                                    ) : null}
+                                </Flex>
+                            ) : null}
+                        </Flex>
+                        <Button fill="none" onClick={() => setManagingProjectId(null)} size="small">
+                            <LuX size={18} />
+                        </Button>
+                    </Flex>
+                    {quickShareItems.length ? (
+                        <Card style={sheetCardStyle} title={<Text strong>Share</Text>}>
+                            <List>
+                                {quickShareItems.map((item) => (
+                                    <List.Item
+                                        key={item.key}
+                                        description={<Text type="secondary">{item.description}</Text>}
+                                        onClick={item.onClick}
+                                        prefix={<Flex style={{ ...actionIconContainerStyle, background: item.iconBackground || token.colorFillTertiary }}>{item.icon}</Flex>}
+                                        title={<Text strong style={item.labelStyle}>{item.label}</Text>}
+                                    />
+                                ))}
+                            </List>
+                        </Card>
+                    ) : null}
+                    <Card style={sheetCardStyle} title={<Text strong>Manage</Text>}>
                         <List>
-                            {actionItems.map((item) => (
+                            {manageItems.map((item) => (
                                 <List.Item
                                     key={item.key}
+                                    description={<Text type="secondary">{item.description}</Text>}
                                     onClick={item.onClick}
-                                    prefix={item.icon}
-                                    title={<Text strong>{item.label}</Text>}
+                                    prefix={<Flex style={{ ...actionIconContainerStyle, background: item.iconBackground || token.colorFillTertiary }}>{item.icon}</Flex>}
+                                    title={<Text strong style={item.labelStyle}>{item.label}</Text>}
                                 />
                             ))}
                         </List>
                     </Card>
-                    <Button block fill="outline" onClick={() => setManagingProjectId(null)}>
-                        {t('close')}
-                    </Button>
+                    <Card
+                        style={{ ...sheetCardStyle, background: token.colorErrorBg, borderColor: token.colorErrorBorder }}
+                        title={<Text strong style={{ color: token.colorError }}>Danger Zone</Text>}
+                    >
+                        <List>
+                            {dangerItems.map((item) => (
+                                <List.Item
+                                    key={item.key}
+                                    description={<Text style={{ color: token.colorTextSecondary }}>{item.description}</Text>}
+                                    onClick={item.onClick}
+                                    prefix={<Flex style={{ ...actionIconContainerStyle, background: item.iconBackground || token.colorFillTertiary }}>{item.icon}</Flex>}
+                                    title={<Text strong style={item.labelStyle}>{item.label}</Text>}
+                                />
+                            ))}
+                        </List>
+                    </Card>
                 </Flex>
             </Popup>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 0 }}
                 onMaskClick={() => resetFormState()}
                 position="bottom"
                 visible={Boolean(formMode)}
             >
                 <Flex gap={16} style={{ maxHeight: 'min(82vh, 720px)', overflowY: 'auto' }} vertical>
-                    <Title level={4} style={{ margin: 0 }}>
-                        {formMode === 'create' ? t('createCatalog') : formMode === 'duplicate' ? t('duplicateCatalog') : t('editCatalog')}
-                    </Title>
+                    <Flex
+                        align="center"
+                        justify="space-between"
+                        gap={12}
+                        style={stickyHeaderStyle}
+                    >
+                        <Title level={4} style={{ margin: 0, flex: 1 }}>
+                            {formMode === 'create' ? t('createCatalog') : formMode === 'duplicate' ? t('duplicateCatalog') : t('editCatalog')}
+                        </Title>
+                        <Button fill="none" onClick={() => resetFormState()} size="small">
+                            <LuX size={18} />
+                        </Button>
+                    </Flex>
 
-                    <Card>
+                    <Card style={sheetCardStyle}>
                         <Flex gap={14} vertical>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('catalogName')}</Text>
@@ -336,12 +665,44 @@ export default function MobileProjectSelectorSheet({
                             <Flex gap={6} vertical>
                                 <Text strong>{t('description')}</Text>
                                 <TextArea maxLength={300} onChange={setFormDescription} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
+                                <Text type="secondary">Only for you. Customers do not see this description.</Text>
                             </Flex>
                         </Flex>
                     </Card>
 
+                    {isEditingSpecialMenu ? (
+                        <Card size="small" style={sheetCardStyle}>
+                            <Flex gap={14} vertical>
+                                <Text strong>Special menu schedule</Text>
+                                <Flex gap={6} vertical>
+                                    <Text strong>Starts Date & Time</Text>
+                                    <DatePicker
+                                        format={specialMenuDateTimeFormat}
+                                        onChange={(value) => setFormStartsAt(value)}
+                                        placeholder="Select start date and time"
+                                        showTime={{ format: getClockTimeInputFormat() }}
+                                        style={{ width: '100%' }}
+                                        value={formStartsAt}
+                                    />
+                                </Flex>
+                                <Flex gap={6} vertical>
+                                    <Text strong>Ends Date & Time</Text>
+                                    <DatePicker
+                                        format={specialMenuDateTimeFormat}
+                                        onChange={(value) => setFormEndsAt(value)}
+                                        placeholder="Select end date and time"
+                                        showTime={{ format: getClockTimeInputFormat() }}
+                                        style={{ width: '100%' }}
+                                        value={formEndsAt}
+                                    />
+                                </Flex>
+                                <Text type="secondary">Customers see this special menu only during this scheduled period.</Text>
+                            </Flex>
+                        </Card>
+                    ) : null}
+
                     {formMode === 'duplicate' ? (
-                        <Card size="small">
+                        <Card size="small" style={sheetCardStyle}>
                             <Flex align="flex-start" gap={10}>
                                 <LuArchiveRestore size={18} />
                                 <Text type="secondary">{t('duplicateCatalogHelp')}</Text>
@@ -350,15 +711,44 @@ export default function MobileProjectSelectorSheet({
                     ) : null}
 
                     <Flex gap={8}>
-                        <Button block fill="outline" onClick={() => resetFormState()}>
-                            {t('cancel')}
-                        </Button>
-                        <Button block loading={isSubmitting} onClick={() => void handleSubmitForm()}>
+                        {formMode === 'edit' ? (
+                            <Button
+                                block
+                                disabled={!hasFormChanges}
+                                fill="outline"
+                                onClick={handleResetEditForm}
+                            >
+                                {t('reset')}
+                            </Button>
+                        ) : null}
+                        <Button
+                            block
+                            disabled={formMode === 'edit' && !hasFormChanges}
+                            loading={isSubmitting}
+                            onClick={() => void handleSubmitForm()}
+                        >
                             {formMode === 'create' ? t('create') : formMode === 'duplicate' ? t('duplicate') : t('save')}
                         </Button>
                     </Flex>
                 </Flex>
             </Popup>
+
+            <MobileQrCodeSheet
+                copyErrorMessage={tShare('couldNotCopy')}
+                copySuccessMessage={tShare('copiedLabel', {
+                    label: tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }),
+                })}
+                downloadSuccessMessage={tShare('qrDownloaded')}
+                filename={qrSheet?.filename || buildQrCodeFilename('menu-link', 'qr')}
+                generatingLabel={tShare('generatingQr')}
+                helperText={qrSheet?.helperText}
+                imageAlt={qrSheet?.title || tShare('showQr')}
+                onClose={() => setIsQrSheetOpen(false)}
+                qrErrorMessage={tShare('qrFailed')}
+                title={qrSheet?.title || tShare('showQr')}
+                url={qrSheet?.url || ''}
+                visible={isQrSheetOpen}
+            />
         </>
     );
 }

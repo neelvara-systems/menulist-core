@@ -26,9 +26,6 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-// Cache key for offline support
-const MENU_BOARD_CACHE_KEY = 'menulist-menuboard-data';
-
 // Auto-pagination timing (per spec: 15-20 seconds per page)
 const PAGE_DURATION_MS = 18000; // 18 seconds
 
@@ -44,6 +41,7 @@ interface MenuBoardProps {
         menuItems: MenuItemForSlide[];
         storeInfo: ScreenStoreInfo;
         contentVersion: number;
+        selectedProjectId?: string | null;
         token: string;
         storeId: string;
     };
@@ -138,14 +136,15 @@ function paginateCategories(categories: CategoryGroup[]): CategoryGroup[][] {
 }
 
 export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
-    const { menuItems: initialItems, storeInfo, contentVersion: initialVersion, token, storeId } = initialData;
+    const { menuItems: initialItems, storeInfo, contentVersion: initialVersion, token, storeId, selectedProjectId } = initialData;
+    const cacheKey = `menulist-menuboard-data-${token}-${selectedProjectId || 'default'}`;
 
     // HARDENING: Cache-first initialization (matching ScreenDisplay pattern)
     // Survives bad deploys — shows cached menu if server returns empty
     const [menuItems, setMenuItems] = useState<MenuItemForSlide[]>(() => {
         if (typeof window !== 'undefined' && initialItems.length === 0) {
             try {
-                const cached = localStorage.getItem(MENU_BOARD_CACHE_KEY);
+                const cached = localStorage.getItem(cacheKey);
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (parsed.menuItems?.length > 0) {
@@ -178,7 +177,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     // Cache to localStorage for offline support
     useEffect(() => {
         try {
-            localStorage.setItem(MENU_BOARD_CACHE_KEY, JSON.stringify({
+            localStorage.setItem(cacheKey, JSON.stringify({
                 menuItems,
                 storeInfo,
                 contentVersion: contentVersionRef.current,
@@ -187,7 +186,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
         } catch {
             // Silent fail — localStorage might be full
         }
-    }, [menuItems, storeInfo]);
+    }, [cacheKey, menuItems, storeInfo]);
 
     // Auto-pagination timer
     useEffect(() => {

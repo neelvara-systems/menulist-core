@@ -20,9 +20,6 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Cache key for offline support
-const CACHE_KEY = 'menulist-screen-data';
-
 // Build version for debugging (hardening)
 const SCREEN_BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
 
@@ -35,6 +32,7 @@ interface ScreenDisplayProps {
         slides: ScreenSlide[];
         storeInfo: ScreenStoreInfo;
         contentVersion: number;
+        selectedProjectId?: string | null;
         config: {
             refreshIntervalMs: number;
             slideDurationMs: number;
@@ -51,7 +49,8 @@ interface ScreenState {
 }
 
 export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
-    const { slides: initialSlides, storeInfo, config, token, storeId } = initialData;
+    const { slides: initialSlides, storeInfo, config, token, storeId, selectedProjectId } = initialData;
+    const cacheKey = `menulist-screen-data-${token}-${selectedProjectId || 'default'}`;
 
     // HARDENING: Cached-first rendering for deploy safety
     // Try to load from cache first, then update from server data
@@ -59,7 +58,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
         // Try cached data first (instant render, survives bad deploys)
         if (typeof window !== 'undefined') {
             try {
-                const cached = localStorage.getItem(CACHE_KEY);
+                const cached = localStorage.getItem(cacheKey);
                 if (cached) {
                     const parsedCache = JSON.parse(cached);
                     // Only use cache if it has valid slides
@@ -107,12 +106,12 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     // Cache data for offline use (write after render)
     useEffect(() => {
         try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify(initialData));
+            localStorage.setItem(cacheKey, JSON.stringify(initialData));
             console.log(`[Screen] Cache updated (${state.slides.length} slides)`);
         } catch (e) {
             console.warn('[Screen] Cache write failed:', e);
         }
-    }, [initialData, state.slides.length]);
+    }, [cacheKey, initialData, state.slides.length]);
 
     // HARDENING: Delay QR loading for faster cold boot
     useEffect(() => {

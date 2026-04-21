@@ -39,7 +39,8 @@ import {
     ProjectMetadata,
     ProjectSummaryData,
     SpecialMenuMetadata,
-    SpecialMenuMode
+    SpecialMenuMode,
+    SpecialMenuStatus,
 } from "@template/main-app/projects/types";
 import { UserUploadedFileType } from "@type/common";
 
@@ -1564,6 +1565,7 @@ export const getSpecialMenus = async (): Promise<{
     specialMenus: Array<{
         projectId: string;
         displayName: string;
+        description?: string;
         status: 'scheduled' | 'active' | 'expired' | 'cancelled';
         mode: 'replace' | 'overlay';
         startsAt: string;
@@ -1584,6 +1586,7 @@ export const getSpecialMenus = async (): Promise<{
                 .map(([projectId, data]: [string, any]) => ({
                     projectId,
                     displayName: data.specialMenuDisplayName || data.name,
+                    description: data.description as string | undefined,
                     status: (data.specialMenuStatus || "scheduled") as 'scheduled' | 'active' | 'expired' | 'cancelled',
                     mode: (data.specialMenuMode || "overlay") as 'replace' | 'overlay',
                     startsAt: data.specialMenuStartsAt as string,
@@ -1727,6 +1730,127 @@ export const createSpecialMenuProject = async (params: {
         },
         params,
         "createSpecialMenuProject",
+    );
+};
+
+export const updateSpecialMenuProject = async (params: {
+    projectId: string;
+    description?: string;
+    displayName: string;
+    endsAt: string;
+    startsAt: string;
+}) => {
+    return await apiCallComposer(
+        async () => {
+            const { projectId, description, displayName, startsAt, endsAt } = params;
+            const trimmedName = displayName.trim();
+            const trimmedDescription = description?.trim();
+            const startDate = new Date(startsAt);
+            const endDate = new Date(endsAt);
+            const now = new Date();
+
+            if (!trimmedName) {
+                throw new Error("Special menu name is required");
+            }
+            if (endDate.getTime() <= startDate.getTime()) {
+                throw new Error("End date must be after start date");
+            }
+            if (endDate.getTime() <= now.getTime()) {
+                throw new Error("End date must be in the future");
+            }
+
+            const projectRef = await getDataDocRef(projectId);
+            const projectDoc = await getDoc(projectRef);
+            if (!projectDoc.exists()) throw new Error("Project not found");
+
+            const projectData = projectDoc.data() as Project;
+            if (!projectData._specialMenu) throw new Error("Not a special menu project");
+
+            const currentStatus = projectData._specialMenu.status;
+            if (currentStatus === "expired" || currentStatus === "cancelled") {
+                throw new Error(`Cannot edit a ${currentStatus} special menu`);
+            }
+
+            const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
+            const summaryProjects = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
+                : {};
+
+            for (const [otherProjectId, projData] of Object.entries(summaryProjects) as [string, any][]) {
+                if (otherProjectId === projectId) continue;
+                if (
+                    projData.isSpecialMenu &&
+                    projData.specialMenuStatus !== "expired" &&
+                    projData.specialMenuStatus !== "cancelled"
+                ) {
+                    const existingStart = new Date(projData.specialMenuStartsAt).getTime();
+                    const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
+                    if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
+                        throw new Error(
+                            `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
+                        );
+                    }
+                }
+            }
+
+            const nextStatus: SpecialMenuStatus = startDate.getTime() <= now.getTime() ? "active" : "scheduled";
+            const storeRef = await getStoreDocRef();
+
+            if (nextStatus === "active") {
+                const storeDoc = await getDoc(storeRef);
+                const activeMenuId = storeDoc.data()?.activeSpecialMenuId;
+                if (activeMenuId && activeMenuId !== projectId) {
+                    throw new Error("Another special menu is currently active. Deactivate it first.");
+                }
+            }
+
+            await setDoc(projectRef, {
+                name: trimmedName,
+                ...(trimmedDescription ? { description: trimmedDescription } : { description: deleteField() }),
+                _specialMenu: {
+                    ...projectData._specialMenu,
+                    displayName: trimmedName,
+                    endsAt,
+                    startsAt,
+                    status: nextStatus,
+                },
+            }, { merge: true });
+
+            const summaryDocRef = await getProjectsSummaryDocRef();
+            await setDoc(summaryDocRef, {
+                [`projects.${projectId}.name`]: trimmedName,
+                [`projects.${projectId}.description`]: trimmedDescription || '',
+                [`projects.${projectId}.specialMenuDisplayName`]: trimmedName,
+                [`projects.${projectId}.specialMenuStartsAt`]: startsAt,
+                [`projects.${projectId}.specialMenuEndsAt`]: endsAt,
+                [`projects.${projectId}.specialMenuStatus`]: nextStatus,
+            }, { merge: true });
+
+            if (nextStatus === "active") {
+                await activateSpecialMenuInternal(
+                    projectId,
+                    projectData._specialMenu.mode,
+                    endsAt,
+                    trimmedName,
+                );
+                await setDoc(summaryDocRef, {
+                    [`projects.${projectId}.specialMenuStatus`]: "active",
+                }, { merge: true });
+            } else if (currentStatus === "active") {
+                await setDoc(storeRef, {
+                    activeSpecialMenuId: deleteField(),
+                }, { merge: true });
+
+                const storeDoc = await getDoc(storeRef);
+                if (storeDoc.data()?.tempStatus?.type === "special_menu") {
+                    await setDoc(storeRef, { tempStatus: deleteField() }, { merge: true });
+                }
+            }
+
+            return { projectId, status: nextStatus };
+        },
+        params,
+        "updateSpecialMenuProject",
     );
 };
 

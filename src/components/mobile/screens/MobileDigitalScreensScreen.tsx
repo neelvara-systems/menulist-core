@@ -11,8 +11,12 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, NavBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { resolveMobileSelectedProject } from '../utils/projectSelection';
 
 interface MobileDigitalScreensScreenProps {
     onBack: () => void;
@@ -30,8 +34,10 @@ function getDaysRemaining(validUntil?: any): number {
 
 export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScreensScreenProps) {
     const t = useTranslations('MobileDigitalScreens');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { isLoading: loadingProjects, projectsList } = useMobileProjects();
     const publicBaseUrl = generateOBPUrl(
         storeDetails?.subdomain || '',
         storeDetails?.customDomain
@@ -44,6 +50,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const [pinnedSlides, setPinnedSlides] = useState<ScreenSlide[]>([]);
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
+    const [screenProjectId, setScreenProjectId] = useState<string | null>(null);
+    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
     const highlightsUrl = screenUrl ? `${screenUrl}?mode=highlights` : '';
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
@@ -55,6 +63,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }),
         [pinnedSlides]
     );
+    const resolvedProject = useMemo(
+        () => resolveMobileSelectedProject(projectsList || [], screenProjectId),
+        [projectsList, screenProjectId]
+    );
 
     const fetchState = async () => {
         try {
@@ -64,6 +76,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setScreenUrl(buildScreenUrl(state.screenToken, publicBaseUrl));
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
+            setScreenProjectId(state.selectedProjectId || null);
         } catch {
             Toast.show({ content: t('failedToLoad'), duration: 2000 });
         } finally {
@@ -101,6 +114,21 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }
     };
 
+    const handleProjectChange = async (projectId?: string | null) => {
+        const nextProject = resolveMobileSelectedProject(projectsList || [], projectId || null);
+        const nextProjectId = nextProject?.projectId || null;
+        if (!nextProjectId) return;
+
+        try {
+            await updateScreenSettings({ selectedProjectId: nextProjectId });
+            setScreenProjectId(nextProjectId);
+            setIsProjectSelectorOpen(false);
+            Toast.show({ content: 'Digital screens now follows this project', duration: 1600 });
+        } catch {
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+        }
+    };
+
     const handleUploadSlide = async (file: UserUploadedFileType) => {
         if (!canUpload) {
             Toast.show({ content: `Maximum ${MAX_UPLOADS} custom slides allowed`, duration: 2000 });
@@ -129,7 +157,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }
     };
 
-    if (loading) {
+    if (loading || loadingProjects) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
                 <NavBar onBack={onBack} />
@@ -148,6 +176,21 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                     subtitle={t('setupTip')}
                     title={t('title')}
                 />
+
+                {resolvedProject ? (
+                    <ProjectSelectorTrigger
+                        clickable={(projectsList || []).filter((project: any) => project.deleted !== true && project.active !== false).length > 1}
+                        currentProject={{
+                            active: resolvedProject.active !== false,
+                            deleted: resolvedProject.deleted === true,
+                            id: resolvedProject.projectId,
+                            isDefault: resolvedProject.isDefault,
+                            name: resolvedProject.name || tProjectSelector('untitled'),
+                        }}
+                        helperText="Menu Board and Highlights use this project"
+                        onClick={() => setIsProjectSelectorOpen(true)}
+                    />
+                ) : null}
 
                 <Card>
                     <Flex gap={10} vertical>
@@ -304,6 +347,13 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             <ImageUploadInput
                 fileInputRef={fileInputRef}
                 onUploadFile={(file: UserUploadedFileType) => void handleUploadSlide(file)}
+            />
+            <MobileProjectSelectorSheet
+                currentProjectId={resolvedProject?.projectId || null}
+                currentProjectName={resolvedProject?.name || null}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={handleProjectChange}
+                visible={isProjectSelectorOpen}
             />
         </Flex>
     );

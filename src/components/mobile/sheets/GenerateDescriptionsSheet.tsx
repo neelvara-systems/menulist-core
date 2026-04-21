@@ -13,7 +13,7 @@ import {
     runDescriptionGeneration,
     type DescriptionContentLength,
 } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
-import { Button, Card, Dialog, Flex, NavBar, Popup, Text, Toast } from '../antd';
+import { Button, Card, Flex, NavBar, Popup, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
 
 interface GenerateDescriptionsSheetProps {
@@ -40,7 +40,7 @@ export default function GenerateDescriptionsSheet({
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
 
-    const { aiDescriptionCount, itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(
+    const { itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(
         () => getDescriptionGenerationStats(projectData, null, undefined),
         [projectData]
     );
@@ -192,7 +192,6 @@ export default function GenerateDescriptionsSheet({
                             </Flex>
                             <Flex gap={8} wrap="wrap">
                                 <Text>{t('itemsMissing', { count: itemsWithoutDescriptions })}</Text>
-                                <Text>{t('aiCreatedCount', { count: aiDescriptionCount })}</Text>
                             </Flex>
                             {isProcessing ? (
                                 <Text type="secondary">
@@ -206,52 +205,46 @@ export default function GenerateDescriptionsSheet({
                         </Flex>
                     </Card>
 
-                    <Flex gap={12} vertical>
-                        <Button
-                            block
-                            color="primary"
-                            disabled={isProcessing || itemsWithoutDescriptions === 0}
-                            loading={isProcessing}
-                            onClick={() => {
-                                void Dialog.confirm({
-                                    cancelText: t('cancel'),
-                                    confirmText: t('generateMissing'),
-                                    content: `Generate descriptions for ${itemsWithoutDescriptions} item${itemsWithoutDescriptions === 1 ? '' : 's'} with the ${contentLength.toLowerCase()} style?`,
-                                    onConfirm: () => handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION),
-                                    title: t('generateDescriptionsAi'),
-                                });
-                            }}
-                            size="large"
-                        >
-                            <Flex align="center" gap={6}>
-                                <LuSparkles size={16} />
-                                <Text>{t('generateMissing')}</Text>
-                            </Flex>
-                        </Button>
+                    {itemsWithoutDescriptions > 0 || itemsWithDescriptions > 0 ? (
+                        <Flex gap={12}>
+                            {itemsWithoutDescriptions > 0 ? (
+                                <Button
+                                    block
+                                    color="primary"
+                                    disabled={isProcessing}
+                                    loading={isProcessing}
+                                    onClick={() => {
+                                        void handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION);
+                                    }}
+                                    size="large"
+                                    style={{ flex: 1 }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuSparkles size={16} />
+                                        <Text>{t('generateMissing')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
 
-                        {itemsWithDescriptions > 0 ? (
-                            <Button
-                                block
-                                disabled={isProcessing}
-                                fill="outline"
-                                onClick={() => {
-                                    void Dialog.confirm({
-                                        cancelText: t('cancel'),
-                                        confirmText: t('refresh'),
-                                        content: t('refreshDescriptionsConfirm'),
-                                        onConfirm: () => handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION),
-                                        title: t('refreshDescriptionsTitle'),
-                                    });
-                                }}
-                                size="large"
-                            >
-                                <Flex align="center" gap={6}>
-                                    <LuRefreshCcw size={16} />
-                                    <Text>{t('refreshDescriptionsCta')}</Text>
-                                </Flex>
-                            </Button>
-                        ) : null}
-                    </Flex>
+                            {itemsWithDescriptions > 0 ? (
+                                <Button
+                                    block
+                                    disabled={isProcessing}
+                                    fill="outline"
+                                    onClick={() => {
+                                        void handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION);
+                                    }}
+                                    size="large"
+                                    style={{ flex: 1 }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuRefreshCcw size={16} />
+                                        <Text>{t('refreshDescriptionsCta')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    ) : null}
                 </Flex>
             </Flex>
         </Popup>

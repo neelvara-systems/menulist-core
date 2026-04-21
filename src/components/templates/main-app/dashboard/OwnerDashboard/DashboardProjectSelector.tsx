@@ -9,7 +9,7 @@ import { ProjectMetadata } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
 import { useEffect, useMemo } from 'react';
-import { LuCheck, LuChevronDown, LuFolderOpen } from 'react-icons/lu';
+import { LuCheck, LuCheckCircle, LuChevronDown, LuFolderOpen, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
 
 const { Text } = Typography;
@@ -54,9 +54,34 @@ const getProjectStatus = (project: DashboardProject | null | undefined): Project
 };
 
 const renderStatusTag = (status: ProjectStatus) => {
-    if (status === 'deleted') return <Tag color="error" style={{ marginInlineEnd: 0 }}>Deleted</Tag>;
-    if (status === 'inactive') return <Tag color="warning" style={{ marginInlineEnd: 0 }}>Inactive</Tag>;
-    return <Tag color="success" style={{ marginInlineEnd: 0 }}>Active</Tag>;
+    if (status === 'deleted') {
+        return (
+            <Tag color="error" style={{ marginInlineEnd: 0 }}>
+                <Flex align="center" gap={4}>
+                    <LuXCircle size={13} />
+                    <span>Deleted</span>
+                </Flex>
+            </Tag>
+        );
+    }
+    if (status === 'inactive') {
+        return (
+            <Tag color="error" style={{ marginInlineEnd: 0 }}>
+                <Flex align="center" gap={4}>
+                    <LuXCircle size={13} />
+                    <span>Inactive</span>
+                </Flex>
+            </Tag>
+        );
+    }
+    return (
+        <Tag color="success" style={{ marginInlineEnd: 0 }}>
+            <Flex align="center" gap={4}>
+                <LuCheckCircle size={13} />
+                <span>Active</span>
+            </Flex>
+        </Tag>
+    );
 };
 
 const renderDefaultTag = (isDefault?: boolean) => (

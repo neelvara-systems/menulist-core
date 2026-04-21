@@ -15,6 +15,7 @@ import {
     createSpecialMenuProject as dalCreate,
     deactivateSpecialMenu as dalDeactivate,
     getSpecialMenus,
+    updateSpecialMenuProject as dalUpdate,
 } from "@database/projects";
 import type { SpecialMenuMode, SpecialMenuStatus } from "@template/main-app/projects/types";
 import { useCallback } from "react";
@@ -23,6 +24,7 @@ import useSWR from "swr";
 export interface SpecialMenuListItem {
     projectId: string;
     displayName: string;
+    description?: string;
     status: SpecialMenuStatus;
     mode: SpecialMenuMode;
     startsAt: string;
@@ -51,6 +53,13 @@ export interface UseSpecialMenusReturn {
         startsAt: string;
         endsAt: string;
     }) => Promise<{ success: boolean; projectId?: string; error?: string }>;
+    updateSpecialMenu: (data: {
+        projectId: string;
+        description?: string;
+        displayName: string;
+        startsAt: string;
+        endsAt: string;
+    }) => Promise<{ success: boolean; error?: string }>;
     activateMenu: (projectId: string) => Promise<{ success: boolean; error?: string }>;
     deactivateMenu: (projectId: string) => Promise<{ success: boolean; error?: string }>;
     cancelMenu: (projectId: string) => Promise<{ success: boolean; error?: string }>;
@@ -93,6 +102,25 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 const result = await dalCreate(data);
                 mutate();
                 return { success: true, projectId: result?.projectId };
+            } catch (e: any) {
+                return { success: false, error: e.message };
+            }
+        },
+        [mutate],
+    );
+
+    const updateSpecialMenu = useCallback(
+        async (data: {
+            projectId: string;
+            description?: string;
+            displayName: string;
+            startsAt: string;
+            endsAt: string;
+        }) => {
+            try {
+                await dalUpdate(data);
+                mutate();
+                return { success: true };
             } catch (e: any) {
                 return { success: false, error: e.message };
             }
@@ -149,6 +177,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
         error,
         refresh,
         createSpecialMenu,
+        updateSpecialMenu,
         activateMenu,
         deactivateMenu,
         cancelMenu,

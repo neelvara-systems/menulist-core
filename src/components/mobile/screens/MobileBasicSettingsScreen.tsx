@@ -8,7 +8,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -22,7 +22,7 @@ const BUSINESS_TYPE_OPTIONS = BUSINESS_TYPES.map((businessType) => ({
     value: businessType.value,
 }));
 
-function getInitialFormData(storeDetails: any) {
+function getInitialFormData(storeDetails: any, tenantDetails?: any) {
     return {
         addressLine: storeDetails?.addressLine || '',
         area: storeDetails?.area || '',
@@ -39,7 +39,7 @@ function getInitialFormData(storeDetails: any) {
         latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
         longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
         name: storeDetails?.name || '',
-        tenantName: storeDetails?.tenantName || '',
+        tenantName: storeDetails?.tenantName || tenantDetails?.name || '',
         phoneNumber: storeDetails?.phoneNumber || '',
         postalCode: storeDetails?.postalCode || '',
         state: storeDetails?.state || '',
@@ -63,10 +63,17 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             }
             : null
     );
-    const [formData, setFormData] = useState(getInitialFormData(storeDetails));
-    const [originalFormData, setOriginalFormData] = useState(() => getInitialFormData(storeDetails));
+    const [formData, setFormData] = useState(getInitialFormData(storeDetails, tenantDetails));
+    const [originalFormData, setOriginalFormData] = useState(() => getInitialFormData(storeDetails, tenantDetails));
     const [originalLogoUrl, setOriginalLogoUrl] = useState(storeDetails?.logo || '');
     const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData) || (selectedLogo?.url || '') !== originalLogoUrl;
+
+    useEffect(() => {
+        const nextFormData = getInitialFormData(storeDetails, tenantDetails);
+        setFormData((previous) => JSON.stringify(previous) === JSON.stringify(originalFormData) ? nextFormData : previous);
+        setOriginalFormData(nextFormData);
+        setOriginalLogoUrl(storeDetails?.logo || '');
+    }, [storeDetails, tenantDetails]);
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -198,6 +205,13 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     subtitle="Manage your brand profile, business identity, contact details, and address."
                     title="Brand Settings"
                 />
+                <Card>
+                    <Flex gap={4} vertical>
+                        <Text type="secondary">Brand name</Text>
+                        <Text strong>{formData.tenantName || tenantDetails?.name || 'Not set'}</Text>
+                        <Text type="secondary">This is your brand or chain name across locations.</Text>
+                    </Flex>
+                </Card>
                 <Card>
                     <Flex align="center" gap={10} justify="center" style={{ minHeight: 120 }} vertical>
                         {(selectedLogo?.url || storeDetails.logo) ? (

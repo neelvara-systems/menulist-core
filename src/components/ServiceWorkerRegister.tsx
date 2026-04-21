@@ -60,19 +60,27 @@ function getTargetSwUrl(): string | null {
 export default function ServiceWorkerRegister() {
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        if (process.env.NODE_ENV !== 'production') return;
         if (!('serviceWorker' in navigator)) return;
 
         const targetUrl = getTargetSwUrl();
-        if (!targetUrl) return;
-
-        // Resolve the target URL to an absolute form for comparison against
-        // existing registrations (which store `active.scriptURL` as absolute).
-        const absoluteTargetUrl = new URL(targetUrl, window.location.origin).href;
 
         (async () => {
             try {
                 const registrations = await navigator.serviceWorker.getRegistrations();
+
+                // Development and non-PWA origins should never keep a stale
+                // worker attached. If one exists, unregister it so localhost
+                // does not keep routing requests through old Workbox logic.
+                if (process.env.NODE_ENV !== 'production' || !targetUrl) {
+                    for (const reg of registrations) {
+                        await reg.unregister().catch(() => { });
+                    }
+                    return;
+                }
+
+                // Resolve the target URL to an absolute form for comparison against
+                // existing registrations (which store `active.scriptURL` as absolute).
+                const absoluteTargetUrl = new URL(targetUrl, window.location.origin).href;
 
                 // Unregister any existing SW that doesn't match the target
                 // script. This handles migration from the legacy auto-register

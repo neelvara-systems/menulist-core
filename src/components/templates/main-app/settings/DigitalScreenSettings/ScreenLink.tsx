@@ -18,9 +18,10 @@ const { Text } = Typography;
 interface ScreenLinkProps {
     screenUrl: string;
     screenToken: string;
+    selectedProjectName?: string | null;
 }
 
-export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) {
+export default function ScreenLink({ screenUrl, screenToken, selectedProjectName }: ScreenLinkProps) {
     const { token } = theme.useToken();
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
@@ -55,6 +56,11 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                     Full menu with categories, items, and prices — for your counter or ordering screen
                 </Text>
+                {selectedProjectName ? (
+                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                        Showing project: {selectedProjectName}
+                    </Text>
+                ) : null}
                 <Space.Compact style={{ width: '100%' }}>
                     <Input
                         value={screenUrl}
@@ -92,6 +98,11 @@ export default function ScreenLink({ screenUrl, screenToken }: ScreenLinkProps) 
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                     Rotating promotional slides with featured items — for entrance or waiting area
                 </Text>
+                {selectedProjectName ? (
+                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                        Highlights follows the same project: {selectedProjectName}
+                    </Text>
+                ) : null}
                 <Space.Compact style={{ width: '100%' }}>
                     <Input
                         value={highlightsUrl}

@@ -17,7 +17,7 @@ import { getExportMethod, getMealName } from '@util/campaignUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
+import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuQrCode, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
@@ -77,9 +77,11 @@ const getTodayTimeRange = (value?: string) => {
 
 interface MobileHoursScreenProps {
     onOpenDashboard?: () => void;
+    onOpenHistory?: () => void;
+    onOpenShare?: () => void;
 }
 
-export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreenProps) {
+export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOpenShare }: MobileHoursScreenProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileHours');
     const tToday = useTranslations('MobileToday');
@@ -305,10 +307,6 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
         window.open(menuUrl, '_blank', 'noopener,noreferrer');
     };
 
-    const handleOpenHoursEditor = () => {
-        window.location.hash = '#mobile/more/hoursEdit';
-    };
-
     const handleSaveTodayHours = async () => {
         if (!storeDetails?.storeId) return;
         if (!todayOpenTime || !todayCloseTime) {
@@ -487,16 +485,23 @@ export default function MobileHoursScreen({ onOpenDashboard }: MobileHoursScreen
                     <List.Item
                         arrow
                         description={<Text type="secondary">{tMore('shareQrDesc')}</Text>}
+                        onClick={onOpenShare}
+                        prefix={<LuQrCode size={18} />}
+                        title={<Text strong>{tMore('shareQr')}</Text>}
+                    />
+                    <List.Item
+                        arrow
+                        description={<Text type="secondary">{tMore('shareQrDesc')}</Text>}
                         onClick={handleOpenPreview}
                         prefix={<LuEye size={18} />}
                         title={<Text strong>{tDesign('preview')}</Text>}
                     />
                     <List.Item
                         arrow
-                        description={<Text type="secondary">{tMore('editWorkingHoursDesc')}</Text>}
-                        onClick={handleOpenHoursEditor}
+                        description={<Text type="secondary">Review today actions completed or skipped in the last 7 days.</Text>}
+                        onClick={onOpenHistory}
                         prefix={<LuClock size={18} />}
-                        title={<Text strong>{tMore('editWorkingHours')}</Text>}
+                        title={<Text strong>Past Activity</Text>}
                     />
                 </List>
             </Card>

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 // NOTE: Segmented and AnimatePresence removed - archive tabs functionality deprecated
 import { IoChevronDown } from "react-icons/io5";
-import { LuCheck, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { LuCheck, LuCheckCircle, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuTrash2, LuXCircle } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
 
 const { Text, Title } = Typography;
@@ -48,6 +48,16 @@ const getProjectStatus = (project: ProjectMetadata | null | undefined): ProjectS
     return 'active';
 };
 
+const getStatusPresentation = (status: ProjectStatus) => {
+    if (status === 'deleted') {
+        return { color: 'error' as const, icon: <LuXCircle size={13} />, label: 'Deleted' };
+    }
+    if (status === 'inactive') {
+        return { color: 'error' as const, icon: <LuXCircle size={13} />, label: 'Inactive' };
+    }
+    return { color: 'success' as const, icon: <LuCheckCircle size={13} />, label: 'Active' };
+};
+
 interface CatalogCardProps {
     project: ProjectMetadata;
     isSelected: boolean;
@@ -74,6 +84,7 @@ const CatalogCard = ({
     const initials = getInitials(project.name);
     const projectStatus = getProjectStatus(project);
     const isInactive = projectStatus === 'inactive';
+    const statusPresentation = getStatusPresentation(projectStatus);
 
     const handleMenuClick = (info: { domEvent: React.MouseEvent }, action: () => void) => {
         info.domEvent.stopPropagation();
@@ -152,7 +163,7 @@ const CatalogCard = ({
 
                 {projectStatus !== 'active' && (
                     <Tag
-                        color={projectStatus === 'deleted' ? 'error' : 'warning'}
+                        color={statusPresentation.color}
                         style={{
                             position: 'absolute',
                             top: 8,
@@ -160,7 +171,10 @@ const CatalogCard = ({
                             margin: 0,
                         }}
                     >
-                        {projectStatus === 'deleted' ? 'Deleted' : 'Inactive'}
+                        <Flex align="center" gap={4}>
+                            {statusPresentation.icon}
+                            <span>{statusPresentation.label}</span>
+                        </Flex>
                     </Tag>
                 )}
 
@@ -208,10 +222,13 @@ const CatalogCard = ({
                     </Tag>
                 ) : null}
                 <Tag
-                    color={projectStatus === 'deleted' ? 'error' : projectStatus === 'inactive' ? 'warning' : 'success'}
+                    color={statusPresentation.color}
                     style={{ marginTop: 6, marginInlineEnd: 0 }}
                 >
-                    {projectStatus === 'deleted' ? 'Deleted' : projectStatus === 'inactive' ? 'Inactive' : 'Active'}
+                    <Flex align="center" gap={4}>
+                        {statusPresentation.icon}
+                        <span>{statusPresentation.label}</span>
+                    </Flex>
                 </Tag>
             </Flex>
         </motion.div>
@@ -291,6 +308,7 @@ export const ProjectSelector = ({
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const selectedStatus = getProjectStatus(selectedProject);
+    const selectedStatusPresentation = getStatusPresentation(selectedStatus);
 
     const confirmDuplicate = (project: ProjectMetadata) => {
         setModalOpen(false);
@@ -342,10 +360,13 @@ export const ProjectSelector = ({
                     ) : null}
                     {selectedProject ? (
                         <Tag
-                            color={selectedStatus === 'deleted' ? 'error' : selectedStatus === 'inactive' ? 'warning' : 'success'}
+                            color={selectedStatusPresentation.color}
                             style={{ marginInlineEnd: 0 }}
                         >
-                            {selectedStatus === 'deleted' ? 'Deleted' : selectedStatus === 'inactive' ? 'Inactive' : 'Active'}
+                            <Flex align="center" gap={4}>
+                                {selectedStatusPresentation.icon}
+                                <span>{selectedStatusPresentation.label}</span>
+                            </Flex>
                         </Tag>
                     ) : null}
                 </Flex>

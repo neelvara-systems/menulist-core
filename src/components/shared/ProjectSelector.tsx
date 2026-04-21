@@ -2,7 +2,7 @@
 
 import { Button, Card, Flex, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { LuCheck, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus } from 'react-icons/lu';
+import { LuCheck, LuCheckCircle, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus, LuXCircle } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -21,6 +21,16 @@ const getProjectStatus = (project: Pick<ProjectSelectorItem, 'active' | 'deleted
     if (project?.deleted === true) return 'deleted';
     if (project?.active === false) return 'inactive';
     return 'active';
+};
+
+const getStatusPresentation = (status: ProjectStatus, labels: { active: string; inactive: string; deleted: string }) => {
+    if (status === 'deleted') {
+        return { color: 'error' as const, icon: <LuXCircle size={13} />, label: labels.deleted };
+    }
+    if (status === 'inactive') {
+        return { color: 'error' as const, icon: <LuXCircle size={13} />, label: labels.inactive };
+    }
+    return { color: 'success' as const, icon: <LuCheckCircle size={13} />, label: labels.active };
 };
 
 const AVATAR_COLORS = [
@@ -65,12 +75,19 @@ export function ProjectSelectorTrigger({
     const projectName = currentProject?.name || t('untitled');
     const avatarColors = getAvatarColor(projectName);
     const projectStatus = getProjectStatus(currentProject);
-    const statusTag =
-        projectStatus === 'deleted'
-            ? <Tag color="error">{t('catalogDeleted')}</Tag>
-            : projectStatus === 'inactive'
-                ? <Tag color="warning">{t('catalogInactive')}</Tag>
-                : <Tag color="success">{t('catalogActive')}</Tag>;
+    const statusPresentation = getStatusPresentation(projectStatus, {
+        active: t('statusActive'),
+        inactive: t('statusInactive'),
+        deleted: t('statusDeleted'),
+    });
+    const statusTag = (
+        <Tag color={statusPresentation.color} style={{ marginInlineEnd: 0 }}>
+            <Flex align="center" gap={4}>
+                {statusPresentation.icon}
+                <span>{statusPresentation.label}</span>
+            </Flex>
+        </Tag>
+    );
 
     const content = (
         <Flex align="center" justify="space-between" style={{ width: '100%' }}>
@@ -151,18 +168,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                 const isSelected = project.id === currentProjectId;
                 const projectStatus = getProjectStatus(project);
                 const isInactive = projectStatus === 'inactive';
-                const statusColor =
-                    projectStatus === 'deleted'
-                        ? 'error'
-                        : projectStatus === 'inactive'
-                            ? 'warning'
-                            : 'success';
-                const statusLabel =
-                    projectStatus === 'deleted'
-                        ? t('catalogDeleted')
-                        : projectStatus === 'inactive'
-                            ? t('catalogInactive')
-                            : t('catalogActive');
+                const statusPresentation = getStatusPresentation(projectStatus, {
+                    active: t('statusActive'),
+                    inactive: t('statusInactive'),
+                    deleted: t('statusDeleted'),
+                });
 
                 return (
                     <Card
@@ -220,8 +230,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
 
                         <Flex align="center" justify="center" style={{ marginBottom: 14 }}>
                             <Flex align="center" gap={8} justify="center" wrap="wrap" style={{ minWidth: 0 }}>
-                                <Tag color={statusColor} style={{ marginInlineEnd: 0 }}>
-                                    {statusLabel}
+                                <Tag color={statusPresentation.color} style={{ marginInlineEnd: 0 }}>
+                                    <Flex align="center" gap={4}>
+                                        {statusPresentation.icon}
+                                        <span>{statusPresentation.label}</span>
+                                    </Flex>
                                 </Tag>
                             </Flex>
                         </Flex>

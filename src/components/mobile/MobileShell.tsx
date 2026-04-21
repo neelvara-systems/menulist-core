@@ -158,7 +158,16 @@ export default function MobileShell() {
                 ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} />
                 : todayScreen === 'history'
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
-                    : <MobileHoursScreen onOpenDashboard={() => setTodayScreen('dashboard')} />
+                    : (
+                        <MobileHoursScreen
+                            onOpenDashboard={() => setTodayScreen('dashboard')}
+                            onOpenHistory={() => setTodayScreen('history')}
+                            onOpenShare={() => {
+                                setActiveTab('share');
+                                setTodayScreen('main');
+                            }}
+                        />
+                    )
         )
         : activeTab === 'share'
             ? <MobileShareScreen />

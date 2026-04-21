@@ -178,12 +178,6 @@ export default function MobileShareScreen() {
             label: storeDetails?.subdomain ? t('subdomainLive') : t('domainNotSet'),
             value: storeDetails?.subdomain ? generateOBPUrl(storeDetails.subdomain, storeDetails.customDomain).replace(/^https?:\/\//, '') : t('domainNotSetHelp'),
         };
-    const feedbackSummary = data.hasFeedbackEnabled
-        ? { color: 'success' as StatusTone, label: t('feedbackOn'), value: t('feedbackOnHelp') }
-        : { color: 'default' as StatusTone, label: t('feedbackOff'), value: t('feedbackOffHelp') };
-    const screenSummary = data.hasScreen
-        ? { color: 'success' as StatusTone, label: t('screensReady'), value: t('screensReadyHelp') }
-        : { color: 'default' as StatusTone, label: t('screensNotSetUp'), value: t('screensNotSetUpHelp') };
 
     const withSource = (url: string, src: 'copy' | 'direct' | 'qr') =>
         url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
@@ -222,6 +216,13 @@ export default function MobileShareScreen() {
         );
     }
 
+    const feedbackSummary = data.hasFeedbackEnabled
+        ? { color: 'success' as StatusTone, label: t('feedbackOn'), value: t('feedbackOnHelp') }
+        : { color: 'default' as StatusTone, label: t('feedbackOff'), value: t('feedbackOffHelp') };
+    const screenSummary = data.hasScreen
+        ? { color: 'success' as StatusTone, label: t('screensReady'), value: t('screensReadyHelp') }
+        : { color: 'default' as StatusTone, label: t('screensNotSetUp'), value: t('screensNotSetUpHelp') };
+
     return (
         <Flex gap={16} style={{ padding: 16 }} vertical>
             {activeProject ? (
@@ -259,8 +260,6 @@ export default function MobileShareScreen() {
                     url: withSource(data.obpLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}
-                statusColor={domainSummary.color}
-                statusLabel={domainSummary.label}
                 value={data.obpLink}
             />
 
@@ -277,8 +276,6 @@ export default function MobileShareScreen() {
                     url: withSource(data.menuLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}
-                statusColor={activeProject?.isDefault ? 'success' : 'default'}
-                statusLabel={activeProject?.isDefault ? t('defaultMenuLiveLink') : t('directProjectLink')}
                 value={data.menuLink}
             />
 
@@ -296,8 +293,6 @@ export default function MobileShareScreen() {
                         url: withSource(data.installAppLink as string, 'qr'),
                     })}
                     showQrLabel={t('showQr')}
-                    statusColor="success"
-                    statusLabel={t('installPromptReady')}
                     value={data.installAppLink}
                 />
             ) : null}
@@ -316,8 +311,6 @@ export default function MobileShareScreen() {
                         url: data.feedbackQrLink,
                     })}
                     showQrLabel={t('showQr')}
-                    statusColor={data.hasFeedbackEnabled ? 'success' : 'default'}
-                    statusLabel={data.hasFeedbackEnabled ? t('feedbackOn') : t('feedbackOff')}
                     value={data.feedbackLink}
                 />
             ) : null}
@@ -427,8 +420,6 @@ function LinkCard({
     onOpen,
     onShowQr,
     showQrLabel,
-    statusColor,
-    statusLabel,
     value,
 }: {
     description: string;
@@ -438,8 +429,6 @@ function LinkCard({
     onOpen: () => void;
     onShowQr: () => void;
     showQrLabel: string;
-    statusColor: StatusTone;
-    statusLabel: string;
     value: string;
 }) {
     const common = useTranslations('Common');
@@ -451,7 +440,6 @@ function LinkCard({
                     <Flex align="center" gap={8}>
                         {icon}
                         <Text strong>{label}</Text>
-                        <Tag color={statusColor}>{statusLabel}</Tag>
                     </Flex>
                     <Button fill="none" onClick={onOpen} size="small" style={{ minHeight: 32, minWidth: 32, paddingInline: 4 }}>
                         <LuExternalLink size={16} />

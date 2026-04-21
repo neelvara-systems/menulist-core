@@ -157,6 +157,53 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
         </Card>
     );
 
+    const tempStatusCard = FEATURE_FLAGS.ENABLE_TEMP_STATUS ? (
+        <Card>
+            <Flex gap={12} vertical>
+                <Flex align="center" gap={8}>
+                    <LuAlertTriangle color="#d97706" size={16} />
+                    <Text strong>Temporary Status</Text>
+                    {isTempActive && <Tag color="warning">Active</Tag>}
+                </Flex>
+                {isTempActive && currentStatus ? (
+                    <Flex gap={10} vertical>
+                        <Card style={{ background: '#fff7e6', borderColor: '#ffd591' }}>
+                            <Flex align="center" gap={6}>
+                                <LuClock color="#ad6800" size={12} />
+                                <Text strong>{`${STATUS_OPTIONS.find(o => o.value === currentStatus.type)?.icon || 'ℹ️'} ${currentStatus.message}`}</Text>
+                            </Flex>
+                        </Card>
+                        <Button block color="danger" fill="outline" loading={isTempStatusLoading} onClick={() => void handleClearTempStatus()} size="large">
+                            <Flex align="center" gap={6} justify="center">
+                                <LuX size={14} />
+                                <Text>Clear Status</Text>
+                            </Flex>
+                        </Button>
+                    </Flex>
+                ) : (
+                    <Flex gap={10} vertical>
+                        <Text type="secondary" style={{ fontSize: 13 }}>Customers will see a banner on your page until it expires (12h).</Text>
+                        <Flex gap={6} wrap="wrap">
+                            {STATUS_OPTIONS.map(opt => (
+                                <Tag
+                                    key={opt.value}
+                                    color={statusType === opt.value ? 'warning' : 'default'}
+                                    onClick={() => setStatusType(opt.value)}
+                                    style={{ cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}
+                                >
+                                    {`${opt.icon} ${opt.label}`}
+                                </Tag>
+                            ))}
+                        </Flex>
+                        <Button block color="warning" loading={isTempStatusLoading} onClick={() => void handleSetTempStatus()} size="large">
+                            Set Status
+                        </Button>
+                    </Flex>
+                )}
+            </Flex>
+        </Card>
+    ) : null;
+
     const handleComplete = async (campaign: TodayCampaignSummary) => {
         setIsProcessing(true);
         try {
@@ -230,66 +277,19 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
             <Flex style={{ minHeight: '100%' }} vertical>
                 {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
                 <Flex gap={12} style={{ padding: 16 }} vertical>
+                    <Text strong>{t('todaysStatus')}</Text>
                     {todayHoursCard}
-                    {/* Status Banner */}
+                    {tempStatusCard}
+                    <Text strong>{t('suggestedForToday')}</Text>
                     <Card style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
                         <Flex align="center" gap={10}>
                             <LuCheck color="#16a34a" size={20} />
                             <Flex gap={2} vertical>
-                                <Text strong style={{ color: '#15803d' }}>No actions right now</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Check back later for today&apos;s content suggestions.</Text>
+                                <Text strong style={{ color: '#15803d' }}>{t('allDoneForToday')}</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{t('noActionsNeeded')}</Text>
                             </Flex>
                         </Flex>
                     </Card>
-
-                    {/* Temp Status Quick-Action */}
-                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && (
-                        <Card>
-                            <Flex gap={12} vertical>
-                                <Flex align="center" gap={8}>
-                                    <LuAlertTriangle color="#d97706" size={16} />
-                                    <Text strong>Temporary Status</Text>
-                                    {isTempActive && <Tag color="warning">Active</Tag>}
-                                </Flex>
-                                {isTempActive && currentStatus ? (
-                                    <Flex gap={10} vertical>
-                                        <Card style={{ background: '#fff7e6', borderColor: '#ffd591' }}>
-                                            <Flex align="center" gap={6}>
-                                                <LuClock color="#ad6800" size={12} />
-                                                <Text strong>{`${STATUS_OPTIONS.find(o => o.value === currentStatus.type)?.icon || 'ℹ️'} ${currentStatus.message}`}</Text>
-                                            </Flex>
-                                        </Card>
-                                        <Button block color="danger" fill="outline" loading={isTempStatusLoading} onClick={() => void handleClearTempStatus()} size="large">
-                                            <Flex align="center" gap={6} justify="center">
-                                                <LuX size={14} />
-                                                <Text>Clear Status</Text>
-                                            </Flex>
-                                        </Button>
-                                    </Flex>
-                                ) : (
-                                    <Flex gap={10} vertical>
-                                        <Text type="secondary" style={{ fontSize: 13 }}>Customers will see a banner on your page until it expires (12h).</Text>
-                                        <Flex gap={6} wrap="wrap">
-                                            {STATUS_OPTIONS.map(opt => (
-                                                <Tag
-                                                    key={opt.value}
-                                                    color={statusType === opt.value ? 'warning' : 'default'}
-                                                    onClick={() => setStatusType(opt.value)}
-                                                    style={{ cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}
-                                                >
-                                                    {`${opt.icon} ${opt.label}`}
-                                                </Tag>
-                                            ))}
-                                        </Flex>
-                                        <Button block color="warning" loading={isTempStatusLoading} onClick={() => void handleSetTempStatus()} size="large">
-                                            Set Status
-                                        </Button>
-                                    </Flex>
-                                )}
-                            </Flex>
-                        </Card>
-                    )}
-
                 </Flex>
             </Flex>
         );
@@ -298,12 +298,17 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const mealName = getMealName();
     const primary = todayCampaigns.primary as TodayCampaignSummary | undefined;
     const operational = (todayCampaigns.operational || []).slice(0, 2) as TodayCampaignSummary[];
+    const hasSuggestions = Boolean(primary) || Boolean(staffPrompt?.eligible) || operational.length > 0;
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             {onBack ? <NavBar onBack={onBack}>{t('title')}</NavBar> : null}
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Text strong>{t('todaysStatus')}</Text>
                 {todayHoursCard}
+                {tempStatusCard}
+
+                {hasSuggestions ? <Text strong>{t('suggestedForToday')}</Text> : null}
                 {primary ? (
                     <Card>
                         <Flex gap={12} vertical>
@@ -347,7 +352,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                 ) : null}
 
                 {operational.length > 0 ? (
-                    <Card title={t('alsoToday')}>
+                    <Card title={t('otherSuggestions')}>
                         <Flex gap={8} vertical>
                             {operational.map((campaign) => {
                                 const title = campaign.type === 'now_available'

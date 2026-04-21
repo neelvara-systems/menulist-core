@@ -5,6 +5,7 @@ import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { generateScreenToken } from "@lib/screen/utils";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
@@ -683,7 +684,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
         // would silently hijack what the physical QR resolves to. Canonical
         // URL is immutable (rename → previousSlugs 301 chain) and matches
         // the "internal emitters use canonical URL" rule.
-        let defaultSlug: string | undefined;
+        let selectedProjectSlug: string | undefined;
         try {
             const summaryRef = doc(
                 firebaseClient,
@@ -692,22 +693,15 @@ export const getScreenDataByToken = async (token: string): Promise<{
             );
             const summarySnap = await getDoc(summaryRef);
             if (summarySnap.exists()) {
-                const raw = summarySnap.data() || {};
-                const projectsObj: any =
-                    (raw.projects && typeof raw.projects === 'object') ? raw.projects : {};
-                // Handle both nested { projects: {id: {...}} } and legacy flat
-                // { "projects.id": {...} } formats — same pattern as the
-                // parseSummaryProjects helper used on the client path.
-                const entries: any[] = [];
-                for (const [k, v] of Object.entries(raw)) {
-                    if (k.startsWith('projects.')) entries.push(v);
-                }
-                for (const v of Object.values(projectsObj)) entries.push(v);
-                const active = entries.filter(
-                    (p: any) => p?.active !== false && !p?.isSpecialMenu,
-                );
-                const def = active.find((p: any) => p?.isDefault === true) || active[0];
-                if (def?.slug) defaultSlug = def.slug;
+                const projectMap = parseSummaryProjects(summarySnap.data() || {});
+                const activeProjects = Object.entries(projectMap)
+                    .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
+                    .filter((project: any) => project?.active !== false && project?.deleted !== true);
+                const configuredProject = data.screen?.selectedProjectId
+                    ? activeProjects.find((project: any) => project.projectId === data.screen?.selectedProjectId)
+                    : null;
+                const fallbackProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
+                selectedProjectSlug = configuredProject?.slug || fallbackProject?.slug;
             }
         } catch {
             // Silent fallback — alias URL still works via Layer 2.
@@ -719,7 +713,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
             menuQrUrl: getDefaultProjectUrl(
                 storeData?.subdomain || storeId,
                 storeData?.customDomain,
-                defaultSlug,
+                selectedProjectSlug,
             ),
         };
 
@@ -745,7 +739,8 @@ export const getScreenDataByToken = async (token: string): Promise<{
  */
 export const getMenuItemsForScreen = async (
     storeId: string,
-    tenantId: string
+    tenantId: string,
+    selectedProjectId?: string | null
 ): Promise<Array<{
     id: string;
     name: string;
@@ -833,14 +828,30 @@ export const getMenuItemsForScreen = async (
             firebaseClient,
             `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`
         );
-        const defaultQuery = query(
-            projectsRef,
-            where('deleted', '==', false),
-            where('active', '==', true),
-            where('isDefault', '==', true),
-            limit(1)
-        );
-        let projectSnap = await getDocs(defaultQuery);
+        let projectSnap;
+        let projectId: string | null = null;
+
+        if (selectedProjectId) {
+            const selectedDoc = await getDoc(doc(projectsRef, selectedProjectId));
+            if (selectedDoc.exists()) {
+                const selectedData = selectedDoc.data();
+                if (selectedData?.deleted !== true && selectedData?.active !== false) {
+                    projectSnap = { empty: false, docs: [selectedDoc] };
+                    projectId = selectedDoc.id;
+                }
+            }
+        }
+
+        if (!projectSnap) {
+            const defaultQuery = query(
+                projectsRef,
+                where('deleted', '==', false),
+                where('active', '==', true),
+                where('isDefault', '==', true),
+                limit(1)
+            );
+            projectSnap = await getDocs(defaultQuery);
+        }
 
         // Fallback: first active project if default not found
         if (projectSnap.empty) {
@@ -856,7 +867,7 @@ export const getMenuItemsForScreen = async (
         if (projectSnap.empty) return [];
 
         const chosenDoc = projectSnap.docs[0];
-        const projectId = chosenDoc.id;
+        projectId = chosenDoc.id;
 
         // 2. Extract items from chosen project (data already in snapshot)
         const items = extractMenuItemsFromProject(chosenDoc.data());
@@ -932,6 +943,7 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
                 enabled: true,
                 screenToken,
                 lastRefreshed: now,
+                selectedProjectId: null,
                 contentVersion: 1,
                 lastContentChangeAt: now,
                 currentMinConfidence: 0,
@@ -955,14 +967,30 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
  * Update screen settings (toggle override mode)
  * Per spec: Owner can toggle "Use my designs instead"
  */
-export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean }): Promise<void> => {
+export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean; selectedProjectId?: string | null }): Promise<void> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const docRef = getCampaignsSummaryDocRef(session);
+            const docSnap = await getDoc(docRef);
+            const currentContentVersion = docSnap.exists()
+                ? ((docSnap.data() as CampaignsSummaryDocument).screen?.contentVersion || 0)
+                : 0;
+            const currentSelectedProjectId = docSnap.exists()
+                ? ((docSnap.data() as CampaignsSummaryDocument).screen?.selectedProjectId || null)
+                : null;
+            const projectChanged =
+                settings.selectedProjectId !== undefined &&
+                settings.selectedProjectId !== currentSelectedProjectId;
 
             await setDoc(docRef, {
-                screen: settings
+                screen: {
+                    ...settings,
+                    ...(projectChanged ? {
+                        contentVersion: currentContentVersion + 1,
+                        lastContentChangeAt: Timestamp.now(),
+                    } : {}),
+                }
             }, { merge: true });
 
             console.log(`✅ [updateScreenSettings] Updated:`, settings);

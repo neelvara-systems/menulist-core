@@ -3,9 +3,7 @@
 /**
  * MobileSpecialMenuScreen — Mobile screen for managing and creating special menus.
  *
- * Reuses the same special menu DAL as desktop and hands off editing to the
- * existing mobile menu editor by selecting the special menu project and
- * switching to the Menu tab.
+ * Reuses the same special menu DAL as desktop for create, edit, and lifecycle actions.
  */
 
 import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
@@ -15,9 +13,9 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Tag, Text, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Tag, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
@@ -35,6 +33,19 @@ function formatDate(iso: string): string {
     if (!iso) return '';
     const date = new Date(iso);
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatScheduleRange(startsAt: string, endsAt: string): string {
+    if (!startsAt || !endsAt) return '';
+    const start = dayjs(startsAt);
+    const end = dayjs(endsAt);
+    const sameDay = start.isSame(end, 'day');
+
+    if (sameDay) {
+        return `${start.format('MMM D, YYYY • h:mm A')} - ${end.format('h:mm A')}`;
+    }
+
+    return `${start.format('MMM D, YYYY • h:mm A')} - ${end.format('MMM D, YYYY • h:mm A')}`;
 }
 
 function toInputValue(iso: string | null | undefined, allowTimeScheduling: boolean): string {
@@ -163,20 +174,7 @@ function CreateSpecialMenuSheet({
             visible={open}
         >
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar
-                    onBack={handleClose}
-                    right={(
-                        <Button
-                            fill="none"
-                            onClick={() => { void handleSubmit(); }}
-                            style={{ color: token.colorPrimary, minHeight: 40, minWidth: 72 }}
-                        >
-                            {isSubmitting ? t('creatingShort') : t('createShort')}
-                        </Button>
-                    )}
-                >
-                    {t('createTitle')}
-                </NavBar>
+                <NavBar onBack={handleClose}>{t('createTitle')}</NavBar>
 
                 <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                     <Card>
@@ -241,6 +239,217 @@ function CreateSpecialMenuSheet({
                         <Text type="secondary">{t('createHelp')}</Text>
                     </Card>
                 </Flex>
+
+                <Flex
+                    gap={8}
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        padding: '12px 16px',
+                    }}
+                >
+                    <Button block disabled={isSubmitting} fill="outline" onClick={handleClose} size="large">
+                        {t('cancelAction')}
+                    </Button>
+                    <Button block loading={isSubmitting} onClick={() => { void handleSubmit(); }} size="large">
+                        {t('createShort')}
+                    </Button>
+                </Flex>
+            </Flex>
+        </Popup>
+    );
+}
+
+function EditSpecialMenuSheet({
+    allowTimeScheduling,
+    item,
+    onClose,
+    onSubmit,
+    open,
+}: {
+    allowTimeScheduling: boolean;
+    item: SpecialMenuListItem | null;
+    onClose: () => void;
+    onSubmit: (payload: {
+        projectId: string;
+        description?: string;
+        displayName: string;
+        endsAt: string;
+        startsAt: string;
+    }) => Promise<void>;
+    open: boolean;
+}) {
+    const t = useTranslations('MobileSpecialMenu');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
+    const tSettings = useTranslations('Settings');
+    const { token } = theme.useToken();
+    const [displayName, setDisplayName] = useState('');
+    const [description, setDescription] = useState('');
+    const [startsAt, setStartsAt] = useState('');
+    const [endsAt, setEndsAt] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const resetForm = () => {
+        setDisplayName(item?.displayName || '');
+        setDescription(item?.description || '');
+        setStartsAt(toInputValue(item?.startsAt, allowTimeScheduling));
+        setEndsAt(toInputValue(item?.endsAt, allowTimeScheduling));
+    };
+
+    useEffect(() => {
+        resetForm();
+    }, [item, allowTimeScheduling]);
+
+    const initialName = item?.displayName || '';
+    const initialDescription = item?.description || '';
+    const initialStartsAt = toInputValue(item?.startsAt, allowTimeScheduling);
+    const initialEndsAt = toInputValue(item?.endsAt, allowTimeScheduling);
+    const hasChanges = displayName.trim() !== initialName.trim()
+        || description.trim() !== initialDescription.trim()
+        || startsAt !== initialStartsAt
+        || endsAt !== initialEndsAt;
+
+    const handleClose = () => {
+        if (isSubmitting) return;
+        resetForm();
+        onClose();
+    };
+
+    const handleSubmit = async () => {
+        const trimmedName = displayName.trim();
+        const trimmedDescription = description.trim();
+
+        if (!item?.projectId) return;
+
+        if (!trimmedName) {
+            Toast.show({ content: t('nameRequired'), duration: 1800 });
+            return;
+        }
+
+        if (!startsAt || !endsAt) {
+            Toast.show({ content: t('scheduleRequired'), duration: 1800 });
+            return;
+        }
+
+        const startsAtIso = toIsoValue(startsAt, allowTimeScheduling);
+        const endsAtIso = toIsoValue(endsAt, allowTimeScheduling);
+
+        if (dayjs(endsAtIso).valueOf() <= dayjs(startsAtIso).valueOf()) {
+            Toast.show({ content: t('endAfterStart'), duration: 2000 });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await onSubmit({
+                projectId: item.projectId,
+                description: trimmedDescription || undefined,
+                displayName: trimmedName,
+                endsAt: endsAtIso,
+                startsAt: startsAtIso,
+            });
+            resetForm();
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!item) return null;
+
+    return (
+        <Popup
+            bodyStyle={{
+                maxHeight: '92vh',
+                minHeight: '60vh',
+                overflow: 'hidden',
+                padding: 0,
+            }}
+            destroyOnClose
+            onMaskClick={handleClose}
+            visible={open}
+        >
+            <Flex style={{ height: '100%' }} vertical>
+                <NavBar
+                    right={(
+                        <Button
+                            fill="none"
+                            onClick={handleClose}
+                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                        >
+                            <LuX size={18} />
+                        </Button>
+                    )}
+                >
+                    {t('editAction')}
+                </NavBar>
+
+                <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                    <Card>
+                        <Flex gap={14} vertical>
+                            <Flex gap={4} vertical>
+                                <Text strong>{t('nameLabel')}</Text>
+                                <Input
+                                    maxLength={100}
+                                    onChange={setDisplayName}
+                                    placeholder={t('namePlaceholder')}
+                                    value={displayName}
+                                />
+                            </Flex>
+
+                            <Flex gap={4} vertical>
+                                <Text strong>{tProjectSelector('description')}</Text>
+                                <TextArea
+                                    maxLength={300}
+                                    onChange={setDescription}
+                                    placeholder={tProjectSelector('descriptionPlaceholder')}
+                                    rows={3}
+                                    showCount
+                                    value={description}
+                                />
+                            </Flex>
+
+                            <Flex gap={4} vertical>
+                                <Text strong>{`${t('startsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
+                                <Input
+                                    onChange={setStartsAt}
+                                    type={allowTimeScheduling ? 'datetime-local' : 'date'}
+                                    value={startsAt}
+                                />
+                            </Flex>
+
+                            <Flex gap={4} vertical>
+                                <Text strong>{`${t('endsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
+                                <Input
+                                    onChange={setEndsAt}
+                                    type={allowTimeScheduling ? 'datetime-local' : 'date'}
+                                    value={endsAt}
+                                />
+                            </Flex>
+                        </Flex>
+                    </Card>
+
+                    <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                        <Text type="secondary">{t('editInMenuTab')}</Text>
+                    </Card>
+                </Flex>
+
+                <Flex
+                    gap={8}
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        padding: '12px 16px',
+                    }}
+                >
+                    <Button block disabled={!hasChanges || isSubmitting} fill="outline" onClick={resetForm} size="large">
+                        {tSettings('reset')}
+                    </Button>
+                    <Button block disabled={!hasChanges || isSubmitting} loading={isSubmitting} onClick={() => { void handleSubmit(); }} size="large">
+                        {tSettings('saveChanges')}
+                    </Button>
+                </Flex>
             </Flex>
         </Popup>
     );
@@ -257,16 +466,21 @@ function SpecialMenuItem({
     item: SpecialMenuListItem;
     onCancel: (id: string) => Promise<void>;
     onDeactivate: (id: string) => Promise<void>;
-    onEdit: (projectId: string) => Promise<void>;
+    onEdit: (item: SpecialMenuListItem) => Promise<void> | void;
 }) {
     const t = useTranslations('MobileSpecialMenu');
     const { token } = theme.useToken();
     const [isWorking, setIsWorking] = useState(false);
+    const modeLabel = item.mode === 'replace' ? t('replaceOption') : t('overlayOption');
+    const actionButtonStyle = {
+        minWidth: 108,
+        borderRadius: 999,
+    };
 
     const handleEdit = async () => {
         setIsWorking(true);
         try {
-            await onEdit(item.projectId);
+            await onEdit(item);
         } finally {
             setIsWorking(false);
         }
@@ -306,37 +520,44 @@ function SpecialMenuItem({
 
     return (
         <Card
+            size="small"
             style={{
-                backgroundColor: item.status === 'active' ? token.colorSuccessBg : token.colorBgContainer,
-                borderColor: item.status === 'active' ? token.colorSuccessBorder : token.colorBorderSecondary,
+                backgroundColor: token.colorBgContainer,
+                borderColor: item.status === 'active' ? token.colorPrimaryBorder : token.colorBorderSecondary,
+                boxShadow: 'none',
             }}
         >
-            <Flex gap={12} vertical>
+            <Flex gap={14} vertical>
                 <Flex align="flex-start" gap={12} justify="space-between">
-                    <Flex gap={8} style={{ flex: 1 }} vertical>
-                        <Flex align="center" gap={8} wrap="wrap">
-                            <Text strong>{item.displayName}</Text>
+                    <Flex gap={10} style={{ flex: 1, minWidth: 0 }} vertical>
+                        <Flex align="center" gap={8} justify="space-between" wrap="wrap">
+                            <Text strong style={{ fontSize: 16 }}>{item.displayName}</Text>
                             <StatusTag status={item.status} />
                         </Flex>
 
-                        <Flex align="center" gap={6}>
-                            <LuCalendar color={token.colorTextTertiary} size={12} />
-                            <Text type="secondary">{`${formatDate(item.startsAt)} to ${formatDate(item.endsAt)}`}</Text>
+                        <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+                            <LuCalendar color={token.colorTextTertiary} size={13} />
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
+                                {formatScheduleRange(item.startsAt, item.endsAt)}
+                            </Text>
                         </Flex>
 
-                        <Text type="secondary">
-                            {item.mode === 'replace' ? t('replaceDescription') : t('overlayDescription')}
-                        </Text>
+                        <Flex align="center" gap={8} wrap="wrap">
+                            <Tag style={{ marginInlineEnd: 0 }}>{modeLabel}</Tag>
+                            {baseProjectName ? <Tag style={{ marginInlineEnd: 0 }}>{t('baseMenuValue', { name: baseProjectName })}</Tag> : null}
+                        </Flex>
 
-                        {baseProjectName ? (
-                            <Text type="secondary">{t('baseMenuValue', { name: baseProjectName })}</Text>
+                        {item.description ? (
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
+                                {item.description}
+                            </Text>
                         ) : null}
                     </Flex>
                 </Flex>
 
-                <Flex gap={8} wrap="wrap">
+                <Flex gap={8} justify="flex-end" wrap="wrap">
                     {(item.status === 'active' || item.status === 'scheduled') ? (
-                        <Button fill="outline" loading={isWorking} onClick={() => { void handleEdit(); }} size="small">
+                        <Button fill="outline" loading={isWorking} onClick={() => { void handleEdit(); }} size="small" style={actionButtonStyle}>
                             <Flex align="center" gap={6}>
                                 <LuPencil size={14} />
                                 <Text>{t('editAction')}</Text>
@@ -345,7 +566,7 @@ function SpecialMenuItem({
                     ) : null}
 
                     {item.status === 'active' ? (
-                        <Button color="danger" fill="outline" loading={isWorking} onClick={() => { void handleEnd(); }} size="small">
+                        <Button color="danger" fill="outline" loading={isWorking} onClick={() => { void handleEnd(); }} size="small" style={actionButtonStyle}>
                             <Flex align="center" gap={6}>
                                 <LuPause size={14} />
                                 <Text>{t('endNow')}</Text>
@@ -354,7 +575,7 @@ function SpecialMenuItem({
                     ) : null}
 
                     {item.status === 'scheduled' ? (
-                        <Button fill="outline" loading={isWorking} onClick={() => { void handleCancel(); }} size="small">
+                        <Button fill="outline" loading={isWorking} onClick={() => { void handleCancel(); }} size="small" style={actionButtonStyle}>
                             <Flex align="center" gap={6}>
                                 <LuX size={14} />
                                 <Text>{t('cancelAction')}</Text>
@@ -369,6 +590,7 @@ function SpecialMenuItem({
 
 export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: MobileSpecialMenuScreenProps) {
     const t = useTranslations('MobileSpecialMenu');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const {
@@ -384,11 +606,13 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         expiredMenus,
         isLoading,
         createSpecialMenu,
+        updateSpecialMenu,
         deactivateMenu,
         cancelMenu,
     } = useSpecialMenus();
     const [showExpired, setShowExpired] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [editingMenu, setEditingMenu] = useState<SpecialMenuListItem | null>(null);
 
     const capabilities = useMemo(
         () => getSpecialMenuCapabilities(storeDetails?.businessType),
@@ -442,6 +666,28 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         setIsCreateOpen(false);
         Toast.show({ content: t('specialMenuCreated'), icon: 'success', duration: 1600 });
         await handleOpenSpecialProject(result.projectId);
+    };
+
+    const handleOpenEditSheet = (item: SpecialMenuListItem) => {
+        setEditingMenu(item);
+    };
+
+    const handleUpdateSpecialMenu = async (payload: {
+        projectId: string;
+        description?: string;
+        displayName: string;
+        endsAt: string;
+        startsAt: string;
+    }) => {
+        const result = await updateSpecialMenu(payload);
+
+        if (!result.success) {
+            Toast.show({ content: result.error || tProjectSelector('saveFailed'), duration: 2200 });
+            return;
+        }
+
+        setEditingMenu(null);
+        Toast.show({ content: tProjectSelector('catalogUpdated'), icon: 'success', duration: 1600 });
     };
 
     const handleDeactivate = async (projectId: string) => {
@@ -534,7 +780,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                         key={item.projectId}
                         onCancel={handleCancel}
                         onDeactivate={handleDeactivate}
-                        onEdit={handleOpenSpecialProject}
+                        onEdit={handleOpenEditSheet}
                     />
                 ))}
 
@@ -551,7 +797,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                         key={item.projectId}
                         onCancel={handleCancel}
                         onDeactivate={handleDeactivate}
-                        onEdit={handleOpenSpecialProject}
+                        onEdit={handleOpenEditSheet}
                     />
                 )) : null}
 
@@ -570,6 +816,14 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                 onClose={() => setIsCreateOpen(false)}
                 onSubmit={handleCreateSpecialMenu}
                 open={isCreateOpen}
+            />
+
+            <EditSpecialMenuSheet
+                allowTimeScheduling
+                item={editingMenu}
+                onClose={() => setEditingMenu(null)}
+                onSubmit={handleUpdateSpecialMenu}
+                open={Boolean(editingMenu)}
             />
         </Flex>
     );

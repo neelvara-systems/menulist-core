@@ -33,6 +33,7 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectLang
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
     const translationSignal = useMemo(() => allSignals.find((signal) => signal.id === 'translations') || null, [allSignals]);
+    const shouldShowTranslationCoverage = (projectLanguages?.length || 0) > 1;
     const translationCoverageLabel = useMemo(() => {
         if ((projectLanguages?.length || 0) <= 1) return t('translationPrimaryOnly');
         if (!translationSignal || translationSignal.count === 0) return t('translationFullyReady');
@@ -72,7 +73,9 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectLang
                                 <Flex gap={4} vertical>
                                     <Text strong>{t('title')}</Text>
                                     <Flex align="center" gap={6} wrap="wrap">
-                                        <Tag color={translationCoverageColor}>{translationCoverageLabel}</Tag>
+                                        {shouldShowTranslationCoverage ? (
+                                            <Tag color={translationCoverageColor}>{translationCoverageLabel}</Tag>
+                                        ) : null}
                                     </Flex>
                                 </Flex>
                             </Flex>
