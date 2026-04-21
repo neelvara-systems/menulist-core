@@ -32,6 +32,17 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectLang
     const allSignals = useMemo(() => computeQualitySignals(files, projectLanguages), [files, projectLanguages]);
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
+    const translationSignal = useMemo(() => allSignals.find((signal) => signal.id === 'translations') || null, [allSignals]);
+    const translationCoverageLabel = useMemo(() => {
+        if ((projectLanguages?.length || 0) <= 1) return t('translationPrimaryOnly');
+        if (!translationSignal || translationSignal.count === 0) return t('translationFullyReady');
+        return t('translationPartiallyReady');
+    }, [projectLanguages?.length, t, translationSignal]);
+    const translationCoverageColor = useMemo(() => {
+        if ((projectLanguages?.length || 0) <= 1) return 'default';
+        if (!translationSignal || translationSignal.count === 0) return 'success';
+        return 'warning';
+    }, [projectLanguages?.length, translationSignal]);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || signals.length === 0) {
         return null;
@@ -58,7 +69,12 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectLang
                         <Flex align="center" justify="space-between" style={{ width: '100%' }}>
                             <Flex align="center" gap={8}>
                                 <LuSparkles color={allClear ? token.colorSuccess : token.colorWarning} size={16} />
-                                <Text strong>{t('title')}</Text>
+                                <Flex gap={4} vertical>
+                                    <Text strong>{t('title')}</Text>
+                                    <Flex align="center" gap={6} wrap="wrap">
+                                        <Tag color={translationCoverageColor}>{translationCoverageLabel}</Tag>
+                                    </Flex>
+                                </Flex>
                             </Flex>
                             <Tag color={allClear ? 'success' : 'warning'}>
                                 {allClear ? t('allClearTitle') : signals.length}

@@ -139,7 +139,7 @@ export default function MobileProjectsProvider({ children }: { children: React.R
                 setIsLoading(true);
             }
 
-            const result = await getProjectsListWithoutLoader();
+            const result = await getProjectsListWithoutLoader(true);
             const summaries = (result?.projects || []) as ProjectSummary[];
             const resolvedProject = resolveMobileSelectedProject(
                 summaries,

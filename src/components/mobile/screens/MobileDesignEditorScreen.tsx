@@ -286,6 +286,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     clickable={projectsList.length > 1 && !isPublishing}
                     currentProject={{
                         active: selectedProjectSummary?.active !== false,
+                        deleted: selectedProjectSummary?.deleted === true,
                         id: selectedProjectId || draftProjectData?.projectId || 'current',
                         isDefault: selectedProjectSummary?.isDefault,
                         name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),

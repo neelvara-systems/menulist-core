@@ -2,11 +2,13 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
+import { getScreenState } from '@database/campaigns';
 import { signOutSession } from '@lib/auth/client';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBarChart3,
@@ -28,7 +30,21 @@ import {
     LuTv,
     LuUsers,
 } from 'react-icons/lu';
-import { Avatar, Card, Dialog, Flex, List, Text, Title, Toast } from '../antd';
+import { Avatar, Card, Dialog, Flex, List, Tag, Text, Title, Toast } from '../antd';
+
+type ItemStatusTag = {
+    color: 'success' | 'warning' | 'default';
+    label: string;
+};
+
+type MoreListItem = {
+    key: string;
+    icon: React.ReactNode;
+    label: string;
+    description: string;
+    onClick: () => void;
+    statusTag?: ItemStatusTag;
+};
 
 const MobileBillingScreen = dynamic(() => import('./MobileBillingScreen'), { ssr: false });
 const MobileBasicSettingsScreen = dynamic(() => import('./MobileBasicSettingsScreen'), { ssr: false });
@@ -100,12 +116,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const t = useTranslations('MobileMore');
     const tBusiness = useTranslations('BusinessSettings');
     const tFeedback = useTranslations('FeedbackInbox');
+    const tShare = useTranslations('MobileShare');
     const tPosSync = useTranslations('PosSync');
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [subScreen, setSubScreen] = useState<MoreSubScreen>(initialScreen);
     const mainScrollTopRef = useRef(0);
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
+    const [hasDigitalScreen, setHasDigitalScreen] = useState<boolean | null>(null);
     const logoutLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressNextLogoutClickRef = useRef(false);
 
@@ -139,6 +158,23 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             }
         };
     }, []);
+
+    const refreshDigitalScreenState = useCallback(async () => {
+        if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {
+            setHasDigitalScreen(false);
+            return;
+        }
+        try {
+            const screenState = await getScreenState();
+            setHasDigitalScreen(Boolean(screenState?.screenToken));
+        } catch {
+            setHasDigitalScreen(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void refreshDigitalScreenState();
+    }, [refreshDigitalScreenState]);
 
     const openSubScreen = (nextScreen: MoreSubScreen) => {
         const shellScrollContainer = document.querySelector<HTMLElement>('[data-mobile-shell-scroll="true"]');
@@ -178,19 +214,31 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     if (subScreen === 'todayHistory') return <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'customerApp') return <MobileCustomerAppScreen onBack={() => setSubScreen('main')} />;
 
-    const moduleItems = [
+    const domainTag: ItemStatusTag = storeDetails?.customDomain
+        ? { color: (storeDetails as any).domainVerified ? 'success' : 'warning', label: (storeDetails as any).domainVerified ? tShare('customDomainLive') : tShare('customDomainPending') }
+        : storeDetails?.subdomain
+            ? { color: 'success', label: tShare('subdomainLive') }
+            : { color: 'default', label: tShare('domainNotSet') };
+    const feedbackTag: ItemStatusTag = storeDetails?.feedbackEnabled !== false
+        ? { color: 'success', label: tShare('feedbackOn') }
+        : { color: 'default', label: tShare('feedbackOff') };
+    const screenTag: ItemStatusTag = hasDigitalScreen
+        ? { color: 'success', label: tShare('screensReady') }
+        : { color: 'default', label: tShare('screensNotSetUp') };
+
+    const moduleItems: MoreListItem[] = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') },
         { key: 'todayHistory', icon: <LuClock3 color="#0ea5e9" size={20} />, label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') },
         { key: 'feedback', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') },
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
         { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') },
-        { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') },
+        { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), statusTag: screenTag, onClick: () => openSubScreen('digitalScreens') },
         { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
         { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
     ];
 
-    const businessIdentityItems = [
+    const businessIdentityItems: MoreListItem[] = [
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, label: 'Brand Settings', description: 'Manage brand name, logo, contact details, and address.', onClick: () => openSubScreen('basicSettings') },
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
@@ -200,15 +248,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') },
     ];
 
-    const businessPresenceItems = [
-        { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), onClick: () => openSubScreen('domainSettings') },
+    const businessPresenceItems: MoreListItem[] = [
+        { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openSubScreen('officialPage') }] : []),
         { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') },
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
         { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
         { key: 'analyticsSettings', icon: <LuBarChart3 color="#16a34a" size={20} />, label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') },
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
-        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), onClick: () => openSubScreen('feedbackSettings') },
+        { key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), statusTag: feedbackTag, onClick: () => openSubScreen('feedbackSettings') },
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
         ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? [{ key: 'customerApp', icon: <LuSmartphone color="#8b5cf6" size={20} />, label: 'Customer App', description: 'Installable menu app — settings and live install analytics.', onClick: () => openSubScreen('customerApp') }] : []),
     ];
@@ -243,6 +291,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         }, 700);
     };
 
+    const renderListDescription = (item: MoreListItem) => (
+        <Flex align="center" gap={8} wrap="wrap">
+            <Text type="secondary">{item.description}</Text>
+            {item.statusTag ? <Tag color={item.statusTag.color}>{item.statusTag.label}</Tag> : null}
+        </Flex>
+    );
+
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
             <Card>
@@ -260,7 +315,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     {moduleItems.map((item) => (
                         <List.Item
                             arrow
-                            description={<Text type="secondary">{item.description}</Text>}
+                            description={renderListDescription(item)}
                             key={item.key}
                             onClick={item.onClick}
                             prefix={item.icon}
@@ -275,7 +330,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     {businessIdentityItems.map((item) => (
                         <List.Item
                             arrow
-                            description={<Text type="secondary">{item.description}</Text>}
+                            description={renderListDescription(item)}
                             key={item.key}
                             onClick={item.onClick}
                             prefix={item.icon}
@@ -290,7 +345,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     {businessPresenceItems.map((item) => (
                         <List.Item
                             arrow
-                            description={<Text type="secondary">{item.description}</Text>}
+                            description={renderListDescription(item)}
                             key={item.key}
                             onClick={item.onClick}
                             prefix={item.icon}

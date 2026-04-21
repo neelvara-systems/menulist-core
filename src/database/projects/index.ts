@@ -300,6 +300,23 @@ const getProjectsSummaryDocRef = async () => {
     return doc(firebaseClient, PLATFORM_SUMMARY, `projects_${session.sId}`);
 };
 
+const extractProjectsSummaryMap = (
+    summaryDocData?: Record<string, any> | null,
+): Record<string, ProjectSummaryData> => {
+    if (!summaryDocData) return {};
+
+    const nestedProjects = summaryDocData.projects;
+    if (nestedProjects && typeof nestedProjects === "object" && !Array.isArray(nestedProjects)) {
+        return nestedProjects as Record<string, ProjectSummaryData>;
+    }
+
+    return Object.fromEntries(
+        Object.entries(summaryDocData)
+            .filter(([key]) => key.startsWith("projects."))
+            .map(([key, value]) => [key.replace("projects.", ""), value as ProjectSummaryData]),
+    );
+};
+
 // ═══════════════════════════════════════════════════════════════
 // SLUG RESERVATION (T1-N-04 / A-12 PUBLIC-ROUTING-DOCTRINE)
 // ═══════════════════════════════════════════════════════════════
@@ -386,7 +403,7 @@ export const getProjectsSummary = async (): Promise<
         async () => {
             const docRef = await getProjectsSummaryDocRef();
             const docSnap = await getDoc(docRef);
-            return docSnap.exists() ? docSnap.data()?.projects || {} : {};
+            return docSnap.exists() ? extractProjectsSummaryMap(docSnap.data() as Record<string, any>) : {};
         },
         null,
         "getProjectsSummary",
@@ -569,9 +586,10 @@ export const updateProjectMetadata = async (
         async () => {
             // Get current summary to merge updates
             const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
-            const currentSummary = summaryDoc.exists()
-                ? summaryDoc.data()?.projects?.[projectId]
+            const summaryMap = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
                 : {};
+            const currentSummary: Partial<ProjectSummaryData> = summaryMap[projectId] || {};
 
             // URL Routing: Handle slug changes when name changes
             let slugUpdate: Partial<ProjectSummaryData> = {};
@@ -622,6 +640,8 @@ export const updateProjectMetadata = async (
                 ...currentSummary,
                 ...data,
                 ...slugUpdate,
+                name: data.name ?? currentSummary.name ?? "Untitled",
+                active: data.active ?? currentSummary.active ?? true,
             };
 
             await syncProjectToSummary(projectId, updatedSummary);
@@ -843,15 +863,28 @@ export const setProjectActive = async (projectId: string, active: boolean) => {
             // Update project document
             await setDoc(await getDataDocRef(projectId), { active }, { merge: true });
 
-            // Get current summary and update active status
+            // Keep projects summary in sync immediately (source for selectors)
             const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
-            const currentSummary = summaryDoc.exists()
-                ? summaryDoc.data()?.projects?.[projectId]
-                : null;
+            const summaryMap = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
+                : {};
+            const currentSummary: Partial<ProjectSummaryData> = summaryMap[projectId] || {};
 
-            if (currentSummary) {
-                await syncProjectToSummary(projectId, { ...currentSummary, active });
-            }
+            await syncProjectToSummary(projectId, {
+                name: currentSummary.name || "Untitled",
+                description: currentSummary.description,
+                active,
+                isDefault: currentSummary.isDefault ?? false,
+                slug: currentSummary.slug,
+                previousSlugs: currentSummary.previousSlugs,
+                isSpecialMenu: currentSummary.isSpecialMenu,
+                specialMenuDisplayName: currentSummary.specialMenuDisplayName,
+                specialMenuStatus: currentSummary.specialMenuStatus,
+                specialMenuStartsAt: currentSummary.specialMenuStartsAt,
+                specialMenuEndsAt: currentSummary.specialMenuEndsAt,
+                specialMenuMode: currentSummary.specialMenuMode,
+                specialMenuBaseProjectId: currentSummary.specialMenuBaseProjectId,
+            });
 
             return { projectId, active };
         },
@@ -1019,11 +1052,7 @@ const getProjectsListCore = async (includeInactive = false) => {
     const summaryDocRef = await getProjectsSummaryDocRef();
     const summaryDoc = await getDoc(summaryDocRef);
     const projectsMap = summaryDoc.exists()
-        ? Object.fromEntries(
-            Object.entries(summaryDoc.data() || {})
-                .filter(([key]) => key.startsWith('projects.'))
-                .map(([key, value]) => [key.replace('projects.', ''), value])
-        ) || {}
+        ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
         : {};
 
     const projects = Object.entries(projectsMap)
@@ -1191,8 +1220,8 @@ export const getProject = async (projectId: string) => {
                 return null;
             }
 
-            const summaryData = summaryDoc.exists()
-                ? summaryDoc.data()?.projects?.[projectId]
+            const summaryData: Partial<ProjectSummaryData> = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)[projectId] || {}
                 : {};
             const projectData = projectDoc.data();
 
@@ -1279,7 +1308,9 @@ export const deleteProject = async (
             // Special Menu Guard: Block deletion if non-expired special menus reference this as base
             if (FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) {
                 const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
-                const summaryProjects = summaryDoc.exists() ? summaryDoc.data()?.projects || {} : {};
+                const summaryProjects = summaryDoc.exists()
+                    ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
+                    : {};
                 for (const [smId, smData] of Object.entries(summaryProjects) as [string, any][]) {
                     if (
                         smData.isSpecialMenu &&
@@ -1375,8 +1406,8 @@ export const duplicateProject = async (
             }
 
             const originalData = projectDoc.data() as Project;
-            const originalSummary = summaryDoc.exists()
-                ? summaryDoc.data()?.projects?.[projectId]
+            const originalSummary: Partial<ProjectSummaryData> = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)[projectId] || {}
                 : {};
 
             // 2. Generate new project ID
@@ -1545,7 +1576,7 @@ export const getSpecialMenus = async (): Promise<{
         async () => {
             const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
             const projects = summaryDoc.exists()
-                ? summaryDoc.data()?.projects || {}
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
                 : {};
 
             const specialMenus = Object.entries(projects)
@@ -1622,7 +1653,7 @@ export const createSpecialMenuProject = async (params: {
             // 2. Check schedule conflicts (one-active constraint)
             const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
             const summaryProjects = summaryDoc.exists()
-                ? summaryDoc.data()?.projects || {}
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
                 : {};
 
             for (const [, projData] of Object.entries(summaryProjects) as [string, any][]) {

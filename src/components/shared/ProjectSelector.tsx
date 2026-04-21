@@ -11,7 +11,16 @@ export type ProjectSelectorItem = {
     name: string;
     isDefault?: boolean;
     active?: boolean;
+    deleted?: boolean;
     secondaryLabel?: string;
+};
+
+type ProjectStatus = 'active' | 'inactive' | 'deleted';
+
+const getProjectStatus = (project: Pick<ProjectSelectorItem, 'active' | 'deleted'> | null | undefined): ProjectStatus => {
+    if (project?.deleted === true) return 'deleted';
+    if (project?.active === false) return 'inactive';
+    return 'active';
 };
 
 const AVATAR_COLORS = [
@@ -55,7 +64,13 @@ export function ProjectSelectorTrigger({
     const { token } = theme.useToken();
     const projectName = currentProject?.name || t('untitled');
     const avatarColors = getAvatarColor(projectName);
-    const isInactive = currentProject?.active === false;
+    const projectStatus = getProjectStatus(currentProject);
+    const statusTag =
+        projectStatus === 'deleted'
+            ? <Tag color="error">{t('catalogDeleted')}</Tag>
+            : projectStatus === 'inactive'
+                ? <Tag color="warning">{t('catalogInactive')}</Tag>
+                : <Tag color="success">{t('catalogActive')}</Tag>;
 
     const content = (
         <Flex align="center" justify="space-between" style={{ width: '100%' }}>
@@ -82,7 +97,7 @@ export function ProjectSelectorTrigger({
                 </Flex>
             </Flex>
             <Flex align="center" gap={8}>
-                {isInactive ? <Tag color="warning">{t('inactiveCatalog')}</Tag> : null}
+                {statusTag}
                 {currentProject?.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
                 {rightContent}
                 {clickable ? <LuChevronDown color={token.colorTextSecondary} size={14} /> : null}
@@ -134,7 +149,20 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
             {projects.map((project) => {
                 const avatarColors = getAvatarColor(project.name || t('untitled'));
                 const isSelected = project.id === currentProjectId;
-                const isInactive = project.active === false;
+                const projectStatus = getProjectStatus(project);
+                const isInactive = projectStatus === 'inactive';
+                const statusColor =
+                    projectStatus === 'deleted'
+                        ? 'error'
+                        : projectStatus === 'inactive'
+                            ? 'warning'
+                            : 'success';
+                const statusLabel =
+                    projectStatus === 'deleted'
+                        ? t('catalogDeleted')
+                        : projectStatus === 'inactive'
+                            ? t('catalogInactive')
+                            : t('catalogActive');
 
                 return (
                     <Card
@@ -163,25 +191,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     onManage(project.id);
                                 }}
                                 size="small"
-                                style={{ position: 'absolute', right: 6, top: 6, zIndex: 1 }}
+                                style={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
                                 type="text"
                             >
                                 <LuMoreVertical size={16} />
                             </Button>
-                        ) : null}
-
-                        {isInactive ? (
-                            <Tag
-                                color="warning"
-                                style={{
-                                    position: 'absolute',
-                                    top: 8,
-                                    left: isSelected ? 36 : 10,
-                                    zIndex: 1,
-                                }}
-                            >
-                                {t('inactiveCatalog')}
-                            </Tag>
                         ) : null}
 
                         {isSelected ? (
@@ -197,13 +211,22 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     borderRadius: '50%',
                                     background: token.colorPrimary,
                                     color: '#fff',
+                                    zIndex: 1,
                                 }}
                             >
                                 <LuCheck size={13} />
                             </Flex>
                         ) : null}
 
-                        <Flex align="center" gap={12} justify="center" style={{ minHeight: 124, textAlign: 'center' }} vertical>
+                        <Flex align="center" justify="center" style={{ marginBottom: 14 }}>
+                            <Flex align="center" gap={8} justify="center" wrap="wrap" style={{ minWidth: 0 }}>
+                                <Tag color={statusColor} style={{ marginInlineEnd: 0 }}>
+                                    {statusLabel}
+                                </Tag>
+                            </Flex>
+                        </Flex>
+
+                        <Flex align="center" gap={12} justify="center" style={{ minHeight: 110, textAlign: 'center' }} vertical>
                             <Flex
                                 align="center"
                                 justify="center"
@@ -224,8 +247,12 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                 <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
                                     {project.name || t('untitled')}
                                 </Text>
-                                {project.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
                             </Flex>
+                            {project.isDefault ? (
+                                <Tag color="processing" style={{ marginInlineEnd: 0 }}>
+                                    {t('default')}
+                                </Tag>
+                            ) : null}
                             {project.secondaryLabel ? (
                                 <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
                                     {project.secondaryLabel}
@@ -254,7 +281,8 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                         boxShadow: 'none',
                     }}
                 >
-                    <Flex align="center" gap={12} justify="center" style={{ minHeight: 124, textAlign: 'center' }} vertical>
+                    <div style={{ minHeight: 26, marginBottom: 14 }} />
+                    <Flex align="center" gap={12} justify="center" style={{ minHeight: 110, textAlign: 'center' }} vertical>
                         <Flex
                             align="center"
                             justify="center"
@@ -270,7 +298,7 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                             <LuPlus size={32} />
                         </Flex>
                         <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
-                            {t('add')}
+                            {t('createCatalog')}
                         </Text>
                     </Flex>
                 </Card>

@@ -266,6 +266,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                     clickable={projectsList.length > 1}
                     currentProject={{
                         active: selectedProjectSummary?.active !== false,
+                        deleted: selectedProjectSummary?.deleted === true,
                         id: selectedProjectId,
                         isDefault: selectedProjectSummary?.isDefault,
                         name: selectedProjectSummary?.name || t('unnamedProject'),

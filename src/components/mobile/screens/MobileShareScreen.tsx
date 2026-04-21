@@ -23,6 +23,7 @@ import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 type ProjectLink = {
     active?: boolean;
+    deleted?: boolean;
     feedbackUrl: string;
     isDefault: boolean;
     name: string;
@@ -56,6 +57,8 @@ type QrSheetState = {
     title: string;
     url: string;
 };
+
+type StatusTone = 'success' | 'warning' | 'default';
 
 export default function MobileShareScreen() {
     const { token } = theme.useToken();
@@ -117,6 +120,8 @@ export default function MobileShareScreen() {
 
             const allProjects: ProjectLink[] = projects.map((project: any) => {
                 return {
+                    active: project.active !== false,
+                    deleted: project.deleted === true,
                     feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : "",
                     isDefault: project.isDefault || false,
                     name: project.name || tProjectSelector('untitled'),
@@ -162,6 +167,23 @@ export default function MobileShareScreen() {
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
     );
+    const domainSummary = storeDetails?.customDomain
+        ? {
+            color: (storeDetails as any).domainVerified ? 'success' : 'warning' as StatusTone,
+            label: (storeDetails as any).domainVerified ? t('customDomainLive') : t('customDomainPending'),
+            value: storeDetails.customDomain,
+        }
+        : {
+            color: storeDetails?.subdomain ? 'success' : 'default' as StatusTone,
+            label: storeDetails?.subdomain ? t('subdomainLive') : t('domainNotSet'),
+            value: storeDetails?.subdomain ? generateOBPUrl(storeDetails.subdomain, storeDetails.customDomain).replace(/^https?:\/\//, '') : t('domainNotSetHelp'),
+        };
+    const feedbackSummary = data.hasFeedbackEnabled
+        ? { color: 'success' as StatusTone, label: t('feedbackOn'), value: t('feedbackOnHelp') }
+        : { color: 'default' as StatusTone, label: t('feedbackOff'), value: t('feedbackOffHelp') };
+    const screenSummary = data.hasScreen
+        ? { color: 'success' as StatusTone, label: t('screensReady'), value: t('screensReadyHelp') }
+        : { color: 'default' as StatusTone, label: t('screensNotSetUp'), value: t('screensNotSetUpHelp') };
 
     const withSource = (url: string, src: 'copy' | 'direct' | 'qr') =>
         url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
@@ -207,6 +229,7 @@ export default function MobileShareScreen() {
                     clickable={data.allProjects.length > 1}
                     currentProject={{
                         active: activeProject.active !== false,
+                        deleted: activeProject.deleted === true,
                         id: activeProject.projectId,
                         isDefault: activeProject.isDefault,
                         name: activeProject.name || tProjectSelector('untitled'),
@@ -214,6 +237,14 @@ export default function MobileShareScreen() {
                     onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
             ) : null}
+
+            <Card>
+                <Flex gap={8} vertical>
+                    <StatusSummaryRow color={domainSummary.color} label={domainSummary.label} value={domainSummary.value} />
+                    <StatusSummaryRow color={feedbackSummary.color} label={feedbackSummary.label} value={feedbackSummary.value} />
+                    <StatusSummaryRow color={screenSummary.color} label={screenSummary.label} value={screenSummary.value} />
+                </Flex>
+            </Card>
 
             <LinkCard
                 description={t('offeringPageDesc', { offering: labels.offeringLower })}
@@ -228,6 +259,8 @@ export default function MobileShareScreen() {
                     url: withSource(data.obpLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}
+                statusColor={domainSummary.color}
+                statusLabel={domainSummary.label}
                 value={data.obpLink}
             />
 
@@ -244,6 +277,8 @@ export default function MobileShareScreen() {
                     url: withSource(data.menuLink, 'qr'),
                 })}
                 showQrLabel={t('showQr')}
+                statusColor={activeProject?.isDefault ? 'success' : 'default'}
+                statusLabel={activeProject?.isDefault ? t('defaultMenuLiveLink') : t('directProjectLink')}
                 value={data.menuLink}
             />
 
@@ -261,6 +296,8 @@ export default function MobileShareScreen() {
                         url: withSource(data.installAppLink as string, 'qr'),
                     })}
                     showQrLabel={t('showQr')}
+                    statusColor="success"
+                    statusLabel={t('installPromptReady')}
                     value={data.installAppLink}
                 />
             ) : null}
@@ -279,6 +316,8 @@ export default function MobileShareScreen() {
                         url: data.feedbackQrLink,
                     })}
                     showQrLabel={t('showQr')}
+                    statusColor={data.hasFeedbackEnabled ? 'success' : 'default'}
+                    statusLabel={data.hasFeedbackEnabled ? t('feedbackOn') : t('feedbackOff')}
                     value={data.feedbackLink}
                 />
             ) : null}
@@ -302,6 +341,8 @@ export default function MobileShareScreen() {
                         onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
                         onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
                         pendingLabel={t('notSetUpYet')}
+                        statusColor={data.menuBoardLink ? 'success' : 'default'}
+                        statusLabel={data.menuBoardLink ? t('ready') : t('notSetUp')}
                         value={data.menuBoardLink}
                     />
                     <ScreenCard
@@ -311,6 +352,8 @@ export default function MobileShareScreen() {
                         onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
                         onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
                         pendingLabel={t('notSetUpYet')}
+                        statusColor={data.highlightsLink ? 'success' : 'default'}
+                        statusLabel={data.highlightsLink ? t('ready') : t('notSetUp')}
                         value={data.highlightsLink}
                     />
                 </Flex>
@@ -384,6 +427,8 @@ function LinkCard({
     onOpen,
     onShowQr,
     showQrLabel,
+    statusColor,
+    statusLabel,
     value,
 }: {
     description: string;
@@ -393,6 +438,8 @@ function LinkCard({
     onOpen: () => void;
     onShowQr: () => void;
     showQrLabel: string;
+    statusColor: StatusTone;
+    statusLabel: string;
     value: string;
 }) {
     const common = useTranslations('Common');
@@ -404,6 +451,7 @@ function LinkCard({
                     <Flex align="center" gap={8}>
                         {icon}
                         <Text strong>{label}</Text>
+                        <Tag color={statusColor}>{statusLabel}</Tag>
                     </Flex>
                     <Button fill="none" onClick={onOpen} size="small" style={{ minHeight: 32, minWidth: 32, paddingInline: 4 }}>
                         <LuExternalLink size={16} />
@@ -439,6 +487,8 @@ function ScreenCard({
     onCopy,
     onOpen,
     pendingLabel,
+    statusColor,
+    statusLabel,
     value,
 }: {
     description: string;
@@ -447,6 +497,8 @@ function ScreenCard({
     onCopy?: () => void;
     onOpen?: () => void;
     pendingLabel: string;
+    statusColor: StatusTone;
+    statusLabel: string;
     value: string | null;
 }) {
     const common = useTranslations('Common');
@@ -456,7 +508,10 @@ function ScreenCard({
                 <Flex align="center" gap={10}>
                     {icon}
                     <Flex gap={2} vertical>
-                        <Text strong>{label}</Text>
+                        <Flex align="center" gap={8} wrap="wrap">
+                            <Text strong>{label}</Text>
+                            <Tag color={statusColor}>{statusLabel}</Tag>
+                        </Flex>
                         <Text type="secondary">{pendingLabel}</Text>
                     </Flex>
                 </Flex>
@@ -470,6 +525,7 @@ function ScreenCard({
                 <Flex align="center" gap={8}>
                     {icon}
                     <Text strong>{label}</Text>
+                    <Tag color={statusColor}>{statusLabel}</Tag>
                 </Flex>
                 <Text type="secondary">{description}</Text>
                 <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
@@ -483,6 +539,19 @@ function ScreenCard({
                 </Flex>
             </Flex>
         </Card>
+    );
+}
+
+function StatusSummaryRow({ color, label, value }: { color: StatusTone; label: string; value: string }) {
+    return (
+        <Flex align="center" justify="space-between" gap={12}>
+            <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                <Tag color={color}>{label}</Tag>
+            </Flex>
+            <Text style={{ flex: 1, textAlign: 'right' }} type="secondary">
+                {value}
+            </Text>
+        </Flex>
     );
 }
 

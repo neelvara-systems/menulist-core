@@ -89,7 +89,7 @@ export default function UseMenuList() {
 
         try {
             // Get projects list to check if menu exists & is published
-            const result = await getProjectsList();
+            const result = await getProjectsList(true);
             const projects = result?.projects || [];
             const defaultProject = projects.find((p: any) => p.isDefault) || projects[0];
 
@@ -146,6 +146,7 @@ export default function UseMenuList() {
                     name: p.name || 'Untitled',
                     isDefault: p.isDefault || false,
                     active: p.active !== false,
+                    deleted: p.deleted === true,
                     // R5: real canonical slug URL — no /menu alias.
                     url: generateProjectUrl(subdomain, customDomain, p.name, false),
                     feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
@@ -368,6 +369,7 @@ export default function UseMenuList() {
                             name: activeProject.name || 'Untitled',
                             isDefault: activeProject.isDefault,
                             active: activeProject.active,
+                            deleted: activeProject.deleted,
                         }}
                         helperText={data.allProjects.length > 1 ? 'Select project' : undefined}
                         onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
@@ -1043,6 +1045,7 @@ export default function UseMenuList() {
                         name: project.name || 'Untitled',
                         isDefault: project.isDefault,
                         active: project.active,
+                        deleted: project.deleted,
                         secondaryLabel: project.url.replace(/^https?:\/\//, ''),
                     }))}
                 />

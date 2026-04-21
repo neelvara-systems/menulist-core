@@ -31,6 +31,7 @@ const FEEDBACK_LIST_CARD_STYLE = {
 
 export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
+    const common = useTranslations('Common');
     const { token } = theme.useToken();
     const format = useFormatter();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -92,6 +93,8 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
 
     const feedbackUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'direct_link', publicBaseUrl) : '';
     const feedbackQrUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'feedback_qr', publicBaseUrl) : '';
+    const feedbackEnabled = storeDetails?.feedbackEnabled !== false;
+    const feedbackReady = feedbackEnabled && Boolean(selectedProjectId);
 
     const handleCopyFeedbackLink = async () => {
         if (!feedbackUrl) return;
@@ -172,13 +175,19 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                     <LuQrCode size={18} />
                                 </Flex>
                                 <Flex gap={2} vertical>
-                                    <Text strong>{t('feedbackQrTitle')}</Text>
+                                    <Flex align="center" gap={8} wrap="wrap">
+                                        <Text strong>{t('feedbackQrTitle')}</Text>
+                                        <Tag color={feedbackReady ? 'success' : 'default'}>
+                                            {feedbackReady ? common('enabled') : common('disabled')}
+                                        </Tag>
+                                    </Flex>
                                     <Text type="secondary">{t('feedbackQrDesc')}</Text>
                                 </Flex>
                             </Flex>
                             <Button
                                 fill="none"
                                 onClick={handleOpenFeedbackLink}
+                                disabled={!feedbackReady}
                                 size="small"
                                 style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
                             >
@@ -186,16 +195,21 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                             </Button>
                         </Flex>
                         <Flex gap={8}>
-                            <Button fill="outline" onClick={handleCopyFeedbackLink} size="small" style={{ flex: 1 }}>
+                            <Button disabled={!feedbackReady} fill="outline" onClick={handleCopyFeedbackLink} size="small" style={{ flex: 1 }}>
                                 <Flex align="center" gap={6} justify="center">
                                     <LuCopy size={14} />
                                     <Text>{t('copyLink')}</Text>
                                 </Flex>
                             </Button>
-                            <Button onClick={handleOpenQr} size="small" style={{ flex: 1 }}>
+                            <Button disabled={!feedbackReady} onClick={handleOpenQr} size="small" style={{ flex: 1 }}>
                                 {t('showQr')}
                             </Button>
                         </Flex>
+                        {!feedbackReady ? (
+                            <Text type="secondary">
+                                {feedbackEnabled ? t('selectMenuForFeedback') : t('feedbackDisabledHelp')}
+                            </Text>
+                        ) : null}
                     </Flex>
                 </Card>
 

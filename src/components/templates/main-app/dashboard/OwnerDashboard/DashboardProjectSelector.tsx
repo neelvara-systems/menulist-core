@@ -45,6 +45,24 @@ interface Props {
 
 type DashboardProject = ProjectMetadata & { active?: boolean };
 
+type ProjectStatus = 'active' | 'inactive' | 'deleted';
+
+const getProjectStatus = (project: DashboardProject | null | undefined): ProjectStatus => {
+    if ((project as any)?.deleted === true) return 'deleted';
+    if (project?.active === false) return 'inactive';
+    return 'active';
+};
+
+const renderStatusTag = (status: ProjectStatus) => {
+    if (status === 'deleted') return <Tag color="error" style={{ marginInlineEnd: 0 }}>Deleted</Tag>;
+    if (status === 'inactive') return <Tag color="warning" style={{ marginInlineEnd: 0 }}>Inactive</Tag>;
+    return <Tag color="success" style={{ marginInlineEnd: 0 }}>Active</Tag>;
+};
+
+const renderDefaultTag = (isDefault?: boolean) => (
+    isDefault ? <Tag color="processing" style={{ marginInlineEnd: 0 }}>Default</Tag> : null
+);
+
 export const DashboardProjectSelector: React.FC<Props> = ({
     selectedProjectId,
     onProjectChange,
@@ -58,7 +76,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
 
     const { data, isLoading } = useSWR(
         sessionReady ? `dashboard-projects-${session!.tId}-${session!.sId}` : null,
-        () => getMetadataProjectsList(),
+        () => getMetadataProjectsList(true),
         { dedupingInterval: 3600000, revalidateOnFocus: false, revalidateOnMount: false }
     );
 
@@ -93,7 +111,8 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                         {getInitials(p.name)}
                     </Avatar>
                     <Text style={{ flex: 1 }}>{p.name}</Text>
-                    {p.active === false ? <Tag color="warning" style={{ marginInlineEnd: 0 }}>Inactive</Tag> : null}
+                    {renderDefaultTag(p.isDefault)}
+                    {renderStatusTag(getProjectStatus(p))}
                     {p.projectId === selectedProjectId && <LuCheck size={14} color={token.colorPrimary} />}
                 </Flex>
             ),
@@ -125,7 +144,8 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                 <Text strong style={{ maxWidth: 150 }} ellipsis>
                     {selectedProject?.name || 'Select catalog'}
                 </Text>
-                {selectedProject?.active === false ? <Tag color="warning" style={{ marginInlineEnd: 0 }}>Inactive</Tag> : null}
+                {renderDefaultTag(selectedProject?.isDefault)}
+                {renderStatusTag(getProjectStatus(selectedProject))}
                 <LuChevronDown size={14} color={token.colorTextSecondary} />
             </Flex>
         </Dropdown>

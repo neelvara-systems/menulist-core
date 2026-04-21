@@ -84,6 +84,8 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         }
         return records;
     }, [activeDomain, domainStatus?.config]);
+    const subdomainState = storeDetails?.subdomain ? 'active' : 'not_set';
+    const customDomainState = !activeDomain ? 'not_set' : customDomainVerified ? 'live' : 'pending';
 
     const refreshStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
@@ -201,6 +203,37 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     subtitle={t('domainSettingsSubtitle')}
                     title={t('domain')}
                 />
+
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Flex align="center" justify="space-between">
+                            <Text strong>{t('subdomain')}</Text>
+                            <Tag color={subdomainState === 'active' ? 'success' : 'default'}>
+                                {subdomainState === 'active' ? common('enabled') : tMobile('notSet')}
+                            </Tag>
+                        </Flex>
+                        <Text type="secondary">
+                            {storeDetails?.subdomain
+                                ? getMenuUrl(storeDetails.subdomain).replace(/^https?:\/\//, '')
+                                : t('noSubdomainDesc')}
+                        </Text>
+                        <Flex align="center" justify="space-between">
+                            <Text strong>{t('customDomain')}</Text>
+                            <Tag color={customDomainState === 'live' ? 'success' : customDomainState === 'pending' ? 'warning' : 'default'}>
+                                {customDomainState === 'live'
+                                    ? t('verificationComplete')
+                                    : customDomainState === 'pending'
+                                        ? t('checkVerification')
+                                        : tMobile('notSet')}
+                            </Tag>
+                        </Flex>
+                        <Text type="secondary">
+                            {activeDomain
+                                ? (customDomainVerified ? `${t('menuLiveAt')} ${activeDomain}` : t('waitingDnsVerification', { domain: activeDomain }))
+                                : t('customDomainDesc')}
+                        </Text>
+                    </Flex>
+                </Card>
 
                 <Card>
                     <Flex gap={8} vertical>

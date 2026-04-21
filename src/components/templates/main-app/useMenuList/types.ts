@@ -9,6 +9,7 @@ export interface ProjectLink {
     name: string;
     isDefault: boolean;
     active?: boolean;
+    deleted?: boolean;
     url: string;
     feedbackUrl: string;
     feedbackQrUrl: string;

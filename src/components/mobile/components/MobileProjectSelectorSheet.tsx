@@ -10,6 +10,7 @@ import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Text, TextA
 
 type ProjectSheetProject = {
     active?: boolean;
+    deleted?: boolean;
     description?: string;
     isDefault?: boolean;
     name: string;
@@ -280,6 +281,7 @@ export default function MobileProjectSelectorSheet({
                                 isDefault: project.isDefault,
                                 name: project.name,
                                 active: project.active !== false,
+                                deleted: project.deleted === true,
                                 secondaryLabel: project.active === false ? t('inactiveCatalog') : (project.description || undefined),
                             }))}
                         />

@@ -992,6 +992,16 @@ export default function MobileMenuScreen() {
         return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
     }, [displayLanguage, menuData?.files, uncategorizedLabel]);
 
+    const categoryActiveById = useMemo(() => {
+        const map = new Map<string, boolean>();
+        menuData?.files?.forEach((file: any) => {
+            toArray<ExtractedDataCategory>(file.extractedData?.data?.categories).forEach((category) => {
+                map.set(category.id, category.active !== false);
+            });
+        });
+        return map;
+    }, [menuData?.files]);
+
     const menuItems = useMemo(() => {
         if (!menuData?.files) return [];
         const items: MenuItemType[] = [];
@@ -1026,6 +1036,7 @@ export default function MobileMenuScreen() {
                         const price = normalizeExtractedPrice(item.price);
                         const available = item.available !== false;
                         const active = item.active !== false;
+                        const hiddenByCategory = item.category ? categoryActiveById.get(item.category) === false : false;
                         items.push({
                             id: item.id || `${categoryName}-${itemName}`,
                             name: itemName,
@@ -1040,6 +1051,7 @@ export default function MobileMenuScreen() {
                             active,
                             categoryId: item.category,
                             categoryName,
+                            hiddenByCategory,
                             description: itemDescription,
                             fileId: file.uid,
                             image: item.images?.[0]?.url || '',
@@ -1051,17 +1063,7 @@ export default function MobileMenuScreen() {
             }
         });
         return items;
-    }, [activeProjectLanguages, displayLanguage, menuData, primaryLang, t, uncategorizedLabel]);
-
-    const categoryActiveById = useMemo(() => {
-        const map = new Map<string, boolean>();
-        menuData?.files?.forEach((file: any) => {
-            toArray<ExtractedDataCategory>(file.extractedData?.data?.categories).forEach((category) => {
-                map.set(category.id, category.active !== false);
-            });
-        });
-        return map;
-    }, [menuData?.files]);
+    }, [activeProjectLanguages, categoryActiveById, displayLanguage, menuData, primaryLang, t, uncategorizedLabel]);
 
     const isItemEffectivelyActive = useCallback((item: MenuItemType) => {
         const categoryActive = item.categoryId ? categoryActiveById.get(item.categoryId) !== false : true;
@@ -1536,6 +1538,7 @@ export default function MobileMenuScreen() {
                     id: item.id,
                     name: resolveItemName(item, displayLanguage, t('unnamedItem')),
                     active: (item.active !== false) && (categoryId === 'uncategorized' || categoryActiveById.get(categoryId) !== false),
+                    hiddenByCategory: categoryId !== 'uncategorized' && categoryActiveById.get(categoryId) === false && item.active !== false,
                     price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
                     hasImage: Boolean(item.images?.[0]?.url),
                     hasDescription: Boolean(resolveItemDescription(item, displayLanguage).trim()),
@@ -1815,6 +1818,7 @@ export default function MobileMenuScreen() {
                         clickable={projectsList.length > 1 && !isBusy}
                         currentProject={{
                             active: activeProjectSummary?.active !== false,
+                            deleted: activeProjectSummary?.deleted === true,
                             id: menuData?.projectId || 'current',
                             isDefault: activeProjectSummary?.isDefault,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
@@ -2301,6 +2305,12 @@ export default function MobileMenuScreen() {
                                                             <Flex align="center" gap={8} wrap>
                                                                 {!item.attributes?.length ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag> : null}
                                                             </Flex>
+
+                                                            {item.hiddenByCategory ? (
+                                                                <Flex align="center" gap={8} wrap>
+                                                                    <Tag color="default">{t('hiddenByCategory')}</Tag>
+                                                                </Flex>
+                                                            ) : null}
 
                                                             {item.attributes?.length ? (
                                                                 <Flex gap={6} wrap>

@@ -19,6 +19,7 @@ export type MobileMenuItemType = {
     active: boolean;
     categoryId?: string;
     categoryName?: string;
+    hiddenByCategory?: boolean;
     description?: string;
     fileId?: string;
     image?: string;

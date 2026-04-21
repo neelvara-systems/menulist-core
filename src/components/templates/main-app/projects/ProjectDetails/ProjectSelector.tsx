@@ -40,6 +40,14 @@ const getInitials = (name: string) => {
     return name.slice(0, 2).toUpperCase();
 };
 
+type ProjectStatus = 'active' | 'inactive' | 'deleted';
+
+const getProjectStatus = (project: ProjectMetadata | null | undefined): ProjectStatus => {
+    if ((project as any)?.deleted === true) return 'deleted';
+    if ((project as any)?.active === false) return 'inactive';
+    return 'active';
+};
+
 interface CatalogCardProps {
     project: ProjectMetadata;
     isSelected: boolean;
@@ -64,7 +72,8 @@ const CatalogCard = ({
     const [isHovered, setIsHovered] = useState(false);
     const avatarColor = getAvatarColor(project.name);
     const initials = getInitials(project.name);
-    const isInactive = (project as any).active === false;
+    const projectStatus = getProjectStatus(project);
+    const isInactive = projectStatus === 'inactive';
 
     const handleMenuClick = (info: { domEvent: React.MouseEvent }, action: () => void) => {
         info.domEvent.stopPropagation();
@@ -141,9 +150,9 @@ const CatalogCard = ({
                     </div>
                 )}
 
-                {isInactive && (
+                {projectStatus !== 'active' && (
                     <Tag
-                        color="warning"
+                        color={projectStatus === 'deleted' ? 'error' : 'warning'}
                         style={{
                             position: 'absolute',
                             top: 8,
@@ -151,7 +160,7 @@ const CatalogCard = ({
                             margin: 0,
                         }}
                     >
-                        Inactive
+                        {projectStatus === 'deleted' ? 'Deleted' : 'Inactive'}
                     </Tag>
                 )}
 
@@ -193,6 +202,17 @@ const CatalogCard = ({
                 >
                     {project.name}
                 </Text>
+                {project.isDefault ? (
+                    <Tag color="processing" style={{ marginTop: 6, marginInlineEnd: 0 }}>
+                        Default
+                    </Tag>
+                ) : null}
+                <Tag
+                    color={projectStatus === 'deleted' ? 'error' : projectStatus === 'inactive' ? 'warning' : 'success'}
+                    style={{ marginTop: 6, marginInlineEnd: 0 }}
+                >
+                    {projectStatus === 'deleted' ? 'Deleted' : projectStatus === 'inactive' ? 'Inactive' : 'Active'}
+                </Tag>
             </Flex>
         </motion.div>
     );
@@ -270,6 +290,7 @@ export const ProjectSelector = ({
     const [modalOpen, setModalOpen] = useState(false);
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
+    const selectedStatus = getProjectStatus(selectedProject);
 
     const confirmDuplicate = (project: ProjectMetadata) => {
         setModalOpen(false);
@@ -308,8 +329,26 @@ export const ProjectSelector = ({
         <>
             {/* Trigger Button */}
             <Button type="default" icon={<LuFolderOpen size={18} />} onClick={() => setModalOpen(true)}>
-                {selectedProject ? selectedProject.name : `Select ${offeringName}`}
-                {selectedProject && (selectedProject as any).active === false ? ' (Inactive)' : ''}
+                <Flex align="center" gap={8}>
+                    <span>{selectedProject ? selectedProject.name : `Select ${offeringName}`}</span>
+                    {selectedProject ? (
+                        <>
+                            {selectedProject.isDefault ? (
+                                <Tag color="processing" style={{ marginInlineEnd: 0 }}>
+                                    Default
+                                </Tag>
+                            ) : null}
+                        </>
+                    ) : null}
+                    {selectedProject ? (
+                        <Tag
+                            color={selectedStatus === 'deleted' ? 'error' : selectedStatus === 'inactive' ? 'warning' : 'success'}
+                            style={{ marginInlineEnd: 0 }}
+                        >
+                            {selectedStatus === 'deleted' ? 'Deleted' : selectedStatus === 'inactive' ? 'Inactive' : 'Active'}
+                        </Tag>
+                    ) : null}
+                </Flex>
                 <IoChevronDown style={{ marginLeft: 8 }} />
             </Button>
 
