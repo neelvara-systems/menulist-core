@@ -6,7 +6,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import { DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
 import { InheritanceState } from '@type/multiOutlet.types';
-import { message as antdMessage, Button, Flex, Modal, Popconfirm, theme, Typography } from 'antd';
+import { message as antdMessage, Button, Flex, Grid, Modal, Popconfirm, theme, Typography } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
@@ -50,6 +50,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
 
     const dispatch = useAppDispatch()
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
     const labels = useOfferingLabels();
     const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -126,7 +127,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
             open={modalData.active}
             onCancel={onClose}
             footer={null}
-            width={420}
+            width="min(420px, calc(100vw - 24px))"
             maskClosable={false}
         >
             {/* P1.3: Silence as Outcome - Show success state when all ready */}
@@ -240,7 +241,11 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                     )}
 
                     {/* Action Buttons */}
-                    <Flex gap={12} style={{ marginTop: 24 }}>
+                    <Flex
+                        vertical={!screens.sm}
+                        gap={12}
+                        style={{ marginTop: 24, width: '100%' }}
+                    >
                         {/* Primary: Generate descriptions */}
                         <Button
                             size='large'
@@ -248,7 +253,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                             onClick={handleGenerateEmptyClick}
                             loading={isProcessing}
                             disabled={isProcessing || !canGenerateEmpty}
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, width: screens.sm ? undefined : '100%' }}
                         >
                             Generate descriptions ({itemsWithoutDescriptions})
                         </Button>
@@ -274,6 +279,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                     size='large'
                                     loading={isProcessing}
                                     disabled={isProcessing}
+                                    style={{ width: screens.sm ? undefined : '100%' }}
                                 >
                                     Refresh descriptions
                                 </Button>

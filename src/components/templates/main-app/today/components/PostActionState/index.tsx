@@ -6,6 +6,8 @@ const { Title, Text } = Typography;
 
 interface PostActionStateProps {
     action: "shared" | "skipped";
+    title?: string;
+    description?: string;
 }
 
 /**
@@ -20,10 +22,12 @@ interface PostActionStateProps {
  * 
  * "Celebration implies evaluation. Evaluation invites doubt."
  */
-const PostActionState = ({ action }: PostActionStateProps) => {
+const PostActionState = ({ action, title, description }: PostActionStateProps) => {
     // Simple, calm confirmation
-    const message = action === "shared" ? "Shared" : "Skipped";
-    const subMessage = "You're done for today.";
+    const message = title || (action === "shared" ? "Shared" : "Skipped");
+    const subMessage = description || (action === "shared"
+        ? "This action is marked done for today."
+        : "No action needed. This was skipped for today.");
 
     return (
         <div className={styles.postActionState}>

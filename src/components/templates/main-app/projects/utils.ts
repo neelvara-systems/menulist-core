@@ -7,6 +7,7 @@
  * - Styling: ./utils/styleUtils.ts (lightweight)
  */
 
+import { generateOwnCustomUid } from '@lib/utils/generateOwnCustomUid';
 import DOMPurify from 'isomorphic-dompurify';
 import { ExtractedDataAttribute, ExtractedDataCategory, ExtractedDataItem } from './types';
 
@@ -28,6 +29,10 @@ export const sanitizeUserInput = (input: string, allowHTML: boolean = false): st
         ALLOWED_TAGS: ['b', 'i', 'u', 'br', 'p'],
         ALLOWED_ATTR: [],
     });
+};
+
+export const generateMenuFileUid = (tenantId: string | number, storeId: string | number): string => {
+    return generateOwnCustomUid(tenantId, storeId);
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,7 +74,7 @@ export const transformDataIds = (extractedData: any, fileId: string) => {
     const categoryIdMap: Record<string, string> = {};
     data?.categories?.forEach((category: ExtractedDataCategory) => {
         const oldId = category.id;
-        const newId = `${fileId}c${oldId}`;
+        const newId = `${fileId}-c${oldId}`;
         categoryIdMap[oldId] = newId;
         category.id = newId;
         category.active = true;
@@ -77,7 +82,7 @@ export const transformDataIds = (extractedData: any, fileId: string) => {
 
     // Update item IDs and their category references
     data?.items?.forEach((item: ExtractedDataItem) => {
-        item.id = `${fileId}i${item.id}`;
+        item.id = `${fileId}-i${item.id}`;
         // Update the category reference using the mapping
         if (item.category !== undefined) {
             item.category = categoryIdMap[item.category];
@@ -86,7 +91,7 @@ export const transformDataIds = (extractedData: any, fileId: string) => {
         // Update attribute IDs
         if (item.attributes && Array.isArray(item.attributes)) {
             item.attributes.forEach((attr: ExtractedDataAttribute) => {
-                attr.id = `${item.id}a${attr.id}`;
+                attr.id = `${item.id}-a${attr.id}`;
                 attr.active = true;
             });
         }

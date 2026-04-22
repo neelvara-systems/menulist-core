@@ -56,6 +56,7 @@ import { ProjectEditModal, ProjectFormData } from './ProjectDetails/ProjectEditM
 import ProjectsSubHeader from './ProjectsSubHeader';
 import SpecialMenuCard from './SpecialMenuCard';
 import { BatchImageGenerationJobType, ConvertedImageType, Project, ProjectFileType, ProjectMetadata } from './types';
+import { generateMenuFileUid } from './utils';
 import { validateFile } from './validation';
 import { WelcomeModal } from './WelcomeModal';
 
@@ -1024,8 +1025,7 @@ function ProjectsPage() {
         }
 
         // Generate unique file ID
-        const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
-        file.uid = `${tenantDetails.tenantId}${randomStr}${storeDetails.storeId}`;
+        file.uid = generateMenuFileUid(tenantDetails.tenantId, storeDetails.storeId);
 
         return false; // Don't auto-upload
     }
@@ -1134,7 +1134,7 @@ function ProjectsPage() {
                         await page.render({ canvasContext: context!, viewport: viewport } as any).promise;
                         const pageUrl = canvas.toDataURL('image/jpeg', 0.8);
                         const imageData = {
-                            uid: `${tenantDetails.tenantId}${Math.random().toString(36).substring(2, 5).toUpperCase()}${storeDetails.storeId}`,
+                            uid: generateMenuFileUid(tenantDetails.tenantId, storeDetails.storeId),
                             name: `${file.name.replace('.pdf', '')}-page-${i + 1}.jpg`,
                             size: Math.round(pageUrl.length * 0.75), // Approximate size from base64
                             type: 'image/jpeg',

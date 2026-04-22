@@ -38,12 +38,12 @@ export const PAST_ACTIVITY_GUIDE_SECTIONS: FeatureGuideSection[] = [
     {
         title: 'What you see here',
         description:
-            'Past Activity shows simple memory of actions from the last 7 days: completed or skipped.'
+            'Past Activity shows simple memory from the last 7 days: what was generated, completed, or skipped.'
     },
     {
         title: 'Why it exists',
         description:
-            'It helps you remember what was already handled recently, so you can move forward without confusion.'
+            'It helps you remember what was already prepared and what was already handled, so you can move forward without confusion.'
     },
     {
         title: 'How to use it',

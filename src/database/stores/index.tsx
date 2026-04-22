@@ -9,6 +9,7 @@ import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
 import { TimeSlotPreset } from "@type/platform/store";
 import { deleteField, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
@@ -300,7 +301,7 @@ export const updateStore = async (data: any) => {
  * Format: {tenantId}{random3chars}{storeId} e.g., "1ABC15"
  */
 export const generatePresetId = (tenantId: number, storeId: number) =>
-    `${tenantId}${Math.random().toString(36).substring(2, 5).toUpperCase()}${storeId}`;
+    generateOwnCustomUid(tenantId, storeId);
 
 /**
  * Update time slot presets for a store

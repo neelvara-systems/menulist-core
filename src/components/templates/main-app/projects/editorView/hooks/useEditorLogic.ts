@@ -226,13 +226,13 @@ export const useEditorLogic = ({
                 item.attributes.length > 0
                     ? Number(
                         item.attributes[item.attributes.length - 1]?.id?.split(
-                            `${item.id}a`,
+                            `${item.id}-a`,
                         )[1],
                     ) + 1 || 1
                     : 1;
 
             const newAttribute: ExtractedDataAttribute = {
-                id: `${item.id}a${sequenceId}`,
+                id: `${item.id}-a${sequenceId}`,
                 name: Object.fromEntries(selectedLanguages.map((lang) => [lang, ""])),
                 price: "",
                 active: true,

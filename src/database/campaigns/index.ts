@@ -241,6 +241,10 @@ export const updateCampaignStatus = async (
                 }
             }
 
+            if (updateData.suppressedUntil === undefined) {
+                delete updateData.suppressedUntil;
+            }
+
             await setDoc(docRef, updateData, { merge: true });
 
             console.log(`✅ [updateCampaignStatus] Updated campaign ${campaignId} to ${status}`);
@@ -288,13 +292,14 @@ export const getCampaignHistory = async (limitCount: number = 20): Promise<Campa
             const collectionRef = getCampaignsCollectionRef(session);
             const q = query(
                 collectionRef,
-                where("status", "in", ["completed", "skipped"]),
-                orderBy("resolvedAt", "desc"),
+                orderBy("updatedAt", "desc"),
                 limit(limitCount)
             );
 
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => doc.data() as Campaign);
+            return snapshot.docs
+                .map(doc => doc.data() as Campaign)
+                .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
         },
         { limitCount },
         "getCampaignHistory"
@@ -570,10 +575,12 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                 skipCount: nextSkipCount,
                 updatedAt: now,
                 resolvedAt: now,
-                suppressedUntil: shouldSuppress
-                    ? Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))
-                    : undefined,
             };
+            if (shouldSuppress) {
+                updateData.suppressedUntil = Timestamp.fromDate(
+                    new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+                );
+            }
             await setDoc(campaignDocRef, updateData, { merge: true });
 
             const summaryData = summarySnap.exists()

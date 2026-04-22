@@ -41,10 +41,10 @@ export const createNewCategory = (
         const sequenceId =
             categories.length > 0
                 ? Number(
-                    categories[categories.length - 1]?.id?.split(`${file.uid}c`)[1],
+                    categories[categories.length - 1]?.id?.split(`${file.uid}-c`)[1],
                 ) + 1 || 1
                 : 1;
-        categoryId = `${file.uid}c${sequenceId}`;
+        categoryId = `${file.uid}-c${sequenceId}`;
     }
 
     return {
@@ -77,9 +77,9 @@ export const createNewItem = (
         const items = file.extractedData?.data?.items || [];
         const sequenceId =
             items.length > 0
-                ? Number(items[items.length - 1]?.id?.split(`${file.uid}i`)[1]) + 1 || 1
+                ? Number(items[items.length - 1]?.id?.split(`${file.uid}-i`)[1]) + 1 || 1
                 : 1;
-        itemId = `${file.uid}i${sequenceId}`;
+        itemId = `${file.uid}-i${sequenceId}`;
     }
 
     return {

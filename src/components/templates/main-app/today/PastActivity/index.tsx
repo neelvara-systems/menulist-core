@@ -6,7 +6,7 @@ import { Campaign } from "@type/campaigns";
 import { Button, Drawer, Spin, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LuArrowLeft, LuCheck, LuInfo, LuX } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuClock3, LuInfo, LuX } from "react-icons/lu";
 import styles from "../styles.module.scss";
 
 const { Title, Text } = Typography;
@@ -48,9 +48,9 @@ const PastActivityScreen = () => {
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
                 const recentHistory = history.filter(c => {
-                    if (!c.resolvedAt) return false;
-                    const resolvedDate = c.resolvedAt.toDate();
-                    return resolvedDate >= sevenDaysAgo;
+                    const activityDate = c.resolvedAt?.toDate() || c.updatedAt?.toDate() || c.createdAt?.toDate();
+                    if (!activityDate) return false;
+                    return activityDate >= sevenDaysAgo;
                 });
 
                 setCampaigns(recentHistory);
@@ -66,8 +66,9 @@ const PastActivityScreen = () => {
     // Group campaigns by date (simple display, NO counts, NO statistics)
     // HARD RULE: No "Completed X times" labels ever
     const groupedByDate = campaigns.reduce((acc, campaign) => {
-        const date = campaign.resolvedAt
-            ? new Date(campaign.resolvedAt.toDate()).toLocaleDateString('en-US', {
+        const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
+        const date = activityDate
+            ? new Date(activityDate).toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'short',
                 day: 'numeric'
@@ -223,12 +224,15 @@ const PastActivityScreen = () => {
                             <div key={campaign.id} className={styles.activityItem}>
                                 {campaign.status === 'completed' ? (
                                     <LuCheck className={`${styles.statusIcon} ${styles.completed}`} />
+                                ) : campaign.status === 'suggested' ? (
+                                    <LuClock3 className={`${styles.statusIcon} ${styles.pending}`} />
                                 ) : (
                                     <LuX className={`${styles.statusIcon} ${styles.skipped}`} />
                                 )}
                                 <span className={styles.activityText}>
                                     {getCampaignTitle(campaign)}
                                     {campaign.status === 'skipped' && ' — Skipped'}
+                                    {campaign.status === 'suggested' && ' — Generated'}
                                 </span>
                             </div>
                         ))}

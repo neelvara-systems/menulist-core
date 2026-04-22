@@ -288,11 +288,11 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         if (!itemCopy.attributes.length) {
             itemCopy.attributes = [];
         } else {
-            sequenceId = (Number(itemCopy.attributes[itemCopy.attributes.length - 1]?.id?.split(`${itemData.id}a`)[1]) + 1) || 1;
+            sequenceId = (Number(itemCopy.attributes[itemCopy.attributes.length - 1]?.id?.split(`${itemData.id}-a`)[1]) + 1) || 1;
         }
 
         const newAttribute: ExtractedDataAttribute = {
-            id: `${itemData.id}a${sequenceId}`,
+            id: `${itemData.id}-a${sequenceId}`,
             name: Object.fromEntries(Array.from(selectedLanguages).map(lang => [lang, ''])),
             price: '',
             active: true

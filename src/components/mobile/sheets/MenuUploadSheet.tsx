@@ -4,13 +4,15 @@ import GlobalLanguagesList from '@data/languages';
 import { addProject, uploadFile } from '@database/projects';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import createProcessingJob from '@template/main-app/projects/getProcessedFile';
 import type { ProjectFileType } from '@template/main-app/projects/types';
+import { generateMenuFileUid } from '@template/main-app/projects/utils';
 import { validateFile } from '@template/main-app/projects/validation';
 import type { UploadProps } from 'antd';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuFileText, LuTrash2, LuUpload } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
 
@@ -51,6 +53,7 @@ export default function MenuUploadSheet({
 }: MenuUploadSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [step, setStep] = useState<UploadStep>('select');
     const [selectedFiles, setSelectedFiles] = useState<SelectedUploadFile[]>([]);
     const [progress, setProgress] = useState(0);
@@ -181,6 +184,10 @@ export default function MenuUploadSheet({
     }, [updateSelectedFiles]);
 
     const prepareFilesForUpload = useCallback(async () => {
+        if (storeDetails?.tenantId === undefined || storeDetails?.storeId === undefined) {
+            throw new Error('Store context is required to prepare menu files.');
+        }
+
         const preparedFiles: PreparedFile[] = [];
 
         if (selectedFiles.length > 0) {
@@ -193,7 +200,7 @@ export default function MenuUploadSheet({
 
                 if (candidate.preparedUrl) {
                     preparedFiles.push({
-                        uid: `mobile-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+                        uid: generateMenuFileUid(storeDetails.tenantId, storeDetails.storeId),
                         name: candidate.name,
                         size: candidate.size,
                         type: candidate.type,
@@ -206,7 +213,7 @@ export default function MenuUploadSheet({
 
                 const optimized = await optimizeImage(candidate.sourceFile, MENU_IMAGE_CONFIG);
                 preparedFiles.push({
-                    uid: `mobile-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+                    uid: generateMenuFileUid(storeDetails.tenantId, storeDetails.storeId),
                     name: candidate.name.replace(/\.[^.]+$/, '') + '.jpg',
                     size: optimized.optimizedSize,
                     type: 'image/jpeg',
@@ -216,7 +223,7 @@ export default function MenuUploadSheet({
         }
 
         return preparedFiles;
-    }, [selectedFiles, t]);
+    }, [selectedFiles, storeDetails?.storeId, storeDetails?.tenantId, t]);
 
     const handleUploadAndProcess = useCallback(async () => {
         if (!selectedFiles.length) return;

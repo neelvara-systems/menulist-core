@@ -2,18 +2,19 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from '@constant/todayFeatureGuide';
-import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
+import { completeCampaign as dbCompleteCampaign, getCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { updateStore } from '@database/stores';
 import { generateCampaignsForProject, useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getHoursConfidenceState } from '@lib/outputControl';
+import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
-import { getExportMethod, getMealName } from '@util/campaignUtils';
+import { getExportMethod, getMealName, getShortButtonText } from '@util/campaignUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -89,7 +90,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
-    const { selectedProjectId } = useMobileProjects();
+    const { selectedProjectId, selectedProjectSummary } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);
@@ -207,12 +208,26 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const handleCompleteCampaign = async (campaign: TodayCampaignSummary) => {
         setIsCampaignProcessing(true);
         try {
+            const menuLink = buildTodayMenuLink(
+                storeDetails?.subdomain,
+                storeDetails?.customDomain,
+                selectedProjectSummary?.name,
+            );
+            const fullCampaign = campaign.primarySurface === 'whatsapp_status' || campaign.primarySurface === 'whatsapp_message'
+                ? null
+                : await getCampaign(campaign.campaignId);
+            const actionFeedback = await performTodaySurfaceAction({
+                surface: campaign.primarySurface,
+                itemName: campaign.subject?.itemName || 'Item',
+                menuLink,
+                imageUrl: fullCampaign?.assets?.imageUrl,
+            });
             const method = getExportMethod(campaign.primarySurface);
             const result = await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
             if (result?.today) {
                 await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             }
-            Toast.show({ content: tToday('done'), duration: 1500 });
+            Toast.show({ content: actionFeedback.title, duration: 1800 });
         } catch {
             Toast.show({ content: tToday('failed'), duration: 2000 });
         } finally {
@@ -769,8 +784,10 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             <LuMessageCircle color={token.colorPrimary} size={18} />
                             <Text strong>{tToday('todaysAction')}</Text>
                         </Flex>
+                        <Text type="secondary">This is the main thing MenuList prepared for today.</Text>
                         <Text strong>{primaryTitle}</Text>
                         {primaryContext ? <Text type="secondary">{primaryContext}</Text> : null}
+                        <Text>Tap the button to open the ready output and mark this action handled.</Text>
                         <Button block loading={isCampaignProcessing} onClick={() => void handleCompleteCampaign(primaryCampaign)} size="large">
                             {SURFACE_BUTTON_COPY[primaryCampaign.primarySurface] || tToday('share')}
                         </Button>
@@ -821,8 +838,9 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             ) : null}
 
             {todayCampaigns?.operational?.length ? (
-                <Card style={{ borderRadius: 20 }} title={tToday('alsoToday')}>
+                <Card style={{ borderRadius: 20 }} title="Extra actions for today">
                     <Flex gap={8} vertical>
+                        <Text type="secondary">Extra ready actions for today. Tap one to open it and mark it handled.</Text>
                         {todayCampaigns.operational.slice(0, 2).map((campaign) => {
                             const title = campaign.type === 'now_available'
                                 ? tToday('nowAvailable', { item: campaign.subject?.itemName || t('itemFallback') })
@@ -832,16 +850,19 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
                             return (
                                 <Card key={campaign.campaignId} style={{ borderRadius: 14 }}>
-                                    <Flex align="center" justify="space-between">
+                                    <Flex gap={8} vertical>
                                         <Text strong>{title}</Text>
-                                        <Button
-                                            fill="outline"
-                                            loading={isCampaignProcessing}
-                                            onClick={() => void handleCompleteCampaign(campaign as TodayCampaignSummary)}
-                                            size="small"
-                                        >
-                                            {tToday('share')}
-                                        </Button>
+                                        <Text type="secondary">This is an extra action, not the main one for today.</Text>
+                                        <Flex justify="end">
+                                            <Button
+                                                fill="outline"
+                                                loading={isCampaignProcessing}
+                                                onClick={() => void handleCompleteCampaign(campaign as TodayCampaignSummary)}
+                                                size="small"
+                                            >
+                                                {getShortButtonText(campaign.primarySurface)}
+                                            </Button>
+                                        </Flex>
                                     </Flex>
                                 </Card>
                             );

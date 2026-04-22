@@ -1,12 +1,13 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
+import { completeCampaign as dbCompleteCampaign, getCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
+import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { updateStore } from '@database/stores';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
-import { getExportMethod, getMealName } from '@util/campaignUtils';
+import { getExportMethod, getMealName, getShortButtonText } from '@util/campaignUtils';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuAlertTriangle, LuCalendarOff, LuCheck, LuClock, LuMessageCircle, LuSkipForward, LuX } from 'react-icons/lu';
@@ -207,11 +208,25 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const handleComplete = async (campaign: TodayCampaignSummary) => {
         setIsProcessing(true);
         try {
+            const menuLink = buildTodayMenuLink(
+                storeDetails?.subdomain,
+                storeDetails?.customDomain,
+            );
+            const fullCampaign = campaign.primarySurface === 'whatsapp_status' || campaign.primarySurface === 'whatsapp_message'
+                ? null
+                : await getCampaign(campaign.campaignId);
+            const actionFeedback = await performTodaySurfaceAction({
+                surface: campaign.primarySurface,
+                itemName: campaign.subject?.itemName || 'Item',
+                menuLink,
+                imageUrl: fullCampaign?.assets?.imageUrl,
+            });
             const method = getExportMethod(campaign.primarySurface);
             const result = await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
             if (result?.today) {
                 await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             }
+            Toast.show({ content: actionFeedback.title, duration: 1800 });
             setPostAction('shared');
             setTimeout(() => { setPostAction(null); }, 2000);
         } catch {
@@ -312,6 +327,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                 {primary ? (
                     <Card>
                         <Flex gap={12} vertical>
+                            <Text type="secondary">{t('todaysActionIntro')}</Text>
                             <Text strong>
                                 {(ACTION_TITLES[primary.type] || 'Share this item')
                                     .replace('{itemName}', primary.subject?.itemName || 'Item')
@@ -323,6 +339,10 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                                 {(CONTEXT_TEMPLATES[primary.type] || '')
                                     .replace('{mealName}', mealName.toLowerCase())
                                     .replace('{festivalName}', 'the occasion')}
+                            </Text>
+                            <Text>{t('todaysActionHelp')}</Text>
+                            <Text type="secondary">
+                                {t(`surfaceOutcome.${primary.primarySurface}` as any)}
                             </Text>
                             <Button block loading={isProcessing} onClick={() => void handleComplete(primary)} size="large">
                                 {SURFACE_BUTTON_COPY[primary.primarySurface] || 'Share'}
@@ -354,6 +374,7 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                 {operational.length > 0 ? (
                     <Card title={t('otherSuggestions')}>
                         <Flex gap={8} vertical>
+                            <Text type="secondary">These are extra ready actions. Use them only if they fit today.</Text>
                             {operational.map((campaign) => {
                                 const title = campaign.type === 'now_available'
                                     ? t('nowAvailable', { item: campaign.subject?.itemName || 'Item' })
@@ -363,11 +384,14 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
                                 return (
                                     <Card key={campaign.campaignId}>
-                                        <Flex align="center" justify="space-between">
+                                        <Flex gap={8} vertical>
                                             <Text strong>{title}</Text>
-                                            <Button fill="outline" loading={isProcessing} onClick={() => void handleComplete(campaign)} size="small">
-                                                {t('share')}
-                                            </Button>
+                                            <Text type="secondary">Extra action for today. Tap to open the ready output and mark it done.</Text>
+                                            <Flex justify="end">
+                                                <Button fill="outline" loading={isProcessing} onClick={() => void handleComplete(campaign)} size="small">
+                                                    {getShortButtonText(campaign.primarySurface)}
+                                                </Button>
+                                            </Flex>
                                         </Flex>
                                     </Card>
                                 );

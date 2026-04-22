@@ -6,6 +6,7 @@
  */
 
 import { message } from 'antd';
+import { generateMenuFileUid } from '../utils';
 
 const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -168,7 +169,7 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
                     const pageUrl = canvas.toDataURL('image/jpeg', 0.8);
 
                     const imageData = {
-                        uid: `${tenantId}${Math.random().toString(36).substring(2, 5).toUpperCase()}${storeId}`,
+                        uid: generateMenuFileUid(tenantId, storeId),
                         name: `${file.name.replace('.pdf', '')}-page-${i}.jpg`,
                         size: Math.round(pageUrl.length * 0.75), // Approximate size from base64
                         type: 'image/jpeg',

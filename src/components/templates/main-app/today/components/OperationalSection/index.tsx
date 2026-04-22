@@ -6,7 +6,7 @@ import styles from "../../styles.module.scss";
 
 interface OperationalSectionProps {
     campaigns: TodayCampaignSummary[];
-    onComplete: (campaignId: string, projectId: string, campaignType: CampaignType, surface: ExecutionSurface, method: ExportMethod) => void;
+    onComplete: (campaignId: string, projectId: string, campaignType: CampaignType, surface: ExecutionSurface, method: ExportMethod, itemName?: string) => void;
     onSkip: (campaignId: string, campaignType: CampaignType) => void;
     isProcessing: boolean;
 }
@@ -26,7 +26,10 @@ const OperationalSection = ({ campaigns, onComplete, onSkip, isProcessing }: Ope
 
     return (
         <div className={styles.operationalSection}>
-            <div className={styles.sectionTitle}>Operational</div>
+            <div className={styles.sectionTitle}>Extra actions for today</div>
+            <p className={styles.sectionDescription}>
+                These are extra ready actions. You can do the main action only, or use one of these too if they fit today.
+            </p>
 
             <div className={styles.operationalCards}>
                 {displayCampaigns.map((campaign) => {
@@ -44,9 +47,9 @@ const OperationalSection = ({ campaigns, onComplete, onSkip, isProcessing }: Ope
                                     <LuCheck className={styles.checkMark} />
                                     <div className={styles.cardText}>
                                         <p className={styles.cardTitle}>{title}</p>
-                                        {subject.itemName && (
-                                            <p className={styles.cardSubtitle}>{subject.itemName}</p>
-                                        )}
+                                        <p className={styles.cardSubtitle}>
+                                            This is an extra action, not the main one for today.
+                                        </p>
                                     </div>
                                 </div>
 
@@ -60,7 +63,8 @@ const OperationalSection = ({ campaigns, onComplete, onSkip, isProcessing }: Ope
                                             projectId,
                                             type,
                                             primarySurface,
-                                            getExportMethod(primarySurface)
+                                            getExportMethod(primarySurface),
+                                            subject.itemName
                                         )}
                                     >
                                         {getShortButtonText(primarySurface)}

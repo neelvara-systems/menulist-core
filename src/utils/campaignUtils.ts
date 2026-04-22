@@ -47,12 +47,12 @@ export const getShortButtonText = (surface: string): string => {
     switch (surface) {
         case 'whatsapp_status':
         case 'whatsapp_message':
-            return 'Share';
+            return 'Mark as shared';
         case 'print_poster':
         case 'qr_tent':
         case 'digital_screen':
-            return 'Download';
+            return 'Mark as done';
         default:
-            return 'Share';
+            return 'Mark as done';
     }
 };

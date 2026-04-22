@@ -7,7 +7,7 @@ import styles from "../../styles.module.scss";
 
 interface PrimaryCardProps {
     campaign: TodayCampaignSummary;
-    onComplete: (campaignId: string, projectId: string, campaignType: CampaignType, surface: ExecutionSurface, method: ExportMethod) => void;
+    onComplete: (campaignId: string, projectId: string, campaignType: CampaignType, surface: ExecutionSurface, method: ExportMethod, itemName?: string) => void;
     onSkip: (campaignId: string, campaignType: CampaignType) => void;
     isProcessing: boolean;
 }
@@ -43,11 +43,18 @@ const PrimaryCard = ({ campaign, onComplete, onSkip, isProcessing }: PrimaryCard
         .replace('{festivalName}', 'the occasion');
 
     const buttonText = SURFACE_BUTTON_COPY[primarySurface];
+    const surfaceOutcomeText = {
+        whatsapp_status: "What you get: a ready update to share on WhatsApp Status today.",
+        whatsapp_message: "What you get: a ready WhatsApp message you can send without writing it yourself.",
+        print_poster: "What you get: a ready poster to place in-store today.",
+        qr_tent: "What you get: a ready table tent customers can scan today.",
+        digital_screen: "What you get: a ready screen image to show in-store today.",
+    }[primarySurface];
 
     const handlePrimaryAction = () => {
         const method = getExportMethod(primarySurface);
         // Pass all data we already have - no refetch needed
-        onComplete(campaignId, projectId, type, primarySurface, method);
+        onComplete(campaignId, projectId, type, primarySurface, method, subject.itemName);
     };
 
     const handleSkip = () => {
@@ -57,6 +64,8 @@ const PrimaryCard = ({ campaign, onComplete, onSkip, isProcessing }: PrimaryCard
 
     return (
         <Card className={styles.primaryCard} bordered={false}>
+            <p className={styles.cardEyebrow}>Today&apos;s main action</p>
+
             {/* Action Title - Affirmative, present tense */}
             <div className={styles.actionTitle}>
                 <LuCheck />
@@ -71,6 +80,14 @@ const PrimaryCard = ({ campaign, onComplete, onSkip, isProcessing }: PrimaryCard
             {/* Context - Quiet, operational, no numbers */}
             <p className={styles.context}>
                 {contextText}
+            </p>
+
+            <p className={styles.cardHelpText}>
+                This is the main thing MenuList prepared for today. Tap the button to open the ready output and mark this action handled.
+            </p>
+
+            <p className={styles.cardOutcomeText}>
+                {surfaceOutcomeText}
             </p>
 
             {/* Action Buttons */}

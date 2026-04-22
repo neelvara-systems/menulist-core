@@ -13,7 +13,7 @@ import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
-import { getUID, removeObjRef } from '@util/utils';
+import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -28,6 +28,7 @@ import type {
     ExtractedDataCategory,
     ExtractedDataItem,
 } from '../../templates/main-app/projects/types/extractedData.types';
+import { generateMenuFileUid } from '../../templates/main-app/projects/utils';
 import { clearStaleCategoryTranslations, clearStaleTranslations } from '../../templates/main-app/projects/utils/translationsUtils';
 import { translateCategory } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
@@ -282,15 +283,22 @@ function findFileForCategory(projectData: Project | null | undefined, categoryId
     return projectData.files[0] || null;
 }
 
-function ensurePrimaryMenuFile(projectData: Project | null | undefined): Project['files'][number] | null {
+function ensurePrimaryMenuFile(
+    projectData: Project | null | undefined,
+    tenantId?: string | number,
+    storeId?: string | number,
+): Project['files'][number] | null {
     if (!projectData) return null;
     if (!Array.isArray(projectData.files)) {
         projectData.files = [];
     }
 
     if (!projectData.files.length) {
+        if (tenantId === undefined || storeId === undefined) {
+            return null;
+        }
         projectData.files.push({
-            uid: getUID(),
+            uid: generateMenuFileUid(tenantId, storeId),
             extractedData: {
                 data: {
                     categories: [],
@@ -1558,7 +1566,7 @@ export default function MobileMenuScreen() {
         const presets = storeDetails?.timeSlotPresets || [];
         const previous = menuData;
         const updated = removeObjRef(menuData);
-        const targetFile = ensurePrimaryMenuFile(updated);
+        const targetFile = ensurePrimaryMenuFile(updated, storeDetails?.tenantId, storeDetails?.storeId);
         if (!targetFile) return;
         const languageCodes = menuData.languages?.length
             ? menuData.languages
@@ -1618,7 +1626,7 @@ export default function MobileMenuScreen() {
     const handleCategoryGenerateContent = async ({ id: categoryId, names }: { id?: string; names: Record<string, string> }) => {
         if (!menuData) return null;
 
-        const targetFile = ensurePrimaryMenuFile(menuData);
+        const targetFile = ensurePrimaryMenuFile(menuData, storeDetails?.tenantId, storeDetails?.storeId);
         if (!targetFile) return null;
 
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLang);
@@ -2961,7 +2969,7 @@ export default function MobileMenuScreen() {
                         const updated = removeObjRef(menuData);
                         let targetFile = findFileForCategory(updated, newItem.categoryId);
                         if (!targetFile) {
-                            targetFile = ensurePrimaryMenuFile(updated);
+                            targetFile = ensurePrimaryMenuFile(updated, storeDetails?.tenantId, storeDetails?.storeId);
                         }
                         if (!targetFile) return;
                         const languageCodes = menuData.languages?.length

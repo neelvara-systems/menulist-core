@@ -1192,6 +1192,8 @@
         "todaysStatus": "Today's status",
         "suggestedForToday": "Suggested for today",
         "otherSuggestions": "Other suggestions",
+        "todaysActionIntro": "Today's main action",
+        "todaysActionHelp": "This card shows the one action worth handling today so more customers notice this item.",
         "noActionsNeeded": "No actions needed. Your menu is working.",
         "failed": "Failed",
         "failedToSkip": "Failed to skip",
@@ -1202,7 +1204,14 @@
         "alsoToday": "Also today",
         "share": "Share",
         "nowAvailable": "Now Available: {item}",
-        "todaysAction": "Acción de hoy"
+        "todaysAction": "Acción de hoy",
+        "surfaceOutcome": {
+            "whatsapp_status": "What you get: a ready update to share on WhatsApp Status today.",
+            "whatsapp_message": "What you get: a ready WhatsApp message you can send without writing it yourself.",
+            "print_poster": "What you get: a ready poster to place in-store today.",
+            "qr_tent": "What you get: a ready table tent customers can scan today.",
+            "digital_screen": "What you get: a ready screen image to show in-store today."
+        }
     },
     "MobileMenu": {
         "searchPlaceholder": "Search {items}...",

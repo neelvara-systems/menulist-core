@@ -4,7 +4,7 @@ import { getCampaignHistory } from '@database/campaigns';
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from '@constant/todayFeatureGuide';
 import { Campaign } from '@type/campaigns';
 import { useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuClock, LuInfo, LuX } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuClock, LuClock3, LuInfo, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Popup, Text, Title } from '../antd';
 
 interface MobileTodayHistoryScreenProps {
@@ -24,8 +24,9 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
                 const recentHistory = history.filter((campaign) => {
-                    if (!campaign.resolvedAt) return false;
-                    return campaign.resolvedAt.toDate() >= sevenDaysAgo;
+                    const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
+                    if (!activityDate) return false;
+                    return activityDate >= sevenDaysAgo;
                 });
 
                 setCampaigns(recentHistory);
@@ -42,8 +43,9 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
 
     const groupedHistory = useMemo(() => {
         return campaigns.reduce<Record<string, Campaign[]>>((accumulator, campaign) => {
-            const key = campaign.resolvedAt
-                ? new Date(campaign.resolvedAt.toDate()).toLocaleDateString('en-US', {
+            const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
+            const key = activityDate
+                ? new Date(activityDate).toLocaleDateString('en-US', {
                     day: 'numeric',
                     month: 'short',
                     weekday: 'long',
@@ -122,12 +124,15 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                                         <Flex align="center" gap={8} key={entry.id}>
                                             {entry.status === 'completed' ? (
                                                 <LuCheck color="#16a34a" size={15} />
+                                            ) : entry.status === 'suggested' ? (
+                                                <LuClock3 color="#d97706" size={15} />
                                             ) : (
                                                 <LuX color="#dc2626" size={15} />
                                             )}
                                             <Text>
                                                 {getCampaignLabel(entry)}
                                                 {entry.status === 'skipped' ? ' — Skipped' : ''}
+                                                {entry.status === 'suggested' ? ' — Generated' : ''}
                                             </Text>
                                         </Flex>
                                     ))}

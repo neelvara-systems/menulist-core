@@ -118,6 +118,15 @@
     }
   }
 
+  .cardEyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--ant-color-text-tertiary);
+    margin: 0 0 12px;
+  }
+
   .itemName {
     font-size: 28px;
     font-weight: 600;
@@ -132,7 +141,19 @@
   .context {
     font-size: 14px;
     color: var(--ant-color-text-secondary);
-    margin-bottom: 24px;
+    margin-bottom: 12px;
+  }
+
+  .cardHelpText {
+    font-size: 14px;
+    color: var(--ant-color-text);
+    margin: 0 0 8px;
+  }
+
+  .cardOutcomeText {
+    font-size: 13px;
+    color: var(--ant-color-text-secondary);
+    margin: 0 0 24px;
   }
 
   .actionButtons {
@@ -170,10 +191,14 @@
   .sectionTitle {
     font-size: 12px;
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--ant-color-text-tertiary);
-    margin-bottom: 16px;
+    color: var(--ant-color-text);
+    margin-bottom: 6px;
+  }
+
+  .sectionDescription {
+    font-size: 13px;
+    color: var(--ant-color-text-secondary);
+    margin: 0 0 16px;
   }
 
   .operationalCards {
@@ -320,6 +345,10 @@
 
       &.completed {
         color: var(--ant-color-success);
+      }
+
+      &.pending {
+        color: var(--ant-color-warning);
       }
 
       &.skipped {

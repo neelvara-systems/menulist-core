@@ -10,6 +10,7 @@
 
 import { BUSINESS_TYPES } from '@constant/common';
 import { antdTagsColorCodes } from '@data/common';
+import { generateOwnCustomUid } from '@lib/utils/generateOwnCustomUid';
 import { TimeSlotPreset } from '@type/platform/store';
 
 // Get color codes array for preset colors
@@ -78,14 +79,6 @@ function getBusinessCategory(businessType?: string): string | null {
 }
 
 /**
- * Generate a unique ID for a time slot preset
- * Format: {tenantId}{random3chars}{storeId}
- */
-function generatePresetId(tenantId: number, storeId: number): string {
-    return `${tenantId}${Math.random().toString(36).substring(2, 5).toUpperCase()}${storeId}`;
-}
-
-/**
  * Get default time slot presets for a business type
  * 
  * @param businessType - The store's business type (e.g., "Restaurant", "Salon")
@@ -104,7 +97,7 @@ export function getDefaultTimeSlotPresets(
         : DEFAULT_PRESETS;
 
     return templates.map((template, index) => ({
-        id: generatePresetId(tenantId, storeId),
+        id: generateOwnCustomUid(tenantId, storeId),
         label: template.label,
         startTime: template.startTime,
         endTime: template.endTime,

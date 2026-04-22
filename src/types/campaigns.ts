@@ -539,11 +539,11 @@ export const ACTION_TITLES: Record<CampaignType, string> = {
  * Verb first, concrete outcome, no "post", "publish", "campaign"
  */
 export const SURFACE_BUTTON_COPY: Record<ExecutionSurface, string> = {
-    whatsapp_status: "Share on WhatsApp Status",
-    whatsapp_message: "Copy message for WhatsApp",
-    print_poster: "Download poster",
-    qr_tent: "Download tent card",
-    digital_screen: "Download screen image"
+    whatsapp_status: "Open WhatsApp to mark shared",
+    whatsapp_message: "Open message to mark shared",
+    print_poster: "Download poster to mark done",
+    qr_tent: "Download tent card to mark done",
+    digital_screen: "Download screen image to mark done"
 };
 
 /**

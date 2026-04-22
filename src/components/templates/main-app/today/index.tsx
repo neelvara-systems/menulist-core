@@ -1,12 +1,14 @@
 "use client";
 
 import { FEATURE_FLAGS } from "@config/features";
+import { getCampaign } from "@database/campaigns";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
+import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
-import { Button, Drawer, Divider, Spin, Typography } from "antd";
+import { Button, Divider, Drawer, Spin, Typography, notification } from "antd";
 import { useContext, useEffect, useState } from "react";
 import { LuCalendarOff, LuInfo } from "react-icons/lu";
 import OBPLinkCard from "../businessSettings/OBPLinkCard";
@@ -28,6 +30,7 @@ type ScreenState = "loading" | "action" | "empty" | "post-action";
 const TodayScreen = () => {
     const [screenState, setScreenState] = useState<ScreenState>("loading");
     const [lastAction, setLastAction] = useState<"shared" | "skipped" | null>(null);
+    const [lastActionFeedback, setLastActionFeedback] = useState<TodayActionFeedback | null>(null);
     const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
 
@@ -62,19 +65,41 @@ const TodayScreen = () => {
         projectId: string,
         campaignType: CampaignType,
         surface: ExecutionSurface,
-        method: ExportMethod
+        method: ExportMethod,
+        itemName?: string
     ) => {
         try {
+            const menuLink = buildTodayMenuLink(
+                storeDetails?.subdomain,
+                storeDetails?.customDomain,
+                (activeProject as any)?.name,
+            );
+            const fullCampaign = surface === 'whatsapp_status' || surface === 'whatsapp_message'
+                ? null
+                : await getCampaign(campaignId);
+            const actionFeedback = await performTodaySurfaceAction({
+                surface,
+                itemName: itemName || fullCampaign?.subject?.itemName || 'Item',
+                menuLink,
+                imageUrl: fullCampaign?.assets?.imageUrl,
+            });
             const result = await completeCampaign(campaignId, projectId, campaignType, surface, method);
             if (result?.today) {
                 await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             }
+            notification.success({
+                message: actionFeedback.title,
+                description: actionFeedback.description,
+                placement: 'bottomRight',
+            });
+            setLastActionFeedback(actionFeedback);
             setLastAction("shared");
             setScreenState("post-action");
 
             // Auto-transition back to empty/action state after 2 seconds
             setTimeout(() => {
                 setLastAction(null);
+                setLastActionFeedback(null);
             }, 2000);
         } catch (error) {
             console.error("Failed to complete campaign:", error);
@@ -87,6 +112,16 @@ const TodayScreen = () => {
             if (result?.today) {
                 await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             }
+            setLastActionFeedback({
+                title: 'Skipped for today',
+                description: 'No action needed. This item was removed from Today for now.',
+            });
+            setLastAction("skipped");
+            setScreenState("post-action");
+            setTimeout(() => {
+                setLastAction(null);
+                setLastActionFeedback(null);
+            }, 2000);
         } catch (error) {
             console.error("Failed to skip campaign:", error);
         }
@@ -174,7 +209,11 @@ const TodayScreen = () => {
         return (
             <div className={styles.todayContainer}>
                 {renderHeader()}
-                <PostActionState action={lastAction} />
+                <PostActionState
+                    action={lastAction}
+                    title={lastActionFeedback?.title}
+                    description={lastActionFeedback?.description}
+                />
                 {renderGuideDrawer()}
             </div>
         );
