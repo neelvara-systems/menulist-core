@@ -370,6 +370,9 @@ export default function UseMenuList() {
                             isDefault: activeProject.isDefault,
                             active: activeProject.active,
                             deleted: activeProject.deleted,
+                            isSpecialMenu: activeProject.isSpecialMenu === true,
+                            specialMenuEndsAt: activeProject.specialMenuEndsAt,
+                            specialMenuStatus: activeProject.specialMenuStatus,
                         }}
                         helperText={data.allProjects.length > 1 ? 'Select project' : undefined}
                         onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}

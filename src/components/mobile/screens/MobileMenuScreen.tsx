@@ -10,6 +10,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
@@ -67,7 +68,6 @@ type CategoryIssueSummary = {
     missingDescriptions: number;
     missingImages: number;
     missingPrices: number;
-    priceOutliers: number;
 };
 
 type MobileMenuFilters = {
@@ -347,6 +347,37 @@ function StatusDot({
     );
 }
 
+function resolveSpecialMenuStatus(project: any): 'scheduled' | 'active' | 'expired' | 'cancelled' | null {
+    if (!project?.isSpecialMenu) return null;
+    if (project.specialMenuStatus === 'cancelled') return 'cancelled';
+    if (project.specialMenuStatus === 'expired') return 'expired';
+
+    const now = Date.now();
+    const startsAt = project.specialMenuStartsAt ? new Date(project.specialMenuStartsAt).getTime() : null;
+    const endsAt = project.specialMenuEndsAt ? new Date(project.specialMenuEndsAt).getTime() : null;
+
+    if (endsAt != null && Number.isFinite(endsAt) && endsAt <= now) return 'expired';
+    if (startsAt != null && Number.isFinite(startsAt) && startsAt > now) return 'scheduled';
+    return project.specialMenuStatus || 'active';
+}
+
+function formatSpecialMenuWindow(start?: string, end?: string): string | null {
+    if (!start && !end) return null;
+
+    const formatter = new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+
+    const startLabel = start ? formatter.format(new Date(start)) : null;
+    const endLabel = end ? formatter.format(new Date(end)) : null;
+
+    if (startLabel && endLabel) return `${startLabel} to ${endLabel}`;
+    return startLabel || endLabel;
+}
+
 export default function MobileMenuScreen() {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
@@ -571,6 +602,32 @@ export default function MobileMenuScreen() {
         replaceProjectInList(updatedProject);
         queueMenuPersist(updatedProject);
     }, [queueMenuPersist, replaceProjectInList]);
+
+    const markPriceOutlierReviewed = useCallback((itemId: string) => {
+        const sourceProject = menuDataRef.current;
+        if (!sourceProject?.files) return;
+
+        const updated = removeObjRef(sourceProject);
+        let didUpdate = false;
+
+        updated.files?.forEach((file: any) => {
+            file.extractedData?.data?.items?.forEach((menuItem: any) => {
+                if (menuItem.id !== itemId) return;
+
+                menuItem.qualityReview = {
+                    ...(menuItem.qualityReview || {}),
+                    priceOutlierReviewedAt: new Date().toISOString(),
+                    priceOutlierReviewedPrice: normalizePriceForReview(menuItem.price),
+                };
+                didUpdate = true;
+            });
+        });
+
+        if (!didUpdate) return;
+
+        applyLocalMenuUpdate(updated);
+        Toast.show({ content: 'Price review marked as done.', duration: 1200 });
+    }, [applyLocalMenuUpdate]);
 
     const applyUndoableBulkMenuUpdate = useCallback((updatedProject: any, previousProject?: any, updatedCount?: number) => {
         applyLocalMenuUpdate(updatedProject);
@@ -987,6 +1044,21 @@ export default function MobileMenuScreen() {
             stats: languageStats.find((entry) => entry.code === code) || null,
         }));
     }, [activeProjectLanguages, languageStats]);
+    const firstLanguageWithMissingTranslations = useMemo(() => {
+        const reviewableLanguages = activeProjectLanguages.filter((language) => language !== primaryLang);
+        if (reviewableLanguages.length === 0 || !menuData?.files) return null;
+
+        for (const language of reviewableLanguages) {
+            for (const file of menuData.files) {
+                const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+                if (items.some((item) => hasMissingTranslationsForLanguage(item, primaryLang, language))) {
+                    return language;
+                }
+            }
+        }
+
+        return null;
+    }, [activeProjectLanguages, menuData?.files, primaryLang]);
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
         const map = new Map<string, string>();
@@ -1078,6 +1150,10 @@ export default function MobileMenuScreen() {
         return item.active !== false && categoryActive;
     }, [categoryActiveById]);
 
+    const hasAnyMissingTranslationsForMenuItem = useCallback((item: MenuItemType) => {
+        return item.rawItem ? hasMissingTranslations(item.rawItem, activeProjectLanguages) : false;
+    }, [activeProjectLanguages]);
+
     const priceOutlierItemIds = useMemo(() => {
         const LOW_FACTOR = 0.35;
         const HIGH_FACTOR = 3;
@@ -1087,6 +1163,7 @@ export default function MobileMenuScreen() {
         menuItems.forEach((item) => {
             if (!isItemEffectivelyActive(item) || item.attributes?.length) return;
             if (!item.categoryId || !(item.price > 0)) return;
+            if (item.rawItem && isPriceOutlierReviewed(item.rawItem)) return;
             const items = groupedPrices.get(item.categoryId) || [];
             items.push({ id: item.id, price: item.price });
             groupedPrices.set(item.categoryId, items);
@@ -1125,7 +1202,6 @@ export default function MobileMenuScreen() {
                 missingDescriptions: 0,
                 missingImages: 0,
                 missingPrices: 0,
-                priceOutliers: 0,
             };
             map.set(categoryId, next);
             return next;
@@ -1139,11 +1215,10 @@ export default function MobileMenuScreen() {
             if (!item.image) summary.missingImages += 1;
             if (!(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
             if (!isItemEffectivelyActive(item)) summary.hidden += 1;
-            if (priceOutlierItemIds.has(item.id)) summary.priceOutliers += 1;
         });
 
         return map;
-    }, [isItemEffectivelyActive, menuItems, priceOutlierItemIds]);
+    }, [isItemEffectivelyActive, menuItems]);
 
     const filteredItems = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
@@ -1175,12 +1250,12 @@ export default function MobileMenuScreen() {
             if (filters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
                 return false;
             }
-            if (filters.qualityIssue === 'translationMissing' && !item.translationMissing) {
+            if (filters.qualityIssue === 'translationMissing' && !hasAnyMissingTranslationsForMenuItem(item)) {
                 return false;
             }
             return true;
         });
-    }, [filters, isItemEffectivelyActive, menuItems, priceOutlierItemIds, searchQuery]);
+    }, [filters, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds, searchQuery]);
 
     const appliedFilterCount = useMemo(() => {
         return [
@@ -1204,11 +1279,12 @@ export default function MobileMenuScreen() {
             missingPhoto: scopedItems.filter((item) => !item.image).length,
             missingDescription: scopedItems.filter((item) => !item.description?.trim()).length,
             missingPrice: scopedItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
-            missingTranslation: scopedItems.filter((item) => item.translationMissing).length,
+            priceOutliers: scopedItems.filter((item) => priceOutlierItemIds.has(item.id)).length,
+            missingTranslation: scopedItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
             shown: scopedItems.filter((item) => isItemEffectivelyActive(item)).length,
             unavailable: scopedItems.filter((item) => !item.available).length,
         };
-    }, [draftFilters.categoryIds, isItemEffectivelyActive, menuItems]);
+    }, [draftFilters.categoryIds, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds]);
     const listingStatusLegend = useMemo(() => {
         const entries: { color: string; key: string; label: string }[] = [];
         if (menuIssueCounts.hidden > 0) {
@@ -1333,6 +1409,9 @@ export default function MobileMenuScreen() {
                 case 'priceOutliers':
                     return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
                 case 'translations':
+                    if (firstLanguageWithMissingTranslations) {
+                        setDisplayLanguage(firstLanguageWithMissingTranslations);
+                    }
                     return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
                 default:
                     return DEFAULT_FILTERS;
@@ -1341,7 +1420,7 @@ export default function MobileMenuScreen() {
         requestAnimationFrame(() => {
             menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-    }, []);
+    }, [firstLanguageWithMissingTranslations]);
 
     useEffect(() => {
         if (searchQuery || appliedFilterCount > 0) {
@@ -1447,6 +1526,14 @@ export default function MobileMenuScreen() {
     const activeProjectSummary = useMemo(
         () => selectedProjectSummary || projectsList.find((project: any) => project.projectId === menuData?.projectId) || null,
         [menuData?.projectId, projectsList, selectedProjectSummary]
+    );
+    const activeSpecialMenuStatus = useMemo(
+        () => resolveSpecialMenuStatus(activeProjectSummary),
+        [activeProjectSummary]
+    );
+    const activeSpecialMenuWindow = useMemo(
+        () => formatSpecialMenuWindow(activeProjectSummary?.specialMenuStartsAt, activeProjectSummary?.specialMenuEndsAt),
+        [activeProjectSummary?.specialMenuEndsAt, activeProjectSummary?.specialMenuStartsAt]
     );
     const categorySummary = useMemo(() => {
         if (!menuData?.files) return [];
@@ -1812,10 +1899,42 @@ export default function MobileMenuScreen() {
                             deleted: activeProjectSummary?.deleted === true,
                             id: menuData?.projectId || 'current',
                             isDefault: activeProjectSummary?.isDefault,
+                            isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
+                            specialMenuEndsAt: activeProjectSummary?.specialMenuEndsAt,
+                            specialMenuStatus: activeProjectSummary?.specialMenuStatus,
                         }}
                         onClick={projectsList.length > 1 && !isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
                     />
+
+                    {activeProjectSummary?.isSpecialMenu && activeSpecialMenuStatus ? (
+                        <Card size="small" style={{ backgroundColor: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
+                            <Flex gap={6} vertical>
+                                <Flex align="center" gap={8} wrap="wrap">
+                                    <Tag color={activeSpecialMenuStatus === 'active' ? 'success' : activeSpecialMenuStatus === 'scheduled' ? 'processing' : 'default'}>
+                                        {activeSpecialMenuStatus === 'active'
+                                            ? 'Special menu active'
+                                            : activeSpecialMenuStatus === 'scheduled'
+                                                ? 'Special menu scheduled'
+                                                : activeSpecialMenuStatus === 'cancelled'
+                                                    ? 'Special menu cancelled'
+                                                    : 'Special menu ended'}
+                                    </Tag>
+                                    {activeProjectSummary?.specialMenuDisplayName ? (
+                                        <Text strong>{activeProjectSummary.specialMenuDisplayName}</Text>
+                                    ) : null}
+                                </Flex>
+                                {activeSpecialMenuWindow ? (
+                                    <Text type="secondary">
+                                        Runs: {activeSpecialMenuWindow}
+                                    </Text>
+                                ) : null}
+                                <Text type="secondary">
+                                    You are editing the special menu, not the regular menu.
+                                </Text>
+                            </Flex>
+                        </Card>
+                    ) : null}
 
                     {menuData?.files && !isFirstRunProject ? (
                         <MobileMenuQualitySignals
@@ -1855,7 +1974,8 @@ export default function MobileMenuScreen() {
                     ) : null}
 
                     {!isFirstRunProject && (activeFilterChips.length > 0 || searchQuery) ? (
-                        <Flex align="center" gap={8} wrap="wrap">
+                        <Flex gap={10} vertical>
+                            <Flex align="center" gap={8} wrap="wrap">
                             {searchQuery ? (
                                 <Tag style={{ borderRadius: 999, paddingInline: 10 }}>
                                     <Flex align="center" gap={6}>
@@ -1950,6 +2070,20 @@ export default function MobileMenuScreen() {
                             >
                                 {t('clearAll')}
                             </Button>
+                            </Flex>
+                            {filters.qualityIssue === 'priceOutliers' ? (
+                                <Card size="small" style={{ backgroundColor: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
+                                    <Flex gap={4} vertical>
+                                        <Text strong>Why this shows</Text>
+                                        <Text type="secondary">
+                                            We compare single-item prices inside the same category. This flag appears when a price is much lower or higher than the category&apos;s middle range.
+                                        </Text>
+                                        <Text type="secondary">
+                                            How to use it: review the flagged prices. If a price is wrong, update it. If the difference is intentional, no action needed.
+                                        </Text>
+                                    </Flex>
+                                </Card>
+                            ) : null}
                         </Flex>
                     ) : null}
 
@@ -2293,6 +2427,23 @@ export default function MobileMenuScreen() {
                                                                 </Flex>
                                                             ) : null}
 
+                                                            {filters.qualityIssue === 'priceOutliers' && priceOutlierItemIds.has(item.id) ? (
+                                                                <Flex align="center" gap={8} wrap>
+                                                                    <Tag color="warning">Needs price review</Tag>
+                                                                    <Button
+                                                                        color="primary"
+                                                                        fill="outline"
+                                                                        onClick={(event) => {
+                                                                            event.stopPropagation();
+                                                                            markPriceOutlierReviewed(item.id);
+                                                                        }}
+                                                                        size="small"
+                                                                    >
+                                                                        Mark reviewed
+                                                                    </Button>
+                                                                </Flex>
+                                                            ) : null}
+
                                                             {item.attributes?.length ? (
                                                                 <Flex gap={6} wrap>
                                                                     {item.attributes.slice(0, 3).map((attribute) => (
@@ -2590,6 +2741,14 @@ export default function MobileMenuScreen() {
                                         `${t('missingPrice')} (${menuIssueCounts.missingPrice})`,
                                         draftFilters.hasPrice === false,
                                         () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
+                                    ) : null}
+                                    {(menuIssueCounts.priceOutliers > 0 || draftFilters.qualityIssue === 'priceOutliers') ? renderIssueToggle(
+                                        `${t('unusualPrices')} (${menuIssueCounts.priceOutliers})`,
+                                        draftFilters.qualityIssue === 'priceOutliers',
+                                        () => setDraftFilters((prev) => ({
+                                            ...prev,
+                                            qualityIssue: prev.qualityIssue === 'priceOutliers' ? null : 'priceOutliers',
+                                        }))
                                     ) : null}
                                     {activeProjectLanguages.length > 1 && (menuIssueCounts.missingTranslation > 0 || draftFilters.qualityIssue === 'translationMissing') ? renderIssueToggle(
                                         `${t('missingTranslation')} (${menuIssueCounts.missingTranslation})`,

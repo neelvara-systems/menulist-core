@@ -26,8 +26,11 @@ type ProjectLink = {
     deleted?: boolean;
     feedbackUrl: string;
     isDefault: boolean;
+    isSpecialMenu?: boolean;
     name: string;
     projectId: string;
+    specialMenuEndsAt?: string;
+    specialMenuStatus?: 'scheduled' | 'active' | 'expired' | 'cancelled';
     url: string;
 };
 
@@ -233,7 +236,10 @@ export default function MobileShareScreen() {
                         deleted: activeProject.deleted === true,
                         id: activeProject.projectId,
                         isDefault: activeProject.isDefault,
+                        isSpecialMenu: activeProject.isSpecialMenu === true,
                         name: activeProject.name || tProjectSelector('untitled'),
+                        specialMenuEndsAt: activeProject.specialMenuEndsAt,
+                        specialMenuStatus: activeProject.specialMenuStatus,
                     }}
                     onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />

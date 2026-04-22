@@ -269,7 +269,10 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         deleted: selectedProjectSummary?.deleted === true,
                         id: selectedProjectId,
                         isDefault: selectedProjectSummary?.isDefault,
+                        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                         name: selectedProjectSummary?.name || t('unnamedProject'),
+                        specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                        specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                     }}
                     onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />

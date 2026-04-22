@@ -281,7 +281,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         deleted: selectedProjectSummary?.deleted === true,
                         id: selectedProjectId || 'current',
                         isDefault: selectedProjectSummary?.isDefault,
+                        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                         name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
+                        specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                        specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                     }}
                     helperText="Design changes save only to this menu."
                     onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}

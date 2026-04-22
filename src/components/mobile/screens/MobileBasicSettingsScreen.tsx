@@ -372,6 +372,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuMapPin size={14} />
                             <Text type="secondary">{tBusiness('locationInformation')}</Text>
                         </Flex>
+                        <Text type="secondary">Add the real customer-facing business address. This is the location people should visit, not internal notes or delivery instructions.</Text>
                         <Input
                             onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
                             placeholder={tBusiness('streetAddressPlaceholder')}
@@ -416,6 +417,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuMapPin size={14} />
                             <Text type="secondary">{tBusiness('addressCoordinates')}</Text>
                         </Flex>
+                        <Text type="secondary">Use exact map coordinates for this outlet only. Add latitude and longitude from Google Maps so directions and local SEO point to the correct place.</Text>
                         <Input
                             onChange={(value) => setFormData((previous) => ({ ...previous, latitude: value }))}
                             placeholder={tBusiness('latitude')}

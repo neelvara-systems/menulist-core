@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 /**
- * POST /api/outlets/create — Billing + internal outlet creation
- * PATH 1 (Billing) → PATH 2 (Internal creation)
+ * POST /api/outlets/create — internal outlet creation
+ * Billing sync is optional for now, so multi-branch settings stay available
+ * even when no active subscription is present.
  * @see __docs__/multi-outlet-consistency/store-onboarding-billing_impl.md §5
  */
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
@@ -69,13 +70,11 @@ export const POST = withAuth(async (request, session) => {
             }
         }
 
-        // Check subscription is active (BE8: block if not active)
         const sub = await getActiveSubscriptionForStore(tenantId, storeId);
-        if (!sub || sub.status !== 'active') {
-            return NextResponse.json({ error: "Active subscription required" }, { status: 402 });
+        if (sub) {
+            subId = sub.id;
+            providerSubId = sub.providerSubscriptionId;
         }
-        subId = sub.id;
-        providerSubId = sub.providerSubscriptionId;
 
         // Acquire creation lock ATOMICALLY via transaction (Architecture Audit §3.2a)
         const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
@@ -93,15 +92,17 @@ export const POST = withAuth(async (request, session) => {
         });
 
         // ═══ PATH 1: BILLING (must succeed BEFORE internal creation — Rule 3) ═══
-        previousQty = sub.quantity || 1;
+        previousQty = sub?.quantity || 1;
         const newQty = previousQty + 1;
-        if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && sub.providerSubscriptionId) {
+        if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && sub?.status === 'active' && sub.providerSubscriptionId) {
             await razorpayClient.subscriptions.update(sub.providerSubscriptionId, {
                 quantity: newQty,
             });
             billingUpdated = true;
         }
-        await updateSubscription(sub.id, { quantity: newQty });
+        if (subId) {
+            await updateSubscription(subId, { quantity: newQty });
+        }
 
         // Pre-fetch master projects OUTSIDE transaction (Firestore requirement)
         const masterProjectsSnap = await db
@@ -225,7 +226,7 @@ export const POST = withAuth(async (request, session) => {
             success: true,
             storeId: result.newStoreId,
             outletName,
-            quantity: newQty,
+            quantity: subId ? newQty : null,
         });
     } catch (error) {
         const errMsg = (error as Error).message;

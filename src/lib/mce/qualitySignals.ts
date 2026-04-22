@@ -28,6 +28,17 @@ export interface QualitySignal {
     actionRoute?: string;
 }
 
+export function normalizePriceForReview(price: string | undefined): string {
+    if (!price) return '';
+    return price.replace(/[^0-9.]/g, '').trim();
+}
+
+export function isPriceOutlierReviewed(item: Pick<ExtractedDataItem, 'price' | 'qualityReview'>): boolean {
+    const reviewedPrice = item.qualityReview?.priceOutlierReviewedPrice?.trim();
+    if (!reviewedPrice) return false;
+    return reviewedPrice === normalizePriceForReview(item.price);
+}
+
 const MAX_VISIBLE_SIGNALS = 4;
 const PRICE_OUTLIER_LOW_FACTOR = 0.35;
 const PRICE_OUTLIER_HIGH_FACTOR = 3;
@@ -154,18 +165,12 @@ function getAllLanguageCodes(files: ProjectFileType[] | undefined, projectLangua
     return Array.from(unique);
 }
 
-/**
- * Parse price string to number. Returns NaN for invalid/empty.
- */
 function parsePrice(price: string | undefined): number {
-    if (!price) return NaN;
-    const cleaned = price.replace(/[^0-9.]/g, '');
+    const cleaned = normalizePriceForReview(price);
+    if (!cleaned) return NaN;
     return parseFloat(cleaned);
 }
 
-/**
- * Compute median of a number array.
- */
 function median(values: number[]): number {
     if (values.length === 0) return 0;
     const sorted = [...values].sort((a, b) => a - b);
@@ -173,23 +178,17 @@ function median(values: number[]): number {
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/**
- * Detect price outliers within each category using median deviation.
- * Only checks categories with >= MIN_ITEMS_FOR_PRICE_OUTLIER items.
- * Items with variants (attributes) are excluded.
- */
 function countPriceOutliers(activeItems: ExtractedDataItem[]): number {
     const catPrices: Record<string, number[]> = {};
-    const catItems: Record<string, ExtractedDataItem[]> = {};
 
     for (const item of activeItems) {
         if (item.attributes && item.attributes.length > 0) continue;
+        if (isPriceOutlierReviewed(item)) continue;
         const price = parsePrice(item.price);
         if (isNaN(price) || price <= 0) continue;
         const catId = item.category || 'uncategorized';
-        if (!catPrices[catId]) { catPrices[catId] = []; catItems[catId] = []; }
+        if (!catPrices[catId]) catPrices[catId] = [];
         catPrices[catId].push(price);
-        catItems[catId].push(item);
     }
 
     let outlierCount = 0;
@@ -211,7 +210,7 @@ function countPriceOutliers(activeItems: ExtractedDataItem[]): number {
  * Compute quality signals from project files.
  * 
  * @param files - Project files array (project.files)
- * @returns Array of QualitySignal (v1.1: 5 signal types)
+ * @returns Array of QualitySignal
  */
 export function computeQualitySignals(files: ProjectFileType[] | undefined, projectLanguages?: string[]): QualitySignal[] {
     const allItems = getAllItems(files);
@@ -278,13 +277,12 @@ export function computeQualitySignals(files: ProjectFileType[] | undefined, proj
         });
     }
 
-    // Signal 5: Price outliers (possible price mistakes within a category)
     const outlierCount = countPriceOutliers(activeItems);
     if (outlierCount > 0) {
         signals.push({
             id: 'priceOutliers',
-            label: `${outlierCount} price${outlierCount !== 1 ? 's look' : ' looks'} unusual`,
-            helpText: 'A price may be significantly different from similar items',
+            label: `${outlierCount} price${outlierCount !== 1 ? 's need' : ' needs'} review`,
+            helpText: 'We compare single-item prices inside the same category. If the price is intentional, mark it reviewed.',
             count: outlierCount,
             status: 'warning',
             actionLabel: 'Review',

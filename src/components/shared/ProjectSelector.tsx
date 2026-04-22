@@ -2,7 +2,8 @@
 
 import { Button, Card, Flex, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { LuCheck, LuCheckCircle, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus, LuXCircle } from 'react-icons/lu';
+import type { SpecialMenuStatus } from '../templates/main-app/projects/types';
+import { LuCheck, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus, LuXCircle } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -12,10 +13,14 @@ export type ProjectSelectorItem = {
     isDefault?: boolean;
     active?: boolean;
     deleted?: boolean;
+    isSpecialMenu?: boolean;
+    specialMenuEndsAt?: string;
+    specialMenuStatus?: SpecialMenuStatus;
     secondaryLabel?: string;
 };
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
+type ResolvedSpecialMenuStatus = SpecialMenuStatus | null;
 
 const getProjectStatus = (project: Pick<ProjectSelectorItem, 'active' | 'deleted'> | null | undefined): ProjectStatus => {
     if (project?.deleted === true) return 'deleted';
@@ -30,7 +35,30 @@ const getStatusPresentation = (status: ProjectStatus, labels: { active: string; 
     if (status === 'inactive') {
         return { color: 'error' as const, icon: <LuXCircle size={13} />, label: labels.inactive };
     }
-    return { color: 'success' as const, icon: <LuCheckCircle size={13} />, label: labels.active };
+    return null;
+};
+
+const getResolvedSpecialMenuStatus = (
+    project: Pick<ProjectSelectorItem, 'isSpecialMenu' | 'specialMenuEndsAt' | 'specialMenuStatus'> | null | undefined
+): ResolvedSpecialMenuStatus => {
+    if (!project?.isSpecialMenu) return null;
+    if (project.specialMenuStatus === 'cancelled') return 'cancelled';
+    if (project.specialMenuStatus === 'expired') return 'expired';
+
+    const endsAtMs = project.specialMenuEndsAt ? new Date(project.specialMenuEndsAt).getTime() : null;
+    if (endsAtMs != null && Number.isFinite(endsAtMs) && endsAtMs <= Date.now()) {
+        return 'expired';
+    }
+
+    return project.specialMenuStatus || 'scheduled';
+};
+
+const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus) => {
+    if (!status) return null;
+    if (status === 'expired') return <Tag color="warning">Ended</Tag>;
+    if (status === 'active') return <Tag color="success">Special</Tag>;
+    if (status === 'scheduled') return <Tag color="processing">Scheduled</Tag>;
+    return <Tag>Cancelled</Tag>;
 };
 
 const AVATAR_COLORS = [
@@ -65,7 +93,6 @@ interface ProjectSelectorTriggerProps {
 
 export function ProjectSelectorTrigger({
     currentProject,
-    helperText,
     onClick,
     rightContent,
     clickable = false,
@@ -80,14 +107,15 @@ export function ProjectSelectorTrigger({
         inactive: t('statusInactive'),
         deleted: t('statusDeleted'),
     });
-    const statusTag = (
+    const specialMenuStatus = getResolvedSpecialMenuStatus(currentProject);
+    const statusTag = statusPresentation ? (
         <Tag color={statusPresentation.color} style={{ marginInlineEnd: 0 }}>
             <Flex align="center" gap={4}>
                 {statusPresentation.icon}
                 <span>{statusPresentation.label}</span>
             </Flex>
         </Tag>
-    );
+    ) : null;
 
     const content = (
         <Flex align="center" justify="space-between" style={{ width: '100%' }}>
@@ -110,10 +138,10 @@ export function ProjectSelectorTrigger({
                 </Flex>
                 <Flex vertical gap={0}>
                     <Text strong>{projectName}</Text>
-                    {helperText ? <Text type="secondary" style={{ fontSize: 12 }}>{helperText}</Text> : null}
                 </Flex>
             </Flex>
             <Flex align="center" gap={8}>
+                {renderSpecialMenuTag(specialMenuStatus)}
                 {statusTag}
                 {currentProject?.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
                 {rightContent}
@@ -174,6 +202,7 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                     inactive: t('statusInactive'),
                     deleted: t('statusDeleted'),
                 });
+                const specialMenuStatus = getResolvedSpecialMenuStatus(project);
 
                 return (
                     <Card
@@ -231,12 +260,15 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
 
                         <Flex align="center" justify="center" style={{ marginBottom: 14 }}>
                             <Flex align="center" gap={8} justify="center" wrap="wrap" style={{ minWidth: 0 }}>
-                                <Tag color={statusPresentation.color} style={{ marginInlineEnd: 0 }}>
-                                    <Flex align="center" gap={4}>
-                                        {statusPresentation.icon}
-                                        <span>{statusPresentation.label}</span>
-                                    </Flex>
-                                </Tag>
+                                {renderSpecialMenuTag(specialMenuStatus)}
+                                {statusPresentation ? (
+                                    <Tag color={statusPresentation.color} style={{ marginInlineEnd: 0 }}>
+                                        <Flex align="center" gap={4}>
+                                            {statusPresentation.icon}
+                                            <span>{statusPresentation.label}</span>
+                                        </Flex>
+                                    </Tag>
+                                ) : null}
                             </Flex>
                         </Flex>
 

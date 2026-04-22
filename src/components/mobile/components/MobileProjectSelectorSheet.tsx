@@ -6,15 +6,13 @@ import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
-import { DatePicker, theme } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { LuArchiveRestore, LuCopy, LuExternalLink, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
-import { getClockTimeInputFormat } from '@util/dateTime';
 
 type ProjectSheetProject = {
     active?: boolean;
@@ -56,6 +54,37 @@ type ActionItem = {
     onClick: () => void;
 };
 
+const getResolvedSpecialMenuStatus = (
+    project: Pick<ProjectSheetProject, 'isSpecialMenu' | 'specialMenuEndsAt' | 'specialMenuStatus'> | null | undefined
+) => {
+    if (!project?.isSpecialMenu) return null;
+    if (project.specialMenuStatus === 'cancelled') return 'cancelled';
+    if (project.specialMenuStatus === 'expired') return 'expired';
+
+    const endsAtMs = project.specialMenuEndsAt ? new Date(project.specialMenuEndsAt).getTime() : null;
+    if (endsAtMs != null && Number.isFinite(endsAtMs) && endsAtMs <= Date.now()) {
+        return 'expired';
+    }
+
+    return project.specialMenuStatus || 'scheduled';
+};
+
+const toNativeDateTimeValue = (value?: string | null) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+
+    const pad = (part: number) => String(part).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const fromNativeDateTimeValue = (value: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    return date.toISOString();
+};
+
 export default function MobileProjectSelectorSheet({
     currentProjectId,
     currentProjectName,
@@ -74,12 +103,11 @@ export default function MobileProjectSelectorSheet({
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
-    const [formStartsAt, setFormStartsAt] = useState<Dayjs | null>(null);
-    const [formEndsAt, setFormEndsAt] = useState<Dayjs | null>(null);
+    const [formStartsAt, setFormStartsAt] = useState('');
+    const [formEndsAt, setFormEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
-    const specialMenuDateTimeFormat = `YYYY-MM-DD ${getClockTimeInputFormat()}`;
     const sheetCardStyle = {
         borderRadius: Number(token.borderRadiusLG || token.borderRadius) + 4,
         borderColor: token.colorBorderSecondary,
@@ -121,6 +149,10 @@ export default function MobileProjectSelectorSheet({
         () => orderedProjects.find((project) => project.projectId === managingProjectId) || null,
         [managingProjectId, orderedProjects]
     );
+    const managingProjectSpecialMenuStatus = useMemo(
+        () => getResolvedSpecialMenuStatus(managingProject),
+        [managingProject]
+    );
     const formSourceProject = useMemo(
         () => projects.find((project) => project.projectId === formProjectId) || null,
         [formProjectId, projects]
@@ -131,8 +163,8 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
-        setFormStartsAt(null);
-        setFormEndsAt(null);
+        setFormStartsAt('');
+        setFormEndsAt('');
         setIsSubmitting(false);
     };
 
@@ -142,8 +174,8 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
-        setFormStartsAt(null);
-        setFormEndsAt(null);
+        setFormStartsAt('');
+        setFormEndsAt('');
     };
 
     const openEdit = (project: ProjectSheetProject) => {
@@ -151,8 +183,8 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(project.projectId);
         setFormName(project.name);
         setFormDescription(project.description || '');
-        setFormStartsAt(project.specialMenuStartsAt ? dayjs(project.specialMenuStartsAt) : null);
-        setFormEndsAt(project.specialMenuEndsAt ? dayjs(project.specialMenuEndsAt) : null);
+        setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
+        setFormEndsAt(toNativeDateTimeValue(project.specialMenuEndsAt));
     };
 
     const openDuplicate = (project: ProjectSheetProject) => {
@@ -160,8 +192,8 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(project.projectId);
         setFormName(`Copy of ${project.name}`);
         setFormDescription(project.description || '');
-        setFormStartsAt(null);
-        setFormEndsAt(null);
+        setFormStartsAt('');
+        setFormEndsAt('');
     };
 
     const refreshAndSync = async (preferredProjectId?: string | null) => {
@@ -195,7 +227,9 @@ export default function MobileProjectSelectorSheet({
                 return;
             }
 
-            if (!formEndsAt.isAfter(formStartsAt)) {
+            const startMs = new Date(formStartsAt).getTime();
+            const endMs = new Date(formEndsAt).getTime();
+            if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
                 Toast.show({ content: 'End date and time must be after the start date and time.', duration: 1800 });
                 return;
             }
@@ -232,8 +266,8 @@ export default function MobileProjectSelectorSheet({
 
                 if (isEditingSpecialMenu) {
                     metadataUpdate.specialMenuDisplayName = nextName;
-                    metadataUpdate.specialMenuStartsAt = formStartsAt!.toISOString();
-                    metadataUpdate.specialMenuEndsAt = formEndsAt!.toISOString();
+                    metadataUpdate.specialMenuStartsAt = fromNativeDateTimeValue(formStartsAt);
+                    metadataUpdate.specialMenuEndsAt = fromNativeDateTimeValue(formEndsAt);
                 }
 
                 await updateProjectMetadata(formProjectId, metadataUpdate);
@@ -243,8 +277,8 @@ export default function MobileProjectSelectorSheet({
                         projectId: formProjectId,
                         _specialMenu: {
                             displayName: nextName,
-                            endsAt: formEndsAt!.toISOString(),
-                            startsAt: formStartsAt!.toISOString(),
+                            endsAt: fromNativeDateTimeValue(formEndsAt),
+                            startsAt: fromNativeDateTimeValue(formStartsAt),
                         } as any,
                     });
                 }
@@ -272,8 +306,8 @@ export default function MobileProjectSelectorSheet({
             formName.trim() !== initialFormName.trim() ||
             formDescription.trim() !== initialFormDescription.trim() ||
             (isEditingSpecialMenu && (
-                (formStartsAt?.toISOString() || '') !== initialFormStartsAt ||
-                (formEndsAt?.toISOString() || '') !== initialFormEndsAt
+                fromNativeDateTimeValue(formStartsAt) !== initialFormStartsAt ||
+                fromNativeDateTimeValue(formEndsAt) !== initialFormEndsAt
             ))
         )
         : true;
@@ -282,8 +316,8 @@ export default function MobileProjectSelectorSheet({
         if (!formSourceProject) return;
         setFormName(formSourceProject.name || '');
         setFormDescription(formSourceProject.description || '');
-        setFormStartsAt(formSourceProject.specialMenuStartsAt ? dayjs(formSourceProject.specialMenuStartsAt) : null);
-        setFormEndsAt(formSourceProject.specialMenuEndsAt ? dayjs(formSourceProject.specialMenuEndsAt) : null);
+        setFormStartsAt(toNativeDateTimeValue(formSourceProject.specialMenuStartsAt));
+        setFormEndsAt(toNativeDateTimeValue(formSourceProject.specialMenuEndsAt));
     };
 
     const handleToggleActive = async (project: ProjectSheetProject) => {
@@ -435,7 +469,7 @@ export default function MobileProjectSelectorSheet({
             labelStyle: undefined,
             onClick: () => { openEdit(managingProject); },
         },
-        {
+        ...(managingProject.isSpecialMenu ? [] : [{
             key: 'duplicate',
             label: t('duplicateCatalog'),
             description: 'Create a copy to reuse this setup.',
@@ -443,7 +477,7 @@ export default function MobileProjectSelectorSheet({
             iconBackground: token.colorFillTertiary,
             labelStyle: undefined,
             onClick: () => openDuplicate(managingProject),
-        },
+        }]),
         {
             key: managingProject.active === false ? 'activate' : 'inactivate',
             label: managingProject.active === false ? t('activateCatalog') : t('makeInactive'),
@@ -543,6 +577,9 @@ export default function MobileProjectSelectorSheet({
                                 name: project.name,
                                 active: project.active !== false,
                                 deleted: project.deleted === true,
+                                isSpecialMenu: project.isSpecialMenu === true,
+                                specialMenuEndsAt: project.specialMenuEndsAt,
+                                specialMenuStatus: project.specialMenuStatus,
                                 secondaryLabel: project.active === false ? t('inactiveCatalog') : (project.description || undefined),
                             }))}
                         />
@@ -568,10 +605,14 @@ export default function MobileProjectSelectorSheet({
                                 <Title level={4} style={{ margin: 0 }}>
                                     {managingProject?.name || t('catalogActions')}
                                 </Title>
-                                {managingProject ? (
-                                    <Tag color={managingProject.deleted ? 'danger' : managingProject.active === false ? 'warning' : 'success'}>
-                                        {managingProject.deleted ? 'Deleted' : managingProject.active === false ? 'Inactive' : 'Active'}
-                                    </Tag>
+                                {managingProject?.deleted ? (
+                                    <Tag color="danger">Deleted</Tag>
+                                ) : null}
+                                {managingProject?.deleted !== true && managingProject?.active === false ? (
+                                    <Tag color="warning">Inactive</Tag>
+                                ) : null}
+                                {managingProjectSpecialMenuStatus === 'expired' ? (
+                                    <Tag color="warning">Ended</Tag>
                                 ) : null}
                             </Flex>
                             {managingProject ? (
@@ -676,23 +717,17 @@ export default function MobileProjectSelectorSheet({
                                 <Text strong>Special menu schedule</Text>
                                 <Flex gap={6} vertical>
                                     <Text strong>Starts Date & Time</Text>
-                                    <DatePicker
-                                        format={specialMenuDateTimeFormat}
-                                        onChange={(value) => setFormStartsAt(value)}
-                                        placeholder="Select start date and time"
-                                        showTime={{ format: getClockTimeInputFormat() }}
-                                        style={{ width: '100%' }}
+                                    <Input
+                                        onChange={setFormStartsAt}
+                                        type="datetime-local"
                                         value={formStartsAt}
                                     />
                                 </Flex>
                                 <Flex gap={6} vertical>
                                     <Text strong>Ends Date & Time</Text>
-                                    <DatePicker
-                                        format={specialMenuDateTimeFormat}
-                                        onChange={(value) => setFormEndsAt(value)}
-                                        placeholder="Select end date and time"
-                                        showTime={{ format: getClockTimeInputFormat() }}
-                                        style={{ width: '100%' }}
+                                    <Input
+                                        onChange={setFormEndsAt}
+                                        type="datetime-local"
                                         value={formEndsAt}
                                     />
                                 </Flex>

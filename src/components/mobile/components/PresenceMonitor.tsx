@@ -19,16 +19,17 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { FaInstagram } from 'react-icons/fa6';
 import {
-    LuAlertTriangle,
     LuCheck,
     LuClipboard,
     LuExternalLink,
     LuGlobe,
     LuMessageCircle,
     LuMonitor,
+    LuPlus,
     LuQrCode,
+    LuX,
 } from 'react-icons/lu';
-import { Button, Card, Flex, List, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 
 type ManualSurfaceId = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
 
@@ -100,11 +101,12 @@ export default function MobilePresenceMonitor({
 }: MobilePresenceMonitorProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobilePresenceMonitor');
+    const common = useTranslations('Common');
     const [updating, setUpdating] = useState<string | null>(null);
     const [localPresence, setLocalPresence] = useState<Record<string, string | undefined>>(
         storeDetails.menuPresence || {}
     );
-    const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
+    const [selectedSurfaceId, setSelectedSurfaceId] = useState<ManualSurfaceId | null>(null);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR) return null;
 
@@ -140,15 +142,25 @@ export default function MobilePresenceMonitor({
     const totalSurfaces = MANUAL_SURFACES.length + autoSurfaces.length;
     const allDone = totalActive === totalSurfaces;
     const nextSurface = MANUAL_SURFACES.find((surface) => !isActive(surface.id));
+    const selectedSurface = selectedSurfaceId
+        ? MANUAL_SURFACES.find((surface) => surface.id === selectedSurfaceId) || null
+        : null;
 
-    const handleCopyAndExpand = async (surface: ManualSurfaceConfig) => {
+    const handleOpenSurface = (surface: ManualSurfaceConfig) => {
+        setSelectedSurfaceId(surface.id);
+    };
+
+    const handleCloseSurface = () => {
+        setSelectedSurfaceId(null);
+    };
+
+    const handleCopyMenuLink = async () => {
         try {
             await navigator.clipboard.writeText(menuLink);
             Toast.show({ content: t('menuLinkCopied'), duration: 1000 });
         } catch {
             Toast.show({ content: t('menuLinkCopyFailed'), duration: 1000 });
         }
-        setExpandedGuide(surface.id);
     };
 
     const handleConfirm = async (surface: ManualSurfaceConfig) => {
@@ -157,7 +169,7 @@ export default function MobilePresenceMonitor({
             await updateMenuPresence(storeDetails.storeId, surface.dalKey, true);
             setLocalPresence((previous) => ({ ...previous, [surface.id]: new Date().toISOString() }));
             Toast.show({ content: t('surfaceUpdated', { surface: t(surface.labelKey) }), duration: 1500 });
-            setExpandedGuide(null);
+            setSelectedSurfaceId(null);
         } catch {
             Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
@@ -175,6 +187,7 @@ export default function MobilePresenceMonitor({
                 return next;
             });
             Toast.show({ content: t('surfaceRemoved', { surface: t(surface.labelKey) }), duration: 1500 });
+            setSelectedSurfaceId(null);
         } catch {
             Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
@@ -208,11 +221,11 @@ export default function MobilePresenceMonitor({
                     {MANUAL_SURFACES.map((surface) => {
                         const active = isActive(surface.id);
                         const isNext = !active && surface.id === nextSurface?.id;
-                        const guideOpen = expandedGuide === surface.id;
 
                         return (
                             <List.Item
                                 key={surface.id}
+                                arrow
                                 description={
                                     <Flex gap={8} vertical>
                                         <Flex gap={8} wrap="wrap">
@@ -221,77 +234,34 @@ export default function MobilePresenceMonitor({
                                             </Text>
                                             {isNext ? <Tag color="processing">{manualActiveCount === 0 ? t('startHere') : t('next')}</Tag> : null}
                                         </Flex>
-                                        {guideOpen && !active ? (
-                                            <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
-                                                <Flex gap={12} vertical>
-                                                    <Flex gap={4} vertical>
-                                                        <Text strong>{t('howToAdd')}</Text>
-                                                        <List>
-                                                            {surface.guideStepKeys.map((stepKey, index) => (
-                                                                <List.Item key={`${surface.id}-${index}`}>
-                                                                    <Text>{`${index + 1}. ${t(stepKey)}`}</Text>
-                                                                </List.Item>
-                                                            ))}
-                                                        </List>
-                                                    </Flex>
-                                                    <Flex gap={8} wrap="wrap">
-                                                        {surface.openUrl ? (
-                                                            <Button
-                                                                fill="outline"
-                                                                onClick={() => window.open(surface.openUrl, '_blank')}
-                                                                size="small"
-                                                            >
-                                                                <Flex align="center" gap={6}>
-                                                                    <LuExternalLink size={14} />
-                                                                    <Text>{t('open')}</Text>
-                                                                </Flex>
-                                                            </Button>
-                                                        ) : null}
-                                                        <Button
-                                                            color="primary"
-                                                            loading={updating === surface.id}
-                                                            onClick={() => handleConfirm(surface)}
-                                                            size="small"
-                                                        >
-                                                            {t('markAsAdded')}
-                                                        </Button>
-                                                    </Flex>
-                                                </Flex>
-                                            </Card>
-                                        ) : null}
                                     </Flex>
                                 }
                                 extra={
-                                    active ? (
-                                        <Button
-                                            fill="outline"
-                                            loading={updating === surface.id}
-                                            onClick={() => handleRemove(surface)}
-                                            size="small"
-                                        >
-                                            {t('remove')}
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            color={isNext ? 'primary' : 'default'}
-                                            fill={isNext ? 'solid' : 'outline'}
-                                            loading={updating === surface.id}
-                                            onClick={() => handleCopyAndExpand(surface)}
-                                            size="small"
-                                        >
-                                            <Flex align="center" gap={6}>
-                                                <LuClipboard size={14} />
-                                                <Text>{t('add')}</Text>
-                                            </Flex>
-                                        </Button>
-                                    )
+                                    <Button
+                                        color={active ? 'success' : isNext ? 'primary' : 'default'}
+                                        fill={active ? 'outline' : isNext ? 'solid' : 'outline'}
+                                        loading={updating === surface.id}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            handleOpenSurface(surface);
+                                        }}
+                                        size="small"
+                                        style={{
+                                            borderRadius: 999,
+                                            minHeight: 36,
+                                            minWidth: 36,
+                                            paddingInline: 0,
+                                        }}
+                                    >
+                                        {active ? (
+                                            <LuCheck size={16} />
+                                        ) : (
+                                            <LuPlus size={16} />
+                                        )}
+                                    </Button>
                                 }
-                                prefix={
-                                    <Flex align="center" gap={8}>
-                                        {active ? <LuCheck color={token.colorSuccess} size={16} /> : <LuAlertTriangle color={token.colorWarning} size={16} />}
-                                        {surface.icon}
-                                    </Flex>
-                                }
+                                onClick={() => handleOpenSurface(surface)}
+                                prefix={<Flex align="center" gap={8}>{surface.icon}</Flex>}
                                 title={
                                     <Flex gap={8} wrap="wrap">
                                         <Text strong>{t(surface.labelKey)}</Text>
@@ -318,11 +288,15 @@ export default function MobilePresenceMonitor({
                             extra={surface.active ? <Tag color="processing">{t('auto')}</Tag> : null}
                             prefix={
                                 <Flex align="center" gap={8}>
-                                    {surface.active ? <LuCheck color={token.colorSuccess} size={16} /> : <LuAlertTriangle color={token.colorWarning} size={16} />}
                                     {surface.icon}
                                 </Flex>
                             }
-                            title={<Text strong>{surface.label}</Text>}
+                            title={
+                                <Flex gap={8} wrap="wrap">
+                                    <Text strong>{surface.label}</Text>
+                                    {surface.active ? <Tag color="success">{t('added')}</Tag> : null}
+                                </Flex>
+                            }
                         />
                     ))}
                 </List>
@@ -336,6 +310,128 @@ export default function MobilePresenceMonitor({
                     </Card>
                 ) : null}
             </Flex>
+
+            <Popup
+                bodyStyle={{ maxHeight: '82vh', minHeight: '50vh', overflow: 'hidden', padding: 0 }}
+                destroyOnClose
+                onMaskClick={handleCloseSurface}
+                visible={!!selectedSurface}
+            >
+                {selectedSurface ? (
+                    <Flex style={{ height: '100%' }} vertical>
+                        <NavBar
+                            right={(
+                                <Button fill="none" onClick={handleCloseSurface} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                                    <LuX size={18} />
+                                </Button>
+                            )}
+                        >
+                            {t(selectedSurface.labelKey)}
+                        </NavBar>
+
+                        <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                            <Card
+                                size="small"
+                                style={{
+                                    backgroundColor: isActive(selectedSurface.id) ? token.colorSuccessBg : token.colorFillAlter,
+                                    borderColor: isActive(selectedSurface.id) ? token.colorSuccessBorder : token.colorBorderSecondary,
+                                }}
+                            >
+                                <Flex gap={8} vertical>
+                                    <Flex align="center" gap={8}>
+                                        <Button
+                                            color={isActive(selectedSurface.id) ? 'success' : 'primary'}
+                                            fill="none"
+                                            style={{ minHeight: 24, minWidth: 24, paddingInline: 0 }}
+                                        >
+                                            {isActive(selectedSurface.id) ? <LuCheck size={16} /> : <LuPlus size={16} />}
+                                        </Button>
+                                        <Text strong>{isActive(selectedSurface.id) ? t('menuLinkAdded') : t(selectedSurface.explanationKey)}</Text>
+                                    </Flex>
+                                    <Text type="secondary">
+                                        {isActive(selectedSurface.id) ? t('surfaceUpdated', { surface: t(selectedSurface.labelKey) }) : t('subtitle')}
+                                    </Text>
+                                </Flex>
+                            </Card>
+
+                            <Card size="small">
+                                <Flex gap={12} vertical>
+                                    <Text strong>{common('copy')}</Text>
+                                    <Card
+                                        size="small"
+                                        style={{
+                                            backgroundColor: token.colorFillAlter,
+                                            borderColor: token.colorBorderSecondary,
+                                        }}
+                                    >
+                                        <Text style={{ wordBreak: 'break-all' }}>{menuLink}</Text>
+                                    </Card>
+                                    <Button
+                                        block
+                                        fill="outline"
+                                        onClick={() => void handleCopyMenuLink()}
+                                        size="small"
+                                    >
+                                        <Flex align="center" gap={6}>
+                                            <LuClipboard size={14} />
+                                            <Text>{common('copy')}</Text>
+                                        </Flex>
+                                    </Button>
+                                </Flex>
+                            </Card>
+
+                            <Card size="small">
+                                <Flex gap={12} vertical>
+                                    <Text strong>{t('howToAdd')}</Text>
+                                    <Flex gap={8} vertical>
+                                        {selectedSurface.guideStepKeys.map((stepKey, index) => (
+                                            <Flex align="flex-start" gap={8} key={`${selectedSurface.id}-${index}`}>
+                                                <Tag color="default">{index + 1}</Tag>
+                                                <Text>{t(stepKey)}</Text>
+                                            </Flex>
+                                        ))}
+                                    </Flex>
+                                    {selectedSurface.openUrl ? (
+                                        <Button
+                                            block
+                                            fill="outline"
+                                            onClick={() => window.open(selectedSurface.openUrl, '_blank')}
+                                            size="small"
+                                        >
+                                            <Flex align="center" gap={6}>
+                                                <LuExternalLink size={14} />
+                                                <Text>{t('open')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    ) : null}
+                                </Flex>
+                            </Card>
+
+                            {isActive(selectedSurface.id) ? (
+                                <Button
+                                    block
+                                    fill="outline"
+                                    loading={updating === selectedSurface.id}
+                                    onClick={() => void handleRemove(selectedSurface)}
+                                    size="small"
+                                >
+                                    {t('remove')}
+                                </Button>
+                            ) : (
+                                <Button
+                                    block
+                                    color="primary"
+                                    loading={updating === selectedSurface.id}
+                                    onClick={() => void handleConfirm(selectedSurface)}
+                                    size="small"
+                                >
+                                    {t('markAsAdded')}
+                                </Button>
+                            )}
+                        </Flex>
+                    </Flex>
+                ) : null}
+            </Popup>
         </Card>
     );
 }

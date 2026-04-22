@@ -514,6 +514,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
                 {showFeedback ? (
                     <Card size="small" title={<Text strong>{t('guestFeedback')}</Text>}>
+                        <Text type="secondary">Turn this on to collect guest feedback from your public menu and feedback links.</Text>
                         <List>
                             <List.Item
                                 prefix={<LuMessageSquare color="#16a34a" size={18} />}
@@ -695,6 +696,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                     {editingPlatform.isCustom ? (
                                         <Flex gap={6} vertical>
                                             <Text strong>Platform name</Text>
+                                            <Text type="secondary">Use the customer-facing platform name, for example Zomato, Instagram, or Tripadvisor.</Text>
                                             <Input
                                                 onChange={setEditingPlatformLabel}
                                                 placeholder="Platform name"

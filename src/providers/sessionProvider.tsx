@@ -1,5 +1,9 @@
 'use client';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import {
+    DEPLOYMENT_IDENTITY_STORAGE_KEY,
+    emitDeploymentIdentityUpdated,
+} from '@constant/deploymentDebug';
 import { getStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
@@ -179,6 +183,30 @@ export default function SessionProvider({ children, session }: Props) {
         }
     }, [storeDetails, tenantDetails])
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const tenantId = tenantDetails?.tenantId ?? session?.user?.tenantId ?? null;
+        const tenantName = tenantDetails?.name || '';
+        const storeId = storeDetails?.storeId ?? session?.user?.storeId ?? null;
+        const storeName = storeDetails?.name || '';
+
+        if (!tenantId && !storeId && !tenantName && !storeName) return;
+
+        window.sessionStorage.setItem(
+            DEPLOYMENT_IDENTITY_STORAGE_KEY,
+            JSON.stringify({ tenantId, tenantName, storeId, storeName }),
+        );
+        emitDeploymentIdentityUpdated();
+    }, [
+        session?.user?.storeId,
+        session?.user?.tenantId,
+        storeDetails?.name,
+        storeDetails?.storeId,
+        tenantDetails?.name,
+        tenantDetails?.tenantId,
+    ]);
+
     // useEffect(() => {
     //     startLogCapture();
     // }, []);
@@ -204,7 +232,7 @@ export default function SessionProvider({ children, session }: Props) {
                 setAssetsList,
                 activeSubscription,
                 setActiveSubscription,
-                isMasterUser: Boolean(storeDetails?.isMaster && tenantDetails?.storesList?.length > 1),
+                isMasterUser: Boolean(storeDetails?.isMaster),
                 activeStoreContext,
                 setActiveStoreContext,
                 cachedKBCategories,

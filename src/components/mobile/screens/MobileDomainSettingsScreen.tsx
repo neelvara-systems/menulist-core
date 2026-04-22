@@ -261,6 +261,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                     placeholder={t('subdomainPlaceholder')}
                                     value={subdomainValue}
                                 />
+                                <Text type="secondary">Use a clean public name for your MenuList address. Customers will see and share this link.</Text>
                                 <Text type="secondary">{t('subdomainHelp')}</Text>
                                 {availability ? (
                                     <Flex align="center" gap={8}>
@@ -364,6 +365,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                     placeholder={t('domainPlaceholder')}
                                     value={domainInput}
                                 />
+                                <Text type="secondary">Enter a domain you already control. After connecting it, you will still need to update DNS where the domain is managed.</Text>
                                 {domainAvailability ? (
                                     <Flex align="center" gap={8}>
                                         {domainAvailability.available ? <LuCheck color="#16a34a" size={16} /> : <LuX color="#dc2626" size={16} />}

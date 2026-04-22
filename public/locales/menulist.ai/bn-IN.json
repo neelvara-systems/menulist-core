@@ -963,7 +963,10 @@
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
         "chainWideRules": "Set chain-wide rules for all outlets.",
-        "subtitle": "আপনার লোকেশনগুলো দেখুন, স্টোর প্রসঙ্গ বদলান এবং আউটলেট নীতিমালা নিয়ন্ত্রণ করুন।"
+        "subtitle": "আপনার লোকেশনগুলো দেখুন, স্টোর প্রসঙ্গ বদলান এবং আউটলেট নীতিমালা নিয়ন্ত্রণ করুন।",
+        "reset": "Reset",
+        "saveChanges": "Save",
+        "noChangesToSave": "No changes to save"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

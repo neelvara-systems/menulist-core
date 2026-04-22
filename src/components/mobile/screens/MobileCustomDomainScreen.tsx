@@ -164,6 +164,7 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{t('customDomain')}</Text>
+                        <Text type="secondary">Enter a domain you already own, like menu.yourbrand.com or yourbrand.com. Do not add http:// or https://.</Text>
                         <Input onChange={(value) => {
                             setDomainInput(value);
                             setDomainAvailability(null);

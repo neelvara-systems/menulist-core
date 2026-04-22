@@ -963,7 +963,10 @@
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
         "chainWideRules": "Set chain-wide rules for all outlets.",
-        "subtitle": "Revisa tus ubicaciones, cambia el contexto de la tienda y controla las políticas de sucursal."
+        "subtitle": "Revisa tus ubicaciones, cambia el contexto de la tienda y controla las políticas de sucursal.",
+        "reset": "Reset",
+        "saveChanges": "Save",
+        "noChangesToSave": "No changes to save"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

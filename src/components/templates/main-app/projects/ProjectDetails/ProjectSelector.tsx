@@ -1,11 +1,11 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Dropdown, Flex, Modal, Tag, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 // NOTE: Segmented and AnimatePresence removed - archive tabs functionality deprecated
 import { IoChevronDown } from "react-icons/io5";
-import { LuCheck, LuCheckCircle, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuTrash2, LuXCircle } from 'react-icons/lu';
-import { ProjectMetadata } from '../types';
+import { LuCheck, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuTrash2, LuXCircle } from 'react-icons/lu';
+import { ProjectMetadata, SpecialMenuStatus } from '../types';
 
 const { Text, Title } = Typography;
 const { useToken } = theme;
@@ -41,8 +41,16 @@ const getInitials = (name: string) => {
 };
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
+type ResolvedSpecialMenuStatus = SpecialMenuStatus | null;
+type SelectorProjectMetadata = ProjectMetadata & {
+    active?: boolean;
+    deleted?: boolean;
+    isSpecialMenu?: boolean;
+    specialMenuEndsAt?: string;
+    specialMenuStatus?: SpecialMenuStatus;
+};
 
-const getProjectStatus = (project: ProjectMetadata | null | undefined): ProjectStatus => {
+const getProjectStatus = (project: SelectorProjectMetadata | null | undefined): ProjectStatus => {
     if ((project as any)?.deleted === true) return 'deleted';
     if ((project as any)?.active === false) return 'inactive';
     return 'active';
@@ -55,11 +63,34 @@ const getStatusPresentation = (status: ProjectStatus) => {
     if (status === 'inactive') {
         return { color: 'error' as const, icon: <LuXCircle size={13} />, label: 'Inactive' };
     }
-    return { color: 'success' as const, icon: <LuCheckCircle size={13} />, label: 'Active' };
+    return null;
+};
+
+const getResolvedSpecialMenuStatus = (
+    project: SelectorProjectMetadata | null | undefined
+): ResolvedSpecialMenuStatus => {
+    if (!project?.isSpecialMenu) return null;
+    if (project.specialMenuStatus === 'cancelled') return 'cancelled';
+    if (project.specialMenuStatus === 'expired') return 'expired';
+
+    const endsAtMs = project.specialMenuEndsAt ? new Date(project.specialMenuEndsAt).getTime() : null;
+    if (endsAtMs != null && Number.isFinite(endsAtMs) && endsAtMs <= Date.now()) {
+        return 'expired';
+    }
+
+    return project.specialMenuStatus || 'scheduled';
+};
+
+const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus, style?: CSSProperties) => {
+    if (!status) return null;
+    if (status === 'expired') return <Tag color="warning" style={style}>Ended</Tag>;
+    if (status === 'active') return <Tag color="success" style={style}>Special</Tag>;
+    if (status === 'scheduled') return <Tag color="processing" style={style}>Scheduled</Tag>;
+    return <Tag style={style}>Cancelled</Tag>;
 };
 
 interface CatalogCardProps {
-    project: ProjectMetadata;
+    project: SelectorProjectMetadata;
     isSelected: boolean;
     token: any;
     onSelect: () => void;
@@ -85,6 +116,7 @@ const CatalogCard = ({
     const projectStatus = getProjectStatus(project);
     const isInactive = projectStatus === 'inactive';
     const statusPresentation = getStatusPresentation(projectStatus);
+    const specialMenuStatus = getResolvedSpecialMenuStatus(project);
 
     const handleMenuClick = (info: { domEvent: React.MouseEvent }, action: () => void) => {
         info.domEvent.stopPropagation();
@@ -93,7 +125,9 @@ const CatalogCard = ({
 
     const menuItems = [
         { key: 'edit', label: 'Edit', icon: <LuPen size={14} />, onClick: (e: any) => handleMenuClick(e, onEdit) },
-        { key: 'duplicate', label: 'Duplicate', icon: <LuCopy size={14} />, onClick: (e: any) => handleMenuClick(e, onDuplicate) },
+        ...(project.isSpecialMenu ? [] : [
+            { key: 'duplicate', label: 'Duplicate', icon: <LuCopy size={14} />, onClick: (e: any) => handleMenuClick(e, onDuplicate) },
+        ]),
         { type: 'divider' as const },
         { key: 'delete', label: 'Delete', icon: <LuTrash2 size={14} />, danger: true, onClick: (e: any) => handleMenuClick(e, onDelete) },
     ];
@@ -221,15 +255,18 @@ const CatalogCard = ({
                         Default
                     </Tag>
                 ) : null}
-                <Tag
-                    color={statusPresentation.color}
-                    style={{ marginTop: 6, marginInlineEnd: 0 }}
-                >
-                    <Flex align="center" gap={4}>
-                        {statusPresentation.icon}
-                        <span>{statusPresentation.label}</span>
-                    </Flex>
-                </Tag>
+                {renderSpecialMenuTag(specialMenuStatus, { marginTop: 6, marginInlineEnd: 0 })}
+                {statusPresentation ? (
+                    <Tag
+                        color={statusPresentation.color}
+                        style={{ marginTop: 6, marginInlineEnd: 0 }}
+                    >
+                        <Flex align="center" gap={4}>
+                            {statusPresentation.icon}
+                            <span>{statusPresentation.label}</span>
+                        </Flex>
+                    </Tag>
+                ) : null}
             </Flex>
         </motion.div>
     );
@@ -287,12 +324,12 @@ const AddCatalogCard = ({ token, onClick, index }: { token: any; onClick: () => 
 };
 
 interface ProjectSelectorProps {
-    projects: ProjectMetadata[];
-    selectedProject: ProjectMetadata | null;
-    setSelectedProject: (project: ProjectMetadata | null) => void;
-    onOpenModal: (project?: ProjectMetadata) => void;
-    onDuplicateProject: (project: ProjectMetadata) => void;
-    onDeleteProject: (project: ProjectMetadata) => void;
+    projects: SelectorProjectMetadata[];
+    selectedProject: SelectorProjectMetadata | null;
+    setSelectedProject: (project: SelectorProjectMetadata | null) => void;
+    onOpenModal: (project?: SelectorProjectMetadata) => void;
+    onDuplicateProject: (project: SelectorProjectMetadata) => void;
+    onDeleteProject: (project: SelectorProjectMetadata) => void;
 }
 
 export const ProjectSelector = ({
@@ -309,8 +346,9 @@ export const ProjectSelector = ({
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const selectedStatus = getProjectStatus(selectedProject);
     const selectedStatusPresentation = getStatusPresentation(selectedStatus);
+    const selectedSpecialMenuStatus = getResolvedSpecialMenuStatus(selectedProject);
 
-    const confirmDuplicate = (project: ProjectMetadata) => {
+    const confirmDuplicate = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
         Modal.confirm({
             title: `Duplicate ${offeringName}`,
@@ -326,7 +364,7 @@ export const ProjectSelector = ({
         });
     };
 
-    const confirmDelete = (project: ProjectMetadata) => {
+    const confirmDelete = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
         Modal.confirm({
             title: `Delete ${offeringName}`,
@@ -356,9 +394,10 @@ export const ProjectSelector = ({
                                     Default
                                 </Tag>
                             ) : null}
+                            {renderSpecialMenuTag(selectedSpecialMenuStatus, { marginInlineEnd: 0 })}
                         </>
                     ) : null}
-                    {selectedProject ? (
+                    {selectedProject && selectedStatusPresentation ? (
                         <Tag
                             color={selectedStatusPresentation.color}
                             style={{ marginInlineEnd: 0 }}

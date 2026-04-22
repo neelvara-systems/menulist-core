@@ -7,7 +7,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -33,7 +33,19 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     const [outletName, setOutletName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [policy, setPolicy] = useState<OutletPolicy>(storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY);
-    const [savingKey, setSavingKey] = useState<string | null>(null);
+    const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY);
+    const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+
+    useEffect(() => {
+        const nextPolicy = storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY;
+        setPolicy(nextPolicy);
+        setDraftPolicy(nextPolicy);
+    }, [storeDetails?.outletPolicy]);
+
+    const hasPolicyChanges = useMemo(
+        () => Object.keys(DEFAULT_OUTLET_POLICY).some((key) => policy[key as keyof OutletPolicy] !== draftPolicy[key as keyof OutletPolicy]),
+        [draftPolicy, policy],
+    );
 
     if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL) {
         return (
@@ -103,16 +115,36 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
         }
     };
 
-    const handleTogglePolicy = async (key: keyof OutletPolicy, checked: boolean) => {
-        setSavingKey(key);
+    const handleOpenPolicy = () => {
+        setDraftPolicy(policy);
+        setShowPolicy(true);
+    };
+
+    const handleTogglePolicy = (key: keyof OutletPolicy, checked: boolean) => {
+        setDraftPolicy((prev) => ({ ...prev, [key]: checked }));
+    };
+
+    const handleResetPolicy = () => {
+        setDraftPolicy(policy);
+    };
+
+    const handleSavePolicy = async () => {
+        if (!storeDetails?.storeId) return;
+        if (!hasPolicyChanges) {
+            Toast.show({ content: t('noChangesToSave'), duration: 1200 });
+            return;
+        }
+
+        setIsSavingPolicy(true);
         try {
-            await updateOutletPolicy(storeDetails?.storeId, { [key]: checked });
-            setPolicy((prev) => ({ ...prev, [key]: checked }));
+            await updateOutletPolicy(storeDetails.storeId, draftPolicy);
+            setPolicy(draftPolicy);
             Toast.show({ content: t('policyUpdated'), duration: 1000 });
+            setShowPolicy(false);
         } catch {
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
-            setSavingKey(null);
+            setIsSavingPolicy(false);
         }
     };
 
@@ -192,7 +224,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 ) : null}
 
                 {outletCount > 0 ? (
-                    <Card onClick={() => setShowPolicy(true)}>
+                    <Card onClick={handleOpenPolicy}>
                         <Flex align="center" justify="space-between">
                             <Flex gap={4} vertical>
                                 <Text strong>{t('outletPolicy')}</Text>
@@ -218,6 +250,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
                         <Flex gap={6} vertical>
                             <Text strong>{t('outletName')}</Text>
+                            <Text type="secondary">Use the real branch name customers and staff will recognize, for example Downtown or Indiranagar.</Text>
                             <Input
                                 onChange={setOutletName}
                                 placeholder={t('outletNamePlaceholder')}
@@ -260,17 +293,35 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
             <Popup
                 bodyStyle={{ maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
-                onMaskClick={() => setShowPolicy(false)}
+                onMaskClick={isSavingPolicy ? undefined : () => setShowPolicy(false)}
                 position="bottom"
                 visible={showPolicy}
             >
                 <Flex style={{ height: '100%' }} vertical>
-                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowPolicy(false)}>
-                        {t('outletPolicy')}
-                    </NavBar>
+                    <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                            borderBottom: '1px solid #f3f4f6',
+                            minHeight: 56,
+                            padding: '0 16px',
+                            position: 'relative',
+                        }}
+                    >
+                        <Text strong>{t('outletPolicy')}</Text>
+                        <Button
+                            disabled={isSavingPolicy}
+                            fill="none"
+                            icon={<LuX size={20} />}
+                            onClick={() => setShowPolicy(false)}
+                            size="mini"
+                            style={{ position: 'absolute', right: 8, top: 8 }}
+                        />
+                    </Flex>
 
-                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                    <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: 12 }} vertical>
                         <Text type="secondary">{t('chainWideRules')}</Text>
+                        <Text type="secondary">These rules decide what outlet teams can control locally and what stays managed by the main account.</Text>
 
                         <Flex gap={16} vertical>
                             {OUTLET_POLICY_CATEGORIES.map((category, index) => (
@@ -285,8 +336,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                                 key={item.key}
                                                 extra={
                                                     <Switch
-                                                        checked={policy[item.key]}
-                                                        loading={savingKey === item.key}
+                                                        checked={draftPolicy[item.key]}
                                                         onChange={(checked) => handleTogglePolicy(item.key, checked)}
                                                     />
                                                 }
@@ -296,6 +346,41 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                     </List>
                                 </Card>
                             ))}
+                        </Flex>
+
+                        <Flex
+                            gap={12}
+                            style={{
+                                backdropFilter: 'blur(10px)',
+                                backgroundColor: '#ffffff',
+                                borderTop: '1px solid #f3f4f6',
+                                bottom: 0,
+                                marginInline: -12,
+                                marginTop: 'auto',
+                                padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                                position: 'sticky',
+                                zIndex: 20,
+                            }}
+                        >
+                            <Button
+                                block
+                                disabled={!hasPolicyChanges || isSavingPolicy}
+                                fill="outline"
+                                onClick={handleResetPolicy}
+                                size="large"
+                            >
+                                {t('reset')}
+                            </Button>
+                            <Button
+                                block
+                                color="primary"
+                                disabled={!hasPolicyChanges || isSavingPolicy}
+                                loading={isSavingPolicy}
+                                onClick={() => void handleSavePolicy()}
+                                size="large"
+                            >
+                                {t('saveChanges')}
+                            </Button>
                         </Flex>
                     </Flex>
                 </Flex>

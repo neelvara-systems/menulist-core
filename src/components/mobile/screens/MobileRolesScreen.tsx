@@ -232,6 +232,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                                 <Flex gap={16} vertical>
                                     <Flex gap={6} vertical>
                                         <Text strong>{t('roleName')}</Text>
+                                        <Text type="secondary">Use a clear staff-facing name like Cashier, Floor Manager, or Kitchen Lead.</Text>
                                         <Input
                                             onChange={(value) => setEditingRole({ ...editingRole, name: value })}
                                             placeholder={t('roleNamePlaceholder')}
@@ -241,6 +242,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
 
                                     <Flex gap={6} vertical>
                                         <Text strong>{t('description')}</Text>
+                                        <Text type="secondary">Write what this role is responsible for so owners know when to assign it.</Text>
                                         <TextArea
                                             onChange={(value) => setEditingRole({ ...editingRole, description: value })}
                                             placeholder={t('descriptionPlaceholder')}
@@ -264,6 +266,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                             <Title level={5} style={{ margin: 0 }}>
                                 {t('permissions')}
                             </Title>
+                            <Text type="secondary">Turn on only the actions this role should be allowed to do inside the app.</Text>
 
                             {PERMISSION_CATEGORIES_CONFIG.map((category, index) => {
                                 const allEnabled = category.permissions.every((permKey) => Boolean((editingRole.permissions as any)?.[permKey]));

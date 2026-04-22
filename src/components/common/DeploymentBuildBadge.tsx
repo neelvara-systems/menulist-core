@@ -1,6 +1,11 @@
 'use client';
 
-import { DEPLOYMENT_BADGE_STORAGE_KEY, DEPLOYMENT_BADGE_TOGGLE_EVENT } from '@constant/deploymentDebug';
+import {
+    DEPLOYMENT_BADGE_STORAGE_KEY,
+    DEPLOYMENT_BADGE_TOGGLE_EVENT,
+    DEPLOYMENT_IDENTITY_EVENT,
+    DEPLOYMENT_IDENTITY_STORAGE_KEY,
+} from '@constant/deploymentDebug';
 import { useEffect, useMemo, useState } from 'react';
 
 function shouldShowBadge(): boolean {
@@ -16,11 +21,39 @@ function shouldShowBadge(): boolean {
 export default function DeploymentBuildBadge() {
     const [isVisible, setIsVisible] = useState(false);
     const [buildCreatedAt, setBuildCreatedAt] = useState<string>('');
+    const [tenantId, setTenantId] = useState<string>('');
+    const [tenantName, setTenantName] = useState<string>('');
+    const [storeId, setStoreId] = useState<string>('');
+    const [storeName, setStoreName] = useState<string>('');
+
+    const loadIdentityFromStorage = () => {
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = window.sessionStorage.getItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as {
+                tenantId?: string | number | null;
+                tenantName?: string;
+                storeId?: string | number | null;
+                storeName?: string;
+            };
+            setTenantId(parsed?.tenantId === null || parsed?.tenantId === undefined ? '' : String(parsed.tenantId));
+            setTenantName(parsed?.tenantName || '');
+            setStoreId(parsed?.storeId === null || parsed?.storeId === undefined ? '' : String(parsed.storeId));
+            setStoreName(parsed?.storeName || '');
+        } catch {
+            setTenantId('');
+            setTenantName('');
+            setStoreId('');
+            setStoreName('');
+        }
+    };
 
     useEffect(() => {
         const fromUrl = shouldShowBadge();
         const fromStorage = typeof window !== 'undefined' && window.sessionStorage.getItem(DEPLOYMENT_BADGE_STORAGE_KEY) === '1';
         setIsVisible(fromUrl || fromStorage);
+        loadIdentityFromStorage();
     }, []);
 
     const buildLabel = useMemo(() => {
@@ -40,10 +73,15 @@ export default function DeploymentBuildBadge() {
                 return next;
             });
         };
+        const onIdentityUpdated = () => {
+            loadIdentityFromStorage();
+        };
 
         window.addEventListener(DEPLOYMENT_BADGE_TOGGLE_EVENT, onToggle as EventListener);
+        window.addEventListener(DEPLOYMENT_IDENTITY_EVENT, onIdentityUpdated as EventListener);
         return () => {
             window.removeEventListener(DEPLOYMENT_BADGE_TOGGLE_EVENT, onToggle as EventListener);
+            window.removeEventListener(DEPLOYMENT_IDENTITY_EVENT, onIdentityUpdated as EventListener);
         };
     }, []);
 
@@ -66,6 +104,7 @@ export default function DeploymentBuildBadge() {
             }
         };
 
+        loadIdentityFromStorage();
         void loadServerVersion();
         return () => {
             isMounted = false;
@@ -109,6 +148,8 @@ export default function DeploymentBuildBadge() {
         >
             <div>{buildLabel}</div>
             {buildCreatedAtLabel ? <div>Build: {buildCreatedAtLabel}</div> : null}
+            {(tenantId || tenantName) ? <div>Tenant: {tenantId || '-'} · {tenantName || '-'}</div> : null}
+            {(storeId || storeName) ? <div>Store: {storeId || '-'} · {storeName || '-'}</div> : null}
         </div>
     );
 }

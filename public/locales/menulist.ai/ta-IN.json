@@ -963,7 +963,10 @@
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
         "chainWideRules": "Set chain-wide rules for all outlets.",
-        "subtitle": "உங்கள் இடங்களைப் பாருங்கள், கடை சூழலை மாற்றுங்கள், கிளை கொள்கைகளை கட்டுப்படுத்துங்கள்."
+        "subtitle": "உங்கள் இடங்களைப் பாருங்கள், கடை சூழலை மாற்றுங்கள், கிளை கொள்கைகளை கட்டுப்படுத்துங்கள்.",
+        "reset": "Reset",
+        "saveChanges": "Save",
+        "noChangesToSave": "No changes to save"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

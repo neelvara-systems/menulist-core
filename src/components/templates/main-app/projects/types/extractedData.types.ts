@@ -93,6 +93,10 @@ export interface ExtractedDataItem {
     ownerBoost?: number; // Score modifier from -20 to +20 (0 = neutral, positive = boost, negative = suppress)
     // Used in recommendation scoring. Default: 0
     orderIndex?: number; // Multi-store: Store can override item order within category
+    qualityReview?: {
+        priceOutlierReviewedAt?: string;
+        priceOutlierReviewedPrice?: string;
+    };
 }
 
 export interface ExtractedDataLanguage {

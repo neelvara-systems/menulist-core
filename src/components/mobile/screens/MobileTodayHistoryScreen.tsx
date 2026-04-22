@@ -83,7 +83,14 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
     };
 
     return (
-        <Flex gap={12} style={{ padding: 16 }} vertical>
+        <Flex
+            gap={12}
+            style={{
+                padding: 16,
+                paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
+            }}
+            vertical
+        >
             <Flex align="center" gap={8}>
                 <Button fill="none" onClick={onBack} size="small" style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}>
                     <LuArrowLeft size={16} />

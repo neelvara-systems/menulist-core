@@ -22,6 +22,7 @@ const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scro
                     <Form.Item
                         name="address"
                         label={t('streetAddress')}
+                        extra="Enter the real customer-facing address for this location. Do not use internal notes or temporary instructions here."
                         rules={[{ message: t('streetAddressRequired') }]}
                     >
                         <TextArea
@@ -99,6 +100,7 @@ const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scro
                     <Form.Item
                         name="latitude"
                         label={t('latitude')}
+                        extra="Use the exact map latitude from Google Maps for this outlet."
                     >
                         <Input placeholder={t('latitude')} />
                     </Form.Item>
@@ -107,6 +109,7 @@ const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scro
                     <Form.Item
                         name="longitude"
                         label={t('longitude')}
+                        extra="Use the exact map longitude from Google Maps for this outlet."
                     >
                         <Input placeholder={t('longitude')} />
                     </Form.Item>

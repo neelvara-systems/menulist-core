@@ -5,11 +5,11 @@
 
 import { getMetadataProjectsList } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { ProjectMetadata } from '@template/main-app/projects/types';
+import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
 import { useEffect, useMemo } from 'react';
-import { LuCheck, LuCheckCircle, LuChevronDown, LuFolderOpen, LuXCircle } from 'react-icons/lu';
+import { LuCheck, LuChevronDown, LuFolderOpen, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
 
 const { Text } = Typography;
@@ -43,14 +43,35 @@ interface Props {
     onReady?: () => void;
 }
 
-type DashboardProject = ProjectMetadata & { active?: boolean };
+type DashboardProject = ProjectMetadata & {
+    active?: boolean;
+    isSpecialMenu?: boolean;
+    specialMenuEndsAt?: string;
+    specialMenuStatus?: SpecialMenuStatus;
+};
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
+type ResolvedSpecialMenuStatus = SpecialMenuStatus | null;
 
 const getProjectStatus = (project: DashboardProject | null | undefined): ProjectStatus => {
     if ((project as any)?.deleted === true) return 'deleted';
     if (project?.active === false) return 'inactive';
     return 'active';
+};
+
+const getResolvedSpecialMenuStatus = (
+    project: DashboardProject | null | undefined
+): ResolvedSpecialMenuStatus => {
+    if (!project?.isSpecialMenu) return null;
+    if (project.specialMenuStatus === 'cancelled') return 'cancelled';
+    if (project.specialMenuStatus === 'expired') return 'expired';
+
+    const endsAtMs = project.specialMenuEndsAt ? new Date(project.specialMenuEndsAt).getTime() : null;
+    if (endsAtMs != null && Number.isFinite(endsAtMs) && endsAtMs <= Date.now()) {
+        return 'expired';
+    }
+
+    return project.specialMenuStatus || 'scheduled';
 };
 
 const renderStatusTag = (status: ProjectStatus) => {
@@ -74,14 +95,25 @@ const renderStatusTag = (status: ProjectStatus) => {
             </Tag>
         );
     }
-    return (
-        <Tag color="success" style={{ marginInlineEnd: 0 }}>
-            <Flex align="center" gap={4}>
-                <LuCheckCircle size={13} />
-                <span>Active</span>
-            </Flex>
-        </Tag>
-    );
+    return null;
+};
+
+const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus) => {
+    if (!status) return null;
+
+    if (status === 'expired') {
+        return <Tag color="warning" style={{ marginInlineEnd: 0 }}>Ended</Tag>;
+    }
+
+    if (status === 'active') {
+        return <Tag color="success" style={{ marginInlineEnd: 0 }}>Special</Tag>;
+    }
+
+    if (status === 'scheduled') {
+        return <Tag color="processing" style={{ marginInlineEnd: 0 }}>Scheduled</Tag>;
+    }
+
+    return <Tag style={{ marginInlineEnd: 0 }}>Cancelled</Tag>;
 };
 
 const renderDefaultTag = (isDefault?: boolean) => (
@@ -137,6 +169,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     </Avatar>
                     <Text style={{ flex: 1 }}>{p.name}</Text>
                     {renderDefaultTag(p.isDefault)}
+                    {renderSpecialMenuTag(getResolvedSpecialMenuStatus(p))}
                     {renderStatusTag(getProjectStatus(p))}
                     {p.projectId === selectedProjectId && <LuCheck size={14} color={token.colorPrimary} />}
                 </Flex>
@@ -170,6 +203,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     {selectedProject?.name || 'Select catalog'}
                 </Text>
                 {renderDefaultTag(selectedProject?.isDefault)}
+                {renderSpecialMenuTag(getResolvedSpecialMenuStatus(selectedProject))}
                 {renderStatusTag(getProjectStatus(selectedProject))}
                 <LuChevronDown size={14} color={token.colorTextSecondary} />
             </Flex>

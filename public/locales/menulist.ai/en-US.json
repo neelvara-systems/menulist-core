@@ -1050,7 +1050,10 @@
         "proratedCharge": "Prorated charge today:",
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
-        "chainWideRules": "Set chain-wide rules for all outlets."
+        "chainWideRules": "Set chain-wide rules for all outlets.",
+        "reset": "Reset",
+        "saveChanges": "Save",
+        "noChangesToSave": "No changes to save"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

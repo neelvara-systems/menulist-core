@@ -214,23 +214,27 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('name')}</Text>
+                                <Text type="secondary">Enter the staff member's real name so owners can identify the account later.</Text>
                                 <Input onChange={setNewUserName} placeholder={t('staffName')} value={newUserName} />
                             </Flex>
                         </Card>
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('emailLabel')}</Text>
+                                <Text type="secondary">Use the email they will sign in with. It should be active and accessible by that person.</Text>
                                 <Input onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" value={newUserEmail} />
                             </Flex>
                         </Card>
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('phone')}</Text>
+                                <Text type="secondary">Optional, but useful for contact and account recovery context.</Text>
                                 <Input onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" value={newUserPhone} />
                             </Flex>
                         </Card>
                         {roles.length > 0 ? (
                             <Card title={t('role')}>
+                                <Text type="secondary">Choose the permission set this staff member should start with.</Text>
                                 <Flex gap={8} wrap>
                                     {roles.map((role: any) => (
                                         <Button key={role.id} fill={newUserRole === role.id ? 'solid' : 'outline'} onClick={() => setNewUserRole(role.id)} size="small">

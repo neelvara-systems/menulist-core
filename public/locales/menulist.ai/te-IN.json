@@ -963,7 +963,10 @@
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
         "chainWideRules": "Set chain-wide rules for all outlets.",
-        "subtitle": "మీ స్థానాలను చూడండి, స్టోర్ కాన్టెక్స్ట్ మార్చండి మరియు ఔట్‌లెట్ విధానాలను నియంత్రించండి."
+        "subtitle": "మీ స్థానాలను చూడండి, స్టోర్ కాన్టెక్స్ట్ మార్చండి మరియు ఔట్‌లెట్ విధానాలను నియంత్రించండి.",
+        "reset": "Reset",
+        "saveChanges": "Save",
+        "noChangesToSave": "No changes to save"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

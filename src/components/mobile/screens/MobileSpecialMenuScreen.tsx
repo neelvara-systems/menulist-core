@@ -181,6 +181,7 @@ function CreateSpecialMenuSheet({
                         <Flex gap={14} vertical>
                             <Flex gap={4} vertical>
                                 <Text strong>{t('baseMenuLabel')}</Text>
+                                <Text type="secondary">Choose which existing menu this special menu should start from.</Text>
                                 <Select
                                     onChange={setBaseProjectId}
                                     options={baseProjectOptions}
@@ -191,6 +192,7 @@ function CreateSpecialMenuSheet({
 
                             <Flex gap={4} vertical>
                                 <Text strong>{t('nameLabel')}</Text>
+                                <Text type="secondary">Give the special menu a clear public name like Summer Specials or Weekend Brunch.</Text>
                                 <Input
                                     maxLength={100}
                                     onChange={setDisplayName}
@@ -217,6 +219,7 @@ function CreateSpecialMenuSheet({
 
                             <Flex gap={4} vertical>
                                 <Text strong>{t('startsLabel')}</Text>
+                                <Text type="secondary">Choose when this special menu should start appearing.</Text>
                                 <Input
                                     onChange={setStartsAt}
                                     type={allowTimeScheduling ? 'datetime-local' : 'date'}
@@ -226,6 +229,7 @@ function CreateSpecialMenuSheet({
 
                             <Flex gap={4} vertical>
                                 <Text strong>{t('endsLabel')}</Text>
+                                <Text type="secondary">Choose when this special menu should stop appearing automatically.</Text>
                                 <Input
                                     onChange={setEndsAt}
                                     type={allowTimeScheduling ? 'datetime-local' : 'date'}
@@ -389,6 +393,7 @@ function EditSpecialMenuSheet({
                         <Flex gap={14} vertical>
                             <Flex gap={4} vertical>
                                 <Text strong>{t('nameLabel')}</Text>
+                                <Text type="secondary">Use the public-facing name customers should see for this special menu.</Text>
                                 <Input
                                     maxLength={100}
                                     onChange={setDisplayName}
@@ -399,6 +404,7 @@ function EditSpecialMenuSheet({
 
                             <Flex gap={4} vertical>
                                 <Text strong>{tProjectSelector('description')}</Text>
+                                <Text type="secondary">Optional short note to explain what is included or why this menu is special.</Text>
                                 <TextArea
                                     maxLength={300}
                                     onChange={setDescription}
@@ -411,6 +417,7 @@ function EditSpecialMenuSheet({
 
                             <Flex gap={4} vertical>
                                 <Text strong>{`${t('startsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
+                                <Text type="secondary">This controls when customers first see the special menu.</Text>
                                 <Input
                                     onChange={setStartsAt}
                                     type={allowTimeScheduling ? 'datetime-local' : 'date'}
@@ -420,6 +427,7 @@ function EditSpecialMenuSheet({
 
                             <Flex gap={4} vertical>
                                 <Text strong>{`${t('endsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
+                                <Text type="secondary">This controls when the special menu automatically stops showing.</Text>
                                 <Input
                                     onChange={setEndsAt}
                                     type={allowTimeScheduling ? 'datetime-local' : 'date'}

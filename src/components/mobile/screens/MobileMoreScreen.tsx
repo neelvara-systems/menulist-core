@@ -2,13 +2,12 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
-import { getScreenState } from '@database/campaigns';
 import { signOutSession } from '@lib/auth/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBarChart3,
@@ -124,7 +123,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
-    const [hasDigitalScreen, setHasDigitalScreen] = useState<boolean | null>(null);
     const logoutLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressNextLogoutClickRef = useRef(false);
 
@@ -158,23 +156,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             }
         };
     }, []);
-
-    const refreshDigitalScreenState = useCallback(async () => {
-        if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {
-            setHasDigitalScreen(false);
-            return;
-        }
-        try {
-            const screenState = await getScreenState();
-            setHasDigitalScreen(Boolean(screenState?.screenToken));
-        } catch {
-            setHasDigitalScreen(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        void refreshDigitalScreenState();
-    }, [refreshDigitalScreenState]);
 
     const openSubScreen = (nextScreen: MoreSubScreen) => {
         const shellScrollContainer = document.querySelector<HTMLElement>('[data-mobile-shell-scroll="true"]');
@@ -222,9 +203,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const feedbackTag: ItemStatusTag = storeDetails?.feedbackEnabled !== false
         ? { color: 'success', label: tShare('feedbackOn') }
         : { color: 'default', label: tShare('feedbackOff') };
-    const screenTag: ItemStatusTag = hasDigitalScreen
-        ? { color: 'success', label: tShare('screensReady') }
-        : { color: 'default', label: tShare('screensNotSetUp') };
 
     const moduleItems: MoreListItem[] = [
         { key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') },
@@ -233,7 +211,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
         { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') },
-        { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), statusTag: screenTag, onClick: () => openSubScreen('digitalScreens') },
+        { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') },
         { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
         { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
     ];

@@ -963,7 +963,10 @@
         "daysLeftInCycle": "{days} days left in cycle",
         "cancel": "Cancel",
         "chainWideRules": "Set chain-wide rules for all outlets.",
-        "subtitle": "راجع مواقعك، وبدّل سياق المتجر، وتحكم في سياسات الفروع."
+        "subtitle": "راجع مواقعك، وبدّل سياق المتجر، وتحكم في سياسات الفروع.",
+        "reset": "Reset",
+        "saveChanges": "Save",
+        "noChangesToSave": "No changes to save"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

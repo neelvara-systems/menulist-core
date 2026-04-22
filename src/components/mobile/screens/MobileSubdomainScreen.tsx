@@ -88,6 +88,7 @@ export default function MobileSubdomainScreen({ onBack }: MobileSubdomainScreenP
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('subdomainLabel')}</Text>
+                                <Text type="secondary">This becomes your MenuList web address. Keep it short, readable, and based on your business name.</Text>
                                 <Input onChange={setValue} placeholder="your-business" value={value} />
                                 <Text type="secondary">{t('subdomainHelp')}</Text>
                                 {availability ? (

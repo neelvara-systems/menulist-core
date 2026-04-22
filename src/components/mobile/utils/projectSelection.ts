@@ -2,6 +2,7 @@
 
 type ProjectLike = {
     active?: boolean;
+    deleted?: boolean;
     isDefault?: boolean;
     name?: string | null;
     projectId?: string | null;
@@ -42,13 +43,15 @@ export function resolveMobileSelectedProject<T extends ProjectLike>(
     projects: T[],
     preferredProjectId?: string | null,
 ) {
-    const activeProjects = projects.filter((project) => project.active !== false);
-    const selectionPool = activeProjects.length ? activeProjects : projects;
+    const availableProjects = projects.filter((project) => project.deleted !== true);
+    const activeProjects = availableProjects.filter((project) => project.active !== false);
+    const selectionPool = activeProjects.length ? activeProjects : availableProjects.length ? availableProjects : projects;
 
     if (!selectionPool.length) return null;
 
     if (preferredProjectId) {
-        const preferredProject = selectionPool.find((project) => project.projectId === preferredProjectId);
+        const preferredProject = availableProjects.find((project) => project.projectId === preferredProjectId)
+            || projects.find((project) => project.projectId === preferredProjectId);
         if (preferredProject) return preferredProject;
     }
 

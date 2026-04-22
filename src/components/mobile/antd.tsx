@@ -169,6 +169,28 @@ function buttonStyles(token: ReturnType<typeof theme.useToken>['token'], fill?: 
     return undefined;
 }
 
+function disabledButtonStyles(token: ReturnType<typeof theme.useToken>['token'], fill?: string) {
+    if (fill === 'none') {
+        return { background: 'transparent', borderColor: 'transparent', boxShadow: 'none', color: token.colorTextDisabled };
+    }
+
+    if (fill === 'outline') {
+        return {
+            backgroundColor: token.colorBgContainerDisabled,
+            borderColor: token.colorBorder,
+            boxShadow: 'none',
+            color: token.colorTextDisabled,
+        };
+    }
+
+    return {
+        backgroundColor: token.colorBgContainerDisabled,
+        borderColor: token.colorBorder,
+        boxShadow: 'none',
+        color: token.colorTextDisabled,
+    };
+}
+
 type ButtonProps = {
     block?: boolean;
     children?: ReactNode;
@@ -192,6 +214,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
     const touchSafeStyle = fill !== 'none'
         ? { minHeight: touchMinHeight, paddingInline: (block || antSize !== 'small') ? 14 : undefined }
         : undefined;
+    const visualStyle = disabled ? disabledButtonStyles(token, fill) : buttonStyles(token, fill, color);
 
     return (
         <AntButton
@@ -204,7 +227,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
             loading={loading}
             onClick={onClick}
             size={antSize}
-            style={{ ...buttonStyles(token, fill, color), ...touchSafeStyle, ...sanitizeStyle(style) }}
+            style={{ ...visualStyle, ...touchSafeStyle, ...sanitizeStyle(style) }}
             type={antType}
         >
             {children}

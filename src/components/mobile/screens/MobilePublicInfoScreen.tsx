@@ -113,6 +113,7 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                             <LuMapPin size={14} />
                             <Text type="secondary">{t('address')}</Text>
                         </Flex>
+                        <Text type="secondary">Enter the full customer-facing address for this business location. Avoid internal notes, directions for staff, or temporary text.</Text>
                         <Input
                             onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
                             placeholder={t('streetAddress')}
@@ -157,6 +158,7 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                             <LuMapPin size={14} />
                             <Text type="secondary">{`${t('latitude')} / ${t('longitude')}`}</Text>
                         </Flex>
+                        <Text type="secondary">Paste the exact map coordinates from Google Maps for this outlet. This helps maps, directions, and local search show the right location.</Text>
                         <Input
                             onChange={(value) => setFormData((previous) => ({ ...previous, latitude: value }))}
                             placeholder={t('latitude')}

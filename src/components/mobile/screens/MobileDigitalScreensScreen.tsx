@@ -12,7 +12,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, NavBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, NavBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -185,10 +185,13 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             deleted: resolvedProject.deleted === true,
                             id: resolvedProject.projectId,
                             isDefault: resolvedProject.isDefault,
+                            isSpecialMenu: resolvedProject.isSpecialMenu === true,
                             name: resolvedProject.name || tProjectSelector('untitled'),
+                            specialMenuEndsAt: resolvedProject.specialMenuEndsAt,
+                            specialMenuStatus: resolvedProject.specialMenuStatus,
                         }}
-                        helperText="Menu Board and Highlights use this project"
                         onClick={() => setIsProjectSelectorOpen(true)}
+                        rightContent={resolvedProject.active !== false ? <Tag color="success">{tProjectSelector('statusActive')}</Tag> : null}
                     />
                 ) : null}
 
@@ -316,7 +319,14 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                             <Button
                                                 color="danger"
                                                 fill="none"
-                                                onClick={() => void handleDeleteSlide(slide.id)}
+                                                onClick={() => {
+                                                    void Dialog.confirm({
+                                                        cancelText: 'Cancel',
+                                                        confirmText: 'Delete slide',
+                                                        content: `Delete "${slide.caption || 'Custom Slide'}" from Highlights? This removes it from your custom slides list and it will stop showing on digital screens right away.`,
+                                                        onConfirm: () => void handleDeleteSlide(slide.id),
+                                                    });
+                                                }}
                                                 size="small"
                                                 style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
                                             >

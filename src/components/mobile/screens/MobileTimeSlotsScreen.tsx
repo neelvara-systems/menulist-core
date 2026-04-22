@@ -246,6 +246,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text strong>{t('name')}</Text>
+                                <Text type="secondary">Choose a short label customers and staff can understand quickly, like Lunch, Happy Hour, or Dinner.</Text>
                                 <Input maxLength={30} onChange={setFormLabel} placeholder={t('namePlaceholder')} value={formLabel} />
                             </Flex>
                         </Card>
@@ -254,10 +255,12 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                             <Flex gap={10}>
                                 <Flex style={{ flex: 1 }} vertical>
                                     <Text strong>{t('startTime')}</Text>
+                                    <Text type="secondary">When this slot begins.</Text>
                                     <Input onChange={setFormStart} type="time" value={formStart} />
                                 </Flex>
                                 <Flex style={{ flex: 1 }} vertical>
                                     <Text strong>{t('endTime')}</Text>
+                                    <Text type="secondary">When this slot ends.</Text>
                                     <Input onChange={setFormEnd} type="time" value={formEnd} />
                                 </Flex>
                             </Flex>

@@ -158,6 +158,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuClock size={14} />
                             <Text type="secondary">{tBusiness('timeZone')}</Text>
                         </Flex>
+                        <Text type="secondary">Choose the local time zone for this outlet. Working hours, schedules, and date-based automations use this setting.</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, timeZone: value }))}
                             options={TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))}
@@ -170,6 +171,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('dateFormat')}</Text>
+                        <Text type="secondary">This controls how dates are shown to your team inside the app.</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
                             options={DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))}
@@ -182,6 +184,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('timeFormat')}</Text>
+                        <Text type="secondary">Pick the clock style your team reads most easily, like 12-hour or 24-hour time.</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, timeFormat: value }))}
                             options={TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))}
@@ -219,6 +222,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuGlobe size={14} />
                             <Text type="secondary">{tBusiness('defaultLanguage')}</Text>
                         </Flex>
+                        <Text type="secondary">This is the main language used first when editing or creating menu content.</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, defaultLanguage: value }))}
                             options={availableDefaultLanguages}
@@ -234,6 +238,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuDollarSign size={14} />
                             <Text type="secondary">{t('currency')}</Text>
                         </Flex>
+                        <Text type="secondary">Set the currency customers should see on prices for this outlet.</Text>
                         <Select
                             onChange={handleCurrencyChange}
                             options={currencyOptions}

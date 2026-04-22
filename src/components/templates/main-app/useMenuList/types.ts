@@ -10,6 +10,9 @@ export interface ProjectLink {
     isDefault: boolean;
     active?: boolean;
     deleted?: boolean;
+    isSpecialMenu?: boolean;
+    specialMenuEndsAt?: string;
+    specialMenuStatus?: 'scheduled' | 'active' | 'expired' | 'cancelled';
     url: string;
     feedbackUrl: string;
     feedbackQrUrl: string;
