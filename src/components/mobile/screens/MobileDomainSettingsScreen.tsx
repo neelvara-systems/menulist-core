@@ -239,6 +239,12 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     <Flex gap={8} vertical>
                         <Text strong>{t('subdomain')}</Text>
                         <Text type="secondary">{t('subdomainSetupNote')}</Text>
+                        <Alert
+                            description={t('subdomainChangeWarning')}
+                            message={t('subdomainLockedMessage')}
+                            showIcon
+                            type="warning"
+                        />
                         {storeDetails?.isMaster === false ? (
                             <>
                                 <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : t('outletSubdomainInfo')}</Text>

@@ -15,8 +15,7 @@ function shouldShowBadge(): boolean {
 
 export default function DeploymentBuildBadge() {
     const [isVisible, setIsVisible] = useState(false);
-    const [serverTimestamp, setServerTimestamp] = useState<string>('');
-    const [localNow, setLocalNow] = useState<string>('');
+    const [buildCreatedAt, setBuildCreatedAt] = useState<string>('');
 
     useEffect(() => {
         const fromUrl = shouldShowBadge();
@@ -56,13 +55,13 @@ export default function DeploymentBuildBadge() {
             try {
                 const res = await fetch('/api/version', { cache: 'no-store' });
                 if (!res.ok) return;
-                const data = await res.json() as { timestamp?: string };
+                const data = await res.json() as { buildCreatedAt?: string };
                 if (isMounted) {
-                    setServerTimestamp(data?.timestamp || '');
+                    setBuildCreatedAt(data?.buildCreatedAt || '');
                 }
             } catch {
                 if (isMounted) {
-                    setServerTimestamp('');
+                    setBuildCreatedAt('');
                 }
             }
         };
@@ -73,24 +72,12 @@ export default function DeploymentBuildBadge() {
         };
     }, [isVisible]);
 
-    useEffect(() => {
-        if (!isVisible) return;
-        const update = () => {
-            setLocalNow(new Date().toLocaleString());
-        };
-        update();
-        const interval = window.setInterval(update, 1000);
-        return () => {
-            window.clearInterval(interval);
-        };
-    }, [isVisible]);
-
-    const serverTimeLabel = useMemo(() => {
-        if (!serverTimestamp) return '';
-        const parsed = new Date(serverTimestamp);
-        if (Number.isNaN(parsed.getTime())) return serverTimestamp;
+    const buildCreatedAtLabel = useMemo(() => {
+        if (!buildCreatedAt || buildCreatedAt === 'unknown') return '';
+        const parsed = new Date(buildCreatedAt);
+        if (Number.isNaN(parsed.getTime())) return buildCreatedAt;
         return parsed.toLocaleString();
-    }, [serverTimestamp]);
+    }, [buildCreatedAt]);
 
     if (process.env.NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE === 'false' || !isVisible) {
         return null;
@@ -121,8 +108,7 @@ export default function DeploymentBuildBadge() {
             title={process.env.NEXT_PUBLIC_DEPLOYMENT_URL || undefined}
         >
             <div>{buildLabel}</div>
-            {serverTimeLabel ? <div>Server: {serverTimeLabel}</div> : null}
-            {localNow ? <div>Now: {localNow}</div> : null}
+            {buildCreatedAtLabel ? <div>Build: {buildCreatedAtLabel}</div> : null}
         </div>
     );
 }

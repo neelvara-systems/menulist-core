@@ -1145,23 +1145,6 @@ export default function MobileMenuScreen() {
         return map;
     }, [isItemEffectivelyActive, menuItems, priceOutlierItemIds]);
 
-    const categoryHasSignals = useMemo(() => {
-        const map = new Map<string, boolean>();
-
-        categoryIssueSummary.forEach((summary, categoryId) => {
-            map.set(
-                categoryId,
-                summary.missingPrices > 0
-                || summary.missingImages > 0
-                || summary.hidden > 0
-                || summary.priceOutliers > 0
-                || summary.missingDescriptions > 0
-            );
-        });
-
-        return map;
-    }, [categoryIssueSummary]);
-
     const filteredItems = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
         return menuItems.filter((item) => {
@@ -2018,29 +2001,31 @@ export default function MobileMenuScreen() {
                         </Flex>
                     ) : null}
 
-                    <Flex
-                        align="center"
-                        gap={12}
-                        style={{
-                            WebkitOverflowScrolling: 'touch',
-                            flexWrap: 'nowrap',
-                            overflowX: 'auto',
-                            paddingBottom: 2,
-                            scrollbarWidth: 'none',
-                        }}
-                    >
-                        {listingStatusLegend.map((status) => (
-                            <StatusDot color={status.color} key={status.key} label={status.label} />
-                        ))}
-                        <Button
-                            fill="none"
-                            onClick={() => setIsStatusLegendSheetOpen(true)}
-                            size="mini"
-                            style={{ flexShrink: 0, minWidth: 24, paddingInline: 0 }}
+                    {listingStatusLegend.length > 0 ? (
+                        <Flex
+                            align="center"
+                            gap={12}
+                            style={{
+                                WebkitOverflowScrolling: 'touch',
+                                flexWrap: 'nowrap',
+                                overflowX: 'auto',
+                                paddingBottom: 2,
+                                scrollbarWidth: 'none',
+                            }}
                         >
-                            <LuInfo size={14} />
-                        </Button>
-                    </Flex>
+                            {listingStatusLegend.map((status) => (
+                                <StatusDot color={status.color} key={status.key} label={status.label} />
+                            ))}
+                            <Button
+                                fill="none"
+                                onClick={() => setIsStatusLegendSheetOpen(true)}
+                                size="mini"
+                                style={{ flexShrink: 0, minWidth: 24, paddingInline: 0 }}
+                            >
+                                <LuInfo size={14} />
+                            </Button>
+                        </Flex>
+                    ) : null}
 
                     <Flex align="center" justify="space-between">
                         <Text style={{ lineHeight: 1.25 }} type="secondary">
@@ -2201,17 +2186,6 @@ export default function MobileMenuScreen() {
                                                     </Flex>
                                                 ) : null}
                                             </Flex>
-                                            {categoryHasSignals.get(id) ? (
-                                                <div
-                                                    style={{
-                                                        backgroundColor: token.colorWarning,
-                                                        borderRadius: '999px',
-                                                        flex: '0 0 auto',
-                                                        height: 8,
-                                                        width: 8,
-                                                    }}
-                                                />
-                                            ) : null}
                                             {id !== 'uncategorized' ? (
                                                 <Flex
                                                     align="center"

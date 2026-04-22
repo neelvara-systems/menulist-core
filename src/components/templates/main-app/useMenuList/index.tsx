@@ -831,31 +831,43 @@ export default function UseMenuList() {
                     />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <AssetCard
-                        icon={<LuMessageSquare size={20} />}
-                        title="Feedback QR"
-                        description="Near exit or counter"
-                        loading={generatingAsset === 'Feedback QR'}
-                        onDownload={async () => {
-                            if (!data.feedbackLink) {
-                                message.info('Feedback is not enabled');
-                                return;
-                            }
-                            setGeneratingAsset('Feedback QR');
-                            try {
-                                const { generateFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
-                                const qrDataUrl = await generateFeedbackQrCode(data.projectId!);
-                                downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
-                                message.success('Feedback QR downloaded');
-                            } catch {
-                                message.error('Failed to generate Feedback QR');
-                            } finally {
-                                setGeneratingAsset(null);
-                            }
-                        }}
-                        disabled={!data.hasFeedbackEnabled || !data.projectId}
-                        themeToken={themeToken}
-                    />
+                    {data.hasFeedbackEnabled ? (
+                        <AssetCard
+                            icon={<LuMessageSquare size={20} />}
+                            title="Feedback QR"
+                            description="Near exit or counter"
+                            loading={generatingAsset === 'Feedback QR'}
+                            onDownload={async () => {
+                                if (!data.feedbackLink) {
+                                    message.info('Feedback is not enabled');
+                                    return;
+                                }
+                                setGeneratingAsset('Feedback QR');
+                                try {
+                                    const { generateFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
+                                    const qrDataUrl = await generateFeedbackQrCode(data.projectId!);
+                                    downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
+                                    message.success('Feedback QR downloaded');
+                                } catch {
+                                    message.error('Failed to generate Feedback QR');
+                                } finally {
+                                    setGeneratingAsset(null);
+                                }
+                            }}
+                            disabled={!data.projectId}
+                            themeToken={themeToken}
+                        />
+                    ) : (
+                        <Card size="small" styles={{ body: { padding: 14 } }} style={{ height: '100%' }}>
+                            <Flex vertical gap={8} align="center" justify="center" style={{ textAlign: 'center', height: '100%' }}>
+                                <div style={{ color: themeToken.colorTextSecondary }}>
+                                    <LuMessageSquare size={20} />
+                                </div>
+                                <Text strong style={{ fontSize: 13 }}>Feedback</Text>
+                                <Tag color="default">Feedback is disabled currently</Tag>
+                            </Flex>
+                        </Card>
+                    )}
                 </Col>
                 <Col xs={12} sm={8}>
                     <AssetCard

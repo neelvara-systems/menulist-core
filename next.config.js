@@ -11,6 +11,7 @@ const withNextIntl = createNextIntlPlugin();
 // Disable memory-heavy webpack plugins on Vercel preview builds
 // Production deploys (VERCEL_ENV=production) get full PWA
 const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
+const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().toISOString();
 
 
 
@@ -19,6 +20,7 @@ const nextConfig = {
         NEXT_PUBLIC_BUILD_ID: process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'local',
         NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV || process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
         NEXT_PUBLIC_DEPLOYMENT_URL: process.env.NEXT_PUBLIC_DEPLOYMENT_URL || process.env.VERCEL_URL || '',
+        NEXT_PUBLIC_BUILD_CREATED_AT: buildCreatedAt,
         NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE: process.env.NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE || 'true',
     },
     sassOptions: {

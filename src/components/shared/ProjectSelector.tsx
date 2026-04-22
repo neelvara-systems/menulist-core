@@ -133,8 +133,9 @@ export function ProjectSelectorTrigger({
                     justifyContent: 'flex-start',
                     paddingBlock: 10,
                     paddingInline: 14,
-                    borderColor: token.colorBorder,
-                    background: token.colorFillQuaternary,
+                    borderColor: token.colorBorderSecondary,
+                    background: token.colorBgContainer,
+                    boxShadow: 'none',
                 }}
             >
                 {content}

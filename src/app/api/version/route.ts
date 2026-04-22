@@ -6,6 +6,10 @@ export async function GET() {
     const buildId = process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_BUILD_ID || 'unknown';
     const env = process.env.VERCEL_ENV || process.env.NEXT_PUBLIC_ENV || process.env.NODE_ENV || 'unknown';
     const deploymentUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_DEPLOYMENT_URL || '';
+    const buildCreatedAt =
+        process.env.NEXT_PUBLIC_BUILD_CREATED_AT ||
+        process.env.VERCEL_GIT_COMMIT_TIMESTAMP ||
+        'unknown';
 
     return NextResponse.json(
         {
@@ -13,7 +17,7 @@ export async function GET() {
             shortBuildId: buildId === 'unknown' ? buildId : buildId.slice(0, 7),
             env,
             deploymentUrl,
-            timestamp: new Date().toISOString(),
+            buildCreatedAt,
         },
         {
             status: 200,

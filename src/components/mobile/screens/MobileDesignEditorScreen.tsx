@@ -4,8 +4,6 @@ import {
     BRAND_COLOR_PRESETS,
     DEFAULTS,
     getCompatibleLayouts,
-    HOME_STYLES,
-    HomeStyle,
     MENU_LAYOUTS,
     MENU_MOODS,
     MenuLayout,
@@ -18,7 +16,8 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuCheckCircle, LuChevronDown, LuExternalLink, LuPalette, LuXCircle } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuExternalLink, LuPalette } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -30,7 +29,6 @@ interface QuickPreset {
     key: string;
     label: string;
     description: string;
-    homeStyle: HomeStyle;
     mood: MenuMood;
     layout: MenuLayout;
     accentColor: string;
@@ -42,7 +40,6 @@ const QUICK_PRESETS: QuickPreset[] = [
         key: 'fresh',
         label: 'Fresh & Clean',
         description: 'Professional, modern look',
-        homeStyle: HomeStyle.SIMPLE,
         mood: MenuMood.CLEAN,
         layout: MenuLayout.LIST,
         accentColor: '#22c55e',
@@ -52,7 +49,6 @@ const QUICK_PRESETS: QuickPreset[] = [
         key: 'warm',
         label: 'Warm & Cozy',
         description: 'Inviting, family-friendly',
-        homeStyle: HomeStyle.SIMPLE,
         mood: MenuMood.WARM,
         layout: MenuLayout.CARD,
         accentColor: '#f97316',
@@ -62,7 +58,6 @@ const QUICK_PRESETS: QuickPreset[] = [
         key: 'bold',
         label: 'Bold & Modern',
         description: 'Eye-catching, energetic',
-        homeStyle: HomeStyle.BOLD,
         mood: MenuMood.BOLD,
         layout: MenuLayout.GRID,
         accentColor: '#3b82f6',
@@ -102,7 +97,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
-    const homeStyle = draftProjectData?.config?.design?.home?.style || DEFAULTS.home.style;
     const menuMood = draftProjectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
     const menuLayout = draftProjectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
     const showImages = draftProjectData?.config?.design?.menu?.showImages ?? true;
@@ -124,38 +118,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         false,
     ), [draftProjectData?.name, selectedProjectSummary?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
     const isProjectSelectorClickable = projectsList.length > 1 && !isPublishing;
-    const projectStatusTag = useMemo(() => {
-        if (selectedProjectSummary?.deleted === true) {
-            return (
-                <Tag color="error" style={{ marginInlineEnd: 0 }}>
-                    <Flex align="center" gap={4}>
-                        <LuXCircle size={13} />
-                        <span>{tProjectSelector('statusDeleted')}</span>
-                    </Flex>
-                </Tag>
-            );
-        }
-
-        if (selectedProjectSummary?.active === false) {
-            return (
-                <Tag color="error" style={{ marginInlineEnd: 0 }}>
-                    <Flex align="center" gap={4}>
-                        <LuXCircle size={13} />
-                        <span>{tProjectSelector('statusInactive')}</span>
-                    </Flex>
-                </Tag>
-            );
-        }
-
-        return (
-            <Tag color="success" style={{ marginInlineEnd: 0 }}>
-                <Flex align="center" gap={4}>
-                    <LuCheckCircle size={13} />
-                    <span>{tProjectSelector('statusActive')}</span>
-                </Flex>
-            </Tag>
-        );
-    }, [selectedProjectSummary?.active, selectedProjectSummary?.deleted, tProjectSelector]);
 
     useEffect(() => {
         if (!selectedProject) {
@@ -183,7 +145,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         });
     }, []);
 
-    const handleHomeStyleChange = (style: HomeStyle) => updateDesign(['config', 'design', 'home', 'style'], style);
     const handleMoodChange = (mood: MenuMood) => {
         setDraftProjectData((prev: any) => {
             if (!prev) return prev;
@@ -218,7 +179,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             const copy = cloneProjectData(prev);
             if (!copy.config) copy.config = {};
             if (!copy.config.design) copy.config.design = {};
-            copy.config.design.home = { ...copy.config.design.home, style: preset.homeStyle };
             copy.config.design.menu = {
                 ...copy.config.design.menu,
                 mood: preset.mood,
@@ -314,54 +274,20 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     subtitle={t('subtitle')}
                     title={t('title')}
                 />
-                {isProjectSelectorClickable ? (
-                    <Button
-                        block
-                        onClick={() => setIsProjectSelectorOpen(true)}
-                        size="large"
-                        style={{
-                            height: 'auto',
-                            justifyContent: 'flex-start',
-                            paddingBlock: 12,
-                            paddingInline: 14,
-                        }}
-                    >
-                        <Flex gap={6} style={{ width: '100%' }} vertical>
-                            <Flex align="center" justify="space-between" style={{ width: '100%' }}>
-                                <Text strong style={{ flex: 1, textAlign: 'left' }}>
-                                    {selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled')}
-                                </Text>
-                                <Flex align="center" gap={8}>
-                                    {projectStatusTag}
-                                    <LuChevronDown color={token.colorTextSecondary} size={14} />
-                                </Flex>
-                            </Flex>
-                            <Text style={{ fontSize: 12, textAlign: 'left' }} type="secondary">
-                                Design changes save only to this menu.
-                            </Text>
-                        </Flex>
-                    </Button>
-                ) : (
-                    <Card size="small">
-                        <Flex gap={6} vertical>
-                            <Flex align="center" justify="space-between" style={{ width: '100%' }}>
-                                <Text strong style={{ flex: 1, textAlign: 'left' }}>
-                                    {selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled')}
-                                </Text>
-                                {projectStatusTag}
-                            </Flex>
-                            <Text style={{ fontSize: 12 }} type="secondary">
-                                Design changes save only to this menu.
-                            </Text>
-                        </Flex>
-                    </Card>
-                )}
+                <ProjectSelectorTrigger
+                    clickable={isProjectSelectorClickable}
+                    currentProject={{
+                        active: selectedProjectSummary?.active !== false,
+                        deleted: selectedProjectSummary?.deleted === true,
+                        id: selectedProjectId || 'current',
+                        isDefault: selectedProjectSummary?.isDefault,
+                        name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
+                    }}
+                    helperText="Design changes save only to this menu."
+                    onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}
+                />
                 <Card size="small" title={<Text strong>Current style</Text>}>
                     <List>
-                        <List.Item
-                            title={<Text>{t('homePageStyle')}</Text>}
-                            extra={<Text>{HOME_STYLES[homeStyle]?.label || homeStyle}</Text>}
-                        />
                         <List.Item
                             title={<Text>{t('menuMood')}</Text>}
                             extra={<Text>{MENU_MOODS[menuMood]?.label || menuMood}</Text>}
@@ -384,7 +310,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     <Flex gap={8} wrap>
                         {QUICK_PRESETS.map((preset) => {
                             const isActive =
-                                homeStyle === preset.homeStyle &&
                                 menuMood === preset.mood &&
                                 menuLayout === preset.layout;
                             return (
@@ -404,25 +329,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                         <Text type="secondary">{preset.description}</Text>
                                     </Flex>
                                 </Card>
-                            );
-                        })}
-                    </Flex>
-                </SectionCard>
-
-                <SectionCard title={t('homePageStyle')} subtitle={t('homePageStyleSubtitle')}>
-                    <Flex gap={8} vertical>
-                        {Object.entries(HOME_STYLES).map(([key, config]) => {
-                            const styleKey = key as HomeStyle;
-                            const isSelected = homeStyle === styleKey;
-                            return (
-                                <OptionRow
-                                    key={key}
-                                    label={config.label}
-                                    description={config.description}
-                                    isSelected={isSelected}
-                                    onSelect={() => handleHomeStyleChange(styleKey)}
-                                    previewColor={config.background}
-                                />
                             );
                         })}
                     </Flex>

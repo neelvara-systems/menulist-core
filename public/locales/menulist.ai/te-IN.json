@@ -217,6 +217,8 @@
         "subdomainPlaceholder": "your-business",
         "subdomainHelp": "This is your unique link on MenuList. Customers access your menu at yourname.menulist.ai. Use lowercase letters, numbers, and hyphens only.",
         "subdomainSetupNote": "This is usually created from your business name during setup. You can change it here if needed.",
+        "subdomainLockedMessage": "Your web address is set.",
+        "subdomainChangeWarning": "If you change this, old links will stop working. Replace all QR codes and update anywhere this link is shared.",
         "minChars": "Must be at least 3 characters",
         "maxChars": "Must be at most 63 characters",
         "subdomainPattern": "Only lowercase letters, numbers, and hyphens. Cannot start or end with a hyphen.",

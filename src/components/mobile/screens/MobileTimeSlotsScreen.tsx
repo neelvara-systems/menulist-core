@@ -83,6 +83,21 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
         setIsFormOpen(true);
     };
 
+    const handleResetForm = () => {
+        if (editingPreset) {
+            setFormLabel(editingPreset.label);
+            setFormStart(editingPreset.startTime);
+            setFormEnd(editingPreset.endTime);
+            setFormColor(editingPreset.color || PRESET_COLORS[0]);
+            return;
+        }
+
+        setFormLabel('');
+        setFormStart('09:00');
+        setFormEnd('17:00');
+        setFormColor(PRESET_COLORS[presets.length % PRESET_COLORS.length]);
+    };
+
     const handleSave = async () => {
         const label = formLabel.trim();
         if (!label) return Toast.show({ content: t('enterName'), duration: 1500 });
@@ -214,9 +229,15 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             <Popup bodyStyle={{ maxHeight: '84vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setIsFormOpen(false)} visible={isFormOpen}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar
-                        backIcon={<LuX size={20} />}
-                        onBack={() => setIsFormOpen(false)}
-                        right={<Button fill="none" onClick={() => void handleSave()}><Flex align="center" gap={4}><LuCheck size={16} /><Text>{isSaving ? t('saving') : t('save')}</Text></Flex></Button>}
+                        right={(
+                            <Button
+                                fill="none"
+                                onClick={() => setIsFormOpen(false)}
+                                style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            >
+                                <LuX size={18} />
+                            </Button>
+                        )}
                     >
                         {editingPreset ? t('editTimeSlot') : t('newTimeSlot')}
                     </NavBar>
@@ -263,6 +284,26 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                 ))}
                             </Flex>
                         </Card>
+                    </Flex>
+
+                    <Flex
+                        gap={8}
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            bottom: 0,
+                            padding: '12px 16px',
+                            position: 'sticky',
+                            zIndex: 20,
+                        }}
+                    >
+                        <Button block disabled={isSaving} fill="outline" onClick={handleResetForm} size="large" style={{ minHeight: 44 }}>
+                            Reset
+                        </Button>
+                        <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                            {t('save')}
+                        </Button>
                     </Flex>
                 </Flex>
             </Popup>

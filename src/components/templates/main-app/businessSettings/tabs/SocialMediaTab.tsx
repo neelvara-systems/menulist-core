@@ -1,7 +1,7 @@
-import { Button, Card, Divider, Flex, Input, Typography } from 'antd';
+import { Button, Card, Flex, Input, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuPlus, LuTrash } from 'react-icons/lu';
-import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
+import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandYoutube } from 'react-icons/tb';
 
 const { Title, Text } = Typography;
 
@@ -22,97 +22,112 @@ const defaultPlatforms: SocialMediaPlatform[] = [
     { key: 'instagram', icon: TbBrandInstagram, placeholder: 'Instagram profile URL' },
     { key: 'twitter', icon: TbBrandTwitter, placeholder: 'Twitter profile URL' },
     { key: 'linkedin', icon: TbBrandLinkedin, placeholder: 'LinkedIn profile URL' },
-    { key: 'youtube', icon: TbBrandYoutube, placeholder: 'YouTube channel URL' },
-    { key: 'whatsapp', icon: TbBrandWhatsapp, placeholder: 'WhatsApp number with country code' }
+    { key: 'youtube', icon: TbBrandYoutube, placeholder: 'YouTube channel URL' }
 ];
 
 const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia, setSocialMedia }) => {
     const t = useTranslations('BusinessSettings');
+    const defaultPlatformKeys = defaultPlatforms.map((platform) => platform.key);
+    const customPlatforms = Object.entries(socialMedia).filter(([key]) => !defaultPlatformKeys.includes(key) && key !== 'whatsapp');
+
     return (
         <Card size='small' ref={scrollRef}>
-            <Title level={5} style={{ margin: "unset" }}>{t('socialMedia')}</Title>
-            <Button
-                type="link"
-                icon={<LuPlus />}
-                style={{ float: 'right', marginTop: '-28px' }}
-                onClick={() => {
-                    let newKey = '';
-                    let counter = 1;
-                    while (newKey in socialMedia) {
-                        newKey = `${counter}`;
-                        counter++;
-                    }
-                    setSocialMedia({ ...socialMedia, [newKey]: '' });
-                }}
-            >
-                {t('addPlatform')}
-            </Button>
-            <Divider />
-
             <Flex vertical gap={16}>
-                {/* Default social media platforms */}
-                {defaultPlatforms.map(({ key, icon: Icon, placeholder }) => {
-                    const value = socialMedia[key] || '';
-                    return (
-                        <Flex key={key} gap={8}>
-                            <Text style={{ minWidth: 150, textTransform: 'capitalize' }}>{key}</Text>
-                            <Input
-                                allowClear
-                                prefix={<Icon />}
-                                placeholder={placeholder}
-                                value={value}
-                                onChange={(e) => {
-                                    setSocialMedia({
-                                        ...socialMedia,
-                                        [key]: e.target.value
-                                    });
-                                }}
-                            />
-                        </Flex>
-                    );
-                })}
+                <Flex align="flex-start" justify="space-between" gap={16}>
+                    <Flex vertical gap={4}>
+                        <Title level={5} style={{ margin: 0 }}>{t('socialMedia')}</Title>
+                        <Text type="secondary">
+                            Add the public social profiles customers should open. WhatsApp stays under official page phone settings.
+                        </Text>
+                    </Flex>
+                    <Button
+                        type="link"
+                        icon={<LuPlus />}
+                        onClick={() => {
+                            let newKey = '';
+                            let counter = 1;
+                            while (newKey in socialMedia || !newKey) {
+                                newKey = `platform_${counter}`;
+                                counter++;
+                            }
+                            setSocialMedia({ ...socialMedia, [newKey]: '' });
+                        }}
+                    >
+                        {t('addPlatform')}
+                    </Button>
+                </Flex>
 
-                {/* Custom social media platforms */}
-                {Object.entries(socialMedia)
-                    .filter(([key]) => !defaultPlatforms.map(p => p.key).includes(key))
-                    .map(([key, value]) => (
-                        <Flex key={key} gap={8}>
-                            <Input
-                                allowClear
-                                style={{ minWidth: 150 }}
-                                placeholder={t('platformName')}
-                                value={key}
-                                onChange={(e) => {
-                                    if (e.target.value && e.target.value !== key) {
-                                        const newState = { ...socialMedia };
-                                        delete newState[key];
-                                        newState[e.target.value.toLowerCase()] = value;
-                                        setSocialMedia(newState);
-                                    }
-                                }}
-                            />
-                            <Input
-                                allowClear
-                                placeholder={t('profileUrl')}
-                                value={value}
-                                onChange={(e) => {
-                                    setSocialMedia({
-                                        ...socialMedia,
-                                        [key]: e.target.value
-                                    });
-                                }}
-                            />
-                            <Button
-                                danger
-                                icon={<LuTrash />}
-                                onClick={() => {
-                                    const newState = { ...socialMedia };
-                                    delete newState[key];
-                                    setSocialMedia(newState);
-                                }}
-                            />
-                        </Flex>
-                    ))}
+                <Flex vertical gap={12}>
+                    {defaultPlatforms.map(({ key, icon: Icon, placeholder }) => {
+                        const value = socialMedia[key] || '';
+                        return (
+                            <Card key={key} size="small">
+                                <Flex gap={10} vertical>
+                                    <Text strong style={{ textTransform: 'capitalize' }}>{key}</Text>
+                                    <Input
+                                        allowClear
+                                        prefix={<Icon />}
+                                        placeholder={placeholder}
+                                        value={value}
+                                        onChange={(e) => {
+                                            setSocialMedia({
+                                                ...socialMedia,
+                                                [key]: e.target.value
+                                            });
+                                        }}
+                                    />
+                                </Flex>
+                            </Card>
+                        );
+                    })}
+                </Flex>
+
+                {customPlatforms.length > 0 ? (
+                    <Flex vertical gap={12}>
+                        {customPlatforms.map(([key, value]) => (
+                            <Card key={key} size="small">
+                                <Flex gap={10} vertical>
+                                    <Flex align="center" gap={8}>
+                                        <Input
+                                            allowClear
+                                            style={{ minWidth: 180 }}
+                                            placeholder={t('platformName')}
+                                            value={key}
+                                            onChange={(e) => {
+                                                if (e.target.value && e.target.value !== key) {
+                                                    const newState = { ...socialMedia };
+                                                    delete newState[key];
+                                                    newState[e.target.value.toLowerCase()] = value;
+                                                    setSocialMedia(newState);
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            danger
+                                            icon={<LuTrash />}
+                                            onClick={() => {
+                                                const newState = { ...socialMedia };
+                                                delete newState[key];
+                                                setSocialMedia(newState);
+                                            }}
+                                        />
+                                    </Flex>
+                                    <Input.TextArea
+                                        autoSize={{ minRows: 2, maxRows: 4 }}
+                                        placeholder={t('profileUrl')}
+                                        value={value}
+                                        onChange={(e) => {
+                                            setSocialMedia({
+                                                ...socialMedia,
+                                                [key]: e.target.value
+                                            });
+                                        }}
+                                    />
+                                </Flex>
+                            </Card>
+                        ))}
+                    </Flex>
+                ) : null}
             </Flex>
         </Card>
     );

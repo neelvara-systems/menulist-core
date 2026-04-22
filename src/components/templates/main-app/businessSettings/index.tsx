@@ -73,6 +73,20 @@ interface WorkingHourSlot {
     end: dayjs.Dayjs | null;
 }
 
+function sanitizeSocialMediaMap(source?: Record<string, string> | null) {
+    const cleaned: Record<string, string> = {};
+
+    Object.entries(source || {}).forEach(([key, value]) => {
+        const normalizedKey = key.trim().toLowerCase();
+        const normalizedValue = value?.trim();
+
+        if (!normalizedKey || normalizedKey === 'whatsapp' || !normalizedValue) return;
+        cleaned[normalizedKey] = normalizedValue;
+    });
+
+    return cleaned;
+}
+
 function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     const t = useTranslations('BusinessSettings');
     const format = useFormatter();
@@ -366,7 +380,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     // Initialize imageUrl from storeDetails if it exists
     useEffect(() => {
         if (storeDetails?.socialMedia) {
-            setSocialMedia(storeDetails?.socialMedia);
+            setSocialMedia(sanitizeSocialMediaMap(storeDetails?.socialMedia));
         }
         if (storeDetails?.workingHours) {
             const hours = Object.entries(storeDetails?.workingHours).map(
@@ -449,7 +463,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             changesToUpload.imageType = selectedFile.type;
         }
 
-        changesToUpload.socialMedia = socialMedia;
+        changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
         changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
 
         // Feedback settings (managed as React state, not Form fields)

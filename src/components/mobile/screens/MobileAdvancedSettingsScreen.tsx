@@ -4,10 +4,10 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useMemo, useState } from 'react';
-import { LuExternalLink, LuMessageSquare, LuPlus, LuShare2, LuX } from 'react-icons/lu';
-import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
-import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Toast } from '../antd';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { LuExternalLink, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
+import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandYoutube } from 'react-icons/tb';
+import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileAdvancedSettingsScreenProps {
@@ -63,6 +63,27 @@ function normalizeAndValidateSocialLink(value: string, platformKey: string): { n
     }
 }
 
+function sanitizeSocialMediaMap(source: Record<string, string> | null | undefined): Record<string, string> {
+    const cleaned: Record<string, string> = {};
+
+    Object.entries(source || {}).forEach(([key, value]) => {
+        const normalizedKey = key.trim().toLowerCase();
+        const normalizedValue = value?.trim();
+
+        if (!normalizedKey || normalizedKey === 'whatsapp' || !normalizedValue) return;
+        cleaned[normalizedKey] = normalizedValue;
+    });
+
+    return cleaned;
+}
+
+function areSocialMapsEqual(left: Record<string, string>, right: Record<string, string>) {
+    const leftEntries = Object.entries(left).sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+    const rightEntries = Object.entries(right).sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+
+    return JSON.stringify(leftEntries) === JSON.stringify(rightEntries);
+}
+
 export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
     const tMobile = useTranslations('MobileSettings');
@@ -70,8 +91,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [socialMedia, setSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
-    const [originalSocialMedia, setOriginalSocialMedia] = useState<Record<string, string>>(storeDetails?.socialMedia || {});
+    const [socialMedia, setSocialMedia] = useState<Record<string, string>>(sanitizeSocialMediaMap(storeDetails?.socialMedia));
     const [feedbackEnabled, setFeedbackEnabled] = useState(storeDetails?.feedbackEnabled !== false);
     const [collectComment, setCollectComment] = useState(storeDetails?.feedbackDefaults?.collectComment ?? true);
     const [collectCommentRequired, setCollectCommentRequired] = useState(storeDetails?.feedbackDefaults?.collectCommentRequired ?? false);
@@ -81,7 +101,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     const [collectPhoneRequired, setCollectPhoneRequired] = useState(storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false);
     const [collectEmail, setCollectEmail] = useState(storeDetails?.feedbackDefaults?.collectEmail ?? true);
     const [collectEmailRequired, setCollectEmailRequired] = useState(storeDetails?.feedbackDefaults?.collectEmailRequired ?? false);
-    const [originalFeedbackDraft, setOriginalFeedbackDraft] = useState<FeedbackDraft>(() => getInitialFeedbackDraft(storeDetails));
     const [isSocialPickerOpen, setIsSocialPickerOpen] = useState(false);
     const [editingPlatformKey, setEditingPlatformKey] = useState<string | null>(null);
     const [editingPlatformLabel, setEditingPlatformLabel] = useState('');
@@ -105,7 +124,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         { key: 'facebook', label: 'Facebook', placeholder: 'Facebook profile URL', icon: TbBrandFacebook },
         { key: 'instagram', label: 'Instagram', placeholder: 'Instagram profile URL', icon: TbBrandInstagram },
         { key: 'twitter', label: 'X (Twitter)', placeholder: 'Twitter profile URL', icon: TbBrandTwitter },
-        { key: 'whatsapp', label: 'WhatsApp', placeholder: 'WhatsApp number with country code', icon: TbBrandWhatsapp },
         { key: 'youtube', label: 'YouTube', placeholder: 'YouTube channel URL', icon: TbBrandYoutube },
         { key: 'linkedin', label: 'LinkedIn', placeholder: 'LinkedIn profile URL', icon: TbBrandLinkedin },
     ];
@@ -115,7 +133,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         []
     );
 
-    const linkedSocialPlatforms = useMemo(() => (
+        const linkedSocialPlatforms = useMemo(() => (
         Object.entries(socialMedia)
             .filter(([_, value]) => value?.trim())
             .map(([key, value]) => {
@@ -136,6 +154,14 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         () => SOCIAL_PLATFORMS.filter((platform) => !socialMedia[platform.key]?.trim()),
         [socialMedia]
     );
+    const socialMediaBaseline = useMemo(
+        () => sanitizeSocialMediaMap(storeDetails?.socialMedia),
+        [storeDetails?.socialMedia]
+    );
+    const feedbackDraftBaseline = useMemo(
+        () => getInitialFeedbackDraft(storeDetails),
+        [storeDetails]
+    );
 
     const saveField = async (updates: Record<string, any>) => {
         setIsSaving(true);
@@ -153,11 +179,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     };
 
     const persistSocialMedia = (nextSocialMedia: Record<string, string>) => {
-        const cleaned: Record<string, string> = {};
-        Object.entries(nextSocialMedia).forEach(([key, value]) => {
-            if (value.trim()) cleaned[key] = value.trim();
-        });
-        setSocialMedia(cleaned);
+        setSocialMedia(sanitizeSocialMediaMap(nextSocialMedia));
     };
 
     const handleOpenEditSheet = (platformKey: string) => {
@@ -300,7 +322,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         </Flex>
     );
 
-    const filledSocialCount = linkedSocialPlatforms.length;
     const feedbackDraft: FeedbackDraft = {
         collectComment,
         collectCommentRequired,
@@ -312,8 +333,8 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         collectPhoneRequired,
         feedbackEnabled,
     };
-    const isSocialDirty = showSocial && JSON.stringify(socialMedia) !== JSON.stringify(originalSocialMedia);
-    const isFeedbackDirty = showFeedback && JSON.stringify(feedbackDraft) !== JSON.stringify(originalFeedbackDraft);
+    const isSocialDirty = showSocial && !areSocialMapsEqual(socialMedia, socialMediaBaseline);
+    const isFeedbackDirty = showFeedback && JSON.stringify(feedbackDraft) !== JSON.stringify(feedbackDraftBaseline);
     const editingPlatform = editingPlatformKey ? linkedSocialPlatforms.find((platform) => platform.key === editingPlatformKey) || (
         knownPlatformMap.get(editingPlatformKey)
             ? {
@@ -331,20 +352,36 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             }
     ) : null;
 
+    useEffect(() => {
+        const nextSocialMedia = sanitizeSocialMediaMap(storeDetails?.socialMedia);
+        const nextFeedbackDraft = getInitialFeedbackDraft(storeDetails);
+
+        setSocialMedia(nextSocialMedia);
+        setFeedbackEnabled(nextFeedbackDraft.feedbackEnabled);
+        setCollectComment(nextFeedbackDraft.collectComment);
+        setCollectCommentRequired(nextFeedbackDraft.collectCommentRequired);
+        setCollectName(nextFeedbackDraft.collectName);
+        setCollectNameRequired(nextFeedbackDraft.collectNameRequired);
+        setCollectPhone(nextFeedbackDraft.collectPhone);
+        setCollectPhoneRequired(nextFeedbackDraft.collectPhoneRequired);
+        setCollectEmail(nextFeedbackDraft.collectEmail);
+        setCollectEmailRequired(nextFeedbackDraft.collectEmailRequired);
+    }, [storeDetails]);
+
     const handleReset = () => {
         if (showSocial) {
-            setSocialMedia(originalSocialMedia);
+            setSocialMedia(socialMediaBaseline);
         }
         if (showFeedback) {
-            setFeedbackEnabled(originalFeedbackDraft.feedbackEnabled);
-            setCollectComment(originalFeedbackDraft.collectComment);
-            setCollectCommentRequired(originalFeedbackDraft.collectCommentRequired);
-            setCollectName(originalFeedbackDraft.collectName);
-            setCollectNameRequired(originalFeedbackDraft.collectNameRequired);
-            setCollectPhone(originalFeedbackDraft.collectPhone);
-            setCollectPhoneRequired(originalFeedbackDraft.collectPhoneRequired);
-            setCollectEmail(originalFeedbackDraft.collectEmail);
-            setCollectEmailRequired(originalFeedbackDraft.collectEmailRequired);
+            setFeedbackEnabled(feedbackDraftBaseline.feedbackEnabled);
+            setCollectComment(feedbackDraftBaseline.collectComment);
+            setCollectCommentRequired(feedbackDraftBaseline.collectCommentRequired);
+            setCollectName(feedbackDraftBaseline.collectName);
+            setCollectNameRequired(feedbackDraftBaseline.collectNameRequired);
+            setCollectPhone(feedbackDraftBaseline.collectPhone);
+            setCollectPhoneRequired(feedbackDraftBaseline.collectPhoneRequired);
+            setCollectEmail(feedbackDraftBaseline.collectEmail);
+            setCollectEmailRequired(feedbackDraftBaseline.collectEmailRequired);
         }
     };
 
@@ -373,12 +410,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
         const didSave = await saveField(updates);
         if (!didSave) return;
-        if (showSocial) {
-            setOriginalSocialMedia(socialMedia);
-        }
-        if (showFeedback) {
-            setOriginalFeedbackDraft(feedbackDraft);
-        }
     };
 
     return (
@@ -396,58 +427,65 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
                 {showSocial ? (
                     <Flex gap={12} vertical>
+                        <Card size="small">
+                            <Text type="secondary">
+                                WhatsApp is managed from your official page phone number, so only public social profile links appear here.
+                            </Text>
+                        </Card>
+
                         {linkedSocialPlatforms.length > 0 ? (
                             <Flex gap={12} vertical>
                                 {linkedSocialPlatforms.map((platform) => (
-                                    <Flex
-                                        key={platform.key}
-                                        gap={12}
-                                        style={{
-                                            border: `1px solid ${token.colorBorderSecondary}`,
-                                            borderRadius: 8,
-                                            padding: '12px 14px',
-                                            width: '100%',
-                                        }}
-                                        vertical
-                                    >
-                                        <Flex align="center" justify="space-between" gap={12}>
-                                            <Flex gap={2} style={{ minWidth: 0, flex: 1 }} vertical>
-                                                <Flex align="center" gap={8}>
-                                                    <platform.icon color="var(--adm-color-weak)" size={16} />
-                                                    <Text strong>{platform.label}</Text>
+                                    <Card key={platform.key} size="small" style={{ borderRadius: 14 }}>
+                                        <Flex gap={12} vertical>
+                                            <Flex align="center" justify="space-between" gap={12}>
+                                                <Flex gap={2} style={{ minWidth: 0, flex: 1 }} vertical>
+                                                    <Flex align="center" gap={8}>
+                                                        <platform.icon color="var(--adm-color-weak)" size={16} />
+                                                        <Text strong>{platform.label}</Text>
+                                                    </Flex>
+                                                </Flex>
+                                                <Flex gap={8}>
+                                                    <Button
+                                                        fill="outline"
+                                                        onClick={() => openSocialLink(platform.value)}
+                                                        size="small"
+                                                        style={{ borderRadius: 10, minWidth: 36, paddingInline: 0 }}
+                                                        icon={<LuExternalLink size={12} />}
+                                                    />
+                                                    <Button
+                                                        color="primary"
+                                                        fill="outline"
+                                                        onClick={() => handleOpenEditSheet(platform.key)}
+                                                        size="small"
+                                                        style={{ borderRadius: 10, minWidth: 36, paddingInline: 0 }}
+                                                        icon={<LuPencil size={12} />}
+                                                    />
+                                                    <Button
+                                                        color="danger"
+                                                        fill="outline"
+                                                        onClick={() => {
+                                                            const nextSocialMedia = { ...socialMedia };
+                                                            delete nextSocialMedia[platform.key];
+                                                            persistSocialMedia(nextSocialMedia);
+                                                        }}
+                                                        size="small"
+                                                        style={{ borderRadius: 10, minWidth: 36, paddingInline: 0 }}
+                                                        icon={<LuTrash size={12} />}
+                                                    />
                                                 </Flex>
                                             </Flex>
-                                            <Flex gap={8}>
-                                                <Button
-                                                    fill="outline"
-                                                    onClick={() => openSocialLink(platform.value)}
-                                                    size="small"
-                                                >
-                                                    <Flex align="center" gap={6}>
-                                                        <LuExternalLink size={14} />
-                                                        <Text>Open</Text>
-                                                    </Flex>
-                                                </Button>
-                                                <Button
-                                                    color="primary"
-                                                    fill="outline"
-                                                    onClick={() => handleOpenEditSheet(platform.key)}
-                                                    size="small"
-                                                >
-                                                    Change
-                                                </Button>
-                                            </Flex>
-                                        </Flex>
 
-                                        <Text
-                                            style={{
-                                                lineHeight: 1.45,
-                                                overflowWrap: 'anywhere',
-                                            }}
-                                        >
-                                            {platform.value}
-                                        </Text>
-                                    </Flex>
+                                            <Text
+                                                style={{
+                                                    lineHeight: 1.45,
+                                                    overflowWrap: 'anywhere',
+                                                }}
+                                            >
+                                                {platform.value}
+                                            </Text>
+                                        </Flex>
+                                    </Card>
                                 ))}
                             </Flex>
                         ) : (
@@ -653,22 +691,29 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
                         {editingPlatform ? (
                             <Card size="small">
-                                <Flex gap={6} vertical>
+                                <Flex gap={10} vertical>
                                     {editingPlatform.isCustom ? (
-                                        <Input
-                                            onChange={setEditingPlatformLabel}
-                                            placeholder="Platform name"
-                                            value={editingPlatformLabel}
-                                        />
+                                        <Flex gap={6} vertical>
+                                            <Text strong>Platform name</Text>
+                                            <Input
+                                                onChange={setEditingPlatformLabel}
+                                                placeholder="Platform name"
+                                                value={editingPlatformLabel}
+                                            />
+                                        </Flex>
                                     ) : null}
-                                    <Text type="secondary">
-                                        Add the public link customers should open.
-                                    </Text>
-                                    <Input
-                                        onChange={setEditingPlatformValue}
-                                        placeholder={editingPlatform.placeholder}
-                                        value={editingPlatformValue}
-                                    />
+                                    <Flex gap={6} vertical>
+                                        <Text strong>Public link</Text>
+                                        <Text type="secondary">
+                                            Add the public link customers should open.
+                                        </Text>
+                                        <TextArea
+                                            autoSize={{ minRows: 3, maxRows: 5 }}
+                                            onChange={setEditingPlatformValue}
+                                            placeholder={editingPlatform.placeholder}
+                                            value={editingPlatformValue}
+                                        />
+                                    </Flex>
                                 </Flex>
                             </Card>
                         ) : null}
