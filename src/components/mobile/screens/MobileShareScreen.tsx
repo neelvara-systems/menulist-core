@@ -12,7 +12,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShield, LuSmartphone } from 'react-icons/lu';
+import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShare2, LuShield, LuSmartphone } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
@@ -75,6 +75,7 @@ export default function MobileShareScreen() {
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
 
     const loadData = useCallback(async () => {
         if (!storeDetails) return;
@@ -166,6 +167,10 @@ export default function MobileShareScreen() {
         void loadData();
     }, [loadData, loadingProjects, storeDetails]);
 
+    useEffect(() => {
+        setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+    }, []);
+
     const activeProject = useMemo(
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
@@ -182,7 +187,7 @@ export default function MobileShareScreen() {
             value: storeDetails?.subdomain ? generateOBPUrl(storeDetails.subdomain, storeDetails.customDomain).replace(/^https?:\/\//, '') : t('domainNotSetHelp'),
         };
 
-    const withSource = (url: string, src: 'copy' | 'direct' | 'qr') =>
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') =>
         url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
 
     const handleCopy = async (value: string, label: string) => {
@@ -197,6 +202,21 @@ export default function MobileShareScreen() {
     const handleOpenQr = (qrConfig: QrSheetState) => {
         setQrSheet(qrConfig);
         setIsQrSheetOpen(true);
+    };
+
+    const handleNativeShare = async ({ label, text, url }: { label: string; text?: string; url: string }) => {
+        if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
+
+        try {
+            await navigator.share({
+                text,
+                title: label,
+                url,
+            });
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            Toast.show({ content: t('couldNotCopy'), duration: 1500 });
+        }
     };
 
     if (isLoading || loadingProjects) {
@@ -259,6 +279,11 @@ export default function MobileShareScreen() {
                 label={t('officialBusinessLink')}
                 onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('officialBusinessLink'))}
                 onOpen={() => window.open(withSource(data.obpLink, 'direct'), '_blank')}
+                onShare={supportsNativeShare ? () => void handleNativeShare({
+                    label: t('officialBusinessLink'),
+                    text: t('offeringPageDesc', { offering: labels.offeringLower }),
+                    url: withSource(data.obpLink, 'share'),
+                }) : undefined}
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-official-page`, 'qr'),
                     helperText: t('offeringPageDesc', { offering: labels.offeringLower }),
@@ -275,6 +300,11 @@ export default function MobileShareScreen() {
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(withSource(data.menuLink, 'copy'), t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
                 onOpen={() => window.open(withSource(data.menuLink, 'direct'), '_blank')}
+                onShare={supportsNativeShare ? () => void handleNativeShare({
+                    label: t('directOfferingLink', { offering: labels.offeringTitle }),
+                    text: t('directOfferingLinkDesc', { offering: labels.offeringLower }),
+                    url: withSource(data.menuLink, 'share'),
+                }) : undefined}
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-direct-link`, 'qr'),
                     helperText: t('directOfferingLinkDesc', { offering: labels.offeringLower }),
@@ -292,6 +322,11 @@ export default function MobileShareScreen() {
                     label="Customer App install link"
                     onCopy={() => void handleCopy(withSource(data.installAppLink as string, 'copy'), 'Customer App install link')}
                     onOpen={() => window.open(withSource(data.installAppLink as string, 'direct'), '_blank')}
+                    onShare={supportsNativeShare ? () => void handleNativeShare({
+                        label: 'Customer App install link',
+                        text: 'Share this when you want customers to install your menu app directly.',
+                        url: withSource(data.installAppLink as string, 'share'),
+                    }) : undefined}
                     onShowQr={() => handleOpenQr({
                         filename: buildQrCodeFilename(`${data.storeName}-customer-app-install`, 'qr'),
                         helperText: 'Customers can scan this QR to install your menu app.',
@@ -310,6 +345,11 @@ export default function MobileShareScreen() {
                     label={t('feedbackLink')}
                     onCopy={() => void handleCopy(data.feedbackLink, t('feedbackLink'))}
                     onOpen={() => window.open(data.feedbackLink, '_blank')}
+                    onShare={supportsNativeShare ? () => void handleNativeShare({
+                        label: t('feedbackLink'),
+                        text: t('feedbackLinkDesc'),
+                        url: data.feedbackLink,
+                    }) : undefined}
                     onShowQr={() => handleOpenQr({
                         filename: buildQrCodeFilename(`${data.storeName}-feedback`, 'qr'),
                         helperText: t('feedbackLinkDesc'),
@@ -339,6 +379,11 @@ export default function MobileShareScreen() {
                         label={t('menuBoard')}
                         onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
                         onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
+                        onShare={supportsNativeShare && data.menuBoardLink ? () => void handleNativeShare({
+                            label: t('menuBoard'),
+                            text: t('menuBoardDesc', { offering: labels.offeringLower }),
+                            url: data.menuBoardLink as string,
+                        }) : undefined}
                         pendingLabel={t('notSetUpYet')}
                         statusColor={data.menuBoardLink ? 'success' : 'default'}
                         statusLabel={data.menuBoardLink ? t('ready') : t('notSetUp')}
@@ -350,6 +395,11 @@ export default function MobileShareScreen() {
                         label={t('highlightsScreen')}
                         onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
                         onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
+                        onShare={supportsNativeShare && data.highlightsLink ? () => void handleNativeShare({
+                            label: t('highlightsScreen'),
+                            text: t('highlightsScreenDesc'),
+                            url: data.highlightsLink as string,
+                        }) : undefined}
                         pendingLabel={t('notSetUpYet')}
                         statusColor={data.highlightsLink ? 'success' : 'default'}
                         statusLabel={data.highlightsLink ? t('ready') : t('notSetUp')}
@@ -424,6 +474,7 @@ function LinkCard({
     label,
     onCopy,
     onOpen,
+    onShare,
     onShowQr,
     showQrLabel,
     value,
@@ -433,6 +484,7 @@ function LinkCard({
     label: string;
     onCopy: () => void;
     onOpen: () => void;
+    onShare?: () => void;
     onShowQr: () => void;
     showQrLabel: string;
     value: string;
@@ -461,10 +513,18 @@ function LinkCard({
                 >
                     <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
                 </Card>
-                <Flex gap={8}>
+                <Flex gap={8} wrap="wrap">
                     <Button block fill="outline" onClick={onCopy} size="small">
                         {common('copy')}
                     </Button>
+                    {onShare ? (
+                        <Button block fill="outline" onClick={onShare} size="small">
+                            <Flex align="center" gap={6}>
+                                <LuShare2 size={14} />
+                                <Text>Share</Text>
+                            </Flex>
+                        </Button>
+                    ) : null}
                     <Button block onClick={onShowQr} size="small">
                         {showQrLabel}
                     </Button>
@@ -480,6 +540,7 @@ function ScreenCard({
     label,
     onCopy,
     onOpen,
+    onShare,
     pendingLabel,
     statusColor,
     statusLabel,
@@ -490,6 +551,7 @@ function ScreenCard({
     label: string;
     onCopy?: () => void;
     onOpen?: () => void;
+    onShare?: () => void;
     pendingLabel: string;
     statusColor: StatusTone;
     statusLabel: string;
@@ -523,10 +585,18 @@ function ScreenCard({
                 </Flex>
                 <Text type="secondary">{description}</Text>
                 <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
-                <Flex gap={8}>
+                <Flex gap={8} wrap="wrap">
                     <Button block fill="outline" onClick={onCopy} size="small">
                         {common('copy')}
                     </Button>
+                    {onShare ? (
+                        <Button block fill="outline" onClick={onShare} size="small">
+                            <Flex align="center" gap={6}>
+                                <LuShare2 size={14} />
+                                <Text>Share</Text>
+                            </Flex>
+                        </Button>
+                    ) : null}
                     <Button block onClick={onOpen} size="small">
                         {common('open')}
                     </Button>

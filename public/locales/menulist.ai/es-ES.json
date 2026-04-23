@@ -376,7 +376,12 @@
         "keywordsHelp": "Add words or phrases that describe your restaurant, cuisine type, and popular dishes. Separate with commas.",
         "canonicalUrl": "Canonical URL",
         "canonicalUrlPlaceholder": "https://example.com/page",
-        "canonicalUrlHelp": "If your menu website appears on multiple domains, enter the main website URL here to avoid duplicate content issues."
+        "canonicalUrlHelp": "If your menu website appears on multiple domains, enter the main website URL here to avoid duplicate content issues.",
+        "previewCardTitle": "Preview Card",
+        "previewCardHelp": "Shows how your title, description, and URL can appear in WhatsApp and social previews.",
+        "whatsAppPreview": "WhatsApp Preview",
+        "metaPreview": "Meta Tag Preview",
+        "notSet": "Not set"
     },
     "Analytics": {
         "title": "Analytics Settings",

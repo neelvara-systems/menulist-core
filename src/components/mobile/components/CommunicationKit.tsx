@@ -3,8 +3,8 @@
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState } from 'react';
-import { LuCheck, LuCopy, LuMessageSquare } from 'react-icons/lu';
+import { useEffect, useMemo, useState } from 'react';
+import { LuCheck, LuCopy, LuMessageSquare, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Text, Title, Toast } from '../antd';
 
 interface MobileCommunicationKitProps {
@@ -61,6 +61,11 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
     const t = useTranslations('MobileCommunicationKit');
     const { token } = theme.useToken();
     const [copied, setCopied] = useState(false);
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+
+    useEffect(() => {
+        setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+    }, []);
 
     const handleCopy = async () => {
         try {
@@ -69,6 +74,20 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
             Toast.show({ content: t('messageCopied'), duration: 1500 });
             setTimeout(() => setCopied(false), 2000);
         } catch {
+            Toast.show({ content: t('copyFailed'), duration: 1500 });
+        }
+    };
+
+    const handleShare = async () => {
+        if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
+
+        try {
+            await navigator.share({
+                text: template.message,
+                title: template.title,
+            });
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
             Toast.show({ content: t('copyFailed'), duration: 1500 });
         }
     };
@@ -83,7 +102,7 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                 <Card style={{ backgroundColor: token.colorFillAlter }}>
                     <Text>{template.message}</Text>
                 </Card>
-                <Flex gap={8}>
+                <Flex gap={8} wrap="wrap">
                     <Button
                         block
                         color="success"
@@ -95,6 +114,14 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                             <Text>{t('whatsApp')}</Text>
                         </Flex>
                     </Button>
+                    {supportsNativeShare ? (
+                        <Button block fill="outline" onClick={() => void handleShare()} size="small">
+                            <Flex align="center" gap={6}>
+                                <LuShare2 size={14} />
+                                <Text>Share</Text>
+                            </Flex>
+                        </Button>
+                    ) : null}
                     <Button block fill="outline" onClick={() => void handleCopy()} size="small">
                         <Flex align="center" gap={6}>
                             {copied ? <LuCheck size={14} /> : <LuCopy size={14} />}

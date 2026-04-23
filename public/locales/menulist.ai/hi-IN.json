@@ -376,7 +376,12 @@
         "keywordsHelp": "अपने रेस्तरां, व्यंजन प्रकार और लोकप्रिय व्यंजनों का वर्णन करने वाले शब्द या वाक्यांश जोड़ें। कॉमा से अलग करें।",
         "canonicalUrl": "कैनोनिकल URL",
         "canonicalUrlPlaceholder": "https://example.com/page",
-        "canonicalUrlHelp": "यदि आपकी मेनू वेबसाइट कई डोमेन पर दिखाई देती है, तो डुप्लिकेट सामग्री समस्याओं से बचने के लिए यहां मुख्य वेबसाइट URL दर्ज करें।"
+        "canonicalUrlHelp": "यदि आपकी मेनू वेबसाइट कई डोमेन पर दिखाई देती है, तो डुप्लिकेट सामग्री समस्याओं से बचने के लिए यहां मुख्य वेबसाइट URL दर्ज करें।",
+        "previewCardTitle": "Preview Card",
+        "previewCardHelp": "Shows how your title, description, and URL can appear in WhatsApp and social previews.",
+        "whatsAppPreview": "WhatsApp Preview",
+        "metaPreview": "Meta Tag Preview",
+        "notSet": "Not set"
     },
     "Analytics": {
         "title": "एनालिटिक्स सेटिंग्स",

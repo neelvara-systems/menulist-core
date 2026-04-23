@@ -2,6 +2,7 @@
 import { Card, Divider, Form, Input, Select, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo } from 'react';
+import SeoPreviewCard from './SeoPreviewCard';
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
@@ -12,6 +13,16 @@ interface SeoTabProps {
 
 function SeoTab({ scrollRef }: SeoTabProps) {
     const t = useTranslations('SEO');
+    const businessName = Form.useWatch('name');
+    const canonicalUrl = Form.useWatch('canonicalUrl');
+    const customDomain = Form.useWatch('customDomain');
+    const keywords = Form.useWatch('keywords');
+    const logoUrl = Form.useWatch('logo');
+    const metaDescription = Form.useWatch('metaDescription');
+    const metaTitle = Form.useWatch('metaTitle');
+    const subdomain = Form.useWatch('subdomain');
+    const tagline = Form.useWatch('tagline');
+
     return (
         <Card size='small' ref={scrollRef}>
             <Title level={5} style={{ margin: "unset" }}>{t('title')}</Title>
@@ -60,6 +71,18 @@ function SeoTab({ scrollRef }: SeoTabProps) {
             >
                 <Input placeholder={t('canonicalUrlPlaceholder')} />
             </Form.Item>
+
+            <SeoPreviewCard
+                businessName={businessName}
+                canonicalUrl={canonicalUrl}
+                customDomain={customDomain}
+                keywords={keywords}
+                logoUrl={logoUrl}
+                metaDescription={metaDescription}
+                metaTitle={metaTitle}
+                subdomain={subdomain}
+                tagline={tagline}
+            />
 
             {/* <Form.Item
                 label="Schema Markup Type"

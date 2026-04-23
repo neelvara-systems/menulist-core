@@ -214,7 +214,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('name')}</Text>
-                                <Text type="secondary">Enter the staff member's real name so owners can identify the account later.</Text>
+                                <Text type="secondary">Enter the staff member&apos;s real name so owners can identify the account later.</Text>
                                 <Input onChange={setNewUserName} placeholder={t('staffName')} value={newUserName} />
                             </Flex>
                         </Card>

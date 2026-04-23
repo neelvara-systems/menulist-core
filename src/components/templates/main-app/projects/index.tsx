@@ -4,7 +4,7 @@ import LoadingMessage from '@antdComponent/loadingMessage';
 import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import GlobalLanguagesList from '@data/languages';
-import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
+import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, setProjectActive, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import useDeviceType from '@hook/useDeviceType';
@@ -510,11 +510,16 @@ function ProjectsPage() {
                     name: sanitizedName,
                     description: sanitizedDescription,
                 };
+                const nextActive = values.active !== false;
+                const activeChanged = (editingProject as any).active !== nextActive;
                 if (promoteThisAsDefault) {
                     updatePayload.isDefault = true;
                 }
-                const updatedProject = { ...editingProject, ...updatePayload };
+                const updatedProject = { ...editingProject, ...updatePayload, active: nextActive };
                 await updateProjectMetadata(editingProject.projectId!, updatePayload);
+                if (activeChanged) {
+                    await setProjectActive(editingProject.projectId!, nextActive);
+                }
                 // G-13: if this was promoted to default, flip the previous
                 // default off so there is exactly one isDefault project.
                 if (promoteThisAsDefault && otherDefault?.projectId) {
@@ -535,7 +540,11 @@ function ProjectsPage() {
                 );
                 message.success(`${offeringName} updated successfully`);
             } else {
-                const newProject = await addProject({ name: sanitizedName, description: sanitizedDescription });
+                const newProject = await addProject({
+                    name: sanitizedName,
+                    description: sanitizedDescription,
+                    active: values.active !== false,
+                });
                 if (newProject) {
                     setSelectedProject(newProject.summaryData);
                     // Update SWR cache (single source of truth)
@@ -694,12 +703,16 @@ function ProjectsPage() {
         if (project) {
             setEditingProject(project);
             form.setFieldsValue({
+                active: (project as any).active !== false,
                 name: project.name,
                 description: project.description
             });
         } else {
             setEditingProject(null);
             form.resetFields();
+            form.setFieldsValue({
+                active: true,
+            });
         }
         setIsModalOpen(true);
     };

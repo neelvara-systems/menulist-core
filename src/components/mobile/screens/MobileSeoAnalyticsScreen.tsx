@@ -8,6 +8,7 @@ import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
 
 interface MobileSeoAnalyticsScreenProps {
     onBack: () => void;
@@ -428,6 +429,17 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 </FieldGroup>
                             </Flex>
                         </Card>
+                        <SeoPreviewCard
+                            businessName={storeDetails?.name}
+                            canonicalUrl={canonicalUrl}
+                            customDomain={storeDetails?.customDomain}
+                            keywords={keywords}
+                            logoUrl={storeDetails?.logo}
+                            metaDescription={metaDescription}
+                            metaTitle={metaTitle}
+                            subdomain={storeDetails?.subdomain}
+                            tagline={tagline}
+                        />
                         <Flex
                             gap={8}
                             style={{

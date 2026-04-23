@@ -1,10 +1,11 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Button, Flex, Form, FormInstance, Input, Modal } from "antd";
+import { Button, Flex, Form, FormInstance, Input, Modal, Switch } from "antd";
 import { ProjectMetadata } from '../types';
 
 export interface ProjectFormData {
     name: string;
     description?: string;
+    active?: boolean;
 }
 
 
@@ -62,7 +63,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 form={form}
                 layout="vertical"
                 onFinish={onSubmit}
-                initialValues={{}}
+                initialValues={{ active: true }}
             >
                 <Form.Item
                     name="name"
@@ -81,6 +82,13 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         maxLength={200}
                         showCount
                     />
+                </Form.Item>
+                <Form.Item
+                    name="active"
+                    label="Active"
+                    valuePropName="checked"
+                >
+                    <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                 </Form.Item>
             </Form>
         </Modal>

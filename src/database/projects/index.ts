@@ -494,6 +494,8 @@ export const uploadProjectFile = async (
 export const addProject = async (data: Partial<ProjectMetadata>) => {
     return await apiCallComposer(
         async () => {
+            const isActive = data.active !== false;
+
             // Generate project ID
             let projectId = data.projectId;
             if (!projectId) {
@@ -507,7 +509,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
                 projectId,
                 files: [],
                 // Lifecycle flags (for Cloud Function query efficiency)
-                active: true,
+                active: isActive,
                 deleted: false,
                 config: {
                     design: {
@@ -544,7 +546,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             const summaryData: ProjectSummaryData = {
                 name: data.name || "Untitled",
                 ...(data.description != null ? { description: data.description } : {}),
-                active: true,
+                active: isActive,
                 isDefault: data.isDefault ?? false,
                 slug: projectSlug,
             };

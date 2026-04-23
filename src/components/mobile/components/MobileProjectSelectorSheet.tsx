@@ -12,7 +12,7 @@ import { useContext, useMemo, useState, type CSSProperties, type ReactNode } fro
 import { LuArchiveRestore, LuCopy, LuExternalLink, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
 type ProjectSheetProject = {
     active?: boolean;
@@ -103,6 +103,7 @@ export default function MobileProjectSelectorSheet({
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
+    const [formActive, setFormActive] = useState(true);
     const [formStartsAt, setFormStartsAt] = useState('');
     const [formEndsAt, setFormEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -163,6 +164,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
+        setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
         setIsSubmitting(false);
@@ -174,6 +176,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
+        setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
     };
@@ -183,6 +186,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(project.projectId);
         setFormName(project.name);
         setFormDescription(project.description || '');
+        setFormActive(project.active !== false);
         setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(project.specialMenuEndsAt));
     };
@@ -192,6 +196,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(project.projectId);
         setFormName(`Copy of ${project.name}`);
         setFormDescription(project.description || '');
+        setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
     };
@@ -239,6 +244,7 @@ export default function MobileProjectSelectorSheet({
         try {
             if (formMode === 'create') {
                 const result = await addProject({
+                    active: formActive,
                     description: nextDescription || undefined,
                     name: nextName,
                 });
@@ -263,6 +269,8 @@ export default function MobileProjectSelectorSheet({
                     description: nextDescription || undefined,
                     name: nextName,
                 };
+                const nextActive = formActive;
+                const activeChanged = formSourceProject?.active !== nextActive;
 
                 if (isEditingSpecialMenu) {
                     metadataUpdate.specialMenuDisplayName = nextName;
@@ -271,6 +279,9 @@ export default function MobileProjectSelectorSheet({
                 }
 
                 await updateProjectMetadata(formProjectId, metadataUpdate);
+                if (activeChanged) {
+                    await setProjectActive(formProjectId, nextActive);
+                }
 
                 if (isEditingSpecialMenu) {
                     await updateProjectWithoutLoader({
@@ -305,6 +316,7 @@ export default function MobileProjectSelectorSheet({
         ? (
             formName.trim() !== initialFormName.trim() ||
             formDescription.trim() !== initialFormDescription.trim() ||
+            formActive !== (formSourceProject?.active !== false) ||
             (isEditingSpecialMenu && (
                 fromNativeDateTimeValue(formStartsAt) !== initialFormStartsAt ||
                 fromNativeDateTimeValue(formEndsAt) !== initialFormEndsAt
@@ -316,6 +328,7 @@ export default function MobileProjectSelectorSheet({
         if (!formSourceProject) return;
         setFormName(formSourceProject.name || '');
         setFormDescription(formSourceProject.description || '');
+        setFormActive(formSourceProject.active !== false);
         setFormStartsAt(toNativeDateTimeValue(formSourceProject.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(formSourceProject.specialMenuEndsAt));
     };
@@ -708,6 +721,16 @@ export default function MobileProjectSelectorSheet({
                                 <TextArea maxLength={300} onChange={setFormDescription} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
                                 <Text type="secondary">Only for you. Customers do not see this description.</Text>
                             </Flex>
+
+                            {formMode !== 'duplicate' ? (
+                                <Flex align="center" justify="space-between" gap={12}>
+                                    <Flex gap={4} vertical>
+                                        <Text strong>Active</Text>
+                                        <Text type="secondary">Inactive menus stay hidden until you enable them.</Text>
+                                    </Flex>
+                                    <Switch checked={formActive} onChange={setFormActive} />
+                                </Flex>
+                            ) : null}
                         </Flex>
                     </Card>
 
