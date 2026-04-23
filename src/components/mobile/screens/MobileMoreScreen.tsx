@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { signOutSession } from '@lib/auth/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -29,6 +30,7 @@ import {
     LuSparkles,
     LuTv,
     LuUsers,
+    LuX,
 } from 'react-icons/lu';
 import { Avatar, Card, Dialog, Flex, List, Tag, Text, Title, Toast } from '../antd';
 
@@ -73,6 +75,7 @@ const MobileIntegrationsScreen = dynamic(() => import('./MobileIntegrationsScree
 const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr: false });
 const MobileTodayHistoryScreen = dynamic(() => import('./MobileTodayHistoryScreen'), { ssr: false });
 const MobileCustomerAppScreen = dynamic(() => import('./MobileCustomerAppScreen'), { ssr: false });
+const MobilePresenceMonitorScreen = dynamic(() => import('./MobilePresenceMonitorScreen'), { ssr: false });
 
 export type MoreSubScreen =
     | 'main'
@@ -104,7 +107,8 @@ export type MoreSubScreen =
     | 'integrations'
     | 'posSync'
     | 'todayHistory'
-    | 'customerApp';
+    | 'customerApp'
+    | 'presenceMonitor';
 
 interface MobileMoreScreenProps {
     initialScreen?: MoreSubScreen;
@@ -119,6 +123,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tFeedback = useTranslations('FeedbackInbox');
     const tShare = useTranslations('MobileShare');
     const tPosSync = useTranslations('PosSync');
+    const tPresence = useTranslations('MobilePresenceMonitor');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [subScreen, setSubScreen] = useState<MoreSubScreen>(initialScreen);
     const mainScrollTopRef = useRef(0);
@@ -202,6 +208,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const businessPresenceItems: MoreListItem[] = [
         { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openSubScreen('officialPage') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color="#0f766e" size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp profile links.', onClick: () => openSubScreen('presenceMonitor') }] : []),
         { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, keywords: ['instagram', 'facebook', 'zomato', 'swiggy', 'social links'], label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') },
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, keywords: ['amenities', 'wifi', 'parking', 'veg', 'pet friendly', 'attributes'], label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
         { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, keywords: ['seo', 'meta title', 'meta description', 'keywords', 'canonical', 'tagline'], label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
@@ -272,6 +279,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     if (subScreen === 'posSync') return <MobilePosSyncScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'todayHistory') return <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'customerApp') return <MobileCustomerAppScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'presenceMonitor') return <MobilePresenceMonitorScreen onBack={() => setSubScreen('main')} />;
 
     const handleLogout = () => {
         void Dialog.confirm({
@@ -329,27 +337,47 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     <div
                         style={{
                             alignItems: 'center',
-                            border: '1px solid #e2e8f0',
+                            backgroundColor: token.colorFillAlter,
+                            border: `1px solid ${token.colorBorderSecondary}`,
                             borderRadius: 12,
                             display: 'flex',
                             gap: 8,
                             padding: '10px 12px',
                         }}
                     >
-                        <LuSearch color="#64748b" size={16} />
+                        <LuSearch color={token.colorTextQuaternary} size={16} />
                         <input
                             onChange={(event) => setSearchQuery(event.target.value)}
                             placeholder="Search settings"
                             style={{
                                 background: 'transparent',
                                 border: 'none',
-                                color: 'inherit',
+                                color: token.colorText,
                                 flex: 1,
                                 fontSize: 15,
                                 outline: 'none',
                             }}
                             value={searchQuery}
                         />
+                        {searchQuery ? (
+                            <button
+                                aria-label="Clear search"
+                                onClick={() => setSearchQuery('')}
+                                style={{
+                                    alignItems: 'center',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: token.colorTextQuaternary,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    padding: 0,
+                                }}
+                                type="button"
+                            >
+                                <LuX size={16} />
+                            </button>
+                        ) : null}
                     </div>
                 </Flex>
             </Card>

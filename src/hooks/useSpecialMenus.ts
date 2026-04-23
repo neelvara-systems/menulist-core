@@ -37,6 +37,21 @@ interface SpecialMenuListResponse {
     activeMenuId: string | null;
 }
 
+function sortSpecialMenus(specialMenus: SpecialMenuListItem[]): SpecialMenuListItem[] {
+    const order: Record<SpecialMenuStatus, number> = {
+        active: 0,
+        scheduled: 1,
+        expired: 2,
+        cancelled: 3,
+    };
+
+    return [...specialMenus].sort((a, b) => {
+        const diff = (order[a.status] ?? 4) - (order[b.status] ?? 4);
+        if (diff !== 0) return diff;
+        return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+    });
+}
+
 export interface UseSpecialMenusReturn {
     specialMenus: SpecialMenuListItem[];
     activeMenuId: string | null;
@@ -47,6 +62,7 @@ export interface UseSpecialMenusReturn {
     error: any;
     refresh: () => void;
     createSpecialMenu: (data: {
+        allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
         mode: SpecialMenuMode;
@@ -54,6 +70,7 @@ export interface UseSpecialMenusReturn {
         endsAt: string;
     }) => Promise<{ success: boolean; projectId?: string; error?: string }>;
     updateSpecialMenu: (data: {
+        allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;
@@ -90,8 +107,23 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
         mutate();
     }, [mutate]);
 
+    const mutateSpecialMenus = useCallback(
+        async (updater: (current: SpecialMenuListResponse) => SpecialMenuListResponse) => {
+            await mutate((current) => {
+                if (!current) return current;
+                const next = updater(current);
+                return {
+                    ...next,
+                    specialMenus: sortSpecialMenus(next.specialMenus),
+                };
+            }, { revalidate: false });
+        },
+        [mutate],
+    );
+
     const createSpecialMenu = useCallback(
         async (data: {
+            allowOverlap?: boolean;
             baseProjectId: string;
             displayName: string;
             mode: SpecialMenuMode;
@@ -111,6 +143,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
 
     const updateSpecialMenu = useCallback(
         async (data: {
+            allowOverlap?: boolean;
             projectId: string;
             description?: string;
             displayName: string;
@@ -119,52 +152,100 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
         }) => {
             try {
                 await dalUpdate(data);
-                mutate();
+                const nextStatus: SpecialMenuStatus = new Date(data.startsAt).getTime() <= Date.now()
+                    ? "active"
+                    : "scheduled";
+
+                await mutateSpecialMenus((current) => ({
+                    ...current,
+                    activeMenuId: nextStatus === "active"
+                        ? data.projectId
+                        : current.activeMenuId === data.projectId
+                            ? null
+                            : current.activeMenuId,
+                    specialMenus: current.specialMenus.map((menu) => (
+                        menu.projectId === data.projectId
+                            ? {
+                                ...menu,
+                                description: data.description,
+                                displayName: data.displayName,
+                                endsAt: data.endsAt,
+                                startsAt: data.startsAt,
+                                status: nextStatus,
+                            }
+                            : nextStatus === "active" && menu.status === "active"
+                                ? { ...menu, status: "expired" }
+                                : menu
+                    )),
+                }));
                 return { success: true };
             } catch (e: any) {
                 return { success: false, error: e.message };
             }
         },
-        [mutate],
+        [mutateSpecialMenus],
     );
 
     const activateMenu = useCallback(
         async (projectId: string) => {
             try {
                 await dalActivate(projectId);
-                mutate();
+                await mutateSpecialMenus((current) => ({
+                    activeMenuId: projectId,
+                    specialMenus: current.specialMenus.map((menu) => (
+                        menu.projectId === projectId
+                            ? { ...menu, status: "active" }
+                            : menu.status === "active"
+                                ? { ...menu, status: "expired" }
+                                : menu
+                    )),
+                }));
                 return { success: true };
             } catch (e: any) {
                 return { success: false, error: e.message };
             }
         },
-        [mutate],
+        [mutateSpecialMenus],
     );
 
     const deactivateMenu = useCallback(
         async (projectId: string) => {
             try {
                 await dalDeactivate(projectId);
-                mutate();
+                await mutateSpecialMenus((current) => ({
+                    activeMenuId: current.activeMenuId === projectId ? null : current.activeMenuId,
+                    specialMenus: current.specialMenus.map((menu) => (
+                        menu.projectId === projectId
+                            ? { ...menu, status: "expired" }
+                            : menu
+                    )),
+                }));
                 return { success: true };
             } catch (e: any) {
                 return { success: false, error: e.message };
             }
         },
-        [mutate],
+        [mutateSpecialMenus],
     );
 
     const cancelMenu = useCallback(
         async (projectId: string) => {
             try {
                 await dalCancel(projectId);
-                mutate();
+                await mutateSpecialMenus((current) => ({
+                    ...current,
+                    specialMenus: current.specialMenus.map((menu) => (
+                        menu.projectId === projectId
+                            ? { ...menu, status: "cancelled" }
+                            : menu
+                    )),
+                }));
                 return { success: true };
             } catch (e: any) {
                 return { success: false, error: e.message };
             }
         },
-        [mutate],
+        [mutateSpecialMenus],
     );
 
     return {

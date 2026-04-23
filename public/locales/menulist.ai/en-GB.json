@@ -381,6 +381,7 @@
         "previewCardHelp": "Shows how your title, description, and URL can appear in WhatsApp and social previews.",
         "whatsAppPreview": "WhatsApp Preview",
         "metaPreview": "Meta Tag Preview",
+        "previewTapHint": "Tap to open",
         "notSet": "Not set"
     },
     "Analytics": {

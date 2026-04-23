@@ -13,9 +13,9 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Tag, Text, TextArea, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
@@ -27,6 +27,12 @@ interface MobileSpecialMenuScreenProps {
 type BaseProjectOption = {
     label: string;
     value: string;
+};
+
+type SpecialMenuConflictCheckParams = {
+    endsAt: string;
+    projectId?: string;
+    startsAt: string;
 };
 
 function formatDate(iso: string): string {
@@ -60,6 +66,28 @@ function toIsoValue(rawValue: string, allowTimeScheduling: boolean): string {
         : dayjs(rawValue).startOf('day').toISOString();
 }
 
+function getScheduledStartsAtValue(allowTimeScheduling: boolean): string {
+    return toInputValue(dayjs().add(1, allowTimeScheduling ? 'hour' : 'day').toISOString(), allowTimeScheduling);
+}
+
+function getScheduleConflict(
+    specialMenus: SpecialMenuListItem[],
+    params: SpecialMenuConflictCheckParams,
+): SpecialMenuListItem | null {
+    const nextStart = new Date(params.startsAt).getTime();
+    const nextEnd = new Date(params.endsAt).getTime();
+
+    return specialMenus.find((menu) => {
+        if (menu.projectId === params.projectId) return false;
+        if (menu.status === 'expired' || menu.status === 'cancelled') return false;
+
+        const existingStart = new Date(menu.startsAt).getTime();
+        const existingEnd = new Date(menu.endsAt).getTime();
+
+        return nextStart < existingEnd && nextEnd > existingStart;
+    }) || null;
+}
+
 function StatusTag({ status }: { status: string }) {
     const config: Record<string, { color: string; text: string }> = {
         active: { color: 'success', text: 'Active' },
@@ -72,18 +100,19 @@ function StatusTag({ status }: { status: string }) {
 }
 
 function CreateSpecialMenuSheet({
-    allowTimeScheduling,
     baseProjectOptions,
     defaultBaseProjectId,
     onClose,
+    onResolveOverlap,
     onSubmit,
     open,
 }: {
-    allowTimeScheduling: boolean;
     baseProjectOptions: BaseProjectOption[];
     defaultBaseProjectId: string;
     onClose: () => void;
+    onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
     onSubmit: (payload: {
+        allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
         endsAt: string;
@@ -102,16 +131,19 @@ function CreateSpecialMenuSheet({
     const [baseProjectId, setBaseProjectId] = useState(defaultBaseProjectId);
     const [displayName, setDisplayName] = useState('');
     const [mode, setMode] = useState<'replace' | 'overlay'>(capabilities.availableModes[0] || 'overlay');
-    const [startsAt, setStartsAt] = useState(() => toInputValue(dayjs().add(1, 'hour').toISOString(), allowTimeScheduling));
-    const [endsAt, setEndsAt] = useState(() => toInputValue(dayjs().add(1, 'day').toISOString(), allowTimeScheduling));
+    const [startsAt, setStartsAt] = useState(() => toInputValue(new Date().toISOString(), true));
+    const [endsAt, setEndsAt] = useState(() => toInputValue(dayjs().add(1, 'day').toISOString(), true));
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isActiveToggleOn = startsAt
+        ? dayjs(toIsoValue(startsAt, true)).valueOf() <= Date.now()
+        : false;
 
     const resetForm = () => {
         setBaseProjectId(defaultBaseProjectId);
         setDisplayName('');
         setMode(capabilities.availableModes[0] || 'overlay');
-        setStartsAt(toInputValue(dayjs().add(1, 'hour').toISOString(), allowTimeScheduling));
-        setEndsAt(toInputValue(dayjs().add(1, 'day').toISOString(), allowTimeScheduling));
+        setStartsAt(toInputValue(new Date().toISOString(), true));
+        setEndsAt(toInputValue(dayjs().add(1, 'day').toISOString(), true));
     };
 
     const handleClose = () => {
@@ -138,17 +170,26 @@ function CreateSpecialMenuSheet({
             return;
         }
 
-        const startsAtIso = toIsoValue(startsAt, allowTimeScheduling);
-        const endsAtIso = toIsoValue(endsAt, allowTimeScheduling);
+        const startsAtIso = toIsoValue(startsAt, true);
+        const endsAtIso = toIsoValue(endsAt, true);
 
         if (dayjs(endsAtIso).valueOf() <= dayjs(startsAtIso).valueOf()) {
             Toast.show({ content: t('endAfterStart'), duration: 2000 });
             return;
         }
 
+        const overlapResolution = await onResolveOverlap?.({
+            endsAt: endsAtIso,
+            startsAt: startsAtIso,
+        }) ?? null;
+        if (overlapResolution === false) {
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             await onSubmit({
+                allowOverlap: overlapResolution === true,
                 baseProjectId,
                 displayName: trimmedName,
                 endsAt: endsAtIso,
@@ -159,6 +200,15 @@ function CreateSpecialMenuSheet({
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleLifecycleToggle = (nextValue: boolean) => {
+        if (nextValue) {
+            setStartsAt(toInputValue(new Date().toISOString(), true));
+            return;
+        }
+
+        setStartsAt(getScheduledStartsAtValue(true));
     };
 
     return (
@@ -201,38 +251,66 @@ function CreateSpecialMenuSheet({
                                 />
                             </Flex>
 
-                            <Flex gap={4} vertical>
-                                <Text strong>{t('modeLabel')}</Text>
-                                <Select
-                                    onChange={(value) => setMode(value as 'replace' | 'overlay')}
-                                    options={capabilities.availableModes.map((value) => ({
-                                        label: value === 'replace' ? t('replaceOption') : t('overlayOption'),
-                                        value,
-                                    }))}
-                                    showSearch={false}
-                                    value={mode}
-                                />
-                                <Text type="secondary">
-                                    {mode === 'replace' ? t('replaceDescription') : t('overlayDescription')}
-                                </Text>
-                            </Flex>
+                            {capabilities.availableModes.length > 1 ? (
+                                <Flex gap={4} vertical>
+                                    <Text strong>{t('modeLabel')}</Text>
+                                    <Text type="secondary">
+                                        This controls what customers see when the special menu is live: replace the regular menu completely, or show it as an extra section alongside the regular menu.
+                                    </Text>
+                                    <Select
+                                        onChange={(value) => setMode(value as 'replace' | 'overlay')}
+                                        options={capabilities.availableModes.map((value) => ({
+                                            label: value === 'replace' ? t('replaceOption') : t('overlayOption'),
+                                            value,
+                                        }))}
+                                        showSearch={false}
+                                        value={mode}
+                                    />
+                                    <Text type="secondary">
+                                        {mode === 'replace' ? t('replaceDescription') : t('overlayDescription')}
+                                    </Text>
+                                </Flex>
+                            ) : (
+                                <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                    <Flex gap={4} vertical>
+                                        <Text strong>{t('modeLabel')}</Text>
+                                        <Text type="secondary">
+                                            {mode === 'replace'
+                                                ? 'Customers will see only the special menu while it is live.'
+                                                : 'Customers will see the special menu as an extra section alongside the regular menu.'}
+                                        </Text>
+                                    </Flex>
+                                </Card>
+                            )}
+
+                            <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                <Flex align="center" gap={12} justify="space-between">
+                                    <Flex gap={4} style={{ flex: 1 }} vertical>
+                                        <Text strong>Active now</Text>
+                                        <Text type="secondary">
+                                            Turn this on to make the special menu active immediately. Turn it off to keep it scheduled.
+                                        </Text>
+                                    </Flex>
+                                    <Switch checked={isActiveToggleOn} onChange={handleLifecycleToggle} />
+                                </Flex>
+                            </Card>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{t('startsLabel')}</Text>
+                                <Text strong>{`${t('startsLabel')} Date & Time`}</Text>
                                 <Text type="secondary">Choose when this special menu should start appearing.</Text>
                                 <Input
                                     onChange={setStartsAt}
-                                    type={allowTimeScheduling ? 'datetime-local' : 'date'}
+                                    type="datetime-local"
                                     value={startsAt}
                                 />
                             </Flex>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{t('endsLabel')}</Text>
+                                <Text strong>{`${t('endsLabel')} Date & Time`}</Text>
                                 <Text type="secondary">Choose when this special menu should stop appearing automatically.</Text>
                                 <Input
                                     onChange={setEndsAt}
-                                    type={allowTimeScheduling ? 'datetime-local' : 'date'}
+                                    type="datetime-local"
                                     value={endsAt}
                                 />
                             </Flex>
@@ -269,13 +347,16 @@ function EditSpecialMenuSheet({
     allowTimeScheduling,
     item,
     onClose,
+    onResolveOverlap,
     onSubmit,
     open,
 }: {
     allowTimeScheduling: boolean;
     item: SpecialMenuListItem | null;
     onClose: () => void;
+    onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
     onSubmit: (payload: {
+        allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;
@@ -309,6 +390,9 @@ function EditSpecialMenuSheet({
     const initialDescription = item?.description || '';
     const initialStartsAt = toInputValue(item?.startsAt, allowTimeScheduling);
     const initialEndsAt = toInputValue(item?.endsAt, allowTimeScheduling);
+    const isActiveToggleOn = startsAt
+        ? dayjs(toIsoValue(startsAt, allowTimeScheduling)).valueOf() <= Date.now()
+        : false;
     const hasChanges = displayName.trim() !== initialName.trim()
         || description.trim() !== initialDescription.trim()
         || startsAt !== initialStartsAt
@@ -344,9 +428,19 @@ function EditSpecialMenuSheet({
             return;
         }
 
+        const overlapResolution = await onResolveOverlap?.({
+            endsAt: endsAtIso,
+            projectId: item.projectId,
+            startsAt: startsAtIso,
+        }) ?? null;
+        if (overlapResolution === false) {
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             await onSubmit({
+                allowOverlap: overlapResolution === true,
                 projectId: item.projectId,
                 description: trimmedDescription || undefined,
                 displayName: trimmedName,
@@ -357,6 +451,15 @@ function EditSpecialMenuSheet({
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleLifecycleToggle = (nextValue: boolean) => {
+        if (nextValue) {
+            setStartsAt(toInputValue(new Date().toISOString(), allowTimeScheduling));
+            return;
+        }
+
+        setStartsAt(getScheduledStartsAtValue(allowTimeScheduling));
     };
 
     if (!item) return null;
@@ -370,10 +473,10 @@ function EditSpecialMenuSheet({
                 padding: 0,
             }}
             destroyOnClose
-            onMaskClick={handleClose}
+            onMaskClick={isSubmitting ? undefined : handleClose}
             visible={open}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ height: '100%', position: 'relative' }} vertical>
                 <NavBar
                     right={(
                         <Button
@@ -415,6 +518,18 @@ function EditSpecialMenuSheet({
                                 />
                             </Flex>
 
+                            <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
+                                <Flex align="center" justify="space-between" gap={12}>
+                                    <Flex gap={4} style={{ flex: 1 }} vertical>
+                                        <Text strong>Activate now</Text>
+                                        <Text type="secondary">
+                                            Turn this on to make the special menu active immediately. Turn it off to keep it scheduled.
+                                        </Text>
+                                    </Flex>
+                                    <Switch checked={isActiveToggleOn} onChange={handleLifecycleToggle} />
+                                </Flex>
+                            </Card>
+
                             <Flex gap={4} vertical>
                                 <Text strong>{`${t('startsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">This controls when customers first see the special menu.</Text>
@@ -454,10 +569,28 @@ function EditSpecialMenuSheet({
                     <Button block disabled={!hasChanges || isSubmitting} fill="outline" onClick={resetForm} size="large">
                         {tSettings('reset')}
                     </Button>
-                    <Button block disabled={!hasChanges || isSubmitting} loading={isSubmitting} onClick={() => { void handleSubmit(); }} size="large">
+                    <Button block disabled={!hasChanges || isSubmitting} onClick={() => { void handleSubmit(); }} size="large">
                         {tSettings('saveChanges')}
                     </Button>
                 </Flex>
+
+                {isSubmitting ? (
+                    <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                            backgroundColor: token.colorBgMask,
+                            inset: 0,
+                            position: 'absolute',
+                            zIndex: 2,
+                        }}
+                    >
+                        <Flex align="center" gap={12} vertical>
+                            <DotLoading color="primary" />
+                            <Text>{tSettings('saveChanges')}</Text>
+                        </Flex>
+                    </Flex>
+                ) : null}
             </Flex>
         </Popup>
     );
@@ -652,12 +785,31 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         [projectsList, t]
     );
 
+    const getConflictMessage = useCallback((payload: SpecialMenuConflictCheckParams) => {
+        const conflict = getScheduleConflict(specialMenus, payload);
+        if (!conflict) return null;
+
+        return `Schedule conflicts with "${conflict.displayName}" (${conflict.startsAt} — ${conflict.endsAt})`;
+    }, [specialMenus]);
+
+    const resolveOverlap = useCallback(async (payload: SpecialMenuConflictCheckParams) => {
+        const conflictMessage = getConflictMessage(payload);
+        if (!conflictMessage) return null;
+
+        return await Dialog.confirm({
+            cancelText: 'Back',
+            confirmText: 'Continue',
+            content: `${conflictMessage}. Continue anyway?`,
+        });
+    }, [getConflictMessage]);
+
     const handleOpenSpecialProject = async (projectId: string) => {
         await selectProject(projectId);
         onOpenMenuTab?.();
     };
 
     const handleCreateSpecialMenu = async (payload: {
+        allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
         endsAt: string;
@@ -681,6 +833,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     };
 
     const handleUpdateSpecialMenu = async (payload: {
+        allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;
@@ -724,22 +877,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar
-                onBack={onBack}
-                right={(
-                    <Button
-                        disabled={!baseProjectOptions.length}
-                        fill="none"
-                        onClick={() => setIsCreateOpen(true)}
-                        style={{ color: token.colorPrimary, minHeight: 40, minWidth: 72 }}
-                    >
-                        <Flex align="center" gap={6}>
-                            <LuPlus size={16} />
-                            <Text>{t('createShort')}</Text>
-                        </Flex>
-                    </Button>
-                )}
-            />
+            <NavBar onBack={onBack} />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 <MobileScreenIntro
@@ -770,13 +908,6 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                             <Text type="secondary" style={{ textAlign: 'center' }}>
                                 {t('createFirstHelp')}
                             </Text>
-                            <Button
-                                disabled={!defaultBaseProjectId}
-                                onClick={() => setIsCreateOpen(true)}
-                                size="large"
-                            >
-                                {t('createTitle')}
-                            </Button>
                         </Flex>
                     </Card>
                 ) : null}
@@ -817,19 +948,42 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                 </Card>
             </Flex>
 
+            <Flex
+                style={{
+                    backdropFilter: 'blur(10px)',
+                    backgroundColor: token.colorBgContainer,
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                    padding: '12px 16px',
+                }}
+            >
+                <Button
+                    block
+                    color="primary"
+                    disabled={!baseProjectOptions.length}
+                    onClick={() => setIsCreateOpen(true)}
+                    size="large"
+                >
+                    <Flex align="center" gap={8} justify="center">
+                        <LuPlus size={16} />
+                        <Text>{t('createTitle')}</Text>
+                    </Flex>
+                </Button>
+            </Flex>
+
             <CreateSpecialMenuSheet
-                allowTimeScheduling={capabilities.allowTimeScheduling}
                 baseProjectOptions={baseProjectOptions}
                 defaultBaseProjectId={defaultBaseProjectId}
                 onClose={() => setIsCreateOpen(false)}
+                onResolveOverlap={resolveOverlap}
                 onSubmit={handleCreateSpecialMenu}
                 open={isCreateOpen}
             />
 
             <EditSpecialMenuSheet
-                allowTimeScheduling
+                allowTimeScheduling={capabilities.allowTimeScheduling}
                 item={editingMenu}
                 onClose={() => setEditingMenu(null)}
+                onResolveOverlap={resolveOverlap}
                 onSubmit={handleUpdateSpecialMenu}
                 open={Boolean(editingMenu)}
             />

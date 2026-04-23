@@ -4,8 +4,9 @@ import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageT
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
-import { LuCheck, LuCopy, LuMessageSquare, LuShare2 } from 'react-icons/lu';
-import { Button, Card, Flex, Text, Title, Toast } from '../antd';
+import { FaWhatsapp } from 'react-icons/fa';
+import { LuCheck, LuCopy, LuShare2 } from 'react-icons/lu';
+import { Button, Card, Flex, Text, Toast } from '../antd';
 
 interface MobileCommunicationKitProps {
     storeName: string;
@@ -42,12 +43,11 @@ export default function MobileCommunicationKit({
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
 
     return (
-        <Flex gap={12} vertical>
-            <Flex align="center" gap={8}>
-                <LuMessageSquare size={16} />
-                <Title level={5} style={{ margin: 0 }}>{t('title')}</Title>
+        <Flex gap={10} vertical>
+            <Flex gap={4} vertical>
+                <Text strong style={{ fontSize: 15 }}>{t('title')}</Text>
+                <Text type="secondary">{t('subtitle')}</Text>
             </Flex>
-            <Text type="secondary">{t('subtitle')}</Text>
             <Flex gap={12} vertical>
                 {templates.map((template) => (
                     <MobileMessageCard key={template.id} template={template} />
@@ -93,43 +93,65 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
     };
 
     return (
-        <Card>
-            <Flex gap={12} vertical>
+        <Card style={{ borderRadius: 20 }}>
+            <Flex gap={14} vertical>
                 <Flex gap={4} vertical>
                     <Text strong>{template.title}</Text>
                     <Text type="secondary">{template.description}</Text>
                 </Flex>
-                <Card style={{ backgroundColor: token.colorFillAlter }}>
+                <Card
+                    size="small"
+                    style={{
+                        backgroundColor: token.colorFillAlter,
+                        borderColor: token.colorBorderSecondary,
+                        borderRadius: 16,
+                    }}
+                >
                     <Text>{template.message}</Text>
                 </Card>
-                <Flex gap={8} wrap="wrap">
-                    <Button
-                        block
-                        color="success"
+                <Flex gap={10}>
+                    <ActionTile
+                        iconColor={token.colorSuccess}
+                        icon={<FaWhatsapp size={18} />}
                         onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank')}
-                        size="small"
-                    >
-                        <Flex align="center" gap={6}>
-                            <LuMessageSquare size={14} />
-                            <Text>{t('whatsApp')}</Text>
-                        </Flex>
-                    </Button>
+                    />
                     {supportsNativeShare ? (
-                        <Button block fill="outline" onClick={() => void handleShare()} size="small">
-                            <Flex align="center" gap={6}>
-                                <LuShare2 size={14} />
-                                <Text>Share</Text>
-                            </Flex>
-                        </Button>
+                        <ActionTile
+                            icon={<LuShare2 size={18} />}
+                            onClick={() => void handleShare()}
+                        />
                     ) : null}
-                    <Button block fill="outline" onClick={() => void handleCopy()} size="small">
-                        <Flex align="center" gap={6}>
-                            {copied ? <LuCheck size={14} /> : <LuCopy size={14} />}
-                            <Text>{copied ? t('copied') : t('copy')}</Text>
-                        </Flex>
-                    </Button>
+                    <ActionTile
+                        icon={copied ? <LuCheck size={18} /> : <LuCopy size={18} />}
+                        onClick={() => void handleCopy()}
+                    />
                 </Flex>
             </Flex>
         </Card>
+    );
+}
+
+function ActionTile({ icon, iconColor, onClick }: { icon: React.ReactNode; iconColor?: string; onClick: () => void }) {
+    const { token } = theme.useToken();
+
+    return (
+        <Button
+            fill="outline"
+            onClick={onClick}
+            size="small"
+            style={{
+                borderColor: token.colorBorderSecondary,
+                borderRadius: 16,
+                flex: 1,
+                minHeight: 48,
+                minWidth: 0,
+                paddingBlock: 0,
+                paddingInline: 0,
+            }}
+        >
+            <Flex align="center" justify="center" style={{ color: iconColor || token.colorText, minHeight: 20 }}>
+                {icon}
+            </Flex>
+        </Button>
     );
 }

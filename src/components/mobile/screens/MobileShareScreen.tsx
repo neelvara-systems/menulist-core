@@ -12,13 +12,23 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuBookOpen, LuCopy, LuExternalLink, LuMessageSquare, LuMonitor, LuQrCode, LuShare2, LuShield, LuSmartphone } from 'react-icons/lu';
+import {
+    LuBookOpen,
+    LuCopy,
+    LuExternalLink,
+    LuLink2,
+    LuMessageSquare,
+    LuMonitor,
+    LuQrCode,
+    LuShare2,
+    LuShield,
+    LuSmartphone,
+} from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
-import MobilePresenceMonitor from '../components/PresenceMonitor';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 type ProjectLink = {
@@ -94,14 +104,10 @@ export default function MobileShareScreen() {
             const customDomain = storeDetails.customDomain;
             const obpLink = generateOBPUrl(subdomain, customDomain);
             const installAppLink =
-                FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA &&
-                    (storeDetails as any).pwaSettings?.enableInstallableApp !== false
+                FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                && (storeDetails as any).pwaSettings?.enableInstallableApp !== false
                     ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
                     : null;
-            // R5 link-emitter audit: always emit the real canonical slug URL
-            // (e.g., /food-menu), never the /menu alias. Pass project name
-            // regardless of isDefault — under R5 every project's canonical URL
-            // is its real slug.
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
@@ -122,18 +128,15 @@ export default function MobileShareScreen() {
                 highlightsLink = null;
             }
 
-            const allProjects: ProjectLink[] = projects.map((project: any) => {
-                return {
-                    active: project.active !== false,
-                    deleted: project.deleted === true,
-                    feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : "",
-                    isDefault: project.isDefault || false,
-                    name: project.name || tProjectSelector('untitled'),
-                    projectId: project.projectId,
-                    // R5: always real canonical slug URL — no /menu alias.
-                    url: generateProjectUrl(subdomain, customDomain, project.name, false),
-                };
-            });
+            const allProjects: ProjectLink[] = projects.map((project: any) => ({
+                active: project.active !== false,
+                deleted: project.deleted === true,
+                feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : '',
+                isDefault: project.isDefault || false,
+                name: project.name || tProjectSelector('untitled'),
+                projectId: project.projectId,
+                url: generateProjectUrl(subdomain, customDomain, project.name, false),
+            }));
 
             const posSync = storeDetails.posSync;
             const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
@@ -175,17 +178,6 @@ export default function MobileShareScreen() {
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
     );
-    const domainSummary = storeDetails?.customDomain
-        ? {
-            color: (storeDetails as any).domainVerified ? 'success' : 'warning' as StatusTone,
-            label: (storeDetails as any).domainVerified ? t('customDomainLive') : t('customDomainPending'),
-            value: storeDetails.customDomain,
-        }
-        : {
-            color: storeDetails?.subdomain ? 'success' : 'default' as StatusTone,
-            label: storeDetails?.subdomain ? t('subdomainLive') : t('domainNotSet'),
-            value: storeDetails?.subdomain ? generateOBPUrl(storeDetails.subdomain, storeDetails.customDomain).replace(/^https?:\/\//, '') : t('domainNotSetHelp'),
-        };
 
     const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') =>
         url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
@@ -239,15 +231,8 @@ export default function MobileShareScreen() {
         );
     }
 
-    const feedbackSummary = data.hasFeedbackEnabled
-        ? { color: 'success' as StatusTone, label: t('feedbackOn'), value: t('feedbackOnHelp') }
-        : { color: 'default' as StatusTone, label: t('feedbackOff'), value: t('feedbackOffHelp') };
-    const screenSummary = data.hasScreen
-        ? { color: 'success' as StatusTone, label: t('screensReady'), value: t('screensReadyHelp') }
-        : { color: 'default' as StatusTone, label: t('screensNotSetUp'), value: t('screensNotSetUpHelp') };
-
     return (
-        <Flex gap={16} style={{ padding: 16 }} vertical>
+        <Flex gap={18} style={{ padding: 16 }} vertical>
             {activeProject ? (
                 <ProjectSelectorTrigger
                     clickable={data.allProjects.length > 1}
@@ -265,17 +250,10 @@ export default function MobileShareScreen() {
                 />
             ) : null}
 
-            <Card>
-                <Flex gap={8} vertical>
-                    <StatusSummaryRow color={domainSummary.color} label={domainSummary.label} value={domainSummary.value} />
-                    <StatusSummaryRow color={feedbackSummary.color} label={feedbackSummary.label} value={feedbackSummary.value} />
-                    <StatusSummaryRow color={screenSummary.color} label={screenSummary.label} value={screenSummary.value} />
-                </Flex>
-            </Card>
-
             <LinkCard
                 description={t('offeringPageDesc', { offering: labels.offeringLower })}
-                icon={<LuExternalLink color={token.colorPrimary} size={18} />}
+                icon={<LuExternalLink color={token.colorText} size={18} />}
+                isPrimary
                 label={t('officialBusinessLink')}
                 onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('officialBusinessLink'))}
                 onOpen={() => window.open(withSource(data.obpLink, 'direct'), '_blank')}
@@ -294,9 +272,14 @@ export default function MobileShareScreen() {
                 value={data.obpLink}
             />
 
+            <SectionHeader
+                subtitle={t('shareYourOfferingDesc', { offering: labels.offeringTitle })}
+                title={t('directOfferingLink', { offering: labels.offeringTitle })}
+            />
+
             <LinkCard
                 description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
-                icon={<LuCopy color={token.colorSuccess} size={18} />}
+                icon={<LuLink2 color={token.colorText} size={18} />}
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(withSource(data.menuLink, 'copy'), t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
                 onOpen={() => window.open(withSource(data.menuLink, 'direct'), '_blank')}
@@ -318,7 +301,7 @@ export default function MobileShareScreen() {
             {data.installAppLink ? (
                 <LinkCard
                     description="Share this when you want customers to install your menu app directly. It opens the install prompt right away."
-                    icon={<LuSmartphone color={token.colorPrimary} size={18} />}
+                    icon={<LuSmartphone color={token.colorText} size={18} />}
                     label="Customer App install link"
                     onCopy={() => void handleCopy(withSource(data.installAppLink as string, 'copy'), 'Customer App install link')}
                     onOpen={() => window.open(withSource(data.installAppLink as string, 'direct'), '_blank')}
@@ -341,7 +324,7 @@ export default function MobileShareScreen() {
             {data.hasFeedbackEnabled && data.feedbackLink ? (
                 <LinkCard
                     description={t('feedbackLinkDesc')}
-                    icon={<LuMessageSquare color={token.colorSuccess} size={18} />}
+                    icon={<LuMessageSquare color={token.colorText} size={18} />}
                     label={t('feedbackLink')}
                     onCopy={() => void handleCopy(data.feedbackLink, t('feedbackLink'))}
                     onOpen={() => window.open(data.feedbackLink, '_blank')}
@@ -361,55 +344,44 @@ export default function MobileShareScreen() {
                 />
             ) : null}
 
-            {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR && storeDetails ? (
-                <MobilePresenceMonitor
-                    hasFeedbackEnabled={data.hasFeedbackEnabled}
-                    hasPublishedMenu={data.hasPublishedMenu}
-                    hasScreen={data.hasScreen}
-                    menuLink={data.menuLink}
-                    storeDetails={storeDetails as any}
+            <Flex gap={12} vertical>
+                <SectionHeader subtitle={t('screensReadyHelp')} title={t('digitalScreens')} />
+                <ScreenCard
+                    description={t('menuBoardDesc', { offering: labels.offeringLower })}
+                    icon={<LuMonitor color={token.colorText} size={18} />}
+                    label={t('menuBoard')}
+                    onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
+                    onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
+                    onShare={supportsNativeShare && data.menuBoardLink ? () => void handleNativeShare({
+                        label: t('menuBoard'),
+                        text: t('menuBoardDesc', { offering: labels.offeringLower }),
+                        url: data.menuBoardLink as string,
+                    }) : undefined}
+                    pendingLabel={t('notSetUpYet')}
+                    statusColor={data.menuBoardLink ? 'success' : 'default'}
+                    statusLabel={data.menuBoardLink ? t('ready') : t('notSetUp')}
+                    value={data.menuBoardLink}
                 />
-            ) : null}
-
-            <Card title={<Text strong>{t('digitalScreens')}</Text>}>
-                <Flex gap={12} vertical>
-                    <ScreenCard
-                        description={t('menuBoardDesc', { offering: labels.offeringLower })}
-                        icon={<LuMonitor color={token.colorPrimary} size={18} />}
-                        label={t('menuBoard')}
-                        onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
-                        onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
-                        onShare={supportsNativeShare && data.menuBoardLink ? () => void handleNativeShare({
-                            label: t('menuBoard'),
-                            text: t('menuBoardDesc', { offering: labels.offeringLower }),
-                            url: data.menuBoardLink as string,
-                        }) : undefined}
-                        pendingLabel={t('notSetUpYet')}
-                        statusColor={data.menuBoardLink ? 'success' : 'default'}
-                        statusLabel={data.menuBoardLink ? t('ready') : t('notSetUp')}
-                        value={data.menuBoardLink}
-                    />
-                    <ScreenCard
-                        description={t('highlightsScreenDesc')}
-                        icon={<LuQrCode color={token.colorInfo} size={18} />}
-                        label={t('highlightsScreen')}
-                        onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
-                        onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
-                        onShare={supportsNativeShare && data.highlightsLink ? () => void handleNativeShare({
-                            label: t('highlightsScreen'),
-                            text: t('highlightsScreenDesc'),
-                            url: data.highlightsLink as string,
-                        }) : undefined}
-                        pendingLabel={t('notSetUpYet')}
-                        statusColor={data.highlightsLink ? 'success' : 'default'}
-                        statusLabel={data.highlightsLink ? t('ready') : t('notSetUp')}
-                        value={data.highlightsLink}
-                    />
-                </Flex>
-            </Card>
+                <ScreenCard
+                    description={t('highlightsScreenDesc')}
+                    icon={<LuQrCode color={token.colorText} size={18} />}
+                    label={t('highlightsScreen')}
+                    onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
+                    onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
+                    onShare={supportsNativeShare && data.highlightsLink ? () => void handleNativeShare({
+                        label: t('highlightsScreen'),
+                        text: t('highlightsScreenDesc'),
+                        url: data.highlightsLink as string,
+                    }) : undefined}
+                    pendingLabel={t('notSetUpYet')}
+                    statusColor={data.highlightsLink ? 'success' : 'default'}
+                    statusLabel={data.highlightsLink ? t('ready') : t('notSetUp')}
+                    value={data.highlightsLink}
+                />
+            </Flex>
 
             {FEATURE_FLAGS.ENABLE_CUSTOMER_COMMUNICATION_KIT ? (
-                <Card>
+                <Flex gap={12} style={{ marginTop: 6 }} vertical>
                     <MobileCommunicationKit
                         address={buildStoreAddress(storeDetails)}
                         businessType={data.businessType}
@@ -419,12 +391,13 @@ export default function MobileShareScreen() {
                         timeZone={storeDetails?.timeZone}
                         workingHours={storeDetails?.workingHours}
                     />
-                </Card>
+                </Flex>
             ) : null}
 
             {data.hasPosSync ? (
-                <Card title={<Text strong>{t('posSync')}</Text>}>
+                <Card style={{ borderRadius: 24 }}>
                     <Flex gap={8} vertical>
+                        <SectionHeader subtitle={t('posSyncDesc', { offering: labels.offeringLower })} title={t('posSync')} />
                         <Flex align="center" gap={8}>
                             <LuShield color={token.colorTextSecondary} size={18} />
                             <Text strong>{t('posIntegration')}</Text>
@@ -432,9 +405,6 @@ export default function MobileShareScreen() {
                                 {data.posSyncStatus || t('active')}
                             </Tag>
                         </Flex>
-                        <Text type="secondary">
-                            {t('posSyncDesc', { offering: labels.offeringLower })}
-                        </Text>
                     </Flex>
                 </Card>
             ) : null}
@@ -471,6 +441,7 @@ export default function MobileShareScreen() {
 function LinkCard({
     description,
     icon,
+    isPrimary,
     label,
     onCopy,
     onOpen,
@@ -481,6 +452,7 @@ function LinkCard({
 }: {
     description: string;
     icon: React.ReactNode;
+    isPrimary?: boolean;
     label: string;
     onCopy: () => void;
     onOpen: () => void;
@@ -489,45 +461,43 @@ function LinkCard({
     showQrLabel: string;
     value: string;
 }) {
-    const common = useTranslations('Common');
     const { token } = theme.useToken();
+
     return (
-        <Card>
-            <Flex gap={10} vertical>
+        <Card style={{ borderRadius: 24 }}>
+            <Flex gap={14} vertical>
                 <Flex align="center" justify="space-between">
-                    <Flex align="center" gap={8}>
-                        {icon}
-                        <Text strong>{label}</Text>
+                    <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
+                        <IconBadge tint={token.colorFillAlter}>
+                            {icon}
+                        </IconBadge>
+                        <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                            <Text strong style={{ color: token.colorText, fontSize: isPrimary ? 15 : 14 }}>
+                                {label}
+                            </Text>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{description}</Text>
+                        </Flex>
                     </Flex>
-                    <Button fill="none" onClick={onOpen} size="small" style={{ minHeight: 32, minWidth: 32, paddingInline: 4 }}>
-                        <LuExternalLink size={16} />
-                    </Button>
                 </Flex>
-                <Text type="secondary">{description}</Text>
+
                 <Card
                     size="small"
                     style={{
                         backgroundColor: token.colorFillAlter,
                         borderColor: token.colorBorderSecondary,
+                        borderRadius: 16,
                     }}
                 >
-                    <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
+                    <Text style={{ color: token.colorText, fontSize: 12, wordBreak: 'break-all' }}>
+                        {value}
+                    </Text>
                 </Card>
-                <Flex gap={8} wrap="wrap">
-                    <Button block fill="outline" onClick={onCopy} size="small">
-                        {common('copy')}
-                    </Button>
-                    {onShare ? (
-                        <Button block fill="outline" onClick={onShare} size="small">
-                            <Flex align="center" gap={6}>
-                                <LuShare2 size={14} />
-                                <Text>Share</Text>
-                            </Flex>
-                        </Button>
-                    ) : null}
-                    <Button block onClick={onShowQr} size="small">
-                        {showQrLabel}
-                    </Button>
+
+                <Flex gap={10}>
+                    <ActionTile icon={<LuCopy size={18} />} onClick={onCopy} />
+                    {onShare ? <ActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
+                    <ActionTile icon={<LuQrCode size={18} />} onClick={onShowQr} />
+                    <ActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} />
                 </Flex>
             </Flex>
         </Card>
@@ -557,18 +527,19 @@ function ScreenCard({
     statusLabel: string;
     value: string | null;
 }) {
-    const common = useTranslations('Common');
+    const { token } = theme.useToken();
+
     if (!value) {
         return (
-            <Card size="small">
-                <Flex align="center" gap={10}>
-                    {icon}
-                    <Flex gap={2} vertical>
+            <Card size="small" style={{ borderRadius: 20 }}>
+                <Flex align="center" gap={12}>
+                    <IconBadge tint={token.colorFillAlter}>{icon}</IconBadge>
+                    <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                         <Flex align="center" gap={8} wrap="wrap">
-                            <Text strong>{label}</Text>
+                            <Text strong style={{ fontSize: 14 }}>{label}</Text>
                             <Tag color={statusColor}>{statusLabel}</Tag>
                         </Flex>
-                        <Text type="secondary">{pendingLabel}</Text>
+                        <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{pendingLabel}</Text>
                     </Flex>
                 </Flex>
             </Card>
@@ -576,45 +547,84 @@ function ScreenCard({
     }
 
     return (
-        <Card size="small">
-            <Flex gap={10} vertical>
-                <Flex align="center" gap={8}>
-                    {icon}
-                    <Text strong>{label}</Text>
-                    <Tag color={statusColor}>{statusLabel}</Tag>
-                </Flex>
-                <Text type="secondary">{description}</Text>
-                <Text style={{ wordBreak: 'break-all' }}>{value}</Text>
-                <Flex gap={8} wrap="wrap">
-                    <Button block fill="outline" onClick={onCopy} size="small">
-                        {common('copy')}
-                    </Button>
-                    {onShare ? (
-                        <Button block fill="outline" onClick={onShare} size="small">
-                            <Flex align="center" gap={6}>
-                                <LuShare2 size={14} />
-                                <Text>Share</Text>
+        <Card size="small" style={{ borderRadius: 20 }}>
+            <Flex gap={14} vertical>
+                <Flex align="center" gap={12} justify="space-between">
+                    <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
+                        <IconBadge tint={token.colorFillAlter}>{icon}</IconBadge>
+                        <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                            <Flex align="center" gap={8} wrap="wrap">
+                                <Text strong style={{ fontSize: 14 }}>{label}</Text>
+                                <Tag color={statusColor}>{statusLabel}</Tag>
                             </Flex>
-                        </Button>
-                    ) : null}
-                    <Button block onClick={onOpen} size="small">
-                        {common('open')}
-                    </Button>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{description}</Text>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 12, wordBreak: 'break-all' }}>{value}</Text>
+                        </Flex>
+                    </Flex>
+                </Flex>
+
+                <Flex gap={10}>
+                    {onCopy ? <ActionTile icon={<LuCopy size={18} />} onClick={onCopy} /> : null}
+                    {onShare ? <ActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
+                    {onOpen ? <ActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} /> : null}
                 </Flex>
             </Flex>
         </Card>
     );
 }
 
-function StatusSummaryRow({ color, label, value }: { color: StatusTone; label: string; value: string }) {
+function ActionTile({ icon, onClick }: { icon: React.ReactNode; onClick: () => void }) {
+    const { token } = theme.useToken();
+
     return (
-        <Flex align="center" justify="space-between" gap={12}>
-            <Flex align="center" gap={8} style={{ minWidth: 0 }}>
-                <Tag color={color}>{label}</Tag>
+        <Button
+            fill="outline"
+            onClick={onClick}
+            size="small"
+            style={{
+                borderColor: token.colorBorderSecondary,
+                borderRadius: 16,
+                flex: 1,
+                minHeight: 48,
+                minWidth: 0,
+                paddingBlock: 0,
+                paddingInline: 0,
+            }}
+        >
+            <Flex align="center" justify="center" style={{ color: token.colorText, minHeight: 20 }}>
+                    {icon}
             </Flex>
-            <Text style={{ flex: 1, textAlign: 'right' }} type="secondary">
-                {value}
+        </Button>
+    );
+}
+
+function IconBadge({ children, tint }: { children: React.ReactNode; tint: string }) {
+    return (
+        <Flex
+            align="center"
+            justify="center"
+            style={{
+                backgroundColor: tint,
+                borderRadius: 16,
+                height: 44,
+                minWidth: 44,
+                width: 44,
+            }}
+        >
+            {children}
+        </Flex>
+    );
+}
+
+function SectionHeader({ subtitle, title }: { subtitle?: string; title: string }) {
+    const { token } = theme.useToken();
+
+    return (
+        <Flex gap={4} vertical>
+            <Text strong style={{ color: token.colorText, fontSize: 15 }}>
+                {title}
             </Text>
+            {subtitle ? <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{subtitle}</Text> : null}
         </Flex>
     );
 }

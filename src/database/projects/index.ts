@@ -1627,6 +1627,7 @@ export const getSpecialMenus = async (): Promise<{
  * 5. If startsAt is now or past, activate immediately
  */
 export const createSpecialMenuProject = async (params: {
+    allowOverlap?: boolean;
     baseProjectId: string;
     displayName: string;
     mode: SpecialMenuMode;
@@ -1635,7 +1636,7 @@ export const createSpecialMenuProject = async (params: {
 }) => {
     return await apiCallComposer(
         async () => {
-            const { baseProjectId, displayName, mode, startsAt, endsAt } = params;
+            const { allowOverlap, baseProjectId, displayName, mode, startsAt, endsAt } = params;
 
             const startDate = new Date(startsAt);
             const endDate = new Date(endsAt);
@@ -1661,18 +1662,20 @@ export const createSpecialMenuProject = async (params: {
                 ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
                 : {};
 
-            for (const [, projData] of Object.entries(summaryProjects) as [string, any][]) {
-                if (
-                    projData.isSpecialMenu &&
-                    projData.specialMenuStatus !== "expired" &&
-                    projData.specialMenuStatus !== "cancelled"
-                ) {
-                    const existingStart = new Date(projData.specialMenuStartsAt).getTime();
-                    const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
-                    if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
-                        throw new Error(
-                            `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
-                        );
+            if (!allowOverlap) {
+                for (const [, projData] of Object.entries(summaryProjects) as [string, any][]) {
+                    if (
+                        projData.isSpecialMenu &&
+                        projData.specialMenuStatus !== "expired" &&
+                        projData.specialMenuStatus !== "cancelled"
+                    ) {
+                        const existingStart = new Date(projData.specialMenuStartsAt).getTime();
+                        const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
+                        if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
+                            throw new Error(
+                                `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
+                            );
+                        }
                     }
                 }
             }
@@ -1736,6 +1739,7 @@ export const createSpecialMenuProject = async (params: {
 };
 
 export const updateSpecialMenuProject = async (params: {
+    allowOverlap?: boolean;
     projectId: string;
     description?: string;
     displayName: string;
@@ -1744,7 +1748,7 @@ export const updateSpecialMenuProject = async (params: {
 }) => {
     return await apiCallComposer(
         async () => {
-            const { projectId, description, displayName, startsAt, endsAt } = params;
+            const { allowOverlap, projectId, description, displayName, startsAt, endsAt } = params;
             const trimmedName = displayName.trim();
             const trimmedDescription = description?.trim();
             const startDate = new Date(startsAt);
@@ -1778,19 +1782,21 @@ export const updateSpecialMenuProject = async (params: {
                 ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
                 : {};
 
-            for (const [otherProjectId, projData] of Object.entries(summaryProjects) as [string, any][]) {
-                if (otherProjectId === projectId) continue;
-                if (
-                    projData.isSpecialMenu &&
-                    projData.specialMenuStatus !== "expired" &&
-                    projData.specialMenuStatus !== "cancelled"
-                ) {
-                    const existingStart = new Date(projData.specialMenuStartsAt).getTime();
-                    const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
-                    if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
-                        throw new Error(
-                            `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
-                        );
+            if (!allowOverlap) {
+                for (const [otherProjectId, projData] of Object.entries(summaryProjects) as [string, any][]) {
+                    if (otherProjectId === projectId) continue;
+                    if (
+                        projData.isSpecialMenu &&
+                        projData.specialMenuStatus !== "expired" &&
+                        projData.specialMenuStatus !== "cancelled"
+                    ) {
+                        const existingStart = new Date(projData.specialMenuStartsAt).getTime();
+                        const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
+                        if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
+                            throw new Error(
+                                `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
+                            );
+                        }
                     }
                 }
             }

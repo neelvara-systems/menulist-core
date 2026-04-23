@@ -377,11 +377,12 @@
         "canonicalUrl": "Canonical URL",
         "canonicalUrlPlaceholder": "https://example.com/page",
         "canonicalUrlHelp": "If your menu website appears on multiple domains, enter the main website URL here to avoid duplicate content issues.",
-        "previewCardTitle": "Preview Card",
-        "previewCardHelp": "Shows how your title, description, and URL can appear in WhatsApp and social previews.",
-        "whatsAppPreview": "WhatsApp Preview",
-        "metaPreview": "Meta Tag Preview",
-        "notSet": "Not set"
+        "previewCardTitle": "প্রিভিউ কার্ড",
+        "previewCardHelp": "আপনার শিরোনাম, বর্ণনা এবং URL WhatsApp ও সামাজিক প্রিভিউতে কেমন দেখা যেতে পারে তা দেখায়।",
+        "whatsAppPreview": "WhatsApp প্রিভিউ",
+        "metaPreview": "মেটা ট্যাগ প্রিভিউ",
+        "previewTapHint": "খুলতে ট্যাপ করুন",
+        "notSet": "সেট করা নেই"
     },
     "Analytics": {
         "title": "Analytics Settings",

@@ -116,7 +116,8 @@ export default function CreateSpecialMenuModal({
                 {capabilities.availableModes.length > 1 && (
                     <Form.Item
                         name="mode"
-                        label="How should it appear?"
+                        label="How should customers see it?"
+                        extra="Choose whether the special menu replaces your regular menu during this period or appears as an extra section alongside it."
                         rules={[{ required: true }]}
                     >
                         <Radio.Group>

@@ -377,11 +377,12 @@
         "canonicalUrl": "Canonical URL",
         "canonicalUrlPlaceholder": "https://example.com/page",
         "canonicalUrlHelp": "If your menu website appears on multiple domains, enter the main website URL here to avoid duplicate content issues.",
-        "previewCardTitle": "Preview Card",
-        "previewCardHelp": "Shows how your title, description, and URL can appear in WhatsApp and social previews.",
-        "whatsAppPreview": "WhatsApp Preview",
-        "metaPreview": "Meta Tag Preview",
-        "notSet": "Not set"
+        "previewCardTitle": "بطاقة المعاينة",
+        "previewCardHelp": "توضح كيف يمكن أن يظهر العنوان والوصف والرابط في معاينات واتساب والمشاركة الاجتماعية.",
+        "whatsAppPreview": "معاينة واتساب",
+        "metaPreview": "معاينة وسوم الميتا",
+        "previewTapHint": "اضغط للفتح",
+        "notSet": "غير مضبوط"
     },
     "Analytics": {
         "title": "Analytics Settings",
