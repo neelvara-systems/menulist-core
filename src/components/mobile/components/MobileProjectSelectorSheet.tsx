@@ -2,17 +2,19 @@
 
 import { addProject, deleteProject, duplicateProject, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getBase64 } from '@util/utils';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
+import { LuArchiveRestore, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Image, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast, Upload } from '../antd';
 
 type ProjectSheetProject = {
     active?: boolean;
@@ -21,6 +23,7 @@ type ProjectSheetProject = {
     isDefault?: boolean;
     isSpecialMenu?: boolean;
     name: string;
+    projectImage?: string | null;
     projectId: string;
     specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
@@ -119,6 +122,7 @@ export default function MobileProjectSelectorSheet({
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
+    const [formProjectImage, setFormProjectImage] = useState<string | null>(null);
     const [formActive, setFormActive] = useState(true);
     const [formStartsAt, setFormStartsAt] = useState('');
     const [formEndsAt, setFormEndsAt] = useState('');
@@ -206,6 +210,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
+        setFormProjectImage(null);
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
@@ -218,6 +223,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(null);
         setFormName('');
         setFormDescription('');
+        setFormProjectImage(null);
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
@@ -228,6 +234,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(project.projectId);
         setFormName(project.name);
         setFormDescription(project.description || '');
+        setFormProjectImage(project.projectImage || null);
         setFormActive(project.active !== false);
         setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(project.specialMenuEndsAt));
@@ -238,6 +245,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectId(project.projectId);
         setFormName(`Copy of ${project.name}`);
         setFormDescription(project.description || '');
+        setFormProjectImage(project.projectImage || null);
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
@@ -284,11 +292,23 @@ export default function MobileProjectSelectorSheet({
 
         setIsSubmitting(true);
         try {
+            let savedProjectImage = formProjectImage;
+            if (savedProjectImage?.includes('base64')) {
+                const mimeMatch = savedProjectImage.match(/^data:(.*?);base64,/);
+                const { uploadFile } = await import('@database/projects');
+                savedProjectImage = await uploadFile({
+                    uid: formProjectId || nextName || `project-image-${Date.now()}`,
+                    url: savedProjectImage,
+                    type: mimeMatch?.[1] || 'image/jpeg',
+                } as any, 'project-images');
+            }
+
             if (formMode === 'create') {
                 const result = await addProject({
                     active: formActive,
                     description: nextDescription || undefined,
                     name: nextName,
+                    projectImage: savedProjectImage || null,
                 });
 
                 resetFormState();
@@ -300,6 +320,10 @@ export default function MobileProjectSelectorSheet({
             if (formMode === 'duplicate' && formProjectId) {
                 const result = await duplicateProject(formProjectId, nextName, nextDescription || undefined);
 
+                if (savedProjectImage !== (formSourceProject?.projectImage || null) && result?.projectId) {
+                    await updateProjectMetadata(result.projectId, { projectImage: savedProjectImage || null });
+                }
+
                 resetFormState();
                 await refreshAndSync(result?.projectId || null);
                 Toast.show({ content: t('catalogDuplicated'), duration: 1400 });
@@ -310,6 +334,7 @@ export default function MobileProjectSelectorSheet({
                 const metadataUpdate: Record<string, any> = {
                     description: nextDescription || undefined,
                     name: nextName,
+                    projectImage: savedProjectImage || null,
                 };
                 const nextActive = formActive;
                 const activeChanged = formSourceProject?.active !== nextActive;
@@ -351,6 +376,7 @@ export default function MobileProjectSelectorSheet({
         ? `Copy of ${formSourceProject?.name || ''}`
         : formSourceProject?.name || '';
     const initialFormDescription = formSourceProject?.description || '';
+    const initialFormProjectImage = formSourceProject?.projectImage || null;
     const initialFormStartsAt = formSourceProject?.specialMenuStartsAt || '';
     const initialFormEndsAt = formSourceProject?.specialMenuEndsAt || '';
     const isEditingSpecialMenu = formMode === 'edit' && Boolean(formSourceProject?.isSpecialMenu);
@@ -358,6 +384,7 @@ export default function MobileProjectSelectorSheet({
         ? (
             formName.trim() !== initialFormName.trim() ||
             formDescription.trim() !== initialFormDescription.trim() ||
+            formProjectImage !== initialFormProjectImage ||
             formActive !== (formSourceProject?.active !== false) ||
             (isEditingSpecialMenu && (
                 fromNativeDateTimeValue(formStartsAt) !== initialFormStartsAt ||
@@ -370,9 +397,23 @@ export default function MobileProjectSelectorSheet({
         if (!formSourceProject) return;
         setFormName(formSourceProject.name || '');
         setFormDescription(formSourceProject.description || '');
+        setFormProjectImage(formSourceProject.projectImage || null);
         setFormActive(formSourceProject.active !== false);
         setFormStartsAt(toNativeDateTimeValue(formSourceProject.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(formSourceProject.specialMenuEndsAt));
+    };
+
+    const handleProjectImageSelect = async (file: File) => {
+        try {
+            const rawBase64 = await getBase64(file);
+            const optimized = await optimizeImage(rawBase64, MENU_IMAGE_CONFIG);
+            setFormProjectImage(optimized.dataUrl);
+        } catch (error) {
+            console.error('Failed to prepare project image:', error);
+            Toast.show({ content: 'Could not prepare image. Please try again.', duration: 1800 });
+        }
+
+        return false;
     };
 
     const handleToggleActive = async (project: ProjectSheetProject) => {
@@ -620,8 +661,24 @@ export default function MobileProjectSelectorSheet({
                 visible={visible}
             >
                 <Flex gap={16} style={{ maxHeight: 'min(82vh, 720px)', overflowY: 'auto' }} vertical>
-                    <Flex gap={4} vertical>
-                        <Title level={3} style={{ margin: 0, textAlign: 'center' }}>{t('selectCatalog')}</Title>
+                    <Flex gap={8} vertical>
+                        <Flex align="flex-start" justify="space-between" gap={12}>
+                            <div style={{ flex: 1 }} />
+                            <Title level={3} style={{ flex: 1, margin: 0, textAlign: 'center' }}>
+                                {t('selectCatalog')}
+                            </Title>
+                            <Flex justify="flex-end" style={{ flex: 1 }}>
+                                <Button
+                                    aria-label={t('close')}
+                                    fill="none"
+                                    onClick={onClose}
+                                    size="small"
+                                    style={{ padding: 4 }}
+                                >
+                                    <LuX size={18} />
+                                </Button>
+                            </Flex>
+                        </Flex>
                         <Text type="secondary" style={{ textAlign: 'center' }}>
                             {t('selectCatalogDesc')}
                         </Text>
@@ -649,6 +706,7 @@ export default function MobileProjectSelectorSheet({
                                 active: project.active !== false,
                                 deleted: project.deleted === true,
                                 isSpecialMenu: project.isSpecialMenu === true,
+                                projectImage: project.projectImage || null,
                                 specialMenuBaseProjectId: project.specialMenuBaseProjectId,
                                 specialMenuEndsAt: project.specialMenuEndsAt,
                                 specialMenuStatus: project.specialMenuStatus,
@@ -786,6 +844,48 @@ export default function MobileProjectSelectorSheet({
                                 <Text strong>{t('description')}</Text>
                                 <TextArea maxLength={300} onChange={setFormDescription} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
                                 <Text type="secondary">Only for you. Customers do not see this description.</Text>
+                            </Flex>
+
+                            <Flex gap={6} vertical>
+                                <Text strong>Menu image</Text>
+                                <Text type="secondary">Optional. This image appears on the Official Business Page menu card.</Text>
+                                {formProjectImage ? (
+                                    <Flex align="center" gap={12}>
+                                        <Image
+                                            alt={`${formName || labels.offeringPhrase} preview`}
+                                            height={88}
+                                            preview={false}
+                                            src={formProjectImage}
+                                            style={{ borderRadius: 12, objectFit: 'cover' }}
+                                            width={132}
+                                        />
+                                        <Flex gap={8} vertical>
+                                            <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
+                                                <Button fill="outline" size="small">
+                                                    <Flex align="center" gap={6}>
+                                                        <LuImagePlus size={16} />
+                                                        <Text>Replace image</Text>
+                                                    </Flex>
+                                                </Button>
+                                            </Upload>
+                                            <Button color="danger" fill="none" onClick={() => setFormProjectImage(null)} size="small">
+                                                <Flex align="center" gap={6}>
+                                                    <LuTrash2 size={16} />
+                                                    <Text>Remove image</Text>
+                                                </Flex>
+                                            </Button>
+                                        </Flex>
+                                    </Flex>
+                                ) : (
+                                    <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
+                                        <Button fill="outline" size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuImagePlus size={16} />
+                                                <Text>Upload image</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Upload>
+                                )}
                             </Flex>
 
                             {formMode !== 'duplicate' ? (

@@ -319,6 +319,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             {FEATURE_FLAGS.ENABLE_CUSTOMER_COMMUNICATION_KIT ? (
                 <Flex gap={12} style={{ marginTop: 6 }} vertical>
                     <MobileCommunicationKit
+                        activeProjects={data.allProjects
+                            .filter((project) => project.active !== false && project.deleted !== true)
+                            .map((project) => ({
+                                name: project.name,
+                                url: project.url,
+                            }))}
                         address={buildStoreAddress(storeDetails)}
                         businessType={data.businessType}
                         menuLink={data.menuLink}

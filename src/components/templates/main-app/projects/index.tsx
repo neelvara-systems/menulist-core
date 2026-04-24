@@ -134,6 +134,23 @@ function ProjectsPage() {
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [previewLanguage, setPreviewLanguage] = useState('en');
 
+    const resolveProjectImageForSave = useCallback(async (
+        projectImage?: string | null,
+        fallbackUid?: string,
+    ) => {
+        if (!projectImage) return null;
+        if (!projectImage.includes('base64')) return projectImage;
+
+        const mimeMatch = projectImage.match(/^data:(.*?);base64,/);
+        const uploadedUrl = await uploadFile({
+            uid: fallbackUid || `project-image-${Date.now()}`,
+            url: projectImage,
+            type: mimeMatch?.[1] || 'image/jpeg',
+        } as any, 'project-images');
+
+        return uploadedUrl || null;
+    }, []);
+
     // Mount effect: Preload lazy components + first-time visit check
     useEffect(() => {
         // Preload lazy components in background for instant navigation
@@ -505,10 +522,16 @@ function ProjectsPage() {
                 promoteThisAsDefault = decision === 'promote';
             }
 
+            const savedProjectImage = await resolveProjectImageForSave(
+                values.projectImage ?? null,
+                editingProject?.projectId || sanitizedName,
+            );
+
             if (editingProject) {
-                const updatePayload: { name?: string; description?: string; isDefault?: boolean } = {
+                const updatePayload: { name?: string; description?: string; isDefault?: boolean; projectImage?: string | null } = {
                     name: sanitizedName,
                     description: sanitizedDescription,
+                    projectImage: savedProjectImage,
                 };
                 const nextActive = values.active !== false;
                 const activeChanged = (editingProject as any).active !== nextActive;
@@ -543,6 +566,7 @@ function ProjectsPage() {
                 const newProject = await addProject({
                     name: sanitizedName,
                     description: sanitizedDescription,
+                    projectImage: savedProjectImage,
                     active: values.active !== false,
                 });
                 if (newProject) {
@@ -705,13 +729,15 @@ function ProjectsPage() {
             form.setFieldsValue({
                 active: (project as any).active !== false,
                 name: project.name,
-                description: project.description
+                description: project.description,
+                projectImage: project.projectImage || null,
             });
         } else {
             setEditingProject(null);
             form.resetFields();
             form.setFieldsValue({
                 active: true,
+                projectImage: null,
             });
         }
         setIsModalOpen(true);

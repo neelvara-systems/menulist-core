@@ -69,6 +69,7 @@ export interface ProjectMetadata {
     projectId?: string;
     name: string;
     description?: string;
+    projectImage?: string | null;
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
     modifiedBy?: string;
@@ -98,6 +99,7 @@ export interface ProjectMetadata {
 export interface ProjectSummaryData {
     name: string;
     description?: string;
+    projectImage?: string | null;
     active: boolean;
     isDefault?: boolean;
 

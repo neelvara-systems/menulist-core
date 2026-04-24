@@ -14,6 +14,10 @@ interface MobileCommunicationKitProps {
     menuLink: string;
     obpLink?: string;
     projectName?: string;
+    activeProjects?: Array<{
+        name: string;
+        url: string;
+    }>;
     address?: string;
     phone?: string;
     workingHours?: Record<string, string>;
@@ -21,6 +25,7 @@ interface MobileCommunicationKitProps {
 }
 
 export default function MobileCommunicationKit({
+    activeProjects,
     address,
     businessType,
     menuLink,
@@ -35,6 +40,7 @@ export default function MobileCommunicationKit({
     const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
 
     const input: MessageTemplateInput = useMemo(() => ({
+        activeProjects,
         address,
         businessType,
         isClosedToday: todayResult.isClosed,
@@ -44,7 +50,7 @@ export default function MobileCommunicationKit({
         projectName,
         storeName,
         todayHours: todayResult.hours,
-    }), [address, businessType, menuLink, obpLink, phone, projectName, storeName, todayResult]);
+    }), [activeProjects, address, businessType, menuLink, obpLink, phone, projectName, storeName, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
 

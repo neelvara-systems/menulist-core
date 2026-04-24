@@ -18,6 +18,10 @@ export interface MessageTemplateInput {
     menuLink: string;
     obpLink?: string;
     projectName?: string;
+    activeProjects?: Array<{
+        name: string;
+        url: string;
+    }>;
     address?: string;
     phone?: string;
     todayHours?: { open: string; close: string } | null;
@@ -181,6 +185,28 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
             'This link always shows the latest version.',
         ]),
     });
+
+    if ((input.activeProjects?.length || 0) > 1) {
+        const menuOptionLines = [
+            '*Hi! Here are our available menus*',
+            '',
+        ];
+
+        input.activeProjects?.forEach((project) => {
+            menuOptionLines.push(`*${project.name}*`);
+            menuOptionLines.push(project.url);
+            menuOptionLines.push('');
+        });
+
+        menuOptionLines.push('Choose the one you want to view.');
+
+        templates.push({
+            id: 'all_active_menus',
+            title: 'All Active Menus',
+            description: 'Share all active menu links when customers need multiple options',
+            message: buildMessage(menuOptionLines),
+        });
+    }
 
     return templates;
 }

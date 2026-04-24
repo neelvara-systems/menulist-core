@@ -546,6 +546,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             const summaryData: ProjectSummaryData = {
                 name: data.name || "Untitled",
                 ...(data.description != null ? { description: data.description } : {}),
+                ...(data.projectImage !== undefined ? { projectImage: data.projectImage } : {}),
                 active: isActive,
                 isDefault: data.isDefault ?? false,
                 slug: projectSlug,
@@ -876,6 +877,7 @@ export const setProjectActive = async (projectId: string, active: boolean) => {
             await syncProjectToSummary(projectId, {
                 name: currentSummary.name || "Untitled",
                 description: currentSummary.description,
+                projectImage: currentSummary.projectImage ?? null,
                 active,
                 isDefault: currentSummary.isDefault ?? false,
                 slug: currentSummary.slug,
@@ -1434,6 +1436,7 @@ export const duplicateProject = async (
                 name: newName,
                 description:
                     newDescription || `Copy of ${originalSummary?.name || "project"}`,
+                projectImage: originalSummary.projectImage ?? null,
                 active: true,
                 isDefault: false,
             };
@@ -1712,6 +1715,7 @@ export const createSpecialMenuProject = async (params: {
             const summaryData: ProjectSummaryData = {
                 name: displayName,
                 description: `Special menu: ${displayName}`,
+                projectImage: summaryProjects[baseProjectId]?.projectImage ?? null,
                 active: true,
                 isDefault: false,
                 isSpecialMenu: true,

@@ -1,11 +1,15 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Button, Flex, Form, FormInstance, Input, Modal, Switch } from "antd";
+import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { getBase64 } from '@util/utils';
+import { Button, Flex, Form, FormInstance, Image, Input, Modal, Switch, Upload, message } from "antd";
+import { LuImagePlus, LuTrash2 } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
 
 export interface ProjectFormData {
     name: string;
     description?: string;
     active?: boolean;
+    projectImage?: string | null;
 }
 
 
@@ -28,6 +32,20 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 }) => {
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
+    const projectImage = Form.useWatch('projectImage', form) as string | null | undefined;
+
+    const handleProjectImageSelect = async (file: File) => {
+        try {
+            const rawBase64 = await getBase64(file);
+            const optimized = await optimizeImage(rawBase64, MENU_IMAGE_CONFIG);
+            form.setFieldValue('projectImage', optimized.dataUrl);
+        } catch (error) {
+            console.error('Failed to prepare project image:', error);
+            message.error('Could not prepare image. Please try again.');
+        }
+
+        return false;
+    };
 
     return (
         <Modal
@@ -89,6 +107,44 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     valuePropName="checked"
                 >
                     <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                </Form.Item>
+                <Form.Item hidden name="projectImage">
+                    <Input type="hidden" />
+                </Form.Item>
+                <Form.Item label={`${offeringName} Image`}>
+                    <Flex gap={12} vertical>
+                        {projectImage ? (
+                            <Flex align="center" gap={12}>
+                                <Image
+                                    alt={`${offeringName} preview`}
+                                    height={88}
+                                    preview={false}
+                                    src={projectImage}
+                                    style={{ borderRadius: 12, objectFit: 'cover' }}
+                                    width={132}
+                                />
+                                <Flex gap={8} vertical>
+                                    <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
+                                        <Button icon={<LuImagePlus size={16} />}>Replace image</Button>
+                                    </Upload>
+                                    <Button
+                                        danger
+                                        icon={<LuTrash2 size={16} />}
+                                        onClick={() => form.setFieldValue('projectImage', null)}
+                                    >
+                                        Remove image
+                                    </Button>
+                                </Flex>
+                            </Flex>
+                        ) : (
+                            <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
+                                <Button icon={<LuImagePlus size={16} />}>Upload image</Button>
+                            </Upload>
+                        )}
+                        <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                            Optional. This image appears on the Official Business Page menu card.
+                        </span>
+                    </Flex>
                 </Form.Item>
             </Form>
         </Modal>

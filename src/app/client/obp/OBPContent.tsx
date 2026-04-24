@@ -84,7 +84,7 @@ interface ObpMenuInfo {
     hasMenu: boolean;
     defaultSlug: string | undefined;
     /** Active, non-special menu projects ordered with the default first. */
-    projects: Array<{ slug: string; name: string; isDefault: boolean }>;
+    projects: Array<{ slug: string; name: string; isDefault: boolean; projectImage?: string | null }>;
 }
 
 const getObpMenuInfo = unstable_cache(
@@ -114,6 +114,7 @@ const getObpMenuInfo = unstable_cache(
                     slug: (p.slug as string) || '',
                     name: (p.name as string) || '',
                     isDefault: p === defaultProj,
+                    projectImage: (p.projectImage as string) || null,
                 }))
                 .filter((p) => p.slug && p.name);
 
@@ -439,6 +440,7 @@ export default async function OBPContent({
         slug: p.slug,
         name: p.name,
         isDefault: p.isDefault,
+        projectImage: p.projectImage || null,
         url: buildProjectUrl(p.slug),
     }));
 

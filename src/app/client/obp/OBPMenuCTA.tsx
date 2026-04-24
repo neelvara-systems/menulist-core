@@ -24,6 +24,7 @@ import styles from './obp.module.scss';
 export interface OBPMenuCTAProjectEntry {
     slug: string;
     name: string;
+    projectImage?: string | null;
     url: string;
     isDefault: boolean;
 }
@@ -102,7 +103,14 @@ export default function OBPMenuCTA({
                 style={{ background: accentColor }}
                 onClick={trackPrimary}
             >
-                View {primary.name}
+                <span className={styles.menuButtonContent}>
+                    {primary.projectImage ? (
+                        <span className={styles.menuButtonThumb}>
+                            <img alt={primary.name} src={primary.projectImage} />
+                        </span>
+                    ) : null}
+                    <span className={styles.menuButtonLabel}>View {primary.name}</span>
+                </span>
             </a>
             {secondary.length > 0 && (
                 <div className={styles.secondaryProjects}>
@@ -113,7 +121,12 @@ export default function OBPMenuCTA({
                             className={styles.secondaryProjectCard}
                             onClick={() => trackSecondary(p)}
                         >
-                            {p.name}
+                            {p.projectImage ? (
+                                <span className={styles.secondaryProjectThumb}>
+                                    <img alt={p.name} src={p.projectImage} />
+                                </span>
+                            ) : null}
+                            <span className={styles.secondaryProjectName}>{p.name}</span>
                         </a>
                     ))}
                 </div>
