@@ -30,6 +30,7 @@ export interface ExtractedDataCategory {
     id: string;
     active: boolean;
     name: { [key: string]: string }; // Language code keys
+    icon?: string; // Optional category icon, e.g. "lu:LuPizza" or "emoji:🍕"
     images?: UserUploadedFileType[];
     timeSlots?: CategoryTimeSlot[]; // Time-based visibility with preset support
     orderIndex?: number; // Multi-store: Store can override category order

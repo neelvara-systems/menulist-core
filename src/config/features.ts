@@ -195,6 +195,24 @@ export const FEATURE_FLAGS = {
     ENABLE_DECISION_BLOCKS: true, // Toggle to enable/disable recommendation blocks
 
     /**
+     * Enable category icons across owner and client menu surfaces
+     *
+     * true: Owners can assign a Lucide icon or emoji to a category
+     * false: Category icons are hidden and category titles stay text-only
+     *
+     * Scope:
+     * - Category create/edit flows
+     * - Owner menu category listings
+     * - Client-facing category tabs and headers
+     *
+     * Notes:
+     * - Lucide is the primary recommended path
+     * - Emoji is supported as an optional secondary choice
+     * - Stored on category data as a simple string value
+     */
+    ENABLE_CATEGORY_ICONS: true,
+
+    /**
      * Social Content / Today Feature
      *
      * ✅ 3-YEAR ARCHITECTURE FREEZE - Ship everything at launch!

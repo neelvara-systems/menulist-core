@@ -1,4 +1,7 @@
 import AIButtonIcon from '@atoms/aiButtonIcon';
+import CategoryIcon from '@atoms/CategoryIcon';
+import IconPicker from '@atoms/IconPicker';
+import { getSuggestedCategoryIcons } from '@lib/categoryIcons';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
@@ -67,6 +70,10 @@ const EditCategoryModal = ({
         if (!categoryData.name?.[primaryLanguage]?.trim()) return false;
         return selectedLanguages.slice(1).some((language) => !categoryData.name?.[language]?.trim());
     }, [categoryData, primaryLanguage, selectedLanguages]);
+    const suggestedIcons = useMemo(
+        () => getSuggestedCategoryIcons(categoryData?.name?.[primaryLanguage], storeDetails?.businessType).map((entry) => entry.replace('lu:', '')),
+        [categoryData?.name, primaryLanguage, storeDetails?.businessType]
+    );
 
     useEffect(() => {
         if (modalData.active && modalData.category) {
@@ -394,6 +401,39 @@ const EditCategoryModal = ({
                                 onChange={(checked) => setCategoryData({ ...categoryData, active: checked })}
                             />
                         </Flex>
+
+                        {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS ? (
+                            <Flex
+                                align="center"
+                                justify="space-between"
+                                style={{
+                                    padding: '12px',
+                                    background: token.colorFillAlter,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 8,
+                                }}
+                            >
+                                <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+                                    <Typography.Text strong>Category icon</Typography.Text>
+                                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                        Use a Lucide icon or emoji. Suggestions update from the category name.
+                                    </Typography.Text>
+                                </Flex>
+                                <Flex align="center" gap={10}>
+                                    <IconPicker
+                                        buttonSize="middle"
+                                        onChange={(value) => setCategoryData({ ...categoryData, icon: value })}
+                                        suggestedIcons={suggestedIcons}
+                                        value={categoryData.icon}
+                                    />
+                                    {categoryData.icon ? (
+                                        <Button onClick={() => setCategoryData({ ...categoryData, icon: undefined })}>
+                                            Clear
+                                        </Button>
+                                    ) : null}
+                                </Flex>
+                            </Flex>
+                        ) : null}
 
                         {/* Feature #3: Time-Based Categories with Presets */}
                         <Flex

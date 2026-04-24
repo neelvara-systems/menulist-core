@@ -5,11 +5,14 @@
  * NO Ant Design - Minimal styling
  */
 
+import CategoryIcon from '@atoms/CategoryIcon';
+import { FEATURE_FLAGS } from '@config/features';
 import { MenuMoodConfig, SPACING } from '../designSystem';
 
 interface MenuCategoryOutputProps {
     category: {
         id: string;
+        icon?: string;
         name: string;
         description?: string;
     };
@@ -38,17 +41,32 @@ export default function MenuCategoryOutput({
                         : 'none',
                 }}
             >
-                <h2
-                    className="m-0 text-base md:text-lg font-semibold"
-                    style={{
-                        fontFamily: moodConfig.headingFont,
-                        color: moodConfig.headingColor,
-                        textTransform: categoryStyle.titleTransform || 'none',
-                        letterSpacing: categoryStyle.titleLetterSpacing || '0',
-                    }}
-                >
-                    {category.name}
-                </h2>
+                <div className="flex items-center gap-2">
+                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                        <div
+                            className="flex items-center justify-center rounded-lg"
+                            style={{
+                                background: `${moodConfig.accentColor}12`,
+                                border: `1px solid ${moodConfig.categoryStyle.borderColor}`,
+                                height: 30,
+                                width: 30,
+                            }}
+                        >
+                            <CategoryIcon color={moodConfig.headingColor} icon={category.icon} size={17} />
+                        </div>
+                    ) : null}
+                    <h2
+                        className="m-0 text-base md:text-lg font-semibold"
+                        style={{
+                            fontFamily: moodConfig.headingFont,
+                            color: moodConfig.headingColor,
+                            textTransform: categoryStyle.titleTransform || 'none',
+                            letterSpacing: categoryStyle.titleLetterSpacing || '0',
+                        }}
+                    >
+                        {category.name}
+                    </h2>
+                </div>
 
                 {category.description && (
                     <p

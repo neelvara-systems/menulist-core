@@ -1,5 +1,6 @@
 'use client'
 
+import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { theme } from 'antd';
@@ -13,6 +14,7 @@ export type MobileCategoryItem = {
     id: string;
     name: string;
     active: boolean;
+    icon?: string;
     itemCount: number;
     nameByLanguage?: Record<string, string>;
     orderIndex?: number;
@@ -38,8 +40,8 @@ interface CategoryManagerSheetProps {
     initialMode?: 'manage' | 'reorder';
     presets: TimeSlotPreset[];
     visible: boolean;
-    onAdd: (payload: { names: Record<string, string>; active: boolean; presetIds: string[] }) => Promise<void>;
-    onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; presetIds: string[] }) => Promise<void>;
+    onAdd: (payload: { names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
+    onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
     onReorder: (orderedIds: string[]) => Promise<void>;
@@ -382,9 +384,12 @@ export default function CategoryManagerSheet({
                                 {draftCategories.map((category, index) => (
                                     <Card key={category.id} size="small" style={{ borderRadius: 14, margin: 0 }}>
                                         <Flex align="center" gap={12} justify="space-between">
-                                            <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                <Text strong>{category.name}</Text>
-                                                <Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>
+                                            <Flex align="center" gap={10} style={{ flex: 1, minWidth: 0 }}>
+                                                <CategoryIcon icon={category.icon || ''} size={18} />
+                                                <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                                                    <Text strong>{category.name}</Text>
+                                                    <Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>
+                                                </Flex>
                                             </Flex>
                                             <Flex gap={8}>
                                                 <Button
@@ -432,7 +437,10 @@ export default function CategoryManagerSheet({
                             <Flex gap={6} vertical>
                                 {selectedReorderCategory ? (
                                     <>
-                                        <Text strong>{selectedReorderCategory.name}</Text>
+                                        <Flex align="center" gap={10}>
+                                            <CategoryIcon icon={selectedReorderCategory.icon || ''} size={18} />
+                                            <Text strong>{selectedReorderCategory.name}</Text>
+                                        </Flex>
                                         <Text type="secondary">{t('reorderItemsHelp', { category: selectedReorderCategory.name })}</Text>
                                     </>
                                 ) : (
@@ -450,7 +458,12 @@ export default function CategoryManagerSheet({
                                             description={<Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>}
                                             key={category.id}
                                             onClick={() => openItemReorderCategory(category.id)}
-                                            title={<Text strong>{category.name}</Text>}
+                                            title={(
+                                                <Flex align="center" gap={10}>
+                                                    <CategoryIcon icon={category.icon || ''} size={18} />
+                                                    <Text strong>{category.name}</Text>
+                                                </Flex>
+                                            )}
                                         />
                                     ))}
                                 </List>
@@ -615,7 +628,12 @@ export default function CategoryManagerSheet({
                                                 )}
                                                 key={category.id}
                                                 onClick={() => openCategoryEditor(category)}
-                                                title={<Text strong>{category.name}</Text>}
+                                                title={(
+                                                    <Flex align="center" gap={10}>
+                                                        <CategoryIcon icon={category.icon || ''} size={18} />
+                                                        <Text strong>{category.name}</Text>
+                                                    </Flex>
+                                                )}
                                             />
                                         ))}
                                     </List>
@@ -627,6 +645,7 @@ export default function CategoryManagerSheet({
             </Flex>
 
             <MobileCategoryEditSheet
+                businessType={businessType}
                 category={categoryEditorMode === 'edit' ? selectedCategory : null}
                 mode={categoryEditorMode === 'edit' ? 'edit' : 'add'}
                 onClose={closeCategoryEditor}
@@ -640,6 +659,7 @@ export default function CategoryManagerSheet({
                         if (categoryEditorMode === 'add') {
                             await onAdd({
                                 active: payload.active,
+                                icon: payload.icon,
                                 names: payload.names,
                                 presetIds: payload.presetIds,
                             });
@@ -649,6 +669,7 @@ export default function CategoryManagerSheet({
                             await onUpdate({
                                 active: payload.active,
                                 id: payload.id,
+                                icon: payload.icon,
                                 names: payload.names,
                                 presetIds: payload.presetIds,
                             });

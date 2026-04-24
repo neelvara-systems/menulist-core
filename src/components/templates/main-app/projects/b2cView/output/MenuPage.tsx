@@ -5,6 +5,8 @@
  * NO Ant Design - Minimal styling
  */
 
+import CategoryIcon from '@atoms/CategoryIcon';
+import { FEATURE_FLAGS } from '@config/features';
 import { useMemo, useState } from 'react';
 import {
     DEFAULTS,
@@ -28,6 +30,7 @@ interface MenuItem {
 
 interface MenuCategory {
     id: string;
+    icon?: string;
     name: string;
     description?: string;
     items: MenuItem[];
@@ -104,7 +107,16 @@ export default function MenuPageOutput({
                                     border: 'none',
                                 }}
                             >
-                                {category.name}
+                                <span className="inline-flex items-center gap-2">
+                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                                        <CategoryIcon
+                                            color={activeCategory === category.id ? moodConfig.accentColor : moodConfig.bodyColor}
+                                            icon={category.icon}
+                                            size={14}
+                                        />
+                                    ) : null}
+                                    <span>{category.name}</span>
+                                </span>
                             </button>
                         ))}
                     </div>

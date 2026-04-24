@@ -17,10 +17,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { LuList } from 'react-icons/lu';
+import CategoryIcon from '@atoms/CategoryIcon';
+import { FEATURE_FLAGS } from '@config/features';
 import { MenuMoodConfig } from '../designSystem';
 
 interface Category {
     id: string;
+    icon?: string;
     name: { [lang: string]: string };
 }
 
@@ -144,7 +147,7 @@ function MenuFilters({
                                         }}
                                     >
                                         <span
-                                            className="text-sm"
+                                            className="inline-flex items-center gap-2 text-sm"
                                             style={{
                                                 fontWeight: activeCategory?.id === category.id ? 600 : 400,
                                                 color: activeCategory?.id === category.id
@@ -152,7 +155,14 @@ function MenuFilters({
                                                     : moodConfig.bodyColor,
                                             }}
                                         >
-                                            {category.name[activeLanguage]}
+                                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                                                <CategoryIcon
+                                                    color={activeCategory?.id === category.id ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                    icon={category.icon}
+                                                    size={14}
+                                                />
+                                            ) : null}
+                                            <span>{category.name[activeLanguage]}</span>
                                         </span>
                                     </button>
                                 ))}

@@ -1,6 +1,10 @@
 'use client'
 
+import CategoryIcon from '@atoms/CategoryIcon';
+import IconPicker from '@atoms/IconPicker';
+import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
+import { getSuggestedCategoryIcons } from '@lib/categoryIcons';
 import { LuLanguages } from 'react-icons/lu';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -14,6 +18,7 @@ import type { MobileCategoryItem } from './CategoryManagerSheet';
 type SavePayload = {
     active: boolean;
     id?: string;
+    icon?: string;
     names: Record<string, string>;
     presetIds: string[];
 };
@@ -21,6 +26,7 @@ type SavePayload = {
 interface MobileCategoryEditSheetProps {
     category?: MobileCategoryItem | null;
     mode: 'add' | 'edit';
+    businessType?: string;
     onClose: () => void;
     onDelete?: (categoryId: string) => void;
     onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
@@ -33,6 +39,7 @@ interface MobileCategoryEditSheetProps {
 export default function MobileCategoryEditSheet({
     category,
     mode,
+    businessType,
     onClose,
     onDelete,
     onGenerateContent,
@@ -45,6 +52,7 @@ export default function MobileCategoryEditSheet({
     const { token } = theme.useToken();
     const primaryLanguage = selectedLanguages[0] || 'en';
     const [names, setNames] = useState<Record<string, string>>({});
+    const [icon, setIcon] = useState<string>('');
     const [active, setActive] = useState(true);
     const [presetIds, setPresetIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -58,6 +66,7 @@ export default function MobileCategoryEditSheet({
         if (!visible) return;
         const nextNames = Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || '']));
         setNames(nextNames);
+        setIcon(category?.icon || '');
         setActive(category?.active ?? true);
         setPresetIds(category?.timeSlotPresetIds || []);
         setActiveLanguageKey([primaryLanguage]);
@@ -101,6 +110,7 @@ export default function MobileCategoryEditSheet({
             await onSave({
                 active,
                 id: category?.id,
+                icon: icon || undefined,
                 names: Object.fromEntries(
                     selectedLanguages.map((language) => [language, names[language]?.trim() || ''])
                 ),
@@ -113,6 +123,8 @@ export default function MobileCategoryEditSheet({
     };
 
     if (!visible) return null;
+
+    const suggestedIcons = getSuggestedCategoryIcons(names[primaryLanguage], businessType);
 
     return (
         <Popup
@@ -134,6 +146,37 @@ export default function MobileCategoryEditSheet({
                 <Flex gap={12} style={{ padding: 12 }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
+                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS ? (
+                                <Flex
+                                    gap={10}
+                                    vertical
+                                    style={{
+                                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                                        paddingBottom: 12,
+                                    }}
+                                >
+                                    <Flex gap={10} style={{ flex: 1, minWidth: 0 }} vertical>
+                                        <Text strong>Category icon</Text>
+                                        <Text type="secondary">Pick a Lucide icon or emoji for faster recognition.</Text>
+                                    </Flex>
+                                    <Flex align="center" gap={10} wrap="wrap">
+                                        <IconPicker
+                                            buttonSize="middle"
+                                            gridWidth={320}
+                                            onChange={setIcon}
+                                            popoverWidth={320}
+                                            suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
+                                            value={icon}
+                                        />
+                                        {icon ? (
+                                            <Button fill="outline" onClick={() => setIcon('')} size="small">
+                                                Clear
+                                            </Button>
+                                        ) : null}
+                                    </Flex>
+                                </Flex>
+                            ) : null}
+
                             {hasMultipleLanguages ? (
                                 <Collapse activeKey={activeLanguageKey} onChange={(key) => setActiveLanguageKey(Array.isArray(key) ? key : (key ? [key] : []))}>
                                     {selectedLanguages.map((languageCode, index) => {

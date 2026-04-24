@@ -1,7 +1,9 @@
 'use client'
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
+import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
@@ -51,10 +53,11 @@ const SmartRecommendationsSheet = dynamic(() => import('../sheets/SmartRecommend
 const TextCaseSheet = dynamic(() => import('../sheets/TextCaseSheet'), { ssr: false });
 const ImageUploadModal = dynamic(() => import('../../templates/main-app/projects/editorView/ImageUploadModal'), { ssr: false });
 
-type CategoryOption = { id: string; name: string };
+type CategoryOption = { id: string; name: string; icon?: string };
 type CategorySummary = {
     active: boolean;
     id: string;
+    icon?: string;
     itemCount: number;
     nameByLanguage?: Record<string, string>;
     name: string;
@@ -1065,15 +1068,21 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     }, [activeProjectLanguages, menuData?.files, primaryLang]);
     const categoryOptions = useMemo<CategoryOption[]>(() => {
         if (!menuData?.files) return [];
-        const map = new Map<string, string>();
+        const map = new Map<string, CategoryOption>();
         menuData.files.forEach((file: any) => {
             const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
             categories.forEach((category) => {
                 const label = resolveCategoryName(category, displayLanguage, uncategorizedLabel);
-                if (!map.has(category.id)) map.set(category.id, label);
+                if (!map.has(category.id)) {
+                    map.set(category.id, {
+                        id: category.id,
+                        icon: category.icon,
+                        name: label,
+                    });
+                }
             });
         });
-        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+        return Array.from(map.values());
     }, [displayLanguage, menuData?.files, uncategorizedLabel]);
 
     const categoryActiveById = useMemo(() => {
@@ -1554,6 +1563,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         name,
                         active: category.active !== false,
                         itemCount: count,
+                        icon: category.icon,
                         nameByLanguage: typeof category.name === 'object' ? removeObjRef(category.name) : undefined,
                         orderIndex: category.orderIndex,
                         timeSlotPresetIds: getCategoryTimeSlotPresetIds(category),
@@ -1585,6 +1595,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         const sections = categorySummary
             .map((category) => ({
                 id: category.id,
+                icon: category.icon,
                 name: category.name,
                 items: itemsByCategory.get(category.id) || [],
             }))
@@ -1599,6 +1610,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (uncategorizedItems.length > 0) {
             sections.push({
                 id: 'uncategorized',
+                icon: undefined,
                 name: uncategorizedLabel,
                 items: uncategorizedItems,
             });
@@ -1635,7 +1647,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         return map;
     }, [categorySummary]);
 
-    const handleCategoryAdd = async ({ names, active, presetIds }: { names: Record<string, string>; active: boolean; presetIds: string[] }) => {
+    const handleCategoryAdd = async ({ names, active, icon, presetIds }: { names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => {
         if (!menuData) return;
         const presets = storeDetails?.timeSlotPresets || [];
         const previous = menuData;
@@ -1652,6 +1664,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             ...nextCategory.name,
             ...names,
         };
+        nextCategory.icon = icon;
         nextCategory.timeSlots = presetIds.length
             ? presetIds
                 .map((presetId) => presets.find((preset: any) => preset.id === presetId))
@@ -1666,7 +1679,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         applyLocalMenuUpdate(updated);
     };
 
-    const handleCategoryUpdate = async ({ id: categoryId, names, active, presetIds }: { id: string; names: Record<string, string>; active: boolean; presetIds: string[] }) => {
+    const handleCategoryUpdate = async ({ id: categoryId, names, active, icon, presetIds }: { id: string; names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => {
         if (!menuData) return;
         const presets = storeDetails?.timeSlotPresets || [];
         const updated = removeObjRef(menuData);
@@ -1680,6 +1693,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         activeProjectLanguages
                     );
                     category.name = nextName;
+                    category.icon = icon;
                     category.active = active;
                     category.timeSlots = presetIds.length
                         ? presetIds
@@ -2305,28 +2319,46 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             activeKey={expandedCategoryKeys}
                             onChange={(key) => setExpandedCategoryKeys(Array.isArray(key) ? key : (key ? [key] : []))}
                         >
-                            {orderedCategorySections.map(({ id, items, name }) => (
+                            {orderedCategorySections.map(({ id, icon, items, name }) => (
                                 <Collapse.Panel
                                     key={id}
                                     title={(
                                         <Flex align="center" gap={8} style={{ minWidth: 0, width: '100%' }}>
-                                            <Flex gap={4} style={{ flex: '1 1 auto', minWidth: 0 }} vertical>
-                                                <Text
-                                                    strong
-                                                    style={{
-                                                        minWidth: 0,
-                                                        overflowWrap: 'anywhere',
-                                                    }}
-                                                >
-                                                    {name}
-                                                </Text>
-                                                {id !== 'uncategorized' ? (
-                                                    <Flex align="center" gap={6} wrap="wrap">
-                                                        <Text type="secondary">
-                                                            {items.length} items
-                                                        </Text>
+                                            <Flex align="center" gap={10} style={{ flex: '1 1 auto', minWidth: 0 }}>
+                                                {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && id !== 'uncategorized' ? (
+                                                    <Flex
+                                                        align="center"
+                                                        justify="center"
+                                                        style={{
+                                                            backgroundColor: token.colorFillAlter,
+                                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                                            borderRadius: 10,
+                                                            flexShrink: 0,
+                                                            height: 28,
+                                                            width: 28,
+                                                        }}
+                                                    >
+                                                        <CategoryIcon icon={icon || ''} size={16} />
                                                     </Flex>
                                                 ) : null}
+                                                <Flex gap={4} style={{ flex: '1 1 auto', minWidth: 0 }} vertical>
+                                                    <Text
+                                                        strong
+                                                        style={{
+                                                            minWidth: 0,
+                                                            overflowWrap: 'anywhere',
+                                                        }}
+                                                    >
+                                                        {name}
+                                                    </Text>
+                                                    {id !== 'uncategorized' ? (
+                                                        <Flex align="center" gap={6} wrap="wrap">
+                                                            <Text type="secondary">
+                                                                {items.length} items
+                                                            </Text>
+                                                        </Flex>
+                                                    ) : null}
+                                                </Flex>
                                             </Flex>
                                             {id !== 'uncategorized' ? (
                                                 <Flex

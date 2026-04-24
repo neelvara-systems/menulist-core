@@ -12,6 +12,7 @@
 
 import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
+import CategoryIcon from '@atoms/CategoryIcon';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { slugify } from '@lib/utils/slugify';
@@ -677,7 +678,16 @@ function MenuPageNew({
                                         flexShrink: 0,
                                     }}
                                 >
-                                    {cat.name?.[activeLanguage]}
+                                    <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
+                                        {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && cat.icon ? (
+                                            <CategoryIcon
+                                                color={activeCategory?.id === cat.id ? '#000' : moodConfig.bodyColor}
+                                                icon={cat.icon}
+                                                size={14}
+                                            />
+                                        ) : null}
+                                        <span>{cat.name?.[activeLanguage]}</span>
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -753,7 +763,16 @@ function MenuPageNew({
                                                     }
                                                 }}
                                             >
-                                                {cat.name?.[activeLanguage]}
+                                                <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
+                                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && cat.icon ? (
+                                                        <CategoryIcon
+                                                            color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                            icon={cat.icon}
+                                                            size={15}
+                                                        />
+                                                    ) : null}
+                                                    <span>{cat.name?.[activeLanguage]}</span>
+                                                </span>
                                             </button>
                                         );
                                     })}
@@ -779,7 +798,26 @@ function MenuPageNew({
                                         style={{ marginBottom: spacing.category }}
                                     >
                                         <header>
-                                            <h2 style={categoryHeaderStyle}>{category.name?.[activeLanguage]}</h2>
+                                            <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
+                                                {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                                                    <div
+                                                        style={{
+                                                            alignItems: 'center',
+                                                            background: `${moodConfig.accentColor}12`,
+                                                            border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                            borderRadius: 10,
+                                                            display: 'flex',
+                                                            flexShrink: 0,
+                                                            height: 32,
+                                                            justifyContent: 'center',
+                                                            width: 32,
+                                                        }}
+                                                    >
+                                                        <CategoryIcon color={moodConfig.headingColor} icon={category.icon} size={18} />
+                                                    </div>
+                                                ) : null}
+                                                <h2 style={categoryHeaderStyle}>{category.name?.[activeLanguage]}</h2>
+                                            </div>
                                             {moodConfig.categoryStyle.dividerStyle === 'line' && <div style={dividerStyle} />}
                                         </header>
 
