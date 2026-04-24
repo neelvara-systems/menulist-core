@@ -378,7 +378,11 @@ function formatSpecialMenuWindow(start?: string, end?: string): string | null {
     return startLabel || endLabel;
 }
 
-export default function MobileMenuScreen() {
+interface MobileMenuScreenProps {
+    onOpenDesignEditor?: () => void;
+}
+
+export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScreenProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -1901,6 +1905,10 @@ export default function MobileMenuScreen() {
                             isDefault: activeProjectSummary?.isDefault,
                             isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
+                            specialMenuBaseProjectId: activeProjectSummary?.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: activeProjectSummary?.specialMenuBaseProjectId
+                                ? projectsList.find((project: any) => project.projectId === activeProjectSummary.specialMenuBaseProjectId)?.name
+                                : undefined,
                             specialMenuEndsAt: activeProjectSummary?.specialMenuEndsAt,
                             specialMenuStatus: activeProjectSummary?.specialMenuStatus,
                         }}
@@ -3272,6 +3280,7 @@ export default function MobileMenuScreen() {
                 currentProjectId={menuData?.projectId}
                 currentProjectName={activeProjectSummary?.name || menuData?.name || null}
                 onClose={() => setIsProjectSelectorOpen(false)}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
                     await flushPendingMenuPersist();

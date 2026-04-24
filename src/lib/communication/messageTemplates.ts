@@ -16,6 +16,8 @@ export interface MessageTemplateInput {
     storeName: string;
     businessType: string;
     menuLink: string;
+    obpLink?: string;
+    projectName?: string;
     address?: string;
     phone?: string;
     todayHours?: { open: string; close: string } | null;
@@ -30,20 +32,26 @@ export interface MessageTemplate {
 }
 
 /**
- * Generate 6 message templates from store data.
+ * Generate message templates from store data.
  * Missing fields (address, phone, hours) are gracefully omitted.
  * Quick Reply is first — most frequently used by SMB owners.
  */
 export function generateMessageTemplates(input: MessageTemplateInput): MessageTemplate[] {
     const labels = getOfferingLabels(input.businessType);
     const templates: MessageTemplate[] = [];
+    const offeringReference = getOfferingReference(labels.offeringLower, input.projectName);
+    const offeringTitleReference = getOfferingReference(labels.offeringTitle, input.projectName);
 
     // Template 1: Quick Reply (Primary — most used)
     templates.push({
         id: 'quick_reply',
         title: 'Quick Reply',
         description: 'Just the link — fastest response',
-        message: `${labels.offeringTitle}: ${input.menuLink}`,
+        message: buildMessage([
+            `*${offeringTitleReference}*`,
+            '',
+            input.menuLink,
+        ]),
     });
 
     // Template 2: Send Menu/Services/Catalog
@@ -52,7 +60,7 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
         title: `Send ${labels.offeringTitle}`,
         description: `Quick reply when customers ask for the ${labels.offeringLower}`,
         message: buildMessage([
-            `Hi! Here is our ${labels.offeringLower}:`,
+            `*Hi! Here is our ${offeringReference}*`,
             '',
             input.menuLink,
             '',
@@ -60,9 +68,31 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
         ]),
     });
 
+    if (input.obpLink) {
+        const officialPageLines = [
+            '*Hi! Here is our official business page*',
+            '',
+            input.obpLink,
+        ];
+        if (input.address) officialPageLines.push('', `📍 ${input.address}`);
+        if (input.phone) officialPageLines.push(`📞 ${input.phone}`);
+        if (input.isClosedToday) {
+            officialPageLines.push('🕐 Closed today');
+        } else if (input.todayHours) {
+            officialPageLines.push(`🕐 Open today: ${input.todayHours.open} – ${input.todayHours.close}`);
+        }
+
+        templates.push({
+            id: 'official_page',
+            title: 'Official Business Page',
+            description: 'Share your main business page with menu, hours, and contact info',
+            message: buildMessage(officialPageLines),
+        });
+    }
+
     // Template 3: Menu + Location
     const locationLines = [
-        `Hi! Here is our ${labels.offeringLower}:`,
+        `*Hi! Here is our ${offeringReference}*`,
         '',
         input.menuLink,
     ];
@@ -82,14 +112,14 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
     // Template 4: Are You Open?
     const openLines: string[] = [];
     if (input.isClosedToday) {
-        openLines.push('Hi! We are closed today.');
+        openLines.push('*Hi! We are closed today.*');
     } else if (input.todayHours) {
-        openLines.push(`Hi! We are open today.`);
+        openLines.push('*Hi! We are open today.*');
         openLines.push('', `🕐 ${input.todayHours.open} – ${input.todayHours.close}`);
     } else {
-        openLines.push('Hi! We are open today.');
+        openLines.push('*Hi! We are open today.*');
     }
-    openLines.push('', `Here is our ${labels.offeringLower}:`, '', input.menuLink);
+    openLines.push('', `Here is our ${offeringReference}:`, '', input.menuLink);
     if (input.address) openLines.push('', `📍 ${input.address}`);
     templates.push({
         id: 'are_you_open',
@@ -98,9 +128,31 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
         message: buildMessage(openLines),
     });
 
+    const closedNowLines: string[] = [];
+    if (input.isClosedToday) {
+        closedNowLines.push('*Hi! We are closed right now.*');
+        closedNowLines.push('', 'You can still check our latest menu here:');
+        closedNowLines.push('', input.menuLink);
+    } else if (input.todayHours) {
+        closedNowLines.push('*Hi! We are not available right now.*');
+        closedNowLines.push('', `We will be open again until ${input.todayHours.close} today.`);
+        closedNowLines.push('', `You can check our ${offeringReference} here:`);
+        closedNowLines.push('', input.menuLink);
+    } else {
+        closedNowLines.push('*Hi! We are not available right now.*');
+        closedNowLines.push('', `You can still check our ${offeringReference} here:`);
+        closedNowLines.push('', input.menuLink);
+    }
+    templates.push({
+        id: 'closed_now',
+        title: 'Closed Now / Open Later',
+        description: 'Useful when staff need a quick off-hours reply',
+        message: buildMessage(closedNowLines),
+    });
+
     // Template 5: Business Info
-    const infoLines = [input.storeName, ''];
-    infoLines.push(`${labels.offeringTitle}: ${input.menuLink}`);
+    const infoLines = [`*${input.storeName}*`, ''];
+    infoLines.push(`*${offeringTitleReference}:* ${input.menuLink}`);
     if (input.address) infoLines.push(`📍 ${input.address}`);
     if (input.phone) infoLines.push(`📞 ${input.phone}`);
     if (input.isClosedToday) {
@@ -121,11 +173,11 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
         title: 'Share with Staff',
         description: `Send to your team so everyone shares the same ${labels.offeringLower}`,
         message: buildMessage([
-            `Team — here is our updated ${labels.offeringLower} link:`,
+            `*Team — here is our updated ${offeringReference} link*`,
             '',
             input.menuLink,
             '',
-            `Please share this link with any customer who asks for the ${labels.offeringLower}.`,
+            `Please share this link with any customer who asks for the ${offeringReference}.`,
             'This link always shows the latest version.',
         ]),
     });
@@ -135,6 +187,11 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
 
 function buildMessage(lines: string[]): string {
     return lines.join('\n');
+}
+
+function getOfferingReference(fallback: string, projectName?: string): string {
+    const trimmedProjectName = projectName?.trim();
+    return trimmedProjectName || fallback;
 }
 
 /**

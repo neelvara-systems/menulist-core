@@ -1725,18 +1725,18 @@
         "copy": "Copy"
     },
     "MobilePresenceMonitor": {
-        "title": "Make your menu easy to find",
-        "subtitle": "Add your menu to places customers already use.",
+        "title": "Make your business easy to find",
+        "subtitle": "Add your official page to places customers already use.",
         "allSet": "All set",
         "placesActive": "{count} places active",
         "onlineDiscovery": "Online discovery",
-        "onlineDiscoveryDesc": "Manual steps to paste your menu link once.",
-        "menuLinkCopied": "Menu link copied",
-        "menuLinkCopyFailed": "Could not copy the menu link",
+        "onlineDiscoveryDesc": "Manual steps to paste your official page link once.",
+        "menuLinkCopied": "Official page link copied",
+        "menuLinkCopyFailed": "Could not copy the official page link",
         "surfaceUpdated": "{surface} updated",
         "surfaceRemoved": "{surface} removed",
         "updateFailed": "Failed to update",
-        "menuLinkAdded": "Menu link added.",
+        "menuLinkAdded": "Official page link added.",
         "startHere": "Start here",
         "next": "Next",
         "howToAdd": "How to add it",
@@ -1748,33 +1748,33 @@
         "insideStore": "Inside your store",
         "insideStoreDesc": "These surfaces are detected automatically from your setup.",
         "auto": "Auto",
-        "allDoneMessage": "Your menu is easy to find everywhere customers look.",
+        "allDoneMessage": "Your business is easy to find everywhere customers look.",
         "surfaces": {
             "googleBusiness": {
                 "label": "Google Business",
-                "explanation": "Customers searching on Google can see your menu.",
+                "explanation": "Customers searching on Google can open your official page.",
                 "steps": {
                     "open": "Open Google Business Profile",
                     "edit": "Select Edit profile",
-                    "paste": "Paste your menu link into the website field"
+                    "paste": "Paste your official page link into the website field"
                 }
             },
             "instagramBio": {
                 "label": "Instagram Bio",
-                "explanation": "Add the menu link to your bio so followers can open it fast.",
+                "explanation": "Add your official page link to your bio so followers can open it fast.",
                 "steps": {
                     "open": "Open Instagram and go to your profile",
                     "edit": "Select Edit Profile",
-                    "paste": "Paste your menu link into the website field"
+                    "paste": "Paste your official page link into the website field"
                 }
             },
             "whatsappProfile": {
                 "label": "WhatsApp Profile",
-                "explanation": "Customers messaging you can open your menu from your business profile.",
+                "explanation": "Customers messaging you can open your official page from your business profile.",
                 "steps": {
                     "open": "Open WhatsApp Business settings",
                     "edit": "Select Business Profile",
-                    "paste": "Paste your menu link into the description"
+                    "paste": "Paste your official page link into the website or description field"
                 }
             }
         },

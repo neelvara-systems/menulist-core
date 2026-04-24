@@ -283,10 +283,14 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         isDefault: selectedProjectSummary?.isDefault,
                         isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                         name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
+                        specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                        specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                            ? (projectsList || []).find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                            : undefined,
                         specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
                         specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                     }}
-                    helperText="Design changes save only to this menu."
+                    helperText="Changes save only to this menu."
                     onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
                 <Card size="small" title={<Text strong>Current style</Text>}>

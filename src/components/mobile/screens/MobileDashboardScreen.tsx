@@ -26,6 +26,7 @@ const MobileCustomerAppMetrics = dynamic(
 
 interface MobileDashboardScreenProps {
     onBack: () => void;
+    onOpenDesignEditor?: () => void;
 }
 
 const RISK_LABELS: Record<string, string> = { stable: 'Stable', watch: 'Watch', at_risk: 'At Risk' };
@@ -38,7 +39,7 @@ const FULL_WIDTH_TAG_STYLE = {
     width: '100%',
 };
 
-export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenProps) {
+export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -271,6 +272,10 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                         isDefault: selectedProjectSummary?.isDefault,
                         isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                         name: selectedProjectSummary?.name || t('unnamedProject'),
+                        specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                        specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                            ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                            : undefined,
                         specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
                         specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                     }}
@@ -497,6 +502,7 @@ export default function MobileDashboardScreen({ onBack }: MobileDashboardScreenP
                 currentProjectId={selectedProjectId}
                 currentProjectName={selectedProjectSummary?.name || null}
                 onClose={() => setIsProjectSelectorOpen(false)}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
                     await selectProject(preferredProjectId || null);

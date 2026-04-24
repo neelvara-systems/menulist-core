@@ -3,7 +3,7 @@
 import { Button, Card, Flex, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import type { SpecialMenuStatus } from '../templates/main-app/projects/types';
-import { LuCheck, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus, LuXCircle } from 'react-icons/lu';
+import { LuCheck, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus, LuSparkles, LuXCircle } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -14,6 +14,8 @@ export type ProjectSelectorItem = {
     active?: boolean;
     deleted?: boolean;
     isSpecialMenu?: boolean;
+    specialMenuBaseProjectId?: string;
+    specialMenuBaseProjectName?: string;
     specialMenuEndsAt?: string;
     specialMenuStatus?: SpecialMenuStatus;
     secondaryLabel?: string;
@@ -55,10 +57,10 @@ const getResolvedSpecialMenuStatus = (
 
 const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus) => {
     if (!status) return null;
-    if (status === 'expired') return <Tag color="warning">Ended</Tag>;
-    if (status === 'active') return <Tag color="success">Special</Tag>;
-    if (status === 'scheduled') return <Tag color="processing">Scheduled</Tag>;
-    return <Tag>Cancelled</Tag>;
+    if (status === 'expired') return <Tag color="warning" icon={<LuSparkles size={12} />}>Ended</Tag>;
+    if (status === 'active') return <Tag color="success" icon={<LuSparkles size={12} />}>Special</Tag>;
+    if (status === 'scheduled') return <Tag color="processing" icon={<LuSparkles size={12} />}>Special</Tag>;
+    return <Tag icon={<LuSparkles size={12} />}>Cancelled</Tag>;
 };
 
 const AVATAR_COLORS = [
@@ -93,6 +95,7 @@ interface ProjectSelectorTriggerProps {
 
 export function ProjectSelectorTrigger({
     currentProject,
+    helperText,
     onClick,
     rightContent,
     clickable = false,
@@ -118,35 +121,45 @@ export function ProjectSelectorTrigger({
     ) : null;
 
     const content = (
-        <Flex align="center" justify="space-between" style={{ width: '100%' }}>
-            <Flex align="center" gap={10}>
+        <Flex gap={0} style={{ width: '100%' }} vertical>
+            <Flex align="center" justify="space-between" gap={10} style={{ minWidth: 0, width: '100%' }}>
                 <Flex
                     align="center"
-                    justify="center"
-                    style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        backgroundColor: avatarColors.bg,
-                        color: avatarColors.text,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                    }}
+                    gap={10}
+                    style={{ flex: 1, minWidth: 0 }}
                 >
-                    {currentProject ? getInitials(projectName) : <LuFolderOpen size={14} />}
+                    <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            backgroundColor: avatarColors.bg,
+                            color: avatarColors.text,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                        }}
+                    >
+                        {currentProject ? getInitials(projectName) : <LuFolderOpen size={14} />}
+                    </Flex>
+                    <Text strong ellipsis>{projectName}</Text>
                 </Flex>
-                <Flex vertical gap={0}>
-                    <Text strong>{projectName}</Text>
+                <Flex align="center" gap={8} wrap="wrap" justify="flex-end" style={{ flexShrink: 0 }}>
+                    {renderSpecialMenuTag(specialMenuStatus)}
+                    {statusTag}
+                    {currentProject?.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
+                    {rightContent}
+                    {clickable ? <LuChevronDown color={token.colorTextSecondary} size={14} /> : null}
                 </Flex>
             </Flex>
-            <Flex align="center" gap={8}>
-                {renderSpecialMenuTag(specialMenuStatus)}
-                {statusTag}
-                {currentProject?.isDefault ? <Tag color="processing">{t('default')}</Tag> : null}
-                {rightContent}
-                {clickable ? <LuChevronDown color={token.colorTextSecondary} size={14} /> : null}
-            </Flex>
+
+            {helperText ? (
+                <Text type="secondary" style={{ fontSize: 12, paddingLeft: 42, textAlign: 'left' }}>
+                    {helperText}
+                </Text>
+            ) : null}
         </Flex>
     );
 
@@ -189,6 +202,7 @@ interface ProjectSelectorListProps {
 export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSelect, projects }: ProjectSelectorListProps) {
     const t = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
+    const baseProjectNameById = Object.fromEntries(projects.map((project) => [project.id, project.name]));
 
     return (
         <Flex gap={12} justify="flex-start" wrap="wrap">
@@ -203,6 +217,8 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                     deleted: t('statusDeleted'),
                 });
                 const specialMenuStatus = getResolvedSpecialMenuStatus(project);
+                const baseProjectName = project.specialMenuBaseProjectName
+                    || (project.specialMenuBaseProjectId ? baseProjectNameById[project.specialMenuBaseProjectId] : null);
 
                 return (
                     <Card
@@ -294,6 +310,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     {project.name || t('untitled')}
                                 </Text>
                             </Flex>
+                            {project.isSpecialMenu && baseProjectName ? (
+                                <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                                    From {baseProjectName}
+                                </Text>
+                            ) : null}
                             {project.isDefault ? (
                                 <Tag color="processing" style={{ marginInlineEnd: 0 }}>
                                     {t('default')}

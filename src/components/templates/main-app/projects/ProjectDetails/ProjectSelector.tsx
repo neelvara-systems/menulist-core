@@ -1,10 +1,10 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Dropdown, Flex, Modal, Tag, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 // NOTE: Segmented and AnimatePresence removed - archive tabs functionality deprecated
 import { IoChevronDown } from "react-icons/io5";
-import { LuCheck, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuTrash2, LuXCircle } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuSparkles, LuTrash2, LuXCircle } from 'react-icons/lu';
 import { ProjectMetadata, SpecialMenuStatus } from '../types';
 
 const { Text, Title } = Typography;
@@ -46,6 +46,7 @@ type SelectorProjectMetadata = ProjectMetadata & {
     active?: boolean;
     deleted?: boolean;
     isSpecialMenu?: boolean;
+    specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
     specialMenuStatus?: SpecialMenuStatus;
 };
@@ -83,10 +84,10 @@ const getResolvedSpecialMenuStatus = (
 
 const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus, style?: CSSProperties) => {
     if (!status) return null;
-    if (status === 'expired') return <Tag color="warning" style={style}>Ended</Tag>;
-    if (status === 'active') return <Tag color="success" style={style}>Special</Tag>;
-    if (status === 'scheduled') return <Tag color="processing" style={style}>Scheduled</Tag>;
-    return <Tag style={style}>Cancelled</Tag>;
+    if (status === 'expired') return <Tag color="warning" icon={<LuSparkles size={12} />} style={style}>Ended</Tag>;
+    if (status === 'active') return <Tag color="success" icon={<LuSparkles size={12} />} style={style}>Special</Tag>;
+    if (status === 'scheduled') return <Tag color="processing" icon={<LuSparkles size={12} />} style={style}>Special</Tag>;
+    return <Tag icon={<LuSparkles size={12} />} style={style}>Cancelled</Tag>;
 };
 
 interface CatalogCardProps {
@@ -98,6 +99,7 @@ interface CatalogCardProps {
     onDuplicate: () => void;
     onDelete: () => void;
     index: number;
+    baseProjectName?: string | null;
 }
 
 const CatalogCard = ({
@@ -108,7 +110,8 @@ const CatalogCard = ({
     onEdit,
     onDuplicate,
     onDelete,
-    index
+    index,
+    baseProjectName,
 }: CatalogCardProps) => {
     const [isHovered, setIsHovered] = useState(false);
     const avatarColor = getAvatarColor(project.name);
@@ -250,6 +253,11 @@ const CatalogCard = ({
                 >
                     {project.name}
                 </Text>
+                {project.isSpecialMenu && baseProjectName ? (
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                        From {baseProjectName}
+                    </Text>
+                ) : null}
                 {project.isDefault ? (
                     <Tag color="processing" style={{ marginTop: 6, marginInlineEnd: 0 }}>
                         Default
@@ -344,9 +352,16 @@ export const ProjectSelector = ({
     const [modalOpen, setModalOpen] = useState(false);
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
+    const baseProjectNameById = useMemo(
+        () => Object.fromEntries(projects.map((project) => [project.projectId, project.name])),
+        [projects]
+    );
     const selectedStatus = getProjectStatus(selectedProject);
     const selectedStatusPresentation = getStatusPresentation(selectedStatus);
     const selectedSpecialMenuStatus = getResolvedSpecialMenuStatus(selectedProject);
+    const selectedBaseProjectName = selectedProject?.specialMenuBaseProjectId
+        ? baseProjectNameById[selectedProject.specialMenuBaseProjectId]
+        : null;
 
     const confirmDuplicate = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
@@ -386,7 +401,14 @@ export const ProjectSelector = ({
             {/* Trigger Button */}
             <Button type="default" icon={<LuFolderOpen size={18} />} onClick={() => setModalOpen(true)}>
                 <Flex align="center" gap={8}>
-                    <span>{selectedProject ? selectedProject.name : `Select ${offeringName}`}</span>
+                    <Flex vertical gap={0}>
+                        <span>{selectedProject ? selectedProject.name : `Select ${offeringName}`}</span>
+                        {selectedProject?.isSpecialMenu && selectedBaseProjectName ? (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                From {selectedBaseProjectName}
+                            </Text>
+                        ) : null}
+                    </Flex>
                     {selectedProject ? (
                         <>
                             {selectedProject.isDefault ? (
@@ -460,6 +482,7 @@ export const ProjectSelector = ({
                     >
                         {projects.filter(Boolean).map((project, index) => (
                             <CatalogCard
+                                baseProjectName={project.specialMenuBaseProjectId ? baseProjectNameById[project.specialMenuBaseProjectId] : null}
                                 key={project.projectId || index}
                                 project={project}
                                 isSelected={selectedProject?.projectId === project.projectId}

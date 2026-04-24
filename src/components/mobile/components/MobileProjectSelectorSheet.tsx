@@ -9,7 +9,7 @@ import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { LuArchiveRestore, LuCopy, LuExternalLink, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
+import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
@@ -33,6 +33,7 @@ interface MobileProjectSelectorSheetProps {
     currentProjectId?: string | null;
     currentProjectName?: string | null;
     onClose: () => void;
+    onOpenDesignEditor?: () => void;
     onProjectsChanged: (preferredProjectId?: string | null) => Promise<void> | void;
     visible: boolean;
 }
@@ -85,10 +86,25 @@ const fromNativeDateTimeValue = (value: string) => {
     return date.toISOString();
 };
 
+const formatScheduleDateTime = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return null;
+
+    return new Intl.DateTimeFormat('en', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(date);
+};
+
 export default function MobileProjectSelectorSheet({
     currentProjectId,
     currentProjectName,
     onClose,
+    onOpenDesignEditor,
     onProjectsChanged,
     visible,
 }: MobileProjectSelectorSheetProps) {
@@ -154,6 +170,32 @@ export default function MobileProjectSelectorSheet({
         () => getResolvedSpecialMenuStatus(managingProject),
         [managingProject]
     );
+    const managingProjectSpecialMenuSummary = useMemo(() => {
+        if (!managingProject?.isSpecialMenu) return null;
+
+        const startsAtLabel = formatScheduleDateTime(managingProject.specialMenuStartsAt);
+        const endsAtLabel = formatScheduleDateTime(managingProject.specialMenuEndsAt);
+
+        if (managingProjectSpecialMenuStatus === 'expired') {
+            return endsAtLabel
+                ? `This menu currently does not display to customers because it ended at ${endsAtLabel}.`
+                : 'This menu currently does not display to customers because it has ended.';
+        }
+
+        if (managingProjectSpecialMenuStatus === 'cancelled') {
+            return 'This menu currently does not display to customers because it was cancelled.';
+        }
+
+        if (managingProjectSpecialMenuStatus === 'active') {
+            return endsAtLabel
+                ? `This menu is currently visible to customers and will end at ${endsAtLabel}.`
+                : 'This menu is currently visible to customers.';
+        }
+
+        return startsAtLabel
+            ? `This menu currently does not display to customers. It is scheduled to start at ${startsAtLabel}.`
+            : 'This menu currently does not display to customers. It is scheduled to start later.';
+    }, [managingProject, managingProjectSpecialMenuStatus]);
     const formSourceProject = useMemo(
         () => projects.find((project) => project.projectId === formProjectId) || null,
         [formProjectId, projects]
@@ -473,6 +515,22 @@ export default function MobileProjectSelectorSheet({
     ] : [];
 
     const manageItems: ActionItem[] = managingProject ? [
+        ...(onOpenDesignEditor ? [{
+            key: 'open-design',
+            label: 'Open menu design',
+            description: 'Go to the menu design screen for this menu.',
+            icon: <LuPalette size={16} />,
+            iconBackground: token.colorFillTertiary,
+            labelStyle: undefined,
+            onClick: () => {
+                const projectId = managingProject.projectId;
+                setManagingProjectId(null);
+                onClose();
+                void Promise.resolve(onProjectsChanged(projectId)).then(() => {
+                    onOpenDesignEditor();
+                });
+            },
+        }] : []),
         {
             key: 'edit',
             label: 'Edit details',
@@ -591,6 +649,7 @@ export default function MobileProjectSelectorSheet({
                                 active: project.active !== false,
                                 deleted: project.deleted === true,
                                 isSpecialMenu: project.isSpecialMenu === true,
+                                specialMenuBaseProjectId: project.specialMenuBaseProjectId,
                                 specialMenuEndsAt: project.specialMenuEndsAt,
                                 specialMenuStatus: project.specialMenuStatus,
                                 secondaryLabel: project.active === false ? t('inactiveCatalog') : (project.description || undefined),
@@ -641,6 +700,13 @@ export default function MobileProjectSelectorSheet({
                             <LuX size={18} />
                         </Button>
                     </Flex>
+                    {managingProjectSpecialMenuSummary ? (
+                        <Card style={sheetCardStyle}>
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                                {managingProjectSpecialMenuSummary}
+                            </Text>
+                        </Card>
+                    ) : null}
                     {quickShareItems.length ? (
                         <Card style={sheetCardStyle} title={<Text strong>Share</Text>}>
                             <List>

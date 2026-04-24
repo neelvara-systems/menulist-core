@@ -9,7 +9,7 @@ import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
 import { useEffect, useMemo } from 'react';
-import { LuCheck, LuChevronDown, LuFolderOpen, LuXCircle } from 'react-icons/lu';
+import { LuCheck, LuChevronDown, LuFolderOpen, LuSparkles, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
 
 const { Text } = Typography;
@@ -46,6 +46,7 @@ interface Props {
 type DashboardProject = ProjectMetadata & {
     active?: boolean;
     isSpecialMenu?: boolean;
+    specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
     specialMenuStatus?: SpecialMenuStatus;
 };
@@ -102,18 +103,18 @@ const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus) => {
     if (!status) return null;
 
     if (status === 'expired') {
-        return <Tag color="warning" style={{ marginInlineEnd: 0 }}>Ended</Tag>;
+        return <Tag color="warning" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Ended</Tag>;
     }
 
     if (status === 'active') {
-        return <Tag color="success" style={{ marginInlineEnd: 0 }}>Special</Tag>;
+        return <Tag color="success" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Special</Tag>;
     }
 
     if (status === 'scheduled') {
-        return <Tag color="processing" style={{ marginInlineEnd: 0 }}>Scheduled</Tag>;
+        return <Tag color="processing" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Special</Tag>;
     }
 
-    return <Tag style={{ marginInlineEnd: 0 }}>Cancelled</Tag>;
+    return <Tag icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Cancelled</Tag>;
 };
 
 const renderDefaultTag = (isDefault?: boolean) => (
@@ -158,6 +159,10 @@ export const DashboardProjectSelector: React.FC<Props> = ({
     }, [selectedProjectId, projects, sessionLoading, isLoading, onProjectChange, onReady]);
 
     const selectedProject = projects.find(p => p.projectId === selectedProjectId);
+    const baseProjectNameById = useMemo(
+        () => Object.fromEntries(projects.map((project) => [project.projectId, project.name])),
+        [projects]
+    );
 
     const menuItems: MenuProps['items'] = useMemo(() => {
         return projects.map((p) => ({
@@ -167,7 +172,14 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     <Avatar size={24} style={{ backgroundColor: getAvatarColor(p.name).bg, fontSize: 10 }}>
                         {getInitials(p.name)}
                     </Avatar>
-                    <Text style={{ flex: 1 }}>{p.name}</Text>
+                    <Flex vertical style={{ flex: 1, minWidth: 0 }}>
+                        <Text>{p.name}</Text>
+                        {p.isSpecialMenu && p.specialMenuBaseProjectId && baseProjectNameById[p.specialMenuBaseProjectId] ? (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                From {baseProjectNameById[p.specialMenuBaseProjectId]}
+                            </Text>
+                        ) : null}
+                    </Flex>
                     {renderDefaultTag(p.isDefault)}
                     {renderSpecialMenuTag(getResolvedSpecialMenuStatus(p))}
                     {renderStatusTag(getProjectStatus(p))}
@@ -176,7 +188,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
             ),
             onClick: () => p.projectId && onProjectChange(p.projectId, p.name),
         }));
-    }, [projects, selectedProjectId, token.colorPrimary, onProjectChange]);
+    }, [baseProjectNameById, projects, selectedProjectId, token.colorPrimary, onProjectChange]);
 
     if (isLoading) return <Skeleton.Input active size="small" style={{ width: 150 }} />;
     if (!projects.length) return <Text type="secondary">No catalogs</Text>;
@@ -199,9 +211,16 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                 <Avatar size={28} style={{ backgroundColor: color.bg, color: color.text, fontSize: 11 }}>
                     {selectedProject ? getInitials(selectedProject.name) : <LuFolderOpen size={14} />}
                 </Avatar>
-                <Text strong style={{ maxWidth: 150 }} ellipsis>
-                    {selectedProject?.name || 'Select catalog'}
-                </Text>
+                <Flex vertical style={{ minWidth: 0 }}>
+                    <Text strong style={{ maxWidth: 150 }} ellipsis>
+                        {selectedProject?.name || 'Select catalog'}
+                    </Text>
+                    {selectedProject?.isSpecialMenu && selectedProject.specialMenuBaseProjectId && baseProjectNameById[selectedProject.specialMenuBaseProjectId] ? (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            From {baseProjectNameById[selectedProject.specialMenuBaseProjectId]}
+                        </Text>
+                    ) : null}
+                </Flex>
                 {renderDefaultTag(selectedProject?.isDefault)}
                 {renderSpecialMenuTag(getResolvedSpecialMenuStatus(selectedProject))}
                 {renderStatusTag(getProjectStatus(selectedProject))}

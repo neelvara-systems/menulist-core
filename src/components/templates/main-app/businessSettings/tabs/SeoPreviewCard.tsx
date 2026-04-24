@@ -61,6 +61,16 @@ export default function SeoPreviewCard({
     const previewDescription = metaDescription?.trim() || tagline?.trim() || `View the menu for ${normalizedName}`;
     const keywordList = normalizeKeywords(keywords);
     const previewImageHeight = logoUrl ? 156 : 112;
+    const whatsAppShellBackground = token.colorFillQuaternary;
+    const whatsAppAccentBackground = token.colorSuccess;
+    const whatsAppAccentForeground = token.colorTextLightSolid;
+    const previewSurfaceBackground = token.colorBgContainer;
+    const previewSurfaceBorder = token.colorBorderSecondary;
+    const previewImageFallbackBackground = `linear-gradient(135deg, ${token.colorSuccessBg} 0%, ${token.colorInfoBg} 100%)`;
+    const previewImageLogoBackground = token.colorFillAlter;
+    const previewImageBadgeBackground = token.colorBgContainer;
+    const previewImageBadgeShadow = token.boxShadowSecondary;
+    const secondaryTextColor = token.colorTextSecondary;
 
     return (
         <div
@@ -79,7 +89,7 @@ export default function SeoPreviewCard({
 
                 <div
                     style={{
-                        background: '#efeae2',
+                        background: whatsAppShellBackground,
                         border: `1px solid ${token.colorBorder}`,
                         borderRadius: 18,
                         overflow: 'hidden',
@@ -97,7 +107,7 @@ export default function SeoPreviewCard({
                         <div
                             style={{
                                 alignItems: 'center',
-                                background: '#25D366',
+                                background: whatsAppAccentBackground,
                                 borderRadius: 999,
                                 display: 'flex',
                                 height: 28,
@@ -105,17 +115,17 @@ export default function SeoPreviewCard({
                                 width: 28,
                             }}
                         >
-                            <LuMessageCircle color="#fff" size={16} />
+                            <LuMessageCircle color={whatsAppAccentForeground} size={16} />
                         </div>
                         <Text strong>{t('whatsAppPreview')}</Text>
                     </div>
 
                     <div
                         style={{
-                            background: '#fff',
-                            border: '1px solid rgba(17, 27, 33, 0.08)',
+                            background: previewSurfaceBackground,
+                            border: `1px solid ${previewSurfaceBorder}`,
                             borderRadius: 16,
-                            boxShadow: '0 1px 2px rgba(17, 27, 33, 0.08)',
+                            boxShadow: token.boxShadowTertiary,
                             overflow: 'hidden',
                         }}
                     >
@@ -123,8 +133,8 @@ export default function SeoPreviewCard({
                             style={{
                                 alignItems: 'center',
                                 background: logoUrl
-                                    ? '#f8fafc'
-                                    : 'linear-gradient(135deg, #ecfdf5 0%, #dbeafe 100%)',
+                                    ? previewImageLogoBackground
+                                    : previewImageFallbackBackground,
                                 display: 'flex',
                                 height: previewImageHeight,
                                 justifyContent: 'center',
@@ -143,9 +153,9 @@ export default function SeoPreviewCard({
                                     <div
                                         style={{
                                             alignItems: 'center',
-                                            background: '#fff',
+                                            background: previewImageBadgeBackground,
                                             borderRadius: 999,
-                                            boxShadow: '0 10px 25px rgba(37, 99, 235, 0.12)',
+                                            boxShadow: previewImageBadgeShadow,
                                             display: 'flex',
                                             height: 44,
                                             justifyContent: 'center',
@@ -162,7 +172,7 @@ export default function SeoPreviewCard({
                         <Flex gap={6} style={{ padding: 14 }} vertical>
                             <Text
                                 style={{
-                                    color: '#667781',
+                                    color: secondaryTextColor,
                                     fontSize: 12,
                                     ...clampText(1),
                                 }}
@@ -172,8 +182,8 @@ export default function SeoPreviewCard({
                             <Text strong style={{ fontSize: 15, lineHeight: 1.35, ...clampText(2) }}>{previewTitle}</Text>
                             <Text type="secondary" style={{ lineHeight: 1.45, ...clampText(3) }}>{previewDescription}</Text>
                             <Flex align="center" gap={6}>
-                                <LuExternalLink color="#667781" size={14} />
-                                <Text style={{ color: '#667781', fontSize: 12 }}>{t('previewTapHint')}</Text>
+                                <LuExternalLink color={secondaryTextColor} size={14} />
+                                <Text style={{ color: secondaryTextColor, fontSize: 12 }}>{t('previewTapHint')}</Text>
                             </Flex>
                         </Flex>
                     </div>

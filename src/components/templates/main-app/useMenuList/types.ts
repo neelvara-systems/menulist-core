@@ -11,6 +11,7 @@ export interface ProjectLink {
     active?: boolean;
     deleted?: boolean;
     isSpecialMenu?: boolean;
+    specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
     specialMenuStatus?: 'scheduled' | 'active' | 'expired' | 'cancelled';
     url: string;

@@ -371,6 +371,10 @@ export default function UseMenuList() {
                             active: activeProject.active,
                             deleted: activeProject.deleted,
                             isSpecialMenu: activeProject.isSpecialMenu === true,
+                            specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
+                                ? data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name
+                                : undefined,
                             specialMenuEndsAt: activeProject.specialMenuEndsAt,
                             specialMenuStatus: activeProject.specialMenuStatus,
                         }}

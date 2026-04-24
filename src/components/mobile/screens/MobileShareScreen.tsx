@@ -1,10 +1,8 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { getScreenState } from '@database/campaigns';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -18,7 +16,6 @@ import {
     LuExternalLink,
     LuLink2,
     LuMessageSquare,
-    LuMonitor,
     LuQrCode,
     LuShare2,
     LuShield,
@@ -39,6 +36,7 @@ type ProjectLink = {
     isSpecialMenu?: boolean;
     name: string;
     projectId: string;
+    specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
     specialMenuStatus?: 'scheduled' | 'active' | 'expired' | 'cancelled';
     url: string;
@@ -52,10 +50,7 @@ type ShareData = {
     hasFeedbackEnabled: boolean;
     hasPosSync: boolean;
     hasPublishedMenu: boolean;
-    hasScreen: boolean;
     installAppLink: string | null;
-    highlightsLink: string | null;
-    menuBoardLink: string | null;
     menuLink: string;
     obpLink: string;
     posSyncStatus: string | null;
@@ -71,104 +66,77 @@ type QrSheetState = {
     url: string;
 };
 
-type StatusTone = 'success' | 'warning' | 'default';
+interface MobileShareScreenProps {
+    onOpenDesignEditor?: () => void;
+}
 
-export default function MobileShareScreen() {
+export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScreenProps) {
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
     const { isLoading: loadingProjects, projectsList, selectedProjectId, selectProject } = useMobileProjects();
-    const [data, setData] = useState<ShareData | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
 
-    const loadData = useCallback(async () => {
-        if (!storeDetails) return;
+    const data = useMemo<ShareData | null>(() => {
+        if (!storeDetails) return null;
 
-        setIsLoading(true);
-        try {
-            const projects = projectsList;
-            const defaultProject = projects.find((project: any) => project.projectId === selectedProjectId) || null;
+        const projects = projectsList;
+        const defaultProject = projects.find((project: any) => project.projectId === selectedProjectId) || null;
 
-            if (!defaultProject) {
-                setData(null);
-                return;
-            }
-
-            const subdomain = storeDetails.subdomain || '';
-            const customDomain = storeDetails.customDomain;
-            const obpLink = generateOBPUrl(subdomain, customDomain);
-            const installAppLink =
-                FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
-                && (storeDetails as any).pwaSettings?.enableInstallableApp !== false
-                    ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
-                    : null;
-            const menuLink = generateProjectUrl(
-                subdomain,
-                customDomain,
-                defaultProject.name,
-                false
-            );
-
-            let menuBoardLink: string | null = null;
-            let highlightsLink: string | null = null;
-            try {
-                const screenState = await getScreenState();
-                if (screenState?.screenToken) {
-                    menuBoardLink = buildScreenUrl(screenState.screenToken, obpLink);
-                    highlightsLink = `${menuBoardLink}?mode=highlights`;
-                }
-            } catch {
-                menuBoardLink = null;
-                highlightsLink = null;
-            }
-
-            const allProjects: ProjectLink[] = projects.map((project: any) => ({
-                active: project.active !== false,
-                deleted: project.deleted === true,
-                feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : '',
-                isDefault: project.isDefault || false,
-                name: project.name || tProjectSelector('untitled'),
-                projectId: project.projectId,
-                url: generateProjectUrl(subdomain, customDomain, project.name, false),
-            }));
-
-            const posSync = storeDetails.posSync;
-            const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
-
-            setData({
-                allProjects,
-                businessType: storeDetails.businessType || '',
-                feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'direct_link', obpLink) : '',
-                feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr', obpLink) : '',
-                hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
-                hasPosSync,
-                hasPublishedMenu: !!obpLink,
-                hasScreen: !!menuBoardLink,
-                installAppLink,
-                highlightsLink,
-                menuBoardLink,
-                menuLink,
-                obpLink,
-                posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
-                projectId: defaultProject.projectId || null,
-                projectName: defaultProject.name || null,
-                storeName: storeDetails.name || t('yourBusiness'),
-            });
-        } finally {
-            setIsLoading(false);
+        if (!defaultProject) {
+            return null;
         }
-    }, [projectsList, selectedProjectId, storeDetails, t, tProjectSelector]);
 
-    useEffect(() => {
-        if (!storeDetails || loadingProjects) return;
-        void loadData();
-    }, [loadData, loadingProjects, storeDetails]);
+        const subdomain = storeDetails.subdomain || '';
+        const customDomain = storeDetails.customDomain;
+        const obpLink = generateOBPUrl(subdomain, customDomain);
+        const installAppLink =
+            FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+            && (storeDetails as any).pwaSettings?.enableInstallableApp !== false
+                ? `${obpLink.replace(/\/$/, '')}/?pwa=install`
+                : null;
+        const menuLink = generateProjectUrl(
+            subdomain,
+            customDomain,
+            defaultProject.name,
+            false
+        );
+
+        const allProjects: ProjectLink[] = projects.map((project: any) => ({
+            active: project.active !== false,
+            deleted: project.deleted === true,
+            feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : '',
+            isDefault: project.isDefault || false,
+            name: project.name || tProjectSelector('untitled'),
+            projectId: project.projectId,
+            url: generateProjectUrl(subdomain, customDomain, project.name, false),
+        }));
+
+        const posSync = storeDetails.posSync;
+        const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
+
+        return {
+            allProjects,
+            businessType: storeDetails.businessType || '',
+            feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'direct_link', obpLink) : '',
+            feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr', obpLink) : '',
+            hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+            hasPosSync,
+            hasPublishedMenu: !!obpLink,
+            installAppLink,
+            menuLink,
+            obpLink,
+            posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
+            projectId: defaultProject.projectId || null,
+            projectName: defaultProject.name || null,
+            storeName: storeDetails.name || t('yourBusiness'),
+        };
+    }, [projectsList, selectedProjectId, storeDetails, t, tProjectSelector]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -211,7 +179,7 @@ export default function MobileShareScreen() {
         }
     };
 
-    if (isLoading || loadingProjects) {
+    if (loadingProjects && !data) {
         return (
             <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
                 <DotLoading color="primary" />
@@ -243,6 +211,10 @@ export default function MobileShareScreen() {
                         isDefault: activeProject.isDefault,
                         isSpecialMenu: activeProject.isSpecialMenu === true,
                         name: activeProject.name || tProjectSelector('untitled'),
+                        specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
+                        specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
+                            ? data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name
+                            : undefined,
                         specialMenuEndsAt: activeProject.specialMenuEndsAt,
                         specialMenuStatus: activeProject.specialMenuStatus,
                     }}
@@ -251,7 +223,7 @@ export default function MobileShareScreen() {
             ) : null}
 
             <LinkCard
-                description={t('offeringPageDesc', { offering: labels.offeringLower })}
+                description={t('obpShareHint')}
                 icon={<LuExternalLink color={token.colorText} size={18} />}
                 isPrimary
                 label={t('officialBusinessLink')}
@@ -259,12 +231,12 @@ export default function MobileShareScreen() {
                 onOpen={() => window.open(withSource(data.obpLink, 'direct'), '_blank')}
                 onShare={supportsNativeShare ? () => void handleNativeShare({
                     label: t('officialBusinessLink'),
-                    text: t('offeringPageDesc', { offering: labels.offeringLower }),
+                    text: t('obpShareHint'),
                     url: withSource(data.obpLink, 'share'),
                 }) : undefined}
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-official-page`, 'qr'),
-                    helperText: t('offeringPageDesc', { offering: labels.offeringLower }),
+                    helperText: t('obpShareHint'),
                     title: t('officialBusinessLink'),
                     url: withSource(data.obpLink, 'qr'),
                 })}
@@ -273,7 +245,7 @@ export default function MobileShareScreen() {
             />
 
             <SectionHeader
-                subtitle={t('shareYourOfferingDesc', { offering: labels.offeringTitle })}
+                subtitle={`Share a direct link to the selected ${labels.offeringLower}.`}
                 title={t('directOfferingLink', { offering: labels.offeringTitle })}
             />
 
@@ -300,19 +272,19 @@ export default function MobileShareScreen() {
 
             {data.installAppLink ? (
                 <LinkCard
-                    description="Share this when you want customers to install your menu app directly. It opens the install prompt right away."
+                    description="Share this when customers should install your business app directly on their phone."
                     icon={<LuSmartphone color={token.colorText} size={18} />}
                     label="Customer App install link"
                     onCopy={() => void handleCopy(withSource(data.installAppLink as string, 'copy'), 'Customer App install link')}
                     onOpen={() => window.open(withSource(data.installAppLink as string, 'direct'), '_blank')}
                     onShare={supportsNativeShare ? () => void handleNativeShare({
                         label: 'Customer App install link',
-                        text: 'Share this when you want customers to install your menu app directly.',
+                        text: 'Share this when customers should install your business app directly on their phone.',
                         url: withSource(data.installAppLink as string, 'share'),
                     }) : undefined}
                     onShowQr={() => handleOpenQr({
                         filename: buildQrCodeFilename(`${data.storeName}-customer-app-install`, 'qr'),
-                        helperText: 'Customers can scan this QR to install your menu app.',
+                        helperText: 'Customers can scan this QR to install your business app.',
                         title: 'Customer App install link',
                         url: withSource(data.installAppLink as string, 'qr'),
                     })}
@@ -344,49 +316,15 @@ export default function MobileShareScreen() {
                 />
             ) : null}
 
-            <Flex gap={12} vertical>
-                <SectionHeader subtitle={t('screensReadyHelp')} title={t('digitalScreens')} />
-                <ScreenCard
-                    description={t('menuBoardDesc', { offering: labels.offeringLower })}
-                    icon={<LuMonitor color={token.colorText} size={18} />}
-                    label={t('menuBoard')}
-                    onCopy={data.menuBoardLink ? () => void handleCopy(data.menuBoardLink as string, t('menuBoardLink')) : undefined}
-                    onOpen={data.menuBoardLink ? () => window.open(data.menuBoardLink as string, '_blank') : undefined}
-                    onShare={supportsNativeShare && data.menuBoardLink ? () => void handleNativeShare({
-                        label: t('menuBoard'),
-                        text: t('menuBoardDesc', { offering: labels.offeringLower }),
-                        url: data.menuBoardLink as string,
-                    }) : undefined}
-                    pendingLabel={t('notSetUpYet')}
-                    statusColor={data.menuBoardLink ? 'success' : 'default'}
-                    statusLabel={data.menuBoardLink ? t('ready') : t('notSetUp')}
-                    value={data.menuBoardLink}
-                />
-                <ScreenCard
-                    description={t('highlightsScreenDesc')}
-                    icon={<LuQrCode color={token.colorText} size={18} />}
-                    label={t('highlightsScreen')}
-                    onCopy={data.highlightsLink ? () => void handleCopy(data.highlightsLink as string, t('highlightsLink')) : undefined}
-                    onOpen={data.highlightsLink ? () => window.open(data.highlightsLink as string, '_blank') : undefined}
-                    onShare={supportsNativeShare && data.highlightsLink ? () => void handleNativeShare({
-                        label: t('highlightsScreen'),
-                        text: t('highlightsScreenDesc'),
-                        url: data.highlightsLink as string,
-                    }) : undefined}
-                    pendingLabel={t('notSetUpYet')}
-                    statusColor={data.highlightsLink ? 'success' : 'default'}
-                    statusLabel={data.highlightsLink ? t('ready') : t('notSetUp')}
-                    value={data.highlightsLink}
-                />
-            </Flex>
-
             {FEATURE_FLAGS.ENABLE_CUSTOMER_COMMUNICATION_KIT ? (
                 <Flex gap={12} style={{ marginTop: 6 }} vertical>
                     <MobileCommunicationKit
                         address={buildStoreAddress(storeDetails)}
                         businessType={data.businessType}
                         menuLink={data.menuLink}
+                        obpLink={data.obpLink}
                         phone={storeDetails?.phoneNumber || undefined}
+                        projectName={data.allProjects.length > 1 ? (activeProject?.name || data.projectName || undefined) : undefined}
                         storeName={data.storeName}
                         timeZone={storeDetails?.timeZone}
                         workingHours={storeDetails?.workingHours}
@@ -413,6 +351,7 @@ export default function MobileShareScreen() {
                 currentProjectId={data.projectId}
                 currentProjectName={activeProject?.name || data.projectName}
                 onClose={() => setIsProjectSelectorOpen(false)}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onProjectsChanged={async (preferredProjectId) => {
                     setIsProjectSelectorOpen(false);
                     await selectProject(preferredProjectId || null);
@@ -498,75 +437,6 @@ function LinkCard({
                     {onShare ? <ActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
                     <ActionTile icon={<LuQrCode size={18} />} onClick={onShowQr} />
                     <ActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} />
-                </Flex>
-            </Flex>
-        </Card>
-    );
-}
-
-function ScreenCard({
-    description,
-    icon,
-    label,
-    onCopy,
-    onOpen,
-    onShare,
-    pendingLabel,
-    statusColor,
-    statusLabel,
-    value,
-}: {
-    description: string;
-    icon: React.ReactNode;
-    label: string;
-    onCopy?: () => void;
-    onOpen?: () => void;
-    onShare?: () => void;
-    pendingLabel: string;
-    statusColor: StatusTone;
-    statusLabel: string;
-    value: string | null;
-}) {
-    const { token } = theme.useToken();
-
-    if (!value) {
-        return (
-            <Card size="small" style={{ borderRadius: 20 }}>
-                <Flex align="center" gap={12}>
-                    <IconBadge tint={token.colorFillAlter}>{icon}</IconBadge>
-                    <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
-                        <Flex align="center" gap={8} wrap="wrap">
-                            <Text strong style={{ fontSize: 14 }}>{label}</Text>
-                            <Tag color={statusColor}>{statusLabel}</Tag>
-                        </Flex>
-                        <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{pendingLabel}</Text>
-                    </Flex>
-                </Flex>
-            </Card>
-        );
-    }
-
-    return (
-        <Card size="small" style={{ borderRadius: 20 }}>
-            <Flex gap={14} vertical>
-                <Flex align="center" gap={12} justify="space-between">
-                    <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
-                        <IconBadge tint={token.colorFillAlter}>{icon}</IconBadge>
-                        <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                            <Flex align="center" gap={8} wrap="wrap">
-                                <Text strong style={{ fontSize: 14 }}>{label}</Text>
-                                <Tag color={statusColor}>{statusLabel}</Tag>
-                            </Flex>
-                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{description}</Text>
-                            <Text style={{ color: token.colorTextSecondary, fontSize: 12, wordBreak: 'break-all' }}>{value}</Text>
-                        </Flex>
-                    </Flex>
-                </Flex>
-
-                <Flex gap={10}>
-                    {onCopy ? <ActionTile icon={<LuCopy size={18} />} onClick={onCopy} /> : null}
-                    {onShare ? <ActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
-                    {onOpen ? <ActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} /> : null}
                 </Flex>
             </Flex>
         </Card>

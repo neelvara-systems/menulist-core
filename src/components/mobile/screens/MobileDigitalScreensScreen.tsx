@@ -20,6 +20,7 @@ import { resolveMobileSelectedProject } from '../utils/projectSelection';
 
 interface MobileDigitalScreensScreenProps {
     onBack: () => void;
+    onOpenDesignEditor?: () => void;
 }
 
 const MAX_UPLOADS = 3;
@@ -32,7 +33,7 @@ function getDaysRemaining(validUntil?: any): number {
     return Math.max(0, Math.ceil(daysMs / (1000 * 60 * 60 * 24)));
 }
 
-export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScreensScreenProps) {
+export default function MobileDigitalScreensScreen({ onBack, onOpenDesignEditor }: MobileDigitalScreensScreenProps) {
     const t = useTranslations('MobileDigitalScreens');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
@@ -187,6 +188,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             isDefault: resolvedProject.isDefault,
                             isSpecialMenu: resolvedProject.isSpecialMenu === true,
                             name: resolvedProject.name || tProjectSelector('untitled'),
+                            specialMenuBaseProjectId: resolvedProject.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: resolvedProject.specialMenuBaseProjectId
+                                ? (projectsList || []).find((project: any) => project.projectId === resolvedProject.specialMenuBaseProjectId)?.name
+                                : undefined,
                             specialMenuEndsAt: resolvedProject.specialMenuEndsAt,
                             specialMenuStatus: resolvedProject.specialMenuStatus,
                         }}
@@ -362,6 +367,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 currentProjectId={resolvedProject?.projectId || null}
                 currentProjectName={resolvedProject?.name || null}
                 onClose={() => setIsProjectSelectorOpen(false)}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onProjectsChanged={handleProjectChange}
                 visible={isProjectSelectorOpen}
             />

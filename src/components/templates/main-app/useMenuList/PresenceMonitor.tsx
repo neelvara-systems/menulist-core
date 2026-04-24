@@ -3,7 +3,7 @@
 /**
  * Menu Presence Monitor — Desktop Component (v2)
  *
- * Guided deployment checklist: "Make your menu easy to find."
+ * Guided deployment checklist: "Make your business easy to find."
  * Groups: Online Discovery (manual) + Inside Your Store (auto-detected).
  * Timestamp-only schema: exists = confirmed, missing = not confirmed.
  * Max 6 surfaces forever — do NOT expand.
@@ -57,13 +57,13 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
         id: 'googleBusiness',
         dalKey: 'googleBusiness',
         label: 'Google Business',
-        explanation: 'Customers searching on Google can see your menu instantly',
-        socialProof: 'Most businesses add their menu to Google',
+        explanation: 'Customers searching on Google can open your official business page instantly',
+        socialProof: 'Most businesses add their official page to Google',
         icon: <LuGlobe size={16} />,
         guideSteps: [
             'Open your Google Business profile',
             'Click "Edit profile"',
-            'Paste the menu link in the Website or Menu field',
+            'Paste your official business link in the Website field',
         ],
         openUrl: 'https://business.google.com',
     },
@@ -71,12 +71,12 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
         id: 'instagramBio',
         dalKey: 'instagramBio',
         label: 'Instagram Bio',
-        explanation: 'Add your menu link to your bio so followers can open it',
+        explanation: 'Add your official business link to your bio so followers can open it',
         icon: <FaInstagram size={16} />,
         guideSteps: [
             'Open Instagram and go to your profile',
             'Tap "Edit Profile"',
-            'Paste the menu link in the Website field',
+            'Paste your official business link in the Website field',
         ],
         openUrl: 'https://instagram.com',
     },
@@ -84,12 +84,12 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
         id: 'whatsappProfile',
         dalKey: 'whatsappProfile',
         label: 'WhatsApp Profile',
-        explanation: 'Customers messaging you can quickly view your menu',
+        explanation: 'Customers messaging you can quickly view your official business page',
         icon: <LuMessageCircle size={16} />,
         guideSteps: [
             'Open WhatsApp Business → Settings',
             'Tap "Business Profile"',
-            'Paste the menu link in the description',
+            'Paste your official business link in the website or description field',
         ],
     },
 ];
@@ -154,10 +154,10 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const handleCopyAndExpand = async (surface: ManualSurfaceConfig) => {
         try {
             await navigator.clipboard.writeText(data.obpLink);
-            message.success('Menu link copied');
+            message.success('Official business link copied');
         } catch {
             // Fallback: use onCopyLink which handles failure
-            onCopyLink(data.obpLink, 'Menu link');
+            onCopyLink(data.obpLink, 'Official business link');
         }
         setExpandedGuide(surface.id);
     };
@@ -167,7 +167,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
         try {
             await updateMenuPresence(storeDetails.storeId, surface.dalKey, true);
             setLocalPresence(prev => ({ ...prev, [surface.id]: new Date().toISOString() }));
-            message.success(`${surface.label} — menu link added`);
+            message.success(`${surface.label} — official link added`);
             setExpandedGuide(null);
         } catch {
             message.error('Failed to update');
@@ -204,9 +204,9 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                 {/* Header */}
                 <Flex justify="space-between" align="center">
                     <Flex vertical gap={2}>
-                        <Text strong style={{ fontSize: 14 }}>Make your menu easy to find</Text>
+                        <Text strong style={{ fontSize: 14 }}>Make your business easy to find</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Add your menu to the places customers look
+                            Add your official page to the places customers already use
                         </Text>
                     </Flex>
                     <Tag color={allActive ? 'green' : 'default'} style={{ margin: 0 }}>
@@ -225,7 +225,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                     >
                         <LuCheck size={14} style={{ color: '#52c41a' }} />
                         <Text style={{ fontSize: 12, color: '#52c41a' }}>
-                            Your menu is easy to find everywhere customers look
+                            Your business is easy to find everywhere customers look
                         </Text>
                     </Flex>
                 )}
@@ -274,7 +274,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                         )}
                                     </Flex>
                                     <Text type="secondary" style={{ fontSize: 11 }}>
-                                        {active ? 'Menu link added' : surface.explanation}
+                                        {active ? 'Official link added' : surface.explanation}
                                     </Text>
                                     {!active && surface.socialProof && (
                                         <Text type="secondary" style={{ fontSize: 10, fontStyle: 'italic' }}>

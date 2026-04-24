@@ -152,10 +152,17 @@ export default function MobileShell() {
         setIsMoreRootScreen(true);
     }, []);
 
+    const handleOpenDesignEditor = useCallback(() => {
+        setActiveTab('more');
+        setMoreScreen('designEditor');
+        setIsMoreRootScreen(false);
+        setTodayScreen('main');
+    }, []);
+
     const screen = activeTab === 'today'
         ? (
             todayScreen === 'dashboard'
-                ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} />
+                ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} onOpenDesignEditor={handleOpenDesignEditor} />
                 : todayScreen === 'history'
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
                     : (
@@ -170,10 +177,10 @@ export default function MobileShell() {
                     )
         )
         : activeTab === 'share'
-            ? <MobileShareScreen />
-            : activeTab === 'more'
-                ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
-                : <MobileMenuScreen />;
+            ? <MobileShareScreen onOpenDesignEditor={handleOpenDesignEditor} />
+        : activeTab === 'more'
+            ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
+                : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} />;
 
     if (!hasSubscription) {
         return (

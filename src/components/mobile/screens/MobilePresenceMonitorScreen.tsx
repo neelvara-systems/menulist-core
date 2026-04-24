@@ -4,12 +4,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
-import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { Flex, NavBar } from '../antd';
 import MobilePresenceMonitor from '../components/PresenceMonitor';
-import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 interface MobilePresenceMonitorScreenProps {
     onBack: () => void;
@@ -17,20 +15,16 @@ interface MobilePresenceMonitorScreenProps {
 
 export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMonitorScreenProps) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
-    const { isLoading: loadingProjects, projectsList, selectedProjectId } = useMobileProjects();
     const [hasScreen, setHasScreen] = useState(false);
-    const [menuLink, setMenuLink] = useState('');
+    const [obpLink, setObpLink] = useState('');
 
     const loadState = useCallback(async () => {
         if (!storeDetails) return;
 
-        const defaultProject = projectsList.find((project: any) => project.projectId === selectedProjectId) || projectsList[0] || null;
-        if (!defaultProject) return;
-
         const subdomain = storeDetails.subdomain || '';
         const customDomain = storeDetails.customDomain;
         const obpLink = generateOBPUrl(subdomain, customDomain);
-        setMenuLink(generateProjectUrl(subdomain, customDomain, defaultProject.name, false));
+        setObpLink(obpLink);
 
         try {
             const screenState = await getScreenState();
@@ -38,12 +32,12 @@ export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMo
         } catch {
             setHasScreen(false);
         }
-    }, [projectsList, selectedProjectId, storeDetails]);
+    }, [storeDetails]);
 
     useEffect(() => {
-        if (!storeDetails || loadingProjects) return;
+        if (!storeDetails) return;
         void loadState();
-    }, [loadState, loadingProjects, storeDetails]);
+    }, [loadState, storeDetails]);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR || !storeDetails) return null;
 
@@ -55,7 +49,7 @@ export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMo
                     hasFeedbackEnabled={storeDetails.feedbackEnabled !== false}
                     hasPublishedMenu={Boolean(storeDetails.subdomain || storeDetails.customDomain)}
                     hasScreen={hasScreen}
-                    menuLink={menuLink}
+                    obpLink={obpLink}
                     storeDetails={storeDetails as any}
                 />
             </Flex>

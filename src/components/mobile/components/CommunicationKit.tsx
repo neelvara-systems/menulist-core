@@ -12,6 +12,8 @@ interface MobileCommunicationKitProps {
     storeName: string;
     businessType: string;
     menuLink: string;
+    obpLink?: string;
+    projectName?: string;
     address?: string;
     phone?: string;
     workingHours?: Record<string, string>;
@@ -22,6 +24,8 @@ export default function MobileCommunicationKit({
     address,
     businessType,
     menuLink,
+    obpLink,
+    projectName,
     phone,
     storeName,
     timeZone,
@@ -35,10 +39,12 @@ export default function MobileCommunicationKit({
         businessType,
         isClosedToday: todayResult.isClosed,
         menuLink,
+        obpLink,
         phone,
+        projectName,
         storeName,
         todayHours: todayResult.hours,
-    }), [address, businessType, menuLink, phone, storeName, todayResult]);
+    }), [address, businessType, menuLink, obpLink, phone, projectName, storeName, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
 
@@ -111,9 +117,8 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                 </Card>
                 <Flex gap={10}>
                     <ActionTile
-                        iconColor={token.colorSuccess}
-                        icon={<FaWhatsapp size={18} />}
-                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank')}
+                        icon={copied ? <LuCheck size={18} /> : <LuCopy size={18} />}
+                        onClick={() => void handleCopy()}
                     />
                     {supportsNativeShare ? (
                         <ActionTile
@@ -122,8 +127,9 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                         />
                     ) : null}
                     <ActionTile
-                        icon={copied ? <LuCheck size={18} /> : <LuCopy size={18} />}
-                        onClick={() => void handleCopy()}
+                        iconColor={token.colorSuccess}
+                        icon={<FaWhatsapp size={18} />}
+                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank')}
                     />
                 </Flex>
             </Flex>

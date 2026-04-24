@@ -38,7 +38,7 @@ interface MobilePresenceMonitorProps {
     hasScreen: boolean;
     hasFeedbackEnabled: boolean;
     storeDetails: StoreDataType;
-    menuLink: string;
+    obpLink: string;
 }
 
 interface ManualSurfaceConfig {
@@ -97,7 +97,7 @@ export default function MobilePresenceMonitor({
     hasScreen,
     hasFeedbackEnabled,
     storeDetails,
-    menuLink,
+    obpLink,
 }: MobilePresenceMonitorProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobilePresenceMonitor');
@@ -154,9 +154,9 @@ export default function MobilePresenceMonitor({
         setSelectedSurfaceId(null);
     };
 
-    const handleCopyMenuLink = async () => {
+    const handleCopyOfficialLink = async () => {
         try {
-            await navigator.clipboard.writeText(menuLink);
+            await navigator.clipboard.writeText(obpLink);
             Toast.show({ content: t('menuLinkCopied'), duration: 1000 });
         } catch {
             Toast.show({ content: t('menuLinkCopyFailed'), duration: 1000 });
@@ -364,12 +364,12 @@ export default function MobilePresenceMonitor({
                                             borderColor: token.colorBorderSecondary,
                                         }}
                                     >
-                                        <Text style={{ wordBreak: 'break-all' }}>{menuLink}</Text>
+                                        <Text style={{ wordBreak: 'break-all' }}>{obpLink}</Text>
                                     </Card>
                                     <Button
                                         block
                                         fill="outline"
-                                        onClick={() => void handleCopyMenuLink()}
+                                        onClick={() => void handleCopyOfficialLink()}
                                         size="small"
                                     >
                                         <Flex align="center" gap={6}>

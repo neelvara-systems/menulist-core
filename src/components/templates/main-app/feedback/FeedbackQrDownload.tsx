@@ -15,9 +15,12 @@ import {
     getFeedbackUrl,
     getQrCodeFilename,
 } from '@lib/utils/feedbackQrCode';
-import { Button, Modal, Spin, message } from 'antd';
+import { Button, Card, Flex, Modal, Spin, Typography, message, theme } from 'antd';
 import React, { useState } from 'react';
-import { LuDownload, LuQrCode } from 'react-icons/lu';
+import { FaWhatsapp } from 'react-icons/fa6';
+import { LuCopy, LuClipboard, LuDownload, LuExternalLink, LuQrCode } from 'react-icons/lu';
+
+const { Text } = Typography;
 
 interface FeedbackQrDownloadProps {
     /** Project ID for QR code URL */
@@ -30,6 +33,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     projectId,
     storeName = 'store',
 }) => {
+    const { token } = theme.useToken();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -60,15 +64,88 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     };
 
     const feedbackUrl = getFeedbackUrl(projectId, 'direct_link');
+    const shortFeedbackUrl = feedbackUrl.replace(/^https?:\/\//, '');
+    const withSrc = (src: 'copy' | 'direct' | 'whatsapp') =>
+        feedbackUrl ? `${feedbackUrl}${feedbackUrl.includes('?') ? '&' : '?'}src=${src}` : feedbackUrl;
+
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(withSrc('copy'));
+            message.success('Feedback link copied');
+        } catch {
+            message.error('Failed to copy feedback link');
+        }
+    };
+
+    const handleOpenLink = () => {
+        window.open(withSrc('direct'), '_blank');
+    };
+
+    const handleWhatsApp = () => {
+        const shareMessage = `Share your feedback for ${storeName}\n${withSrc('whatsapp')}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, '_blank');
+    };
+
+    const handleCopyMessage = async () => {
+        const shareMessage = `Share your feedback for ${storeName}\n${withSrc('copy')}`;
+        try {
+            await navigator.clipboard.writeText(shareMessage);
+            message.success('Message copied — paste it in WhatsApp or anywhere');
+        } catch {
+            message.error('Could not copy message');
+        }
+    };
 
     return (
         <>
-            <Button
-                icon={<LuQrCode />}
-                onClick={handleOpenModal}
-            >
-                Download QR Code
-            </Button>
+            <Card size="small" styles={{ body: { padding: 16 } }} style={{ width: '100%', maxWidth: 360 }}>
+                <Flex vertical gap={10}>
+                    <Text strong>Feedback Link</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Share this with guests when you want private feedback directly
+                    </Text>
+                    <Card
+                        size="small"
+                        styles={{ body: { padding: '6px 10px' } }}
+                        style={{
+                            backgroundColor: token.colorFillAlter,
+                            borderColor: token.colorBorderSecondary,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                wordBreak: 'break-all',
+                            }}
+                        >
+                            {shortFeedbackUrl}
+                        </Text>
+                    </Card>
+                    <Flex gap={6} align="center" wrap="wrap">
+                        <Button size="small" type="primary" icon={<LuClipboard size={14} />} onClick={handleCopyLink}>
+                            Copy Link
+                        </Button>
+                        <Button
+                            size="small"
+                            icon={<FaWhatsapp size={14} />}
+                            onClick={handleWhatsApp}
+                            style={{ color: '#25D366', borderColor: '#25D366' }}
+                        >
+                            WhatsApp
+                        </Button>
+                        <Button size="small" icon={<LuCopy size={14} />} onClick={handleCopyMessage}>
+                            Copy Message
+                        </Button>
+                        <Button size="small" type="text" icon={<LuExternalLink size={14} />} onClick={handleOpenLink}>
+                            Open
+                        </Button>
+                    </Flex>
+                    <Button size="small" type="link" style={{ fontSize: 12, padding: 0, height: 'auto', width: 'fit-content' }} icon={<LuQrCode size={14} />} onClick={handleOpenModal}>
+                        Download QR Code
+                    </Button>
+                </Flex>
+            </Card>
 
             <Modal
                 title="Feedback QR Code"

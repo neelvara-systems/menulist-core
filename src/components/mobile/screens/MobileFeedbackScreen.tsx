@@ -9,7 +9,7 @@ import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCopy, LuExternalLink, LuQrCode, LuStar } from 'react-icons/lu';
+import { LuCopy, LuExternalLink, LuQrCode, LuShare2, LuStar } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
@@ -41,6 +41,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>(DEFAULT_FEEDBACK_FILTER);
     const [isQrOpen, setIsQrOpen] = useState(false);
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const publicBaseUrl = generateOBPUrl(
         storeDetails?.subdomain || '',
         storeDetails?.customDomain
@@ -74,6 +75,10 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             void fetchFeedback();
         }
     }, [fetchFeedback, storeDetails?.storeId]);
+
+    useEffect(() => {
+        setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+    }, []);
 
     const handleStatusUpdate = useCallback((feedbackId: string, newStatus: 'new' | 'resolved') => {
         setFeedbackList((previous) => previous.map((item) => item.id === feedbackId
@@ -109,6 +114,21 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const handleOpenFeedbackLink = () => {
         if (!feedbackUrl) return;
         window.open(feedbackUrl, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleNativeShare = async () => {
+        if (!feedbackUrl || typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
+
+        try {
+            await navigator.share({
+                text: t('feedbackQrDesc'),
+                title: t('feedbackQrTitle'),
+                url: feedbackUrl,
+            });
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            Toast.show({ content: t('failedToUpdate'), duration: 1500 });
+        }
     };
 
     const stars = (rating: number) => (
@@ -157,61 +177,18 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                     title={t('title')}
                 />
 
-                <Card style={{ borderRadius: 20 }}>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" justify="space-between">
-                            <Flex align="center" gap={10}>
-                                <Flex
-                                    align="center"
-                                    justify="center"
-                                    style={{
-                                        background: '#ecfeff',
-                                        borderRadius: 12,
-                                        color: '#0891b2',
-                                        height: 40,
-                                        width: 40,
-                                    }}
-                                >
-                                    <LuQrCode size={18} />
-                                </Flex>
-                                <Flex gap={2} vertical>
-                                    <Flex align="center" gap={8} wrap="wrap">
-                                        <Text strong>{t('feedbackQrTitle')}</Text>
-                                        <Tag color={feedbackReady ? 'success' : 'default'}>
-                                            {feedbackReady ? common('enabled') : common('disabled')}
-                                        </Tag>
-                                    </Flex>
-                                    <Text type="secondary">{t('feedbackQrDesc')}</Text>
-                                </Flex>
-                            </Flex>
-                            <Button
-                                fill="none"
-                                onClick={handleOpenFeedbackLink}
-                                disabled={!feedbackReady}
-                                size="small"
-                                style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
-                            >
-                                <LuExternalLink size={16} />
-                            </Button>
-                        </Flex>
-                        <Flex gap={8}>
-                            <Button disabled={!feedbackReady} fill="outline" onClick={handleCopyFeedbackLink} size="small" style={{ flex: 1 }}>
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuCopy size={14} />
-                                    <Text>{t('copyLink')}</Text>
-                                </Flex>
-                            </Button>
-                            <Button disabled={!feedbackReady} onClick={handleOpenQr} size="small" style={{ flex: 1 }}>
-                                {t('showQr')}
-                            </Button>
-                        </Flex>
-                        {!feedbackReady ? (
-                            <Text type="secondary">
-                                {feedbackEnabled ? t('selectMenuForFeedback') : t('feedbackDisabledHelp')}
-                            </Text>
-                        ) : null}
-                    </Flex>
-                </Card>
+                <FeedbackLinkCard
+                    description={t('feedbackQrDesc')}
+                    disabled={!feedbackReady}
+                    helperText={!feedbackReady ? (feedbackEnabled ? t('selectMenuForFeedback') : t('feedbackDisabledHelp')) : undefined}
+                    label={t('feedbackQrTitle')}
+                    onCopy={feedbackReady ? handleCopyFeedbackLink : undefined}
+                    onOpen={feedbackReady ? handleOpenFeedbackLink : undefined}
+                    onShare={feedbackReady && supportsNativeShare ? () => void handleNativeShare() : undefined}
+                    onShowQr={feedbackReady ? handleOpenQr : undefined}
+                    statusLabel={feedbackReady ? common('enabled') : common('disabled')}
+                    value={feedbackUrl}
+                />
 
                 <Card style={FEEDBACK_LIST_CARD_STYLE}>
                     <Flex gap={12} vertical>
@@ -296,6 +273,124 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 url={feedbackQrUrl}
                 visible={isQrOpen}
             />
+        </Flex>
+    );
+}
+
+function FeedbackLinkCard({
+    description,
+    disabled,
+    helperText,
+    label,
+    onCopy,
+    onOpen,
+    onShare,
+    onShowQr,
+    statusLabel,
+    value,
+}: {
+    description: string;
+    disabled?: boolean;
+    helperText?: string;
+    label: string;
+    onCopy?: () => void;
+    onOpen?: () => void;
+    onShare?: () => void;
+    onShowQr?: () => void;
+    statusLabel: string;
+    value: string;
+}) {
+    const { token } = theme.useToken();
+
+    return (
+        <Card style={{ borderRadius: 24 }}>
+            <Flex gap={14} vertical>
+                <Flex align="center" justify="space-between">
+                    <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
+                        <FeedbackIconBadge>
+                            <LuQrCode color="#0891b2" size={18} />
+                        </FeedbackIconBadge>
+                        <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                            <Flex align="center" gap={8} wrap="wrap">
+                                <Text strong style={{ color: token.colorText, fontSize: 14 }}>
+                                    {label}
+                                </Text>
+                                <Tag color={disabled ? 'default' : 'success'}>{statusLabel}</Tag>
+                            </Flex>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{description}</Text>
+                        </Flex>
+                    </Flex>
+                </Flex>
+
+                {disabled ? (
+                    helperText ? <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{helperText}</Text> : null
+                ) : (
+                    <>
+                        <Card
+                            size="small"
+                            style={{
+                                backgroundColor: token.colorFillAlter,
+                                borderColor: token.colorBorderSecondary,
+                                borderRadius: 16,
+                            }}
+                        >
+                            <Text style={{ color: token.colorText, fontSize: 12, wordBreak: 'break-all' }}>
+                                {value}
+                            </Text>
+                        </Card>
+
+                        <Flex gap={10}>
+                            {onCopy ? <FeedbackActionTile icon={<LuCopy size={18} />} onClick={onCopy} /> : null}
+                            {onShare ? <FeedbackActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
+                            {onShowQr ? <FeedbackActionTile icon={<LuQrCode size={18} />} onClick={onShowQr} /> : null}
+                            {onOpen ? <FeedbackActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} /> : null}
+                        </Flex>
+                    </>
+                )}
+            </Flex>
+        </Card>
+    );
+}
+
+function FeedbackActionTile({ icon, onClick }: { icon: React.ReactNode; onClick: () => void }) {
+    const { token } = theme.useToken();
+
+    return (
+        <Button
+            fill="outline"
+            onClick={onClick}
+            size="small"
+            style={{
+                borderColor: token.colorBorderSecondary,
+                borderRadius: 16,
+                flex: 1,
+                minHeight: 48,
+                minWidth: 0,
+                paddingBlock: 0,
+                paddingInline: 0,
+            }}
+        >
+            <Flex align="center" justify="center" style={{ color: token.colorText, minHeight: 20 }}>
+                {icon}
+            </Flex>
+        </Button>
+    );
+}
+
+function FeedbackIconBadge({ children }: { children: React.ReactNode }) {
+    return (
+        <Flex
+            align="center"
+            justify="center"
+            style={{
+                backgroundColor: '#ecfeff',
+                borderRadius: 16,
+                height: 44,
+                minWidth: 44,
+                width: 44,
+            }}
+        >
+            {children}
         </Flex>
     );
 }
