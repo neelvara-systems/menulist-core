@@ -1,10 +1,10 @@
-import { Input, theme } from 'antd';
-import { FixedSizeGrid } from 'react-window';
+import { theme } from 'antd';
+import { useMemo } from 'react';
 import * as LuIcons from 'react-icons/lu';
-import { useMemo, useState } from 'react';
 
 interface LucideIconGridProps {
     onSelect: (iconName: string) => void;
+    searchQuery: string;
     selectedIcon?: string;
     suggestedIcons?: string[];
     width?: number;
@@ -14,107 +14,119 @@ const allIcons = Object.keys(LuIcons);
 
 const LucideIconGrid = ({
     onSelect,
+    searchQuery,
     selectedIcon,
     suggestedIcons = [],
     width = 400,
 }: LucideIconGridProps) => {
     const { token } = theme.useToken();
-    const [search, setSearch] = useState('');
     const filteredSuggestedIcons = useMemo(() => (
         suggestedIcons.filter((iconName) => allIcons.includes(iconName))
     ), [suggestedIcons]);
 
     const filteredIcons = useMemo(() =>
-        allIcons.filter(icon => icon.toLowerCase().includes(search.toLowerCase())),
-        [search]
+        allIcons.filter(icon => icon.toLowerCase().includes(searchQuery.toLowerCase())),
+        [searchQuery]
     );
 
-    const COLUMN_COUNT = Math.max(4, Math.floor(width / 50));
-    const ROW_COUNT = Math.ceil(filteredIcons.length / COLUMN_COUNT);
+    return (
+        <div
+            className="icon-grid-picker"
+            style={{
+                background: token.colorBgContainer,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 18,
+                ['--icon-picker-panel-bg' as any]: token.colorBgContainer,
+                ['--icon-picker-input-bg' as any]: token.colorFillSecondary,
+                ['--icon-picker-input-border' as any]: token.colorFillSecondary,
+                padding: 10,
+            }}
+        >
+            <div className="icon-grid-picker__scroll">
+                {filteredSuggestedIcons.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div className="icon-grid-picker__label">Suggested</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                            {filteredSuggestedIcons.map((iconName) => {
+                                const Icon = LuIcons[iconName as keyof typeof LuIcons];
+                                const iconValue = `lu:${iconName}`;
+                                const isSelected = selectedIcon === iconValue;
 
-    const Cell = ({ columnIndex, rowIndex, style }: any) => {
-        const index = rowIndex * COLUMN_COUNT + columnIndex;
-        if (index >= filteredIcons.length) return null;
+                                if (!Icon) return null;
 
-        const iconName = filteredIcons[index] as keyof typeof LuIcons;
-        const Icon = LuIcons[iconName];
-        const isSelected = selectedIcon === `lu:${iconName}`;
+                                return (
+                                    <button
+                                        key={iconName}
+                                        className={`icon-picker-cell-container icon-picker-cell-container--suggested ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => onSelect(iconValue)}
+                                        type="button"
+                                    >
+                                        <span
+                                            className={`icon-picker-cell icon-picker-cell--button ${isSelected ? 'selected' : ''}`}
+                                            style={{
+                                                background: isSelected ? token.colorPrimaryBg : token.colorBgElevated,
+                                                border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                color: token.colorText,
+                                            }}
+                                        >
+                                            <Icon size={24} />
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : null}
 
-        return (
-            <div style={style} className="icon-picker-cell-container">
-                <div
-                    className={`icon-picker-cell ${isSelected ? 'selected' : ''}`}
-                    onClick={() => onSelect(`lu:${iconName}`)}
-                    style={{
-                        borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
-                        background: isSelected ? token.colorPrimaryBg : 'transparent',
-                    }}
-                >
-                    <Icon size={24} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div className="icon-grid-picker__label">
+                        {searchQuery.trim() ? 'Search Results' : 'All icons'}
+                    </div>
+                    {filteredIcons.length > 0 ? (
+                        <div className="icon-grid-picker__results-grid">
+                            {filteredIcons.map((iconName) => {
+                                const Icon = LuIcons[iconName as keyof typeof LuIcons];
+                                const iconValue = `lu:${iconName}`;
+                                const isSelected = selectedIcon === iconValue;
+
+                                if (!Icon) return null;
+
+                                return (
+                                    <button
+                                        key={iconName}
+                                        className="icon-picker-cell-container icon-picker-cell-container--result"
+                                        onClick={() => onSelect(iconValue)}
+                                        type="button"
+                                    >
+                                        <span
+                                            className={`icon-picker-cell icon-picker-cell--button ${isSelected ? 'selected' : ''}`}
+                                            style={{
+                                                background: isSelected ? token.colorPrimaryBg : token.colorBgElevated,
+                                                border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                color: token.colorText,
+                                            }}
+                                        >
+                                            <Icon size={24} />
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div
+                            style={{
+                                border: `1px dashed ${token.colorBorderSecondary}`,
+                                borderRadius: 12,
+                                color: token.colorTextSecondary,
+                                padding: '18px 14px',
+                                textAlign: 'center',
+                            }}
+                        >
+                            No icons found
+                        </div>
+                    )}
                 </div>
             </div>
-        );
-    };
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {filteredSuggestedIcons.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ color: token.colorTextSecondary, fontSize: 12, fontWeight: 500 }}>
-                        Suggested
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {filteredSuggestedIcons.map((iconName) => {
-                            const Icon = LuIcons[iconName as keyof typeof LuIcons];
-                            const iconValue = `lu:${iconName}`;
-                            const isSelected = selectedIcon === iconValue;
-
-                            if (!Icon) return null;
-
-                            return (
-                                <button
-                                    key={iconName}
-                                    className={`icon-picker-cell ${isSelected ? 'selected' : ''}`}
-                                    onClick={() => onSelect(iconValue)}
-                                    style={{
-                                        alignItems: 'center',
-                                        background: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
-                                        border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
-                                        borderRadius: 10,
-                                        color: token.colorText,
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        height: 42,
-                                        justifyContent: 'center',
-                                        padding: 0,
-                                        width: 42,
-                                    }}
-                                    type="button"
-                                >
-                                    <Icon size={20} />
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            ) : null}
-            <Input.Search
-                placeholder="Search for an icon..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                allowClear
-            />
-            <FixedSizeGrid
-                columnCount={COLUMN_COUNT}
-                columnWidth={50}
-                height={300}
-                rowCount={ROW_COUNT}
-                rowHeight={50}
-                width={width}
-                itemData={filteredIcons}
-            >
-                {Cell}
-            </FixedSizeGrid>
         </div>
     );
 };

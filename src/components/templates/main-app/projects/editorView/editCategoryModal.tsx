@@ -413,13 +413,8 @@ const EditCategoryModal = ({
                                     borderRadius: 8,
                                 }}
                             >
-                                <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
-                                    <Typography.Text strong>Category icon</Typography.Text>
-                                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                        Use a Lucide icon or emoji. Suggestions update from the category name.
-                                    </Typography.Text>
-                                </Flex>
-                                <Flex align="center" gap={10}>
+                                <Typography.Text strong>Category icon</Typography.Text>
+                                <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
                                     <IconPicker
                                         buttonSize="middle"
                                         onChange={(value) => setCategoryData({ ...categoryData, icon: value })}

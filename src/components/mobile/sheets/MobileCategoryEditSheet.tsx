@@ -148,18 +148,15 @@ export default function MobileCategoryEditSheet({
                         <Flex gap={12} vertical>
                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS ? (
                                 <Flex
-                                    gap={10}
-                                    vertical
+                                    align="center"
+                                    justify="space-between"
                                     style={{
                                         borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                         paddingBottom: 12,
                                     }}
                                 >
-                                    <Flex gap={10} style={{ flex: 1, minWidth: 0 }} vertical>
-                                        <Text strong>Category icon</Text>
-                                        <Text type="secondary">Pick a Lucide icon or emoji for faster recognition.</Text>
-                                    </Flex>
-                                    <Flex align="center" gap={10} wrap="wrap">
+                                    <Text strong>Category icon</Text>
+                                    <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
                                         <IconPicker
                                             buttonSize="middle"
                                             gridWidth={320}
