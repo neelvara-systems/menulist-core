@@ -27,6 +27,7 @@ import MobileCommunicationKit from '../components/CommunicationKit';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import useViewportInfo from '../../../hooks/useViewportInfo';
 
 type ProjectLink = {
     active?: boolean;
@@ -72,6 +73,7 @@ interface MobileShareScreenProps {
 
 export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScreenProps) {
     const { token } = theme.useToken();
+    const { isCompactHandheld } = useViewportInfo();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const tProjectSelector = useTranslations('MobileProjectSelector');
@@ -150,6 +152,11 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
     const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') =>
         url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
 
+    const openInternalLink = (url: string) => {
+        if (!url) return;
+        window.location.assign(url);
+    };
+
     const handleCopy = async (value: string, label: string) => {
         try {
             await navigator.clipboard.writeText(value);
@@ -200,7 +207,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
     }
 
     return (
-        <Flex gap={18} style={{ padding: 16 }} vertical>
+        <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
             {activeProject ? (
                 <ProjectSelectorTrigger
                     clickable={data.allProjects.length > 1}
@@ -223,12 +230,13 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             ) : null}
 
             <LinkCard
+                compact={isCompactHandheld}
                 description={t('obpShareHint')}
                 icon={<LuExternalLink color={token.colorText} size={18} />}
                 isPrimary
                 label={t('officialBusinessLink')}
                 onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('officialBusinessLink'))}
-                onOpen={() => window.open(withSource(data.obpLink, 'direct'), '_blank')}
+                onOpen={() => openInternalLink(withSource(data.obpLink, 'direct'))}
                 onShare={supportsNativeShare ? () => void handleNativeShare({
                     label: t('officialBusinessLink'),
                     text: t('obpShareHint'),
@@ -245,16 +253,18 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             />
 
             <SectionHeader
+                compact={isCompactHandheld}
                 subtitle={`Share a direct link to the selected ${labels.offeringLower}.`}
                 title={t('directOfferingLink', { offering: labels.offeringTitle })}
             />
 
             <LinkCard
+                compact={isCompactHandheld}
                 description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
                 icon={<LuLink2 color={token.colorText} size={18} />}
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
                 onCopy={() => void handleCopy(withSource(data.menuLink, 'copy'), t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
-                onOpen={() => window.open(withSource(data.menuLink, 'direct'), '_blank')}
+                onOpen={() => openInternalLink(withSource(data.menuLink, 'direct'))}
                 onShare={supportsNativeShare ? () => void handleNativeShare({
                     label: t('directOfferingLink', { offering: labels.offeringTitle }),
                     text: t('directOfferingLinkDesc', { offering: labels.offeringLower }),
@@ -272,11 +282,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
 
             {data.installAppLink ? (
                 <LinkCard
+                    compact={isCompactHandheld}
                     description="Share this when customers should install your business app directly on their phone."
                     icon={<LuSmartphone color={token.colorText} size={18} />}
                     label="Customer App install link"
                     onCopy={() => void handleCopy(withSource(data.installAppLink as string, 'copy'), 'Customer App install link')}
-                    onOpen={() => window.open(withSource(data.installAppLink as string, 'direct'), '_blank')}
+                    onOpen={() => openInternalLink(withSource(data.installAppLink as string, 'direct'))}
                     onShare={supportsNativeShare ? () => void handleNativeShare({
                         label: 'Customer App install link',
                         text: 'Share this when customers should install your business app directly on their phone.',
@@ -295,11 +306,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
 
             {data.hasFeedbackEnabled && data.feedbackLink ? (
                 <LinkCard
+                    compact={isCompactHandheld}
                     description={t('feedbackLinkDesc')}
                     icon={<LuMessageSquare color={token.colorText} size={18} />}
                     label={t('feedbackLink')}
                     onCopy={() => void handleCopy(data.feedbackLink, t('feedbackLink'))}
-                    onOpen={() => window.open(data.feedbackLink, '_blank')}
+                    onOpen={() => openInternalLink(data.feedbackLink)}
                     onShare={supportsNativeShare ? () => void handleNativeShare({
                         label: t('feedbackLink'),
                         text: t('feedbackLinkDesc'),
@@ -341,8 +353,8 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             {data.hasPosSync ? (
                 <Card style={{ borderRadius: 24 }}>
                     <Flex gap={8} vertical>
-                        <SectionHeader subtitle={t('posSyncDesc', { offering: labels.offeringLower })} title={t('posSync')} />
-                        <Flex align="center" gap={8}>
+                        <SectionHeader compact={isCompactHandheld} subtitle={t('posSyncDesc', { offering: labels.offeringLower })} title={t('posSync')} />
+                        <Flex align="center" gap={8} wrap="wrap">
                             <LuShield color={token.colorTextSecondary} size={18} />
                             <Text strong>{t('posIntegration')}</Text>
                             <Tag color={data.posSyncStatus === 'healthy' ? 'success' : data.posSyncStatus === 'connection_issue' ? 'warning' : 'default'}>
@@ -384,6 +396,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
 }
 
 function LinkCard({
+    compact,
     description,
     icon,
     isPrimary,
@@ -395,6 +408,7 @@ function LinkCard({
     showQrLabel,
     value,
 }: {
+    compact?: boolean;
     description: string;
     icon: React.ReactNode;
     isPrimary?: boolean;
@@ -409,18 +423,18 @@ function LinkCard({
     const { token } = theme.useToken();
 
     return (
-        <Card style={{ borderRadius: 24 }}>
-            <Flex gap={14} vertical>
+        <Card style={{ borderRadius: compact ? 20 : 24 }}>
+            <Flex gap={compact ? 12 : 14} vertical>
                 <Flex align="center" justify="space-between">
                     <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
                         <IconBadge tint={token.colorFillAlter}>
                             {icon}
                         </IconBadge>
                         <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                            <Text strong style={{ color: token.colorText, fontSize: isPrimary ? 15 : 14 }}>
+                            <Text strong style={{ color: token.colorText, fontSize: isPrimary ? (compact ? 14 : 15) : (compact ? 13 : 14) }}>
                                 {label}
                             </Text>
-                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{description}</Text>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: compact ? 11 : 12 }}>{description}</Text>
                         </Flex>
                     </Flex>
                 </Flex>
@@ -430,26 +444,26 @@ function LinkCard({
                     style={{
                         backgroundColor: token.colorFillAlter,
                         borderColor: token.colorBorderSecondary,
-                        borderRadius: 16,
+                        borderRadius: compact ? 14 : 16,
                     }}
                 >
-                    <Text style={{ color: token.colorText, fontSize: 12, wordBreak: 'break-all' }}>
+                    <Text style={{ color: token.colorText, fontSize: compact ? 11 : 12, wordBreak: 'break-all' }}>
                         {value}
                     </Text>
                 </Card>
 
-                <Flex gap={10}>
-                    <ActionTile icon={<LuCopy size={18} />} onClick={onCopy} />
-                    {onShare ? <ActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
-                    <ActionTile icon={<LuQrCode size={18} />} onClick={onShowQr} />
-                    <ActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} />
+                <Flex gap={compact ? 8 : 10}>
+                    <ActionTile compact={compact} icon={<LuCopy size={18} />} onClick={onCopy} />
+                    {onShare ? <ActionTile compact={compact} icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
+                    <ActionTile compact={compact} icon={<LuQrCode size={18} />} onClick={onShowQr} />
+                    <ActionTile compact={compact} icon={<LuExternalLink size={18} />} onClick={onOpen} />
                 </Flex>
             </Flex>
         </Card>
     );
 }
 
-function ActionTile({ icon, onClick }: { icon: React.ReactNode; onClick: () => void }) {
+function ActionTile({ compact, icon, onClick }: { compact?: boolean; icon: React.ReactNode; onClick: () => void }) {
     const { token } = theme.useToken();
 
     return (
@@ -459,9 +473,9 @@ function ActionTile({ icon, onClick }: { icon: React.ReactNode; onClick: () => v
             size="small"
             style={{
                 borderColor: token.colorBorderSecondary,
-                borderRadius: 16,
+                borderRadius: compact ? 14 : 16,
                 flex: 1,
-                minHeight: 48,
+                minHeight: compact ? 42 : 48,
                 minWidth: 0,
                 paddingBlock: 0,
                 paddingInline: 0,
@@ -492,15 +506,15 @@ function IconBadge({ children, tint }: { children: React.ReactNode; tint: string
     );
 }
 
-function SectionHeader({ subtitle, title }: { subtitle?: string; title: string }) {
+function SectionHeader({ compact, subtitle, title }: { compact?: boolean; subtitle?: string; title: string }) {
     const { token } = theme.useToken();
 
     return (
         <Flex gap={4} vertical>
-            <Text strong style={{ color: token.colorText, fontSize: 15 }}>
+            <Text strong style={{ color: token.colorText, fontSize: compact ? 14 : 15 }}>
                 {title}
             </Text>
-            {subtitle ? <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>{subtitle}</Text> : null}
+            {subtitle ? <Text style={{ color: token.colorTextSecondary, fontSize: compact ? 11 : 12 }}>{subtitle}</Text> : null}
         </Flex>
     );
 }

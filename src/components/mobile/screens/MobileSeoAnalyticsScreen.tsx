@@ -429,6 +429,15 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 </FieldGroup>
                             </Flex>
                         </Card>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text strong>{tSeo('aeoCardTitle')}</Text>
+                                <Text type="secondary">{tSeo('aeoCardDescription')}</Text>
+                                <Text>{tSeo('aeoCardPoint1')}</Text>
+                                <Text>{tSeo('aeoCardPoint2')}</Text>
+                                <Text>{tSeo('aeoCardPoint3')}</Text>
+                            </Flex>
+                        </Card>
                         <SeoPreviewCard
                             businessName={storeDetails?.name}
                             canonicalUrl={canonicalUrl}

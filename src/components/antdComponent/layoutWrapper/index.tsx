@@ -31,7 +31,7 @@ export default function AntdLayoutWrapper(props: any) {
     const { token } = theme.useToken();
     const pathname = usePathname();
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
-    const { isMobile, hasMounted } = useDeviceType();
+    const { isHandheld, hasMounted } = useDeviceType();
 
     // Check for force-desktop override from localStorage (set via More > Switch to Desktop)
     const forceDesktop = typeof window !== 'undefined' && localStorage.getItem('forceDesktopMode') === 'true';
@@ -42,8 +42,10 @@ export default function AntdLayoutWrapper(props: any) {
             return <>{props.children}</>
         }
 
-        // Mobile shell: render only on mobile devices with feature flag ON and no force-desktop override
-        if (hasMounted && isMobile && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop) {
+        // Long-term shell routing: keep handheld devices in the mobile shell
+        // even when rotated to landscape. Internal screen layouts can respond
+        // to width changes without the entire app remounting into desktop UI.
+        if (hasMounted && isHandheld && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop) {
             return <MobileShell />;
         }
 
@@ -51,7 +53,7 @@ export default function AntdLayoutWrapper(props: any) {
             <HeadMetaTags title={undefined} description={undefined} image={undefined} siteName={undefined} storeData={undefined} />
             <Fragment>
                 {/* "Return to Mobile" banner — shown when mobile user forced desktop mode */}
-                {hasMounted && isMobile && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (
+                {hasMounted && isHandheld && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (
                     <div
                         style={{ background: '#1677ff', color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', zIndex: 9999 }}
                         onClick={() => { localStorage.removeItem('forceDesktopMode'); window.location.reload(); }}

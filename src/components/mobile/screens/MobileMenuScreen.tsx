@@ -40,6 +40,7 @@ import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 import type { MobileMenuItemType as MenuItemType } from '../types';
+import useViewportInfo from '../../../hooks/useViewportInfo';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
 const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr: false });
@@ -387,6 +388,7 @@ interface MobileMenuScreenProps {
 
 export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScreenProps) {
     const { token } = theme.useToken();
+    const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
     const tShare = useTranslations('MobileShare');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -2166,7 +2168,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     style={{
                         backgroundColor: token.colorBgContainer,
                         borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                        padding: '8px 16px 10px',
+                        padding: isCompactHandheld ? '6px 12px 8px' : '8px 16px 10px',
                     }}
                     vertical
                 >
@@ -2231,7 +2233,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         </Flex>
                     ) : null}
 
-                    <Flex align="center" justify="space-between">
+                    <Flex
+                        align={isCompactHandheld ? 'flex-start' : 'center'}
+                        gap={isCompactHandheld ? 6 : 12}
+                        justify="space-between"
+                        vertical={isCompactHandheld}
+                    >
                         <Text style={{ lineHeight: 1.25 }} type="secondary">
                             {t('categoriesSummary', {
                                 items: `${menuItems.length} ${labels.itemsPlural}`,
@@ -2245,7 +2252,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     setExpandedCategoryKeys((current) => current.length === orderedCategorySections.length ? [] : orderedCategorySections.map((section) => section.id));
                                 }}
                                 size="small"
-                                style={{ minHeight: 28, paddingInline: 4 }}
+                                style={{ alignSelf: isCompactHandheld ? 'flex-end' : undefined, minHeight: 28, paddingInline: 4 }}
                             >
                                 {expandedCategoryKeys.length === orderedCategorySections.length ? t('collapseAll') : t('expandAll')}
                             </Button>
@@ -2297,7 +2304,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     {t('uploadMenuPhoto', { offering: labels.offeringTitle })}
                                 </Button>
 
-                                <Flex gap={10} style={{ width: '100%' }}>
+                                <Flex gap={10} style={{ width: '100%' }} vertical={isCompactHandheld}>
                                     <Button
                                         block
                                         fill="outline"

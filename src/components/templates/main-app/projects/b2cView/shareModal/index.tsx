@@ -385,7 +385,7 @@ function ShareModal({
                         We track scans and opens so you can see what works
                     </Text>
                     <Flex gap={8}>
-                        <Button size="small" type="text" icon={<LuExternalLink />} onClick={() => window.open(shareUrl, '_blank')}>
+                        <Button size="small" type="text" icon={<LuExternalLink />} onClick={() => window.location.assign(shareUrl)}>
                             Open
                         </Button>
                         <Button size="small" type="text" icon={<LuCopy />} onClick={() => { navigator.clipboard.writeText(shareUrl); message.success('URL copied'); }}>

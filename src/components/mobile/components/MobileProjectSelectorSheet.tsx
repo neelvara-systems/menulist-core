@@ -505,7 +505,7 @@ export default function MobileProjectSelectorSheet({
         }
 
         setManagingProjectId(null);
-        window.open(withSource(shareUrl, 'direct'), '_blank');
+        window.location.assign(withSource(shareUrl, 'direct'));
     };
 
     const handleShowProjectQr = (project: ProjectSheetProject) => {

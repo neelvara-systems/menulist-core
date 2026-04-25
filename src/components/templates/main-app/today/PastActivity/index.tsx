@@ -1,13 +1,14 @@
 "use client";
 
 import { getProjectsListWithoutLoader } from "@database/projects";
-import { getCampaignHistory } from "@database/campaigns";
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@constant/todayFeatureGuide";
+import { usePastActivity } from "@hook/usePastActivity";
 import { Campaign } from "@type/campaigns";
 import { Button, Drawer, Select, Spin, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { LuArrowLeft, LuCheck, LuClock3, LuInfo, LuX } from "react-icons/lu";
+import useSWR from "swr";
 import styles from "../styles.module.scss";
 
 const { Title, Text } = Typography;
@@ -60,64 +61,38 @@ const resolveSelectedProject = (
  */
 const PastActivityScreen = () => {
     const router = useRouter();
-    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const {
+        data: projects = [],
+        isLoading: isProjectsLoading,
+    } = useSWR<ProjectSummary[]>(
+        "past-activity-projects",
+        async () => {
+            const result = await getProjectsListWithoutLoader(true);
+            return (result?.projects || []) as ProjectSummary[];
+        },
+        {
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+            dedupingInterval: 30000,
+        }
+    );
+    const { campaigns, isLoading: isHistoryLoading } = usePastActivity(selectedProjectId);
 
     useEffect(() => {
-        const loadProjects = async () => {
-            try {
-                const result = await getProjectsListWithoutLoader(true);
-                const nextProjects = (result?.projects || []) as ProjectSummary[];
-                const resolvedProject = resolveSelectedProject(nextProjects);
-                setProjects(nextProjects);
-                setSelectedProjectId(resolvedProject?.projectId || null);
-            } catch (error) {
-                console.error("Failed to load projects:", error);
-                setProjects([]);
-                setSelectedProjectId(null);
-            }
-        };
+        if (!projects.length) {
+            setSelectedProjectId(null);
+            return;
+        }
 
-        void loadProjects();
-    }, []);
+        const resolvedProject = resolveSelectedProject(projects, selectedProjectId);
+        if (resolvedProject?.projectId !== selectedProjectId) {
+            setSelectedProjectId(resolvedProject?.projectId || null);
+        }
+    }, [projects, selectedProjectId]);
 
-    useEffect(() => {
-        const loadHistory = async () => {
-            if (!selectedProjectId) {
-                setCampaigns([]);
-                setIsLoading(false);
-                return;
-            }
-
-            setIsLoading(true);
-            try {
-                // HARD LIMIT: Max 7 days of history (prevents analysis behavior)
-                const history = await getCampaignHistory(20, selectedProjectId); // ~3 per day max
-
-                // Filter to last 7 days only
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-                const recentHistory = history.filter(c => {
-                    const activityDate = c.resolvedAt?.toDate() || c.updatedAt?.toDate() || c.createdAt?.toDate();
-                    if (!activityDate) return false;
-                    return activityDate >= sevenDaysAgo;
-                });
-
-                setCampaigns(recentHistory);
-            } catch (error) {
-                console.error("Failed to load history:", error);
-                setCampaigns([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        void loadHistory();
-    }, [selectedProjectId]);
+    const isLoading = isProjectsLoading || (!!selectedProjectId && isHistoryLoading);
 
     const selectedProject = useMemo(
         () => projects.find((project) => project.projectId === selectedProjectId) || null,
@@ -301,7 +276,7 @@ const PastActivityScreen = () => {
             {projects.length > 0 ? renderProjectSelector() : null}
 
             <div className={styles.activityList}>
-                {Object.entries(groupedByDate).map(([date, dateCampaigns]) => (
+                {(Object.entries(groupedByDate) as [string, Campaign[]][]).map(([date, dateCampaigns]) => (
                     <div key={date} className={styles.dateGroup}>
                         <div className={styles.dateLabel}>{date}</div>
                         {dateCampaigns.map((campaign) => (

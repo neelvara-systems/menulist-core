@@ -48,6 +48,9 @@ export interface WebAppManifest {
     start_url: string;
     scope: string;
     display: 'standalone';
+    launch_handler?: {
+        client_mode: 'auto' | 'navigate-existing' | 'navigate-new' | 'focus-existing' | Array<'auto' | 'navigate-existing' | 'navigate-new' | 'focus-existing'>;
+    };
     orientation: 'portrait-primary';
     theme_color: string;
     background_color: string;
@@ -163,6 +166,11 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
         start_url: startUrl,
         scope: '/',
         display: 'standalone',
+        // Chromium launch handling: keep in-scope launches inside the installed
+        // app window when possible instead of handing them back to the browser.
+        launch_handler: {
+            client_mode: 'navigate-existing',
+        },
         orientation: 'portrait-primary',
         theme_color: themeColor,
         background_color: backgroundColor,

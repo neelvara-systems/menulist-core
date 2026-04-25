@@ -24,7 +24,7 @@ function LinkView({ shareUrl }: LinkViewProps) {
     };
 
     const handleOpenLink = () => {
-        window.open(shareUrl, '_blank');
+        window.location.assign(shareUrl);
     };
 
 

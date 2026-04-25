@@ -262,7 +262,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 onBack={onBack}
                 backIcon={<LuArrowLeft size={20} />}
                 right={
-                    <Button fill="none" onClick={() => window.open(menuUrl, '_blank')}>
+                    <Button fill="none" onClick={() => window.location.assign(menuUrl)}>
                         <Flex align="center" gap={6}>
                             <LuExternalLink size={16} />
                             <Text>{t('preview')}</Text>

@@ -332,8 +332,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
             <Card>
                 <Flex gap={8} vertical>
-                    <Text strong>Search Settings</Text>
-                    <Text type="secondary">Search by setting name or keywords like logo, hours, domain, reviews, staff, or POS.</Text>
                     <div
                         style={{
                             alignItems: 'center',

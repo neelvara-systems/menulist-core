@@ -319,7 +319,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
             return;
         }
-        window.open(menuUrl, '_blank', 'noopener,noreferrer');
+        window.location.assign(menuUrl);
     };
 
     const handleSaveTodayHours = async () => {

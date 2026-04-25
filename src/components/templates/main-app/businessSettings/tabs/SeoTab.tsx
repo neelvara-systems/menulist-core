@@ -72,6 +72,30 @@ function SeoTab({ scrollRef }: SeoTabProps) {
                 <Input placeholder={t('canonicalUrlPlaceholder')} />
             </Form.Item>
 
+            <Card
+                size='small'
+                style={{
+                    background: '#fafafa',
+                    marginBottom: 16,
+                }}
+            >
+                <Title level={5} style={{ marginBottom: 8, marginTop: 0 }}>
+                    {t('aeoCardTitle')}
+                </Title>
+                <Text style={{ display: 'block', marginBottom: 12 }} type="secondary">
+                    {t('aeoCardDescription')}
+                </Text>
+                <Text style={{ display: 'block', marginBottom: 8 }}>
+                    {t('aeoCardPoint1')}
+                </Text>
+                <Text style={{ display: 'block', marginBottom: 8 }}>
+                    {t('aeoCardPoint2')}
+                </Text>
+                <Text style={{ display: 'block' }}>
+                    {t('aeoCardPoint3')}
+                </Text>
+            </Card>
+
             <SeoPreviewCard
                 businessName={businessName}
                 canonicalUrl={canonicalUrl}

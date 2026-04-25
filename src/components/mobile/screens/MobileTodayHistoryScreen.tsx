@@ -1,9 +1,9 @@
 'use client'
 
-import { getCampaignHistory } from '@database/campaigns';
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from '@constant/todayFeatureGuide';
+import { usePastActivity } from '@hook/usePastActivity';
 import { Campaign } from '@type/campaigns';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuClock, LuClock3, LuInfo, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, Popup, Text, Title } from '../antd';
@@ -22,42 +22,9 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
         selectedProjectSummary,
         selectProject,
     } = useMobileProjects();
-    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
-
-    useEffect(() => {
-        const loadHistory = async () => {
-            if (!selectedProjectId) {
-                setCampaigns([]);
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                setIsLoading(true);
-                const history = await getCampaignHistory(20, selectedProjectId);
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-                const recentHistory = history.filter((campaign) => {
-                    const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
-                    if (!activityDate) return false;
-                    return activityDate >= sevenDaysAgo;
-                });
-
-                setCampaigns(recentHistory);
-            } catch (error) {
-                console.error('[MobileTodayHistory] Failed to load history:', error);
-                setCampaigns([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        void loadHistory();
-    }, [selectedProjectId]);
+    const { campaigns, isLoading } = usePastActivity(selectedProjectId);
 
     const groupedHistory = useMemo(() => {
         return campaigns.reduce<Record<string, Campaign[]>>((accumulator, campaign) => {
@@ -168,7 +135,7 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                 </Card>
             ) : (
                 <Flex gap={10} vertical>
-                    {Object.entries(groupedHistory).map(([dateLabel, entries]) => (
+                    {(Object.entries(groupedHistory) as [string, Campaign[]][]).map(([dateLabel, entries]) => (
                         <Card key={dateLabel}>
                             <Flex gap={8} vertical>
                                 <Text strong>{dateLabel}</Text>

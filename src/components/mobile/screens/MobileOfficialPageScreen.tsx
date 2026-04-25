@@ -173,7 +173,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 </Button>
                                 <Button
                                     block
-                                    onClick={() => window.open(officialPageUrl, '_blank', 'noopener,noreferrer')}
+                                    onClick={() => window.location.assign(officialPageUrl)}
                                     size="small"
                                 >
                                     {t('viewOfficialPage')}

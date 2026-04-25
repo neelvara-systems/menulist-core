@@ -291,25 +291,30 @@ export const getCampaignHistory = async (
 ): Promise<Campaign[]> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
-            const collectionRef = getCampaignsCollectionRef(session);
-            const q = projectId
-                ? query(
-                    collectionRef,
-                    where("projectId", "==", projectId),
-                    orderBy("updatedAt", "desc"),
-                    limit(limitCount)
-                )
-                : query(
-                    collectionRef,
-                    orderBy("updatedAt", "desc"),
-                    limit(limitCount)
-                );
+            try {
+                const session = await getActiveSession();
+                const collectionRef = getCampaignsCollectionRef(session);
+                const q = projectId
+                    ? query(
+                        collectionRef,
+                        where("projectId", "==", projectId),
+                        orderBy("updatedAt", "desc"),
+                        limit(limitCount)
+                    )
+                    : query(
+                        collectionRef,
+                        orderBy("updatedAt", "desc"),
+                        limit(limitCount)
+                    );
 
-            const snapshot = await getDocs(q);
-            return snapshot.docs
-                .map(doc => doc.data() as Campaign)
-                .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
+                const snapshot = await getDocs(q);
+                return snapshot.docs
+                    .map(doc => doc.data() as Campaign)
+                    .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
+            } catch (error) {
+                console.error("[getCampaignHistory] Failed to load campaign history:", error);
+                return [];
+            }
         },
         { limitCount, projectId: projectId || null },
         "getCampaignHistory"

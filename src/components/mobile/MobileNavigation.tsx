@@ -4,6 +4,7 @@ import { theme } from 'antd';
 import { useEffect, useRef } from 'react';
 import { Button, Flex, Text } from './antd';
 import { LuCalendarCheck, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
+import useViewportInfo from '../../hooks/useViewportInfo';
 
 export type MobileTab = 'today' | 'menu' | 'share' | 'more';
 
@@ -23,6 +24,7 @@ const tabs = [
 
 export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, onMoreTabLongPress }: MobileNavigationProps) {
     const { token } = theme.useToken();
+    const { isCompactHandheld } = useViewportInfo();
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressNextMoreClickRef = useRef(false);
 
@@ -60,7 +62,15 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                 zIndex: 50,
             }}
         >
-            <Flex align="center" gap={0} justify="space-between" style={{ padding: '4px 8px 8px', width: '100%' }}>
+            <Flex
+                align="center"
+                gap={0}
+                justify="space-between"
+                style={{
+                    padding: isCompactHandheld ? '2px 6px 6px' : '4px 8px 8px',
+                    width: '100%',
+                }}
+            >
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.key;
                     const isMoreTab = tab.key === 'more';
@@ -81,8 +91,8 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                 flex: 1,
                                 height: 'auto',
                                 minWidth: 0,
-                                paddingBlock: 6,
-                                paddingInline: 4,
+                                paddingBlock: isCompactHandheld ? 4 : 6,
+                                paddingInline: isCompactHandheld ? 2 : 4,
                                 width: '100%',
                             }}
                         >
@@ -94,8 +104,8 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                     borderRadius: 14,
                                     minWidth: 0,
                                     width: '100%',
-                                    paddingBlock: 6,
-                                    paddingInline: 6,
+                                    paddingBlock: isCompactHandheld ? 5 : 6,
+                                    paddingInline: isCompactHandheld ? 4 : 6,
                                 }}
                                 vertical
                             >
@@ -105,7 +115,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                 <Text
                                     style={{
                                         color: 'inherit',
-                                        fontSize: 12,
+                                        fontSize: isCompactHandheld ? 11 : 12,
                                         fontWeight: isActive ? 600 : 500,
                                         lineHeight: 1.1,
                                     }}
