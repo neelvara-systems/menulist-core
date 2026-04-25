@@ -1,6 +1,6 @@
 import { Button, Flex, Grid, Input, Popover, theme } from 'antd';
 import { useState } from 'react';
-import { LuSearch } from 'react-icons/lu';
+import { LuSearch, LuX } from 'react-icons/lu';
 import CategoryIcon from '../CategoryIcon';
 import EmojiGrid from './EmojiGrid';
 import LucideIconGrid from './LucideIconGrid';
@@ -11,6 +11,9 @@ interface IconPickerProps {
     onChange?: (value: string) => void;
     suggestedIcons?: string[];
     buttonSize?: 'small' | 'middle' | 'large';
+    iconSize?: number;
+    buttonStyle?: React.CSSProperties;
+    allowClear?: boolean;
     popoverWidth?: number | string;
     gridWidth?: number;
 }
@@ -20,6 +23,9 @@ const IconPicker = ({
     onChange,
     suggestedIcons = [],
     buttonSize = 'large',
+    iconSize,
+    buttonStyle,
+    allowClear = false,
     popoverWidth = 400,
     gridWidth = 400,
 }: IconPickerProps) => {
@@ -29,10 +35,17 @@ const IconPicker = ({
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeMode, setActiveMode] = useState<'icons' | 'emoji'>('icons');
+    const resolvedIconSize = iconSize ?? (buttonSize === 'small' ? 16 : buttonSize === 'middle' ? 18 : 22);
 
     const handleSelect = (selectedValue: string) => {
         onChange?.(selectedValue);
         setOpen(false);
+    };
+
+    const handleClear = (event: React.MouseEvent<HTMLElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onChange?.('');
     };
 
     const content = (
@@ -139,7 +152,27 @@ const IconPicker = ({
             onOpenChange={setOpen}
             placement="bottomLeft"
         >
-            <Button size={buttonSize} icon={<CategoryIcon icon={value || ''} defaultIcon="LuImagePlus" />} />
+            <div className="icon-picker-trigger">
+                <Button
+                    icon={<CategoryIcon icon={value || ''} defaultIcon="LuImagePlus" size={resolvedIconSize} />}
+                    size={buttonSize}
+                    style={buttonStyle}
+                />
+                {allowClear && value ? (
+                    <Button
+                        aria-label="Remove selected icon"
+                        className="icon-picker-trigger__clear"
+                        icon={<LuX size={12} />}
+                        onClick={handleClear}
+                        onMouseDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }}
+                        size="small"
+                        type="default"
+                    />
+                ) : null}
+            </div>
         </Popover>
     );
 };

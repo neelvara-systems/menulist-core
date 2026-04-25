@@ -150,26 +150,28 @@ export default function MobileCategoryEditSheet({
                                 <Flex
                                     align="center"
                                     justify="space-between"
+                                    gap={12}
                                     style={{
                                         borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                         paddingBottom: 12,
                                     }}
                                 >
-                                    <Text strong>Category icon</Text>
+                                    <Flex gap={2} vertical>
+                                        <Text strong>Category icon</Text>
+                                        <Text type="secondary">Pick an icon or emoji to help this category stand out.</Text>
+                                    </Flex>
                                     <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
                                         <IconPicker
-                                            buttonSize="middle"
+                                            allowClear
+                                            buttonSize="large"
+                                            buttonStyle={{ height: 56, minWidth: 56 }}
                                             gridWidth={320}
+                                            iconSize={26}
                                             onChange={setIcon}
                                             popoverWidth={320}
                                             suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
                                             value={icon}
                                         />
-                                        {icon ? (
-                                            <Button fill="outline" onClick={() => setIcon('')} size="small">
-                                                Clear
-                                            </Button>
-                                        ) : null}
                                     </Flex>
                                 </Flex>
                             ) : null}

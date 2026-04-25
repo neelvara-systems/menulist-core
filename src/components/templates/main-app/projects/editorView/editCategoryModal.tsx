@@ -406,6 +406,7 @@ const EditCategoryModal = ({
                             <Flex
                                 align="center"
                                 justify="space-between"
+                                gap={12}
                                 style={{
                                     padding: '12px',
                                     background: token.colorFillAlter,
@@ -413,19 +414,22 @@ const EditCategoryModal = ({
                                     borderRadius: 8,
                                 }}
                             >
-                                <Typography.Text strong>Category icon</Typography.Text>
+                                <Flex vertical gap={2}>
+                                    <Typography.Text strong>Category icon</Typography.Text>
+                                    <Typography.Text type="secondary">
+                                        Pick an icon or emoji to help this category stand out.
+                                    </Typography.Text>
+                                </Flex>
                                 <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
                                     <IconPicker
-                                        buttonSize="middle"
+                                        allowClear
+                                        buttonSize="large"
+                                        buttonStyle={{ height: 56, minWidth: 56 }}
+                                        iconSize={26}
                                         onChange={(value) => setCategoryData({ ...categoryData, icon: value })}
                                         suggestedIcons={suggestedIcons}
                                         value={categoryData.icon}
                                     />
-                                    {categoryData.icon ? (
-                                        <Button onClick={() => setCategoryData({ ...categoryData, icon: undefined })}>
-                                            Clear
-                                        </Button>
-                                    ) : null}
                                 </Flex>
                             </Flex>
                         ) : null}

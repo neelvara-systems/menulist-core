@@ -1,3 +1,23 @@
+.icon-picker-trigger {
+    position: relative;
+    display: inline-flex;
+}
+
+.icon-picker-trigger__clear.ant-btn {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    height: 20px;
+    justify-content: center;
+    min-width: 20px;
+    padding: 0;
+    position: absolute;
+    right: -6px;
+    top: -6px;
+    width: 20px;
+    z-index: 2;
+}
+
 .icon-picker-cell-container {
     display: flex;
     align-items: center;
