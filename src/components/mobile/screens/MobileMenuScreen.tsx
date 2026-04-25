@@ -1005,6 +1005,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
     const primaryLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
     const activeProjectLanguages = useMemo(() => menuData?.languages || ['en'], [menuData?.languages]);
+    const showCategoryIcons = menuData?.config?.design?.menu?.showCategoryIcons ?? true;
     const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);
 
     useEffect(() => {
@@ -2398,10 +2399,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                         }}
                                                     >
                                                         <Flex align="center" gap={12} style={{ flex: '1 1 auto', minWidth: 0 }}>
-                                                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && id !== 'uncategorized' ? (
-                                                                <Flex
-                                                                    align="center"
-                                                                    justify="center"
+                                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && id !== 'uncategorized' ? (
+                                                        <Flex
+                                                            align="center"
+                                                            justify="center"
                                                                     style={{
                                                                         backgroundColor: token.colorFillAlter,
                                                                         border: `1px solid ${token.colorBorderSecondary}`,
@@ -3090,6 +3091,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
             <CategoryManagerSheet
                 businessType={storeDetails?.businessType}
+                categoryIconsEnabled={showCategoryIcons}
                 categories={categorySummary}
                 categoryItems={categoryItemMap}
                 initialCategoryId={categorySheetInitialCategoryId}
@@ -3103,6 +3105,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 })}
                 onDelete={handleCategoryDelete}
                 onGenerateContent={handleCategoryGenerateContent}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onUpdate={handleCategoryUpdate}
                 onReorder={handleCategoryReorder}
                 onReorderItems={handleCategoryItemReorder}

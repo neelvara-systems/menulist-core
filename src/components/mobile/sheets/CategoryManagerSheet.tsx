@@ -34,6 +34,7 @@ export type MobileCategoryReorderItem = {
 
 interface CategoryManagerSheetProps {
     businessType?: string;
+    categoryIconsEnabled?: boolean;
     categories: MobileCategoryItem[];
     categoryItems: Record<string, MobileCategoryReorderItem[]>;
     initialCategoryId?: string | null;
@@ -44,6 +45,7 @@ interface CategoryManagerSheetProps {
     onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
+    onOpenDesignEditor?: () => void;
     onReorder: (orderedIds: string[]) => Promise<void>;
     onReorderItems: (categoryId: string, orderedItemIds: string[]) => Promise<void>;
     onClose: () => void;
@@ -52,6 +54,7 @@ interface CategoryManagerSheetProps {
 
 export default function CategoryManagerSheet({
     businessType,
+    categoryIconsEnabled = true,
     categories,
     categoryItems,
     initialCategoryId = null,
@@ -62,6 +65,7 @@ export default function CategoryManagerSheet({
     onUpdate,
     onDelete,
     onGenerateContent,
+    onOpenDesignEditor,
     onReorder,
     onReorderItems,
     onClose,
@@ -647,12 +651,14 @@ export default function CategoryManagerSheet({
             <MobileCategoryEditSheet
                 businessType={businessType}
                 category={categoryEditorMode === 'edit' ? selectedCategory : null}
+                categoryIconsEnabled={categoryIconsEnabled}
                 mode={categoryEditorMode === 'edit' ? 'edit' : 'add'}
                 onClose={closeCategoryEditor}
                 onDelete={async (categoryId) => {
                     await handleDelete(categoryId);
                 }}
                 onGenerateContent={onGenerateContent}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onSave={async (payload) => {
                     setIsSaving(true);
                     try {

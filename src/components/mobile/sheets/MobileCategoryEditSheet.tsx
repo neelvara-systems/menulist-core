@@ -27,9 +27,11 @@ interface MobileCategoryEditSheetProps {
     category?: MobileCategoryItem | null;
     mode: 'add' | 'edit';
     businessType?: string;
+    categoryIconsEnabled?: boolean;
     onClose: () => void;
     onDelete?: (categoryId: string) => void;
     onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
+    onOpenDesignEditor?: () => void;
     onSave: (payload: SavePayload) => Promise<void>;
     presets: TimeSlotPreset[];
     selectedLanguages: string[];
@@ -40,9 +42,11 @@ export default function MobileCategoryEditSheet({
     category,
     mode,
     businessType,
+    categoryIconsEnabled = true,
     onClose,
     onDelete,
     onGenerateContent,
+    onOpenDesignEditor,
     onSave,
     presets,
     selectedLanguages,
@@ -157,31 +161,54 @@ export default function MobileCategoryEditSheet({
                         <Flex gap={12} vertical>
                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS ? (
                                 <Flex
-                                    align="center"
-                                    justify="space-between"
                                     gap={12}
                                     style={{
                                         borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                         paddingBottom: 12,
                                     }}
+                                    vertical
                                 >
-                                    <Flex gap={2} vertical>
-                                        <Text strong>Category icon</Text>
-                                        <Text type="secondary">Pick an icon or emoji to help this category stand out.</Text>
+                                    <Flex
+                                        align="center"
+                                        justify="space-between"
+                                        gap={12}
+                                    >
+                                        <Flex gap={2} vertical>
+                                            <Text strong>Category icon</Text>
+                                            <Text type="secondary">Pick an icon or emoji to help this category stand out.</Text>
+                                        </Flex>
+                                        <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
+                                            <IconPicker
+                                                allowClear
+                                                buttonSize="large"
+                                                buttonStyle={{ height: 56, minWidth: 56 }}
+                                                gridWidth={320}
+                                                iconSize={26}
+                                                onChange={setIcon}
+                                                popoverWidth={320}
+                                                suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
+                                                value={icon}
+                                            />
+                                        </Flex>
                                     </Flex>
-                                    <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
-                                        <IconPicker
-                                            allowClear
-                                            buttonSize="large"
-                                            buttonStyle={{ height: 56, minWidth: 56 }}
-                                            gridWidth={320}
-                                            iconSize={26}
-                                            onChange={setIcon}
-                                            popoverWidth={320}
-                                            suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
-                                            value={icon}
-                                        />
-                                    </Flex>
+
+                                    {!categoryIconsEnabled ? (
+                                        <Flex align="center" gap={10} justify="space-between">
+                                            <Text style={{ color: token.colorTextSecondary, flex: 1, fontSize: 12, lineHeight: 1.4 }}>
+                                                Category icons are turned off in Menu Design, so customers will not see this icon right now.
+                                            </Text>
+                                            {onOpenDesignEditor ? (
+                                                <Button
+                                                    fill="none"
+                                                    onClick={onOpenDesignEditor}
+                                                    size="small"
+                                                    style={{ minHeight: 28, paddingInline: 0 }}
+                                                >
+                                                    Menu Design
+                                                </Button>
+                                            ) : null}
+                                        </Flex>
+                                    ) : null}
                                 </Flex>
                             ) : null}
 
