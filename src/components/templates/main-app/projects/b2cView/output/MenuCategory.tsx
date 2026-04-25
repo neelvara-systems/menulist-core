@@ -17,12 +17,14 @@ interface MenuCategoryOutputProps {
         description?: string;
     };
     moodConfig: MenuMoodConfig;
+    showCategoryIcons?: boolean;
     children: React.ReactNode;
 }
 
 export default function MenuCategoryOutput({
     category,
     moodConfig,
+    showCategoryIcons = true,
     children,
 }: MenuCategoryOutputProps) {
     const categoryStyle = moodConfig.categoryStyle;
@@ -42,7 +44,7 @@ export default function MenuCategoryOutput({
                 }}
             >
                 <div className="flex items-center gap-2">
-                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                         <div
                             className="flex items-center justify-center rounded-lg"
                             style={{

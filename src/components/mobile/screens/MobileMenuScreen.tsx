@@ -1,9 +1,9 @@
 'use client'
 
-import { AI_ACTIONS_TYPES } from '@constant/common';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
@@ -14,6 +14,7 @@ import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/com
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { removeObjRef } from '@util/utils';
@@ -32,8 +33,7 @@ import type {
     ExtractedDataItem,
 } from '../../templates/main-app/projects/types/extractedData.types';
 import { generateMenuFileUid } from '../../templates/main-app/projects/utils';
-import { clearStaleCategoryTranslations, clearStaleTranslations } from '../../templates/main-app/projects/utils/translationsUtils';
-import { translateCategory } from '../../templates/main-app/projects/utils/translationsUtils';
+import { clearStaleCategoryTranslations, clearStaleTranslations, translateCategory } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -388,6 +388,7 @@ interface MobileMenuScreenProps {
 export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScreenProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const tShare = useTranslations('MobileShare');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const {
         isLoading: loadingProjects,
@@ -1646,6 +1647,30 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         categorySummary.forEach((category) => map.set(category.id, category));
         return map;
     }, [categorySummary]);
+    const timeSlotPresetLabelById = useMemo(() => {
+        const map = new Map<string, string>();
+        (storeDetails?.timeSlotPresets || []).forEach((preset: any) => {
+            if (preset?.id && preset?.label) {
+                map.set(preset.id, preset.label);
+            }
+        });
+        return map;
+    }, [storeDetails?.timeSlotPresets]);
+
+    const getCategorySupportLabel = useCallback((categoryId: string) => {
+        const summary = categorySummaryById.get(categoryId);
+        if (!summary) return null;
+
+        const presetLabels = (summary.timeSlotPresetIds || [])
+            .map((presetId) => timeSlotPresetLabelById.get(presetId))
+            .filter(Boolean);
+
+        if (presetLabels.length > 0) {
+            return presetLabels.join(' · ');
+        }
+
+        return summary.active !== false ? 'Available all day' : t('hiddenFromMenu');
+    }, [categorySummaryById, t, timeSlotPresetLabelById]);
 
     const handleCategoryAdd = async ({ names, active, icon, presetIds }: { names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => {
         if (!menuData) return;
@@ -1898,6 +1923,28 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         setReturnToCommandMenu(false);
     }, []);
 
+    const menuPreviewUrl = useMemo(() => {
+        const projectName = selectedProjectSummary?.name || selectedProject?.name || menuData?.name;
+        const subdomain = storeDetails?.subdomain;
+        const customDomain = storeDetails?.customDomain;
+        if (!projectName || (!subdomain && !customDomain)) return null;
+
+        try {
+            return generateProjectUrl(subdomain, customDomain, projectName, false);
+        } catch {
+            return null;
+        }
+    }, [menuData?.name, selectedProject?.name, selectedProjectSummary?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
+
+    const handlePreviewMenu = useCallback(() => {
+        if (!menuPreviewUrl) {
+            Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
+            return;
+        }
+
+        window.open(`${menuPreviewUrl}${menuPreviewUrl.includes('?') ? '&' : '?'}src=direct`, '_blank');
+    }, [menuPreviewUrl, tShare]);
+
     if (!storeDetails || (loadingProjects && !menuData)) {
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
@@ -1998,100 +2045,100 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     {!isFirstRunProject && (activeFilterChips.length > 0 || searchQuery) ? (
                         <Flex gap={10} vertical>
                             <Flex align="center" gap={8} wrap="wrap">
-                            {searchQuery ? (
-                                <Tag style={{ borderRadius: 999, paddingInline: 10 }}>
-                                    <Flex align="center" gap={6}>
-                                        <Text>{`"${searchQuery}"`}</Text>
-                                        <Button
-                                            fill="none"
-                                            onClick={() => setSearchQuery('')}
-                                            size="mini"
-                                            style={{ minWidth: 20, paddingInline: 0 }}
-                                        >
-                                            <LuX size={12} />
-                                        </Button>
-                                    </Flex>
-                                </Tag>
-                            ) : null}
-                            {activeFilterChips.map((chip) => (
-                                <Tag key={chip.key} style={{ borderRadius: 999, paddingInline: 10 }}>
-                                    <Flex align="center" gap={6}>
-                                        <Text>{chip.label}</Text>
-                                        <Button
-                                            fill="none"
-                                            onClick={chip.onRemove}
-                                            size="mini"
-                                            style={{ minWidth: 20, paddingInline: 0 }}
-                                        >
-                                            <LuX size={12} />
-                                        </Button>
-                                    </Flex>
-                                </Tag>
-                            ))}
-                            {filters.hasImage === false && filteredItems.length > 0 ? (
+                                {searchQuery ? (
+                                    <Tag style={{ borderRadius: 999, paddingInline: 10 }}>
+                                        <Flex align="center" gap={6}>
+                                            <Text>{`"${searchQuery}"`}</Text>
+                                            <Button
+                                                fill="none"
+                                                onClick={() => setSearchQuery('')}
+                                                size="mini"
+                                                style={{ minWidth: 20, paddingInline: 0 }}
+                                            >
+                                                <LuX size={12} />
+                                            </Button>
+                                        </Flex>
+                                    </Tag>
+                                ) : null}
+                                {activeFilterChips.map((chip) => (
+                                    <Tag key={chip.key} style={{ borderRadius: 999, paddingInline: 10 }}>
+                                        <Flex align="center" gap={6}>
+                                            <Text>{chip.label}</Text>
+                                            <Button
+                                                fill="none"
+                                                onClick={chip.onRemove}
+                                                size="mini"
+                                                style={{ minWidth: 20, paddingInline: 0 }}
+                                            >
+                                                <LuX size={12} />
+                                            </Button>
+                                        </Flex>
+                                    </Tag>
+                                ))}
+                                {filters.hasImage === false && filteredItems.length > 0 ? (
+                                    <Button
+                                        color="primary"
+                                        fill="outline"
+                                        onClick={() => openImageUploadModal(
+                                            undefined,
+                                            'filter-missing-image',
+                                            'generate',
+                                            filteredItems.filter((item) => !item.image).map((item) => item.id),
+                                        )}
+                                        size="small"
+                                    >
+                                        {t('generateImages')}
+                                    </Button>
+                                ) : null}
+                                {filters.hasDescription === false && filteredItems.length > 0 ? (
+                                    <Button
+                                        color="primary"
+                                        fill="outline"
+                                        onClick={() => setIsGenerateDescriptionsOpen(true)}
+                                        size="small"
+                                    >
+                                        {t('generateDescriptions')}
+                                    </Button>
+                                ) : null}
+                                {filters.availability === false && filteredItems.length > 0 ? (
+                                    <Button
+                                        color="primary"
+                                        fill="outline"
+                                        onClick={() => {
+                                            setBulkActionType('availability');
+                                            setBulkActionInitialSelectedIds(filteredItems.filter((item) => !item.available).map((item) => item.id));
+                                            setIsBulkActionsOpen(true);
+                                        }}
+                                        size="small"
+                                    >
+                                        {t('markAvailable')}
+                                    </Button>
+                                ) : null}
+                                {filters.activeStatus === false && filteredItems.length > 0 ? (
+                                    <Button
+                                        color="primary"
+                                        fill="outline"
+                                        onClick={() => {
+                                            setBulkActionType('showHide');
+                                            setBulkActionInitialSelectedIds(filteredItems.filter((item) => !isItemEffectivelyActive(item)).map((item) => item.id));
+                                            setIsBulkActionsOpen(true);
+                                        }}
+                                        size="small"
+                                    >
+                                        {t('showOnMenu')}
+                                    </Button>
+                                ) : null}
                                 <Button
-                                    color="primary"
-                                    fill="outline"
-                                    onClick={() => openImageUploadModal(
-                                        undefined,
-                                        'filter-missing-image',
-                                        'generate',
-                                        filteredItems.filter((item) => !item.image).map((item) => item.id),
-                                    )}
-                                    size="small"
-                                >
-                                    {t('generateImages')}
-                                </Button>
-                            ) : null}
-                            {filters.hasDescription === false && filteredItems.length > 0 ? (
-                                <Button
-                                    color="primary"
-                                    fill="outline"
-                                    onClick={() => setIsGenerateDescriptionsOpen(true)}
-                                    size="small"
-                                >
-                                    {t('generateDescriptions')}
-                                </Button>
-                            ) : null}
-                            {filters.availability === false && filteredItems.length > 0 ? (
-                                <Button
-                                    color="primary"
-                                    fill="outline"
+                                    color="danger"
+                                    fill="none"
                                     onClick={() => {
-                                        setBulkActionType('availability');
-                                        setBulkActionInitialSelectedIds(filteredItems.filter((item) => !item.available).map((item) => item.id));
-                                        setIsBulkActionsOpen(true);
+                                        setSearchQuery('');
+                                        setFilters(DEFAULT_FILTERS);
                                     }}
                                     size="small"
                                 >
-                                    {t('markAvailable')}
+                                    {t('clearAll')}
                                 </Button>
-                            ) : null}
-                            {filters.activeStatus === false && filteredItems.length > 0 ? (
-                                <Button
-                                    color="primary"
-                                    fill="outline"
-                                    onClick={() => {
-                                        setBulkActionType('showHide');
-                                        setBulkActionInitialSelectedIds(filteredItems.filter((item) => !isItemEffectivelyActive(item)).map((item) => item.id));
-                                        setIsBulkActionsOpen(true);
-                                    }}
-                                    size="small"
-                                >
-                                    {t('showOnMenu')}
-                                </Button>
-                            ) : null}
-                            <Button
-                                color="danger"
-                                fill="none"
-                                onClick={() => {
-                                    setSearchQuery('');
-                                    setFilters(DEFAULT_FILTERS);
-                                }}
-                                size="small"
-                            >
-                                {t('clearAll')}
-                            </Button>
                             </Flex>
                             {filters.qualityIssue === 'priceOutliers' ? (
                                 <Card size="small" style={{ backgroundColor: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
@@ -2315,195 +2362,243 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             <Empty description={searchQuery || appliedFilterCount > 0 ? t('noItemsToShow') : t('noMenuItemsYet', { items: labels.itemsPlural })} />
                         )
                     ) : (
-                        <Collapse
-                            activeKey={expandedCategoryKeys}
-                            onChange={(key) => setExpandedCategoryKeys(Array.isArray(key) ? key : (key ? [key] : []))}
+                        <div
+                            style={{
+                                backgroundColor: token.colorBorder,
+                                borderRadius: 18,
+                                padding: 1,
+                            }}
                         >
-                            {orderedCategorySections.map(({ id, icon, items, name }) => (
-                                <Collapse.Panel
-                                    key={id}
-                                    title={(
-                                        <Flex align="center" gap={8} style={{ minWidth: 0, width: '100%' }}>
-                                            <Flex align="center" gap={10} style={{ flex: '1 1 auto', minWidth: 0 }}>
-                                                {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && id !== 'uncategorized' ? (
+                        <div
+                            style={{
+                                backgroundColor: token.colorBgElevated,
+                                borderRadius: 17,
+                                overflow: 'hidden',
+                            }}
+                        >
+                                <Collapse
+                                    activeKey={expandedCategoryKeys}
+                                    expandIcon={null}
+                                    onChange={(key) => setExpandedCategoryKeys(Array.isArray(key) ? key : (key ? [key] : []))}
+                                >
+                                    {orderedCategorySections.map(({ id, icon, items, name }) => {
+                                        const categoryMeta = categorySummaryById.get(id);
+                                        const supportLabel = id !== 'uncategorized' ? getCategorySupportLabel(id) : null;
+
+                                        return (
+                                            <Collapse.Panel
+                                                key={id}
+                                                title={(
                                                     <Flex
                                                         align="center"
-                                                        justify="center"
-                                                        style={{
-                                                            backgroundColor: token.colorFillAlter,
-                                                            border: `1px solid ${token.colorBorderSecondary}`,
-                                                            borderRadius: 10,
-                                                            flexShrink: 0,
-                                                            height: 28,
-                                                            width: 28,
-                                                        }}
-                                                    >
-                                                        <CategoryIcon icon={icon || ''} size={16} />
-                                                    </Flex>
-                                                ) : null}
-                                                <Flex gap={4} style={{ flex: '1 1 auto', minWidth: 0 }} vertical>
-                                                    <Text
-                                                        strong
+                                                        gap={12}
                                                         style={{
                                                             minWidth: 0,
-                                                            overflowWrap: 'anywhere',
+                                                            width: '100%',
                                                         }}
                                                     >
-                                                        {name}
-                                                    </Text>
-                                                    {id !== 'uncategorized' ? (
-                                                        <Flex align="center" gap={6} wrap="wrap">
-                                                            <Text type="secondary">
-                                                                {items.length} items
-                                                            </Text>
+                                                        <Flex align="center" gap={12} style={{ flex: '1 1 auto', minWidth: 0 }}>
+                                                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && id !== 'uncategorized' ? (
+                                                                <Flex
+                                                                    align="center"
+                                                                    justify="center"
+                                                                    style={{
+                                                                        backgroundColor: token.colorFillAlter,
+                                                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                                                        borderRadius: 14,
+                                                                        boxShadow: token.boxShadowTertiary,
+                                                                        color: token.colorTextHeading,
+                                                                        flexShrink: 0,
+                                                                        height: 44,
+                                                                        width: 44,
+                                                                    }}
+                                                                >
+                                                                    <CategoryIcon icon={icon || ''} size={22} />
+                                                                </Flex>
+                                                            ) : null}
+                                                            <Flex gap={4} style={{ flex: '1 1 auto', minWidth: 0 }} vertical>
+                                                                <Text
+                                                                    strong
+                                                                    style={{
+                                                                        color: token.colorText,
+                                                                        fontSize: 15,
+                                                                        fontWeight: 600,
+                                                                        lineHeight: 1.25,
+                                                                        minWidth: 0,
+                                                                        overflowWrap: 'anywhere',
+                                                                    }}
+                                                                >
+                                                                    {name}
+                                                                </Text>
+                                                                {id !== 'uncategorized' ? (
+                                                                    <Flex align="center" gap={8} wrap="wrap">
+                                                                        <Text style={{ color: token.colorTextSecondary, fontSize: 13, lineHeight: 1.35 }}>
+                                                                            {supportLabel}
+                                                                        </Text>
+                                                                        <Text style={{ color: token.colorTextQuaternary, fontSize: 12 }}>
+                                                                            {t('itemsCount', { count: items.length })}
+                                                                        </Text>
+                                                                        {categoryMeta?.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
+                                                                    </Flex>
+                                                                ) : null}
+                                                            </Flex>
                                                         </Flex>
-                                                    ) : null}
-                                                </Flex>
-                                            </Flex>
-                                            {id !== 'uncategorized' ? (
-                                                <Flex
-                                                    align="center"
-                                                    gap={8}
-                                                    onClick={(event) => event.stopPropagation()}
-                                                    onMouseDown={(event) => event.stopPropagation()}
-                                                    onPointerDown={(event) => event.stopPropagation()}
-                                                    style={{ flexShrink: 0 }}
-                                                >
-                                                    <Button
-                                                        fill="none"
-                                                        onClick={() => {
-                                                            setCategorySheetMode('manage');
-                                                            setCategorySheetInitialCategoryId(id);
-                                                            setIsCategorySheetOpen(true);
-                                                        }}
-                                                        size="small"
-                                                        style={{ minHeight: 34, minWidth: 34, paddingInline: 0 }}
-                                                    >
-                                                        <LuPencil size={14} />
-                                                    </Button>
-                                                    <Switch
-                                                        checked={categorySummaryById.get(id)?.active !== false}
-                                                        onChange={(checked) => handleToggleCategoryActive(id, checked)}
-                                                    />
-                                                </Flex>
-                                            ) : null}
-                                        </Flex>
-                                    )}
-                                >
-                                    {items.length === 0 ? (
-                                        <Flex align="center" gap={8} style={{ padding: '8px 0 2px' }} vertical>
-                                            <Text type="secondary">{t('noItemsToShow')}</Text>
-                                            {id !== 'uncategorized' ? (
-                                                <Button
-                                                    fill="outline"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        setAddSheetInitialCategoryId(id);
-                                                        setIsAddSheetOpen(true);
-                                                    }}
-                                                    size="small"
-                                                >
-                                                    {t('addItem')}
-                                                </Button>
-                                            ) : null}
-                                        </Flex>
-                                    ) : (
-                                        <List>
-                                            {items.map((item) => (
-                                                <List.Item
-                                                    key={item.id}
-                                                    onClick={() => setEditingItem(item)}
-                                                    extra={
-                                                        <Flex align="center" gap={8} wrap>
-                                                            <div
+                                                        {id !== 'uncategorized' ? (
+                                                            <Flex
+                                                                align="center"
+                                                                gap={8}
                                                                 onClick={(event) => event.stopPropagation()}
                                                                 onMouseDown={(event) => event.stopPropagation()}
                                                                 onPointerDown={(event) => event.stopPropagation()}
+                                                                style={{ flexShrink: 0 }}
                                                             >
-                                                                <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
-                                                            </div>
+                                                                <Button
+                                                                    fill="outline"
+                                                                    onClick={() => {
+                                                                        setCategorySheetMode('manage');
+                                                                        setCategorySheetInitialCategoryId(id);
+                                                                        setIsCategorySheetOpen(true);
+                                                                    }}
+                                                                    size="small"
+                                                                    style={{
+                                                                        backgroundColor: token.colorBgContainer,
+                                                                        borderColor: token.colorBorderSecondary,
+                                                                        borderRadius: 12,
+                                                                        minHeight: 38,
+                                                                        minWidth: 38,
+                                                                        paddingInline: 0,
+                                                                    }}
+                                                                >
+                                                                    <LuPencil size={14} />
+                                                                </Button>
+                                                                <Switch
+                                                                    checked={categorySummaryById.get(id)?.active !== false}
+                                                                    onChange={(checked) => handleToggleCategoryActive(id, checked)}
+                                                                />
+                                                            </Flex>
+                                                        ) : null}
+                                                    </Flex>
+                                                )}
+                                            >
+                                                {items.length === 0 ? (
+                                                    <Flex align="center" gap={8} style={{ padding: '14px 0 6px' }} vertical>
+                                                        <Text type="secondary">{t('noItemsToShow')}</Text>
+                                                        {id !== 'uncategorized' ? (
                                                             <Button
-                                                                fill="none"
+                                                                fill="outline"
                                                                 onClick={(event) => {
                                                                     event.stopPropagation();
-                                                                    setEditingItem(item);
+                                                                    setAddSheetInitialCategoryId(id);
+                                                                    setIsAddSheetOpen(true);
                                                                 }}
                                                                 size="small"
-                                                                style={{ minHeight: 34, minWidth: 34, paddingInline: 0 }}
                                                             >
-                                                                <LuPencil size={14} />
+                                                                {t('addItem')}
                                                             </Button>
-                                                        </Flex>
-                                                    }
-                                                    title={(
-                                                        <Flex align="center" gap={8} style={{ minWidth: 0 }}>
-                                                            <Text
-                                                                strong
-                                                                style={{
-                                                                    minWidth: 0,
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                    whiteSpace: 'nowrap',
-                                                                }}
-                                                            >
-                                                                {item.name}
-                                                            </Text>
-                                                            <Flex align="center" gap={6} style={{ flexShrink: 0 }}>
-                                                                {!isItemEffectivelyActive(item) ? <StatusDot color={token.colorTextQuaternary} /> : null}
-                                                                {item.available === false ? <StatusDot color={token.colorWarning} /> : null}
-                                                                {item.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
-                                                            </Flex>
-                                                        </Flex>
-                                                    )}
-                                                    description={
-                                                        <Flex gap={8} vertical>
-                                                            <Flex align="center" gap={8} wrap>
-                                                                {!item.attributes?.length ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag> : null}
-                                                            </Flex>
+                                                        ) : null}
+                                                    </Flex>
+                                                ) : (
+                                                    <div style={{ paddingTop: 8 }}>
+                                                        <List>
+                                                            {items.map((item) => (
+                                                                <List.Item
+                                                                    key={item.id}
+                                                                    onClick={() => setEditingItem(item)}
+                                                                    extra={
+                                                                        <Flex align="center" gap={8} wrap>
+                                                                            <div
+                                                                                onClick={(event) => event.stopPropagation()}
+                                                                                onMouseDown={(event) => event.stopPropagation()}
+                                                                                onPointerDown={(event) => event.stopPropagation()}
+                                                                            >
+                                                                                <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                                            </div>
+                                                                            <Button
+                                                                                fill="none"
+                                                                                onClick={(event) => {
+                                                                                    event.stopPropagation();
+                                                                                    setEditingItem(item);
+                                                                                }}
+                                                                                size="small"
+                                                                                style={{ minHeight: 34, minWidth: 34, paddingInline: 0 }}
+                                                                            >
+                                                                                <LuPencil size={14} />
+                                                                            </Button>
+                                                                        </Flex>
+                                                                    }
+                                                                    title={(
+                                                                        <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                                                                            <Text
+                                                                                strong
+                                                                                style={{
+                                                                                    minWidth: 0,
+                                                                                    overflow: 'hidden',
+                                                                                    textOverflow: 'ellipsis',
+                                                                                    whiteSpace: 'nowrap',
+                                                                                }}
+                                                                            >
+                                                                                {item.name}
+                                                                            </Text>
+                                                                            <Flex align="center" gap={6} style={{ flexShrink: 0 }}>
+                                                                                {!isItemEffectivelyActive(item) ? <StatusDot color={token.colorTextQuaternary} /> : null}
+                                                                                {item.available === false ? <StatusDot color={token.colorWarning} /> : null}
+                                                                                {item.translationMissing ? <StatusDot color={token.colorPrimary} /> : null}
+                                                                            </Flex>
+                                                                        </Flex>
+                                                                    )}
+                                                                    description={
+                                                                        <Flex gap={8} vertical>
+                                                                            <Flex align="center" gap={8} wrap>
+                                                                                {!item.attributes?.length ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag> : null}
+                                                                            </Flex>
 
-                                                            {item.hiddenByCategory ? (
-                                                                <Flex align="center" gap={8} wrap>
-                                                                    <Tag color="default">{t('hiddenByCategory')}</Tag>
-                                                                </Flex>
-                                                            ) : null}
+                                                                            {item.hiddenByCategory ? (
+                                                                                <Flex align="center" gap={8} wrap>
+                                                                                    <Tag color="default">{t('hiddenByCategory')}</Tag>
+                                                                                </Flex>
+                                                                            ) : null}
 
-                                                            {filters.qualityIssue === 'priceOutliers' && priceOutlierItemIds.has(item.id) ? (
-                                                                <Flex align="center" gap={8} wrap>
-                                                                    <Tag color="warning">Needs price review</Tag>
-                                                                    <Button
-                                                                        color="primary"
-                                                                        fill="outline"
-                                                                        onClick={(event) => {
-                                                                            event.stopPropagation();
-                                                                            markPriceOutlierReviewed(item.id);
-                                                                        }}
-                                                                        size="small"
-                                                                    >
-                                                                        Mark reviewed
-                                                                    </Button>
-                                                                </Flex>
-                                                            ) : null}
+                                                                            {filters.qualityIssue === 'priceOutliers' && priceOutlierItemIds.has(item.id) ? (
+                                                                                <Flex align="center" gap={8} wrap>
+                                                                                    <Tag color="warning">Needs price review</Tag>
+                                                                                    <Button
+                                                                                        color="primary"
+                                                                                        fill="outline"
+                                                                                        onClick={(event) => {
+                                                                                            event.stopPropagation();
+                                                                                            markPriceOutlierReviewed(item.id);
+                                                                                        }}
+                                                                                        size="small"
+                                                                                    >
+                                                                                        Mark reviewed
+                                                                                    </Button>
+                                                                                </Flex>
+                                                                            ) : null}
 
-                                                            {item.attributes?.length ? (
-                                                                <Flex gap={6} wrap>
-                                                                    {item.attributes.slice(0, 3).map((attribute) => (
-                                                                        <Tag key={attribute.id}>
-                                                                            {attribute.name}
-                                                                            {typeof attribute.price === 'number' && attribute.price > 0 ? ` · ${formatMenuPrice(attribute.price, currencySymbol)}` : ''}
-                                                                        </Tag>
-                                                                    ))}
-                                                                    {item.attributes.length > 3 ? <Tag>+{item.attributes.length - 3} more</Tag> : null}
-                                                                </Flex>
-                                                            ) : null}
-                                                        </Flex>
-                                                    }
-                                                />
-                                            ))}
-                                        </List>
-                                    )}
-                                </Collapse.Panel>
-                            ))}
-                        </Collapse>
+                                                                            {item.attributes?.length ? (
+                                                                                <Flex gap={6} wrap>
+                                                                                    {item.attributes.slice(0, 3).map((attribute) => (
+                                                                                        <Tag key={attribute.id}>
+                                                                                            {attribute.name}
+                                                                                            {typeof attribute.price === 'number' && attribute.price > 0 ? ` · ${formatMenuPrice(attribute.price, currencySymbol)}` : ''}
+                                                                                        </Tag>
+                                                                                    ))}
+                                                                                    {item.attributes.length > 3 ? <Tag>+{item.attributes.length - 3} more</Tag> : null}
+                                                                                </Flex>
+                                                                            ) : null}
+                                                                        </Flex>
+                                                                    }
+                                                                />
+                                                            ))}
+                                                        </List>
+                                                    </div>
+                                                )}
+                                            </Collapse.Panel>
+                                        )
+                                    })}
+                                </Collapse>
+                            </div>
+                        </div>
                     )}
                 </Flex>
             </PullToRefresh>
@@ -2916,6 +3011,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
                 onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
                 onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
+                onPreview={handlePreviewMenu}
                 onTextCase={() => launchCommandAction(() => setIsTextCaseOpen(true))}
                 onMoveCategory={() => launchCommandAction(() => {
                     setBulkActionType('moveCategory');

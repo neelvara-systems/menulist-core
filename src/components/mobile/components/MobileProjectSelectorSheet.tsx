@@ -663,11 +663,12 @@ export default function MobileProjectSelectorSheet({
                 <Flex gap={16} style={{ maxHeight: 'min(82vh, 720px)', overflowY: 'auto' }} vertical>
                     <Flex gap={8} vertical>
                         <Flex align="flex-start" justify="space-between" gap={12}>
-                            <div style={{ flex: 1 }} />
-                            <Title level={3} style={{ flex: 1, margin: 0, textAlign: 'center' }}>
-                                {t('selectCatalog')}
-                            </Title>
-                            <Flex justify="flex-end" style={{ flex: 1 }}>
+                            <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                                <Title level={3} style={{ margin: 0, textAlign: 'left' }}>
+                                    {t('selectCatalog')}
+                                </Title>
+                            </Flex>
+                            <Flex justify="flex-end">
                                 <Button
                                     aria-label={t('close')}
                                     fill="none"
@@ -679,11 +680,11 @@ export default function MobileProjectSelectorSheet({
                                 </Button>
                             </Flex>
                         </Flex>
-                        <Text type="secondary" style={{ textAlign: 'center' }}>
+                        <Text type="secondary" style={{ textAlign: 'left' }}>
                             {t('selectCatalogDesc')}
                         </Text>
                         {currentProjectName ? (
-                            <Text type="secondary" style={{ textAlign: 'center' }}>
+                            <Text type="secondary" style={{ textAlign: 'left' }}>
                                 {t('currentCatalog', { name: currentProjectName })}
                             </Text>
                         ) : null}

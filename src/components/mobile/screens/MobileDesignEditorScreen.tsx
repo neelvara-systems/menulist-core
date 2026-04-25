@@ -100,6 +100,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const menuMood = draftProjectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
     const menuLayout = draftProjectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
     const showImages = draftProjectData?.config?.design?.menu?.showImages ?? true;
+    const showCategoryIcons = draftProjectData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showCategoryTabs = draftProjectData?.config?.design?.menu?.showCategoryTabs ?? false;
     const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
     const specialNote = draftProjectData?.menuSettings?.specialNote ?? '';
@@ -163,6 +164,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     };
     const handleLayoutChange = (layout: MenuLayout) => updateDesign(['config', 'design', 'menu', 'layout'], layout);
     const handleShowImagesChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showImages'], show);
+    const handleShowCategoryIconsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryIcons'], show);
     const handleCategoryTabsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryTabs'], show);
     const handleBrandColorChange = (color: string | undefined) => updateDesign(['config', 'design', 'brand', 'accentColor'], color);
     const handleServiceChargeChange = (note: string) => {
@@ -308,6 +310,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             extra={<Tag color={showImages ? 'success' : 'default'}>{showImages ? t('on') : t('off')}</Tag>}
                         />
                         <List.Item
+                            title={<Text>{t('showCategoryIcons')}</Text>}
+                            extra={<Tag color={showCategoryIcons ? 'success' : 'default'}>{showCategoryIcons ? t('on') : t('off')}</Tag>}
+                        />
+                        <List.Item
                             title={<Text>{t('categoryTabs')}</Text>}
                             extra={<Tag color={showCategoryTabs ? 'success' : 'default'}>{showCategoryTabs ? t('on') : t('off')}</Tag>}
                         />
@@ -428,6 +434,11 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             extra={<Switch checked={showImages} onChange={handleShowImagesChange} />}
                             title={<Text>{t('showItemImages')}</Text>}
                             description={<Text type="secondary">{t('showItemImagesDesc')}</Text>}
+                        />
+                        <List.Item
+                            extra={<Switch checked={showCategoryIcons} onChange={handleShowCategoryIconsChange} />}
+                            title={<Text>{t('showCategoryIcons')}</Text>}
+                            description={<Text type="secondary">{t('showCategoryIconsDesc')}</Text>}
                         />
                         <List.Item
                             extra={<Switch checked={showCategoryTabs} onChange={handleCategoryTabsChange} />}

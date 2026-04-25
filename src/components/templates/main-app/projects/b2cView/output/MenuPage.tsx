@@ -42,6 +42,7 @@ interface MenuPageOutputProps {
     mood?: MenuMood;
     layout?: MenuLayout;
     showImages?: boolean;
+    showCategoryIcons?: boolean;
     backgroundImage?: string;
     currency?: string;
     onItemClick?: (item: MenuItem) => void;
@@ -52,6 +53,7 @@ export default function MenuPageOutput({
     mood = DEFAULTS.menu.mood,
     layout = DEFAULTS.menu.layout,
     showImages = true,
+    showCategoryIcons = true,
     backgroundImage,
     currency = '$',
     onItemClick,
@@ -108,7 +110,7 @@ export default function MenuPageOutput({
                                 }}
                             >
                                 <span className="inline-flex items-center gap-2">
-                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                                         <CategoryIcon
                                             color={activeCategory === category.id ? moodConfig.accentColor : moodConfig.bodyColor}
                                             icon={category.icon}
@@ -131,6 +133,7 @@ export default function MenuPageOutput({
                         key={category.id}
                         category={category}
                         moodConfig={moodConfig}
+                        showCategoryIcons={showCategoryIcons}
                     >
                         <div
                             className={isGrid

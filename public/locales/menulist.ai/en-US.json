@@ -1085,6 +1085,8 @@
         "displayOptions": "Display Options",
         "showItemImages": "Show item images",
         "showItemImagesDesc": "Display photos next to items",
+        "showCategoryIcons": "Show category icons",
+        "showCategoryIconsDesc": "Display icons next to category names",
         "categoryTabs": "Category tabs",
         "categoryTabsNavigation": "Category tabs navigation",
         "categoryTabsDesc": "Show tab navigation for categories",

@@ -40,6 +40,7 @@ interface MenuPageNewProps {
     brandAccentColor?: string;
     backgroundImage?: string;
     showImages?: boolean;
+    showCategoryIcons?: boolean;
     showCategoryTabs?: boolean;
     activeDeviceType: DeviceTypes;
     setActivePage?: (page: PageType) => void;
@@ -63,6 +64,7 @@ function MenuPageNew({
     brandAccentColor,
     backgroundImage,
     showImages = true,
+    showCategoryIcons = true,
     showCategoryTabs = false,
     activeDeviceType,
     setActivePage,
@@ -679,7 +681,7 @@ function MenuPageNew({
                                     }}
                                 >
                                     <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
-                                        {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && cat.icon ? (
+                                        {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                             <CategoryIcon
                                                 color={activeCategory?.id === cat.id ? '#000' : moodConfig.bodyColor}
                                                 icon={cat.icon}
@@ -764,7 +766,7 @@ function MenuPageNew({
                                                 }}
                                             >
                                                 <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
-                                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && cat.icon ? (
+                                                    {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                                         <CategoryIcon
                                                             color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
                                                             icon={cat.icon}
@@ -799,7 +801,7 @@ function MenuPageNew({
                                     >
                                         <header>
                                             <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
-                                                {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                                                {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                                                     <div
                                                         style={{
                                                             alignItems: 'center',
@@ -985,14 +987,15 @@ function MenuPageNew({
             </div>
 
             {/* Category FAB - Only visible when tabs are scrolled out of view (not on desktop - has sidebar) */}
-            <MenuFilters
-                categories={allCategories}
-                activeCategory={activeCategory}
-                onSelectCategory={handleCategorySelect}
-                activeLanguage={activeLanguage}
-                moodConfig={moodConfig}
-                hideFAB={isDesktop || categoryTabsVisible || (!showCategoryTabs && !isTablet)}
-            />
+                    <MenuFilters
+                        categories={allCategories}
+                        activeCategory={activeCategory}
+                        onSelectCategory={handleCategorySelect}
+                        activeLanguage={activeLanguage}
+                        showCategoryIcons={showCategoryIcons}
+                        moodConfig={moodConfig}
+                        hideFAB={isDesktop || categoryTabsVisible || (!showCategoryTabs && !isTablet)}
+                    />
 
             {/* G07 - Back to Top Control (Accessibility - Long Menu Navigation) */}
             <BackToTop scrollContainerRef={scrollContainerRef} moodConfig={moodConfig} />

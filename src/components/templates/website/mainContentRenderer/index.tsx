@@ -70,6 +70,7 @@ function MainContentRenderer({
           brandAccentColor={brandAccentColor}
           backgroundImage={projectData?.config?.design?.menu?.backgroundImage}
           showImages={projectData?.config?.design?.menu?.showImages ?? true}
+          showCategoryIcons={projectData?.config?.design?.menu?.showCategoryIcons ?? true}
           showCategoryTabs={projectData?.config?.design?.menu?.showCategoryTabs ?? false}
           activeLanguage={activeLanguage}
           projectData={projectData}

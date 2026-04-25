@@ -976,12 +976,14 @@ function CollapseComponent({
     children,
     defaultActiveKey,
     onChange,
+    expandIcon,
 }: {
     accordion?: boolean;
     activeKey?: string[] | string;
     children?: ReactNode;
     defaultActiveKey?: string[] | string;
     onChange?: (key: string[] | string) => void;
+    expandIcon?: ((panelProps: { isActive?: boolean }) => ReactNode) | null;
 }) {
     const items = Children.toArray(children)
         .filter((child): child is ReactElement<CollapsePanelProps> => isValidElement(child))
@@ -991,7 +993,7 @@ function CollapseComponent({
             children: child.props.children,
         }));
 
-    return <AntCollapse accordion={accordion} activeKey={activeKey} defaultActiveKey={defaultActiveKey} items={items} onChange={onChange} />;
+    return <AntCollapse accordion={accordion} activeKey={activeKey} defaultActiveKey={defaultActiveKey} expandIcon={expandIcon === null ? () => null : expandIcon} items={items} onChange={onChange} />;
 }
 
 function CollapsePanel(_: CollapsePanelProps) {

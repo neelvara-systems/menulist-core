@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
 type CommandAction = {
@@ -27,6 +27,7 @@ interface MobileMenuCommandSheetProps {
     onAddImages: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
+    onPreview: () => void;
     onTextCase: () => void;
     onUploadMenu: () => void;
     onPricing: () => void;
@@ -47,6 +48,7 @@ export default function MobileMenuCommandSheet({
     onAddImages,
     onGenerateDescriptions,
     onManageLanguages,
+    onPreview,
     onTextCase,
     onUploadMenu,
     onPricing,
@@ -127,6 +129,13 @@ export default function MobileMenuCommandSheet({
 
     const menuSetupActions = useMemo<CommandAction[]>(() => [
         {
+            key: 'preview',
+            icon: <LuExternalLink style={{ fontSize: 20 }} />,
+            title: t('viewUpdatedMenu'),
+            description: `See how customers view this ${labels.offeringLower}.`,
+            onClick: onPreview,
+        },
+        {
             key: 'upload-menu',
             icon: <LuCamera style={{ fontSize: 20 }} />,
             title: t('importMenu'),
@@ -158,7 +167,7 @@ export default function MobileMenuCommandSheet({
             description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [labels.offeringLower, onAddItem, onCategories, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
+    ], [labels.offeringLower, onAddItem, onCategories, onPreview, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex

@@ -102,6 +102,15 @@ export default function MobileCategoryEditSheet({
         }
     };
 
+    const handleReset = () => {
+        const nextNames = Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || '']));
+        setNames(nextNames);
+        setIcon(category?.icon || '');
+        setActive(category?.active ?? true);
+        setPresetIds(category?.timeSlotPresetIds || []);
+        setActiveLanguageKey([primaryLanguage]);
+    };
+
     const handleSave = async () => {
         const hasName = selectedLanguages.some((language) => names[language]?.trim());
         if (isSaving || !hasName) return;
@@ -279,8 +288,8 @@ export default function MobileCategoryEditSheet({
                                     </Flex>
                                 </Button>
                             ) : null}
-                            <Button block disabled={isSaving} fill="outline" onClick={onClose}>
-                                {t('cancel')}
+                            <Button block disabled={isSaving} fill="outline" onClick={handleReset}>
+                                {t('reset')}
                             </Button>
                             <Button
                                 block

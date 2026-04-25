@@ -34,6 +34,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     const currentMood = projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
     const currentLayout = projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
     const showImages = projectData?.config?.design?.menu?.showImages ?? true;
+    const showCategoryIcons = projectData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
     const specialNote = projectData?.menuSettings?.specialNote ?? '';
@@ -105,6 +106,22 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
         });
     };
 
+    const handleShowCategoryIconsChange = (show: boolean) => {
+        setProjectData({
+            ...projectData,
+            config: {
+                ...projectData?.config,
+                design: {
+                    ...projectData?.config?.design,
+                    menu: {
+                        ...projectData?.config?.design?.menu,
+                        showCategoryIcons: show,
+                    },
+                },
+            },
+        });
+    };
+
     const handleBackgroundImageChange = (backgroundImage: string) => {
         setProjectData({
             ...projectData,
@@ -159,6 +176,17 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 <Switch
                     checked={showImages}
                     onChange={handleShowImagesChange}
+                />
+            </Flex>
+
+            <Flex align="center" justify="space-between">
+                <Flex align="center" gap={8}>
+                    <LuImage size={16} />
+                    <Text>{t('showCategoryIcons')}</Text>
+                </Flex>
+                <Switch
+                    checked={showCategoryIcons}
+                    onChange={handleShowCategoryIconsChange}
                 />
             </Flex>
 

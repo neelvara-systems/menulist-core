@@ -24,6 +24,7 @@ export interface DesignConfig {
         layout: MenuLayout;
         backgroundImage?: string;
         showImages?: boolean;
+        showCategoryIcons?: boolean;
         showCategoryTabs?: boolean;
     };
     brand?: {

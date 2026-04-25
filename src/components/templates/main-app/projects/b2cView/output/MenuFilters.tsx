@@ -32,6 +32,7 @@ interface MenuFiltersProps {
     activeCategory: Category | null;
     onSelectCategory: (category: Category | null, from?: string) => void;
     activeLanguage: string;
+    showCategoryIcons?: boolean;
     moodConfig: MenuMoodConfig;
     /** When true, FAB is hidden (category tabs are visible) */
     hideFAB?: boolean;
@@ -42,6 +43,7 @@ function MenuFilters({
     activeCategory,
     onSelectCategory,
     activeLanguage,
+    showCategoryIcons = true,
     moodConfig,
     hideFAB = false,
 }: MenuFiltersProps) {
@@ -155,7 +157,7 @@ function MenuFilters({
                                                     : moodConfig.bodyColor,
                                             }}
                                         >
-                                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && category.icon ? (
+                                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                                                 <CategoryIcon
                                                     color={activeCategory?.id === category.id ? moodConfig.accentColor : moodConfig.bodyColor}
                                                     icon={category.icon}
