@@ -3,10 +3,13 @@
 import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
 import type { TimeSlotPreset } from '@type/platform/store';
+import { closestCenter, DndContext, DragEndEvent, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
-import { LuChevronDown, LuChevronUp, LuFolderTree, LuPlus, LuTags } from 'react-icons/lu';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { LuFolderTree, LuGripVertical, LuPlus, LuTags } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, List, NavBar, Popup, Tag, Text, Toast } from '../antd';
 import MobileCategoryEditSheet from './MobileCategoryEditSheet';
 
@@ -52,6 +55,75 @@ interface CategoryManagerSheetProps {
     selectedLanguages?: string[];
 }
 
+interface SortableReorderRowProps {
+    id: string;
+    title: ReactNode;
+    description?: ReactNode;
+    accessory?: ReactNode;
+}
+
+function SortableReorderRow({ id, title, description, accessory }: SortableReorderRowProps) {
+    const { token } = theme.useToken();
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{
+                opacity: isDragging ? 0.72 : 1,
+                transform: CSS.Transform.toString(transform),
+                transition,
+            }}
+        >
+            <Flex
+                align="center"
+                gap={12}
+                justify="space-between"
+                style={{
+                    background: token.colorBgContainer,
+                    border: `1px solid ${isDragging ? token.colorPrimary : token.colorBorderSecondary}`,
+                    borderRadius: 16,
+                    boxShadow: isDragging ? token.boxShadowSecondary : 'none',
+                    minHeight: 72,
+                    padding: '12px 14px',
+                }}
+            >
+                <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        aria-label="Drag to reorder"
+                        style={{
+                            alignItems: 'center',
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 12,
+                            color: token.colorTextTertiary,
+                            cursor: 'grab',
+                            display: 'flex',
+                            flex: '0 0 auto',
+                            height: 40,
+                            justifyContent: 'center',
+                            touchAction: 'none',
+                            width: 40,
+                        }}
+                    >
+                        <LuGripVertical size={18} />
+                    </div>
+                    <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                        <div style={{ minWidth: 0 }}>{title}</div>
+                        {description ? <div style={{ minWidth: 0 }}>{description}</div> : null}
+                    </Flex>
+                </Flex>
+                {accessory ? (
+                    <div style={{ flex: '0 0 auto', minWidth: 0 }}>
+                        {accessory}
+                    </div>
+                ) : null}
+            </Flex>
+        </div>
+    );
+}
+
 export default function CategoryManagerSheet({
     businessType,
     categoryIconsEnabled = true,
@@ -84,6 +156,13 @@ export default function CategoryManagerSheet({
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
     } as const;
+    const reorderScrollableCardStyle = {
+        ...sectionCardStyle,
+        display: 'flex',
+        flex: 1,
+        flexDirection: 'column' as const,
+        minHeight: 0,
+    };
     const launchedInReorderMode = initialMode === 'reorder';
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [selectedReorderCategoryId, setSelectedReorderCategoryId] = useState<string | null>(null);
@@ -94,6 +173,22 @@ export default function CategoryManagerSheet({
     const [reorderDraft, setReorderDraft] = useState<string[]>([]);
     const [itemReorderDraft, setItemReorderDraft] = useState<string[]>([]);
     const [categoryEditorMode, setCategoryEditorMode] = useState<'add' | 'edit' | null>(null);
+    const [draggingCategoryId, setDraggingCategoryId] = useState<string | null>(null);
+    const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 120,
+                tolerance: 8,
+            },
+        }),
+    );
 
     const sorted = useMemo(() => {
         return [...categories].sort((a, b) => {
@@ -226,31 +321,29 @@ export default function CategoryManagerSheet({
         setItemReorderDraft(nextIds);
     };
 
-    const moveDraftCategory = (categoryId: string, direction: 'up' | 'down') => {
+    const handleCategoryDragEnd = ({ active, over }: DragEndEvent) => {
+        setDraggingCategoryId(null);
+        if (!over || active.id === over.id) return;
+
         setReorderDraft((previous) => {
             const current = previous.length ? [...previous] : [...orderedIds];
-            const currentIndex = current.findIndex((id) => id === categoryId);
-            if (currentIndex === -1) return current;
-            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-            if (targetIndex < 0 || targetIndex >= current.length) return current;
-            const next = [...current];
-            const [moved] = next.splice(currentIndex, 1);
-            next.splice(targetIndex, 0, moved);
-            return next;
+            const activeIndex = current.findIndex((id) => id === active.id);
+            const overIndex = current.findIndex((id) => id === over.id);
+            if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) return current;
+            return arrayMove(current, activeIndex, overIndex);
         });
     };
 
-    const moveDraftItem = (itemId: string, direction: 'up' | 'down') => {
+    const handleItemDragEnd = ({ active, over }: DragEndEvent) => {
+        setDraggingItemId(null);
+        if (!over || active.id === over.id) return;
+
         setItemReorderDraft((previous) => {
             const current = previous.length ? [...previous] : [...orderedItemIds];
-            const currentIndex = current.findIndex((id) => id === itemId);
-            if (currentIndex === -1) return current;
-            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-            if (targetIndex < 0 || targetIndex >= current.length) return current;
-            const next = [...current];
-            const [moved] = next.splice(currentIndex, 1);
-            next.splice(targetIndex, 0, moved);
-            return next;
+            const activeIndex = current.findIndex((id) => id === active.id);
+            const overIndex = current.findIndex((id) => id === over.id);
+            if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) return current;
+            return arrayMove(current, activeIndex, overIndex);
         });
     };
 
@@ -331,7 +424,7 @@ export default function CategoryManagerSheet({
             position="bottom"
             visible={visible}
         >
-            <Flex gap={0} vertical>
+            <Flex gap={0} style={{ minHeight: '64vh' }} vertical>
                 <NavBar
                     onBack={
                         isReorderMode
@@ -378,44 +471,65 @@ export default function CategoryManagerSheet({
                 </NavBar>
 
                 {isReorderMode ? (
-                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, padding: '12px 12px 12px' }} vertical>
                         <Card style={sectionCardStyle}>
                             <Text type="secondary">{t('reorderCategoriesHelp')}</Text>
                         </Card>
 
-                        <Card style={sectionCardStyle}>
-                            <Flex gap={8} vertical>
-                                {draftCategories.map((category, index) => (
-                                    <Card key={category.id} size="small" style={{ borderRadius: 14, margin: 0 }}>
-                                        <Flex align="center" gap={12} justify="space-between">
-                                            <Flex align="center" gap={10} style={{ flex: 1, minWidth: 0 }}>
-                                                <CategoryIcon icon={category.icon || ''} size={18} />
-                                                <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                    <Text strong>{category.name}</Text>
-                                                    <Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>
-                                                </Flex>
+                        <Card style={reorderScrollableCardStyle}>
+                            <Flex gap={10} style={{ minHeight: 0 }} vertical>
+                                <Text type="secondary">Press and drag the handle to reorder categories.</Text>
+                                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                                    <DndContext
+                                        collisionDetection={closestCenter}
+                                        onDragCancel={() => setDraggingCategoryId(null)}
+                                        onDragEnd={handleCategoryDragEnd}
+                                        onDragStart={({ active }) => setDraggingCategoryId(String(active.id))}
+                                        sensors={sensors}
+                                    >
+                                        <SortableContext
+                                            items={draftCategories.map((category) => category.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            <Flex gap={10} vertical>
+                                                {draftCategories.map((category) => (
+                                                    <SortableReorderRow
+                                                        accessory={<Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>}
+                                                        description={
+                                                            <Flex align="center" gap={8} wrap="wrap">
+                                                                {!category.active ? <Tag>{t('inactive')}</Tag> : null}
+                                                                {category.timeSlotPresetIds?.length ? <Tag color="processing">{t('scheduled')}</Tag> : null}
+                                                            </Flex>
+                                                        }
+                                                        id={category.id}
+                                                        key={category.id}
+                                                        title={(
+                                                            <Flex align="center" gap={10}>
+                                                                <CategoryIcon icon={category.icon || ''} size={18} />
+                                                                <Text strong>{category.name}</Text>
+                                                            </Flex>
+                                                        )}
+                                                    />
+                                                ))}
                                             </Flex>
-                                            <Flex gap={8}>
-                                                <Button
-                                                    disabled={index === 0}
-                                                    fill="outline"
-                                                    onClick={() => moveDraftCategory(category.id, 'up')}
-                                                    size="small"
-                                                >
-                                                    <LuChevronUp size={14} />
-                                                </Button>
-                                                <Button
-                                                    disabled={index === draftCategories.length - 1}
-                                                    fill="outline"
-                                                    onClick={() => moveDraftCategory(category.id, 'down')}
-                                                    size="small"
-                                                >
-                                                    <LuChevronDown size={14} />
-                                                </Button>
-                                            </Flex>
-                                        </Flex>
-                                    </Card>
-                                ))}
+                                        </SortableContext>
+                                        <DragOverlay>
+                                            {draggingCategoryId ? (
+                                                <div style={{ width: 'calc(100vw - 64px)', maxWidth: 520 }}>
+                                                    <Card style={{ ...sectionCardStyle, boxShadow: token.boxShadowSecondary }}>
+                                                        <Flex align="center" gap={10}>
+                                                            <CategoryIcon
+                                                                icon={draftCategories.find((category) => category.id === draggingCategoryId)?.icon || ''}
+                                                                size={18}
+                                                            />
+                                                            <Text strong>{draftCategories.find((category) => category.id === draggingCategoryId)?.name}</Text>
+                                                        </Flex>
+                                                    </Card>
+                                                </div>
+                                            ) : null}
+                                        </DragOverlay>
+                                    </DndContext>
+                                </div>
                             </Flex>
                         </Card>
 
@@ -436,7 +550,7 @@ export default function CategoryManagerSheet({
                         </Flex>
                     </Flex>
                 ) : isItemReorderMode ? (
-                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, padding: '12px 12px 12px' }} vertical>
                         <Card style={sectionCardStyle}>
                             <Flex gap={6} vertical>
                                 {selectedReorderCategory ? (
@@ -453,28 +567,30 @@ export default function CategoryManagerSheet({
                             </Flex>
                         </Card>
 
-                        <Card style={sectionCardStyle}>
+                        <Card style={reorderScrollableCardStyle}>
                             {!selectedReorderCategory ? (
-                                <List>
-                                    {sorted.map((category) => (
-                                        <List.Item
-                                            arrow
-                                            description={<Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>}
-                                            key={category.id}
-                                            onClick={() => openItemReorderCategory(category.id)}
-                                            title={(
-                                                <Flex align="center" gap={10}>
-                                                    <CategoryIcon icon={category.icon || ''} size={18} />
-                                                    <Text strong>{category.name}</Text>
-                                                </Flex>
-                                            )}
-                                        />
-                                    ))}
-                                </List>
+                                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                                    <List>
+                                        {sorted.map((category) => (
+                                            <List.Item
+                                                arrow
+                                                description={<Text type="secondary">{t('itemsCount', { count: category.itemCount })}</Text>}
+                                                key={category.id}
+                                                onClick={() => openItemReorderCategory(category.id)}
+                                                title={(
+                                                    <Flex align="center" gap={10}>
+                                                        <CategoryIcon icon={category.icon || ''} size={18} />
+                                                        <Text strong>{category.name}</Text>
+                                                    </Flex>
+                                                )}
+                                            />
+                                        ))}
+                                    </List>
+                                </div>
                             ) : draftItems.length === 0 ? (
                                 <Text type="secondary">{t('noItemsInCategory')}</Text>
                             ) : (
-                                <Flex gap={10} vertical>
+                                <Flex gap={10} style={{ minHeight: 0 }} vertical>
                                     <Flex align="center" gap={10} wrap="wrap">
                                         {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
                                         {renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.inactive)}
@@ -484,51 +600,57 @@ export default function CategoryManagerSheet({
                                         {renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing)}
                                     </Flex>
 
-                                    <List>
-                                        {draftItems.map((item, index) => {
-                                            const statusBits = [];
-                                            if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
-                                            if (item.hiddenByCategory) statusBits.push(renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.inactive));
-                                            if (item.available === false) statusBits.push(renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut));
-                                            if (item.hasImage === false) statusBits.push(renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missing));
-                                            if (item.hasDescription === false) statusBits.push(renderStatusBadge(t('missingDescription'), STATUS_COLORS.missing));
-                                            if (!(item.price && item.price > 0)) statusBits.push(renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing));
+                                    <Text type="secondary">Press and drag the handle to reorder items.</Text>
 
-                                            return (
-                                                <List.Item
-                                                    extra={(
-                                                        <Flex gap={6}>
-                                                            <Button
-                                                                disabled={index === 0}
-                                                                fill="outline"
-                                                                onClick={() => moveDraftItem(item.id, 'up')}
-                                                                size="small"
-                                                            >
-                                                                <LuChevronUp size={14} />
-                                                            </Button>
-                                                            <Button
-                                                                disabled={index === draftItems.length - 1}
-                                                                fill="outline"
-                                                                onClick={() => moveDraftItem(item.id, 'down')}
-                                                                size="small"
-                                                            >
-                                                                <LuChevronDown size={14} />
-                                                            </Button>
-                                                        </Flex>
-                                                    )}
-                                                    key={item.id}
-                                                    title={(
-                                                        <Flex gap={4} vertical>
-                                                            <Text strong>{item.name}</Text>
-                                                            <Flex align="center" gap={12} wrap="wrap">
-                                                                {statusBits}
-                                                            </Flex>
-                                                        </Flex>
-                                                    )}
-                                                />
-                                            );
-                                        })}
-                                    </List>
+                                    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                                        <DndContext
+                                            collisionDetection={closestCenter}
+                                            onDragCancel={() => setDraggingItemId(null)}
+                                            onDragEnd={handleItemDragEnd}
+                                            onDragStart={({ active }) => setDraggingItemId(String(active.id))}
+                                            sensors={sensors}
+                                        >
+                                            <SortableContext
+                                                items={draftItems.map((item) => item.id)}
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                <Flex gap={10} vertical>
+                                                    {draftItems.map((item) => {
+                                                        const statusBits = [];
+                                                        if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
+                                                        if (item.hiddenByCategory) statusBits.push(renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.inactive));
+                                                        if (item.available === false) statusBits.push(renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut));
+                                                        if (item.hasImage === false) statusBits.push(renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missing));
+                                                        if (item.hasDescription === false) statusBits.push(renderStatusBadge(t('missingDescription'), STATUS_COLORS.missing));
+                                                        if (!(item.price && item.price > 0)) statusBits.push(renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing));
+
+                                                        return (
+                                                            <SortableReorderRow
+                                                                accessory={item.price && item.price > 0 ? <Tag>${item.price}</Tag> : undefined}
+                                                                description={(
+                                                                    <Flex align="center" gap={12} wrap="wrap">
+                                                                        {statusBits}
+                                                                    </Flex>
+                                                                )}
+                                                                id={item.id}
+                                                                key={item.id}
+                                                                title={<Text strong>{item.name}</Text>}
+                                                            />
+                                                        );
+                                                    })}
+                                                </Flex>
+                                            </SortableContext>
+                                            <DragOverlay>
+                                                {draggingItemId ? (
+                                                    <div style={{ width: 'calc(100vw - 64px)', maxWidth: 520 }}>
+                                                        <Card style={{ ...sectionCardStyle, boxShadow: token.boxShadowSecondary }}>
+                                                            <Text strong>{draftItems.find((item) => item.id === draggingItemId)?.name}</Text>
+                                                        </Card>
+                                                    </div>
+                                                ) : null}
+                                            </DragOverlay>
+                                        </DndContext>
+                                    </div>
                                 </Flex>
                             )}
                         </Card>

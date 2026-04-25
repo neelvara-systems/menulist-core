@@ -452,15 +452,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     const storeName = storeData.name || "Restaurant Menu";
+    const slugSegments = params?.slug || [];
+    const firstSlug = slugSegments[0]?.toLowerCase();
+    const secondSlug = slugSegments[1]?.toLowerCase();
+    const slugLen = slugSegments.length;
 
     // AEO-optimized title: when OBP is enabled, emit entity-rich title for AI extraction
     // "Joe's Pizza — Menu, Hours, Contact" helps AI answer "What time does Joe's Pizza close?"
-    const title = storeData.metaTitle || (
+    let title = storeData.metaTitle || (
         FEATURE_FLAGS.ENABLE_OBP
             ? `${storeName} — Menu, Hours, Contact`
             : `${storeName} | Menu`
     );
-    const description =
+    let description =
         storeData.metaDescription ||
         storeData.tagline ||
         (FEATURE_FLAGS.ENABLE_OBP
@@ -489,9 +493,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     //
     // Both branches share the same cached helper reads as the render path, so
     // D-15 (no extra Firestore reads on the alias path) holds.
-    const firstSlug = params?.slug?.[0]?.toLowerCase();
-    const secondSlug = params?.slug?.[1]?.toLowerCase();
-    const slugLen = params?.slug?.length ?? 0;
     let menuAliasCanonical: string | undefined;
 
     if (slugLen === 1 && firstSlug === 'menu' && storeData?.storeId) {
@@ -548,30 +549,141 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         ? `/${params.slug.join('/')}`
         : '/';
     const manifestUrl = `/manifest.webmanifest?start=${encodeURIComponent(currentPath)}`;
+    const currentUrl = `${canonicalBase}${currentPath === '/' ? '' : currentPath}`;
+
+    let metadataStore = storeData;
+    let metadataProject: any = null;
+    let metadataProjectRecord: any = null;
+    let projectSlugForLookup: string | undefined = slugSegments[0];
+    let contextSegments: string[] = [];
+
+    if (
+        slugSegments.length > 0
+        && storeData?.isMaster
+        && FEATURE_FLAGS.ENABLE_MULTI_OUTLET
+        && firstSlug
+    ) {
+        const outletStore = await withRetry(() =>
+            getStoreByOutletSlug(storeData.tenantId, firstSlug),
+        ).catch(() => null);
+
+        if (outletStore) {
+            metadataStore = outletStore;
+            projectSlugForLookup = slugSegments[1];
+            contextSegments = slugSegments.slice(2);
+        } else {
+            contextSegments = slugSegments.slice(1);
+        }
+    } else {
+        contextSegments = slugSegments.slice(1);
+    }
+
+    const shouldLoadProjectMetadata = !!projectSlugForLookup || (!FEATURE_FLAGS.ENABLE_OBP && slugSegments.length === 0);
+    if (shouldLoadProjectMetadata && metadataStore?.tenantId && metadataStore?.storeId) {
+        const projectResult = await withRetry(() =>
+            getProjectBySlugOrDefault(
+                metadataStore.tenantId,
+                metadataStore.storeId,
+                projectSlugForLookup,
+            ),
+        ).catch(() => null);
+
+        if (projectResult) {
+            metadataProject = projectResult.projectData;
+            metadataProjectRecord = projectResult.projectMetadata;
+        }
+    }
+
+    const resolvedStoreName = metadataStore?.name || storeName;
+    const resolvedImageUrl = metadataStore?.logo || imageUrl;
+
+    if (metadataProject) {
+        const projectTitle = metadataProjectRecord?.name || metadataProject?.metadata?.name;
+        if (projectTitle && !contextSegments.length) {
+            title = `${projectTitle} | ${resolvedStoreName}`;
+            description = metadataStore.metaDescription
+                || metadataStore.tagline
+                || `View ${projectTitle} from ${resolvedStoreName}.`;
+        }
+
+        const contextMetadata = buildContextMetadata({
+            storeName: resolvedStoreName,
+            storeDescription: description,
+            defaultImageUrl: resolvedImageUrl,
+            currentUrl,
+            projectData: metadataProject,
+            contextSegments,
+        });
+
+        if (contextMetadata) {
+            title = typeof contextMetadata.title === 'string' ? contextMetadata.title : title;
+            description = contextMetadata.description || description;
+            return {
+                title,
+                description,
+                keywords: metadataStore.keywords?.join(", "),
+                manifest: manifestUrl,
+                alternates: contextMetadata.alternates,
+                openGraph: {
+                    title,
+                    description,
+                    type: "website",
+                    siteName: resolvedStoreName,
+                    url: currentUrl,
+                    images: contextMetadata.openGraph?.images,
+                },
+                twitter: {
+                    card: "summary_large_image",
+                    title,
+                    description,
+                    images: contextMetadata.twitter?.images,
+                },
+                robots: {
+                    index: true,
+                    follow: true,
+                },
+                ...(appleTouchIconUrl
+                    ? {
+                        appleWebApp: {
+                            capable: true,
+                            statusBarStyle: "default",
+                            title: appleWebAppTitle,
+                        },
+                        icons: {
+                            apple: [
+                                { url: appleTouchIconUrl, sizes: "180x180" },
+                            ],
+                        },
+                    }
+                    : {}),
+                themeColor,
+            };
+        }
+    }
 
     return {
         title,
         description,
-        keywords: storeData.keywords?.join(", "),
+        keywords: metadataStore.keywords?.join(", "),
         manifest: manifestUrl,
         alternates: {
             // Precedence: owner-supplied custom canonical (rare) > R5 Layer 2
             // alias override (when /menu serves default project) > tenant base.
-            canonical: storeData.canonicalUrl || menuAliasCanonical || canonicalBase,
+            canonical: metadataStore.canonicalUrl || menuAliasCanonical || canonicalBase,
         },
         openGraph: {
             title,
             description,
             type: "website",
-            siteName: storeName,
-            url: canonicalBase,
-            images: imageUrl ? [{ url: imageUrl }] : undefined,
+            siteName: resolvedStoreName,
+            url: currentUrl,
+            images: resolvedImageUrl ? [{ url: resolvedImageUrl }] : undefined,
         },
         twitter: {
             card: "summary_large_image",
             title,
             description,
-            images: imageUrl ? [imageUrl] : undefined,
+            images: resolvedImageUrl ? [resolvedImageUrl] : undefined,
         },
         robots: {
             index: true,
@@ -740,6 +852,161 @@ function optimizeLanguagePayload(projectData: any): any {
 
 interface PageProps {
     params: { slug?: string[] };
+}
+
+function getLocalizedValue(
+    value: Record<string, string> | string | undefined,
+    preferredLanguage: string = 'en',
+): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+
+    return value[preferredLanguage]
+        || value.en
+        || value.default
+        || Object.values(value).find(Boolean)
+        || '';
+}
+
+function getProjectLanguage(projectData: any): string {
+    const languages = projectData?.files?.[0]?.extractedData?.data?.languages || [];
+    return languages.find((language: any) => language?.isPrimary)?.code
+        || languages[0]?.code
+        || 'en';
+}
+
+function flattenProjectMenu(projectData: any): { categories: any[]; items: any[] } {
+    const categories = projectData?.files?.flatMap(
+        (file: any) => file?.extractedData?.data?.categories || [],
+    ) || [];
+    const items = projectData?.files?.flatMap(
+        (file: any) => file?.extractedData?.data?.items || [],
+    ) || [];
+
+    return { categories, items };
+}
+
+function findItemByUrlSegment(items: any[], urlSegment?: string, language: string = 'en'): any | null {
+    if (!urlSegment) return null;
+
+    const directMatch = items.find((item: any) => item?.id === urlSegment);
+    if (directMatch) return directMatch;
+
+    if (urlSegment.length > 7) {
+        const shortId = urlSegment.slice(-6);
+        const shortIdMatch = items.find((item: any) => item?.id?.endsWith?.(shortId));
+        if (shortIdMatch) return shortIdMatch;
+    }
+
+    return items.find((item: any) => {
+        const name = getLocalizedValue(item?.name, language);
+        const itemSlug = slugify(name);
+        return itemSlug === urlSegment || urlSegment.startsWith(`${itemSlug}-`);
+    }) || null;
+}
+
+function findCategoryByUrlSegment(categories: any[], urlSegment?: string, language: string = 'en'): any | null {
+    if (!urlSegment) return null;
+
+    const directMatch = categories.find((category: any) => category?.id === urlSegment);
+    if (directMatch) return directMatch;
+
+    return categories.find((category: any) => {
+        const name = getLocalizedValue(category?.name, language);
+        const categorySlug = slugify(name);
+        return categorySlug === urlSegment || urlSegment.startsWith(`${categorySlug}-`);
+    }) || null;
+}
+
+function buildContextMetadata({
+    storeName,
+    storeDescription,
+    defaultImageUrl,
+    currentUrl,
+    projectData,
+    contextSegments,
+}: {
+    storeName: string;
+    storeDescription?: string;
+    defaultImageUrl: string;
+    currentUrl: string;
+    projectData: any;
+    contextSegments: string[];
+}): Pick<Metadata, 'title' | 'description' | 'openGraph' | 'twitter' | 'alternates'> | null {
+    if (contextSegments.length < 2) return null;
+
+    const language = getProjectLanguage(projectData);
+    const { categories, items } = flattenProjectMenu(projectData);
+    const [contextType, contextValue] = contextSegments;
+
+    if (contextType === 'item') {
+        const item = findItemByUrlSegment(items, contextValue, language);
+        if (!item) return null;
+
+        const itemName = getLocalizedValue(item.name, language) || 'Menu Item';
+        const itemDescription = getLocalizedValue(item.description, language);
+        const category = categories.find((entry: any) => entry?.id === item.category);
+        const categoryName = getLocalizedValue(category?.name, language);
+        const imageUrl = item?.images?.[0]?.url || defaultImageUrl;
+
+        return {
+            title: `${itemName} | ${storeName}`,
+            description: itemDescription
+                || (categoryName
+                    ? `${itemName} in ${categoryName} at ${storeName}.`
+                    : `${itemName} at ${storeName}.`),
+            alternates: {
+                canonical: currentUrl,
+            },
+            openGraph: {
+                title: `${itemName} | ${storeName}`,
+                description: itemDescription
+                    || (categoryName
+                        ? `${itemName} in ${categoryName} at ${storeName}.`
+                        : `${itemName} at ${storeName}.`),
+                url: currentUrl,
+                images: imageUrl ? [{ url: imageUrl }] : undefined,
+            },
+            twitter: {
+                title: `${itemName} | ${storeName}`,
+                description: itemDescription
+                    || (categoryName
+                        ? `${itemName} in ${categoryName} at ${storeName}.`
+                        : `${itemName} at ${storeName}.`),
+                images: imageUrl ? [imageUrl] : undefined,
+            },
+        };
+    }
+
+    if (contextType === 'category') {
+        const category = findCategoryByUrlSegment(categories, contextValue, language);
+        if (!category) return null;
+
+        const categoryName = getLocalizedValue(category.name, language) || 'Category';
+        const categoryItems = items.filter((item: any) => item?.category === category.id && item?.active !== false);
+        const categoryDescription = `${categoryName} from ${storeName}. ${categoryItems.length} ${categoryItems.length === 1 ? 'item' : 'items'} available.`;
+
+        return {
+            title: `${categoryName} | ${storeName}`,
+            description: storeDescription || categoryDescription,
+            alternates: {
+                canonical: currentUrl,
+            },
+            openGraph: {
+                title: `${categoryName} | ${storeName}`,
+                description: storeDescription || categoryDescription,
+                url: currentUrl,
+                images: defaultImageUrl ? [{ url: defaultImageUrl }] : undefined,
+            },
+            twitter: {
+                title: `${categoryName} | ${storeName}`,
+                description: storeDescription || categoryDescription,
+                images: defaultImageUrl ? [defaultImageUrl] : undefined,
+            },
+        };
+    }
+
+    return null;
 }
 
 // Branded loading skeleton — renders instantly while data streams (Customer Infra Hardening - TASK 5)

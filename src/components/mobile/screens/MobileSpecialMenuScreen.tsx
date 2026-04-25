@@ -344,14 +344,12 @@ function CreateSpecialMenuSheet({
 }
 
 function EditSpecialMenuSheet({
-    allowTimeScheduling,
     item,
     onClose,
     onResolveOverlap,
     onSubmit,
     open,
 }: {
-    allowTimeScheduling: boolean;
     item: SpecialMenuListItem | null;
     onClose: () => void;
     onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
@@ -378,20 +376,20 @@ function EditSpecialMenuSheet({
     const resetForm = () => {
         setDisplayName(item?.displayName || '');
         setDescription(item?.description || '');
-        setStartsAt(toInputValue(item?.startsAt, allowTimeScheduling));
-        setEndsAt(toInputValue(item?.endsAt, allowTimeScheduling));
+        setStartsAt(toInputValue(item?.startsAt, true));
+        setEndsAt(toInputValue(item?.endsAt, true));
     };
 
     useEffect(() => {
         resetForm();
-    }, [item, allowTimeScheduling]);
+    }, [item]);
 
     const initialName = item?.displayName || '';
     const initialDescription = item?.description || '';
-    const initialStartsAt = toInputValue(item?.startsAt, allowTimeScheduling);
-    const initialEndsAt = toInputValue(item?.endsAt, allowTimeScheduling);
+    const initialStartsAt = toInputValue(item?.startsAt, true);
+    const initialEndsAt = toInputValue(item?.endsAt, true);
     const isActiveToggleOn = startsAt
-        ? dayjs(toIsoValue(startsAt, allowTimeScheduling)).valueOf() <= Date.now()
+        ? dayjs(toIsoValue(startsAt, true)).valueOf() <= Date.now()
         : false;
     const hasChanges = displayName.trim() !== initialName.trim()
         || description.trim() !== initialDescription.trim()
@@ -420,8 +418,8 @@ function EditSpecialMenuSheet({
             return;
         }
 
-        const startsAtIso = toIsoValue(startsAt, allowTimeScheduling);
-        const endsAtIso = toIsoValue(endsAt, allowTimeScheduling);
+        const startsAtIso = toIsoValue(startsAt, true);
+        const endsAtIso = toIsoValue(endsAt, true);
 
         if (dayjs(endsAtIso).valueOf() <= dayjs(startsAtIso).valueOf()) {
             Toast.show({ content: t('endAfterStart'), duration: 2000 });
@@ -455,11 +453,11 @@ function EditSpecialMenuSheet({
 
     const handleLifecycleToggle = (nextValue: boolean) => {
         if (nextValue) {
-            setStartsAt(toInputValue(new Date().toISOString(), allowTimeScheduling));
+            setStartsAt(toInputValue(new Date().toISOString(), true));
             return;
         }
 
-        setStartsAt(getScheduledStartsAtValue(allowTimeScheduling));
+        setStartsAt(getScheduledStartsAtValue(true));
     };
 
     if (!item) return null;
@@ -531,21 +529,21 @@ function EditSpecialMenuSheet({
                             </Card>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{`${t('startsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
+                                <Text strong>{`${t('startsLabel')} Date & Time`}</Text>
                                 <Text type="secondary">This controls when customers first see the special menu.</Text>
                                 <Input
                                     onChange={setStartsAt}
-                                    type={allowTimeScheduling ? 'datetime-local' : 'date'}
+                                    type="datetime-local"
                                     value={startsAt}
                                 />
                             </Flex>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{`${t('endsLabel')} ${allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
+                                <Text strong>{`${t('endsLabel')} Date & Time`}</Text>
                                 <Text type="secondary">This controls when the special menu automatically stops showing.</Text>
                                 <Input
                                     onChange={setEndsAt}
-                                    type={allowTimeScheduling ? 'datetime-local' : 'date'}
+                                    type="datetime-local"
                                     value={endsAt}
                                 />
                             </Flex>
@@ -980,7 +978,6 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
             />
 
             <EditSpecialMenuSheet
-                allowTimeScheduling={capabilities.allowTimeScheduling}
                 item={editingMenu}
                 onClose={() => setEditingMenu(null)}
                 onResolveOverlap={resolveOverlap}

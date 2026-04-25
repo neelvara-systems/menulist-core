@@ -285,23 +285,33 @@ export const getCampaignsByDate = async (date: string): Promise<Campaign[]> => {
  * Get campaign history (for Past Activity screen)
  * Paginated, chronological, no metrics
  */
-export const getCampaignHistory = async (limitCount: number = 20): Promise<Campaign[]> => {
+export const getCampaignHistory = async (
+    limitCount: number = 20,
+    projectId?: string | null,
+): Promise<Campaign[]> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const collectionRef = getCampaignsCollectionRef(session);
-            const q = query(
-                collectionRef,
-                orderBy("updatedAt", "desc"),
-                limit(limitCount)
-            );
+            const q = projectId
+                ? query(
+                    collectionRef,
+                    where("projectId", "==", projectId),
+                    orderBy("updatedAt", "desc"),
+                    limit(limitCount)
+                )
+                : query(
+                    collectionRef,
+                    orderBy("updatedAt", "desc"),
+                    limit(limitCount)
+                );
 
             const snapshot = await getDocs(q);
             return snapshot.docs
                 .map(doc => doc.data() as Campaign)
                 .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
         },
-        { limitCount },
+        { limitCount, projectId: projectId || null },
         "getCampaignHistory"
     );
 };

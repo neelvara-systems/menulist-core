@@ -1,15 +1,42 @@
 "use client";
 
+import { getProjectsListWithoutLoader } from "@database/projects";
 import { getCampaignHistory } from "@database/campaigns";
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { Campaign } from "@type/campaigns";
-import { Button, Drawer, Spin, Typography } from "antd";
+import { Button, Drawer, Select, Spin, Typography } from "antd";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LuArrowLeft, LuCheck, LuClock3, LuInfo, LuX } from "react-icons/lu";
 import styles from "../styles.module.scss";
 
 const { Title, Text } = Typography;
+type ProjectSummary = {
+    active?: boolean;
+    deleted?: boolean;
+    isDefault?: boolean;
+    name?: string;
+    projectId: string;
+};
+
+const resolveSelectedProject = (
+    projects: ProjectSummary[],
+    preferredProjectId?: string | null,
+) => {
+    const availableProjects = projects.filter((project) => project.deleted !== true);
+    const activeProjects = availableProjects.filter((project) => project.active !== false);
+    const selectionPool = activeProjects.length ? activeProjects : availableProjects.length ? availableProjects : projects;
+
+    if (!selectionPool.length) return null;
+
+    if (preferredProjectId) {
+        const preferred = availableProjects.find((project) => project.projectId === preferredProjectId)
+            || projects.find((project) => project.projectId === preferredProjectId);
+        if (preferred) return preferred;
+    }
+
+    return selectionPool.find((project) => project.isDefault) || selectionPool[0] || null;
+};
 
 /**
  * Past Activity Screen
@@ -34,14 +61,41 @@ const { Title, Text } = Typography;
 const PastActivityScreen = () => {
     const router = useRouter();
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [projects, setProjects] = useState<ProjectSummary[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
 
     useEffect(() => {
+        const loadProjects = async () => {
+            try {
+                const result = await getProjectsListWithoutLoader(true);
+                const nextProjects = (result?.projects || []) as ProjectSummary[];
+                const resolvedProject = resolveSelectedProject(nextProjects);
+                setProjects(nextProjects);
+                setSelectedProjectId(resolvedProject?.projectId || null);
+            } catch (error) {
+                console.error("Failed to load projects:", error);
+                setProjects([]);
+                setSelectedProjectId(null);
+            }
+        };
+
+        void loadProjects();
+    }, []);
+
+    useEffect(() => {
         const loadHistory = async () => {
+            if (!selectedProjectId) {
+                setCampaigns([]);
+                setIsLoading(false);
+                return;
+            }
+
+            setIsLoading(true);
             try {
                 // HARD LIMIT: Max 7 days of history (prevents analysis behavior)
-                const history = await getCampaignHistory(20); // ~3 per day max
+                const history = await getCampaignHistory(20, selectedProjectId); // ~3 per day max
 
                 // Filter to last 7 days only
                 const sevenDaysAgo = new Date();
@@ -56,12 +110,19 @@ const PastActivityScreen = () => {
                 setCampaigns(recentHistory);
             } catch (error) {
                 console.error("Failed to load history:", error);
+                setCampaigns([]);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadHistory();
-    }, []);
+
+        void loadHistory();
+    }, [selectedProjectId]);
+
+    const selectedProject = useMemo(
+        () => projects.find((project) => project.projectId === selectedProjectId) || null,
+        [projects, selectedProjectId]
+    );
 
     // Group campaigns by date (simple display, NO counts, NO statistics)
     // HARD RULE: No "Completed X times" labels ever
@@ -108,6 +169,22 @@ const PastActivityScreen = () => {
         }
     };
 
+    const renderProjectSelector = () => (
+        <div className={styles.projectSelectorRow}>
+            <Text type="secondary">Project</Text>
+            <Select
+                className={styles.projectSelector}
+                onChange={(value) => setSelectedProjectId(value)}
+                options={projects.map((project) => ({
+                    label: project.name || 'Untitled',
+                    value: project.projectId,
+                }))}
+                placeholder="Select project"
+                value={selectedProjectId || undefined}
+            />
+        </div>
+    );
+
     if (isLoading) {
         return (
             <div className={styles.pastActivityContainer}>
@@ -128,6 +205,7 @@ const PastActivityScreen = () => {
                         What is this?
                     </Button>
                 </div>
+                {projects.length > 0 ? renderProjectSelector() : null}
                 <div className={styles.loadingState}>
                     <Spin size="large" />
                 </div>
@@ -172,8 +250,13 @@ const PastActivityScreen = () => {
                         What is this?
                     </Button>
                 </div>
+                {projects.length > 0 ? renderProjectSelector() : null}
                 <div className={styles.emptyState}>
-                    <Text type="secondary">No activity yet.</Text>
+                    <Text type="secondary">
+                        {selectedProject
+                            ? `No activity yet for ${selectedProject.name || 'this project'}.`
+                            : 'No activity yet.'}
+                    </Text>
                 </div>
                 <Drawer
                     closable={false}
@@ -215,6 +298,7 @@ const PastActivityScreen = () => {
                     What is this?
                 </Button>
             </div>
+            {projects.length > 0 ? renderProjectSelector() : null}
 
             <div className={styles.activityList}>
                 {Object.entries(groupedByDate).map(([date, dateCampaigns]) => (

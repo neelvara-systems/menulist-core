@@ -5,21 +5,39 @@ import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from '@consta
 import { Campaign } from '@type/campaigns';
 import { useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuClock, LuClock3, LuInfo, LuX } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, Popup, Text, Title } from '../antd';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 interface MobileTodayHistoryScreenProps {
     onBack: () => void;
 }
 
 export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryScreenProps) {
+    const {
+        isLoading: loadingProjects,
+        projectsList,
+        selectedProjectId,
+        selectedProjectSummary,
+        selectProject,
+    } = useMobileProjects();
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
     useEffect(() => {
         const loadHistory = async () => {
+            if (!selectedProjectId) {
+                setCampaigns([]);
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const history = await getCampaignHistory(20);
+                setIsLoading(true);
+                const history = await getCampaignHistory(20, selectedProjectId);
                 const sevenDaysAgo = new Date();
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -39,7 +57,7 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
         };
 
         void loadHistory();
-    }, []);
+    }, [selectedProjectId]);
 
     const groupedHistory = useMemo(() => {
         return campaigns.reduce<Record<string, Campaign[]>>((accumulator, campaign) => {
@@ -109,15 +127,43 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                 </Button>
             </Flex>
 
+            {!loadingProjects && selectedProjectId ? (
+                <ProjectSelectorTrigger
+                    clickable={projectsList.length > 1}
+                    currentProject={{
+                        active: selectedProjectSummary?.active !== false,
+                        deleted: selectedProjectSummary?.deleted === true,
+                        id: selectedProjectId,
+                        isDefault: selectedProjectSummary?.isDefault,
+                        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+                        name: selectedProjectSummary?.name || 'Untitled',
+                        specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                        specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                            ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                            : undefined,
+                        specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                        specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
+                    }}
+                    onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                />
+            ) : null}
+
             {isLoading ? (
                 <Flex align="center" justify="center" style={{ minHeight: 220 }}>
                     <DotLoading color="primary" />
                 </Flex>
+            ) : !selectedProjectId ? (
+                <Card>
+                    <Flex align="center" gap={10}>
+                        <LuClock size={18} />
+                        <Text type="secondary">No project available.</Text>
+                    </Flex>
+                </Card>
             ) : Object.keys(groupedHistory).length === 0 ? (
                 <Card>
                     <Flex align="center" gap={10}>
                         <LuClock size={18} />
-                        <Text type="secondary">No activity in the last 7 days.</Text>
+                        <Text type="secondary">No activity in the last 7 days for this project.</Text>
                     </Flex>
                 </Card>
             ) : (
@@ -179,6 +225,17 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                     </Flex>
                 </Flex>
             </Popup>
+
+            <MobileProjectSelectorSheet
+                currentProjectId={selectedProjectId}
+                currentProjectName={selectedProjectSummary?.name || null}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    setIsProjectSelectorOpen(false);
+                    await selectProject(preferredProjectId || null);
+                }}
+                visible={isProjectSelectorOpen}
+            />
         </Flex>
     );
 }

@@ -321,6 +321,17 @@
     gap: 8px;
   }
 
+  .projectSelectorRow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .projectSelector {
+    width: 100%;
+  }
+
   .dateGroup {
     margin-bottom: 16px;
 
