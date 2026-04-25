@@ -15,6 +15,9 @@ const antdComponentTheme = (token) => {
             contentFontSize: 13,
             // colorBorder: "transperant"
         },
+        Card: {
+            borderRadiusLG: 12,
+        },
         Drawer: {
             padding: 10,
             paddingLG: 15

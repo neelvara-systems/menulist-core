@@ -69,10 +69,18 @@ function SortableReorderRow({ id, title, description, accessory }: SortableReord
     return (
         <div
             ref={setNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label="Drag to reorder"
             style={{
+                cursor: 'grab',
                 opacity: isDragging ? 0.72 : 1,
                 transform: CSS.Transform.toString(transform),
                 transition,
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
             }}
         >
             <Flex
@@ -86,39 +94,39 @@ function SortableReorderRow({ id, title, description, accessory }: SortableReord
                     boxShadow: isDragging ? token.boxShadowSecondary : 'none',
                     minHeight: 72,
                     padding: '12px 14px',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitUserSelect: 'none',
                 }}
             >
                 <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        aria-label="Drag to reorder"
-                        style={{
-                            alignItems: 'center',
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 12,
-                            color: token.colorTextTertiary,
-                            cursor: 'grab',
-                            display: 'flex',
-                            flex: '0 0 auto',
-                            height: 40,
-                            justifyContent: 'center',
-                            touchAction: 'none',
-                            width: 40,
-                        }}
-                    >
-                        <LuGripVertical size={18} />
-                    </div>
                     <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                         <div style={{ minWidth: 0 }}>{title}</div>
                         {description ? <div style={{ minWidth: 0 }}>{description}</div> : null}
                     </Flex>
                 </Flex>
-                {accessory ? (
-                    <div style={{ flex: '0 0 auto', minWidth: 0 }}>
-                        {accessory}
+                <Flex align="center" gap={10} style={{ flex: '0 0 auto', minWidth: 0 }}>
+                    {accessory ? (
+                        <div style={{ minWidth: 0 }}>
+                            {accessory}
+                        </div>
+                    ) : null}
+                    <div
+                        style={{
+                            alignItems: 'center',
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 12,
+                            color: token.colorTextTertiary,
+                            display: 'flex',
+                            flex: '0 0 auto',
+                            height: 40,
+                            justifyContent: 'center',
+                            width: 40,
+                        }}
+                    >
+                        <LuGripVertical size={18} />
                     </div>
-                ) : null}
+                </Flex>
             </Flex>
         </div>
     );
@@ -149,8 +157,11 @@ export default function CategoryManagerSheet({
     const STATUS_COLORS = {
         active: '#22c55e',
         inactive: '#94a3b8',
+        hiddenByCategory: '#64748b',
         soldOut: '#f59e0b',
-        missing: '#ef4444',
+        missingPhoto: '#ef4444',
+        missingDescription: '#a855f7',
+        missingPrice: '#ec4899',
     };
     const sectionCardStyle = {
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -253,6 +264,50 @@ export default function CategoryManagerSheet({
             <Text style={{ fontSize: 12, lineHeight: 1.2 }}>{label}</Text>
         </Flex>
     );
+
+    const renderStatusDot = (color: string, key: string) => (
+        <span
+            key={key}
+            style={{
+                background: color,
+                borderRadius: '999px',
+                display: 'inline-block',
+                flex: '0 0 auto',
+                height: 8,
+                width: 8,
+            }}
+        />
+    );
+
+    const itemReorderLegend = useMemo(() => {
+        if (draftItems.length === 0) return [];
+
+        const hasInactive = draftItems.some((item) => item.active === false);
+        const hasHiddenByCategory = draftItems.some((item) => item.hiddenByCategory);
+        const hasUnavailable = draftItems.some((item) => item.available === false);
+        const hasMissingPhoto = draftItems.some((item) => item.hasImage === false);
+        const hasMissingDescription = draftItems.some((item) => item.hasDescription === false);
+        const hasMissingPrice = draftItems.some((item) => !(item.price && item.price > 0));
+
+        return [
+            hasInactive ? renderStatusBadge(t('inactive'), STATUS_COLORS.inactive) : null,
+            hasHiddenByCategory ? renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.hiddenByCategory) : null,
+            hasUnavailable ? renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut) : null,
+            hasMissingPhoto ? renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missingPhoto) : null,
+            hasMissingDescription ? renderStatusBadge(t('missingDescription'), STATUS_COLORS.missingDescription) : null,
+            hasMissingPrice ? renderStatusBadge(t('missingPrice'), STATUS_COLORS.missingPrice) : null,
+        ].filter(Boolean);
+    }, [
+        STATUS_COLORS.hiddenByCategory,
+        STATUS_COLORS.inactive,
+        STATUS_COLORS.missingDescription,
+        STATUS_COLORS.missingPhoto,
+        STATUS_COLORS.missingPrice,
+        STATUS_COLORS.soldOut,
+        availabilityLabels.unavailable,
+        draftItems,
+        t,
+    ]);
 
     const resetCategoryEditor = () => {
         setSelectedCategoryId(null);
@@ -591,14 +646,11 @@ export default function CategoryManagerSheet({
                                 <Text type="secondary">{t('noItemsInCategory')}</Text>
                             ) : (
                                 <Flex gap={10} style={{ minHeight: 0 }} vertical>
-                                    <Flex align="center" gap={10} wrap="wrap">
-                                        {renderStatusBadge(t('inactive'), STATUS_COLORS.inactive)}
-                                        {renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.inactive)}
-                                        {renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut)}
-                                        {renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missing)}
-                                        {renderStatusBadge(t('missingDescription'), STATUS_COLORS.missing)}
-                                        {renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing)}
-                                    </Flex>
+                                    {itemReorderLegend.length > 0 ? (
+                                        <Flex align="center" gap={10} wrap="wrap">
+                                            {itemReorderLegend}
+                                        </Flex>
+                                    ) : null}
 
                                     <Text type="secondary">Press and drag the handle to reorder items.</Text>
 
@@ -616,22 +668,22 @@ export default function CategoryManagerSheet({
                                             >
                                                 <Flex gap={10} vertical>
                                                     {draftItems.map((item) => {
-                                                        const statusBits = [];
-                                                        if (item.active === false) statusBits.push(renderStatusBadge(t('inactive'), STATUS_COLORS.inactive));
-                                                        if (item.hiddenByCategory) statusBits.push(renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.inactive));
-                                                        if (item.available === false) statusBits.push(renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut));
-                                                        if (item.hasImage === false) statusBits.push(renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missing));
-                                                        if (item.hasDescription === false) statusBits.push(renderStatusBadge(t('missingDescription'), STATUS_COLORS.missing));
-                                                        if (!(item.price && item.price > 0)) statusBits.push(renderStatusBadge(t('missingPrice'), STATUS_COLORS.missing));
+                                                        const statusDots = [];
+                                                        if (item.active === false) statusDots.push(renderStatusDot(STATUS_COLORS.inactive, `${item.id}-inactive`));
+                                                        if (item.hiddenByCategory) statusDots.push(renderStatusDot(STATUS_COLORS.hiddenByCategory, `${item.id}-hidden`));
+                                                        if (item.available === false) statusDots.push(renderStatusDot(STATUS_COLORS.soldOut, `${item.id}-unavailable`));
+                                                        if (item.hasImage === false) statusDots.push(renderStatusDot(STATUS_COLORS.missingPhoto, `${item.id}-image`));
+                                                        if (item.hasDescription === false) statusDots.push(renderStatusDot(STATUS_COLORS.missingDescription, `${item.id}-description`));
+                                                        if (!(item.price && item.price > 0)) statusDots.push(renderStatusDot(STATUS_COLORS.missingPrice, `${item.id}-price`));
 
                                                         return (
                                                             <SortableReorderRow
                                                                 accessory={item.price && item.price > 0 ? <Tag>${item.price}</Tag> : undefined}
-                                                                description={(
-                                                                    <Flex align="center" gap={12} wrap="wrap">
-                                                                        {statusBits}
+                                                                description={statusDots.length > 0 ? (
+                                                                    <Flex align="center" gap={6} wrap="wrap">
+                                                                        {statusDots}
                                                                     </Flex>
-                                                                )}
+                                                                ) : undefined}
                                                                 id={item.id}
                                                                 key={item.id}
                                                                 title={<Text strong>{item.name}</Text>}

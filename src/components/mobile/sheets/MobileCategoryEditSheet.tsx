@@ -78,6 +78,10 @@ export default function MobileCategoryEditSheet({
 
     const selectedCount = useMemo(() => presetIds.length, [presetIds.length]);
     const hasMultipleLanguages = selectedLanguages.length > 1;
+    const resetLabel = useMemo(() => {
+        const value = t('reset');
+        return value ? `${value.charAt(0).toLocaleUpperCase()}${value.slice(1)}` : value;
+    }, [t]);
     const hasPrimaryName = Boolean(names[primaryLanguage]?.trim());
     const hasMissingTranslations = useMemo(() => {
         if (!hasMultipleLanguages || !hasPrimaryName) return false;
@@ -316,7 +320,7 @@ export default function MobileCategoryEditSheet({
                                 </Button>
                             ) : null}
                             <Button block disabled={isSaving} fill="outline" onClick={handleReset}>
-                                {t('reset')}
+                                {resetLabel}
                             </Button>
                             <Button
                                 block

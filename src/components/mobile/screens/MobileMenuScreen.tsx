@@ -2184,15 +2184,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 scrollbarWidth: 'none',
                             }}
                         >
-                            <Flex align="center" gap={6} style={{ flexShrink: 0 }}>
-                                <LuLanguages size={14} />
-                                <Text type="secondary">{t('menuLanguages')}</Text>
-                            </Flex>
                             {languageLabels.map((language) => {
                                 const isSelected = displayLanguage === language.code;
-                                const completionLabel = !language.isPrimary && language.stats && language.stats.total > 0
-                                    ? ` · ${language.stats.percentage}%`
-                                    : '';
+                                const completionPercentage = !language.isPrimary && language.stats && language.stats.total > 0
+                                    ? language.stats.percentage
+                                    : null;
+                                const isTranslationComplete = completionPercentage === 100;
                                 return (
                                     <Tag
                                         color={isSelected ? 'primary' : undefined}
@@ -2200,7 +2197,19 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         onClick={() => setDisplayLanguage(language.code)}
                                         style={{ borderWidth: isSelected ? 2 : 1, cursor: 'pointer', flexShrink: 0, marginRight: 0 }}
                                     >
-                                        {`${language.label}${completionLabel}`}
+                                        <Flex align="center" gap={4}>
+                                            <span>{language.label}</span>
+                                            {completionPercentage !== null ? (
+                                                isTranslationComplete ? (
+                                                    <LuCheck
+                                                        size={12}
+                                                        style={{ color: token.colorSuccess }}
+                                                    />
+                                                ) : (
+                                                    <span>{`· ${completionPercentage}%`}</span>
+                                                )
+                                            ) : null}
+                                        </Flex>
                                     </Tag>
                                 );
                             })}

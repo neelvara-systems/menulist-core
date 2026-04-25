@@ -17,6 +17,8 @@ import ta_IN from 'antd/es/locale/ta_IN';
 import en_GB from 'antd/locale/en_GB';
 import en_US from 'antd/locale/en_US';
 
+const DEFAULT_APP_BORDER_RADIUS = 8;
+
 // Map of supported locales
 const localeMap = {
     'ar-SA': ar_EG,
@@ -60,7 +62,7 @@ const AntdClient = ({ children, removeComponent }: any) => {
                     algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
                     token: {
                         colorPrimary: isDarkMode ? darkThemeColor : lightThemeColor,
-                        borderRadius: 5,
+                        borderRadius: DEFAULT_APP_BORDER_RADIUS,
                         wireframe: false,
                         fontSize: 13,
                         fontFamily: poppinsFont.style.fontFamily
@@ -72,7 +74,7 @@ const AntdClient = ({ children, removeComponent }: any) => {
                     <ConfigProvider
                         theme={{
                             token: {
-                                borderRadius: 4,
+                                borderRadius: DEFAULT_APP_BORDER_RADIUS,
                             }
                         }}
                     >

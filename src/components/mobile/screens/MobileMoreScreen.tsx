@@ -330,55 +330,51 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 </Flex>
             </Card>
 
-            <Card>
-                <Flex gap={8} vertical>
-                    <div
+            <div
+                style={{
+                    alignItems: 'center',
+                    backgroundColor: token.colorFillAlter,
+                    border: `1px solid ${token.colorBorder}`,
+                    borderRadius: 12,
+                    display: 'flex',
+                    gap: 8,
+                    padding: '10px 12px',
+                }}
+            >
+                <LuSearch color={token.colorTextQuaternary} size={16} />
+                <input
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search settings"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: token.colorText,
+                        flex: 1,
+                        fontSize: 15,
+                        outline: 'none',
+                    }}
+                    value={searchQuery}
+                />
+                {searchQuery ? (
+                    <button
+                        aria-label="Clear search"
+                        onClick={() => setSearchQuery('')}
                         style={{
                             alignItems: 'center',
-                            backgroundColor: token.colorFillAlter,
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 12,
+                            background: 'transparent',
+                            border: 'none',
+                            color: token.colorTextQuaternary,
+                            cursor: 'pointer',
                             display: 'flex',
-                            gap: 8,
-                            padding: '10px 12px',
+                            justifyContent: 'center',
+                            padding: 0,
                         }}
+                        type="button"
                     >
-                        <LuSearch color={token.colorTextQuaternary} size={16} />
-                        <input
-                            onChange={(event) => setSearchQuery(event.target.value)}
-                            placeholder="Search settings"
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: token.colorText,
-                                flex: 1,
-                                fontSize: 15,
-                                outline: 'none',
-                            }}
-                            value={searchQuery}
-                        />
-                        {searchQuery ? (
-                            <button
-                                aria-label="Clear search"
-                                onClick={() => setSearchQuery('')}
-                                style={{
-                                    alignItems: 'center',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: token.colorTextQuaternary,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    padding: 0,
-                                }}
-                                type="button"
-                            >
-                                <LuX size={16} />
-                            </button>
-                        ) : null}
-                    </div>
-                </Flex>
-            </Card>
+                        <LuX size={16} />
+                    </button>
+                ) : null}
+            </div>
 
             {filteredSections.length === 0 ? (
                 <Card>
