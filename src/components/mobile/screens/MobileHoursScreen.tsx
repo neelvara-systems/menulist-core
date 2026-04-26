@@ -19,7 +19,9 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuQrCode, LuSticker, LuTent, LuX } from 'react-icons/lu';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
     MOBILE_TEMP_STATUS_OPTIONS,
@@ -90,7 +92,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
-    const { selectedProjectId, selectedProjectSummary } = useMobileProjects();
+    const { projectsList, selectProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);
@@ -111,6 +113,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const [isSavingTodayHours, setIsSavingTodayHours] = useState(false);
     const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
     const [isTodayGuideOpen, setIsTodayGuideOpen] = useState(false);
+    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
     const menuUrl = generateProjectUrl(
@@ -349,7 +352,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
     const handleGenerateTodayActions = async () => {
         if (!selectedProjectId) {
-            Toast.show({ content: 'Select a project from Menu tab to generate today action.', duration: 1800 });
+            Toast.show({ content: 'Select a project to generate today action.', duration: 1800 });
             return;
         }
 
@@ -808,6 +811,26 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     <Flex gap={10} vertical>
                         <Text strong>No today action yet</Text>
                         <Text type="secondary">Generate one suggested action and share it in one tap.</Text>
+                        {selectedProjectId ? (
+                            <ProjectSelectorTrigger
+                                clickable={projectsList.length > 1}
+                                currentProject={{
+                                    active: selectedProjectSummary?.active !== false,
+                                    deleted: selectedProjectSummary?.deleted === true,
+                                    id: selectedProjectId,
+                                    isDefault: selectedProjectSummary?.isDefault,
+                                    isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+                                    name: selectedProjectSummary?.name || 'Untitled',
+                                    specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                                    specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                                        ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                                        : undefined,
+                                    specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                                    specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
+                                }}
+                                onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                            />
+                        ) : null}
                         <Button
                             block
                             color="primary"
@@ -900,6 +923,17 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     </Flex>
                 </Flex>
             </Popup>
+
+            <MobileProjectSelectorSheet
+                currentProjectId={selectedProjectId}
+                currentProjectName={selectedProjectSummary?.name || null}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    setIsProjectSelectorOpen(false);
+                    await selectProject(preferredProjectId || null);
+                }}
+                visible={isProjectSelectorOpen}
+            />
         </Flex>
     );
 }

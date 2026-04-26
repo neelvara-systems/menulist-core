@@ -24,7 +24,6 @@ import {
     LuExternalLink,
     LuGlobe,
     LuMessageCircle,
-    LuMonitor,
     LuPlus,
     LuQrCode,
     LuX,
@@ -35,7 +34,6 @@ type ManualSurfaceId = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
 
 interface MobilePresenceMonitorProps {
     hasPublishedMenu: boolean;
-    hasScreen: boolean;
     hasFeedbackEnabled: boolean;
     storeDetails: StoreDataType;
     obpLink: string;
@@ -94,7 +92,6 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
 
 export default function MobilePresenceMonitor({
     hasPublishedMenu,
-    hasScreen,
     hasFeedbackEnabled,
     storeDetails,
     obpLink,
@@ -119,13 +116,6 @@ export default function MobilePresenceMonitor({
             active: hasPublishedMenu,
             desc: hasPublishedMenu ? t('autoSurfaces.tableQr.ready') : t('autoSurfaces.tableQr.pending'),
             icon: <LuQrCode size={16} />,
-        },
-        {
-            id: 'digitalScreens',
-            label: t('autoSurfaces.digitalScreens.label'),
-            active: hasScreen,
-            desc: hasScreen ? t('autoSurfaces.digitalScreens.ready') : t('autoSurfaces.digitalScreens.pending'),
-            icon: <LuMonitor size={16} />,
         },
         {
             id: 'feedbackQr',
@@ -209,6 +199,8 @@ export default function MobilePresenceMonitor({
                         {allDone ? t('allSet') : t('placesActive', { count: totalActive })}
                     </Tag>
                 </Flex>
+
+                <Text type="secondary">{t('trackingNote')}</Text>
 
                 <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Flex gap={4} vertical>

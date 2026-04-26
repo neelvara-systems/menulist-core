@@ -217,6 +217,10 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                     </Tag>
                 </Flex>
 
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    This checklist is only for your tracking. MenuList does not verify these external platforms automatically.
+                </Text>
+
                 {/* All-complete celebration */}
                 {allActive && (
                     <Flex

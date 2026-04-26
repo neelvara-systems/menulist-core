@@ -1,7 +1,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { Alert, Button, Flex, Typography } from "antd";
-import { useContext } from "react";
+import { ReactNode, useContext } from "react";
 import { LuCheck } from "react-icons/lu";
 import OBPLinkCard from "../../../businessSettings/OBPLinkCard";
 import TempStatusCard from "../../../businessSettings/TempStatusCard";
@@ -12,10 +12,12 @@ const EmptyState = ({
     canGenerate = false,
     isGenerating = false,
     onGenerate,
+    selectorContent,
 }: {
     canGenerate?: boolean;
     isGenerating?: boolean;
     onGenerate?: () => void;
+    selectorContent?: ReactNode;
 }) => {
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
@@ -28,6 +30,7 @@ const EmptyState = ({
                 type="success"
                 showIcon
             />
+            {selectorContent || null}
             {onGenerate ? (
                 <Button
                     type="primary"

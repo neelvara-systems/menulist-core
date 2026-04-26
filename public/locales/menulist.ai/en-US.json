@@ -386,6 +386,7 @@
         "previewCardTitle": "Preview Card",
         "previewCardHelp": "Shows how your title, description, and URL can appear in WhatsApp and social previews.",
         "whatsAppPreview": "WhatsApp Preview",
+        "googlePreview": "Google Preview",
         "metaPreview": "Meta Tag Preview",
         "previewTapHint": "Tap to open",
         "notSet": "Not set"
@@ -1736,6 +1737,7 @@
         "subtitle": "Add your official page to places customers already use.",
         "allSet": "All set",
         "placesActive": "{count} places active",
+        "trackingNote": "This checklist is only for your tracking. MenuList does not verify these external platforms automatically.",
         "onlineDiscovery": "Online discovery",
         "onlineDiscoveryDesc": "Manual steps to paste your official page link once.",
         "menuLinkCopied": "Official page link copied",

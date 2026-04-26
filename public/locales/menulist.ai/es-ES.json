@@ -385,6 +385,7 @@
         "previewCardTitle": "Tarjeta de vista previa",
         "previewCardHelp": "Muestra cómo pueden aparecer tu título, descripción y URL en las vistas previas de WhatsApp y redes sociales.",
         "whatsAppPreview": "Vista previa de WhatsApp",
+        "googlePreview": "Vista previa de Google",
         "metaPreview": "Vista previa de metaetiquetas",
         "previewTapHint": "Toca para abrir",
         "notSet": "Sin configurar"

@@ -30,6 +30,16 @@
   }
 }
 
+.todayProjectSelectorRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todayProjectSelector {
+  width: 100%;
+}
+
 .guideContent {
   display: flex;
   flex-direction: column;

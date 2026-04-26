@@ -385,6 +385,7 @@
         "previewCardTitle": "प्रीव्यू कार्ड",
         "previewCardHelp": "यह दिखाता है कि आपका शीर्षक, विवरण और URL WhatsApp और सोशल प्रीव्यू में कैसे दिखाई दे सकते हैं।",
         "whatsAppPreview": "WhatsApp प्रीव्यू",
+        "googlePreview": "Google प्रीव्यू",
         "metaPreview": "मेटा टैग प्रीव्यू",
         "previewTapHint": "खोलने के लिए टैप करें",
         "notSet": "सेट नहीं है"

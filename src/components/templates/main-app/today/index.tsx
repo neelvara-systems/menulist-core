@@ -2,15 +2,17 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { getCampaign } from "@database/campaigns";
+import { getProjectsListWithoutLoader } from "@database/projects";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
-import { Button, Divider, Drawer, Spin, Typography, notification } from "antd";
-import { useContext, useEffect, useState } from "react";
+import { Button, Divider, Drawer, Select, Spin, Typography, notification } from "antd";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { LuCalendarOff, LuInfo } from "react-icons/lu";
+import useSWR from "swr";
 import OBPLinkCard from "../businessSettings/OBPLinkCard";
 import TempStatusCard from "../businessSettings/TempStatusCard";
 import EmptyState from "./components/EmptyState";
@@ -26,6 +28,32 @@ import styles from "./styles.module.scss";
 const { Title, Text } = Typography;
 
 type ScreenState = "loading" | "action" | "empty" | "post-action";
+type ProjectSummary = {
+    active?: boolean;
+    deleted?: boolean;
+    isDefault?: boolean;
+    name?: string;
+    projectId: string;
+};
+
+const resolveSelectedProject = (
+    projects: ProjectSummary[],
+    preferredProjectId?: string | null,
+) => {
+    const availableProjects = projects.filter((project) => project.deleted !== true);
+    const activeProjects = availableProjects.filter((project) => project.active !== false);
+    const selectionPool = activeProjects.length ? activeProjects : availableProjects.length ? availableProjects : projects;
+
+    if (!selectionPool.length) return null;
+
+    if (preferredProjectId) {
+        const preferred = availableProjects.find((project) => project.projectId === preferredProjectId)
+            || projects.find((project) => project.projectId === preferredProjectId);
+        if (preferred) return preferred;
+    }
+
+    return selectionPool.find((project) => project.isDefault) || selectionPool[0] || null;
+};
 
 const TodayScreen = () => {
     const [screenState, setScreenState] = useState<ScreenState>("loading");
@@ -38,9 +66,38 @@ const TodayScreen = () => {
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(activeProject?.projectId || null);
+    const { data: projects = [] } = useSWR<ProjectSummary[]>(
+        "today-projects",
+        async () => {
+            const result = await getProjectsListWithoutLoader(true);
+            return (result?.projects || []) as ProjectSummary[];
+        },
+        {
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+            dedupingInterval: 30000,
+        }
+    );
+    const selectedProject = useMemo(
+        () => projects.find((project) => project.projectId === selectedProjectId) || null,
+        [projects, selectedProjectId]
+    );
 
     // Check if feature is enabled
     const isEnabled = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED;
+
+    useEffect(() => {
+        if (!projects.length) {
+            setSelectedProjectId(null);
+            return;
+        }
+
+        const resolvedProject = resolveSelectedProject(projects, activeProject?.projectId || selectedProjectId);
+        if (resolvedProject?.projectId !== selectedProjectId) {
+            setSelectedProjectId(resolvedProject?.projectId || null);
+        }
+    }, [activeProject?.projectId, projects, selectedProjectId]);
 
     useEffect(() => {
         if (isLoading) {
@@ -72,7 +129,7 @@ const TodayScreen = () => {
             const menuLink = buildTodayMenuLink(
                 storeDetails?.subdomain,
                 storeDetails?.customDomain,
-                (activeProject as any)?.name,
+                (activeProject as any)?.name || selectedProject?.name,
             );
             const fullCampaign = surface === 'whatsapp_status' || surface === 'whatsapp_message'
                 ? null
@@ -128,10 +185,10 @@ const TodayScreen = () => {
     };
 
     const handleGenerateTodayActions = async () => {
-        if (!activeProject?.projectId) return;
+        if (!selectedProjectId) return;
         setIsGeneratingTodayActions(true);
         try {
-            await generateCampaignsForProject(activeProject.projectId, true);
+            await generateCampaignsForProject(selectedProjectId, true);
             await mutate();
         } catch (error) {
             console.error("Failed to generate today campaigns:", error);
@@ -225,9 +282,24 @@ const TodayScreen = () => {
             <div className={styles.todayContainer}>
                 {renderHeader()}
                 <EmptyState
-                    canGenerate={Boolean(activeProject?.projectId)}
+                    canGenerate={Boolean(selectedProjectId)}
                     isGenerating={isGeneratingTodayActions}
                     onGenerate={handleGenerateTodayActions}
+                    selectorContent={projects.length > 0 ? (
+                        <div className={styles.todayProjectSelectorRow}>
+                            <Text type="secondary">Project</Text>
+                            <Select
+                                className={styles.todayProjectSelector}
+                                onChange={(value) => setSelectedProjectId(value)}
+                                options={projects.map((project) => ({
+                                    label: project.name || 'Untitled',
+                                    value: project.projectId,
+                                }))}
+                                placeholder="Select project"
+                                value={selectedProjectId || undefined}
+                            />
+                        </div>
+                    ) : null}
                 />
                 {renderGuideDrawer()}
             </div>

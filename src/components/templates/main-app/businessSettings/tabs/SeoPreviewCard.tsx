@@ -206,6 +206,89 @@ export default function SeoPreviewCard({
                         }}
                     >
                         <LuGlobe color={token.colorPrimary} size={16} />
+                        <Text strong>{t('googlePreview')}</Text>
+                    </Flex>
+
+                    <div
+                        style={{
+                            background: token.colorBgContainer,
+                            padding: 14,
+                        }}
+                    >
+                        <div
+                            style={{
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 16,
+                                padding: 14,
+                            }}
+                        >
+                            <Flex gap={10} vertical>
+                                <Flex align="center" gap={10}>
+                                    <div
+                                        style={{
+                                            alignItems: 'center',
+                                            background: token.colorPrimaryBg,
+                                            borderRadius: 999,
+                                            display: 'flex',
+                                            height: 32,
+                                            justifyContent: 'center',
+                                            width: 32,
+                                        }}
+                                    >
+                                        <LuGlobe color={token.colorPrimary} size={16} />
+                                    </div>
+                                    <Flex gap={1} style={{ minWidth: 0 }} vertical>
+                                        <Text strong style={{ ...clampText(1) }}>{normalizedName}</Text>
+                                        <Text style={{ color: secondaryTextColor, fontSize: 12, ...clampText(1) }}>
+                                            {visibleUrl}
+                                        </Text>
+                                    </Flex>
+                                </Flex>
+
+                                <Text
+                                    style={{
+                                        color: token.colorLink,
+                                        fontSize: 21,
+                                        fontWeight: 500,
+                                        lineHeight: 1.3,
+                                        ...clampText(2),
+                                    }}
+                                >
+                                    {previewTitle}
+                                </Text>
+
+                                <Text
+                                    type="secondary"
+                                    style={{
+                                        fontSize: 14,
+                                        lineHeight: 1.5,
+                                        ...clampText(3),
+                                    }}
+                                >
+                                    {previewDescription}
+                                </Text>
+                            </Flex>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    style={{
+                        background: token.colorBgLayout,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: token.borderRadiusLG,
+                        overflow: 'hidden',
+                    }}
+                >
+                    <Flex
+                        align="center"
+                        gap={8}
+                        style={{
+                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                            padding: '10px 14px',
+                        }}
+                    >
+                        <LuGlobe color={token.colorPrimary} size={16} />
                         <Text strong>{t('metaPreview')}</Text>
                     </Flex>
 

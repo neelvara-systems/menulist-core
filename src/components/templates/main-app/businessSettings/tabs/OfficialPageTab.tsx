@@ -3,9 +3,11 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row, Switch, Typography, Upload, message } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useState } from 'react';
+import ShareLinkCard from '../../ShareLinkCard';
 import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuPhone, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
 import GoogleListingGuide from './GoogleListingGuide';
 
@@ -45,6 +47,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const session = useClientAuthSession();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
         const [photos, setPhotos] = useState<string[]>(publicPresence?.photos || []);
+        const officialPageUrl = generateOBPUrl(subdomain, customDomain);
 
         if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
@@ -81,6 +84,18 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
 
         return (
             <>
+                {officialPageUrl ? (
+                    <div style={{ marginTop: 16 }}>
+                        <ShareLinkCard
+                            title="Official Page Link"
+                            description="Share this with customers — it always shows your latest public page"
+                            url={officialPageUrl}
+                            shortUrl={officialPageUrl.replace(/^https?:\/\//, '')}
+                            sharePrefix="Here is our official page:"
+                            copySuccessLabel="Official page link"
+                        />
+                    </div>
+                ) : null}
                 <GoogleListingGuide
                     subdomain={subdomain}
                     customDomain={customDomain}

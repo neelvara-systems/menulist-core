@@ -34,7 +34,6 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { FaWhatsapp } from 'react-icons/fa6';
 import {
     LuBookOpen,
     LuCheck,
@@ -55,6 +54,7 @@ import {
 import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import CommunicationKit from './CommunicationKit';
 import PresenceMonitor from './PresenceMonitor';
+import ShareLinkCard from '../ShareLinkCard';
 import { PageState, ProjectLink, UseMenuListData } from './types';
 
 const { Title, Text, Paragraph } = Typography;
@@ -462,15 +462,13 @@ export default function UseMenuList() {
 
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={data.installAppLink ? 8 : 12}>
-                    <LinkCard
+                    <ShareLinkCard
                         title="Business Profile Link"
                         description={`Share this with customers — always shows ${labels.yourLatest}`}
                         url={data.obpLink}
                         shortUrl={data.obpLink.replace(/^https?:\/\//, '')}
-                        storeName={data.storeName}
                         sharePrefix={labels.shareMessagePrefix}
-                        onCopy={() => handleCopy(withSource(data.obpLink, 'copy'), `${labels.offeringTitle} page link`)}
-                        onOpen={() => handleOpen(withSource(data.obpLink, 'direct'))}
+                        copySuccessLabel={`${labels.offeringTitle} page link`}
                         onGuide={() => setGuideModal({
                             title: `Where to share your ${labels.offeringLower}`,
                             content: (
@@ -483,33 +481,27 @@ export default function UseMenuList() {
                                 </ul>
                             ),
                         })}
-                        themeToken={themeToken}
                     />
                 </Col>
                 <Col xs={24} sm={data.installAppLink ? 8 : 12}>
-                    <LinkCard
+                    <ShareLinkCard
                         title="Project Menu Link"
                         description={`Opens ${labels.offeringLower} immediately — best for quick sharing`}
                         url={data.menuLink}
                         shortUrl={shortMenuLink}
-                        storeName={data.storeName}
                         sharePrefix={labels.shareMessagePrefix}
-                        onCopy={() => handleCopy(withSource(data.menuLink, 'copy'), `Direct ${labels.offeringLower} link`)}
-                        onOpen={() => handleOpen(withSource(data.menuLink, 'direct'))}
-                        themeToken={themeToken}
+                        copySuccessLabel={`Direct ${labels.offeringLower} link`}
                     />
                 </Col>
                 {data.installAppLink ? (
                     <Col xs={24} sm={8}>
-                        <LinkCard
+                        <ShareLinkCard
                             title="Customer App Install Link"
                             description="Share this when you want customers to install your menu app directly"
                             url={data.installAppLink}
                             shortUrl={data.installAppLink.replace(/^https?:\/\//, '')}
-                            storeName={data.storeName}
                             sharePrefix={`Install ${data.storeName} on your phone:`}
-                            onCopy={() => handleCopy(withSource(data.installAppLink!, 'copy'), 'Customer App install link')}
-                            onOpen={() => handleOpen(withSource(data.installAppLink!, 'direct'))}
+                            copySuccessLabel="Customer App install link"
                             onGuide={() => setGuideModal({
                                 title: 'Where to share the Customer App install link',
                                 content: (
@@ -521,7 +513,6 @@ export default function UseMenuList() {
                                     </ul>
                                 ),
                             })}
-                            themeToken={themeToken}
                         />
                     </Col>
                 ) : null}
@@ -1074,90 +1065,6 @@ export default function UseMenuList() {
 }
 
 // ── Reusable Sub-Components ──────────────────────────────────────
-
-interface LinkCardProps {
-    title: string;
-    description: string;
-    url: string;
-    shortUrl: string;
-    storeName: string;
-    sharePrefix: string;
-    onCopy: () => void;
-    onOpen: () => void;
-    onGuide?: () => void;
-    themeToken: any;
-}
-
-function LinkCard({ title, description, url, shortUrl, storeName, sharePrefix, onCopy, onOpen, onGuide, themeToken }: LinkCardProps) {
-    const withSrc = (src: 'copy' | 'whatsapp' | 'qr') =>
-        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
-
-    const handleWhatsApp = () => {
-        const msg = `${sharePrefix}\n${withSrc('whatsapp')}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-    };
-
-    const handleCopyMessage = async () => {
-        const msg = `${sharePrefix}\n${withSrc('copy')}`;
-        try {
-            await navigator.clipboard.writeText(msg);
-            message.success('Message copied — paste it in WhatsApp or anywhere');
-        } catch {
-            message.error('Could not copy message');
-        }
-    };
-
-    return (
-        <Card size="small" styles={{ body: { padding: 16 } }} style={{ height: '100%' }}>
-            <Flex vertical gap={10}>
-                <Text strong>{title}</Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>{description}</Text>
-                <Card
-                    size="small"
-                    styles={{ body: { padding: '6px 10px' } }}
-                    style={{
-                        backgroundColor: themeToken.colorFillAlter,
-                        borderColor: themeToken.colorBorderSecondary,
-                    }}
-                >
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            fontFamily: 'monospace',
-                            wordBreak: 'break-all',
-                        }}
-                    >
-                        {shortUrl}
-                    </Text>
-                </Card>
-                <Flex gap={6} align="center" wrap="wrap">
-                    <Button size="small" type="primary" icon={<LuClipboard size={14} />} onClick={onCopy}>
-                        Copy Link
-                    </Button>
-                    <Button
-                        size="small"
-                        icon={<FaWhatsapp size={14} />}
-                        onClick={handleWhatsApp}
-                        style={{ color: '#25D366', borderColor: '#25D366' }}
-                    >
-                        WhatsApp
-                    </Button>
-                    <Button size="small" icon={<LuCopy size={14} />} onClick={handleCopyMessage}>
-                        Copy Message
-                    </Button>
-                    <Button size="small" type="text" icon={<LuExternalLink size={14} />} onClick={onOpen}>
-                        Open
-                    </Button>
-                </Flex>
-                {onGuide && (
-                    <Button size="small" type="link" style={{ fontSize: 12, padding: 0, height: 'auto' }} onClick={onGuide}>
-                        Where should I share this?
-                    </Button>
-                )}
-            </Flex>
-        </Card>
-    );
-}
 
 interface AssetCardProps {
     icon: React.ReactNode;

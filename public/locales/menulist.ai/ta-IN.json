@@ -385,6 +385,7 @@
         "previewCardTitle": "முன்னோட்ட அட்டை",
         "previewCardHelp": "உங்கள் தலைப்பு, விளக்கம் மற்றும் URL, WhatsApp மற்றும் சமூக முன்னோட்டங்களில் எப்படி தோன்றும் என்பதை இது காட்டுகிறது.",
         "whatsAppPreview": "WhatsApp முன்னோட்டம்",
+        "googlePreview": "Google முன்னோட்டம்",
         "metaPreview": "மெட்டா டேக் முன்னோட்டம்",
         "previewTapHint": "திறக்க தட்டவும்",
         "notSet": "அமைக்கப்படவில்லை"
