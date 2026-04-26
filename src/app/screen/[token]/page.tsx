@@ -90,7 +90,7 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
     const menuItems = await getCachedMenuItems(
         screenData.storeId,
         screenData.tenantId,
-        screenData.screen.selectedProjectId || null
+        screenData.activeSpecialMenuId || null
     );
 
     // ─── MENU BOARD MODE ───────────────────────────────────────
@@ -99,7 +99,6 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
             menuItems,
             storeInfo: screenData.storeInfo,
             contentVersion: screenData.screen.contentVersion || 1,
-            selectedProjectId: screenData.screen.selectedProjectId || null,
             token,
             storeId: screenData.storeId,
         };
@@ -111,8 +110,9 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
     // Only pass campaign if it targets digital_screen surface
     const todayCampaign = screenData.today?.primary?.primarySurface === 'digital_screen' &&
         (
-            !screenData.screen.selectedProjectId ||
-            screenData.today?.primary?.projectId === screenData.screen.selectedProjectId
+            screenData.today?.primary?.projectId === (
+                screenData.activeSpecialMenuId || screenData.baseProjectId
+            )
         )
         ? screenData.today.primary
         : undefined;
@@ -134,7 +134,6 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
             refreshIntervalMs: SCREEN_CONFIG.REFRESH_INTERVAL_MS,
             slideDurationMs: SCREEN_CONFIG.SLIDE_DURATION_MS
         },
-        selectedProjectId: screenData.screen.selectedProjectId || null,
         token,
         storeId: screenData.storeId,
     };

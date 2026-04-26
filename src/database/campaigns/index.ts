@@ -666,6 +666,8 @@ export const getScreenDataByToken = async (token: string): Promise<{
     today: CampaignsSummaryDocument['today'];
     storeId: string;
     tenantId: string;
+    baseProjectId: string | null;
+    activeSpecialMenuId: string | null;
     storeInfo: ScreenStoreInfo;
 } | null> => {
     try {
@@ -707,6 +709,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
         // URL is immutable (rename → previousSlugs 301 chain) and matches
         // the "internal emitters use canonical URL" rule.
         let selectedProjectSlug: string | undefined;
+        let baseProjectId: string | null = null;
         try {
             const summaryRef = doc(
                 firebaseClient,
@@ -718,12 +721,10 @@ export const getScreenDataByToken = async (token: string): Promise<{
                 const projectMap = parseSummaryProjects(summarySnap.data() || {});
                 const activeProjects = Object.entries(projectMap)
                     .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-                    .filter((project: any) => project?.active !== false && project?.deleted !== true);
-                const configuredProject = data.screen?.selectedProjectId
-                    ? activeProjects.find((project: any) => project.projectId === data.screen?.selectedProjectId)
-                    : null;
+                    .filter((project: any) => project?.active !== false && project?.deleted !== true && project?.isSpecialMenu !== true);
                 const fallbackProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
-                selectedProjectSlug = configuredProject?.slug || fallbackProject?.slug;
+                baseProjectId = fallbackProject?.projectId || null;
+                selectedProjectSlug = fallbackProject?.slug;
             }
         } catch {
             // Silent fallback — alias URL still works via Layer 2.
@@ -744,6 +745,8 @@ export const getScreenDataByToken = async (token: string): Promise<{
             today: data.today,
             storeId,
             tenantId: String(storeData?.tenantId || ''),
+            baseProjectId,
+            activeSpecialMenuId: storeData?.activeSpecialMenuId || null,
             storeInfo
         };
     } catch (error) {
@@ -762,7 +765,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
 export const getMenuItemsForScreen = async (
     storeId: string,
     tenantId: string,
-    selectedProjectId?: string | null
+    activeSpecialMenuId?: string | null
 ): Promise<Array<{
     id: string;
     name: string;
@@ -839,80 +842,116 @@ export const getMenuItemsForScreen = async (
             return extractedItems;
         };
 
-        // T3-N-04: project docs live at the 3-segment path
-        // `projects/{tenantId}/{storeId}` — querying that collection directly
-        // replaces the prior invalid 4-segment `.../metadata` path that would
-        // have thrown at runtime. Project data and the discriminators we
-        // filter on (`isDefault`, `active`, `deleted`) live on the same doc,
-        // so the former two-step "metadata lookup → data fetch" collapses
-        // into a single query — saves one Firestore read per screen load.
+        const mergeOverlayMenu = (baseProject: any, specialProject: any) => {
+            if (!specialProject?.files?.length) return baseProject;
+            if (!baseProject?.files?.length) return specialProject;
+
+            const merged = JSON.parse(JSON.stringify(baseProject));
+            const specialData = specialProject.files[0]?.extractedData?.data;
+            if (!specialData) return merged;
+
+            const specialCategories = specialData.categories || [];
+            const specialItems = specialData.items || [];
+
+            if (merged.files[0]?.extractedData?.data) {
+                const baseData = merged.files[0].extractedData.data;
+
+                if (specialCategories.length > 0) {
+                    baseData.categories = [
+                        ...(baseData.categories || []),
+                        ...specialCategories.map((category: any) => ({
+                            ...category,
+                            _isSpecialSection: true,
+                        })),
+                    ];
+                }
+
+                if (specialItems.length > 0) {
+                    baseData.items = [
+                        ...(baseData.items || []),
+                        ...specialItems.map((item: any) => ({
+                            ...item,
+                            _isSpecialSection: true,
+                        })),
+                    ];
+                }
+            }
+
+            return merged;
+        };
+
         const projectsRef = collection(
             firebaseClient,
             `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`
         );
-        let projectSnap;
-        let projectId: string | null = null;
+        const getProjectDoc = async (projectId: string) => {
+            const projectDoc = await getDoc(doc(projectsRef, projectId));
+            return projectDoc.exists() ? projectDoc : null;
+        };
 
-        if (selectedProjectId) {
-            const selectedDoc = await getDoc(doc(projectsRef, selectedProjectId));
-            if (selectedDoc.exists()) {
-                const selectedData = selectedDoc.data();
-                if (selectedData?.deleted !== true && selectedData?.active !== false) {
-                    projectSnap = { empty: false, docs: [selectedDoc] };
-                    projectId = selectedDoc.id;
+        const summaryRef = doc(
+            firebaseClient,
+            DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+            `projects_${storeId}`,
+        );
+        const summarySnap = await getDoc(summaryRef);
+        const projectMap = summarySnap.exists() ? parseSummaryProjects(summarySnap.data() || {}) : {};
+        const activeProjects = Object.entries(projectMap)
+            .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
+            .filter((project: any) => project?.active !== false && project?.deleted !== true && project?.isSpecialMenu !== true);
+        const defaultProjectId = activeProjects.find((project: any) => project?.isDefault === true)?.projectId;
+        const orderedProjectIds = [
+            ...(defaultProjectId ? [defaultProjectId] : []),
+            ...activeProjects
+                .map((project: any) => project.projectId)
+                .filter((projectId, index, allProjectIds) => allProjectIds.indexOf(projectId) === index),
+        ];
+
+        if (activeSpecialMenuId) {
+            const specialDoc = await getProjectDoc(activeSpecialMenuId);
+            const specialProject = specialDoc?.data();
+            const specialEndsAt = specialProject?._specialMenu?.endsAt
+                ? new Date(specialProject._specialMenu.endsAt).getTime()
+                : null;
+
+            if (
+                specialProject?._specialMenu?.status === 'active' &&
+                specialEndsAt != null &&
+                Number.isFinite(specialEndsAt) &&
+                specialEndsAt > Date.now()
+            ) {
+                if (specialProject._specialMenu.mode === 'replace') {
+                    const specialItems = extractMenuItemsFromProject(specialProject);
+                    if (specialItems.length > 0) {
+                        return specialItems;
+                    }
+                }
+
+                if (specialProject._specialMenu.mode === 'overlay') {
+                    const baseProjectId = specialProject._specialMenu.baseProjectId || orderedProjectIds[0];
+                    if (baseProjectId) {
+                        const baseDoc = await getProjectDoc(baseProjectId);
+                        const baseProject = baseDoc?.data();
+                        if (baseProject) {
+                            const mergedItems = extractMenuItemsFromProject(mergeOverlayMenu(baseProject, specialProject));
+                            if (mergedItems.length > 0) {
+                                return mergedItems;
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        if (!projectSnap) {
-            const defaultQuery = query(
-                projectsRef,
-                where('deleted', '==', false),
-                where('active', '==', true),
-                where('isDefault', '==', true),
-                limit(1)
-            );
-            projectSnap = await getDocs(defaultQuery);
-        }
+        for (const projectId of orderedProjectIds) {
+            const projectDoc = await getProjectDoc(projectId);
+            if (!projectDoc) continue;
 
-        // Fallback: first active project if default not found
-        if (projectSnap.empty) {
-            const activeQuery = query(
-                projectsRef,
-                where('deleted', '==', false),
-                where('active', '==', true),
-                limit(1)
-            );
-            projectSnap = await getDocs(activeQuery);
-        }
-
-        if (projectSnap.empty) return [];
-
-        const chosenDoc = projectSnap.docs[0];
-        projectId = chosenDoc.id;
-
-        // 2. Extract items from chosen project (data already in snapshot)
-        const items = extractMenuItemsFromProject(chosenDoc.data());
-        if (items.length > 0) {
-            return items;
-        }
-
-        // 3. Defensive fallback: if chosen project has no items, try a few active projects
-        // (prevents "Preparing your menu..." when default project is empty)
-        const fallbackQuery = query(
-            projectsRef,
-            where('deleted', '==', false),
-            where('active', '==', true),
-            limit(5)
-        );
-        const fallbackSnap = await getDocs(fallbackQuery);
-
-        for (const fallbackDoc of fallbackSnap.docs) {
-            if (fallbackDoc.id === projectId) continue;
-
-            const fallbackItems = extractMenuItemsFromProject(fallbackDoc.data());
+            const fallbackItems = extractMenuItemsFromProject(projectDoc.data());
             if (fallbackItems.length > 0) {
-                console.log(`[getMenuItemsForScreen] Fallback project used: ${fallbackDoc.id}`);
+                if (projectId !== orderedProjectIds[0]) {
+                    console.log(`[getMenuItemsForScreen] Fallback project used: ${projectId}`);
+                }
                 return fallbackItems;
             }
         }
@@ -965,7 +1004,6 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
                 enabled: true,
                 screenToken,
                 lastRefreshed: now,
-                selectedProjectId: null,
                 contentVersion: 1,
                 lastContentChangeAt: now,
                 currentMinConfidence: 0,
@@ -989,29 +1027,15 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
  * Update screen settings (toggle override mode)
  * Per spec: Owner can toggle "Use my designs instead"
  */
-export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean; selectedProjectId?: string | null }): Promise<void> => {
+export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean }): Promise<void> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
-            const currentContentVersion = docSnap.exists()
-                ? ((docSnap.data() as CampaignsSummaryDocument).screen?.contentVersion || 0)
-                : 0;
-            const currentSelectedProjectId = docSnap.exists()
-                ? ((docSnap.data() as CampaignsSummaryDocument).screen?.selectedProjectId || null)
-                : null;
-            const projectChanged =
-                settings.selectedProjectId !== undefined &&
-                settings.selectedProjectId !== currentSelectedProjectId;
 
             await setDoc(docRef, {
                 screen: {
                     ...settings,
-                    ...(projectChanged ? {
-                        contentVersion: currentContentVersion + 1,
-                        lastContentChangeAt: Timestamp.now(),
-                    } : {}),
                 }
             }, { merge: true });
 

@@ -41,7 +41,6 @@ interface MenuBoardProps {
         menuItems: MenuItemForSlide[];
         storeInfo: ScreenStoreInfo;
         contentVersion: number;
-        selectedProjectId?: string | null;
         token: string;
         storeId: string;
     };
@@ -136,8 +135,8 @@ function paginateCategories(categories: CategoryGroup[]): CategoryGroup[][] {
 }
 
 export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
-    const { menuItems: initialItems, storeInfo, contentVersion: initialVersion, token, storeId, selectedProjectId } = initialData;
-    const cacheKey = `menulist-menuboard-data-${token}-${selectedProjectId || 'default'}`;
+    const { menuItems: initialItems, storeInfo, contentVersion: initialVersion, token, storeId } = initialData;
+    const cacheKey = `menulist-menuboard-data-${token}`;
 
     // HARDENING: Cache-first initialization (matching ScreenDisplay pattern)
     // Survives bad deploys — shows cached menu if server returns empty

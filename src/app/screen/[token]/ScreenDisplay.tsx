@@ -32,7 +32,6 @@ interface ScreenDisplayProps {
         slides: ScreenSlide[];
         storeInfo: ScreenStoreInfo;
         contentVersion: number;
-        selectedProjectId?: string | null;
         config: {
             refreshIntervalMs: number;
             slideDurationMs: number;
@@ -49,8 +48,8 @@ interface ScreenState {
 }
 
 export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
-    const { slides: initialSlides, storeInfo, config, token, storeId, selectedProjectId } = initialData;
-    const cacheKey = `menulist-screen-data-${token}-${selectedProjectId || 'default'}`;
+    const { slides: initialSlides, storeInfo, config, token, storeId } = initialData;
+    const cacheKey = `menulist-screen-data-${token}`;
 
     // HARDENING: Cached-first rendering for deploy safety
     // Try to load from cache first, then update from server data

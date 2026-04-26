@@ -333,7 +333,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             <div
                 style={{
                     alignItems: 'center',
-                    backgroundColor: token.colorFillAlter,
+                    backgroundColor: token.colorBgContainer,
                     border: `1px solid ${token.colorBorder}`,
                     borderRadius: 12,
                     display: 'flex',

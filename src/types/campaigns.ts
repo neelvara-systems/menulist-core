@@ -452,7 +452,6 @@ export interface DigitalScreenState {
     enabled: boolean;
     screenToken: string; // High-entropy token for URL (22 chars, ~130-bit; legacy stores may have 8-char)
     lastRefreshed: Timestamp;
-    selectedProjectId?: string | null;
 
     // INVALIDATION: Lightweight event-based refresh trigger
     // When availability or menu changes, bump this version

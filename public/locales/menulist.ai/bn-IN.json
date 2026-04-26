@@ -139,7 +139,7 @@
         "workingHours": "Working Hours",
         "timeSlotPresets": "Time Slot Presets",
         "socialMedia": "Social Media",
-        "seoSettings": "SEO Settings",
+        "seoSettings": "SEO and AEO",
         "analytics": "Analytics",
         "integrations": "Integrations",
         "feedback": "Feedback",
@@ -361,7 +361,7 @@
         "checkAvailabilityFailed": "উপলভ্যতা যাচাই করা যায়নি"
     },
     "SEO": {
-        "title": "SEO Settings",
+        "title": "SEO and AEO",
         "tagline": "Tagline",
         "taglinePlaceholder": "Enter your restaurant tagline",
         "taglineHelp": "A short, catchy phrase that describes your restaurant. This appears when your menu is shared on social media.",
@@ -1047,7 +1047,7 @@
         "title": "SEO & Analytics",
         "saved": "Saved",
         "failedToSave": "Failed to save",
-        "seoSettings": "SEO Settings",
+        "seoSettings": "SEO and AEO",
         "seoSubtitle": "Help customers find your menu on Google",
         "tagline": "Tagline",
         "taglineHint": "Short phrase for social media sharing (max 100)",

@@ -43,6 +43,8 @@ If you have two screens — e.g., one above the counter and one in the waiting a
 5. Bookmark both. Press F11 for fullscreen on each.
 6. Both screens update automatically. You never touch them again.
 
+Both links always follow your store's current active menu automatically. You do not need to assign a project to the screen.
+
 ---
 
 ## How Your Screen Content Works

@@ -17,12 +17,11 @@ import { CheckCircleOutlined } from "@ant-design/icons";
 import { FEATURE_FLAGS } from "@config/features";
 import { getScreenState, initializeScreenState, updateScreenSettings } from "@database/campaigns";
 import { trackOwnerControlUsage } from "@database/ownerControlUsage";
-import { getProjectsListWithoutLoader } from "@database/projects";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ScreenSlide } from "@type/campaigns";
-import { Card, Divider, Empty, message, Select, Space, Spin, Switch, theme, Typography } from "antd";
+import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
 import { useContext, useEffect, useMemo, useState } from "react";
 import CurrentSlides from "./CurrentSlides";
 import OwnerUploads from "./OwnerUploads";
@@ -35,20 +34,11 @@ interface ScreenSettingsData {
     screenToken: string;
     screenUrl: string;
     ownerOverrideEnabled: boolean;
-    selectedProjectId?: string | null;
     pinnedSlides: ScreenSlide[];
     maxUploads: number;
     uploadExpiryDays: number;
     screenLastSeenAt?: any;
 }
-
-type ScreenProjectOption = {
-    active?: boolean;
-    deleted?: boolean;
-    isDefault?: boolean;
-    name?: string;
-    projectId: string;
-};
 
 export default function DigitalScreenSettings() {
     const { token } = theme.useToken();
@@ -60,7 +50,6 @@ export default function DigitalScreenSettings() {
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [projects, setProjects] = useState<ScreenProjectOption[]>([]);
 
     // Fetch settings on mount
     useEffect(() => {
@@ -83,16 +72,11 @@ export default function DigitalScreenSettings() {
                 screenToken: screenState.screenToken,
                 screenUrl: buildScreenUrl(screenState.screenToken, publicBaseUrl),
                 ownerOverrideEnabled: screenState.ownerOverrideEnabled,
-                selectedProjectId: screenState.selectedProjectId || null,
                 pinnedSlides: screenState.pinnedSlides || [],
                 maxUploads: FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS,
                 uploadExpiryDays: FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS,
                 screenLastSeenAt: screenState.screenLastSeenAt || null,
             });
-            const projectsResult = await getProjectsListWithoutLoader(true);
-            const screenProjects = ((projectsResult?.projects || []) as ScreenProjectOption[])
-                .filter((project) => project.deleted !== true);
-            setProjects(screenProjects);
             setError(null);
         } catch (err) {
             setError('Unable to load screen settings');
@@ -117,16 +101,6 @@ export default function DigitalScreenSettings() {
             message.success(enabled ? 'Your uploads will be prioritized' : 'System content restored');
         } catch (err) {
             message.error('Failed to update setting');
-        }
-    };
-
-    const handleProjectChange = async (projectId: string) => {
-        try {
-            await updateScreenSettings({ selectedProjectId: projectId });
-            setSettings(prev => prev ? { ...prev, selectedProjectId: projectId } : null);
-            message.success('Digital screens now follows the selected project');
-        } catch {
-            message.error('Failed to update project');
         }
     };
 
@@ -165,13 +139,6 @@ export default function DigitalScreenSettings() {
             </Card>
         );
     }
-
-    const selectableProjects = projects.filter((project) => project.active !== false);
-    const selectedProject = selectableProjects.find((project) => project.projectId === settings.selectedProjectId)
-        || projects.find((project) => project.isDefault)
-        || selectableProjects[0]
-        || projects[0]
-        || null;
 
     return (
         <Card
@@ -234,40 +201,13 @@ export default function DigitalScreenSettings() {
             }}>
                 <Text strong style={{ display: 'block', marginBottom: 4 }}>How to manage content</Text>
                 <Text type="secondary">
-                    Menu Board updates automatically from your live menu. Highlights can also show the custom slides you upload here.
+                    Menu Board follows your active store menu automatically. Highlights follows the same menu and can also show the custom slides you upload here.
                 </Text>
             </div>
-
-            {selectedProject ? (
-                <div style={{
-                    marginBottom: 16,
-                    padding: '12px 14px',
-                    background: token.colorBgContainer,
-                    border: `1px solid ${token.colorBorderSecondary}`,
-                    borderRadius: 10,
-                }}>
-                    <Text strong style={{ display: 'block', marginBottom: 8 }}>Project shown on screens</Text>
-                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                        Menu Board and Highlights use the same project.
-                    </Text>
-                    <Select
-                        onChange={handleProjectChange}
-                        optionFilterProp="label"
-                        style={{ width: '100%' }}
-                        value={selectedProject.projectId}
-                        options={selectableProjects.map((project) => ({
-                            value: project.projectId,
-                            label: project.name || 'Untitled project',
-                        }))}
-                    />
-                </div>
-            ) : null}
 
             {/* Screen Link Section */}
             <ScreenLink
                 screenUrl={settings.screenUrl}
-                screenToken={settings.screenToken}
-                selectedProjectName={selectedProject?.name || null}
             />
 
             <Divider />

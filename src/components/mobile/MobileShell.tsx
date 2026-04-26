@@ -1,6 +1,5 @@
 'use client'
 
-import { getFeedbackCount } from '@database/guestFeedback';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
@@ -77,7 +76,6 @@ export default function MobileShell() {
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
-    const [feedbackBadgeCount, setFeedbackBadgeCount] = useState<number>(0);
     const [isOffline, setIsOffline] = useState(false);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
 
@@ -91,18 +89,6 @@ export default function MobileShell() {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, []);
-
-    useEffect(() => {
-        const fetchCount = async () => {
-            try {
-                const result = await getFeedbackCount('needs_attention');
-                setFeedbackBadgeCount(typeof result === 'number' ? result : 0);
-            } catch {
-                setFeedbackBadgeCount(0);
-            }
-        };
-        void fetchCount();
     }, []);
 
     useEffect(() => {
@@ -140,9 +126,6 @@ export default function MobileShell() {
         if (tab !== 'more') {
             setIsMoreRootScreen(true);
             setMoreScreen('main');
-        }
-        if (tab === 'more') {
-            setFeedbackBadgeCount(0);
         }
     }, [activeTab, moreScreen]);
 
@@ -256,7 +239,7 @@ export default function MobileShell() {
                 </Flex>
                 <MobileNavigation
                     activeTab={activeTab}
-                    feedbackCount={feedbackBadgeCount}
+                    feedbackCount={0}
                     onTabChange={handleTabChange}
                     onMoreTabLongPress={emitDeploymentBadgeToggle}
                 />

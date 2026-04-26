@@ -34,6 +34,7 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - **License check** — `getScreenDataByToken()` blocks inactive/blocked stores
 - **Default = Menu Board** — `/screen/token` renders full menu; `?mode=highlights` for slideshow
 - **Mode via URL only** — no settings UI for mode selection; zero cognitive load
+- **Menu source is automatic** — screens follow the store's active menu truth; no project picker
 
 ---
 
@@ -214,6 +215,8 @@ Any change to platformSummary/campaigns_{sId}
 | `ownerOverrideEnabled` | boolean       | "Use my designs only" toggle                                |
 | `pinnedSlides`         | ScreenSlide[] | Max 3, 14-day expiry each                                   |
 | `screenLastSeenAt`     | Timestamp?    | Updated 1x/day by seen signal                               |
+
+`screen` does not store a project assignment. Menu resolution is store-level and automatic.
 
 ### Firestore Index
 

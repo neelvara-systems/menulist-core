@@ -17,11 +17,9 @@ const { Text } = Typography;
 
 interface ScreenLinkProps {
     screenUrl: string;
-    screenToken: string;
-    selectedProjectName?: string | null;
 }
 
-export default function ScreenLink({ screenUrl, screenToken, selectedProjectName }: ScreenLinkProps) {
+export default function ScreenLink({ screenUrl }: ScreenLinkProps) {
     const { token } = theme.useToken();
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
@@ -56,11 +54,6 @@ export default function ScreenLink({ screenUrl, screenToken, selectedProjectName
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                     Full menu with categories, items, and prices — for your counter or ordering screen
                 </Text>
-                {selectedProjectName ? (
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                        Showing project: {selectedProjectName}
-                    </Text>
-                ) : null}
                 <Space.Compact style={{ width: '100%' }}>
                     <Input
                         value={screenUrl}
@@ -98,11 +91,6 @@ export default function ScreenLink({ screenUrl, screenToken, selectedProjectName
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                     Rotating promotional slides with featured items — for entrance or waiting area
                 </Text>
-                {selectedProjectName ? (
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                        Highlights follows the same project: {selectedProjectName}
-                    </Text>
-                ) : null}
                 <Space.Compact style={{ width: '100%' }}>
                     <Input
                         value={highlightsUrl}
@@ -140,7 +128,7 @@ export default function ScreenLink({ screenUrl, screenToken, selectedProjectName
             >
                 <Text style={{ fontSize: 13 }}>
                     <strong>Setup tip:</strong> Open the Menu Board link on your counter TV and the Highlights
-                    link on your entrance TV. Bookmark both — they refresh automatically and work offline.
+                    link on your entrance TV. Both follow your active store menu automatically, refresh themselves, and work offline.
                 </Text>
             </div>
 

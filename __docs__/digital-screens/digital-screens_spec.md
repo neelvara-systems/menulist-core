@@ -23,6 +23,7 @@ Digital Screens operates in **two rendering modes** from the same truth system:
 | **Highlights**           | `/screen/token?mode=highlights` | Rotating promotional slides              | Secondary screen (waiting area, entrance, ambiance) |
 
 Both modes use the same data pipeline, same URL base, same zero-configuration philosophy. Owner opens a link on their TV. That's it.
+The screen always follows the store's currently active menu truth automatically.
 
 ### The Core Insight
 
@@ -79,6 +80,8 @@ Owner should experience:
 Owner should NEVER experience:
 
 > "I configured my screen."
+
+That includes project-level screen assignment. Screens follow the active store menu automatically.
 
 ### Screen Authority Invariants (Non-Negotiable)
 
