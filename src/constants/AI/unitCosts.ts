@@ -21,6 +21,8 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.IMAGE_PROCESSING]: 0.0080, // ~5K input + ~3K output tokens (large menu OCR)
     [AI_ACTIONS_TYPES.ADD_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
     [AI_ACTIONS_TYPES.NEW_ITEM_METADATA]: 0.0008, // ~500 input + ~200 output tokens
+    [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0.0016, // Store-level metadata generation
+    [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0.0020, // Multi-surface store copy generation
 
     // Paid operations
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
@@ -51,6 +53,8 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.IMAGE_PROCESSING]: 0, // Core extraction — always free
     [AI_ACTIONS_TYPES.ADD_DESCRIPTION]: 0, // First-pass description — free
     [AI_ACTIONS_TYPES.NEW_ITEM_METADATA]: 0, // Structural — free
+    [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0, // First-pass SEO setup — free
+    [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0, // First-pass business copy setup — free
 
     // Paid operations (consumes units from monthly credits)
     // These are VALUE-ADD operations that produce premium outputs.

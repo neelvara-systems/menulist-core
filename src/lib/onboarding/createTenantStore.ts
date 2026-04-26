@@ -222,6 +222,11 @@ export async function createTenantStoreInTransaction(
         storeKey,
         ...(autoSubdomain ? { subdomain: autoSubdomain } : {}),
         ...(timeSlotPresets ? { timeSlotPresets } : {}),
+        publicPresence: {
+            displayName: {
+                en: storeName,
+            },
+        },
         roles: defaultRoles,
         isMaster: true,
         onboardingSource,

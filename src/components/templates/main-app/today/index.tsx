@@ -6,6 +6,7 @@ import { getProjectsListWithoutLoader } from "@database/projects";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
@@ -32,9 +33,13 @@ type ProjectSummary = {
     active?: boolean;
     deleted?: boolean;
     isDefault?: boolean;
-    name?: string;
+    name?: string | Record<string, string>;
     projectId: string;
 };
+
+const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
+    getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
+);
 
 const resolveSelectedProject = (
     projects: ProjectSummary[],
@@ -292,7 +297,7 @@ const TodayScreen = () => {
                                 className={styles.todayProjectSelector}
                                 onChange={(value) => setSelectedProjectId(value)}
                                 options={projects.map((project) => ({
-                                    label: project.name || 'Untitled',
+                                    label: resolveProjectName(project.name),
                                     value: project.projectId,
                                 }))}
                                 placeholder="Select project"

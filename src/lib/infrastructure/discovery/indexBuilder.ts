@@ -11,6 +11,7 @@
  */
 
 import { extractStoreSemanticProfile } from '../semantics/attributeRegistry';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { extractTaxonomyFromProject } from '../taxonomy/adapter';
 import type { BusinessEntityIndexDoc, IndexBuildInput } from './types';
 
@@ -39,6 +40,7 @@ export function buildBusinessEntityIndexDoc(
     const semanticProfile = extractStoreSemanticProfile(
         storeData.businessAttributes,
     );
+    const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
 
     // Build the index document (PUBLIC data only)
     const doc: BusinessEntityIndexDoc = {
@@ -48,7 +50,12 @@ export function buildBusinessEntityIndexDoc(
         name: storeData.name || '',
         businessType: storeData.businessType || '',
         businessCategory: businessCategory || '',
-        descriptor: storeData.publicPresence?.descriptor,
+        descriptor: getLocalizedText(
+            storeData.publicPresence?.descriptor,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData.publicPresence?.descriptor, contentLanguage),
+            '',
+        ) || undefined,
 
         // Location
         geo: storeData.geo ? {

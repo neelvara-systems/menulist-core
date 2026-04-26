@@ -17,6 +17,7 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
@@ -84,7 +85,7 @@ interface ObpMenuInfo {
     hasMenu: boolean;
     defaultSlug: string | undefined;
     /** Active, non-special menu projects ordered with the default first. */
-    projects: Array<{ slug: string; name: string; isDefault: boolean; projectImage?: string | null }>;
+    projects: Array<{ slug: string; name: string | Record<string, string>; isDefault: boolean; projectImage?: string | null }>;
 }
 
 const getObpMenuInfo = unstable_cache(
@@ -112,7 +113,7 @@ const getObpMenuInfo = unstable_cache(
             const projects = ordered
                 .map((p: any) => ({
                     slug: (p.slug as string) || '',
-                    name: (p.name as string) || '',
+                    name: p.name,
                     isDefault: p === defaultProj,
                     projectImage: (p.projectImage as string) || null,
                 }))
@@ -362,11 +363,12 @@ export default async function OBPContent({
     const store = storeData;
     const pp = store?.publicPresence || {};
     const isPermanentlyClosed = store?.permanentlyClosed === true;
+    const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
 
     // Derive values
     const accentColor = pp.accentColor || '#111';
-    const descriptor = pp.descriptor || '';
-    const storeName = store?.name || 'Business';
+    const descriptor = getLocalizedText(pp.descriptor, contentLanguage, getPrimaryLocalizedLanguage(pp.descriptor, contentLanguage), '');
+    const storeName = getLocalizedText(pp.displayName, contentLanguage, getPrimaryLocalizedLanguage(pp.displayName, contentLanguage), store?.name || 'Business');
     const logo = store?.logo;
     const firstLetter = storeName.charAt(0);
 
@@ -438,7 +440,7 @@ export default async function OBPContent({
     // default project.
     const ctaProjects = activeProjects.map((p) => ({
         slug: p.slug,
-        name: p.name,
+        name: getLocalizedText(p.name, contentLanguage, getPrimaryLocalizedLanguage(p.name, contentLanguage), 'Menu'),
         isDefault: p.isDefault,
         projectImage: p.projectImage || null,
         url: buildProjectUrl(p.slug),
@@ -448,6 +450,8 @@ export default async function OBPContent({
     const showCall = (pp.showCall !== false) && !!store?.phoneNumber;
     const showWhatsApp = (pp.showWhatsApp !== false) && !!(pp.whatsappNumber || store?.phoneNumber);
     const showDirections = (pp.showDirections !== false) && !!(pp.googleMapsUrl || fullAddress);
+    const showReservation = (pp.showReservation !== false) && !!pp.reservationUrl;
+    const showOrder = (pp.showOrder !== false) && !!pp.orderUrl;
 
     const whatsappNumber = (pp.whatsappNumber || store?.phoneNumber || '').replace(/[^0-9+]/g, '');
     const directionsUrl = pp.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
@@ -479,7 +483,7 @@ export default async function OBPContent({
     const establishedYear = pp.establishedYear;
 
     // Known-for identity cue
-    const knownFor = pp.knownFor;
+    const knownFor = getLocalizedText(pp.knownFor, contentLanguage, getPrimaryLocalizedLanguage(pp.knownFor, contentLanguage), '');
 
     // Short area context (city name for quick location recognition)
     const areaContext = store?.area || store?.city || null;
@@ -536,8 +540,8 @@ export default async function OBPContent({
                  */}
                 {storeOverride && store?.outletSlug && (masterBrandName || store?.name) ? (
                     <MenuBreadcrumb
-                        businessName={masterBrandName || store.name}
-                        outletName={store.name || undefined}
+                        businessName={masterBrandName || storeName}
+                        outletName={storeName || undefined}
                         outletSlug={store.outletSlug}
                     />
                 ) : null}
@@ -686,6 +690,8 @@ export default async function OBPContent({
                     showCall={showCall}
                     showWhatsApp={showWhatsApp}
                     showDirections={showDirections}
+                    showReservation={showReservation}
+                    showOrder={showOrder}
                 />
 
                 {/* ── Info Block ── */}

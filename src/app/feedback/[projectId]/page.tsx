@@ -13,6 +13,7 @@ import GuestFeedbackForm from '@atoms/GuestFeedbackForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
 import { notFound } from 'next/navigation';
@@ -126,11 +127,18 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
         }
 
         const storeData = storeDoc.data();
+        const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
         const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
         const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';
+        const publicDisplayName = getLocalizedText(
+            storeData.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData.publicPresence?.displayName, contentLanguage),
+            businessName || tenantName || '',
+        );
         const displayStoreName = tenantName && businessName
-            ? `${tenantName} - ${businessName}`
-            : businessName || tenantName || undefined;
+            ? `${tenantName} - ${publicDisplayName || businessName}`
+            : publicDisplayName || businessName || tenantName || undefined;
 
         // Check if feedback is enabled at store level (default: true)
         const feedbackEnabled = storeData.feedbackEnabled !== false;
@@ -146,7 +154,14 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
             logoUrl: (storeData.logo || '') as string | undefined,
             officialPageUrl: generateOBPUrl(storeData.subdomain, storeData.customDomain),
             phoneNumber: (storeData.phoneNumber || '') as string | undefined,
-            tagline: (storeData.tagline || storeData.description || '') as string | undefined,
+            tagline: (
+                getLocalizedText(
+                    storeData.tagline,
+                    contentLanguage,
+                    getPrimaryLocalizedLanguage(storeData.tagline, contentLanguage),
+                    '',
+                ) || storeData.description || ''
+            ) as string | undefined,
             whatsappNumber: (storeData.publicPresence?.whatsappNumber || '') as string | undefined,
         };
     } catch (error) {

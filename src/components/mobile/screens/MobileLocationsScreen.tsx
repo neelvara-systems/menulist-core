@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { calculateProration } from '@util/razorpay';
@@ -35,6 +36,15 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     const [policy, setPolicy] = useState<OutletPolicy>(storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY);
     const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY);
     const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+    const resolveStoreName = (store: any) => {
+        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+        return getLocalizedText(
+            store?.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
+            store?.name || `Store ${store?.storeId ?? ''}`,
+        );
+    };
 
     useEffect(() => {
         const nextPolicy = storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY;
@@ -200,7 +210,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                         </Flex>
                                     )
                                 }
-                                title={<Text strong>{store.name || `Store ${store.storeId}`}</Text>}
+                                title={<Text strong>{resolveStoreName(store)}</Text>}
                             />
                         ))}
                     </List>

@@ -29,7 +29,16 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { apiCallComposerClientWithoutLoader } from "@lib/apiHelper/apiCallComposerClientWithoutLoader";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import {
+    getLocalizedText,
+    getPrimaryLocalizedLanguage,
+    updateLocalizedText,
+} from "@lib/localization/text";
 import { logger } from "@lib/monitoring/logger";
+import {
+    buildSummaryProjectFieldPayload,
+    buildSummaryProjectPayload,
+} from "@lib/firestore/summaryProjectsWriter";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import {
@@ -318,6 +327,20 @@ const extractProjectsSummaryMap = (
     );
 };
 
+const resolveProjectTextLanguage = (
+    value: unknown,
+    fallbackLanguage: string = 'en',
+): string => getPrimaryLocalizedLanguage(value as any, fallbackLanguage);
+
+const resolveProjectSummaryName = (
+    value: ProjectSummaryData["name"] | undefined,
+    fallback: string = "Untitled",
+): string => getLocalizedText(value, undefined, resolveProjectTextLanguage(value), fallback);
+
+const resolveProjectSummaryDescription = (
+    value: ProjectSummaryData["description"] | undefined,
+): string => getLocalizedText(value, undefined, resolveProjectTextLanguage(value), '');
+
 // ═══════════════════════════════════════════════════════════════
 // SLUG RESERVATION (T1-N-04 / A-12 PUBLIC-ROUTING-DOCTRINE)
 // ═══════════════════════════════════════════════════════════════
@@ -429,7 +452,7 @@ export const syncProjectToSummary = async (
                 docRef,
                 {
                     lastUpdated: serverTimestamp(),
-                    [`projects.${projectId}`]: cleanData,
+                    ...buildSummaryProjectPayload(projectId, cleanData),
                 },
                 { merge: true },
             );
@@ -495,6 +518,14 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
     return await apiCallComposer(
         async () => {
             const isActive = data.active !== false;
+            const projectLanguage = resolveProjectTextLanguage(data.name, 'en');
+            const localizedName = typeof data.name === 'string'
+                ? updateLocalizedText(undefined, data.name, projectLanguage, 'en')
+                : data.name;
+            const localizedDescription = typeof data.description === 'string'
+                ? updateLocalizedText(undefined, data.description, projectLanguage, 'en')
+                : data.description;
+            const resolvedName = resolveProjectSummaryName(localizedName, "Untitled");
 
             // Generate project ID
             let projectId = data.projectId;
@@ -529,7 +560,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
 
             // Generate permanent URL slug (URL Routing Architecture — ADR-3)
             // Auto-generated from name on creation. Stored permanently.
-            let projectSlug = data.slug || slugify(data.name || "untitled");
+            let projectSlug = data.slug || slugify(resolvedName || "untitled");
             // Validate: block reserved slugs
             if (isReservedProjectSlug(projectSlug)) {
                 projectSlug = `${projectSlug}-menu`;
@@ -544,8 +575,8 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             // Sync to projectsSummary (1 write for efficient listing)
             // Note: Firestore rejects undefined values — omit fields that may be undefined
             const summaryData: ProjectSummaryData = {
-                name: data.name || "Untitled",
-                ...(data.description != null ? { description: data.description } : {}),
+                name: localizedName || { [projectLanguage]: "Untitled" },
+                ...(localizedDescription != null ? { description: localizedDescription } : {}),
                 ...(data.projectImage !== undefined ? { projectImage: data.projectImage } : {}),
                 active: isActive,
                 isDefault: data.isDefault ?? false,
@@ -560,7 +591,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
                         "@database/multiOutlet/propagation"
                     );
                     const sess = await getActiveSession();
-                    await propagateNewProjectToOutlets(sess.tId, sess.sId, projectId, summaryData.name);
+                    await propagateNewProjectToOutlets(sess.tId, sess.sId, projectId, resolvedName);
                 } catch (e) {
                     // Non-blocking: log but don't fail project creation
                     console.warn("[Propagation] Auto-create outlet projects failed (non-blocking):", e);
@@ -594,11 +625,20 @@ export const updateProjectMetadata = async (
                 ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
                 : {};
             const currentSummary: Partial<ProjectSummaryData> = summaryMap[projectId] || {};
+            const textLanguage = resolveProjectTextLanguage(currentSummary.name, 'en');
+            const nextName = typeof data.name === 'string'
+                ? updateLocalizedText(currentSummary.name, data.name, textLanguage, 'en')
+                : data.name;
+            const nextDescription = typeof data.description === 'string'
+                ? updateLocalizedText(currentSummary.description, data.description, textLanguage, 'en')
+                : data.description;
+            const currentName = resolveProjectSummaryName(currentSummary.name, "Untitled");
+            const resolvedNextName = resolveProjectSummaryName(nextName, currentName);
 
             // URL Routing: Handle slug changes when name changes
             let slugUpdate: Partial<ProjectSummaryData> = {};
-            if (data.name && data.name !== currentSummary?.name) {
-                const newSlug = slugify(data.name);
+            if (data.name && resolvedNextName !== currentName) {
+                const newSlug = slugify(resolvedNextName);
                 const oldSlug = currentSummary?.slug;
 
                 // Only update slug if it actually changed and new slug is valid
@@ -644,7 +684,9 @@ export const updateProjectMetadata = async (
                 ...currentSummary,
                 ...data,
                 ...slugUpdate,
-                name: data.name ?? currentSummary.name ?? "Untitled",
+                ...(nextName !== undefined ? { name: nextName } : {}),
+                ...(nextDescription !== undefined ? { description: nextDescription } : {}),
+                name: nextName ?? currentSummary.name ?? { [textLanguage]: "Untitled" },
                 active: data.active ?? currentSummary.active ?? true,
             };
 
@@ -1134,7 +1176,7 @@ export const getDeletedProjectsList = async () => {
                 const data = doc.data();
                 return {
                     projectId: doc.id,
-                    name: data.name || "Untitled",
+                    name: getLocalizedText(data.name, undefined, getPrimaryLocalizedLanguage(data.name), "Untitled"),
                     deleted: true,
                     deletedAt: data.deletedAt,
                 };
@@ -1324,7 +1366,12 @@ export const deleteProject = async (
                         smData.specialMenuStatus !== "cancelled"
                     ) {
                         throw new Error(
-                            `Cannot delete this project: It is referenced by special menu "${smData.specialMenuDisplayName || smId}". ` +
+                            `Cannot delete this project: It is referenced by special menu "${getLocalizedText(
+                                smData.specialMenuDisplayName,
+                                undefined,
+                                resolveProjectTextLanguage(smData.specialMenuDisplayName, 'en'),
+                                smId,
+                            )}". ` +
                             "Cancel or wait for the special menu to expire first.",
                         );
                     }
@@ -1414,6 +1461,16 @@ export const duplicateProject = async (
             const originalSummary: Partial<ProjectSummaryData> = summaryDoc.exists()
                 ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)[projectId] || {}
                 : {};
+            const textLanguage = resolveProjectTextLanguage(originalSummary.name, 'en');
+            const localizedName = updateLocalizedText(undefined, newName, textLanguage, 'en');
+            const localizedDescription = newDescription
+                ? updateLocalizedText(undefined, newDescription, textLanguage, 'en')
+                : updateLocalizedText(
+                    undefined,
+                    `Copy of ${resolveProjectSummaryName(originalSummary?.name, "project")}`,
+                    textLanguage,
+                    'en',
+                );
 
             // 2. Generate new project ID
             const sess = await getActiveSession();
@@ -1433,9 +1490,8 @@ export const duplicateProject = async (
 
             // 5. Add to projectsSummary
             const summaryData: ProjectSummaryData = {
-                name: newName,
-                description:
-                    newDescription || `Copy of ${originalSummary?.name || "project"}`,
+                name: localizedName || { [textLanguage]: newName.trim() || 'Untitled' },
+                description: localizedDescription,
                 projectImage: originalSummary.projectImage ?? null,
                 active: true,
                 isDefault: false,
@@ -1448,7 +1504,12 @@ export const duplicateProject = async (
                     const { propagateNewProjectToOutlets } = await import(
                         "@database/multiOutlet/propagation"
                     );
-                    await propagateNewProjectToOutlets(sess.tId, sess.sId, newProjectId, summaryData.name);
+                    await propagateNewProjectToOutlets(
+                        sess.tId,
+                        sess.sId,
+                        newProjectId,
+                        resolveProjectSummaryName(summaryData.name, 'Untitled'),
+                    );
                 } catch (e) {
                     console.warn("[Propagation] Auto-create outlet projects for duplicate failed (non-blocking):", e);
                 }
@@ -1590,8 +1651,18 @@ export const getSpecialMenus = async (): Promise<{
                 .filter(([, data]: [string, any]) => data.isSpecialMenu === true)
                 .map(([projectId, data]: [string, any]) => ({
                     projectId,
-                    displayName: data.specialMenuDisplayName || data.name,
-                    description: data.description as string | undefined,
+                    displayName: getLocalizedText(
+                        data.specialMenuDisplayName || data.name,
+                        undefined,
+                        resolveProjectTextLanguage(data.specialMenuDisplayName || data.name),
+                        'Untitled',
+                    ),
+                    description: getLocalizedText(
+                        data.description,
+                        undefined,
+                        resolveProjectTextLanguage(data.description),
+                        '',
+                    ) || undefined,
                     status: (data.specialMenuStatus || "scheduled") as 'scheduled' | 'active' | 'expired' | 'cancelled',
                     mode: (data.specialMenuMode || "overlay") as 'replace' | 'overlay',
                     startsAt: data.specialMenuStartsAt as string,
@@ -1676,7 +1747,12 @@ export const createSpecialMenuProject = async (params: {
                         const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
                         if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
                             throw new Error(
-                                `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
+                                `Schedule conflicts with "${getLocalizedText(
+                                    projData.specialMenuDisplayName || projData.name,
+                                    undefined,
+                                    resolveProjectTextLanguage(projData.specialMenuDisplayName || projData.name),
+                                    'Untitled',
+                                )}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
                             );
                         }
                     }
@@ -1687,6 +1763,9 @@ export const createSpecialMenuProject = async (params: {
             const sess = await getActiveSession();
             const timestamp = Date.now().toString(36);
             const newProjectId = `${sess.tId}-${timestamp}-${sess.sId}`;
+            const textLanguage = baseData.languages?.[0] || 'en';
+            const localizedDisplayName = updateLocalizedText(undefined, displayName, textLanguage, 'en')
+                || { [textLanguage]: displayName.trim() };
 
             const specialMenuMetadata: SpecialMenuMetadata = {
                 baseProjectId,
@@ -1694,7 +1773,7 @@ export const createSpecialMenuProject = async (params: {
                 startsAt,
                 endsAt,
                 status: "scheduled",
-                displayName,
+                displayName: localizedDisplayName,
             };
 
             const newProjectData = await requestBodyComposer({
@@ -1713,13 +1792,13 @@ export const createSpecialMenuProject = async (params: {
 
             // 5. Sync to projectsSummary
             const summaryData: ProjectSummaryData = {
-                name: displayName,
-                description: `Special menu: ${displayName}`,
+                name: localizedDisplayName,
+                description: updateLocalizedText(undefined, `Special menu: ${displayName}`, textLanguage, 'en'),
                 projectImage: summaryProjects[baseProjectId]?.projectImage ?? null,
                 active: true,
                 isDefault: false,
                 isSpecialMenu: true,
-                specialMenuDisplayName: displayName,
+                specialMenuDisplayName: localizedDisplayName,
                 specialMenuStatus: "scheduled",
                 specialMenuStartsAt: startsAt,
                 specialMenuEndsAt: endsAt,
@@ -1775,6 +1854,17 @@ export const updateSpecialMenuProject = async (params: {
 
             const projectData = projectDoc.data() as Project;
             if (!projectData._specialMenu) throw new Error("Not a special menu project");
+            const textLanguage = projectData.languages?.[0]
+                || resolveProjectTextLanguage(projectData._specialMenu.displayName, 'en');
+            const localizedDisplayName = updateLocalizedText(
+                projectData._specialMenu.displayName,
+                trimmedName,
+                textLanguage,
+                'en',
+            ) || { [textLanguage]: trimmedName };
+            const localizedDescription = trimmedDescription
+                ? updateLocalizedText(projectData.description, trimmedDescription, textLanguage, 'en')
+                : undefined;
 
             const currentStatus = projectData._specialMenu.status;
             if (currentStatus === "expired" || currentStatus === "cancelled") {
@@ -1798,7 +1888,12 @@ export const updateSpecialMenuProject = async (params: {
                         const existingEnd = new Date(projData.specialMenuEndsAt).getTime();
                         if (startDate.getTime() < existingEnd && endDate.getTime() > existingStart) {
                             throw new Error(
-                                `Schedule conflicts with "${projData.specialMenuDisplayName || projData.name}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
+                                `Schedule conflicts with "${getLocalizedText(
+                                    projData.specialMenuDisplayName || projData.name,
+                                    undefined,
+                                    resolveProjectTextLanguage(projData.specialMenuDisplayName || projData.name),
+                                    'Untitled',
+                                )}" (${projData.specialMenuStartsAt} — ${projData.specialMenuEndsAt})`,
                             );
                         }
                     }
@@ -1817,11 +1912,11 @@ export const updateSpecialMenuProject = async (params: {
             }
 
             await setDoc(projectRef, {
-                name: trimmedName,
-                ...(trimmedDescription ? { description: trimmedDescription } : { description: deleteField() }),
+                name: localizedDisplayName,
+                ...(trimmedDescription ? { description: localizedDescription } : { description: deleteField() }),
                 _specialMenu: {
                     ...projectData._specialMenu,
-                    displayName: trimmedName,
+                    displayName: localizedDisplayName,
                     endsAt,
                     startsAt,
                     status: nextStatus,
@@ -1830,12 +1925,12 @@ export const updateSpecialMenuProject = async (params: {
 
             const summaryDocRef = await getProjectsSummaryDocRef();
             await setDoc(summaryDocRef, {
-                [`projects.${projectId}.name`]: trimmedName,
-                [`projects.${projectId}.description`]: trimmedDescription || '',
-                [`projects.${projectId}.specialMenuDisplayName`]: trimmedName,
-                [`projects.${projectId}.specialMenuStartsAt`]: startsAt,
-                [`projects.${projectId}.specialMenuEndsAt`]: endsAt,
-                [`projects.${projectId}.specialMenuStatus`]: nextStatus,
+                ...buildSummaryProjectFieldPayload(projectId, 'name', localizedDisplayName),
+                ...buildSummaryProjectFieldPayload(projectId, 'description', trimmedDescription ? localizedDescription : ''),
+                ...buildSummaryProjectFieldPayload(projectId, 'specialMenuDisplayName', localizedDisplayName),
+                ...buildSummaryProjectFieldPayload(projectId, 'specialMenuStartsAt', startsAt),
+                ...buildSummaryProjectFieldPayload(projectId, 'specialMenuEndsAt', endsAt),
+                ...buildSummaryProjectFieldPayload(projectId, 'specialMenuStatus', nextStatus),
             }, { merge: true });
 
             if (nextStatus === "active") {
@@ -1846,7 +1941,7 @@ export const updateSpecialMenuProject = async (params: {
                     trimmedName,
                 );
                 await setDoc(summaryDocRef, {
-                    [`projects.${projectId}.specialMenuStatus`]: "active",
+                    ...buildSummaryProjectFieldPayload(projectId, 'specialMenuStatus', "active"),
                 }, { merge: true });
             } else if (currentStatus === "active") {
                 await setDoc(storeRef, {
@@ -1930,7 +2025,12 @@ export const activateSpecialMenu = async (projectId: string) => {
                 projectId,
                 data._specialMenu.mode,
                 data._specialMenu.endsAt,
-                data._specialMenu.displayName,
+                getLocalizedText(
+                    data._specialMenu.displayName,
+                    data.languages?.[0] || 'en',
+                    getPrimaryLocalizedLanguage(data._specialMenu.displayName, data.languages?.[0] || 'en'),
+                    'Special Menu',
+                ),
             );
 
             // Update summary

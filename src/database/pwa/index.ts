@@ -18,6 +18,7 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { uploadFile } from '@lib/firebase/storage';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
+import { getLocalizedText, getPrimaryLocalizedLanguage, isLocalizedText, LocalizedTextValue } from '@lib/localization/text';
 import { doc, updateDoc } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.STORES;
@@ -35,7 +36,13 @@ export interface PWASettings {
     /** Whether to show the install prompt banner. Defaults to true. */
     promoteInstallation?: boolean;
     /** Override short_name in manifest (max 12 chars). Falls back to first word of store name. */
-    pwaShortName?: string;
+    pwaShortName?: string | Record<string, string>;
+}
+
+export interface ResolvedPWASettings {
+    enableInstallableApp: boolean;
+    promoteInstallation: boolean;
+    pwaShortName: string;
 }
 
 export type PWAIconMode = 'generated' | 'override';
@@ -78,6 +85,13 @@ export const updatePWASettings = async (
             }
             if (typeof settings.pwaShortName === 'string') {
                 update['pwaSettings.pwaShortName'] = settings.pwaShortName.trim().slice(0, 12);
+            } else if (isLocalizedText(settings.pwaShortName)) {
+                update['pwaSettings.pwaShortName'] = Object.fromEntries(
+                    Object.entries(settings.pwaShortName).map(([language, value]) => [
+                        language,
+                        String(value || '').trim().slice(0, 12),
+                    ]),
+                );
             }
             if (Object.keys(update).length === 0) return { noop: true };
 
@@ -139,7 +153,7 @@ export const uploadPWAIconOverride = async ({
 // Defaults — read by UI when the store doc hasn't been touched.
 // ─────────────────────────────────────────────────────────────
 
-export const PWA_DEFAULTS: Required<PWASettings> = {
+export const PWA_DEFAULTS: ResolvedPWASettings = {
     enableInstallableApp: true,
     promoteInstallation: true,
     pwaShortName: '',
@@ -149,13 +163,20 @@ export const PWA_DEFAULTS: Required<PWASettings> = {
  * Resolve effective PWA settings by merging store doc values with defaults.
  * UI layer should use this to avoid showing "undefined" states.
  */
-export function resolvePWASettings(storeDoc: any): Required<PWASettings> {
+export function resolvePWASettings(storeDoc: any): ResolvedPWASettings {
     const s = storeDoc?.pwaSettings || {};
+    const contentLanguage = storeDoc?.defaultLanguage || storeDoc?.activeLanguages?.[0] || storeDoc?.language || 'en';
+    const resolvedShortName = getLocalizedText(
+        s.pwaShortName as LocalizedTextValue,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(s.pwaShortName as LocalizedTextValue, contentLanguage),
+        PWA_DEFAULTS.pwaShortName,
+    );
     return {
         enableInstallableApp:
             typeof s.enableInstallableApp === 'boolean' ? s.enableInstallableApp : PWA_DEFAULTS.enableInstallableApp,
         promoteInstallation:
             typeof s.promoteInstallation === 'boolean' ? s.promoteInstallation : PWA_DEFAULTS.promoteInstallation,
-        pwaShortName: typeof s.pwaShortName === 'string' ? s.pwaShortName : PWA_DEFAULTS.pwaShortName,
+        pwaShortName: resolvedShortName,
     };
 }

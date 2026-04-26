@@ -1,22 +1,30 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import useViewportInfo from '@hook/useViewportInfo';
 import { updateStore } from '@database/stores';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
+import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ColorPicker, InputNumber, Upload, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
+    LuCalendar,
+    LuExternalLink,
     LuMapPin,
     LuMessageSquare,
+    LuShoppingBag,
     LuPhone,
     LuTrash2,
     LuUpload
 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, Toast } from '../antd';
+import MobileLinkCard from '../components/MobileLinkCard';
+import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileOfficialPageScreenProps {
@@ -25,20 +33,27 @@ interface MobileOfficialPageScreenProps {
 
 function getInitialPresenceForm(storeDetails: any) {
     const initialPresence = storeDetails?.publicPresence || {};
+    const contentLanguage = storeDetails?.defaultLanguage
+        || storeDetails?.activeLanguages?.[0]
+        || storeDetails?.language
+        || 'en';
     return {
         accentColor: initialPresence.accentColor || '#1677ff',
-        descriptor: initialPresence.descriptor || '',
+        displayName: getLocalizedText(initialPresence.displayName, contentLanguage, getPrimaryLocalizedLanguage(initialPresence.displayName, contentLanguage), ''),
+        descriptor: getLocalizedText(initialPresence.descriptor, contentLanguage, getPrimaryLocalizedLanguage(initialPresence.descriptor, contentLanguage), ''),
         establishedYear: initialPresence.establishedYear,
         googleMapsUrl: initialPresence.googleMapsUrl || '',
         googleRating: initialPresence.googleRating,
         googleReviewCount: initialPresence.googleReviewCount,
         googleReviewUrl: initialPresence.googleReviewUrl || '',
-        knownFor: initialPresence.knownFor || '',
+        knownFor: getLocalizedText(initialPresence.knownFor, contentLanguage, getPrimaryLocalizedLanguage(initialPresence.knownFor, contentLanguage), ''),
         orderUrl: initialPresence.orderUrl || '',
         photos: initialPresence.photos || [],
         reservationUrl: initialPresence.reservationUrl || '',
         showCall: initialPresence.showCall !== false,
         showDirections: initialPresence.showDirections !== false,
+        showOrder: initialPresence.showOrder !== false,
+        showReservation: initialPresence.showReservation !== false,
         showWhatsApp: initialPresence.showWhatsApp !== false,
         whatsappNumber: initialPresence.whatsappNumber || '',
     };
@@ -47,12 +62,15 @@ function getInitialPresenceForm(storeDetails: any) {
 export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
-    const common = useTranslations('Common');
+    const tShare = useTranslations('MobileShare');
     const { token } = theme.useToken();
+    const { isCompactHandheld } = useViewportInfo();
     const session = useClientAuthSession();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
@@ -75,6 +93,24 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             publicPresence: {
                 ...(storeDetails.publicPresence || {}),
                 ...nextPresence,
+                displayName: updateLocalizedText(
+                    storeDetails.publicPresence?.displayName,
+                    nextPresence.displayName,
+                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                    'en',
+                ),
+                descriptor: updateLocalizedText(
+                    storeDetails.publicPresence?.descriptor,
+                    nextPresence.descriptor,
+                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                    'en',
+                ),
+                knownFor: updateLocalizedText(
+                    storeDetails.publicPresence?.knownFor,
+                    nextPresence.knownFor,
+                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                    'en',
+                ),
                 photos: nextPresence.photos.filter(Boolean),
             },
         };
@@ -134,6 +170,34 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setFormData(originalFormData);
     }, [originalFormData]);
 
+    const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
+        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url
+    ), []);
+
+    const handleCopyLink = useCallback(async (value: string, label: string) => {
+        try {
+            await navigator.clipboard.writeText(value);
+            Toast.show({ content: tShare('copiedLabel', { label }), duration: 1200 });
+        } catch {
+            Toast.show({ content: tShare('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
+        }
+    }, [tShare]);
+
+    const handleNativeShare = useCallback(async ({ label, text, url }: { label: string; text?: string; url: string }) => {
+        if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
+
+        try {
+            await navigator.share({ text, title: label, url });
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            Toast.show({ content: tShare('couldNotCopy'), duration: 1500 });
+        }
+    }, [tShare]);
+
+    useEffect(() => {
+        setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+    }, []);
+
     if (!FEATURE_FLAGS.ENABLE_OBP) {
         return null;
     }
@@ -156,32 +220,31 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 />
 
                 {officialPageUrl ? (
-                    <Card>
-                        <Flex gap={10} vertical>
-                            <Text strong>{t('officialPage')}</Text>
-                            <Card size="small">
-                                <Text style={{ wordBreak: 'break-all' }}>{officialPageUrl}</Text>
-                            </Card>
-                            <Flex gap={8}>
-                                <Button
-                                    block
-                                    fill="outline"
-                                    onClick={() => navigator.clipboard.writeText(officialPageUrl)}
-                                    size="small"
-                                >
-                                    {common('copy')}
-                                </Button>
-                                <Button
-                                    block
-                                    onClick={() => window.location.assign(officialPageUrl)}
-                                    size="small"
-                                >
-                                    {t('viewOfficialPage')}
-                                </Button>
-                            </Flex>
-                        </Flex>
-                    </Card>
+                    <MobileLinkCard
+                        compact={isCompactHandheld}
+                        description={tShare('obpShareHint')}
+                        icon={<LuExternalLink color={token.colorText} size={18} />}
+                        isPrimary
+                        label={tShare('officialBusinessLink')}
+                        onCopy={() => void handleCopyLink(withSource(officialPageUrl, 'copy'), tShare('officialBusinessLink'))}
+                        onOpen={() => window.location.assign(withSource(officialPageUrl, 'direct'))}
+                        onShare={supportsNativeShare ? () => void handleNativeShare({
+                            label: tShare('officialBusinessLink'),
+                            text: tShare('obpShareHint'),
+                            url: withSource(officialPageUrl, 'share'),
+                        }) : undefined}
+                        onShowQr={() => setIsQrSheetOpen(true)}
+                        value={officialPageUrl}
+                    />
                 ) : null}
+
+                <Card>
+                    <Flex gap={10} vertical>
+                        <Text strong>Public display name</Text>
+                        <Input maxLength={60} onChange={(value) => setFormData((previous) => ({ ...previous, displayName: value }))} placeholder="e.g. Joe's Pizza" value={formData.displayName} />
+                        <Text type="secondary">Optional. Shown publicly instead of your internal store name for this language.</Text>
+                    </Flex>
+                </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
@@ -354,6 +417,20 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             </Flex>
                             <Switch checked={formData.showDirections} onChange={(value) => setFormData((previous) => ({ ...previous, showDirections: value }))} />
                         </Flex>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuCalendar size={16} />
+                                <Text>{t('showReservationButton')}</Text>
+                            </Flex>
+                            <Switch checked={formData.showReservation} onChange={(value) => setFormData((previous) => ({ ...previous, showReservation: value }))} />
+                        </Flex>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuShoppingBag size={16} />
+                                <Text>{t('showOrderButton')}</Text>
+                            </Flex>
+                            <Switch checked={formData.showOrder} onChange={(value) => setFormData((previous) => ({ ...previous, showOrder: value }))} />
+                        </Flex>
                     </Flex>
                 </Card>
 
@@ -378,6 +455,20 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     </Button>
                 </Flex>
             </Flex>
+            <MobileQrCodeSheet
+                copyErrorMessage={tShare('couldNotCopy')}
+                copySuccessMessage={tShare('linkCopied')}
+                downloadSuccessMessage={tShare('qrDownloaded')}
+                filename={buildQrCodeFilename(`${storeDetails?.name || 'business'}-official-page`, 'qr')}
+                generatingLabel={tShare('generatingQr')}
+                helperText={tShare('obpShareHint')}
+                imageAlt={tShare('officialBusinessLink')}
+                onClose={() => setIsQrSheetOpen(false)}
+                qrErrorMessage={tShare('qrFailed')}
+                title={tShare('officialBusinessLink')}
+                url={withSource(officialPageUrl, 'qr')}
+                visible={isQrSheetOpen}
+            />
         </Flex>
     );
 }

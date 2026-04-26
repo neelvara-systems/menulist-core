@@ -10,6 +10,7 @@
 
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaWhatsAppHandoffClient from './PwaWhatsAppHandoffClient';
 
@@ -59,13 +60,20 @@ export default async function PwaWhatsAppHandoffPage() {
     if (!waUrl) return notFound();
 
     const trackingEnabled = store.analytics?.trackMenuViews !== false;
+    const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
+    const storeName = getLocalizedText(
+        store.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
+        store.name || 'Restaurant',
+    );
 
     return (
         <PwaWhatsAppHandoffClient
             storeId={store.id}
             tenantId={store.tenantId}
             waUrl={waUrl}
-            storeName={store.name || 'Restaurant'}
+            storeName={storeName}
             trackingEnabled={trackingEnabled}
         />
     );

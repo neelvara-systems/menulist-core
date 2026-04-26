@@ -3,6 +3,7 @@
 import { addProject, deleteProject, duplicateProject, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -22,7 +23,7 @@ type ProjectSheetProject = {
     description?: string;
     isDefault?: boolean;
     isSpecialMenu?: boolean;
-    name: string;
+    name: string | Record<string, string>;
     projectImage?: string | null;
     projectId: string;
     specialMenuBaseProjectId?: string;
@@ -101,6 +102,10 @@ const formatScheduleDateTime = (value?: string | null) => {
         hour: 'numeric',
         minute: '2-digit',
     }).format(date);
+};
+
+const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => {
+    return getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback);
 };
 
 export default function MobileProjectSelectorSheet({
@@ -232,7 +237,7 @@ export default function MobileProjectSelectorSheet({
     const openEdit = (project: ProjectSheetProject) => {
         setFormMode('edit');
         setFormProjectId(project.projectId);
-        setFormName(project.name);
+        setFormName(resolveProjectName(project.name));
         setFormDescription(project.description || '');
         setFormProjectImage(project.projectImage || null);
         setFormActive(project.active !== false);
@@ -243,7 +248,7 @@ export default function MobileProjectSelectorSheet({
     const openDuplicate = (project: ProjectSheetProject) => {
         setFormMode('duplicate');
         setFormProjectId(project.projectId);
-        setFormName(`Copy of ${project.name}`);
+        setFormName(`Copy of ${resolveProjectName(project.name)}`);
         setFormDescription(project.description || '');
         setFormProjectImage(project.projectImage || null);
         setFormActive(true);
@@ -373,8 +378,8 @@ export default function MobileProjectSelectorSheet({
     };
 
     const initialFormName = formMode === 'duplicate'
-        ? `Copy of ${formSourceProject?.name || ''}`
-        : formSourceProject?.name || '';
+        ? `Copy of ${resolveProjectName(formSourceProject?.name, '')}`
+        : resolveProjectName(formSourceProject?.name, '');
     const initialFormDescription = formSourceProject?.description || '';
     const initialFormProjectImage = formSourceProject?.projectImage || null;
     const initialFormStartsAt = formSourceProject?.specialMenuStartsAt || '';
@@ -395,7 +400,7 @@ export default function MobileProjectSelectorSheet({
 
     const handleResetEditForm = () => {
         if (!formSourceProject) return;
-        setFormName(formSourceProject.name || '');
+        setFormName(resolveProjectName(formSourceProject.name, ''));
         setFormDescription(formSourceProject.description || '');
         setFormProjectImage(formSourceProject.projectImage || null);
         setFormActive(formSourceProject.active !== false);
@@ -455,14 +460,15 @@ export default function MobileProjectSelectorSheet({
 
     const getProjectShareUrl = (project: ProjectSheetProject) => {
         if (!storeDetails) return null;
-        if (!project.name || project.deleted === true) return null;
+        const projectName = resolveProjectName(project.name, '');
+        if (!projectName || project.deleted === true) return null;
 
         const subdomain = storeDetails.subdomain || '';
         const customDomain = storeDetails.customDomain;
         if (!subdomain && !customDomain) return null;
 
         try {
-            return generateProjectUrl(subdomain, customDomain, project.name, false);
+            return generateProjectUrl(subdomain, customDomain, projectName, false);
         } catch {
             return null;
         }
@@ -510,15 +516,22 @@ export default function MobileProjectSelectorSheet({
 
     const handleShowProjectQr = (project: ProjectSheetProject) => {
         const shareUrl = getProjectShareUrl(project);
+        const projectName = resolveProjectName(project.name, labels.offeringTitle);
+        const storeName = getLocalizedText(
+            (storeDetails as any)?.publicPresence?.displayName,
+            undefined,
+            getPrimaryLocalizedLanguage((storeDetails as any)?.publicPresence?.displayName, 'en'),
+            storeDetails?.name || 'menu'
+        );
         if (!shareUrl) {
             Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
             return;
         }
 
         setQrSheet({
-            filename: buildQrCodeFilename(`${storeDetails?.name || 'menu'}-${project.name}-direct-link`, 'qr'),
+            filename: buildQrCodeFilename(`${storeName}-${projectName}-direct-link`, 'qr'),
             helperText: tShare('directOfferingLinkDesc', { offering: labels.offeringLower }),
-            title: `${project.name} ${tShare('showQr')}`,
+            title: `${projectName} ${tShare('showQr')}`,
             url: withSource(shareUrl, 'qr'),
         });
         setIsQrSheetOpen(true);
@@ -626,7 +639,7 @@ export default function MobileProjectSelectorSheet({
                 void Dialog.confirm({
                     cancelText: t('cancel'),
                     confirmText: 'Reset catalog',
-                    content: `Reset "${managingProject.name}" and remove its uploaded files and extracted menu data? You can keep the catalog itself, but you will need to upload and build it again.`,
+                    content: `Reset "${resolveProjectName(managingProject.name)}" and remove its uploaded files and extracted menu data? You can keep the catalog itself, but you will need to upload and build it again.`,
                     onConfirm: () => void handleResetProject(managingProject),
                 });
             },
@@ -645,7 +658,7 @@ export default function MobileProjectSelectorSheet({
                 void Dialog.confirm({
                     cancelText: t('cancel'),
                     confirmText: 'Delete catalog',
-                    content: `Delete "${managingProject.name}" permanently? This removes the catalog, its files, and its menu data. This action cannot be undone.`,
+                    content: `Delete "${resolveProjectName(managingProject.name)}" permanently? This removes the catalog, its files, and its menu data. This action cannot be undone.`,
                     onConfirm: () => void handleDeleteProject(managingProject),
                 });
             },
@@ -734,7 +747,7 @@ export default function MobileProjectSelectorSheet({
                         <Flex gap={4} style={{ flex: 1 }} vertical>
                             <Flex align="center" gap={8} wrap="wrap">
                                 <Title level={4} style={{ margin: 0 }}>
-                                    {managingProject?.name || t('catalogActions')}
+                                    {resolveProjectName(managingProject?.name, t('catalogActions'))}
                                 </Title>
                                 {managingProject?.deleted ? (
                                     <Tag color="danger">Deleted</Tag>

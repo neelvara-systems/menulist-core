@@ -22,6 +22,8 @@ interface OBPActionsProps {
     showCall: boolean;
     showWhatsApp: boolean;
     showDirections: boolean;
+    showReservation: boolean;
+    showOrder: boolean;
 }
 
 export default function OBPActions({
@@ -35,8 +37,10 @@ export default function OBPActions({
     showCall,
     showWhatsApp,
     showDirections,
+    showReservation,
+    showOrder,
 }: OBPActionsProps) {
-    const hasAnyAction = showCall || showWhatsApp || showDirections || !!reservationUrl || !!orderUrl;
+    const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl);
     if (!hasAnyAction) return null;
 
     const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
@@ -82,7 +86,7 @@ export default function OBPActions({
                     Directions
                 </a>
             )}
-            {reservationUrl && (
+            {showReservation && reservationUrl && (
                 <a
                     href={reservationUrl}
                     className={styles.actionButton}
@@ -94,7 +98,7 @@ export default function OBPActions({
                     Reserve
                 </a>
             )}
-            {orderUrl && (
+            {showOrder && orderUrl && (
                 <a
                     href={orderUrl}
                     className={styles.actionButton}

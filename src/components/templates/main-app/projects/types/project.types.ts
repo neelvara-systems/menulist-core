@@ -6,6 +6,7 @@
 
 import type { MasterSnapshot } from "@type/multiOutlet.types";
 import { Timestamp } from "firebase/firestore";
+import type { LocalizedText } from "@lib/localization/text";
 import { CategoryTimeSlot, ExtractedData } from "./extractedData.types";
 import { ThemeConfig } from "./theme.types";
 
@@ -67,8 +68,8 @@ export interface PricingIntegrityState {
  */
 export interface ProjectMetadata {
     projectId?: string;
-    name: string;
-    description?: string;
+    name: string | LocalizedText;
+    description?: string | LocalizedText;
     projectImage?: string | null;
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
@@ -97,8 +98,8 @@ export interface ProjectMetadata {
  * Used for efficient project listing (1 read per store)
  */
 export interface ProjectSummaryData {
-    name: string;
-    description?: string;
+    name: string | LocalizedText;
+    description?: string | LocalizedText;
     projectImage?: string | null;
     active: boolean;
     isDefault?: boolean;
@@ -113,7 +114,7 @@ export interface ProjectSummaryData {
     /** True if this is a special menu project */
     isSpecialMenu?: boolean;
     /** Special menu display name (e.g., "Diwali Menu") */
-    specialMenuDisplayName?: string;
+    specialMenuDisplayName?: string | LocalizedText;
     /** Special menu lifecycle status for dashboard display */
     specialMenuStatus?: SpecialMenuStatus;
     /** Schedule start time (ISO 8601) for quick dashboard display */
@@ -276,7 +277,7 @@ export interface SpecialMenuMetadata {
     behaviorTemplate?: SpecialMenuBehaviorTemplate;
 
     /** User-facing name for the special menu period */
-    displayName: string;
+    displayName: string | LocalizedText;
 
     /** Timestamp of actual activation (ISO 8601, set by system) */
     activatedAt?: string;
@@ -287,6 +288,8 @@ export interface SpecialMenuMetadata {
 
 export interface Project {
     projectId?: string;
+    name?: string | LocalizedText;
+    description?: string | LocalizedText;
     files?: ProjectFileType[];
     languages?: string[];
     config?: ThemeConfig;

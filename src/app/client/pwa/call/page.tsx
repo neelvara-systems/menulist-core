@@ -13,6 +13,7 @@
 
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaCallHandoffClient from './PwaCallHandoffClient';
 
@@ -44,13 +45,20 @@ export default async function PwaCallHandoffPage() {
     if (!telUrl) return notFound();
 
     const trackingEnabled = store.analytics?.trackMenuViews !== false;
+    const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
+    const storeName = getLocalizedText(
+        store.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
+        store.name || 'Restaurant',
+    );
 
     return (
         <PwaCallHandoffClient
             storeId={store.id}
             tenantId={store.tenantId}
             telUrl={telUrl}
-            storeName={store.name || 'Restaurant'}
+            storeName={storeName}
             trackingEnabled={trackingEnabled}
         />
     );

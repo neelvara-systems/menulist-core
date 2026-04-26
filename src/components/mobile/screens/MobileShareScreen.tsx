@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -24,6 +25,7 @@ import {
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
+import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -35,7 +37,7 @@ type ProjectLink = {
     feedbackUrl: string;
     isDefault: boolean;
     isSpecialMenu?: boolean;
-    name: string;
+    name: string | Record<string, string>;
     projectId: string;
     specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
@@ -83,6 +85,20 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const resolveProjectName = useCallback(
+        (name: string | Record<string, string> | undefined, fallback?: string) =>
+            getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback || tProjectSelector('untitled')),
+        [tProjectSelector]
+    );
+    const storeDisplayName = useMemo(
+        () => getLocalizedText(
+            (storeDetails as any)?.publicPresence?.displayName,
+            undefined,
+            getPrimaryLocalizedLanguage((storeDetails as any)?.publicPresence?.displayName, 'en'),
+            storeDetails?.name || t('yourBusiness')
+        ),
+        [storeDetails, t]
+    );
 
     const data = useMemo<ShareData | null>(() => {
         if (!storeDetails) return null;
@@ -105,7 +121,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         const menuLink = generateProjectUrl(
             subdomain,
             customDomain,
-            defaultProject.name,
+            resolveProjectName(defaultProject.name, labels.offeringTitle),
             false
         );
 
@@ -114,9 +130,9 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             deleted: project.deleted === true,
             feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : '',
             isDefault: project.isDefault || false,
-            name: project.name || tProjectSelector('untitled'),
+            name: project.name,
             projectId: project.projectId,
-            url: generateProjectUrl(subdomain, customDomain, project.name, false),
+            url: generateProjectUrl(subdomain, customDomain, resolveProjectName(project.name, labels.offeringTitle), false),
         }));
 
         const posSync = storeDetails.posSync;
@@ -135,10 +151,10 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             obpLink,
             posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
             projectId: defaultProject.projectId || null,
-            projectName: defaultProject.name || null,
-            storeName: storeDetails.name || t('yourBusiness'),
+            projectName: resolveProjectName(defaultProject.name, labels.offeringTitle),
+            storeName: storeDisplayName,
         };
-    }, [projectsList, selectedProjectId, storeDetails, t, tProjectSelector]);
+    }, [labels.offeringTitle, projectsList, resolveProjectName, selectedProjectId, storeDetails, storeDisplayName, t]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -217,10 +233,13 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         id: activeProject.projectId,
                         isDefault: activeProject.isDefault,
                         isSpecialMenu: activeProject.isSpecialMenu === true,
-                        name: activeProject.name || tProjectSelector('untitled'),
+                        name: activeProject.name,
                         specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
                         specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
-                            ? data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name
+                            ? resolveProjectName(
+                                data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name,
+                                labels.offeringTitle,
+                            )
                             : undefined,
                         specialMenuEndsAt: activeProject.specialMenuEndsAt,
                         specialMenuStatus: activeProject.specialMenuStatus,
@@ -229,7 +248,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 />
             ) : null}
 
-            <LinkCard
+            <MobileLinkCard
                 compact={isCompactHandheld}
                 description={t('obpShareHint')}
                 icon={<LuExternalLink color={token.colorText} size={18} />}
@@ -248,7 +267,6 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                     title: t('officialBusinessLink'),
                     url: withSource(data.obpLink, 'qr'),
                 })}
-                showQrLabel={t('showQr')}
                 value={data.obpLink}
             />
 
@@ -258,7 +276,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 title={t('directOfferingLink', { offering: labels.offeringTitle })}
             />
 
-            <LinkCard
+            <MobileLinkCard
                 compact={isCompactHandheld}
                 description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
                 icon={<LuLink2 color={token.colorText} size={18} />}
@@ -276,12 +294,11 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                     title: t('directOfferingLink', { offering: labels.offeringTitle }),
                     url: withSource(data.menuLink, 'qr'),
                 })}
-                showQrLabel={t('showQr')}
                 value={data.menuLink}
             />
 
             {data.installAppLink ? (
-                <LinkCard
+                <MobileLinkCard
                     compact={isCompactHandheld}
                     description="Share this when customers should install your business app directly on their phone."
                     icon={<LuSmartphone color={token.colorText} size={18} />}
@@ -299,13 +316,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         title: 'Customer App install link',
                         url: withSource(data.installAppLink as string, 'qr'),
                     })}
-                    showQrLabel={t('showQr')}
                     value={data.installAppLink}
                 />
             ) : null}
 
             {data.hasFeedbackEnabled && data.feedbackLink ? (
-                <LinkCard
+                <MobileLinkCard
                     compact={isCompactHandheld}
                     description={t('feedbackLinkDesc')}
                     icon={<LuMessageSquare color={token.colorText} size={18} />}
@@ -323,7 +339,6 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         title: t('feedbackLink'),
                         url: data.feedbackQrLink,
                     })}
-                    showQrLabel={t('showQr')}
                     value={data.feedbackLink}
                 />
             ) : null}
@@ -334,7 +349,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         activeProjects={data.allProjects
                             .filter((project) => project.active !== false && project.deleted !== true)
                             .map((project) => ({
-                                name: project.name,
+                                name: resolveProjectName(project.name, labels.offeringTitle),
                                 url: project.url,
                             }))}
                         address={buildStoreAddress(storeDetails)}
@@ -342,7 +357,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         menuLink={data.menuLink}
                         obpLink={data.obpLink}
                         phone={storeDetails?.phoneNumber || undefined}
-                        projectName={data.allProjects.length > 1 ? (activeProject?.name || data.projectName || undefined) : undefined}
+                        projectName={data.allProjects.length > 1 ? resolveProjectName(activeProject?.name, data.projectName || undefined) : undefined}
                         storeName={data.storeName}
                         timeZone={storeDetails?.timeZone}
                         workingHours={storeDetails?.workingHours}
@@ -367,7 +382,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
 
             <MobileProjectSelectorSheet
                 currentProjectId={data.projectId}
-                currentProjectName={activeProject?.name || data.projectName}
+                currentProjectName={resolveProjectName(activeProject?.name, data.projectName || undefined)}
                 onClose={() => setIsProjectSelectorOpen(false)}
                 onOpenDesignEditor={onOpenDesignEditor}
                 onProjectsChanged={async (preferredProjectId) => {
@@ -395,116 +410,6 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
     );
 }
 
-function LinkCard({
-    compact,
-    description,
-    icon,
-    isPrimary,
-    label,
-    onCopy,
-    onOpen,
-    onShare,
-    onShowQr,
-    showQrLabel,
-    value,
-}: {
-    compact?: boolean;
-    description: string;
-    icon: React.ReactNode;
-    isPrimary?: boolean;
-    label: string;
-    onCopy: () => void;
-    onOpen: () => void;
-    onShare?: () => void;
-    onShowQr: () => void;
-    showQrLabel: string;
-    value: string;
-}) {
-    const { token } = theme.useToken();
-
-    return (
-        <Card style={{ borderRadius: compact ? 20 : 24 }}>
-            <Flex gap={compact ? 12 : 14} vertical>
-                <Flex align="center" justify="space-between">
-                    <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
-                        <IconBadge tint={token.colorFillAlter}>
-                            {icon}
-                        </IconBadge>
-                        <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                            <Text strong style={{ color: token.colorText, fontSize: isPrimary ? (compact ? 14 : 15) : (compact ? 13 : 14) }}>
-                                {label}
-                            </Text>
-                            <Text style={{ color: token.colorTextSecondary, fontSize: compact ? 11 : 12 }}>{description}</Text>
-                        </Flex>
-                    </Flex>
-                </Flex>
-
-                <Card
-                    size="small"
-                    style={{
-                        backgroundColor: token.colorFillAlter,
-                        borderColor: token.colorBorderSecondary,
-                        borderRadius: compact ? 14 : 16,
-                    }}
-                >
-                    <Text style={{ color: token.colorText, fontSize: compact ? 11 : 12, wordBreak: 'break-all' }}>
-                        {value}
-                    </Text>
-                </Card>
-
-                <Flex gap={compact ? 8 : 10}>
-                    <ActionTile compact={compact} icon={<LuCopy size={18} />} onClick={onCopy} />
-                    {onShare ? <ActionTile compact={compact} icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
-                    <ActionTile compact={compact} icon={<LuQrCode size={18} />} onClick={onShowQr} />
-                    <ActionTile compact={compact} icon={<LuExternalLink size={18} />} onClick={onOpen} />
-                </Flex>
-            </Flex>
-        </Card>
-    );
-}
-
-function ActionTile({ compact, icon, onClick }: { compact?: boolean; icon: React.ReactNode; onClick: () => void }) {
-    const { token } = theme.useToken();
-
-    return (
-        <Button
-            fill="outline"
-            onClick={onClick}
-            size="small"
-            style={{
-                borderColor: token.colorBorderSecondary,
-                borderRadius: compact ? 14 : 16,
-                flex: 1,
-                minHeight: compact ? 42 : 48,
-                minWidth: 0,
-                paddingBlock: 0,
-                paddingInline: 0,
-            }}
-        >
-            <Flex align="center" justify="center" style={{ color: token.colorText, minHeight: 20 }}>
-                    {icon}
-            </Flex>
-        </Button>
-    );
-}
-
-function IconBadge({ children, tint }: { children: React.ReactNode; tint: string }) {
-    return (
-        <Flex
-            align="center"
-            justify="center"
-            style={{
-                backgroundColor: tint,
-                borderRadius: 16,
-                height: 44,
-                minWidth: 44,
-                width: 44,
-            }}
-        >
-            {children}
-        </Flex>
-    );
-}
 
 function SectionHeader({ compact, subtitle, title }: { compact?: boolean; subtitle?: string; title: string }) {
     const { token } = theme.useToken();

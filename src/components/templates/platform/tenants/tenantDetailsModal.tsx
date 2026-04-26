@@ -6,6 +6,7 @@ import { BUSINESS_TYPES } from '@constant/common';
 import { ECOMSAI_PLATFORM_TENANT_ID } from '@constant/user';
 import { getStoreById } from '@database/stores';
 import { addTenant, updateTenant } from '@database/tenants';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { UserUploadedFileType } from '@type/common';
 import { MinimalStoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
@@ -91,6 +92,16 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
         getStoreById(store.storeId).then((storeDetails) => {
             setStoreModal({ active: true, data: storeDetails, tenantData: tenantData })
         })
+    }
+
+    const resolveStoreName = (store: any) => {
+        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+        return getLocalizedText(
+            store?.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
+            store?.name || `Store ${store?.storeId ?? ''}`,
+        );
     }
 
     const isUpdateFlow = (Boolean(tenantData?.tenantId) || tenantData?.tenantId == ECOMSAI_PLATFORM_TENANT_ID);
@@ -324,7 +335,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                         {tenantData?.storesList?.map((storeDetails) => {
                             return <Fragment key={storeDetails.storeId}>
                                 <Button size='large' onClick={() => onClickStore(storeDetails)} >
-                                    Id: {storeDetails.storeId}, Name: {storeDetails.name}
+                                    Id: {storeDetails.storeId}, Name: {resolveStoreName(storeDetails)}
                                 </Button>
                             </Fragment>
                         })}

@@ -12,6 +12,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -1993,7 +1994,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                     : 'Special menu ended'}
                                     </Tag>
                                     {activeProjectSummary?.specialMenuDisplayName ? (
-                                        <Text strong>{activeProjectSummary.specialMenuDisplayName}</Text>
+                                        <Text strong>
+                                            {getLocalizedText(
+                                                activeProjectSummary.specialMenuDisplayName,
+                                                undefined,
+                                                getPrimaryLocalizedLanguage(activeProjectSummary.specialMenuDisplayName, 'en'),
+                                                '',
+                                            )}
+                                        </Text>
                                     ) : null}
                                 </Flex>
                                 {activeSpecialMenuWindow ? (

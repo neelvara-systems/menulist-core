@@ -64,6 +64,7 @@ const MobileFeedbackScreen = dynamic(() => import('./MobileFeedbackScreen'), { s
 const MobileAdvancedSettingsScreen = dynamic(() => import('./MobileAdvancedSettingsScreen'), { ssr: false });
 const MobileDesignEditorScreen = dynamic(() => import('./MobileDesignEditorScreen'), { ssr: false });
 const MobileSeoAnalyticsScreen = dynamic(() => import('./MobileSeoAnalyticsScreen'), { ssr: false });
+const MobileBusinessCopySetupScreen = dynamic(() => import('./MobileBusinessCopySetupScreen'), { ssr: false });
 const MobileTimeSlotsScreen = dynamic(() => import('./MobileTimeSlotsScreen'), { ssr: false });
 const MobileTempStatusScreen = dynamic(() => import('./MobileTempStatusScreen'), { ssr: false });
 const MobileSpecialMenuScreen = dynamic(() => import('./MobileSpecialMenuScreen'), { ssr: false });
@@ -97,6 +98,7 @@ export type MoreSubScreen =
     | 'businessAttributes'
     | 'feedbackSettings'
     | 'officialPage'
+    | 'businessCopySetup'
     | 'seoSettings'
     | 'analyticsSettings'
     | 'socialSettings'
@@ -208,6 +210,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const businessPresenceItems: MoreListItem[] = [
         { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openSubScreen('officialPage') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color="#2563eb" size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), onClick: () => openSubScreen('businessCopySetup') }] : []),
         ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color="#0f766e" size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
         { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, keywords: ['instagram', 'facebook', 'zomato', 'swiggy', 'social links'], label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') },
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, keywords: ['amenities', 'wifi', 'parking', 'veg', 'pet friendly', 'attributes'], label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
@@ -268,6 +271,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     if (subScreen === 'businessAttributes') return <MobileBusinessAttributesScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'feedbackSettings') return <MobileAdvancedSettingsScreen mode="feedback" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'officialPage') return <MobileOfficialPageScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'businessCopySetup') return <MobileBusinessCopySetupScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'seoSettings') return <MobileSeoAnalyticsScreen mode="seo" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'analyticsSettings') return <MobileSeoAnalyticsScreen mode="analytics" onBack={() => setSubScreen('main')} />;
     if (subScreen === 'socialSettings') return <MobileAdvancedSettingsScreen mode="social" onBack={() => setSubScreen('main')} />;

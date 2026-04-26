@@ -9,6 +9,7 @@
 import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import dayjs from 'dayjs';
@@ -28,6 +29,8 @@ type BaseProjectOption = {
     label: string;
     value: string;
 };
+
+type ProjectNameValue = string | Record<string, string> | undefined;
 
 type SpecialMenuConflictCheckParams = {
     endsAt: string;
@@ -68,6 +71,10 @@ function toIsoValue(rawValue: string, allowTimeScheduling: boolean): string {
 
 function getScheduledStartsAtValue(allowTimeScheduling: boolean): string {
     return toInputValue(dayjs().add(1, allowTimeScheduling ? 'hour' : 'day').toISOString(), allowTimeScheduling);
+}
+
+function resolveProjectName(name: ProjectNameValue, fallback: string): string {
+    return getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback);
 }
 
 function getScheduleConflict(
@@ -762,7 +769,9 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         () => (projectsList || [])
             .filter((project: any) => project.active !== false && project.isSpecialMenu !== true)
             .map((project: any) => ({
-                label: project.isDefault ? `${project.name} (${t('defaultMenuSuffix')})` : project.name,
+                label: project.isDefault
+                    ? `${resolveProjectName(project.name, t('untitledProject'))} (${t('defaultMenuSuffix')})`
+                    : resolveProjectName(project.name, t('untitledProject')),
                 value: project.projectId,
             })),
         [projectsList, t]
@@ -779,7 +788,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     }, [baseProjectOptions, projectsList, selectedProjectId]);
 
     const projectNameById = useMemo(
-        () => Object.fromEntries((projectsList || []).map((project: any) => [project.projectId, project.name || t('untitledProject')])),
+        () => Object.fromEntries((projectsList || []).map((project: any) => [project.projectId, resolveProjectName(project.name, t('untitledProject'))])),
         [projectsList, t]
     );
 

@@ -1,11 +1,15 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
+import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
+import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
-import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
+import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
@@ -32,6 +36,20 @@ type SeoDraft = {
     tagline: string;
 };
 
+function resolveContentLanguage(storeDetails?: any): string {
+    return storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
+}
+
+function getLocalizedSeoField(value: any, storeDetails?: any): string {
+    const contentLanguage = resolveContentLanguage(storeDetails);
+    return getLocalizedText(
+        value,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(value, contentLanguage),
+        '',
+    );
+}
+
 export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
     const t = useTranslations('MobileSeoAnalytics');
     const tSeo = useTranslations('SEO');
@@ -54,16 +72,24 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const [originalAnalyticsState, setOriginalAnalyticsState] = useState<AnalyticsDraft | null>(null);
     const [isAnalyticsSaving, setIsAnalyticsSaving] = useState(false);
     const [isSeoSaving, setIsSeoSaving] = useState(false);
+    const [isSeoGenerating, setIsSeoGenerating] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
     const [wizardStep, setWizardStep] = useState(0);
     const [guideTab, setGuideTab] = useState<'quick' | 'complete'>('quick');
+    const contentLanguage = resolveContentLanguage(storeDetails);
+    const publicDisplayName = getLocalizedText(
+        storeDetails?.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
+        storeDetails?.name || '',
+    );
 
     useEffect(() => {
         if (!storeDetails) return;
-        setTagline(storeDetails.tagline || '');
-        setMetaTitle(storeDetails.metaTitle || '');
-        setMetaDescription(storeDetails.metaDescription || '');
+        setTagline(getLocalizedSeoField(storeDetails.tagline, storeDetails));
+        setMetaTitle(getLocalizedSeoField(storeDetails.metaTitle, storeDetails));
+        setMetaDescription(getLocalizedSeoField(storeDetails.metaDescription, storeDetails));
         setCanonicalUrl(storeDetails.canonicalUrl || '');
         setKeywords((storeDetails.keywords || []).join(', '));
         setOriginalSeoState(getSeoDraft(storeDetails));
@@ -89,7 +115,9 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 const analyticsKey = field.replace('analytics.', '');
                 update.analytics = { ...storeDetails.analytics, [analyticsKey]: value };
             } else {
-                update[field] = value;
+                update[field] = ['tagline', 'metaTitle', 'metaDescription'].includes(field)
+                    ? updateLocalizedText(storeDetails?.[field], value, contentLanguage, 'en')
+                    : value;
             }
             await updateStore(update);
             setStoreDetails({ ...storeDetails, ...update });
@@ -375,10 +403,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                     .split(',')
                     .map((item) => item.trim())
                     .filter(Boolean),
-                metaDescription,
-                metaTitle,
+                metaDescription: updateLocalizedText(storeDetails?.metaDescription, metaDescription, contentLanguage, 'en'),
+                metaTitle: updateLocalizedText(storeDetails?.metaTitle, metaTitle, contentLanguage, 'en'),
                 storeId: storeDetails.storeId,
-                tagline,
+                tagline: updateLocalizedText(storeDetails?.tagline, tagline, contentLanguage, 'en'),
             };
             await updateStore(update);
             setStoreDetails({ ...storeDetails, ...update });
@@ -388,6 +416,76 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             Toast.show({ content: t('failedToSave'), duration: 1500 });
         } finally {
             setIsSeoSaving(false);
+        }
+    };
+
+    const generateSeoSettings = async () => {
+        if (!publicDisplayName.trim() && !storeDetails?.name?.trim()) {
+            Toast.show({ content: tSeo('generateSeoMissingName'), duration: 1500 });
+            return;
+        }
+
+        try {
+            setIsSeoGenerating(true);
+            const projectContext = await getDefaultProjectAiContext(storeDetails);
+
+            const publicPresenceValues = Object.values(storeDetails?.publicPresence || {}).filter((value) => typeof value === 'string');
+            const socialValues = [
+                ...Object.values(storeDetails?.socialMedia || {}),
+                ...publicPresenceValues,
+            ]
+                .map((value) => String(value || '').trim())
+                .filter(Boolean)
+                .slice(0, 12);
+
+            const generated = await generateSeoViaAPI({
+                menu: {
+                    categories: projectContext?.categories || [],
+                    items: projectContext?.items || [],
+                    projectDescription: projectContext?.projectDescription || '',
+                    projectName: projectContext?.projectName || '',
+                },
+                store: {
+                    addressLine: storeDetails?.addressLine || '',
+                    businessCategory: storeDetails?.businessCategory || '',
+                    businessType: storeDetails?.businessType || '',
+                    city: storeDetails?.city || '',
+                    country: storeDetails?.country || '',
+                    description: storeDetails?.description || '',
+                    name: publicDisplayName || storeDetails.name,
+                    publicPresence: {
+                        accentColor: storeDetails?.publicPresence?.accentColor || '',
+                        descriptor: firstText(storeDetails?.publicPresence?.descriptor),
+                        displayName: firstText(storeDetails?.publicPresence?.displayName),
+                        establishedYear: typeof storeDetails?.publicPresence?.establishedYear === 'number'
+                            ? storeDetails.publicPresence.establishedYear
+                            : undefined,
+                        googleMapsUrl: storeDetails?.publicPresence?.googleMapsUrl || '',
+                        knownFor: firstText(storeDetails?.publicPresence?.knownFor),
+                        orderUrl: storeDetails?.publicPresence?.orderUrl || '',
+                        reservationUrl: storeDetails?.publicPresence?.reservationUrl || '',
+                        whatsappNumber: storeDetails?.publicPresence?.whatsappNumber || '',
+                    },
+                    socialMedia: socialValues,
+                    state: storeDetails?.state || '',
+                    tagline,
+                },
+            });
+
+            if (!generated) {
+                Toast.show({ content: tSeo('generateSeoFailed'), duration: 1500 });
+                return;
+            }
+
+            setTagline(generated.tagline || '');
+            setMetaTitle(generated.metaTitle);
+            setMetaDescription(generated.metaDescription);
+            setKeywords(generated.keywords.join(', '));
+            Toast.show({ content: tSeo('generateSeoSuccess'), duration: 1200 });
+        } catch (error: any) {
+            Toast.show({ content: error?.message || tSeo('generateSeoFailed'), duration: 1500 });
+        } finally {
+            setIsSeoGenerating(false);
         }
     };
 
@@ -438,17 +536,17 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 <Text>{tSeo('aeoCardPoint3')}</Text>
                             </Flex>
                         </Card>
-                        <SeoPreviewCard
-                            businessName={storeDetails?.name}
-                            canonicalUrl={canonicalUrl}
-                            customDomain={storeDetails?.customDomain}
-                            keywords={keywords}
-                            logoUrl={storeDetails?.logo}
-                            metaDescription={metaDescription}
-                            metaTitle={metaTitle}
-                            subdomain={storeDetails?.subdomain}
-                            tagline={tagline}
-                        />
+                        {FEATURE_FLAGS.ENABLE_SEO_AEO_GENERATION ? (
+                            <Button
+                                block
+                                fill="outline"
+                                icon={<LuSparkles size={16} />}
+                                loading={isSeoGenerating}
+                                onClick={() => void generateSeoSettings()}
+                            >
+                                {tSeo('generateSeoButton')}
+                            </Button>
+                        ) : null}
                         <Flex
                             gap={8}
                             style={{
@@ -465,10 +563,21 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             <Button block disabled={!isSeoDirty || isSeoSaving} fill="outline" onClick={resetSeoSettings}>
                                 {tMobile('reset')}
                             </Button>
-                            <Button block disabled={!isSeoDirty || isSeoSaving} loading={isSeoSaving} onClick={() => void saveSeoSettings()}>
+                            <Button block disabled={!isSeoDirty || isSeoSaving || isSeoGenerating} loading={isSeoSaving} onClick={() => void saveSeoSettings()}>
                                 {tMobile('saveChanges')}
                             </Button>
                         </Flex>
+                        <SeoPreviewCard
+                            businessName={storeDetails?.name}
+                            canonicalUrl={canonicalUrl}
+                            customDomain={storeDetails?.customDomain}
+                            keywords={keywords}
+                            logoUrl={storeDetails?.logo}
+                            metaDescription={metaDescription}
+                            metaTitle={metaTitle}
+                            subdomain={storeDetails?.subdomain}
+                            tagline={tagline}
+                        />
                     </>
                 ) : (
                     <>
@@ -827,8 +936,21 @@ function getSeoDraft(storeDetails: any): SeoDraft {
     return {
         canonicalUrl: storeDetails?.canonicalUrl || '',
         keywords: (storeDetails?.keywords || []).join(', '),
-        metaDescription: storeDetails?.metaDescription || '',
-        metaTitle: storeDetails?.metaTitle || '',
-        tagline: storeDetails?.tagline || '',
+        metaDescription: getLocalizedSeoField(storeDetails?.metaDescription, storeDetails),
+        metaTitle: getLocalizedSeoField(storeDetails?.metaTitle, storeDetails),
+        tagline: getLocalizedSeoField(storeDetails?.tagline, storeDetails),
     };
+}
+
+function firstText(value: unknown): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'object') {
+        const firstValue = Object.entries(value as Record<string, unknown>)
+            .sort(([leftKey], [rightKey]) => (leftKey === 'en' ? -1 : rightKey === 'en' ? 1 : leftKey.localeCompare(rightKey)))
+            .map(([, entry]) => entry)
+            .find((entry) => typeof entry === 'string' && entry.trim());
+        return typeof firstValue === 'string' ? firstValue.trim() : '';
+    }
+    return '';
 }

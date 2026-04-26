@@ -4,6 +4,7 @@ import { SyncOutlined } from '@ant-design/icons';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getMetadataProjectsList } from '@database/projects';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getFormatedDateAndTime } from '@util/dateTime';
 import { formatCurrency, formatProcessingTime } from '@util/formatters';
 import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
@@ -260,7 +261,9 @@ function TransactionPage() {
             key: 'projectId',
             render: (projectId: string) => {
                 const project = projectsList.find(p => p.projectId === projectId);
-                return project ? project.name : t('unknownProject');
+                return project
+                    ? getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('unknownProject'))
+                    : t('unknownProject');
             },
         },
         {

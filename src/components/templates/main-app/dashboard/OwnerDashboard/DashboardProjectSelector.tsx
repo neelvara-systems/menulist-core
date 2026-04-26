@@ -5,6 +5,7 @@
 
 import { getMetadataProjectsList } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
@@ -53,6 +54,9 @@ type DashboardProject = ProjectMetadata & {
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
 type ResolvedSpecialMenuStatus = SpecialMenuStatus | null;
+
+const resolveProjectName = (value: DashboardProject['name'] | undefined) =>
+    getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), 'Untitled');
 
 const getProjectStatus = (project: DashboardProject | null | undefined): ProjectStatus => {
     if ((project as any)?.deleted === true) return 'deleted';
@@ -149,7 +153,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
         if (!selectedProjectId && projects.length > 0) {
             const def = projects.find(p => p.isDefault) || projects[0];
             if (def.projectId) {
-                onProjectChange(def.projectId, def.name);
+                onProjectChange(def.projectId, resolveProjectName(def.name));
                 return;
             }
         }
@@ -160,20 +164,20 @@ export const DashboardProjectSelector: React.FC<Props> = ({
 
     const selectedProject = projects.find(p => p.projectId === selectedProjectId);
     const baseProjectNameById = useMemo(
-        () => Object.fromEntries(projects.map((project) => [project.projectId, project.name])),
+        () => Object.fromEntries(projects.map((project) => [project.projectId, resolveProjectName(project.name)])),
         [projects]
     );
 
     const menuItems: MenuProps['items'] = useMemo(() => {
         return projects.map((p) => ({
-            key: p.projectId || p.name,
+            key: p.projectId || resolveProjectName(p.name),
             label: (
                 <Flex align="center" gap={12}>
-                    <Avatar size={24} style={{ backgroundColor: getAvatarColor(p.name).bg, fontSize: 10 }}>
-                        {getInitials(p.name)}
+                    <Avatar size={24} style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name)).bg, fontSize: 10 }}>
+                        {getInitials(resolveProjectName(p.name))}
                     </Avatar>
                     <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-                        <Text>{p.name}</Text>
+                        <Text>{resolveProjectName(p.name)}</Text>
                         {p.isSpecialMenu && p.specialMenuBaseProjectId && baseProjectNameById[p.specialMenuBaseProjectId] ? (
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 From {baseProjectNameById[p.specialMenuBaseProjectId]}
@@ -186,14 +190,14 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     {p.projectId === selectedProjectId && <LuCheck size={14} color={token.colorPrimary} />}
                 </Flex>
             ),
-            onClick: () => p.projectId && onProjectChange(p.projectId, p.name),
+            onClick: () => p.projectId && onProjectChange(p.projectId, resolveProjectName(p.name)),
         }));
     }, [baseProjectNameById, projects, selectedProjectId, token.colorPrimary, onProjectChange]);
 
     if (isLoading) return <Skeleton.Input active size="small" style={{ width: 150 }} />;
     if (!projects.length) return <Text type="secondary">No catalogs</Text>;
 
-    const color = selectedProject ? getAvatarColor(selectedProject.name) : { bg: '#ccc', text: '#fff' };
+    const color = selectedProject ? getAvatarColor(resolveProjectName(selectedProject.name)) : { bg: '#ccc', text: '#fff' };
 
     return (
         <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomLeft">
@@ -209,11 +213,11 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                 }}
             >
                 <Avatar size={28} style={{ backgroundColor: color.bg, color: color.text, fontSize: 11 }}>
-                    {selectedProject ? getInitials(selectedProject.name) : <LuFolderOpen size={14} />}
+                    {selectedProject ? getInitials(resolveProjectName(selectedProject.name)) : <LuFolderOpen size={14} />}
                 </Avatar>
                 <Flex vertical style={{ minWidth: 0 }}>
                     <Text strong style={{ maxWidth: 150 }} ellipsis>
-                        {selectedProject?.name || 'Select catalog'}
+                        {selectedProject ? resolveProjectName(selectedProject.name) : 'Select catalog'}
                     </Text>
                     {selectedProject?.isSpecialMenu && selectedProject.specialMenuBaseProjectId && baseProjectNameById[selectedProject.specialMenuBaseProjectId] ? (
                         <Text type="secondary" style={{ fontSize: 12 }}>

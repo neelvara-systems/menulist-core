@@ -3,6 +3,7 @@
 import { getProjectsListWithoutLoader } from "@database/projects";
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { usePastActivity } from "@hook/usePastActivity";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { Campaign } from "@type/campaigns";
 import { Button, Drawer, Select, Spin, Typography } from "antd";
 import { useRouter } from "next/navigation";
@@ -16,9 +17,13 @@ type ProjectSummary = {
     active?: boolean;
     deleted?: boolean;
     isDefault?: boolean;
-    name?: string;
+    name?: string | Record<string, string>;
     projectId: string;
 };
+
+const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
+    getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
+);
 
 const resolveSelectedProject = (
     projects: ProjectSummary[],
@@ -151,7 +156,7 @@ const PastActivityScreen = () => {
                 className={styles.projectSelector}
                 onChange={(value) => setSelectedProjectId(value)}
                 options={projects.map((project) => ({
-                    label: project.name || 'Untitled',
+                    label: resolveProjectName(project.name),
                     value: project.projectId,
                 }))}
                 placeholder="Select project"
@@ -229,7 +234,7 @@ const PastActivityScreen = () => {
                 <div className={styles.emptyState}>
                     <Text type="secondary">
                         {selectedProject
-                            ? `No activity yet for ${selectedProject.name || 'this project'}.`
+                            ? `No activity yet for ${resolveProjectName(selectedProject.name, 'this project')}.`
                             : 'No activity yet.'}
                     </Text>
                 </div>

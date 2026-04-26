@@ -6,7 +6,7 @@
 
 export interface ProjectLink {
     projectId: string;
-    name: string;
+    name: string | Record<string, string>;
     isDefault: boolean;
     active?: boolean;
     deleted?: boolean;

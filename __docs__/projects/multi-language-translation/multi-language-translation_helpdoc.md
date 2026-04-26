@@ -1,7 +1,7 @@
 # Multi-Language Translation — Help Documentation
 
 ## Quick Summary
-Add languages to your menu so customers can view it in their preferred language. Translations are generated automatically for all items and categories.
+Add languages to your menu so customers can view it in their preferred language. Translations are generated automatically for menu content such as items, descriptions, and categories, and localized public labels like project names and official-page display fields can also render in the selected language when they are available.
 
 ---
 
@@ -19,13 +19,14 @@ Add languages to your menu so customers can view it in their preferred language.
 ### How to check translations
 1. In the **Editor**, switch between languages using the language tabs
 2. Review item names and descriptions in each language
-3. Edit any translation manually if needed
-4. Click **Save** after making changes
+3. Review customer-facing labels such as project names or official business page display text if your setup uses them
+4. Edit any translation manually if needed
+5. Click **Save** after making changes
 
 ### How customers see language options
 1. When customers scan your QR code, they see a language picker
 2. They tap their preferred language
-3. The entire menu displays in that language
+3. The menu, project labels, and supported public business text display in that language when translations exist
 4. Their choice is remembered for future visits
 
 ---

@@ -11,6 +11,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { StoreDataType } from "@type/platform/store";
@@ -94,7 +95,13 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
 
     const pp = store?.publicPresence || {};
     const accentColor = pp.accentColor || '#111';
-    const brandName = store?.name?.replace(/ - Main Store$/, '') || 'Business';
+    const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+    const brandName = getLocalizedText(
+        pp.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(pp.displayName, contentLanguage),
+        store?.name?.replace(/ - Main Store$/, '') || 'Business',
+    );
     const logo = store?.logo;
     const firstLetter = brandName.charAt(0);
 
@@ -194,7 +201,12 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
                                     fontWeight: 600,
                                     flexShrink: 0,
                                 }}>
-                                    {(outlet.name || '?').charAt(0)}
+                                    {getLocalizedText(
+                                        outlet.name,
+                                        contentLanguage,
+                                        getPrimaryLocalizedLanguage(outlet.name, contentLanguage),
+                                        '?',
+                                    ).charAt(0)}
                                 </div>
                             )}
 
@@ -207,7 +219,12 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                 }}>
-                                    {outlet.name?.replace(/ - Main Store$/, '')}
+                                    {getLocalizedText(
+                                        outlet.name,
+                                        contentLanguage,
+                                        getPrimaryLocalizedLanguage(outlet.name, contentLanguage),
+                                        'Outlet',
+                                    ).replace(/ - Main Store$/, '')}
                                 </div>
                                 {(outlet.city || outlet.addressLine) && (
                                     <div style={{

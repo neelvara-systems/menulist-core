@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { Alert, Card, Flex, Form, Input, Modal, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import { ProjectMetadata } from '../types';
@@ -23,9 +24,10 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
     // Reset form when project changes or modal opens
     useEffect(() => {
         if (open && project) {
+            const primaryLanguage = getPrimaryLocalizedLanguage(project.name, 'en');
             form.setFieldsValue({
-                name: `Copy of ${project.name}`,
-                description: project.description || ''
+                name: `Copy of ${getLocalizedText(project.name, undefined, primaryLanguage, 'Untitled')}`,
+                description: getLocalizedText(project.description, undefined, primaryLanguage, '')
             });
         }
     }, [open, project, form]);
@@ -68,7 +70,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                     description={
                         <Flex vertical gap={4}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Original {labels.offeringPhrase}: <Text strong>{project?.name}</Text>
+                                Original {labels.offeringPhrase}: <Text strong>{project ? getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled') : ''}</Text>
                             </Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 All categories, {labels.itemsPlural}, images, languages, and theme will be copied.

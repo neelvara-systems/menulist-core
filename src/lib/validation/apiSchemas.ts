@@ -58,6 +58,87 @@ export const DescriptionRequestSchema = z.object({
 export type DescriptionRequest = z.infer<typeof DescriptionRequestSchema>;
 
 // ═══════════════════════════════════════════════════════════
+// SEO / AEO GENERATION API
+// ═══════════════════════════════════════════════════════════
+
+const shortStringSchema = z.string().max(500).optional();
+
+export const SeoGenerationRequestSchema = z.object({
+    store: z.object({
+        name: z.string().min(1).max(120),
+        businessCategory: shortStringSchema,
+        businessType: shortStringSchema,
+        city: shortStringSchema,
+        state: shortStringSchema,
+        country: shortStringSchema,
+        description: z.string().max(2000).optional(),
+        addressLine: z.string().max(300).optional(),
+        tagline: z.string().max(200).optional(),
+        socialMedia: z.array(z.string().max(200)).max(20).optional(),
+        publicPresence: z.object({
+            accentColor: z.string().max(50).optional(),
+            descriptor: z.string().max(120).optional(),
+            displayName: z.string().max(120).optional(),
+            establishedYear: z.number().int().min(1800).max(3000).optional(),
+            googleMapsUrl: z.string().max(500).optional(),
+            knownFor: z.string().max(120).optional(),
+            orderUrl: z.string().max(500).optional(),
+            reservationUrl: z.string().max(500).optional(),
+            whatsappNumber: z.string().max(100).optional(),
+        }).optional(),
+    }),
+    menu: z.object({
+        projectName: shortStringSchema,
+        projectDescription: z.string().max(1000).optional(),
+        categories: z.array(z.string().max(100)).max(25).optional(),
+        items: z.array(z.string().max(120)).max(40).optional(),
+    }).optional(),
+});
+
+export type SeoGenerationRequest = z.infer<typeof SeoGenerationRequestSchema>;
+
+// ═══════════════════════════════════════════════════════════
+// BUSINESS COPY GENERATION API
+// ═══════════════════════════════════════════════════════════
+
+export const BusinessCopyGenerationRequestSchema = z.object({
+    store: z.object({
+        name: z.string().min(1).max(120),
+        businessCategory: shortStringSchema,
+        businessType: shortStringSchema,
+        city: shortStringSchema,
+        state: shortStringSchema,
+        country: shortStringSchema,
+        description: z.string().max(2000).optional(),
+        addressLine: z.string().max(300).optional(),
+        tagline: z.string().max(200).optional(),
+        socialMedia: z.array(z.string().max(200)).max(20).optional(),
+        businessAttributes: z.array(z.string().max(100)).max(20).optional(),
+        pwaShortName: z.string().max(40).optional(),
+        publicPresence: z.object({
+            accentColor: z.string().max(50).optional(),
+            descriptor: z.string().max(120).optional(),
+            displayName: z.string().max(120).optional(),
+            establishedYear: z.number().int().min(1800).max(3000).optional(),
+            googleMapsUrl: z.string().max(500).optional(),
+            googleReviewUrl: z.string().max(500).optional(),
+            knownFor: z.string().max(120).optional(),
+            orderUrl: z.string().max(500).optional(),
+            reservationUrl: z.string().max(500).optional(),
+            whatsappNumber: z.string().max(100).optional(),
+        }).optional(),
+    }),
+    menu: z.object({
+        projectName: shortStringSchema,
+        projectDescription: z.string().max(1000).optional(),
+        categories: z.array(z.string().max(100)).max(25).optional(),
+        items: z.array(z.string().max(120)).max(40).optional(),
+    }).optional(),
+});
+
+export type BusinessCopyGenerationRequest = z.infer<typeof BusinessCopyGenerationRequestSchema>;
+
+// ═══════════════════════════════════════════════════════════
 // TRANSLATION API
 // ═══════════════════════════════════════════════════════════
 

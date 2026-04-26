@@ -9,6 +9,7 @@
 
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
 
@@ -29,13 +30,20 @@ export default async function PwaReservationHandoffPage() {
     if (!reservationUrl) return notFound();
 
     const trackingEnabled = store.analytics?.trackMenuViews !== false;
+    const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
+    const storeName = getLocalizedText(
+        store.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
+        store.name || 'Restaurant',
+    );
 
     return (
         <PwaExternalRedirectClient
             storeId={store.id}
             tenantId={store.tenantId}
             targetUrl={reservationUrl}
-            title={`Book a table at ${store.name || 'Restaurant'}`}
+            title={`Book a table at ${storeName}`}
             message="Opening reservations…"
             trackingEnabled={trackingEnabled}
         />

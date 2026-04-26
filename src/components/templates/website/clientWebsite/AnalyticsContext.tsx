@@ -1,4 +1,5 @@
 'use client'
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getSessionId, refreshSession } from '@lib/analytics/session';
 import { trackItemView, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
@@ -60,7 +61,13 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
       // Ensure we have valid tenant and store IDs
       const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
       const storeId = storeDetails.storeId || (storeDetails as any)._id;
-      const storeName = storeDetails.name || (storeDetails as any).storeName || 'Store Menu';
+      const contentLanguage = storeDetails.defaultLanguage || storeDetails.activeLanguages?.[0] || storeDetails.language || 'en';
+      const storeName = getLocalizedText(
+        storeDetails.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeDetails.publicPresence?.displayName, contentLanguage),
+        storeDetails.name || (storeDetails as any).storeName || 'Store Menu'
+      );
 
       // Get the session ID for all tracking events
       const sessionId = getSessionId();

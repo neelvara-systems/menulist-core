@@ -8,7 +8,7 @@ import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row,
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
-import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuPhone, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuPhone, LuShoppingBag, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
 import GoogleListingGuide from './GoogleListingGuide';
 
 const { Title, Text } = Typography;
@@ -16,14 +16,17 @@ const { Title, Text } = Typography;
 interface OfficialPageTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     publicPresence?: {
-        descriptor?: string;
-        knownFor?: string;
+        displayName?: string | Record<string, string>;
+        descriptor?: string | Record<string, string>;
+        knownFor?: string | Record<string, string>;
         accentColor?: string;
         whatsappNumber?: string;
         googleMapsUrl?: string;
         showCall?: boolean;
         showWhatsApp?: boolean;
         showDirections?: boolean;
+        showReservation?: boolean;
+        showOrder?: boolean;
         reservationUrl?: string;
         orderUrl?: string;
         establishedYear?: number;
@@ -87,12 +90,12 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 {officialPageUrl ? (
                     <div style={{ marginTop: 16 }}>
                         <ShareLinkCard
-                            title="Official Page Link"
+                            title="Official Business Page Link"
                             description="Share this with customers — it always shows your latest public page"
                             url={officialPageUrl}
                             shortUrl={officialPageUrl.replace(/^https?:\/\//, '')}
-                            sharePrefix="Here is our official page:"
-                            copySuccessLabel="Official page link"
+                            sharePrefix="Here is our official business page:"
+                            copySuccessLabel="Official business page link"
                         />
                     </div>
                 ) : null}
@@ -113,6 +116,20 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     <Divider />
 
                     <Row gutter={[16, 0]}>
+                        <Col xs={24} md={12}>
+                            <Form.Item
+                                name={['publicPresence', 'displayName']}
+                                label="Public display name"
+                                extra="Optional. Shown on the public page instead of your internal store name for this language."
+                                rules={[{ max: 60, message: 'Public display name must be 60 characters or less' }]}
+                            >
+                                <Input
+                                    placeholder="e.g. Joe's Pizza"
+                                    maxLength={60}
+                                    showCount
+                                />
+                            </Form.Item>
+                        </Col>
                         <Col xs={24} md={12}>
                             <Form.Item
                                 name={['publicPresence', 'descriptor']}
@@ -421,6 +438,32 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 <Switch
                                     checkedChildren={<LuMapPin size={12} />}
                                     onChange={handleToggle('showDirections')}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item
+                                name={['publicPresence', 'showReservation']}
+                                label={t('showReservationButton')}
+                                valuePropName="checked"
+                                initialValue={publicPresence?.showReservation !== false}
+                            >
+                                <Switch
+                                    checkedChildren={<LuCalendar size={12} />}
+                                    onChange={handleToggle('showReservation')}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item
+                                name={['publicPresence', 'showOrder']}
+                                label={t('showOrderButton')}
+                                valuePropName="checked"
+                                initialValue={publicPresence?.showOrder !== false}
+                            >
+                                <Switch
+                                    checkedChildren={<LuShoppingBag size={12} />}
+                                    onChange={handleToggle('showOrder')}
                                 />
                             </Form.Item>
                         </Col>

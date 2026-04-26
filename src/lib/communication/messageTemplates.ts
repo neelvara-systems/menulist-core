@@ -10,6 +10,7 @@
  */
 
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { formatClockTime } from '@util/dateTime';
 
 export interface MessageTemplateInput {
@@ -19,7 +20,7 @@ export interface MessageTemplateInput {
     obpLink?: string;
     projectName?: string;
     activeProjects?: Array<{
-        name: string;
+        name: string | Record<string, string>;
         url: string;
     }>;
     address?: string;
@@ -193,7 +194,8 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
         ];
 
         input.activeProjects?.forEach((project) => {
-            menuOptionLines.push(`*${project.name}*`);
+            const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Menu');
+            menuOptionLines.push(`*${projectName}*`);
             menuOptionLines.push(project.url);
             menuOptionLines.push('');
         });

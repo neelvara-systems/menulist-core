@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from "@config/features";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { apiError, generateETag, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { secureError } from "@lib/security/secureLogger";
@@ -40,6 +41,25 @@ export async function GET(request: NextRequest) {
         }
 
         const { storeData, storeId } = result;
+        const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
+        const publicName = getLocalizedText(
+            storeData.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData.publicPresence?.displayName, contentLanguage),
+            storeData.name || null,
+        );
+        const publicDescriptor = getLocalizedText(
+            storeData.publicPresence?.descriptor,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData.publicPresence?.descriptor, contentLanguage),
+            '',
+        );
+        const publicKnownFor = getLocalizedText(
+            storeData.publicPresence?.knownFor,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData.publicPresence?.knownFor, contentLanguage),
+            '',
+        );
 
         // Abuse logging
         logApiRequest(request, storeId, 'GET /business');
@@ -49,9 +69,11 @@ export async function GET(request: NextRequest) {
             schemaVersion: PULL_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
             storeId: Number(storeId),
-            name: storeData.name || null,
+            name: publicName || null,
             businessType: storeData.businessType || null,
             description: storeData.description || null,
+            descriptor: publicDescriptor || null,
+            knownFor: publicKnownFor || null,
             phone: storeData.phoneNumber || null,
             email: storeData.email || null,
             currency: storeData.currencyCode || storeData.currency || null,

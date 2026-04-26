@@ -17,6 +17,7 @@ import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
 import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { updateLocalizedText } from '@lib/localization/text';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import type { UserUploadedFileType } from '@type/common';
 import { Alert, Button, Card, Flex, Input, Space, Switch, Typography, message } from 'antd';
@@ -132,10 +133,11 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         setSaving(true);
         try {
             const nextShortName = pwaShortName.trim();
+            const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
             const settingsPatch: {
                 enableInstallableApp?: boolean;
                 promoteInstallation?: boolean;
-                pwaShortName?: string;
+                pwaShortName?: string | Record<string, string>;
             } = {};
             if (enableInstallableApp !== originalDraft.enableInstallableApp) {
                 settingsPatch.enableInstallableApp = enableInstallableApp;
@@ -144,7 +146,12 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 settingsPatch.promoteInstallation = promoteInstallation;
             }
             if (nextShortName !== originalDraft.pwaShortName) {
-                settingsPatch.pwaShortName = nextShortName;
+                settingsPatch.pwaShortName = updateLocalizedText(
+                    storeDetails?.pwaSettings?.pwaShortName,
+                    nextShortName,
+                    contentLanguage,
+                    'en',
+                );
             }
             if (Object.keys(settingsPatch).length > 0) {
                 await updatePWASettings(storeDetails.storeId, settingsPatch);

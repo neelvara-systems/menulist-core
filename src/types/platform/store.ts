@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import type { LocalizedText } from "@lib/localization/text";
 import type { OutletPolicy } from "../multiOutlet.types";
 import { StoreRoleDataType } from "./roles";
 
@@ -101,11 +102,17 @@ export type StoreDataType = {
     socialMedia?: Record<string, string>;
 
     // SEO Settings (from Business Settings)
-    metaTitle?: string;
-    metaDescription?: string;
+    metaTitle?: string | LocalizedText;
+    metaDescription?: string | LocalizedText;
     keywords?: string[];
     canonicalUrl?: string;
-    tagline?: string;
+    tagline?: string | LocalizedText;
+
+    pwaSettings?: {
+        enableInstallableApp?: boolean;
+        promoteInstallation?: boolean;
+        pwaShortName?: string | LocalizedText;
+    };
 
     // Multi-tenant Domain Settings
     subdomain?: string; // e.g., "joespizza" → joespizza.menulist.ai
@@ -308,8 +315,11 @@ export type StoreDataType = {
     // ─────────────────────────────────────────────────────────────
 
     publicPresence?: {
+        /** Customer-facing public display name. Falls back to store.name when unset. */
+        displayName?: string | LocalizedText;
+
         /** Short business descriptor, max 40 chars. e.g. "Modern Indian Kitchen" */
-        descriptor?: string;
+        descriptor?: string | LocalizedText;
 
         /** Accent color hex for OBP buttons/highlights. Auto-detected from logo or manual. */
         accentColor?: string;
@@ -324,6 +334,8 @@ export type StoreDataType = {
         showCall?: boolean;
         showWhatsApp?: boolean;
         showDirections?: boolean;
+        showReservation?: boolean;
+        showOrder?: boolean;
 
         /** Reservation/booking URL (e.g., Dineout, Zomato, OpenTable, own website). For schema.org acceptsReservations + CTA. */
         reservationUrl?: string;
@@ -335,7 +347,7 @@ export type StoreDataType = {
         establishedYear?: number;
 
         /** Short identity cue, max 40 chars. e.g. "Known for: wood-fired pizza". Helps category clarification on OBP. */
-        knownFor?: string;
+        knownFor?: string | LocalizedText;
 
         // ── GOOGLE REVIEW REFERENCE (ADR-12: Reference, not hosting) ──
         // @see __docs__/official-business-page/obp-infrastructure-freeze-plan.md §Priority 1

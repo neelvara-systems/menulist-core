@@ -213,6 +213,24 @@ export const FEATURE_FLAGS = {
     ENABLE_CATEGORY_ICONS: true,
 
     /**
+     * Enable AI-assisted SEO & AEO generation in Business Settings.
+     *
+     * true: Show a single generate button that drafts title, description,
+     * tagline, and keywords from business + menu data.
+     * false: Manual SEO fields only.
+     */
+    ENABLE_SEO_AEO_GENERATION: true,
+
+    /**
+     * Enable one-click business copy setup in Business Presence.
+     *
+     * true: Show a dedicated setup surface that generates Official Page,
+     * SEO/AEO, and Customer App copy from current business + menu data.
+     * false: Owners configure each surface manually.
+     */
+    ENABLE_BUSINESS_COPY_GENERATION: true,
+
+    /**
      * Social Content / Today Feature
      *
      * ✅ 3-YEAR ARCHITECTURE FREEZE - Ship everything at launch!

@@ -13,6 +13,7 @@ import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
@@ -702,7 +703,8 @@ function ProjectsPage() {
                 { revalidate: false }
             );
 
-            message.success(`"${project.name}" deleted successfully`);
+            const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
+            message.success(`"${projectName}" deleted successfully`);
 
             // If deleted project was selected, clear selection
             if (selectedProject?.projectId === project.projectId) {
@@ -725,11 +727,12 @@ function ProjectsPage() {
 
     const openModal = (project?: ProjectMetadata) => {
         if (project) {
+            const primaryLanguage = getPrimaryLocalizedLanguage(project.name, 'en');
             setEditingProject(project);
             form.setFieldsValue({
                 active: (project as any).active !== false,
-                name: project.name,
-                description: project.description,
+                name: getLocalizedText(project.name, undefined, primaryLanguage, ''),
+                description: getLocalizedText(project.description, undefined, primaryLanguage, ''),
                 projectImage: project.projectImage || null,
             });
         } else {
@@ -1312,7 +1315,7 @@ function ProjectsPage() {
                         <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 8px' }}>
                             <SpecialMenuCard
                                 baseProjectId={selectedProject.projectId}
-                                baseProjectName={selectedProject.name}
+                                baseProjectName={getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), 'Untitled')}
                             />
                         </div>
                     )}
@@ -1724,7 +1727,7 @@ function ProjectsPage() {
                     onReset={handleReset}
                     onCancel={onCloseModal}
                     fileCount={activeProject?.files?.length || 0}
-                    projectName={editingProject?.name}
+                    projectName={editingProject ? getLocalizedText(editingProject.name, undefined, getPrimaryLocalizedLanguage(editingProject.name, 'en'), 'Untitled') : undefined}
                 />
                 <WelcomeModal
                     isOpen={isFirstTime}
@@ -1749,10 +1752,26 @@ function ProjectsPage() {
                         open={isShareModalOpen}
                         onClose={() => setIsShareModalOpen(false)}
                         projectId={selectedProject.projectId}
-                        projectName={selectedProject.name}
+                        projectName={getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), 'Untitled')}
                         isDefaultProject={selectedProject.isDefault}
                         storeName={storeDetails?.name}
-                        storeDescription={storeDetails?.metaDescription || storeDetails?.tagline}
+                        storeDescription={getLocalizedText(
+                            storeDetails?.metaDescription,
+                            storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                            getPrimaryLocalizedLanguage(
+                                storeDetails?.metaDescription,
+                                storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                            ),
+                            getLocalizedText(
+                                storeDetails?.tagline,
+                                storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                                getPrimaryLocalizedLanguage(
+                                    storeDetails?.tagline,
+                                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
+                                ),
+                                '',
+                            ),
+                        )}
                         storeLogo={storeDetails?.logo}
                         subdomain={storeDetails?.subdomain}
                         customDomain={storeDetails?.customDomain}

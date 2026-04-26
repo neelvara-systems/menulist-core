@@ -14,6 +14,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
 
@@ -103,7 +104,13 @@ export async function GET(
             return Response.redirect(logoUrl, 302);
         }
 
-        const displayName: string = store?.name || store?.storeName || 'Menu';
+        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+        const displayName: string = getLocalizedText(
+            store?.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
+            store?.name || store?.storeName || 'Menu',
+        );
         const letter = firstLetter(displayName);
         const bg = pickBackgroundColor(`${storeId}:${displayName}`);
 

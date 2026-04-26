@@ -9,17 +9,22 @@ import {
     MenuLayout,
     MenuMood,
 } from '@config/designSystem';
+import useViewportInfo from '@hook/useViewportInfo';
 import { publishProject } from '@database/projects';
 import { generateProjectUrl } from '@lib/utils/slugify';
+import { buildQrCodeFilename } from '@lib/utils/qrCode';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuExternalLink, LuPalette } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuLink2, LuExternalLink, LuPalette } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
@@ -78,8 +83,11 @@ function cloneProjectData<T>(value: T): T {
 export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
     const tSettings = useTranslations('Settings');
+    const tShare = useTranslations('MobileShare');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
+    const { isCompactHandheld } = useViewportInfo();
+    const labels = useOfferingLabels();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const {
         isLoading: loadingProjects,
@@ -96,6 +104,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const [isPublishing, setIsPublishing] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
 
     const menuMood = draftProjectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
     const menuLayout = draftProjectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
@@ -131,6 +141,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         setDraftProjectData(cloned);
         setSavedProjectData(cloneProjectData(cloned));
     }, [selectedProject]);
+
+    useEffect(() => {
+        setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+    }, []);
 
     const updateDesign = useCallback((path: string[], value: any) => {
         setDraftProjectData((prev: any) => {
@@ -234,6 +248,30 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         setDraftProjectData(cloneProjectData(savedProjectData));
     };
 
+    const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
+        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url
+    ), []);
+
+    const handleCopyLink = useCallback(async (value: string, label: string) => {
+        try {
+            await navigator.clipboard.writeText(value);
+            Toast.show({ content: tShare('copiedLabel', { label }), duration: 1200 });
+        } catch {
+            Toast.show({ content: tShare('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
+        }
+    }, [tShare]);
+
+    const handleNativeShare = useCallback(async ({ label, text, url }: { label: string; text?: string; url: string }) => {
+        if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
+
+        try {
+            await navigator.share({ text, title: label, url });
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            Toast.show({ content: tShare('couldNotCopy'), duration: 1500 });
+        }
+    }, [tShare]);
+
     if (loadingProjects) {
         return (
             <Flex style={{ height: '100%' }} vertical>
@@ -295,6 +333,23 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     helperText="Changes save only to this menu."
                     onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
+                {menuUrl ? (
+                    <MobileLinkCard
+                        compact={isCompactHandheld}
+                        description={tShare('directOfferingLinkDesc', { offering: labels.offeringLower })}
+                        icon={<LuLink2 color={token.colorText} size={18} />}
+                        label={tShare('directOfferingLink', { offering: labels.offeringTitle })}
+                        onCopy={() => void handleCopyLink(withSource(menuUrl, 'copy'), tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
+                        onOpen={() => window.location.assign(withSource(menuUrl, 'direct'))}
+                        onShare={supportsNativeShare ? () => void handleNativeShare({
+                            label: tShare('directOfferingLink', { offering: labels.offeringTitle }),
+                            text: tShare('directOfferingLinkDesc', { offering: labels.offeringLower }),
+                            url: withSource(menuUrl, 'share'),
+                        }) : undefined}
+                        onShowQr={() => setIsQrSheetOpen(true)}
+                        value={menuUrl}
+                    />
+                ) : null}
                 <Card size="small" title={<Text strong>Current style</Text>}>
                     <List>
                         <List.Item
@@ -497,6 +552,20 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     await selectProject(preferredProjectId || null);
                 }}
                 visible={isProjectSelectorOpen}
+            />
+            <MobileQrCodeSheet
+                copyErrorMessage={tShare('couldNotCopy')}
+                copySuccessMessage={tShare('linkCopied')}
+                downloadSuccessMessage={tShare('qrDownloaded')}
+                filename={buildQrCodeFilename(`${storeDetails?.name || 'menu'}-${labels.offeringLower}-direct-link`, 'qr')}
+                generatingLabel={tShare('generatingQr')}
+                helperText={tShare('directOfferingLinkDesc', { offering: labels.offeringLower })}
+                imageAlt={tShare('directOfferingLink', { offering: labels.offeringTitle })}
+                onClose={() => setIsQrSheetOpen(false)}
+                qrErrorMessage={tShare('qrFailed')}
+                title={tShare('directOfferingLink', { offering: labels.offeringTitle })}
+                url={withSource(menuUrl, 'qr')}
+                visible={isQrSheetOpen}
             />
         </Flex>
     );

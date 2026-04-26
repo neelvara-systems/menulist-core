@@ -9,6 +9,8 @@ import { addStore, updateStore } from "@database/stores";
 import { updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
+import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from "@lib/localization/text";
+import localizeBusinessCopyResult, { mergeLocalizedField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
     APP_TIME_FORMAT_COOKIES_KEY,
@@ -39,6 +41,7 @@ import {
     LuSearch,
     LuShield,
     LuSmartphone,
+    LuSparkles,
     LuTimer,
     LuTv,
     LuUpload,
@@ -49,6 +52,7 @@ import DigitalScreenSettings from "../settings/DigitalScreenSettings";
 import {
     AnalyticsTab,
     BasicInfoTab,
+    BusinessCopySetupTab,
     BusinessAttributesTab,
     ContactPersonTab,
     CustomerAppTab,
@@ -85,6 +89,72 @@ function sanitizeSocialMediaMap(source?: Record<string, string> | null) {
     });
 
     return cleaned;
+}
+
+function resolveStoreContentLanguage(storeDetails: any): string {
+    return storeDetails?.defaultLanguage
+        || storeDetails?.activeLanguages?.[0]
+        || storeDetails?.language
+        || getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, 'en');
+}
+
+function getBusinessSettingsInitialValues(storeDetails: any) {
+    const contentLanguage = resolveStoreContentLanguage(storeDetails);
+    const displayNamePrimaryLanguage = getPrimaryLocalizedLanguage(
+        storeDetails?.publicPresence?.displayName,
+        contentLanguage,
+    );
+    const descriptorPrimaryLanguage = getPrimaryLocalizedLanguage(
+        storeDetails?.publicPresence?.descriptor,
+        contentLanguage,
+    );
+    const knownForPrimaryLanguage = getPrimaryLocalizedLanguage(
+        storeDetails?.publicPresence?.knownFor,
+        contentLanguage,
+    );
+
+    return {
+        ...storeDetails,
+        metaDescription: getLocalizedText(
+            storeDetails?.metaDescription,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeDetails?.metaDescription, contentLanguage),
+            '',
+        ),
+        metaTitle: getLocalizedText(
+            storeDetails?.metaTitle,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeDetails?.metaTitle, contentLanguage),
+            '',
+        ),
+        publicPresence: {
+            ...(storeDetails?.publicPresence || {}),
+            displayName: getLocalizedText(
+                storeDetails?.publicPresence?.displayName,
+                contentLanguage,
+                displayNamePrimaryLanguage,
+                '',
+            ),
+            descriptor: getLocalizedText(
+                storeDetails?.publicPresence?.descriptor,
+                contentLanguage,
+                descriptorPrimaryLanguage,
+                '',
+            ),
+            knownFor: getLocalizedText(
+                storeDetails?.publicPresence?.knownFor,
+                contentLanguage,
+                knownForPrimaryLanguage,
+                '',
+            ),
+        },
+        tagline: getLocalizedText(
+            storeDetails?.tagline,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
+            '',
+        ),
+    };
 }
 
 function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
@@ -138,7 +208,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     );
 
     const scrollRefs = useRef(
-        Array(16)
+        Array(20)
             .fill(0)
             .map(() => createRef<HTMLDivElement>()),
     );
@@ -276,17 +346,88 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuList />,
             tab: <BusinessAttributesTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 10 : 9]} />,
         }] : []),
+        ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{
+            key: "business-copy",
+            label: t('businessCopySetup'),
+            icon: <LuSparkles />,
+            tab: (
+                <BusinessCopySetupTab
+                    onApplyGeneratedCopy={async (generated, projectId) => {
+                        if (!storeDetails?.storeId) return;
+
+                        const localized = await localizeBusinessCopyResult({
+                            generated,
+                            projectId,
+                            storeDetails,
+                        });
+                        const nextPublicPresence = {
+                            ...(storeDetails?.publicPresence || {}),
+                            displayName: mergeLocalizedField(
+                                storeDetails?.publicPresence?.displayName,
+                                localized.displayName,
+                            ),
+                            descriptor: mergeLocalizedField(
+                                storeDetails?.publicPresence?.descriptor,
+                                localized.descriptor,
+                            ),
+                            knownFor: mergeLocalizedField(
+                                storeDetails?.publicPresence?.knownFor,
+                                localized.knownFor,
+                            ),
+                        };
+
+                        const nextStoreUpdate: any = {
+                            keywords: generated.keywords,
+                            metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
+                            metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
+                            ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
+                                ? {
+                                    pwaSettings: {
+                                        ...(storeDetails?.pwaSettings || {}),
+                                        pwaShortName: mergeLocalizedField(
+                                            storeDetails?.pwaSettings?.pwaShortName,
+                                            localized.pwaShortName,
+                                        ),
+                                    },
+                                }
+                                : {}),
+                            publicPresence: nextPublicPresence,
+                            storeId: storeDetails.storeId,
+                            tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
+                        };
+                        await updateStore(nextStoreUpdate);
+
+                        setStoreDetails({
+                            ...storeDetails,
+                            keywords: generated.keywords,
+                            metaDescription: nextStoreUpdate.metaDescription,
+                            metaTitle: nextStoreUpdate.metaTitle,
+                            publicPresence: nextPublicPresence,
+                            pwaSettings: {
+                                ...(storeDetails?.pwaSettings || {}),
+                                ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
+                                    ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                    : {}),
+                            },
+                            tagline: nextStoreUpdate.tagline,
+                        });
+                    }}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 11 : 10) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
+                    storeDetails={storeDetails}
+                />
+            ),
+        }] : []),
         {
             key: "seo",
             label: t('seoSettings'),
             icon: <LuSearch />,
-            tab: <SeoTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 11 : 10) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]} />,
+            tab: <SeoTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 11 : 10) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]} storeDetails={storeDetails} />,
         },
         {
             key: "analytics",
             label: t('analytics'),
             icon: <LuBarChart />,
-            tab: <AnalyticsTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 12 : 11) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]} form={form} />,
+            tab: <AnalyticsTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 12 : 11) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]} form={form} />,
         },
         {
             key: "integrations",
@@ -294,7 +435,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <SiGooglemybusiness />,
             tab: (
                 <IntegrationsTab
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 13 : 12) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 13 : 12) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]}
                     storeDetails={storeDetails}
                 />
             ),
@@ -305,7 +446,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuMessageSquare />,
             tab: (
                 <FeedbackSettingsTab
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 14 : 13) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 14 : 13) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]}
                     feedbackEnabled={feedbackEnabled}
                     setFeedbackEnabled={setFeedbackEnabled}
                     feedbackDefaults={feedbackDefaults}
@@ -321,7 +462,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuShield />,
             tab: (
                 <PosSyncTab
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 15 : 14) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
+                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 15 : 14) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]}
                     storeDetails={storeDetails}
                     onStoreUpdate={(updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
@@ -340,10 +481,11 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuSmartphone />,
             tab: (
                 <CustomerAppTab
-                    scrollRef={
-                        scrollRefs.current[
+                        scrollRef={
+                            scrollRefs.current[
                         (FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 16 : 15) +
-                        (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)
+                        (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) +
+                        (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)
                         ]
                     }
                 />
@@ -465,6 +607,51 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
         changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
         changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
+        const contentLanguage = resolveStoreContentLanguage(storeDetails);
+
+        if (changesToUpload.publicPresence) {
+            const currentPresence = storeDetails?.publicPresence || {};
+            changesToUpload.publicPresence = {
+                ...changesToUpload.publicPresence,
+                displayName: updateLocalizedText(
+                    currentPresence.displayName,
+                    changesToUpload.publicPresence.displayName,
+                    contentLanguage,
+                    'en',
+                ),
+                descriptor: updateLocalizedText(
+                    currentPresence.descriptor,
+                    changesToUpload.publicPresence.descriptor,
+                    contentLanguage,
+                    'en',
+                ),
+                knownFor: updateLocalizedText(
+                    currentPresence.knownFor,
+                    changesToUpload.publicPresence.knownFor,
+                    contentLanguage,
+                    'en',
+                ),
+            };
+        }
+
+        changesToUpload.tagline = updateLocalizedText(
+            storeDetails?.tagline,
+            changesToUpload.tagline,
+            contentLanguage,
+            'en',
+        );
+        changesToUpload.metaTitle = updateLocalizedText(
+            storeDetails?.metaTitle,
+            changesToUpload.metaTitle,
+            contentLanguage,
+            'en',
+        );
+        changesToUpload.metaDescription = updateLocalizedText(
+            storeDetails?.metaDescription,
+            changesToUpload.metaDescription,
+            contentLanguage,
+            'en',
+        );
 
         // Feedback settings (managed as React state, not Form fields)
         changesToUpload.feedbackEnabled = feedbackEnabled;
@@ -661,7 +848,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             layout="vertical"
                             onFinish={addUpdateDetails}
                             initialValues={{
-                                ...storeDetails,
+                                ...getBusinessSettingsInitialValues(storeDetails),
                                 currencyCode: storeDetails?.currencyCode || "INR",
                                 currencySymbol: storeDetails?.currencySymbol || "\u20b9",
                                 country: storeDetails?.country || "India",
@@ -698,7 +885,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                             size="large"
                                             onClick={() => {
                                                 form.setFieldsValue({
-                                                    ...storeDetails,
+                                                    ...getBusinessSettingsInitialValues(storeDetails),
                                                     currencyCode: storeDetails?.currencyCode,
                                                     currencySymbol: storeDetails?.currencySymbol,
                                                     country: storeDetails?.country,

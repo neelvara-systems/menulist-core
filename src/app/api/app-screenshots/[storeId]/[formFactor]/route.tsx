@@ -25,6 +25,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
 
@@ -156,11 +157,22 @@ export async function GET(
         const snap = await getDoc(ref);
         const store = snap.exists() ? snap.data() : null;
 
-        const displayName: string = store?.name || store?.storeName || 'Menu';
-        const tagline: string =
-            (typeof store?.tagline === 'string' && store.tagline.trim().length > 0)
-                ? store.tagline.trim().slice(0, 120)
-                : 'Tap anywhere to explore the menu';
+        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+        const displayName: string = getLocalizedText(
+            store?.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
+            store?.name || store?.storeName || 'Menu',
+        );
+        const resolvedTagline = getLocalizedText(
+            store?.tagline,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store?.tagline, contentLanguage),
+            '',
+        );
+        const tagline: string = resolvedTagline.trim().length > 0
+            ? resolvedTagline.trim().slice(0, 120)
+            : 'Tap anywhere to explore the menu';
         const accent = pickAccentColor(
             `${storeId}:${displayName}`,
             typeof store?.publicPresence?.accentColor === 'string'

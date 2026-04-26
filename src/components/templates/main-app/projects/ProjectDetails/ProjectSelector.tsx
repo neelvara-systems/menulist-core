@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { Button, Dropdown, Flex, Modal, Tag, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useMemo, useState, type CSSProperties } from 'react';
@@ -114,8 +115,10 @@ const CatalogCard = ({
     baseProjectName,
 }: CatalogCardProps) => {
     const [isHovered, setIsHovered] = useState(false);
-    const avatarColor = getAvatarColor(project.name);
-    const initials = getInitials(project.name);
+    const primaryLanguage = getPrimaryLocalizedLanguage(project.name, 'en');
+    const projectName = getLocalizedText(project.name, undefined, primaryLanguage, 'Untitled');
+    const avatarColor = getAvatarColor(projectName);
+    const initials = getInitials(projectName);
     const projectStatus = getProjectStatus(project);
     const isInactive = projectStatus === 'inactive';
     const statusPresentation = getStatusPresentation(projectStatus);
@@ -251,7 +254,7 @@ const CatalogCard = ({
                         lineHeight: 1.3,
                     }}
                 >
-                    {project.name}
+                    {projectName}
                 </Text>
                 {project.isSpecialMenu && baseProjectName ? (
                     <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', marginTop: 4 }}>
@@ -353,7 +356,10 @@ export const ProjectSelector = ({
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const baseProjectNameById = useMemo(
-        () => Object.fromEntries(projects.map((project) => [project.projectId, project.name])),
+        () => Object.fromEntries(projects.map((project) => [
+            project.projectId,
+            getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled'),
+        ])),
         [projects]
     );
     const selectedStatus = getProjectStatus(selectedProject);
@@ -365,11 +371,12 @@ export const ProjectSelector = ({
 
     const confirmDuplicate = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
+        const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
         Modal.confirm({
             title: `Duplicate ${offeringName}`,
             content: (
                 <div>
-                    <p>Create a copy of <strong>&quot;{project.name}&quot;</strong>?</p>
+                    <p>Create a copy of <strong>&quot;{projectName}&quot;</strong>?</p>
                     <p style={{ fontSize: 12, opacity: 0.7 }}>This will duplicate all files, {labels.itemsPlural}, and settings.</p>
                 </div>
             ),
@@ -381,11 +388,12 @@ export const ProjectSelector = ({
 
     const confirmDelete = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
+        const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
         Modal.confirm({
             title: `Delete ${offeringName}`,
             content: (
                 <div>
-                    <p>Permanently delete <strong>&quot;{project.name}&quot;</strong>?</p>
+                    <p>Permanently delete <strong>&quot;{projectName}&quot;</strong>?</p>
                     <p style={{ fontSize: 12, color: '#ff4d4f' }}>This action cannot be undone. All {labels.offeringPhrase} data will be lost.</p>
                 </div>
             ),
@@ -402,7 +410,7 @@ export const ProjectSelector = ({
             <Button type="default" icon={<LuFolderOpen size={18} />} onClick={() => setModalOpen(true)}>
                 <Flex align="center" gap={8}>
                     <Flex vertical gap={0}>
-                        <span>{selectedProject ? selectedProject.name : `Select ${offeringName}`}</span>
+                        <span>{selectedProject ? getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), `Select ${offeringName}`) : `Select ${offeringName}`}</span>
                         {selectedProject?.isSpecialMenu && selectedBaseProjectName ? (
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 From {selectedBaseProjectName}

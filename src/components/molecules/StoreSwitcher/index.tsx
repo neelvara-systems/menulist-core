@@ -6,6 +6,7 @@
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §8.4
  */
 
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
 import { useContext } from 'react';
@@ -18,12 +19,22 @@ export default function StoreSwitcher() {
     // Only show for master users with canSwitchStores permission
     if (!isMasterUser || !tenantDetails?.storesList?.length || !userPermissions?.canSwitchStores) return null;
 
+    const resolveStoreName = (store: any) => {
+        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+        return getLocalizedText(
+            store?.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
+            store?.name || `Store ${store?.storeId ?? ''}`,
+        );
+    };
+
     const options = tenantDetails.storesList.map((store) => ({
         value: store.storeId,
         label: (
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {store.isMaster ? '⭐' : '🏠'}
-                {store.name || `Store ${store.storeId}`}
+                {resolveStoreName(store)}
                 {store.isMaster && <span style={{ fontSize: 11, opacity: 0.6 }}>(HQ)</span>}
             </span>
         ),

@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Multi-Language Translation enables menus to be translated into 90+ languages using Gemini 2.5 Flash. The feature operates at four levels: OCR extraction with translation, file-level re-translation, global language addition, and single-item translation. Full RTL language support is included.
+Multi-Language Translation enables menus and related public business content to be localized into 90+ languages using Gemini 2.5 Flash plus inline localized field storage. The feature operates at four levels for structured menu content: OCR extraction with translation, file-level re-translation, global language addition, and single-item translation. It also supports localized rendering of project names, special-menu display names, and public business identity fields used across the menu page, OBP, and related public routes. Full RTL language support is included.
 
 ### What It Does
 
@@ -20,6 +20,7 @@ Multi-Language Translation enables menus to be translated into 90+ languages usi
 | **File Re-Translation**   | Re-translate all items from one menu file |
 | **Global Add Language**   | Add new language to entire menu at once   |
 | **Item Translation**      | Translate single item on demand           |
+| **Localized Public Identity** | Render project names and public business labels per language |
 | **RTL Support**           | Arabic, Hebrew, Persian, Urdu, Sindhi     |
 | **Primary Language Lock** | Source language protected from removal    |
 
@@ -29,6 +30,7 @@ Multi-Language Translation enables menus to be translated into 90+ languages usi
 - ❌ Translation memory/caching (each translation is fresh)
 - ❌ Real-time collaboration on translations
 - ❌ Automatic quality scoring of translations
+- ❌ Automatic translation of legal/technical identity fields like slugs or store IDs
 
 ---
 

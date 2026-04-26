@@ -3,6 +3,7 @@ import { CUSTOMER_MENU_REFRESH_EVENT, useMenuFreshness } from "@/hooks/useMenuFr
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import {
     DeviceTypes,
     PageType,
@@ -76,6 +77,13 @@ function ClientMenuRenderer({
     menuResolutionLayer,
 }: ClientMenuRendererProps) {
     const storeId = storeDetails?.storeId;
+    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || "en";
+    const storeDisplayName = getLocalizedText(
+        storeDetails?.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
+        storeDetails?.name || "Menu",
+    );
     const defaultLanguage = projectData?.languages?.[0]?.code || "en";
     const pageStorageKey = getCustomerMenuStateKey(storeId, PAGE_KEY);
     const languageStorageKey = getCustomerMenuStateKey(storeId, LANGUAGE_KEY);
@@ -215,7 +223,7 @@ function ClientMenuRenderer({
                 <CustomerAppController
                     storeId={storeId}
                     tenantId={storeDetails.tenantId}
-                    storeName={storeDetails.name || "Menu"}
+                    storeName={storeDisplayName}
                     promoteInstallation={
                         (storeDetails as any)?.pwaSettings?.promoteInstallation !== false
                     }

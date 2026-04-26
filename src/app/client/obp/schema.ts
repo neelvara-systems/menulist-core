@@ -17,6 +17,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import {
     buildAddress,
     buildAmenityFeatures,
@@ -28,6 +29,25 @@ import {
 } from '@lib/schema';
 
 export function generateOBPSchema(storeData: any, canonicalUrl: string) {
+    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+    const publicDisplayName = getLocalizedText(
+        storeData?.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
+        storeData?.name || 'Business',
+    );
+    const publicDescriptor = getLocalizedText(
+        storeData?.publicPresence?.descriptor,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.publicPresence?.descriptor, contentLanguage),
+        '',
+    );
+    const publicKnownFor = getLocalizedText(
+        storeData?.publicPresence?.knownFor,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.publicPresence?.knownFor, contentLanguage),
+        '',
+    );
     const address = buildAddress(storeData);
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
@@ -51,7 +71,7 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
         '@context': 'https://schema.org',
         '@type': schemaType,
         '@id': canonicalUrl,
-        name: storeData?.name || 'Business',
+        name: publicDisplayName,
         mainEntityOfPage: {
             '@type': 'WebPage',
             '@id': canonicalUrl,
@@ -61,11 +81,11 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
             name: 'MenuList Entity ID',
             value: `ml_${storeData?.storeId || 'unknown'}`,
         },
-        ...(storeData?.publicPresence?.descriptor && {
-            description: storeData.publicPresence.descriptor,
+        ...(publicDescriptor && {
+            description: publicDescriptor,
         }),
-        ...(!storeData?.publicPresence?.descriptor && storeData?.publicPresence?.knownFor && {
-            description: storeData.publicPresence.knownFor,
+        ...(!publicDescriptor && publicKnownFor && {
+            description: publicKnownFor,
         }),
         ...(!storeData?.publicPresence?.descriptor && !storeData?.publicPresence?.knownFor && storeData?.description && {
             description: storeData.description,

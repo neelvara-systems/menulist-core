@@ -10,6 +10,7 @@
 
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaDirectionsHandoffClient from './PwaDirectionsHandoffClient';
 
@@ -55,13 +56,20 @@ export default async function PwaDirectionsHandoffPage() {
     if (!mapsUrl) return notFound();
 
     const trackingEnabled = store.analytics?.trackMenuViews !== false;
+    const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
+    const storeName = getLocalizedText(
+        store.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
+        store.name || 'Restaurant',
+    );
 
     return (
         <PwaDirectionsHandoffClient
             storeId={store.id}
             tenantId={store.tenantId}
             mapsUrl={mapsUrl}
-            storeName={store.name || 'Restaurant'}
+            storeName={storeName}
             trackingEnabled={trackingEnabled}
         />
     );

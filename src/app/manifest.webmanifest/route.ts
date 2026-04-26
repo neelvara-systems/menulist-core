@@ -18,6 +18,7 @@ import { TrackingEvent, trackEvent } from '@lib/analytics/unified';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { getStoreByCustomDomain, getStoreByOutletSlug, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
 import { doc, getDoc } from 'firebase/firestore';
@@ -206,8 +207,19 @@ export async function GET(request: Request) {
             }).catch(() => { /* silent — analytics failure shouldn't break manifest */ });
         }
 
-        const displayName: string = store.name || store.storeName || 'Menu';
-        const shortName: string | undefined = store.pwaSettings?.pwaShortName;
+        const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
+        const displayName: string = getLocalizedText(
+            store.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
+            store.name || store.storeName || 'Menu',
+        );
+        const shortName = getLocalizedText(
+            store.pwaSettings?.pwaShortName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(store.pwaSettings?.pwaShortName, contentLanguage),
+            '',
+        ) || undefined;
 
         // Theme + description pulled from publicPresence (the existing OBP-facing
         // branding surface). Falls back to sensible defaults in buildManifest().
@@ -234,8 +246,18 @@ export async function GET(request: Request) {
         // Description — short snippet for install dialogs & PWA listings.
         // `store.tagline` is the owner-edited short tagline; fall back to a sensible default.
         const description: string =
-            (typeof store.tagline === 'string' && store.tagline.trim().length > 0)
-                ? store.tagline.trim().slice(0, 120)
+            getLocalizedText(
+                store.tagline,
+                contentLanguage,
+                getPrimaryLocalizedLanguage(store.tagline, contentLanguage),
+                '',
+            ).trim().length > 0
+                ? getLocalizedText(
+                    store.tagline,
+                    contentLanguage,
+                    getPrimaryLocalizedLanguage(store.tagline, contentLanguage),
+                    '',
+                ).trim().slice(0, 120)
                 : `${displayName} — digital menu`;
 
         const manifest = buildManifest({

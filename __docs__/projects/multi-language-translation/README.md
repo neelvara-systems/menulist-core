@@ -22,6 +22,7 @@ This feature **prepares content** but does **not influence decisions**. It is:
 | -------------- | -------------------------------------------------------------------------- | ---------------------------------- |
 | **CEO / PM**   | [multi-language-translation_spec.md](./multi-language-translation_spec.md) | Business requirements, user flows  |
 | **Developers** | [multi-language-translation_impl.md](./multi-language-translation_impl.md) | Technical blueprint, API contracts |
+| **Developers** | [multi-language-translation_localization-contract.md](./multi-language-translation_localization-contract.md) | Localization ownership, field contract, fallback rules |
 
 ---
 

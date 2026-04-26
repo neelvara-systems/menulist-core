@@ -25,6 +25,7 @@ import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
@@ -71,6 +72,18 @@ export default function UseMenuList() {
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
     const labels = useMemo(() => getOfferingLabels(storeDetails?.businessType), [storeDetails?.businessType]);
+    const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
+        getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
+    );
+    const storeDisplayName = useMemo(
+        () => getLocalizedText(
+            (storeDetails as any)?.publicPresence?.displayName,
+            undefined,
+            getPrimaryLocalizedLanguage((storeDetails as any)?.publicPresence?.displayName, 'en'),
+            storeDetails?.name || 'Your Business'
+        ),
+        [storeDetails]
+    );
 
     // Guide modal state
     const [guideModal, setGuideModal] = useState<{ title: string; content: React.ReactNode } | null>(null);
@@ -114,7 +127,7 @@ export default function UseMenuList() {
             const menuLink = generateProjectUrl(
                 subdomain,
                 customDomain,
-                defaultProject.name,
+                resolveProjectName(defaultProject.name, labels.offeringTitle),
                 false
             );
 
@@ -143,12 +156,12 @@ export default function UseMenuList() {
             const allProjects: ProjectLink[] = projects.map((p: any) => {
                 return {
                     projectId: p.projectId,
-                    name: p.name || 'Untitled',
+                    name: p.name,
                     isDefault: p.isDefault || false,
                     active: p.active !== false,
                     deleted: p.deleted === true,
                     // R5: real canonical slug URL — no /menu alias.
-                    url: generateProjectUrl(subdomain, customDomain, p.name, false),
+                    url: generateProjectUrl(subdomain, customDomain, resolveProjectName(p.name, labels.offeringTitle), false),
                     feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
                     feedbackQrUrl: p.projectId ? getFeedbackUrl(p.projectId, 'feedback_qr', obpLink) : '',
                 };
@@ -168,13 +181,13 @@ export default function UseMenuList() {
                 menuBoardLink: screenToken ? buildScreenUrl(screenToken, obpLink) : null,
                 highlightsLink: screenToken ? `${buildScreenUrl(screenToken, obpLink)}?mode=highlights` : null,
                 screenLastSeenAt,
-                storeName: storeDetails.name || 'Your Business',
+                storeName: storeDisplayName,
                 storeLogo: storeDetails.logo || null,
                 subdomain: subdomain || '',
                 customDomain: customDomain || null,
                 businessType: storeDetails.businessType || '',
                 projectId: defaultProject.projectId || null,
-                projectName: defaultProject.name || null,
+                projectName: resolveProjectName(defaultProject.name, labels.offeringTitle),
                 isDefaultProject: defaultProject.isDefault || false,
                 menuModifiedOn: defaultProject.modifiedOn || null,
                 allProjects,
@@ -347,7 +360,7 @@ export default function UseMenuList() {
         setData((prev) => prev ? {
             ...prev,
             projectId: project.projectId,
-            projectName: project.name,
+            projectName: resolveProjectName(project.name, labels.offeringTitle),
             isDefaultProject: project.isDefault,
             menuLink: project.url,
             feedbackLink: project.feedbackUrl,
@@ -366,14 +379,17 @@ export default function UseMenuList() {
                         clickable={data.allProjects.length > 1}
                         currentProject={{
                             id: activeProject.projectId,
-                            name: activeProject.name || 'Untitled',
+                            name: activeProject.name,
                             isDefault: activeProject.isDefault,
                             active: activeProject.active,
                             deleted: activeProject.deleted,
                             isSpecialMenu: activeProject.isSpecialMenu === true,
                             specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
                             specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
-                                ? data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name
+                                ? resolveProjectName(
+                                    data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name,
+                                    labels.offeringTitle,
+                                )
                                 : undefined,
                             specialMenuEndsAt: activeProject.specialMenuEndsAt,
                             specialMenuStatus: activeProject.specialMenuStatus,
@@ -1052,7 +1068,7 @@ export default function UseMenuList() {
                     onSelect={handleSelectProject}
                     projects={data.allProjects.map((project) => ({
                         id: project.projectId,
-                        name: project.name || 'Untitled',
+                        name: project.name,
                         isDefault: project.isDefault,
                         active: project.active,
                         deleted: project.deleted,

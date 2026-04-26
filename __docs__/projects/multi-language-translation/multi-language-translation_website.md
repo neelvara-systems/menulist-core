@@ -10,12 +10,12 @@
 Your restaurant serves customers who speak different languages. A menu only in English (or only in Hindi) means some customers can't read what you offer. They order less, ask more questions, and leave frustrated.
 
 ## Solution Statement
-MenuList translates your entire menu into any language automatically. Item names, descriptions, categories — all translated naturally, not word-for-word. Customers pick their language when they scan your QR code.
+MenuList localizes your digital menu into any language automatically. Item names, descriptions, categories, and supported public-facing labels such as menu names and official business page identity can appear in the customer’s selected language. Customers pick their language when they scan your QR code.
 
 ## Feature Benefits
 
 ### 1. One Click to Add a Language
-Select a language, click translate. Your entire menu — every item, every description, every category — is translated at once.
+Select a language, click translate. Your entire menu — every item, every description, every category — is translated at once, and related public menu labels can render in that language too.
 > **Visual:** Language selector dropdown → "Translating 48 items..." → completed menu in Hindi
 
 ### 2. Natural Translations, Not Word-for-Word
@@ -23,13 +23,14 @@ Translations read naturally in each language. "Butter Chicken" becomes the local
 > **Visual:** Side-by-side: English menu item → naturally translated Hindi version
 
 ### 3. Customers Choose Their Language
-When customers scan your QR code, they see a language picker. They choose, and the entire menu switches instantly.
+When customers scan your QR code, they see a language picker. They choose, and the menu plus supported public business labels switch instantly.
 > **Visual:** Phone screen showing language picker with 3 flags
 
 ## How It Works
 1. **Add a Language** — Select from supported languages in your project settings
-2. **Translate** — Click once. Everything translates automatically.
-3. **Customers Choose** — A language picker appears on your live menu.
+2. **Translate** — Click once. Structured menu content translates automatically.
+3. **Render Public Labels** — Project names and supported official-page labels use the selected language when available.
+4. **Customers Choose** — A language picker appears on your live menu.
 
 ## SEO Meta
 - **Page Title:** Multi-Language Menu Translation | MenuList

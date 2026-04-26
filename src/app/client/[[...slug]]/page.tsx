@@ -33,6 +33,7 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
@@ -451,7 +452,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         };
     }
 
-    const storeName = storeData.name || "Restaurant Menu";
+    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+    const storeName = getLocalizedText(
+        storeData?.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
+        storeData.name || "Restaurant Menu",
+    );
+    const storeMetaTitle = getLocalizedText(
+        storeData?.metaTitle,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.metaTitle, contentLanguage),
+        '',
+    );
+    const storeMetaDescription = getLocalizedText(
+        storeData?.metaDescription,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.metaDescription, contentLanguage),
+        '',
+    );
+    const storeTagline = getLocalizedText(
+        storeData?.tagline,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.tagline, contentLanguage),
+        '',
+    );
     const slugSegments = params?.slug || [];
     const firstSlug = slugSegments[0]?.toLowerCase();
     const secondSlug = slugSegments[1]?.toLowerCase();
@@ -459,14 +484,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     // AEO-optimized title: when OBP is enabled, emit entity-rich title for AI extraction
     // "Joe's Pizza — Menu, Hours, Contact" helps AI answer "What time does Joe's Pizza close?"
-    let title = storeData.metaTitle || (
+    let title = storeMetaTitle || (
         FEATURE_FLAGS.ENABLE_OBP
             ? `${storeName} — Menu, Hours, Contact`
             : `${storeName} | Menu`
     );
     let description =
-        storeData.metaDescription ||
-        storeData.tagline ||
+        storeMetaDescription ||
+        storeTagline ||
         (FEATURE_FLAGS.ENABLE_OBP
             ? `${storeName} — View menu, check hours, get directions, and contact details. Official business page.`
             : `View the digital menu for ${storeName}`
@@ -535,7 +560,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         ? `/api/app-icons/${storeData.id}/180`
         : undefined;
     const appleWebAppTitle =
-        storeData.pwaSettings?.pwaShortName?.trim() ||
+        getLocalizedText(
+            storeData.pwaSettings?.pwaShortName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData.pwaSettings?.pwaShortName, contentLanguage),
+            '',
+        ).trim() ||
         storeName;
     const themeColor = storeData.publicPresence?.accentColor || APP_THEME_COLOR;
 
@@ -601,8 +631,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         const projectTitle = metadataProjectRecord?.name || metadataProject?.metadata?.name;
         if (projectTitle && !contextSegments.length) {
             title = `${projectTitle} | ${resolvedStoreName}`;
-            description = metadataStore.metaDescription
-                || metadataStore.tagline
+            description = getLocalizedText(
+                metadataStore.metaDescription,
+                contentLanguage,
+                getPrimaryLocalizedLanguage(metadataStore.metaDescription, contentLanguage),
+                getLocalizedText(
+                    metadataStore.tagline,
+                    contentLanguage,
+                    getPrimaryLocalizedLanguage(metadataStore.tagline, contentLanguage),
+                    '',
+                ),
+            )
                 || `View ${projectTitle} from ${resolvedStoreName}.`;
         }
 
@@ -715,8 +754,13 @@ function generateSchemaOrgJsonLd(
     storeData: any,
     canonicalUrl: string,
 ) {
-    const storeName =
-        storeData?.name || projectData?.metadata?.name || "Restaurant";
+    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+    const storeName = getLocalizedText(
+        storeData?.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
+        storeData?.name || getLocalizedText(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage, getPrimaryLocalizedLanguage(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage), "Restaurant"),
+    );
     const categories =
         projectData?.files?.flatMap(
             (file: any) => file?.extractedData?.data?.categories || [],
@@ -1199,11 +1243,17 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     // (G-01) needs these preserved from the pre-switch master store.
     const masterSubdomain: string | undefined = storeData?.subdomain ?? undefined;
     const masterCustomDomain: string | undefined = storeData?.customDomain ?? undefined;
+    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
     // G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): capture the master brand name
     // BEFORE the outlet switch so the breadcrumb's "Business" node on outlet
     // project pages can show the tenant-level brand, not the outlet's name.
     const masterBrandName: string | undefined = storeData?.name
-        ? String(storeData.name).replace(/ - Main Store$/, '')
+        ? getLocalizedText(
+            storeData?.publicPresence?.displayName,
+            contentLanguage,
+            getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
+            String(storeData.name).replace(/ - Main Store$/, ''),
+        ).replace(/ - Main Store$/, '')
         : undefined;
 
     let resolvedSlug = slug;
@@ -1297,8 +1347,8 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
             <MenuNotFoundFallback
                 requestedSlug={resolvedSlug || slug || ''}
                 outletSlug={storeData.isMaster === false ? storeData.outletSlug || null : null}
-                storeName={storeData.name || null}
-                brandName={masterBrandName || storeData.name || null}
+                storeName={getLocalizedText(storeData?.publicPresence?.displayName, contentLanguage, getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage), storeData.name || '') || null}
+                brandName={masterBrandName || getLocalizedText(storeData?.publicPresence?.displayName, contentLanguage, getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage), storeData.name || '') || null}
             />
         );
     }
@@ -1355,13 +1405,19 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     // Layer 1 case (project slug === 'menu') does NOT trip this branch
     // because the slug-match cascade resolved the project directly — in that
     // case /menu IS the canonical URL and no override is needed.
+    const canonicalProjectName = getLocalizedText(
+        projectMetadata?.name,
+        projectData?.languages?.[0] || contentLanguage,
+        getPrimaryLocalizedLanguage(projectMetadata?.name, projectData?.languages?.[0] || contentLanguage),
+        '',
+    );
     const realDefaultSlug = projectMetadata?.slug
-        || (projectMetadata?.name ? slugify(projectMetadata.name) : '');
+        || (canonicalProjectName ? slugify(canonicalProjectName) : '');
     const canonicalUrl = isMenuAliasFallback && realDefaultSlug
         ? `${baseUrl}/${realDefaultSlug}`
         : (projectMetadata?.isDefault || !slug
             ? baseUrl
-            : `${baseUrl}/${slugify(projectMetadata.name)}`);
+            : `${baseUrl}/${slugify(canonicalProjectName)}`);
 
     const schemaOrgJsonLd = generateSchemaOrgJsonLd(
         projectData,
@@ -1370,8 +1426,14 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     );
 
     // BreadcrumbList for search engine navigation: Business → Menu
-    const storeName = storeDetails?.name || 'Business';
-    const menuName = projectMetadata?.name || 'Menu';
+    const projectLanguage = projectData?.languages?.[0] || contentLanguage;
+    const storeName = getLocalizedText(
+        storeDetails?.publicPresence?.displayName,
+        contentLanguage,
+        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
+        storeDetails?.name || 'Business',
+    );
+    const menuName = getLocalizedText(projectMetadata?.name, projectLanguage, getPrimaryLocalizedLanguage(projectMetadata?.name, projectLanguage), 'Menu');
     const breadcrumbJsonLd = buildBreadcrumbList(storeName, baseUrl, menuName);
 
     // Customer App (PWA) schema — tells search engines this menu is also an
@@ -1384,8 +1446,18 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
         ? buildMobileAppSchema({
             name: storeName,
             description:
-                (typeof storeDetails?.tagline === 'string' && storeDetails.tagline.trim().length > 0)
-                    ? storeDetails.tagline.trim().slice(0, 160)
+                getLocalizedText(
+                    storeDetails?.tagline,
+                    contentLanguage,
+                    getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
+                    '',
+                ).trim().length > 0
+                    ? getLocalizedText(
+                        storeDetails?.tagline,
+                        contentLanguage,
+                        getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
+                        '',
+                    ).trim().slice(0, 160)
                     : `${storeName} — digital menu`,
             baseUrl,
             themeColor: storeDetails?.publicPresence?.accentColor,
@@ -1425,7 +1497,12 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 businessName={masterBrandName || storeName}
                 outletName={
                     !storeData.isMaster && storeData.outletSlug
-                        ? (storeData.name || undefined)
+                        ? (getLocalizedText(
+                            storeData?.publicPresence?.displayName,
+                            contentLanguage,
+                            getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
+                            storeData.name || '',
+                        ) || undefined)
                         : undefined
                 }
                 outletSlug={

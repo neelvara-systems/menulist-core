@@ -143,6 +143,8 @@ export const AI_ACTIONS_TYPES: any = {
     //description actions
     ADD_DESCRIPTION: "add_description",
     REWRITE_DESCRIPTION: "rewrite_description",
+    SEO_AEO_GENERATION: "seo_aeo_generation",
+    BUSINESS_COPY_GENERATION: "business_copy_generation",
     //new item metadata actions
     NEW_ITEM_METADATA: "new_item_metadata",
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { Button, Card, Flex, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import type { SpecialMenuStatus } from '../templates/main-app/projects/types';
@@ -9,7 +10,7 @@ const { Text } = Typography;
 
 export type ProjectSelectorItem = {
     id: string;
-    name: string;
+    name: string | Record<string, string>;
     isDefault?: boolean;
     active?: boolean;
     deleted?: boolean;
@@ -102,7 +103,9 @@ export function ProjectSelectorTrigger({
 }: ProjectSelectorTriggerProps) {
     const t = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
-    const projectName = currentProject?.name || t('untitled');
+    const projectName = currentProject
+        ? getLocalizedText(currentProject.name, undefined, getPrimaryLocalizedLanguage(currentProject.name, 'en'), t('untitled'))
+        : t('untitled');
     const avatarColors = getAvatarColor(projectName);
     const projectStatus = getProjectStatus(currentProject);
     const statusPresentation = getStatusPresentation(projectStatus, {
@@ -202,12 +205,16 @@ interface ProjectSelectorListProps {
 export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSelect, projects }: ProjectSelectorListProps) {
     const t = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
-    const baseProjectNameById = Object.fromEntries(projects.map((project) => [project.id, project.name]));
+    const baseProjectNameById = Object.fromEntries(projects.map((project) => [
+        project.id,
+        getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('untitled')),
+    ]));
 
     return (
         <Flex gap={12} justify="flex-start" wrap="wrap">
             {projects.map((project) => {
-                const avatarColors = getAvatarColor(project.name || t('untitled'));
+                const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('untitled'));
+                const avatarColors = getAvatarColor(projectName || t('untitled'));
                 const isSelected = project.id === currentProjectId;
                 const projectStatus = getProjectStatus(project);
                 const isInactive = projectStatus === 'inactive';
@@ -303,11 +310,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     flexShrink: 0,
                                 }}
                             >
-                                {getInitials(project.name || t('untitled'))}
+                                {getInitials(projectName || t('untitled'))}
                             </Flex>
                             <Flex align="center" gap={6} justify="center" wrap="wrap">
                                 <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
-                                    {project.name || t('untitled')}
+                                    {projectName || t('untitled')}
                                 </Text>
                             </Flex>
                             {project.isSpecialMenu && baseProjectName ? (
