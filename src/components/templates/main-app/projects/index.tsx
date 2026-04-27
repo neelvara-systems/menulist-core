@@ -4,7 +4,7 @@ import LoadingMessage from '@antdComponent/loadingMessage';
 import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import GlobalLanguagesList from '@data/languages';
-import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, setProjectActive, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
+import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import useDeviceType from '@hook/useDeviceType';
@@ -13,6 +13,7 @@ import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -99,6 +100,10 @@ function ProjectsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm<ProjectFormData>();
     const [editingProject, setEditingProject] = useState<ProjectMetadata | null>(null);
+    const [projectFormLanguages, setProjectFormLanguages] = useState<string[]>([DefaultLanguage]);
+    const [projectFormSelectedLanguage, setProjectFormSelectedLanguage] = useState(DefaultLanguage);
+    const [projectNameDrafts, setProjectNameDrafts] = useState<Record<string, string>>({});
+    const [projectDescriptionDrafts, setProjectDescriptionDrafts] = useState<Record<string, string>>({});
     const [confirmActionVisible, setConfirmActionVisible] = useState(false);
     const [confirmActionType, setConfirmActionType] = useState<'reset' | 'delete' | null>(null);
     const [isFirstTime, setIsFirstTime] = useState(false);
@@ -151,6 +156,15 @@ function ProjectsPage() {
 
         return uploadedUrl || null;
     }, []);
+
+    const buildProjectLocalizedDrafts = useCallback((value: any, languages: string[]) => (
+        Object.fromEntries(
+            languages.map((languageCode) => [
+                languageCode,
+                getLocalizedProjectValue(value, languageCode, ''),
+            ])
+        )
+    ), []);
 
     // Mount effect: Preload lazy components + first-time visit check
     useEffect(() => {
@@ -455,8 +469,27 @@ function ProjectsPage() {
 
     const handleProjectEdit = async (values: ProjectFormData) => {
         try {
-            const sanitizedName = DOMPurify.sanitize(values.name, { ALLOWED_TAGS: [], KEEP_CONTENT: true }).trim();
-            const sanitizedDescription = values.description ? DOMPurify.sanitize(values.description, { ALLOWED_TAGS: [], KEEP_CONTENT: true }).trim() : undefined;
+            const sanitizedNameDrafts = Object.fromEntries(
+                Object.entries(projectNameDrafts).map(([languageCode, draftValue]) => [
+                    languageCode,
+                    DOMPurify.sanitize(draftValue, { ALLOWED_TAGS: [], KEEP_CONTENT: true }).trim(),
+                ])
+            ) as Record<string, string>;
+            const sanitizedDescriptionDrafts = Object.fromEntries(
+                Object.entries(projectDescriptionDrafts).map(([languageCode, draftValue]) => [
+                    languageCode,
+                    DOMPurify.sanitize(draftValue, { ALLOWED_TAGS: [], KEEP_CONTENT: true }).trim(),
+                ])
+            ) as Record<string, string>;
+            const sanitizedName = sanitizedNameDrafts[projectFormSelectedLanguage] || '';
+            const sanitizedDescription = sanitizedDescriptionDrafts[projectFormSelectedLanguage] || undefined;
+            const localizedName = applyLocalizedProjectDraftMap(editingProject?.name, sanitizedNameDrafts);
+            const localizedDescription = applyLocalizedProjectDraftMap(editingProject?.description, sanitizedDescriptionDrafts);
+
+            if (!localizedName || !Object.values(sanitizedNameDrafts).some((value) => value.trim().length > 0)) {
+                message.error(`Please enter a ${labels.offeringPhrase} name`);
+                return;
+            }
 
             // G-13 (§11 + §9 PUBLIC-ROUTING-DOCTRINE): surface the
             // Layer-1-vs-isDefault divergence so owners choose intentionally.
@@ -473,8 +506,9 @@ function ProjectsPage() {
                 (p: any) => p?.isDefault === true && p?.projectId !== editingProjectId,
             );
             const thisIsDefault = editingProject?.isDefault === true;
+            const nextIsDefault = values.isDefault === true;
             let promoteThisAsDefault = false;
-            if (proposedSlug === 'menu' && otherDefault && !thisIsDefault) {
+            if (proposedSlug === 'menu' && otherDefault && !nextIsDefault && !thisIsDefault) {
                 const decision = await new Promise<'promote' | 'keep'>((resolve) => {
                     Modal.confirm({
                         title: tDivergence('title'),
@@ -523,22 +557,26 @@ function ProjectsPage() {
                 promoteThisAsDefault = decision === 'promote';
             }
 
+            if (thisIsDefault && values.isDefault === false) {
+                message.error(`Choose another ${labels.offeringPhrase} as default before removing this one.`);
+                return;
+            }
+
             const savedProjectImage = await resolveProjectImageForSave(
                 values.projectImage ?? null,
                 editingProject?.projectId || sanitizedName,
             );
 
             if (editingProject) {
-                const updatePayload: { name?: string; description?: string; isDefault?: boolean; projectImage?: string | null } = {
-                    name: sanitizedName,
-                    description: sanitizedDescription,
+                const updatePayload: { name?: any; description?: any; isDefault?: boolean; projectImage?: string | null } = {
+                    name: localizedName,
+                    description: localizedDescription,
                     projectImage: savedProjectImage,
                 };
                 const nextActive = values.active !== false;
                 const activeChanged = (editingProject as any).active !== nextActive;
-                if (promoteThisAsDefault) {
-                    updatePayload.isDefault = true;
-                }
+                const shouldBeDefault = promoteThisAsDefault || nextIsDefault;
+                updatePayload.isDefault = shouldBeDefault;
                 const updatedProject = { ...editingProject, ...updatePayload, active: nextActive };
                 await updateProjectMetadata(editingProject.projectId!, updatePayload);
                 if (activeChanged) {
@@ -546,7 +584,7 @@ function ProjectsPage() {
                 }
                 // G-13: if this was promoted to default, flip the previous
                 // default off so there is exactly one isDefault project.
-                if (promoteThisAsDefault && otherDefault?.projectId) {
+                if (shouldBeDefault && otherDefault?.projectId) {
                     await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
                 }
 
@@ -558,25 +596,41 @@ function ProjectsPage() {
                 mutateProjects(
                     (current) => current ? {
                         ...current,
-                        projects: current.projects.map(p => p.projectId === editingProject.projectId ? updatedProject : p)
+                        projects: current.projects.map((p) => {
+                            if (p.projectId === editingProject.projectId) return updatedProject;
+                            if (shouldBeDefault && p.projectId === otherDefault?.projectId) {
+                                return { ...p, isDefault: false };
+                            }
+                            return p;
+                        })
                     } : current,
                     { revalidate: false }
                 );
                 message.success(`${offeringName} updated successfully`);
             } else {
+                const shouldBeDefault = promoteThisAsDefault || nextIsDefault;
                 const newProject = await addProject({
-                    name: sanitizedName,
-                    description: sanitizedDescription,
+                    name: localizedName,
+                    description: localizedDescription,
                     projectImage: savedProjectImage,
                     active: values.active !== false,
+                    isDefault: shouldBeDefault,
                 });
                 if (newProject) {
+                    if (shouldBeDefault && otherDefault?.projectId) {
+                        await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
+                    }
                     setSelectedProject(newProject.summaryData);
                     // Update SWR cache (single source of truth)
                     mutateProjects(
                         (current) => current ? {
                             ...current,
-                            projects: [...current.projects, newProject.summaryData]
+                            projects: [
+                                ...current.projects.map((p) => shouldBeDefault && p.projectId === otherDefault?.projectId
+                                    ? { ...p, isDefault: false }
+                                    : p),
+                                newProject.summaryData,
+                            ]
                         } : { projects: [newProject.summaryData], lastDoc: null },
                         { revalidate: false }
                     );
@@ -618,6 +672,49 @@ function ProjectsPage() {
         }
     };
 
+    const handleSetDefaultProject = async (project: ProjectMetadata) => {
+        try {
+            const projectName = getLocalizedText(
+                project.name,
+                undefined,
+                getPrimaryLocalizedLanguage(project.name, 'en'),
+                offeringName,
+            );
+            const currentDefault = (projectsData?.projects || []).find(
+                (entry: any) => entry?.isDefault === true && entry?.projectId !== project.projectId,
+            );
+
+            await updateProjectMetadata(project.projectId!, { isDefault: true });
+            if (currentDefault?.projectId) {
+                await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
+            }
+
+            const updatedProject = { ...project, isDefault: true };
+            if (selectedProject?.projectId === project.projectId) {
+                setSelectedProject(updatedProject);
+            }
+
+            mutateProjects(
+                (current) => current ? {
+                    ...current,
+                    projects: current.projects.map((entry) => {
+                        if (entry.projectId === project.projectId) return updatedProject;
+                        if (entry.projectId === currentDefault?.projectId) {
+                            return { ...entry, isDefault: false };
+                        }
+                        return entry;
+                    }),
+                } : current,
+                { revalidate: false }
+            );
+
+            message.success(`${projectName} is now the default ${labels.offeringPhrase}`);
+        } catch (error) {
+            console.error('Error setting default project:', error);
+            message.error(`Failed to set default ${labels.offeringPhrase}`);
+        }
+    };
+
     const handleReset = async () => {
         if (selectedProject && activeProject) {
             try {
@@ -645,7 +742,12 @@ function ProjectsPage() {
         setDuplicateModalOpen(true);
     };
 
-    const handleDuplicateSubmit = async (newName: string, newDescription?: string) => {
+    const handleDuplicateSubmit = async (
+        newName: string,
+        newDescription?: string,
+        localizedName?: Record<string, string>,
+        localizedDescription?: Record<string, string>,
+    ) => {
         if (!projectToDuplicate?.projectId) {
             message.error(`Invalid ${labels.offeringPhrase} data`);
             return;
@@ -653,7 +755,13 @@ function ProjectsPage() {
 
         try {
             dispatch(startLoader("Duplicating project"));
-            const result = await duplicateProject(projectToDuplicate.projectId, newName, newDescription);
+            const result = await duplicateProject(
+                projectToDuplicate.projectId,
+                newName,
+                newDescription,
+                localizedName,
+                localizedDescription,
+            );
 
             // Auto-select the new project and update local state
             if (result?.summaryData) {
@@ -723,23 +831,42 @@ function ProjectsPage() {
         setConfirmActionVisible(false);
         setConfirmActionType(null);
         setIsModalOpen(false);
+        setProjectFormLanguages([DefaultLanguage]);
+        setProjectFormSelectedLanguage(DefaultLanguage);
+        setProjectNameDrafts({});
+        setProjectDescriptionDrafts({});
     }
 
-    const openModal = (project?: ProjectMetadata) => {
+    const openModal = async (project?: ProjectMetadata) => {
         if (project) {
-            const primaryLanguage = getPrimaryLocalizedLanguage(project.name, 'en');
+            const detailedProject = activeProject?.projectId === project.projectId
+                ? activeProject
+                : await getProjectDataWithoutLoader(project.projectId!);
+            const languages = getProjectManagedLanguages(detailedProject, storeDetails);
+            const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
+            const nextNameDrafts = buildProjectLocalizedDrafts(detailedProject?.name || project.name, languages);
+            const nextDescriptionDrafts = buildProjectLocalizedDrafts(detailedProject?.description || project.description, languages);
             setEditingProject(project);
+            setProjectFormLanguages(languages);
+            setProjectFormSelectedLanguage(selectedLanguage);
+            setProjectNameDrafts(nextNameDrafts);
+            setProjectDescriptionDrafts(nextDescriptionDrafts);
             form.setFieldsValue({
                 active: (project as any).active !== false,
-                name: getLocalizedText(project.name, undefined, primaryLanguage, ''),
-                description: getLocalizedText(project.description, undefined, primaryLanguage, ''),
+                isDefault: project.isDefault === true,
                 projectImage: project.projectImage || null,
             });
         } else {
+            const defaultLanguage = storeDetails?.defaultLanguage || DefaultLanguage;
             setEditingProject(null);
+            setProjectFormLanguages([defaultLanguage]);
+            setProjectFormSelectedLanguage(defaultLanguage);
+            setProjectNameDrafts({ [defaultLanguage]: '' });
+            setProjectDescriptionDrafts({ [defaultLanguage]: '' });
             form.resetFields();
             form.setFieldsValue({
                 active: true,
+                isDefault: !(projectsData?.projects || []).some((project: any) => project?.isDefault === true),
                 projectImage: null,
             });
         }
@@ -1301,6 +1428,7 @@ function ProjectsPage() {
                             onOpenModal={openModal}
                             onDuplicateProject={handleDuplicateProject}
                             onDeleteProject={handleDeleteProjectFromSelector}
+                            onSetDefaultProject={handleSetDefaultProject}
                             activeDeviceType={activeDeviceType}
                             setActiveDeviceType={setActiveDeviceType}
                             onPreview={selectedProject?.projectId ? handlePreview : undefined}
@@ -1315,6 +1443,7 @@ function ProjectsPage() {
                         <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 8px' }}>
                             <SpecialMenuCard
                                 baseProjectId={selectedProject.projectId}
+                                baseProjectLanguages={activeProject?.languages || []}
                                 baseProjectName={getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), 'Untitled')}
                             />
                         </div>
@@ -1713,12 +1842,40 @@ function ProjectsPage() {
                     isOpen={isModalOpen}
                     editingProject={editingProject}
                     form={form}
+                    languages={projectFormLanguages}
+                    nameValue={projectNameDrafts[projectFormSelectedLanguage] || ''}
+                    descriptionValue={projectDescriptionDrafts[projectFormSelectedLanguage] || ''}
                     onCancel={onCloseModal}
+                    onDescriptionChange={(value) => setProjectDescriptionDrafts((previous) => ({
+                        ...previous,
+                        [projectFormSelectedLanguage]: value,
+                    }))}
+                    onLanguageChange={(languageCode) => setProjectFormSelectedLanguage(languageCode)}
+                    onNameChange={(value) => setProjectNameDrafts((previous) => ({
+                        ...previous,
+                        [projectFormSelectedLanguage]: value,
+                    }))}
                     onSubmit={() => form.validateFields().then(handleProjectEdit)}
                     onReset={() => {
                         setConfirmActionType('reset');
                         setConfirmActionVisible(true);
                     }}
+                    referenceDescription={projectDescriptionDrafts[getProjectPreferredLanguage({
+                        description: editingProject?.description,
+                        languages: projectFormLanguages,
+                        name: editingProject?.name,
+                    }, storeDetails)] || ''}
+                    referenceLanguage={getProjectPreferredLanguage({
+                        description: editingProject?.description,
+                        languages: projectFormLanguages,
+                        name: editingProject?.name,
+                    }, storeDetails)}
+                    referenceName={projectNameDrafts[getProjectPreferredLanguage({
+                        description: editingProject?.description,
+                        languages: projectFormLanguages,
+                        name: editingProject?.name,
+                    }, storeDetails)] || ''}
+                    selectedLanguage={projectFormSelectedLanguage}
                 />
                 <ProjectConfirmModal
                     isOpen={confirmActionVisible}

@@ -16,10 +16,10 @@ export type ProjectSelectorItem = {
     deleted?: boolean;
     isSpecialMenu?: boolean;
     specialMenuBaseProjectId?: string;
-    specialMenuBaseProjectName?: string;
+    specialMenuBaseProjectName?: string | Record<string, string>;
     specialMenuEndsAt?: string;
     specialMenuStatus?: SpecialMenuStatus;
-    secondaryLabel?: string;
+    secondaryLabel?: string | Record<string, string>;
 };
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
@@ -205,15 +205,18 @@ interface ProjectSelectorListProps {
 export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSelect, projects }: ProjectSelectorListProps) {
     const t = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
+    const resolveText = (value: string | Record<string, string> | null | undefined, fallback = '') => (
+        getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), fallback)
+    );
     const baseProjectNameById = Object.fromEntries(projects.map((project) => [
         project.id,
-        getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('untitled')),
+        resolveText(project.name, t('untitled')),
     ]));
 
     return (
         <Flex gap={12} justify="flex-start" wrap="wrap">
             {projects.map((project) => {
-                const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('untitled'));
+                const projectName = resolveText(project.name, t('untitled'));
                 const avatarColors = getAvatarColor(projectName || t('untitled'));
                 const isSelected = project.id === currentProjectId;
                 const projectStatus = getProjectStatus(project);
@@ -224,8 +227,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                     deleted: t('statusDeleted'),
                 });
                 const specialMenuStatus = getResolvedSpecialMenuStatus(project);
-                const baseProjectName = project.specialMenuBaseProjectName
-                    || (project.specialMenuBaseProjectId ? baseProjectNameById[project.specialMenuBaseProjectId] : null);
+                const baseProjectName = resolveText(
+                    project.specialMenuBaseProjectName,
+                    project.specialMenuBaseProjectId ? baseProjectNameById[project.specialMenuBaseProjectId] : '',
+                );
+                const secondaryLabel = resolveText(project.secondaryLabel);
 
                 return (
                     <Card
@@ -327,9 +333,9 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     {t('default')}
                                 </Tag>
                             ) : null}
-                            {project.secondaryLabel ? (
+                            {secondaryLabel ? (
                                 <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                                    {project.secondaryLabel}
+                                    {secondaryLabel}
                                 </Text>
                             ) : null}
                         </Flex>

@@ -7,8 +7,10 @@
  */
 
 import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
+import { getProjectDataWithoutLoader } from '@database/projects';
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
+import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
@@ -17,6 +19,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
@@ -77,6 +80,18 @@ function resolveProjectName(name: ProjectNameValue, fallback: string): string {
     return getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback);
 }
 
+function buildLocalizedDrafts(
+    value: string | Record<string, string> | undefined,
+    languages: string[],
+): Record<string, string> {
+    return Object.fromEntries(
+        languages.map((languageCode) => [
+            languageCode,
+            getLocalizedProjectValue(value, languageCode, ''),
+        ])
+    );
+}
+
 function getScheduleConflict(
     specialMenus: SpecialMenuListItem[],
     params: SpecialMenuConflictCheckParams,
@@ -111,6 +126,7 @@ function CreateSpecialMenuSheet({
     defaultBaseProjectId,
     onClose,
     onResolveOverlap,
+    resolveProjectDetails,
     onSubmit,
     open,
 }: {
@@ -118,10 +134,12 @@ function CreateSpecialMenuSheet({
     defaultBaseProjectId: string;
     onClose: () => void;
     onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
+    resolveProjectDetails: (projectId: string) => Promise<any | null>;
     onSubmit: (payload: {
         allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
+        localizedDisplayName?: Record<string, string>;
         endsAt: string;
         mode: 'replace' | 'overlay';
         startsAt: string;
@@ -136,7 +154,9 @@ function CreateSpecialMenuSheet({
     );
     const { token } = theme.useToken();
     const [baseProjectId, setBaseProjectId] = useState(defaultBaseProjectId);
-    const [displayName, setDisplayName] = useState('');
+    const [managedLanguages, setManagedLanguages] = useState<string[]>([storeDetails?.defaultLanguage || 'en']);
+    const [selectedLanguage, setSelectedLanguage] = useState(storeDetails?.defaultLanguage || 'en');
+    const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({});
     const [mode, setMode] = useState<'replace' | 'overlay'>(capabilities.availableModes[0] || 'overlay');
     const [startsAt, setStartsAt] = useState(() => toInputValue(new Date().toISOString(), true));
     const [endsAt, setEndsAt] = useState(() => toInputValue(dayjs().add(1, 'day').toISOString(), true));
@@ -146,12 +166,35 @@ function CreateSpecialMenuSheet({
         : false;
 
     const resetForm = () => {
+        const defaultLanguage = storeDetails?.defaultLanguage || 'en';
         setBaseProjectId(defaultBaseProjectId);
-        setDisplayName('');
+        setManagedLanguages([defaultLanguage]);
+        setSelectedLanguage(defaultLanguage);
+        setDisplayNameDrafts({ [defaultLanguage]: '' });
         setMode(capabilities.availableModes[0] || 'overlay');
         setStartsAt(toInputValue(new Date().toISOString(), true));
         setEndsAt(toInputValue(dayjs().add(1, 'day').toISOString(), true));
     };
+
+    useEffect(() => {
+        if (!open || !baseProjectId) return;
+        let cancelled = false;
+
+        void resolveProjectDetails(baseProjectId).then((projectDetails) => {
+            if (cancelled || !projectDetails) return;
+            const languages = getProjectManagedLanguages(projectDetails, storeDetails);
+            const preferredLanguage = getProjectPreferredLanguage(projectDetails, storeDetails);
+            setManagedLanguages(languages);
+            setSelectedLanguage(preferredLanguage);
+            setDisplayNameDrafts((previous) => (
+                Object.keys(previous).length > 0 ? previous : { [preferredLanguage]: '' }
+            ));
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [baseProjectId, open, resolveProjectDetails, storeDetails]);
 
     const handleClose = () => {
         if (isSubmitting) return;
@@ -160,14 +203,15 @@ function CreateSpecialMenuSheet({
     };
 
     const handleSubmit = async () => {
-        const trimmedName = displayName.trim();
+        const trimmedName = (displayNameDrafts[selectedLanguage] || '').trim();
+        const localizedDisplayName = applyLocalizedProjectDraftMap(undefined, displayNameDrafts);
 
         if (!baseProjectId) {
             Toast.show({ content: t('baseMenuRequired'), duration: 1800 });
             return;
         }
 
-        if (!trimmedName) {
+        if (!trimmedName || !localizedDisplayName) {
             Toast.show({ content: t('nameRequired'), duration: 1800 });
             return;
         }
@@ -199,6 +243,7 @@ function CreateSpecialMenuSheet({
                 allowOverlap: overlapResolution === true,
                 baseProjectId,
                 displayName: trimmedName,
+                localizedDisplayName,
                 endsAt: endsAtIso,
                 mode,
                 startsAt: startsAtIso,
@@ -250,11 +295,21 @@ function CreateSpecialMenuSheet({
                             <Flex gap={4} vertical>
                                 <Text strong>{t('nameLabel')}</Text>
                                 <Text type="secondary">Give the special menu a clear public name like Summer Specials or Weekend Brunch.</Text>
+                                <MobileLocalizedLanguageSelector
+                                    helperText="Edit this special menu name one language at a time."
+                                    languages={managedLanguages}
+                                    onChange={setSelectedLanguage}
+                                    selectedLanguage={selectedLanguage}
+                                    title="Project content language"
+                                />
                                 <Input
                                     maxLength={100}
-                                    onChange={setDisplayName}
+                                    onChange={(value) => setDisplayNameDrafts((previous) => ({
+                                        ...previous,
+                                        [selectedLanguage]: value,
+                                    }))}
                                     placeholder={t('namePlaceholder')}
-                                    value={displayName}
+                                    value={displayNameDrafts[selectedLanguage] || ''}
                                 />
                             </Flex>
 
@@ -354,17 +409,21 @@ function EditSpecialMenuSheet({
     item,
     onClose,
     onResolveOverlap,
+    resolveProjectDetails,
     onSubmit,
     open,
 }: {
     item: SpecialMenuListItem | null;
     onClose: () => void;
     onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
+    resolveProjectDetails: (projectId: string) => Promise<any | null>;
     onSubmit: (payload: {
         allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;
+        localizedDescription?: Record<string, string>;
+        localizedDisplayName?: Record<string, string>;
         endsAt: string;
         startsAt: string;
     }) => Promise<void>;
@@ -374,32 +433,80 @@ function EditSpecialMenuSheet({
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const tSettings = useTranslations('Settings');
     const { token } = theme.useToken();
-    const [displayName, setDisplayName] = useState('');
-    const [description, setDescription] = useState('');
+    const [managedLanguages, setManagedLanguages] = useState<string[]>(['en']);
+    const [selectedLanguage, setSelectedLanguage] = useState('en');
+    const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({});
+    const [descriptionDrafts, setDescriptionDrafts] = useState<Record<string, string>>({});
+    const [initialDisplayNameDrafts, setInitialDisplayNameDrafts] = useState<Record<string, string>>({});
+    const [initialDescriptionDrafts, setInitialDescriptionDrafts] = useState<Record<string, string>>({});
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!item?.projectId) {
+            setDisplayNameDrafts({});
+            setDescriptionDrafts({});
+            setInitialDisplayNameDrafts({});
+            setInitialDescriptionDrafts({});
+            setManagedLanguages(['en']);
+            setSelectedLanguage('en');
+            setStartsAt('');
+            setEndsAt('');
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        void resolveProjectDetails(item.projectId).then((projectDetails) => {
+            if (cancelled || !projectDetails) return;
+            const languages = getProjectManagedLanguages(projectDetails);
+            const preferredLanguage = getProjectPreferredLanguage(projectDetails);
+            const nextDisplayNameDrafts = buildLocalizedDrafts(
+                projectDetails?._specialMenu?.displayName || item.displayName,
+                languages,
+            );
+            const nextDescriptionDrafts = buildLocalizedDrafts(
+                projectDetails?.description || item.description,
+                languages,
+            );
+            setManagedLanguages(languages);
+            setSelectedLanguage(preferredLanguage);
+            setDisplayNameDrafts(nextDisplayNameDrafts);
+            setDescriptionDrafts(nextDescriptionDrafts);
+            setInitialDisplayNameDrafts(nextDisplayNameDrafts);
+            setInitialDescriptionDrafts(nextDescriptionDrafts);
+            setStartsAt(toInputValue(item?.startsAt, true));
+            setEndsAt(toInputValue(item?.endsAt, true));
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [item, resolveProjectDetails]);
+
     const resetForm = () => {
-        setDisplayName(item?.displayName || '');
-        setDescription(item?.description || '');
+        setDisplayNameDrafts(initialDisplayNameDrafts);
+        setDescriptionDrafts(initialDescriptionDrafts);
+        setSelectedLanguage(getProjectPreferredLanguage({ languages: managedLanguages }));
         setStartsAt(toInputValue(item?.startsAt, true));
         setEndsAt(toInputValue(item?.endsAt, true));
     };
 
-    useEffect(() => {
-        resetForm();
-    }, [item]);
-
-    const initialName = item?.displayName || '';
-    const initialDescription = item?.description || '';
+    const initialName = initialDisplayNameDrafts[selectedLanguage] || '';
+    const initialDescription = initialDescriptionDrafts[selectedLanguage] || '';
+    const displayName = displayNameDrafts[selectedLanguage] || '';
+    const description = descriptionDrafts[selectedLanguage] || '';
     const initialStartsAt = toInputValue(item?.startsAt, true);
     const initialEndsAt = toInputValue(item?.endsAt, true);
+    const referenceLanguage = getProjectPreferredLanguage({ languages: managedLanguages });
     const isActiveToggleOn = startsAt
         ? dayjs(toIsoValue(startsAt, true)).valueOf() <= Date.now()
         : false;
-    const hasChanges = displayName.trim() !== initialName.trim()
-        || description.trim() !== initialDescription.trim()
+    const hasChanges = JSON.stringify(displayNameDrafts) !== JSON.stringify(initialDisplayNameDrafts)
+        || JSON.stringify(descriptionDrafts) !== JSON.stringify(initialDescriptionDrafts)
         || startsAt !== initialStartsAt
         || endsAt !== initialEndsAt;
 
@@ -412,10 +519,12 @@ function EditSpecialMenuSheet({
     const handleSubmit = async () => {
         const trimmedName = displayName.trim();
         const trimmedDescription = description.trim();
+        const localizedDisplayName = applyLocalizedProjectDraftMap(undefined, displayNameDrafts);
+        const localizedDescription = applyLocalizedProjectDraftMap(undefined, descriptionDrafts);
 
         if (!item?.projectId) return;
 
-        if (!trimmedName) {
+        if (!trimmedName || !localizedDisplayName) {
             Toast.show({ content: t('nameRequired'), duration: 1800 });
             return;
         }
@@ -449,6 +558,8 @@ function EditSpecialMenuSheet({
                 projectId: item.projectId,
                 description: trimmedDescription || undefined,
                 displayName: trimmedName,
+                localizedDescription,
+                localizedDisplayName,
                 endsAt: endsAtIso,
                 startsAt: startsAtIso,
             });
@@ -502,12 +613,33 @@ function EditSpecialMenuSheet({
                             <Flex gap={4} vertical>
                                 <Text strong>{t('nameLabel')}</Text>
                                 <Text type="secondary">Use the public-facing name customers should see for this special menu.</Text>
+                                <MobileLocalizedLanguageSelector
+                                    helperText="Edit this special menu one language at a time."
+                                    languages={managedLanguages}
+                                    onChange={setSelectedLanguage}
+                                    selectedLanguage={selectedLanguage}
+                                    title="Project content language"
+                                />
                                 <Input
                                     maxLength={100}
-                                    onChange={setDisplayName}
+                                    onChange={(value) => setDisplayNameDrafts((previous) => ({
+                                        ...previous,
+                                        [selectedLanguage]: value,
+                                    }))}
                                     placeholder={t('namePlaceholder')}
                                     value={displayName}
                                 />
+                                {selectedLanguage !== referenceLanguage ? (
+                                    <MobileProjectReferenceCard
+                                        onUseReference={() => setDisplayNameDrafts((previous) => ({
+                                            ...previous,
+                                            [selectedLanguage]: previous[referenceLanguage] || '',
+                                        }))}
+                                        referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                                        referenceValue={displayNameDrafts[referenceLanguage] || ''}
+                                        token={token}
+                                    />
+                                ) : null}
                             </Flex>
 
                             <Flex gap={4} vertical>
@@ -515,12 +647,26 @@ function EditSpecialMenuSheet({
                                 <Text type="secondary">Optional short note to explain what is included or why this menu is special.</Text>
                                 <TextArea
                                     maxLength={300}
-                                    onChange={setDescription}
+                                    onChange={(value) => setDescriptionDrafts((previous) => ({
+                                        ...previous,
+                                        [selectedLanguage]: value,
+                                    }))}
                                     placeholder={tProjectSelector('descriptionPlaceholder')}
                                     rows={3}
                                     showCount
                                     value={description}
                                 />
+                                {selectedLanguage !== referenceLanguage ? (
+                                    <MobileProjectReferenceCard
+                                        onUseReference={() => setDescriptionDrafts((previous) => ({
+                                            ...previous,
+                                            [selectedLanguage]: previous[referenceLanguage] || '',
+                                        }))}
+                                        referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                                        referenceValue={descriptionDrafts[referenceLanguage] || ''}
+                                        token={token}
+                                    />
+                                ) : null}
                             </Flex>
 
                             <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
@@ -740,6 +886,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const {
+        projectsById,
         selectProject,
         selectedProjectId,
         selectedProjectSummary,
@@ -815,10 +962,16 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         onOpenMenuTab?.();
     };
 
+    const resolveProjectDetails = useCallback(async (projectId: string) => {
+        if (!projectId) return null;
+        return projectsById[projectId] || await getProjectDataWithoutLoader(projectId);
+    }, [projectsById]);
+
     const handleCreateSpecialMenu = async (payload: {
         allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
+        localizedDisplayName?: Record<string, string>;
         endsAt: string;
         mode: 'replace' | 'overlay';
         startsAt: string;
@@ -844,6 +997,8 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         projectId: string;
         description?: string;
         displayName: string;
+        localizedDescription?: Record<string, string>;
+        localizedDisplayName?: Record<string, string>;
         endsAt: string;
         startsAt: string;
     }) => {
@@ -982,6 +1137,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                 defaultBaseProjectId={defaultBaseProjectId}
                 onClose={() => setIsCreateOpen(false)}
                 onResolveOverlap={resolveOverlap}
+                resolveProjectDetails={resolveProjectDetails}
                 onSubmit={handleCreateSpecialMenu}
                 open={isCreateOpen}
             />
@@ -990,9 +1146,43 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
                 item={editingMenu}
                 onClose={() => setEditingMenu(null)}
                 onResolveOverlap={resolveOverlap}
+                resolveProjectDetails={resolveProjectDetails}
                 onSubmit={handleUpdateSpecialMenu}
                 open={Boolean(editingMenu)}
             />
         </Flex>
+    );
+}
+
+function MobileProjectReferenceCard({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+    token,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+    token: any;
+}) {
+    return (
+        <Card
+            style={{
+                background: token.colorFillAlter,
+                borderColor: token.colorBorderSecondary,
+            }}
+        >
+            <Flex align="center" gap={12} justify="space-between" style={{ padding: 12 }}>
+                <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                    <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                    <Text>{referenceValue || 'No content yet in the primary language.'}</Text>
+                </Flex>
+                {referenceValue ? (
+                    <Button fill="outline" onClick={onUseReference} size="small">
+                        Use reference
+                    </Button>
+                ) : null}
+            </Flex>
+        </Card>
     );
 }

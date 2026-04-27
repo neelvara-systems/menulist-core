@@ -1444,6 +1444,8 @@ export const duplicateProject = async (
     projectId: string,
     newName: string,
     newDescription?: string,
+    localizedNameInput?: Record<string, string>,
+    localizedDescriptionInput?: Record<string, string>,
 ) => {
     return await apiCallComposer(
         async () => {
@@ -1462,15 +1464,15 @@ export const duplicateProject = async (
                 ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)[projectId] || {}
                 : {};
             const textLanguage = resolveProjectTextLanguage(originalSummary.name, 'en');
-            const localizedName = updateLocalizedText(undefined, newName, textLanguage, 'en');
-            const localizedDescription = newDescription
+            const localizedName = localizedNameInput || updateLocalizedText(undefined, newName, textLanguage, 'en');
+            const localizedDescription = localizedDescriptionInput || (newDescription
                 ? updateLocalizedText(undefined, newDescription, textLanguage, 'en')
                 : updateLocalizedText(
                     undefined,
                     `Copy of ${resolveProjectSummaryName(originalSummary?.name, "project")}`,
                     textLanguage,
                     'en',
-                );
+                ));
 
             // 2. Generate new project ID
             const sess = await getActiveSession();
@@ -1521,7 +1523,7 @@ export const duplicateProject = async (
                 summaryData,
             };
         },
-        { projectId, newName, newDescription },
+        { localizedDescriptionInput, localizedNameInput, newDescription, newName, projectId },
         "duplicateProject",
     );
 };
@@ -1704,13 +1706,14 @@ export const createSpecialMenuProject = async (params: {
     allowOverlap?: boolean;
     baseProjectId: string;
     displayName: string;
+    localizedDisplayName?: Record<string, string>;
     mode: SpecialMenuMode;
     startsAt: string;
     endsAt: string;
 }) => {
     return await apiCallComposer(
         async () => {
-            const { allowOverlap, baseProjectId, displayName, mode, startsAt, endsAt } = params;
+            const { allowOverlap, baseProjectId, displayName, localizedDisplayName, mode, startsAt, endsAt } = params;
 
             const startDate = new Date(startsAt);
             const endDate = new Date(endsAt);
@@ -1764,7 +1767,7 @@ export const createSpecialMenuProject = async (params: {
             const timestamp = Date.now().toString(36);
             const newProjectId = `${sess.tId}-${timestamp}-${sess.sId}`;
             const textLanguage = baseData.languages?.[0] || 'en';
-            const localizedDisplayName = updateLocalizedText(undefined, displayName, textLanguage, 'en')
+            const resolvedLocalizedDisplayName = localizedDisplayName || updateLocalizedText(undefined, displayName, textLanguage, 'en')
                 || { [textLanguage]: displayName.trim() };
 
             const specialMenuMetadata: SpecialMenuMetadata = {
@@ -1773,7 +1776,7 @@ export const createSpecialMenuProject = async (params: {
                 startsAt,
                 endsAt,
                 status: "scheduled",
-                displayName: localizedDisplayName,
+                displayName: resolvedLocalizedDisplayName,
             };
 
             const newProjectData = await requestBodyComposer({
@@ -1792,13 +1795,13 @@ export const createSpecialMenuProject = async (params: {
 
             // 5. Sync to projectsSummary
             const summaryData: ProjectSummaryData = {
-                name: localizedDisplayName,
+                name: resolvedLocalizedDisplayName,
                 description: updateLocalizedText(undefined, `Special menu: ${displayName}`, textLanguage, 'en'),
                 projectImage: summaryProjects[baseProjectId]?.projectImage ?? null,
                 active: true,
                 isDefault: false,
                 isSpecialMenu: true,
-                specialMenuDisplayName: localizedDisplayName,
+                specialMenuDisplayName: resolvedLocalizedDisplayName,
                 specialMenuStatus: "scheduled",
                 specialMenuStartsAt: startsAt,
                 specialMenuEndsAt: endsAt,
@@ -1826,12 +1829,14 @@ export const updateSpecialMenuProject = async (params: {
     projectId: string;
     description?: string;
     displayName: string;
+    localizedDescription?: Record<string, string>;
+    localizedDisplayName?: Record<string, string>;
     endsAt: string;
     startsAt: string;
 }) => {
     return await apiCallComposer(
         async () => {
-            const { allowOverlap, projectId, description, displayName, startsAt, endsAt } = params;
+            const { allowOverlap, projectId, description, displayName, localizedDescription, localizedDisplayName, startsAt, endsAt } = params;
             const trimmedName = displayName.trim();
             const trimmedDescription = description?.trim();
             const startDate = new Date(startsAt);
@@ -1856,15 +1861,15 @@ export const updateSpecialMenuProject = async (params: {
             if (!projectData._specialMenu) throw new Error("Not a special menu project");
             const textLanguage = projectData.languages?.[0]
                 || resolveProjectTextLanguage(projectData._specialMenu.displayName, 'en');
-            const localizedDisplayName = updateLocalizedText(
+            const resolvedLocalizedDisplayName = localizedDisplayName || updateLocalizedText(
                 projectData._specialMenu.displayName,
                 trimmedName,
                 textLanguage,
                 'en',
             ) || { [textLanguage]: trimmedName };
-            const localizedDescription = trimmedDescription
+            const resolvedLocalizedDescription = localizedDescription || (trimmedDescription
                 ? updateLocalizedText(projectData.description, trimmedDescription, textLanguage, 'en')
-                : undefined;
+                : undefined);
 
             const currentStatus = projectData._specialMenu.status;
             if (currentStatus === "expired" || currentStatus === "cancelled") {
@@ -1912,11 +1917,11 @@ export const updateSpecialMenuProject = async (params: {
             }
 
             await setDoc(projectRef, {
-                name: localizedDisplayName,
-                ...(trimmedDescription ? { description: localizedDescription } : { description: deleteField() }),
+                name: resolvedLocalizedDisplayName,
+                ...(trimmedDescription ? { description: resolvedLocalizedDescription } : { description: deleteField() }),
                 _specialMenu: {
                     ...projectData._specialMenu,
-                    displayName: localizedDisplayName,
+                    displayName: resolvedLocalizedDisplayName,
                     endsAt,
                     startsAt,
                     status: nextStatus,
@@ -1925,9 +1930,9 @@ export const updateSpecialMenuProject = async (params: {
 
             const summaryDocRef = await getProjectsSummaryDocRef();
             await setDoc(summaryDocRef, {
-                ...buildSummaryProjectFieldPayload(projectId, 'name', localizedDisplayName),
-                ...buildSummaryProjectFieldPayload(projectId, 'description', trimmedDescription ? localizedDescription : ''),
-                ...buildSummaryProjectFieldPayload(projectId, 'specialMenuDisplayName', localizedDisplayName),
+                ...buildSummaryProjectFieldPayload(projectId, 'name', resolvedLocalizedDisplayName),
+                ...buildSummaryProjectFieldPayload(projectId, 'description', trimmedDescription ? resolvedLocalizedDescription : ''),
+                ...buildSummaryProjectFieldPayload(projectId, 'specialMenuDisplayName', resolvedLocalizedDisplayName),
                 ...buildSummaryProjectFieldPayload(projectId, 'specialMenuStartsAt', startsAt),
                 ...buildSummaryProjectFieldPayload(projectId, 'specialMenuEndsAt', endsAt),
                 ...buildSummaryProjectFieldPayload(projectId, 'specialMenuStatus', nextStatus),

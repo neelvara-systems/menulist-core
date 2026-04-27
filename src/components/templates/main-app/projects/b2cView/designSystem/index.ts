@@ -668,7 +668,10 @@ export interface DesignConfig {
     menu: {
         mood: MenuMood;
         layout: MenuLayout;
+        showItemPrices: boolean;
         showImages: boolean;
+        showCategoryIcons?: boolean;
+        showCategoryTabs?: boolean;
         // Optional overrides (hidden in Advanced)
         accentColorOverride?: string;
         backgroundImage?: string;
@@ -683,7 +686,10 @@ export function getDefaultDesignConfig(): DesignConfig {
         menu: {
             mood: MenuMood.CLEAN,
             layout: MenuLayout.LIST,
+            showItemPrices: true,
             showImages: true,
+            showCategoryIcons: true,
+            showCategoryTabs: false,
         },
     };
 }

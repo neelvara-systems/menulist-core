@@ -1017,6 +1017,8 @@
         "brandColorSubtitle": "Accent color across your menu",
         "usingMoodDefault": "Using mood default",
         "displayOptions": "Display Options",
+        "showItemPrices": "Show item prices",
+        "showItemPricesDesc": "Display prices next to menu items",
         "showItemImages": "Show item images",
         "showItemImagesDesc": "Display photos next to items",
         "showCategoryIcons": "Show category icons",

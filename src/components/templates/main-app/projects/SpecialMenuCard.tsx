@@ -19,6 +19,7 @@ const { Text, Title } = Typography;
 
 interface SpecialMenuCardProps {
     baseProjectId?: string;
+    baseProjectLanguages?: string[];
     baseProjectName?: string;
 }
 
@@ -116,6 +117,7 @@ function SpecialMenuItem({
 
 export default function SpecialMenuCard({
     baseProjectId,
+    baseProjectLanguages,
     baseProjectName,
 }: SpecialMenuCardProps) {
     const {
@@ -233,6 +235,7 @@ export default function SpecialMenuCard({
                     open={createModalOpen}
                     onClose={() => setCreateModalOpen(false)}
                     baseProjectId={baseProjectId}
+                    baseProjectLanguages={baseProjectLanguages}
                     baseProjectName={baseProjectName}
                     onSubmit={createSpecialMenu}
                 />

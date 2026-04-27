@@ -33,6 +33,13 @@ function isActiveSpecialMenuProject(projectData: any) {
     return endsAt == null || (Number.isFinite(endsAt) && endsAt > Date.now());
 }
 
+function isActiveSpecialMenuSummary(projectSummary: any) {
+    if (!projectSummary?.isSpecialMenu) return false;
+    if (projectSummary.specialMenuStatus !== 'active') return false;
+    const endsAt = projectSummary.specialMenuEndsAt ? new Date(projectSummary.specialMenuEndsAt).getTime() : null;
+    return endsAt == null || (Number.isFinite(endsAt) && endsAt > Date.now());
+}
+
 async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultProjectAiContext | null> {
     const projectListResult = await getProjectsListWithoutLoader();
     const allProjects = projectListResult?.projects || [];
@@ -44,7 +51,10 @@ async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultP
 
     let targetProjectSummary =
         (storeDetails?.activeSpecialMenuId
-            ? allProjects.find((project: any) => project?.projectId === storeDetails.activeSpecialMenuId)
+            ? allProjects.find((project: any) =>
+                project?.projectId === storeDetails.activeSpecialMenuId
+                && isActiveSpecialMenuSummary(project),
+            )
             : null)
         || (storeDetails?.primaryProjectId
             ? activeNonSpecialProjects.find((project: any) => project?.projectId === storeDetails.primaryProjectId)
@@ -57,23 +67,6 @@ async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultP
     }
 
     let projectDetails = await getProjectDataWithoutLoader(targetProjectSummary.projectId);
-
-    if (storeDetails?.activeSpecialMenuId && targetProjectSummary.projectId === storeDetails.activeSpecialMenuId) {
-        if (!isActiveSpecialMenuProject(projectDetails)) {
-            targetProjectSummary =
-                (storeDetails?.primaryProjectId
-                    ? activeNonSpecialProjects.find((project: any) => project?.projectId === storeDetails.primaryProjectId)
-                    : null)
-                || activeNonSpecialProjects[0]
-                || null;
-
-            if (!targetProjectSummary?.projectId) {
-                return null;
-            }
-
-            projectDetails = await getProjectDataWithoutLoader(targetProjectSummary.projectId);
-        }
-    }
 
     const categories = Array.from(new Set(
         projectDetails?.files

@@ -5,7 +5,7 @@ import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLangu
 import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
-import { Button, Card, Divider, Form, Input, Select, Typography, message } from 'antd';
+import { Button, Card, Divider, Form, Input, Select, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useEffect, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
@@ -456,9 +456,17 @@ function DesktopLocalizedReferenceHint({
     referenceLabel: string;
     referenceValue: string;
 }) {
+    const { token } = theme.useToken();
+
     return (
         <div style={{ margin: '-12px 0 16px' }}>
-            <Card size="small" style={{ background: '#fafafa', borderColor: '#f0f0f0' }}>
+            <Card
+                size="small"
+                style={{
+                    background: token.colorFillAlter,
+                    borderColor: token.colorBorderSecondary,
+                }}
+            >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ minWidth: 0 }}>
                         <Text type="secondary">{`${referenceLabel} reference`}</Text>

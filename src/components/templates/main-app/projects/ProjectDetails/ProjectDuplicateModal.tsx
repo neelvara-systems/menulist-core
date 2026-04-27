@@ -1,6 +1,7 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { Alert, Card, Flex, Form, Input, Modal, Typography, theme } from 'antd';
+import { Alert, Button, Card, Flex, Input, Modal, Select, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import { ProjectMetadata } from '../types';
 
@@ -11,12 +12,20 @@ interface ProjectDuplicateModalProps {
     open: boolean;
     project: ProjectMetadata | null;
     onCancel: () => void;
-    onDuplicate: (newName: string, newDescription?: string) => Promise<void>;
+    onDuplicate: (
+        newName: string,
+        newDescription?: string,
+        localizedName?: Record<string, string>,
+        localizedDescription?: Record<string, string>,
+    ) => Promise<void>;
 }
 
 export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: ProjectDuplicateModalProps) => {
-    const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const [languages, setLanguages] = useState<string[]>(['en']);
+    const [selectedLanguage, setSelectedLanguage] = useState('en');
+    const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
+    const [descriptionDrafts, setDescriptionDrafts] = useState<Record<string, string>>({});
     const { token } = useToken();
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
@@ -24,19 +33,41 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
     // Reset form when project changes or modal opens
     useEffect(() => {
         if (open && project) {
-            const primaryLanguage = getPrimaryLocalizedLanguage(project.name, 'en');
-            form.setFieldsValue({
-                name: `Copy of ${getLocalizedText(project.name, undefined, primaryLanguage, 'Untitled')}`,
-                description: getLocalizedText(project.description, undefined, primaryLanguage, '')
-            });
+            const nextLanguages = getProjectManagedLanguages(project);
+            const nextSelectedLanguage = getProjectPreferredLanguage(project);
+            const nextNameDrafts = Object.fromEntries(
+                nextLanguages.map((languageCode) => [
+                    languageCode,
+                    getLocalizedProjectValue(project.name, languageCode, ''),
+                ])
+            );
+            nextNameDrafts[nextSelectedLanguage] = `Copy of ${nextNameDrafts[nextSelectedLanguage] || getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled')}`;
+            const nextDescriptionDrafts = Object.fromEntries(
+                nextLanguages.map((languageCode) => [
+                    languageCode,
+                    getLocalizedProjectValue(project.description, languageCode, ''),
+                ])
+            );
+            setLanguages(nextLanguages);
+            setSelectedLanguage(nextSelectedLanguage);
+            setNameDrafts(nextNameDrafts);
+            setDescriptionDrafts(nextDescriptionDrafts);
         }
-    }, [open, project, form]);
+    }, [open, project]);
 
-    const handleSubmit = async (values: { name: string; description?: string }) => {
+    const handleSubmit = async () => {
+        const nameValue = (nameDrafts[selectedLanguage] || '').trim();
+        const descriptionValue = (descriptionDrafts[selectedLanguage] || '').trim();
+        const localizedName = applyLocalizedProjectDraftMap(undefined, nameDrafts);
+        const localizedDescription = applyLocalizedProjectDraftMap(undefined, descriptionDrafts);
+
+        if (!nameValue || !localizedName) {
+            return;
+        }
+
         try {
             setLoading(true);
-            await onDuplicate(values.name, values.description);
-            form.resetFields();
+            await onDuplicate(nameValue, descriptionValue || undefined, localizedName, localizedDescription);
             onCancel();
         } catch (error) {
             console.error('Duplicate failed:', error);
@@ -46,25 +77,25 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
     };
 
     const handleCancel = () => {
-        form.resetFields();
         onCancel();
     };
+
+    const referenceLanguage = getProjectPreferredLanguage(project);
+    const nameValue = nameDrafts[selectedLanguage] || '';
+    const descriptionValue = descriptionDrafts[selectedLanguage] || '';
+    const referenceName = nameDrafts[referenceLanguage] || '';
+    const referenceDescription = descriptionDrafts[referenceLanguage] || '';
 
     return (
         <Modal
             title={`Duplicate ${offeringName}`}
             open={open}
-            onOk={() => form.submit()}
+            onOk={handleSubmit}
             onCancel={handleCancel}
             okText="Duplicate"
             confirmLoading={loading}
             width={520}
         >
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleSubmit}
-            >
                 <Alert
                     message="Creating a copy"
                     description={
@@ -82,29 +113,67 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                     style={{ marginBottom: 16 }}
                 />
 
-                <Form.Item
-                    name="name"
-                    label={`New ${offeringName} Name`}
-                    rules={[
-                        { required: true, message: `Please enter a ${labels.offeringPhrase} name` },
-                        { max: 100, message: `${offeringName} name must be less than 100 characters` }
-                    ]}
-                >
-                    <Input placeholder={`Enter new ${labels.offeringPhrase} name`} />
-                </Form.Item>
+                <Flex gap={12} vertical style={{ marginBottom: 16 }}>
+                    {languages.length > 1 ? (
+                        <>
+                            <Typography.Text strong>Content language</Typography.Text>
+                            <Select
+                                onChange={setSelectedLanguage}
+                                options={languages.map((languageCode) => ({
+                                    label: getProjectLanguageLabel(languageCode),
+                                    value: languageCode,
+                                }))}
+                                value={selectedLanguage}
+                            />
+                        </>
+                    ) : null}
+                    <Typography.Text strong>{`New ${offeringName} Name`}</Typography.Text>
+                    <Input
+                        maxLength={100}
+                        onChange={(event) => setNameDrafts((previous) => ({
+                            ...previous,
+                            [selectedLanguage]: event.target.value,
+                        }))}
+                        placeholder={`Enter new ${labels.offeringPhrase} name`}
+                        value={nameValue}
+                    />
+                    {selectedLanguage !== referenceLanguage ? (
+                        <ReferenceCard
+                            onUseReference={() => setNameDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: referenceName,
+                            }))}
+                            referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                            referenceValue={referenceName}
+                            token={token}
+                        />
+                    ) : null}
+                </Flex>
 
-                <Form.Item
-                    name="description"
-                    label="Description (Optional)"
-                    rules={[
-                        { max: 500, message: 'Description must be less than 500 characters' }
-                    ]}
-                >
+                <Flex gap={12} vertical style={{ marginBottom: 16 }}>
+                    <Typography.Text strong>Description (Optional)</Typography.Text>
                     <Input.TextArea
+                        maxLength={500}
+                        onChange={(event) => setDescriptionDrafts((previous) => ({
+                            ...previous,
+                            [selectedLanguage]: event.target.value,
+                        }))}
                         placeholder={`Enter description (e.g., Seasonal ${offeringName})`}
                         rows={3}
+                        value={descriptionValue}
                     />
-                </Form.Item>
+                    {selectedLanguage !== referenceLanguage ? (
+                        <ReferenceCard
+                            onUseReference={() => setDescriptionDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: referenceDescription,
+                            }))}
+                            referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                            referenceValue={referenceDescription}
+                            token={token}
+                        />
+                    ) : null}
+                </Flex>
 
                 {/* Helpful Tips */}
                 <Card
@@ -145,7 +214,41 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                         </Flex>
                     </Flex>
                 </Card>
-            </Form>
         </Modal>
     );
 };
+
+function ReferenceCard({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+    token,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+    token: any;
+}) {
+    return (
+        <div
+            style={{
+                background: token.colorFillAlter,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 6,
+                padding: 12,
+            }}
+        >
+            <Flex align="center" gap={12} justify="space-between">
+                <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+                    <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                    <Text>{referenceValue || 'No reference content available yet.'}</Text>
+                </Flex>
+                {referenceValue ? (
+                    <Button onClick={onUseReference} size="small">
+                        Use reference
+                    </Button>
+                ) : null}
+            </Flex>
+        </div>
+    );
+}

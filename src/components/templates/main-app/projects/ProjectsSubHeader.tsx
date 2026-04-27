@@ -16,6 +16,7 @@ interface ProjectsSubHeaderProps {
     onOpenModal: (project?: ProjectMetadata) => void;
     onDuplicateProject: (project: ProjectMetadata) => void;
     onDeleteProject: (project: ProjectMetadata) => void;
+    onSetDefaultProject: (project: ProjectMetadata) => void;
 
     // Device type props (for UI Editor view)
     activeDeviceType?: DeviceTypes;
@@ -38,6 +39,7 @@ export default function ProjectsSubHeader({
     onOpenModal,
     onDuplicateProject,
     onDeleteProject,
+    onSetDefaultProject,
     activeDeviceType,
     setActiveDeviceType,
     onPreview,
@@ -78,6 +80,7 @@ export default function ProjectsSubHeader({
                     onOpenModal={onOpenModal}
                     onDuplicateProject={onDuplicateProject}
                     onDeleteProject={onDeleteProject}
+                    onSetDefaultProject={onSetDefaultProject}
                 />
             </Flex>
 

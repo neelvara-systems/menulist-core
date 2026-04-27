@@ -25,10 +25,11 @@ interface PDPModalProps {
     language: string;
     moodConfig: MenuMoodConfig;
     projectData: Project;
+    showItemPrices?: boolean;
     unavailableLabel?: string;
 }
 
-function PDPModal({ item, onClose, language, moodConfig, projectData, unavailableLabel }: PDPModalProps) {
+function PDPModal({ item, onClose, language, moodConfig, projectData, showItemPrices = true, unavailableLabel }: PDPModalProps) {
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [category, setCategory] = useState<ExtractedDataCategory>();
@@ -213,7 +214,7 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
                                     >
                                         {item.name?.[language] || 'Menu Item'}
                                     </h2>
-                                    {!item.attributes?.length && item.price && (
+                                    {showItemPrices && !item.attributes?.length && item.price && (
                                         <span
                                             className="text-lg md:text-xl font-semibold whitespace-nowrap"
                                             style={{ color: moodConfig.priceColor }}
@@ -322,12 +323,14 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, unavailabl
                                                 >
                                                     {attr.name?.[language]}
                                                 </span>
-                                                <span
-                                                    className="font-medium"
-                                                    style={{ color: moodConfig.priceColor }}
-                                                >
-                                                    {attr.price}
-                                                </span>
+                                                {showItemPrices ? (
+                                                    <span
+                                                        className="font-medium"
+                                                        style={{ color: moodConfig.priceColor }}
+                                                    >
+                                                        {attr.price}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                         ))}
                                     </div>

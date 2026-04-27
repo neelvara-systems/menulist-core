@@ -1,7 +1,8 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { getProjectLanguageLabel } from '@lib/localization/projectContent';
 import { getBase64 } from '@util/utils';
-import { Button, Flex, Form, FormInstance, Image, Input, Modal, Switch, Upload, message } from "antd";
+import { Button, Flex, Form, FormInstance, Image, Input, Modal, Select, Switch, Upload, message, theme, Typography } from "antd";
 import { LuImagePlus, LuTrash2 } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
 
@@ -9,6 +10,7 @@ export interface ProjectFormData {
     name: string;
     description?: string;
     active?: boolean;
+    isDefault?: boolean;
     projectImage?: string | null;
 }
 
@@ -17,19 +19,40 @@ interface ProjectEditModalProps {
     isOpen: boolean;
     editingProject: ProjectMetadata | null;
     form: FormInstance<ProjectFormData>;
+    languages: string[];
+    nameValue: string;
+    descriptionValue: string;
     onCancel: () => void;
+    onDescriptionChange: (value: string) => void;
+    onLanguageChange: (languageCode: string) => void;
+    onNameChange: (value: string) => void;
+    referenceDescription: string;
+    referenceLanguage: string;
+    referenceName: string;
     onSubmit: () => void;
     onReset: () => void;
+    selectedLanguage: string;
 }
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     isOpen,
     editingProject,
     form,
+    languages,
+    nameValue,
+    descriptionValue,
     onCancel,
+    onDescriptionChange,
+    onLanguageChange,
+    onNameChange,
+    referenceDescription,
+    referenceLanguage,
+    referenceName,
     onSubmit,
     onReset,
+    selectedLanguage,
 }) => {
+    const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const projectImage = Form.useWatch('projectImage', form) as string | null | undefined;
@@ -81,25 +104,65 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 form={form}
                 layout="vertical"
                 onFinish={onSubmit}
-                initialValues={{ active: true }}
+                initialValues={{ active: true, isDefault: false }}
             >
                 <Form.Item
-                    name="name"
                     label={`${offeringName} Name`}
-                    rules={[{ required: true, message: `Please enter a ${labels.offeringPhrase} name` }]}
                 >
-                    <Input placeholder={`Enter ${labels.offeringPhrase} name`} />
+                    <Flex gap={12} vertical>
+                        {languages.length > 1 ? (
+                            <Flex gap={8} vertical>
+                                <Typography.Text strong>Content language</Typography.Text>
+                                <Select
+                                    onChange={onLanguageChange}
+                                    options={languages.map((languageCode) => ({
+                                        label: getProjectLanguageLabel(languageCode),
+                                        value: languageCode,
+                                    }))}
+                                    value={selectedLanguage}
+                                />
+                                <Typography.Text type="secondary">
+                                    Edit this {labels.offeringPhrase} label one language at a time.
+                                </Typography.Text>
+                            </Flex>
+                        ) : null}
+                        <Input
+                            maxLength={100}
+                            onChange={(event) => onNameChange(event.target.value)}
+                            placeholder={`Enter ${labels.offeringPhrase} name`}
+                            value={nameValue}
+                        />
+                        {selectedLanguage !== referenceLanguage ? (
+                            <ReferenceCard
+                                onUseReference={() => onNameChange(referenceName)}
+                                referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                                referenceValue={referenceName}
+                                token={token}
+                            />
+                        ) : null}
+                    </Flex>
                 </Form.Item>
                 <Form.Item
-                    name="description"
                     label="Description"
                 >
-                    <Input.TextArea
-                        placeholder={`Enter ${labels.offeringPhrase} description`}
-                        rows={3}
-                        maxLength={200}
-                        showCount
-                    />
+                    <Flex gap={12} vertical>
+                        <Input.TextArea
+                            maxLength={200}
+                            onChange={(event) => onDescriptionChange(event.target.value)}
+                            placeholder={`Enter ${labels.offeringPhrase} description`}
+                            rows={3}
+                            showCount
+                            value={descriptionValue}
+                        />
+                        {selectedLanguage !== referenceLanguage ? (
+                            <ReferenceCard
+                                onUseReference={() => onDescriptionChange(referenceDescription)}
+                                referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                                referenceValue={referenceDescription}
+                                token={token}
+                            />
+                        ) : null}
+                    </Flex>
                 </Form.Item>
                 <Form.Item
                     name="active"
@@ -108,6 +171,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 >
                     <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                 </Form.Item>
+                {!(editingProject as any)?.isSpecialMenu ? (
+                    <Form.Item
+                        name="isDefault"
+                        label="Default"
+                        valuePropName="checked"
+                    >
+                        <Switch checkedChildren="Default" unCheckedChildren="Regular" />
+                    </Form.Item>
+                ) : null}
                 <Form.Item hidden name="projectImage">
                     <Input type="hidden" />
                 </Form.Item>
@@ -150,3 +222,38 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         </Modal>
     );
 };
+
+function ReferenceCard({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+    token,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+    token: any;
+}) {
+    return (
+        <div
+            style={{
+                background: token.colorFillAlter,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: token.borderRadius,
+                padding: 12,
+            }}
+        >
+            <Flex align="center" gap={12} justify="space-between">
+                <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+                    <Typography.Text type="secondary">{`${referenceLabel} reference`}</Typography.Text>
+                    <Typography.Text>{referenceValue || 'No reference content available yet.'}</Typography.Text>
+                </Flex>
+                {referenceValue ? (
+                    <Button onClick={onUseReference} size="small">
+                        Use reference
+                    </Button>
+                ) : null}
+            </Flex>
+        </div>
+    );
+}

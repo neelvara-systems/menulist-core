@@ -33,6 +33,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     const t = useTranslations('MobileDesignEditor');
     const currentMood = projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
     const currentLayout = projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
+    const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
     const showImages = projectData?.config?.design?.menu?.showImages ?? true;
     const showCategoryIcons = projectData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
@@ -84,6 +85,22 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     menu: {
                         ...projectData?.config?.design?.menu,
                         showImages: show,
+                    },
+                },
+            },
+        });
+    };
+
+    const handleShowItemPricesChange = (show: boolean) => {
+        setProjectData({
+            ...projectData,
+            config: {
+                ...projectData?.config,
+                design: {
+                    ...projectData?.config?.design,
+                    menu: {
+                        ...projectData?.config?.design?.menu,
+                        showItemPrices: show,
                     },
                 },
             },
@@ -167,6 +184,17 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             />
 
             <Divider style={{ margin: '4px 0' }} />
+
+            <Flex align="center" justify="space-between">
+                <Flex align="center" gap={8}>
+                    <LuList size={16} />
+                    <Text>{t('showItemPrices')}</Text>
+                </Flex>
+                <Switch
+                    checked={showItemPrices}
+                    onChange={handleShowItemPricesChange}
+                />
+            </Flex>
 
             <Flex align="center" justify="space-between">
                 <Flex align="center" gap={8}>

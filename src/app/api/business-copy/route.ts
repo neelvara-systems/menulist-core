@@ -47,6 +47,15 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const payload = validation.data;
+        logger.info('Business copy generation requested', {
+            categoryCount: payload.menu?.categories?.length || 0,
+            itemCount: payload.menu?.items?.length || 0,
+            sourceLang: payload.sourceLang?.code || 'unspecified',
+            storeId: session.sId,
+            storeName: payload.store?.name,
+            tenantId: session.tId,
+        });
+
         const capacityCheck = await checkAICapacity(session.tId, session.sId, action);
         if (!capacityCheck.allowed) {
             return NextResponse.json({
@@ -136,6 +145,18 @@ export const POST = withAuth(async (request, session) => {
             logger.error('Failed to record business copy transaction', transactionError, { userId });
             await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
         }
+
+        logger.info('Business copy generation completed', {
+            descriptorLength: cleaned.descriptor.length,
+            displayNameLength: cleaned.displayName.length,
+            keywordCount: cleaned.keywords.length,
+            metaDescriptionLength: cleaned.metaDescription.length,
+            metaTitleLength: cleaned.metaTitle.length,
+            pwaShortNameLength: cleaned.pwaShortName.length,
+            sourceLang: payload.sourceLang?.code || 'unspecified',
+            taglineLength: cleaned.tagline.length,
+            transactionId: transactionObject.transactionId,
+        });
 
         return NextResponse.json({
             data: cleaned,

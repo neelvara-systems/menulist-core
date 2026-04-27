@@ -23,6 +23,7 @@ export interface DesignConfig {
         mood: MenuMood;
         layout: MenuLayout;
         backgroundImage?: string;
+        showItemPrices?: boolean;
         showImages?: boolean;
         showCategoryIcons?: boolean;
         showCategoryTabs?: boolean;

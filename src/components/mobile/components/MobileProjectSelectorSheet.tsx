@@ -1,8 +1,9 @@
 'use client'
 
-import { addProject, deleteProject, duplicateProject, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -12,17 +13,19 @@ import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { LuArchiveRestore, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
+import { LuArchiveRestore, LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
+import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { Button, Card, Dialog, DotLoading, Flex, Image, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast, Upload } from '../antd';
 
 type ProjectSheetProject = {
     active?: boolean;
     deleted?: boolean;
-    description?: string;
+    description?: string | Record<string, string>;
     isDefault?: boolean;
     isSpecialMenu?: boolean;
+    languages?: string[];
     name: string | Record<string, string>;
     projectImage?: string | null;
     projectId: string;
@@ -108,6 +111,33 @@ const resolveProjectName = (name: string | Record<string, string> | undefined, f
     return getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback);
 };
 
+const resolveProjectDescription = (
+    description: string | Record<string, string> | undefined,
+    fallback = ''
+) => {
+    return getLocalizedText(description, undefined, getPrimaryLocalizedLanguage(description, 'en'), fallback);
+};
+
+const normalizeTextValue = (value: unknown) => {
+    return typeof value === 'string' ? value : '';
+};
+
+const hasAnyDraftValue = (draftsByLanguage: Record<string, string>) => (
+    Object.values(draftsByLanguage).some((value) => value.trim().length > 0)
+);
+
+const buildLocalizedDrafts = (
+    value: string | Record<string, string> | undefined,
+    languages: string[],
+): Record<string, string> => (
+    Object.fromEntries(
+        languages.map((languageCode) => [
+            languageCode,
+            getLocalizedProjectValue(value, languageCode, ''),
+        ])
+    )
+);
+
 export default function MobileProjectSelectorSheet({
     currentProjectId,
     currentProjectName,
@@ -121,13 +151,18 @@ export default function MobileProjectSelectorSheet({
     const tShare = useTranslations('MobileShare');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
-    const { isLoading, projectsList, refreshProjects, upsertCachedProject } = useMobileProjects();
+    const { isLoading, projectsById, projectsList, refreshProjects, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
-    const [formName, setFormName] = useState('');
-    const [formDescription, setFormDescription] = useState('');
+    const [formLanguages, setFormLanguages] = useState<string[]>([storeDetails?.defaultLanguage || 'en']);
+    const [formSelectedLanguage, setFormSelectedLanguage] = useState(storeDetails?.defaultLanguage || 'en');
+    const [formNameDrafts, setFormNameDrafts] = useState<Record<string, string>>({});
+    const [formDescriptionDrafts, setFormDescriptionDrafts] = useState<Record<string, string>>({});
+    const [initialFormNameDrafts, setInitialFormNameDrafts] = useState<Record<string, string>>({});
+    const [initialFormDescriptionDrafts, setInitialFormDescriptionDrafts] = useState<Record<string, string>>({});
     const [formProjectImage, setFormProjectImage] = useState<string | null>(null);
+    const [formIsDefault, setFormIsDefault] = useState(false);
     const [formActive, setFormActive] = useState(true);
     const [formStartsAt, setFormStartsAt] = useState('');
     const [formEndsAt, setFormEndsAt] = useState('');
@@ -137,7 +172,6 @@ export default function MobileProjectSelectorSheet({
     const sheetCardStyle = {
         borderRadius: Number(token.borderRadiusLG || token.borderRadius) + 4,
         borderColor: token.colorBorderSecondary,
-        overflow: 'hidden',
     };
     const stickyHeaderStyle = {
         position: 'sticky' as const,
@@ -209,13 +243,29 @@ export default function MobileProjectSelectorSheet({
         () => projects.find((project) => project.projectId === formProjectId) || null,
         [formProjectId, projects]
     );
+    const formReferenceLanguage = useMemo(
+        () => getProjectPreferredLanguage({
+            description: formSourceProject?.description,
+            languages: formLanguages,
+            name: formSourceProject?.name,
+        }, storeDetails),
+        [formLanguages, formSourceProject?.description, formSourceProject?.name, storeDetails]
+    );
+    const formName = formNameDrafts[formSelectedLanguage] || '';
+    const formDescription = formDescriptionDrafts[formSelectedLanguage] || '';
 
     const resetFormState = () => {
         setFormMode(null);
         setFormProjectId(null);
-        setFormName('');
-        setFormDescription('');
+        const defaultLanguage = storeDetails?.defaultLanguage || 'en';
+        setFormLanguages([defaultLanguage]);
+        setFormSelectedLanguage(defaultLanguage);
+        setFormNameDrafts({});
+        setFormDescriptionDrafts({});
+        setInitialFormNameDrafts({});
+        setInitialFormDescriptionDrafts({});
         setFormProjectImage(null);
+        setFormIsDefault(false);
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
@@ -223,34 +273,63 @@ export default function MobileProjectSelectorSheet({
     };
 
     const openCreate = () => {
+        const defaultLanguage = storeDetails?.defaultLanguage || 'en';
         setManagingProjectId(null);
         setFormMode('create');
         setFormProjectId(null);
-        setFormName('');
-        setFormDescription('');
+        setFormLanguages([defaultLanguage]);
+        setFormSelectedLanguage(defaultLanguage);
+        setFormNameDrafts({ [defaultLanguage]: '' });
+        setFormDescriptionDrafts({ [defaultLanguage]: '' });
+        setInitialFormNameDrafts({ [defaultLanguage]: '' });
+        setInitialFormDescriptionDrafts({ [defaultLanguage]: '' });
         setFormProjectImage(null);
+        setFormIsDefault(!projects.some((project) => project.isDefault === true));
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
     };
 
-    const openEdit = (project: ProjectSheetProject) => {
+    const openEdit = async (project: ProjectSheetProject) => {
+        const detailedProject = projectsById[project.projectId] || await getProjectDataWithoutLoader(project.projectId);
+        const languages = getProjectManagedLanguages(detailedProject, storeDetails);
+        const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
+        const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
+        const nextDescriptionDrafts = buildLocalizedDrafts(detailedProject?.description || project.description, languages);
+
         setFormMode('edit');
         setFormProjectId(project.projectId);
-        setFormName(resolveProjectName(project.name));
-        setFormDescription(project.description || '');
+        setFormLanguages(languages);
+        setFormSelectedLanguage(selectedLanguage);
+        setFormNameDrafts(nextNameDrafts);
+        setFormDescriptionDrafts(nextDescriptionDrafts);
+        setInitialFormNameDrafts(nextNameDrafts);
+        setInitialFormDescriptionDrafts(nextDescriptionDrafts);
         setFormProjectImage(project.projectImage || null);
+        setFormIsDefault(project.isDefault === true);
         setFormActive(project.active !== false);
         setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(project.specialMenuEndsAt));
     };
 
-    const openDuplicate = (project: ProjectSheetProject) => {
+    const openDuplicate = async (project: ProjectSheetProject) => {
+        const detailedProject = projectsById[project.projectId] || await getProjectDataWithoutLoader(project.projectId);
+        const languages = getProjectManagedLanguages(detailedProject, storeDetails);
+        const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
+        const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
+        const nextDescriptionDrafts = buildLocalizedDrafts(detailedProject?.description || project.description, languages);
+        nextNameDrafts[selectedLanguage] = `Copy of ${nextNameDrafts[selectedLanguage] || resolveProjectName(project.name)}`;
+
         setFormMode('duplicate');
         setFormProjectId(project.projectId);
-        setFormName(`Copy of ${resolveProjectName(project.name)}`);
-        setFormDescription(project.description || '');
+        setFormLanguages(languages);
+        setFormSelectedLanguage(selectedLanguage);
+        setFormNameDrafts(nextNameDrafts);
+        setFormDescriptionDrafts(nextDescriptionDrafts);
+        setInitialFormNameDrafts(nextNameDrafts);
+        setInitialFormDescriptionDrafts(nextDescriptionDrafts);
         setFormProjectImage(project.projectImage || null);
+        setFormIsDefault(project.isDefault === true);
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
@@ -272,12 +351,19 @@ export default function MobileProjectSelectorSheet({
     };
 
     const handleSubmitForm = async () => {
-        const nextName = formName.trim();
-        const nextDescription = formDescription.trim();
+        const nextName = normalizeTextValue(formName).trim();
+        const nextDescription = normalizeTextValue(formDescription).trim();
         const isEditingSpecialMenu = formMode === 'edit' && Boolean(formSourceProject?.isSpecialMenu);
+        const localizedName = applyLocalizedProjectDraftMap(formSourceProject?.name, formNameDrafts);
+        const localizedDescription = applyLocalizedProjectDraftMap(formSourceProject?.description, formDescriptionDrafts);
 
-        if (!nextName) {
+        if (!nextName || !hasAnyDraftValue(formNameDrafts) || !localizedName) {
             Toast.show({ content: t('catalogNameRequired'), duration: 1600 });
+            return;
+        }
+
+        if (formSourceProject?.isDefault && !formIsDefault) {
+            Toast.show({ content: `Choose another ${labels.offeringLower} as default before removing this one.`, duration: 2000 });
             return;
         }
 
@@ -309,12 +395,18 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'create') {
+                const currentDefault = projects.find((project) => project.isDefault === true);
                 const result = await addProject({
                     active: formActive,
-                    description: nextDescription || undefined,
-                    name: nextName,
+                    description: localizedDescription,
+                    isDefault: formIsDefault,
+                    name: localizedName,
                     projectImage: savedProjectImage || null,
                 });
+
+                if (formIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
+                    await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
+                }
 
                 resetFormState();
                 await refreshAndSync(result?.projectId || null);
@@ -323,10 +415,23 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'duplicate' && formProjectId) {
-                const result = await duplicateProject(formProjectId, nextName, nextDescription || undefined);
+                const currentDefault = projects.find((project) => project.isDefault === true);
+                const result = await duplicateProject(
+                    formProjectId,
+                    nextName,
+                    nextDescription || undefined,
+                    localizedName,
+                    localizedDescription,
+                );
 
                 if (savedProjectImage !== (formSourceProject?.projectImage || null) && result?.projectId) {
                     await updateProjectMetadata(result.projectId, { projectImage: savedProjectImage || null });
+                }
+                if (result?.projectId) {
+                    await updateProjectMetadata(result.projectId, { isDefault: formIsDefault });
+                }
+                if (formIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
+                    await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
                 }
 
                 resetFormState();
@@ -337,15 +442,20 @@ export default function MobileProjectSelectorSheet({
 
             if (formMode === 'edit' && formProjectId) {
                 const metadataUpdate: Record<string, any> = {
-                    description: nextDescription || undefined,
-                    name: nextName,
+                    description: localizedDescription,
+                    isDefault: formIsDefault,
+                    name: localizedName,
                     projectImage: savedProjectImage || null,
                 };
                 const nextActive = formActive;
                 const activeChanged = formSourceProject?.active !== nextActive;
+                const shouldUnsetPreviousDefault = formIsDefault && formSourceProject?.isDefault !== true;
+                const currentDefault = projects.find(
+                    (project) => project.isDefault === true && project.projectId !== formProjectId,
+                );
 
                 if (isEditingSpecialMenu) {
-                    metadataUpdate.specialMenuDisplayName = nextName;
+                    metadataUpdate.specialMenuDisplayName = localizedName;
                     metadataUpdate.specialMenuStartsAt = fromNativeDateTimeValue(formStartsAt);
                     metadataUpdate.specialMenuEndsAt = fromNativeDateTimeValue(formEndsAt);
                 }
@@ -354,12 +464,15 @@ export default function MobileProjectSelectorSheet({
                 if (activeChanged) {
                     await setProjectActive(formProjectId, nextActive);
                 }
+                if (shouldUnsetPreviousDefault && currentDefault?.projectId) {
+                    await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
+                }
 
                 if (isEditingSpecialMenu) {
                     await updateProjectWithoutLoader({
                         projectId: formProjectId,
                         _specialMenu: {
-                            displayName: nextName,
+                            displayName: localizedName,
                             endsAt: fromNativeDateTimeValue(formEndsAt),
                             startsAt: fromNativeDateTimeValue(formStartsAt),
                         } as any,
@@ -377,19 +490,17 @@ export default function MobileProjectSelectorSheet({
         }
     };
 
-    const initialFormName = formMode === 'duplicate'
-        ? `Copy of ${resolveProjectName(formSourceProject?.name, '')}`
-        : resolveProjectName(formSourceProject?.name, '');
-    const initialFormDescription = formSourceProject?.description || '';
     const initialFormProjectImage = formSourceProject?.projectImage || null;
+    const initialFormIsDefault = formSourceProject?.isDefault === true;
     const initialFormStartsAt = formSourceProject?.specialMenuStartsAt || '';
     const initialFormEndsAt = formSourceProject?.specialMenuEndsAt || '';
     const isEditingSpecialMenu = formMode === 'edit' && Boolean(formSourceProject?.isSpecialMenu);
     const hasFormChanges = formMode === 'edit'
         ? (
-            formName.trim() !== initialFormName.trim() ||
-            formDescription.trim() !== initialFormDescription.trim() ||
+            JSON.stringify(formNameDrafts) !== JSON.stringify(initialFormNameDrafts) ||
+            JSON.stringify(formDescriptionDrafts) !== JSON.stringify(initialFormDescriptionDrafts) ||
             formProjectImage !== initialFormProjectImage ||
+            formIsDefault !== initialFormIsDefault ||
             formActive !== (formSourceProject?.active !== false) ||
             (isEditingSpecialMenu && (
                 fromNativeDateTimeValue(formStartsAt) !== initialFormStartsAt ||
@@ -400,12 +511,29 @@ export default function MobileProjectSelectorSheet({
 
     const handleResetEditForm = () => {
         if (!formSourceProject) return;
-        setFormName(resolveProjectName(formSourceProject.name, ''));
-        setFormDescription(formSourceProject.description || '');
+        setFormNameDrafts(initialFormNameDrafts);
+        setFormDescriptionDrafts(initialFormDescriptionDrafts);
+        setFormSelectedLanguage(formReferenceLanguage);
         setFormProjectImage(formSourceProject.projectImage || null);
+        setFormIsDefault(formSourceProject.isDefault === true);
         setFormActive(formSourceProject.active !== false);
         setFormStartsAt(toNativeDateTimeValue(formSourceProject.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(formSourceProject.specialMenuEndsAt));
+    };
+
+    const handleMakeDefaultProject = async (project: ProjectSheetProject) => {
+        const currentDefault = projects.find(
+            (entry) => entry.isDefault === true && entry.projectId !== project.projectId,
+        );
+
+        await updateProjectMetadata(project.projectId, { isDefault: true });
+        if (currentDefault?.projectId) {
+            await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
+        }
+
+        setManagingProjectId(null);
+        await refreshAndSync(project.projectId);
+        Toast.show({ content: `${resolveProjectName(project.name)} is now the default ${labels.offeringLower}.`, duration: 1600 });
     };
 
     const handleProjectImageSelect = async (file: File) => {
@@ -419,6 +547,20 @@ export default function MobileProjectSelectorSheet({
         }
 
         return false;
+    };
+
+    const handleFormNameChange = (value: string) => {
+        setFormNameDrafts((previous) => ({
+            ...previous,
+            [formSelectedLanguage]: value,
+        }));
+    };
+
+    const handleFormDescriptionChange = (value: string) => {
+        setFormDescriptionDrafts((previous) => ({
+            ...previous,
+            [formSelectedLanguage]: value,
+        }));
     };
 
     const handleToggleActive = async (project: ProjectSheetProject) => {
@@ -594,6 +736,15 @@ export default function MobileProjectSelectorSheet({
             labelStyle: undefined,
             onClick: () => { openEdit(managingProject); },
         },
+        ...(!managingProject.isDefault && !managingProject.isSpecialMenu ? [{
+            key: 'make-default',
+            label: 'Make default',
+            description: `Use this ${labels.offeringLower} for the main public menu link.`,
+            icon: <LuCheck size={16} />,
+            iconBackground: token.colorPrimaryBg,
+            labelStyle: { color: token.colorPrimary },
+            onClick: () => void handleMakeDefaultProject(managingProject),
+        }] : []),
         ...(managingProject.isSpecialMenu ? [] : [{
             key: 'duplicate',
             label: t('duplicateCatalog'),
@@ -724,7 +875,7 @@ export default function MobileProjectSelectorSheet({
                                 specialMenuBaseProjectId: project.specialMenuBaseProjectId,
                                 specialMenuEndsAt: project.specialMenuEndsAt,
                                 specialMenuStatus: project.specialMenuStatus,
-                                secondaryLabel: project.active === false ? t('inactiveCatalog') : (project.description || undefined),
+                                secondaryLabel: project.active === false ? t('inactiveCatalog') : (resolveProjectDescription(project.description) || undefined),
                             }))}
                         />
                     )}
@@ -827,12 +978,12 @@ export default function MobileProjectSelectorSheet({
             </Popup>
 
             <Popup
-                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 0 }}
+                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, overflowY: 'auto', paddingTop: 0 }}
                 onMaskClick={() => resetFormState()}
                 position="bottom"
                 visible={Boolean(formMode)}
             >
-                <Flex gap={16} style={{ maxHeight: 'min(82vh, 720px)', overflowY: 'auto' }} vertical>
+                <Flex gap={16} style={{ paddingBottom: 8 }} vertical>
                     <Flex
                         align="center"
                         justify="space-between"
@@ -849,15 +1000,45 @@ export default function MobileProjectSelectorSheet({
 
                     <Card style={sheetCardStyle}>
                         <Flex gap={14} vertical>
+                            <MobileLocalizedLanguageSelector
+                                helperText={`Edit this ${labels.offeringLower} label one language at a time.`}
+                                languages={formLanguages}
+                                onChange={setFormSelectedLanguage}
+                                selectedLanguage={formSelectedLanguage}
+                                title="Project content language"
+                            />
+
                             <Flex gap={6} vertical>
                                 <Text strong>{t('catalogName')}</Text>
-                                <Input autoFocus maxLength={100} onChange={setFormName} placeholder={t('catalogNamePlaceholder')} value={formName} />
+                                <Input autoFocus maxLength={100} onChange={handleFormNameChange} placeholder={t('catalogNamePlaceholder')} value={formName} />
+                                {formSelectedLanguage !== formReferenceLanguage ? (
+                                    <MobileProjectReferenceCard
+                                        onUseReference={() => setFormNameDrafts((previous) => ({
+                                            ...previous,
+                                            [formSelectedLanguage]: previous[formReferenceLanguage] || '',
+                                        }))}
+                                        referenceLabel={getProjectLanguageLabel(formReferenceLanguage)}
+                                        referenceValue={formNameDrafts[formReferenceLanguage] || ''}
+                                        token={token}
+                                    />
+                                ) : null}
                             </Flex>
 
                             <Flex gap={6} vertical>
                                 <Text strong>{t('description')}</Text>
-                                <TextArea maxLength={300} onChange={setFormDescription} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
+                                <TextArea maxLength={300} onChange={handleFormDescriptionChange} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
                                 <Text type="secondary">Only for you. Customers do not see this description.</Text>
+                                {formSelectedLanguage !== formReferenceLanguage ? (
+                                    <MobileProjectReferenceCard
+                                        onUseReference={() => setFormDescriptionDrafts((previous) => ({
+                                            ...previous,
+                                            [formSelectedLanguage]: previous[formReferenceLanguage] || '',
+                                        }))}
+                                        referenceLabel={getProjectLanguageLabel(formReferenceLanguage)}
+                                        referenceValue={formDescriptionDrafts[formReferenceLanguage] || ''}
+                                        token={token}
+                                    />
+                                ) : null}
                             </Flex>
 
                             <Flex gap={6} vertical>
@@ -909,6 +1090,16 @@ export default function MobileProjectSelectorSheet({
                                         <Text type="secondary">Inactive menus stay hidden until you enable them.</Text>
                                     </Flex>
                                     <Switch checked={formActive} onChange={setFormActive} />
+                                </Flex>
+                            ) : null}
+
+                            {!isEditingSpecialMenu ? (
+                                <Flex align="center" justify="space-between" gap={12}>
+                                    <Flex gap={4} vertical>
+                                        <Text strong>Default</Text>
+                                        <Text type="secondary">This menu opens from your main public menu link.</Text>
+                                    </Flex>
+                                    <Switch checked={formIsDefault} onChange={setFormIsDefault} />
                                 </Flex>
                             ) : null}
                         </Flex>
@@ -988,5 +1179,38 @@ export default function MobileProjectSelectorSheet({
                 visible={isQrSheetOpen}
             />
         </>
+    );
+}
+
+function MobileProjectReferenceCard({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+    token,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+    token: any;
+}) {
+    return (
+        <Card
+            style={{
+                background: token.colorFillAlter,
+                borderColor: token.colorBorderSecondary,
+            }}
+        >
+            <Flex align="center" gap={12} justify="space-between" style={{ padding: 12 }}>
+                <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                    <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                    <Text>{referenceValue || 'No content yet in the primary language.'}</Text>
+                </Flex>
+                {referenceValue ? (
+                    <Button fill="outline" onClick={onUseReference} size="small">
+                        Use reference
+                    </Button>
+                ) : null}
+            </Flex>
+        </Card>
     );
 }

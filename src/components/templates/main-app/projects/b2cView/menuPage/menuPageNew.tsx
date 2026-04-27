@@ -39,6 +39,7 @@ interface MenuPageNewProps {
     layout?: MenuLayout;
     brandAccentColor?: string;
     backgroundImage?: string;
+    showItemPrices?: boolean;
     showImages?: boolean;
     showCategoryIcons?: boolean;
     showCategoryTabs?: boolean;
@@ -63,6 +64,7 @@ function MenuPageNew({
     layout = DEFAULTS.menu.layout,
     brandAccentColor,
     backgroundImage,
+    showItemPrices = true,
     showImages = true,
     showCategoryIcons = true,
     showCategoryTabs = false,
@@ -899,7 +901,7 @@ function MenuPageNew({
                                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                                                     <h3 style={itemNameStyle}>{item.name?.[activeLanguage]}</h3>
-                                                                    {!item.attributes?.length && item.price && (
+                                                                    {showItemPrices && !item.attributes?.length && item.price && (
                                                                         <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>{item.price}</span>
                                                                     )}
                                                                 </div>
@@ -1008,6 +1010,7 @@ function MenuPageNew({
                 language={activeLanguage}
                 moodConfig={moodConfig}
                 projectData={projectData}
+                showItemPrices={showItemPrices}
                 unavailableLabel={unavailableLabel}
             />
         </div>

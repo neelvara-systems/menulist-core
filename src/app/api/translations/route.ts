@@ -18,6 +18,106 @@ import getPrompt, { systemInstruction } from "./prompt";
 const AI_MODEL = "gemini-2.5-flash"//"gemini-2.0-flash-001";
 const LOG_FILE = "translations.log"
 
+const isStringRecord = (value: unknown): value is Record<string, string> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const normalizeTranslatedField = (value: unknown, fallbackValue: string) => {
+    if (typeof value !== 'string') return fallbackValue;
+    const trimmedValue = value.trim();
+    return trimmedValue.length > 0 ? trimmedValue : fallbackValue;
+};
+
+const normalizeSingleTranslationResponse = ({
+    generatedData,
+    inputJson,
+    inputKeys,
+    languageCode,
+}: {
+    generatedData: Record<string, any>;
+    inputJson: Record<string, string>;
+    inputKeys: string[];
+    languageCode: string;
+}) => {
+    const rawTranslations = generatedData?.translations;
+    if (!isStringRecord(rawTranslations)) {
+        throw new Error('Translation failed: AI returned invalid single-language response shape');
+    }
+
+    const normalizedTranslations = Object.fromEntries(
+        inputKeys.map((key) => [key, normalizeTranslatedField(rawTranslations[key], inputJson[key])])
+    );
+    const missingKeys = inputKeys.filter((key) => !(key in rawTranslations));
+    const invalidKeys = inputKeys.filter((key) => key in rawTranslations && normalizeTranslatedField(rawTranslations[key], '') === '');
+
+    return {
+        normalizedData: { translations: normalizedTranslations },
+        translationCoverage: [{
+            language: languageCode,
+            missingKeys,
+            invalidKeys,
+            translatedKeyCount: Object.keys(rawTranslations).length,
+            fallbackKeyCount: missingKeys.length + invalidKeys.length,
+        }],
+    };
+};
+
+const normalizeBatchTranslationResponse = ({
+    generatedData,
+    inputJson,
+    inputKeys,
+    targetLanguages,
+}: {
+    generatedData: Record<string, any>;
+    inputJson: Record<string, string>;
+    inputKeys: string[];
+    targetLanguages: Array<{ code?: string }>;
+}) => {
+    const rawTranslationsByLanguage = generatedData?.translationsByLanguage;
+    if (typeof rawTranslationsByLanguage !== 'object' || rawTranslationsByLanguage === null || Array.isArray(rawTranslationsByLanguage)) {
+        throw new Error('Translation failed: AI returned invalid batch response shape');
+    }
+
+    const normalizedTranslationsByLanguage = Object.fromEntries(
+        targetLanguages.map((language) => {
+            if (!language.code) {
+                throw new Error('Translation failed: target language code is missing');
+            }
+            const rawTranslations = rawTranslationsByLanguage[language.code];
+            if (!isStringRecord(rawTranslations)) {
+                throw new Error(`Translation failed: AI returned invalid language payload for ${language.code}`);
+            }
+
+            const normalizedTranslations = Object.fromEntries(
+                inputKeys.map((key) => [key, normalizeTranslatedField(rawTranslations[key], inputJson[key])])
+            );
+
+            return [language.code, normalizedTranslations];
+        })
+    );
+
+    const translationCoverage = targetLanguages.map((language) => {
+        if (!language.code) {
+            throw new Error('Translation failed: target language code is missing');
+        }
+        const rawTranslations = rawTranslationsByLanguage[language.code] as Record<string, unknown>;
+        const missingKeys = inputKeys.filter((key) => !(key in rawTranslations));
+        const invalidKeys = inputKeys.filter((key) => key in rawTranslations && normalizeTranslatedField(rawTranslations[key], '') === '');
+
+        return {
+            language: language.code,
+            missingKeys,
+            invalidKeys,
+            translatedKeyCount: Object.keys(rawTranslations).length,
+            fallbackKeyCount: missingKeys.length + invalidKeys.length,
+        };
+    });
+
+    return {
+        normalizedData: { translationsByLanguage: normalizedTranslationsByLanguage },
+        translationCoverage,
+    };
+};
+
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
@@ -63,6 +163,15 @@ export const POST = withAuth(async (request, session) => {
         const validated = validation.data;
         const { inputJson, targetLang, sourceLang, action, projectId, fileId } = validated;
         const targetLanguages = Array.isArray(targetLang) ? targetLang : [targetLang];
+        logger.info('Translation requested', {
+            action,
+            fileId,
+            inputKeyCount: Object.keys(inputJson || {}).length,
+            isBatch: Array.isArray(targetLang),
+            projectId,
+            sourceLang: sourceLang.code,
+            targetLangs: targetLanguages.map((language) => language.code),
+        });
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(
@@ -108,7 +217,7 @@ export const POST = withAuth(async (request, session) => {
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
 
-        let generatedData: Record<string, Record<string, string>>;
+        let generatedData: Record<string, any>;
         try {
             if (!response.text) throw new Error('Gemini returned empty response');
             generatedData = JSON.parse(response.text);
@@ -129,7 +238,26 @@ export const POST = withAuth(async (request, session) => {
             }
         }
 
-        // Record the transaction
+        const inputKeys = Object.keys(inputJson || {});
+        const isBatchRequest = targetLanguages.length > 1;
+        const {
+            normalizedData,
+            translationCoverage,
+        } = isBatchRequest
+            ? normalizeBatchTranslationResponse({
+                generatedData,
+                inputJson,
+                inputKeys,
+                targetLanguages,
+            })
+            : normalizeSingleTranslationResponse({
+                generatedData,
+                inputJson,
+                inputKeys,
+                languageCode: targetLanguages[0]?.code || sourceLang.code,
+            });
+        const hasPartialCoverage = translationCoverage.some((entry) => entry.fallbackKeyCount > 0);
+
         let transactionObject = {
             transactionId: null,
             inputJson,
@@ -139,7 +267,7 @@ export const POST = withAuth(async (request, session) => {
             fileId,
             action,
             unitsConsumed: 0,
-            clientResponse: generatedData,
+            clientResponse: normalizedData,
             geminiResponse: JSON.stringify(response),
             generationConfig,
             model: AI_MODEL,
@@ -155,6 +283,7 @@ export const POST = withAuth(async (request, session) => {
             realCostPaise: getRealCostPaise(action),
             ourChargePaise: getOurChargePaise(action),
             marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
+            translationCoverage,
         };
 
         // Add the operation to the database
@@ -180,13 +309,37 @@ export const POST = withAuth(async (request, session) => {
                     targetLang: targetLanguages.map((language) => language.code),
                     sourceLang: sourceLang.code
                 },
-                response: generatedData,
+                response: normalizedData,
                 transaction: transactionObject,
             }
         });
 
+        if (hasPartialCoverage) {
+            logger.warn('Translation completed with partial coverage', {
+                action,
+                fileId,
+                inputKeyCount: inputKeys.length,
+                projectId,
+                sourceLang: sourceLang.code,
+                targetLangs: targetLanguages.map((language) => language.code),
+                translationCoverage,
+                transactionId: transactionObject.transactionId,
+            });
+        } else {
+            logger.info('Translation completed with full coverage', {
+                action,
+                fileId,
+                inputKeyCount: inputKeys.length,
+                isBatch: isBatchRequest,
+                projectId,
+                sourceLang: sourceLang.code,
+                targetLangs: targetLanguages.map((language) => language.code),
+                transactionId: transactionObject.transactionId,
+            });
+        }
+
         return NextResponse.json({
-            data: generatedData,
+            data: normalizedData,
             message: "",
             transaction: {
                 totalCharge: transactionObject.totalCharge,

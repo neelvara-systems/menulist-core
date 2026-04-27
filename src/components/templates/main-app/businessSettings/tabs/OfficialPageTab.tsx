@@ -6,7 +6,7 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row, Select, Switch, Typography, Upload, message } from 'antd';
+import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row, Select, Switch, Typography, Upload, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
@@ -651,9 +651,17 @@ function DesktopLocalizedReferenceHint({
     referenceLabel: string;
     referenceValue: string;
 }) {
+    const { token } = theme.useToken();
+
     return (
         <div style={{ margin: '-12px 0 16px' }}>
-            <Card size="small" style={{ background: '#fafafa', borderColor: '#f0f0f0' }}>
+            <Card
+                size="small"
+                style={{
+                    background: token.colorFillAlter,
+                    borderColor: token.colorBorderSecondary,
+                }}
+            >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ minWidth: 0 }}>
                         <Text type="secondary">{`${referenceLabel} reference`}</Text>

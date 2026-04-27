@@ -600,11 +600,18 @@ function LocalizedReferenceHint({
     referenceLabel: string;
     referenceValue: string;
 }) {
+    const { token } = theme.useToken();
+
     return (
         <Flex
             align="center"
             justify="space-between"
-            style={{ background: '#f8fafc', borderRadius: 12, padding: '8px 10px' }}
+            style={{
+                background: token.colorFillAlter,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 12,
+                padding: '8px 10px',
+            }}
         >
             <Flex gap={2} style={{ minWidth: 0 }} vertical>
                 <Text type="secondary">{`${referenceLabel} reference`}</Text>

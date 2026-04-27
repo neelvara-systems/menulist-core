@@ -500,7 +500,7 @@ function MobileMoreHubScreen({
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar onBack={onBack} />
-            <Flex gap={12} style={{ padding: 16, paddingTop: 0 }} vertical>
+            <Flex gap={12} style={{ padding: 16 }} vertical>
                 <Card>
                     <Flex gap={6} vertical>
                         <Title level={4} style={{ margin: 0 }}>{title}</Title>

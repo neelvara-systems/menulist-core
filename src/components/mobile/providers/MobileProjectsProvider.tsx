@@ -249,8 +249,20 @@ export default function MobileProjectsProvider({ children }: { children: React.R
         setStoredMobileProjectId(nextProjectId, storeDetails?.storeId);
 
         try {
+            let selectedProjectData = nextProjectId ? projectsByIdRef.current[nextProjectId] || null : null;
             if (needsFetch) {
-                await loadProjectIntoCache(nextProjectId);
+                selectedProjectData = await loadProjectIntoCache(nextProjectId);
+            }
+
+            if (!needsFetch && nextProjectId) {
+                selectedProjectData = projectsByIdRef.current[nextProjectId] || null;
+            }
+
+            if (nextProjectId) {
+                console.log('[MobileProjectSelect] Selected project', {
+                    projectSummary: resolvedProject || null,
+                    projectData: selectedProjectData,
+                });
             }
         } finally {
             if (needsFetch) {

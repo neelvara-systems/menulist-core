@@ -65,6 +65,7 @@ export interface UseSpecialMenusReturn {
         allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
+        localizedDisplayName?: Record<string, string>;
         mode: SpecialMenuMode;
         startsAt: string;
         endsAt: string;
@@ -74,6 +75,8 @@ export interface UseSpecialMenusReturn {
         projectId: string;
         description?: string;
         displayName: string;
+        localizedDescription?: Record<string, string>;
+        localizedDisplayName?: Record<string, string>;
         startsAt: string;
         endsAt: string;
     }) => Promise<{ success: boolean; error?: string }>;
@@ -126,6 +129,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
             allowOverlap?: boolean;
             baseProjectId: string;
             displayName: string;
+            localizedDisplayName?: Record<string, string>;
             mode: SpecialMenuMode;
             startsAt: string;
             endsAt: string;
@@ -147,6 +151,8 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
             projectId: string;
             description?: string;
             displayName: string;
+            localizedDescription?: Record<string, string>;
+            localizedDisplayName?: Record<string, string>;
             startsAt: string;
             endsAt: string;
         }) => {

@@ -69,6 +69,7 @@ function MainContentRenderer({
           layout={projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout}
           brandAccentColor={brandAccentColor}
           backgroundImage={projectData?.config?.design?.menu?.backgroundImage}
+          showItemPrices={projectData?.config?.design?.menu?.showItemPrices ?? true}
           showImages={projectData?.config?.design?.menu?.showImages ?? true}
           showCategoryIcons={projectData?.config?.design?.menu?.showCategoryIcons ?? true}
           showCategoryTabs={projectData?.config?.design?.menu?.showCategoryTabs ?? false}
