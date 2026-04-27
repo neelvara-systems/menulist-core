@@ -1,6 +1,7 @@
 import { publishProject, uploadFile } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { resolveRenderLanguage } from "@lib/localization/languageResolver";
+import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -33,7 +34,11 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     // Multi-chain language governance: Resolve initial language using priority system
     // Priority: 1. URL ?lang= (not applicable in preview), 2. store.defaultLanguage, 3. 'en' fallback
     const [activeLanguage, setActiveLanguage] = useState(() =>
-        resolveRenderLanguage(null, storeDetails?.defaultLanguage, activeProject.languages || ['en'])
+        resolveRenderLanguage(
+            null,
+            getProjectDefaultLanguage(activeProject, storeDetails),
+            activeProject.languages || ['en'],
+        )
     );
     const [projectData, setProjectData] = useState<Project>(removeObjRef(activeProject));
     const [previewModalOpen, setPreviewModalOpen] = useState(false);

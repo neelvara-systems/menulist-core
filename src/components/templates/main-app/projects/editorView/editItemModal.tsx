@@ -7,6 +7,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -261,7 +262,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     const handleRetryTranslation = useCallback(async (language: string) => {
         dispatch(startLoader("retrying translations"))
         try {
-            const sourceLangCode = projectData.languages?.[0] || 'en';
+            const sourceLangCode = getCanonicalProjectSourceLanguage(projectData.languages);
             const sourceLang = GlobalLanguagesList.find(lang => lang.code === sourceLangCode);
             const targetLang = GlobalLanguagesList.find(lang => lang.code === language);
             const { updatedItem, message: resultMessage, messageType } = await translateItem(projectData, fileData, targetLang, sourceLang, AI_ACTIONS_TYPES.ITEM_TRANSLATION, itemData);
@@ -355,7 +356,9 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     const onGenerateContent = async () => {
         dispatch(startLoader("generating_content"));
         try {
-            const sourceLanguage = GlobalLanguagesList.find(gl => gl.code === (projectData.languages?.[0] || 'en'));
+            const sourceLanguage = GlobalLanguagesList.find(
+                (gl) => gl.code === getCanonicalProjectSourceLanguage(projectData.languages),
+            );
             const targetLanguages = projectData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
 
             // Validate if item name is present in the source language

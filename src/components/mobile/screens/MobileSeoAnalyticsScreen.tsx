@@ -2,8 +2,8 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
@@ -11,7 +11,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuSparkles, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, Toast } from '../antd';
+import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
@@ -85,12 +85,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const contentLanguage = selectedLanguage || getStorePreferredLanguage(storeDetails);
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const currentSeoDraft = localizedSeoDrafts[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' };
-    const publicDisplayName = getLocalizedText(
-        storeDetails?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
-        storeDetails?.name || '',
-    );
+    const publicDisplayName = getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, '');
 
     useEffect(() => {
         if (!storeDetails) return;
@@ -406,6 +401,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         try {
             setIsSeoSaving(true);
             const update = {
+                businessCopyMeta: buildBusinessCopyManualOverrideMeta({
+                    existingMeta: storeDetails?.businessCopyMeta,
+                    fieldKeys: ['metaTitle', 'metaDescription', 'tagline'],
+                }),
                 canonicalUrl,
                 keywords: keywords
                     .split(',')
@@ -486,12 +485,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         reservationUrl: storeDetails?.publicPresence?.reservationUrl || '',
                         whatsappNumber: storeDetails?.publicPresence?.whatsappNumber || '',
                     },
-                    pwaShortName: getLocalizedText(
-                        storeDetails?.pwaSettings?.pwaShortName,
-                        contentLanguage,
-                        getPrimaryLocalizedLanguage(storeDetails?.pwaSettings?.pwaShortName, contentLanguage),
-                        '',
-                    ),
+                    pwaShortName: getLocalizedStoreValue(storeDetails?.pwaSettings?.pwaShortName, contentLanguage, ''),
                     socialMedia: socialValues,
                     state: storeDetails?.state || '',
                     tagline: currentSeoDraft.tagline,
@@ -545,7 +539,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         <Card>
                             <Flex gap={12} vertical>
                                 <FieldGroup hint={tSeo('taglineHelp')} label={tSeo('tagline')}>
-                                    <Input
+                                    <TextArea
+                                        autoSize={{ minRows: 2, maxRows: 4 }}
                                         maxLength={100}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
@@ -555,6 +550,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                             },
                                         }))}
                                         placeholder={tSeo('taglinePlaceholder')}
+                                        showCount
                                         value={currentSeoDraft.tagline}
                                     />
                                 </FieldGroup>
@@ -572,7 +568,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     />
                                 ) : null}
                                 <FieldGroup hint={tSeo('metaTitleHelp')} label={tSeo('metaTitle')}>
-                                    <Input
+                                    <TextArea
+                                        autoSize={{ minRows: 2, maxRows: 4 }}
                                         maxLength={60}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
@@ -582,6 +579,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                             },
                                         }))}
                                         placeholder={tSeo('metaTitlePlaceholder')}
+                                        showCount
                                         value={currentSeoDraft.metaTitle}
                                     />
                                 </FieldGroup>
@@ -599,7 +597,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     />
                                 ) : null}
                                 <FieldGroup hint={tSeo('metaDescHelp')} label={tSeo('metaDescription')}>
-                                    <Input
+                                    <TextArea
+                                        autoSize={{ minRows: 3, maxRows: 6 }}
                                         maxLength={160}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
@@ -609,6 +608,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                             },
                                         }))}
                                         placeholder={tSeo('metaDescPlaceholder')}
+                                        showCount
                                         value={currentSeoDraft.metaDescription}
                                     />
                                 </FieldGroup>
@@ -626,14 +626,22 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     />
                                 ) : null}
                                 <FieldGroup hint={tSeo('keywordsHelp')} label={tSeo('keywords')}>
-                                    <Input
+                                    <TextArea
+                                        autoSize={{ minRows: 2, maxRows: 5 }}
+                                        maxLength={300}
                                         onChange={setKeywords}
                                         placeholder={tSeo('keywordsPlaceholder')}
+                                        showCount
                                         value={keywords}
                                     />
                                 </FieldGroup>
                                 <FieldGroup hint={tSeo('canonicalUrlHelp')} label={tSeo('canonicalUrl')}>
-                                    <Input onChange={setCanonicalUrl} placeholder={tSeo('canonicalUrlPlaceholder')} value={canonicalUrl} />
+                                    <TextArea
+                                        autoSize={{ minRows: 2, maxRows: 4 }}
+                                        onChange={setCanonicalUrl}
+                                        placeholder={tSeo('canonicalUrlPlaceholder')}
+                                        value={canonicalUrl}
+                                    />
                                 </FieldGroup>
                             </Flex>
                         </Card>

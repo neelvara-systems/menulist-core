@@ -30,6 +30,30 @@ import { getProviderAdapter } from "./providers/providerRegistry";
 const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
+const CANONICAL_SOURCE_LANGUAGE = "en";
+
+function normalizeProjectLanguages(languages: any): string[] {
+  const collected = Array.isArray(languages)
+    ? languages.map((language: any) => typeof language === "string" ? language : language?.code)
+    : [];
+  const deduped = Array.from(new Set(collected.map((language) => String(language || "").trim().toLowerCase()).filter(Boolean)));
+
+  return [
+    CANONICAL_SOURCE_LANGUAGE,
+    ...deduped.filter((language) => language !== CANONICAL_SOURCE_LANGUAGE),
+  ];
+}
+
+function getDetectedDefaultLanguage(languages: any): string {
+  if (Array.isArray(languages)) {
+    const primary = languages.find((language: any) => language?.isPrimary)?.code;
+    if (primary) return String(primary).trim().toLowerCase();
+
+    const firstCode = typeof languages[0] === "string" ? languages[0] : languages[0]?.code;
+    if (firstCode) return String(firstCode).trim().toLowerCase();
+  }
+  return CANONICAL_SOURCE_LANGUAGE;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // HELPER IMPORTS
@@ -88,6 +112,8 @@ export async function executePublish(
 
   // Publish validation gate (min items)
   const menuData = session.extractedMenuData;
+  const extractedLanguageCodes = normalizeProjectLanguages(menuData?.languages);
+  const detectedDefaultLanguage = getDetectedDefaultLanguage(menuData?.languages);
   if (!menuData?.categories?.length || !menuData?.items?.length) {
     throw new Error("Insufficient menu data for publishing");
   }
@@ -194,7 +220,8 @@ export async function executePublish(
         Date.now() + TIMING.ACTIVATION_DEADLINE_MS,
       ),
       phoneNumber: phoneDisplay,
-      defaultLanguage: menuData.languages?.[0]?.code || "en",
+      activeLanguages: extractedLanguageCodes,
+      defaultLanguage: detectedDefaultLanguage,
       country,
       currencyCode: currencyInfo.code,
       currencySymbol: currencyInfo.symbol,
@@ -277,7 +304,8 @@ export async function executePublish(
       tenantId: newTenantId,
       storeId: newStoreId,
       files,
-      languages: menuData.languages || [{ code: "en", name: "English", isPrimary: true }],
+      languages: extractedLanguageCodes,
+      defaultLanguage: detectedDefaultLanguage,
       active: true,
       deleted: false,
       createdOn: now,

@@ -9,6 +9,7 @@ import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
 import { TimeSlotPreset } from "@type/platform/store";
@@ -149,6 +150,11 @@ const updateLogoImage = async (data) => {
 export const addStore = async (data: any, from: string = "") => {
     return await apiCallComposer(
         async () => {
+            if ('activeLanguages' in data || 'defaultLanguage' in data || 'language' in data) {
+                const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
+                data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
+                data.defaultLanguage = normalizedLanguagePolicy.defaultLanguage;
+            }
 
             data.id = data.storeId
             if (data.imageToUpdate) {
@@ -209,6 +215,11 @@ export const addStore = async (data: any, from: string = "") => {
 export const updateStore = async (data: any) => {
     return await apiCallComposer(
         async () => {
+            if ('activeLanguages' in data || 'defaultLanguage' in data || 'language' in data) {
+                const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
+                data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
+                data.defaultLanguage = normalizedLanguagePolicy.defaultLanguage;
+            }
 
             data.id = data.storeId
             if (data.imageToUpdate) {

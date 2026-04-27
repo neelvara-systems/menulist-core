@@ -19,7 +19,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuLink2, LuExternalLink, LuPalette } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuLink2, LuPalette } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
@@ -301,14 +301,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             <NavBar
                 onBack={onBack}
                 backIcon={<LuArrowLeft size={20} />}
-                right={
-                    <Button fill="none" onClick={() => window.location.assign(menuUrl)}>
-                        <Flex align="center" gap={6}>
-                            <LuExternalLink size={16} />
-                            <Text>{t('preview')}</Text>
-                        </Flex>
-                    </Button>
-                }
             />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 128px' }} vertical>

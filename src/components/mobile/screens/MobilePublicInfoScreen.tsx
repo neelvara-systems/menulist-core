@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { LuMapPin } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Input, NavBar, Text, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobilePublicInfoScreenProps {
@@ -114,7 +114,8 @@ export default function MobilePublicInfoScreen({ onBack }: MobilePublicInfoScree
                             <Text type="secondary">{t('address')}</Text>
                         </Flex>
                         <Text type="secondary">Enter the full customer-facing address for this business location. Avoid internal notes, directions for staff, or temporary text.</Text>
-                        <Input
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
                             placeholder={t('streetAddress')}
                             value={formData.addressLine}

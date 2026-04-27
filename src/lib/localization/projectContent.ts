@@ -1,22 +1,31 @@
 import GlobalLanguagesList from '@data/languages';
-import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from './text';
+import {
+    CANONICAL_SOURCE_LANGUAGE,
+    getPreferredDefaultLanguage,
+    normalizeProjectLanguages,
+} from './languagePolicy';
+import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from './text';
 
 export function getProjectManagedLanguages(projectDetails?: any, storeDetails?: any): string[] {
-    const candidates = [
+    return normalizeProjectLanguages([
         ...(Array.isArray(projectDetails?.languages) ? projectDetails.languages : []),
+        projectDetails?.defaultLanguage,
         getPrimaryLocalizedLanguage(projectDetails?.name, ''),
         getPrimaryLocalizedLanguage(projectDetails?.description, ''),
         storeDetails?.defaultLanguage,
-        'en',
-    ]
-        .map((language) => String(language || '').trim())
-        .filter(Boolean);
-
-    return Array.from(new Set(candidates));
+    ]);
 }
 
 export function getProjectPreferredLanguage(projectDetails?: any, storeDetails?: any): string {
-    return getProjectManagedLanguages(projectDetails, storeDetails)[0] || 'en';
+    const managedLanguages = getProjectManagedLanguages(projectDetails, storeDetails);
+    return getPreferredDefaultLanguage(
+        projectDetails?.defaultLanguage || storeDetails?.defaultLanguage,
+        managedLanguages,
+    );
+}
+
+export function getProjectDefaultLanguage(projectDetails?: any, storeDetails?: any): string {
+    return getProjectPreferredLanguage(projectDetails, storeDetails);
 }
 
 export function getProjectLanguageLabel(languageCode: string): string {
@@ -32,12 +41,7 @@ export function getLocalizedProjectValue(
     languageCode: string,
     fallback = '',
 ): string {
-    return getLocalizedText(
-        value,
-        languageCode,
-        getPrimaryLocalizedLanguage(value, languageCode),
-        fallback,
-    );
+    return getLocalizedDraftText(value, languageCode, fallback);
 }
 
 export function applyLocalizedProjectDraftMap(
@@ -46,7 +50,7 @@ export function applyLocalizedProjectDraftMap(
 ): any {
     return Object.entries(draftsByLanguage).reduce(
         (nextValue, [languageCode, draftValue]) => (
-            updateLocalizedText(nextValue, draftValue, languageCode, 'en')
+            updateLocalizedText(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
         ),
         existingValue,
     );

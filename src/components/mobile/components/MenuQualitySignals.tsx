@@ -40,7 +40,8 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectLang
     return (
         <div
             style={{
-                backgroundColor: allClear ? token.colorSuccessBg : token.colorFillAlter,
+                backgroundColor: allClear ? token.colorSuccessBg : token.colorWarningBg,
+                border: `1px solid ${allClear ? token.colorSuccessBorder : token.colorWarningBorder}`,
                 borderRadius: 16,
             }}
         >

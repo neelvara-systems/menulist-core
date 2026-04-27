@@ -1,11 +1,14 @@
 'use client'
 
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
+import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import TIMEZONES_LIST from '@data/timeZones';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import countryData from '@atoms/phoneNumberInput/countryData';
+import { normalizeStoreLanguagePolicy } from '@lib/localization/languagePolicy';
+import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { theme } from 'antd';
 import {
     DATE_FORMATS,
@@ -22,21 +25,23 @@ import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobileLocaleSettingsScreenProps {
     onBack: () => void;
+    onOpenBusinessCopySetup?: () => void;
 }
 
 function getInitialLocaleForm(storeDetails: any) {
+    const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(storeDetails);
     return {
-        activeLanguages: storeDetails?.activeLanguages || [],
+        activeLanguages: normalizedLanguagePolicy.activeLanguages,
         currencyCode: storeDetails?.currencyCode || 'INR',
         currencySymbol: storeDetails?.currencySymbol || '₹',
         dateFormat: storeDetails?.dateFormat || defaultDateFormatString,
-        defaultLanguage: storeDetails?.defaultLanguage || 'en',
+        defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
         timeFormat: storeDetails?.timeFormat || defaultTimeFormatString,
         timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 }
 
-export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSettingsScreenProps) {
+export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopySetup }: MobileLocaleSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
     const format = useFormatter();
@@ -54,9 +59,22 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
     })), []);
 
     const availableDefaultLanguages = useMemo(() => {
-        const active = formData.activeLanguages.length > 0 ? formData.activeLanguages : ['en'];
+        const active = normalizeStoreLanguagePolicy({
+            activeLanguages: formData.activeLanguages,
+            defaultLanguage: formData.defaultLanguage,
+        }).activeLanguages;
         return languageOptions.filter((option) => active.includes(option.value));
-    }, [formData.activeLanguages, languageOptions]);
+    }, [formData.activeLanguages, formData.defaultLanguage, languageOptions]);
+    const prospectiveCoverage = useMemo(
+        () => computeBusinessCopyCoverage({
+            ...storeDetails,
+            ...normalizeStoreLanguagePolicy({
+                activeLanguages: formData.activeLanguages,
+                defaultLanguage: formData.defaultLanguage,
+            }),
+        }, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
+        [formData.activeLanguages, formData.defaultLanguage, storeDetails],
+    );
 
     const currencyOptions = useMemo(() => {
         const uniqueCurrencies = new Map<string, { label: string; value: string }>();
@@ -83,7 +101,10 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
 
     const handleActiveLanguagesChange = (value: string | string[]) => {
         const selectedLanguages = Array.isArray(value) ? value : [value];
-        const nextLanguages = selectedLanguages.slice(0, LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT);
+        const nextLanguages = normalizeStoreLanguagePolicy({
+            activeLanguages: selectedLanguages.slice(0, LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT),
+            defaultLanguage: formData.defaultLanguage,
+        }).activeLanguages;
 
         setFormData((previous) => ({
             ...previous,
@@ -97,13 +118,17 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
+        const normalizedLanguagePolicy = normalizeStoreLanguagePolicy({
+            activeLanguages: formData.activeLanguages,
+            defaultLanguage: formData.defaultLanguage,
+        });
 
         const payload = {
             ...storeDetails,
-            activeLanguages: formData.activeLanguages.length > 0 ? formData.activeLanguages : ['en'],
+            activeLanguages: normalizedLanguagePolicy.activeLanguages,
             currencyCode: formData.currencyCode,
             currencySymbol: formData.currencySymbol,
-            defaultLanguage: formData.defaultLanguage || 'en',
+            defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
             timeFormat: formData.timeFormat,
             timeZone: formData.timeZone,
             dateFormat: formData.dateFormat,
@@ -113,7 +138,17 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
 
         try {
             await updateStore(payload as any);
-            setOriginalFormData(formData);
+            setFormData((previous) => ({
+                ...previous,
+                activeLanguages: normalizedLanguagePolicy.activeLanguages,
+                defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
+            }));
+            setOriginalFormData((previous) => ({
+                ...previous,
+                ...formData,
+                activeLanguages: normalizedLanguagePolicy.activeLanguages,
+                defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
+            }));
             Toast.show({ content: t('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
@@ -158,7 +193,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuClock size={14} />
                             <Text type="secondary">{tBusiness('timeZone')}</Text>
                         </Flex>
-                        <Text type="secondary">Choose the local time zone for this outlet. Working hours, schedules, and date-based automations use this setting.</Text>
+                        <Text type="secondary">{tBusiness('timeZoneHelper')}</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, timeZone: value }))}
                             options={TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))}
@@ -168,10 +203,28 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                     </Flex>
                 </Card>
 
+                {prospectiveCoverage.repairableGapCount > 0 ? (
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text strong>{tBusiness('businessCopyLanguageNudgeTitle', { count: prospectiveCoverage.repairableGapCount })}</Text>
+                            <Text type="secondary">
+                                {isDirty
+                                    ? tBusiness('businessCopyLanguageNudgePendingSave')
+                                    : tBusiness('businessCopyLanguageNudgeReady')}
+                            </Text>
+                            {!isDirty && onOpenBusinessCopySetup ? (
+                                <Button block onClick={onOpenBusinessCopySetup}>
+                                    {tBusiness('businessCopyLanguageNudgeAction')}
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    </Card>
+                ) : null}
+
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('dateFormat')}</Text>
-                        <Text type="secondary">This controls how dates are shown to your team inside the app.</Text>
+                        <Text type="secondary">{tBusiness('dateFormatHelper')}</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
                             options={DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))}
@@ -184,7 +237,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('timeFormat')}</Text>
-                        <Text type="secondary">Pick the clock style your team reads most easily, like 12-hour or 24-hour time.</Text>
+                        <Text type="secondary">{tBusiness('timeFormatHelper')}</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, timeFormat: value }))}
                             options={TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))}
@@ -201,9 +254,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <Text type="secondary">{tBusiness('availableLanguages')}</Text>
                         </Flex>
                         <Text type="secondary">{tBusiness('languageSettingsDesc')}</Text>
-                        <Text type="secondary">
-                            These languages appear in your translation workflow and language dropdowns while editing menu content.
-                        </Text>
+                        <Text type="secondary">{tBusiness('languageSettingsUsageHint')}</Text>
                         <Select
                             maxCount={LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
                             mode="multiple"
@@ -213,6 +264,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             value={formData.activeLanguages}
                         />
                         <Text type="secondary">{tBusiness('availableLanguagesTooltip', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT })}</Text>
+                        <Text type="secondary">{tBusiness('languageSourcePolicyHint')}</Text>
                     </Flex>
                 </Card>
 
@@ -222,7 +274,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuGlobe size={14} />
                             <Text type="secondary">{tBusiness('defaultLanguage')}</Text>
                         </Flex>
-                        <Text type="secondary">This is the main language used first when editing or creating menu content.</Text>
+                        <Text type="secondary">{tBusiness('defaultLanguageHelper')}</Text>
                         <Select
                             onChange={(value) => setFormData((previous) => ({ ...previous, defaultLanguage: value }))}
                             options={availableDefaultLanguages}
@@ -238,7 +290,7 @@ export default function MobileLocaleSettingsScreen({ onBack }: MobileLocaleSetti
                             <LuDollarSign size={14} />
                             <Text type="secondary">{t('currency')}</Text>
                         </Flex>
-                        <Text type="secondary">Set the currency customers should see on prices for this outlet.</Text>
+                        <Text type="secondary">{tBusiness('currencyHelper')}</Text>
                         <Select
                             onChange={handleCurrencyChange}
                             options={currencyOptions}

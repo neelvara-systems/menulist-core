@@ -14,11 +14,13 @@
 import { FEATURE_FLAGS } from '@config/features';
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { updateStore } from '@database/stores';
 import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
+import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import type { UserUploadedFileType } from '@type/common';
 import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Typography, message } from 'antd';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,7 +33,7 @@ interface CustomerAppTabProps {
 }
 
 export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
 
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
@@ -163,6 +165,20 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
             }
             if (Object.keys(settingsPatch).length > 0) {
                 await updatePWASettings(storeDetails.storeId, settingsPatch);
+                if ('pwaShortName' in settingsPatch) {
+                    const nextBusinessCopyMeta = buildBusinessCopyManualOverrideMeta({
+                        existingMeta: storeDetails?.businessCopyMeta,
+                        fieldKeys: ['pwaShortName'],
+                    });
+                    await updateStore({
+                        businessCopyMeta: nextBusinessCopyMeta,
+                        storeId: storeDetails.storeId,
+                    });
+                    setStoreDetails((previous: any) => ({
+                        ...previous,
+                        businessCopyMeta: nextBusinessCopyMeta,
+                    }));
+                }
             }
 
             let nextIconUrl = savedIconUrl.trim();

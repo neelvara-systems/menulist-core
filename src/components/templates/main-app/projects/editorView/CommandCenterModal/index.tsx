@@ -13,6 +13,7 @@
  */
 
 import type { InheritanceState } from '@type/multiOutlet.types';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { removeObjRef } from '@util/utils';
 import { Button, Flex, Modal, Splitter, Typography, message as antdMessage, theme } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -69,7 +70,7 @@ export default function CommandCenterModal({
     onApply,
 }: CommandCenterModalProps) {
     const { token } = theme.useToken();
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
 
     // ─── Selection state ───
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

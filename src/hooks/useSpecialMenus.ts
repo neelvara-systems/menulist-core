@@ -136,13 +136,41 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
         }) => {
             try {
                 const result = await dalCreate(data);
-                mutate();
+                if (result?.projectId && result?.summaryData) {
+                    const nextStatus = (result.summaryData.specialMenuStatus || "scheduled") as SpecialMenuStatus;
+                    const nextMenu: SpecialMenuListItem = {
+                        projectId: result.projectId,
+                        displayName: result.summaryData.specialMenuDisplayName || data.displayName,
+                        description: typeof result.summaryData.description === "string"
+                            ? result.summaryData.description
+                            : undefined,
+                        status: nextStatus,
+                        mode: result.summaryData.specialMenuMode || data.mode,
+                        startsAt: result.summaryData.specialMenuStartsAt || data.startsAt,
+                        endsAt: result.summaryData.specialMenuEndsAt || data.endsAt,
+                        baseProjectId: result.summaryData.specialMenuBaseProjectId || data.baseProjectId,
+                    };
+
+                    await mutateSpecialMenus((current) => ({
+                        activeMenuId: nextStatus === "active" ? result.projectId : current.activeMenuId,
+                        specialMenus: [
+                            ...current.specialMenus.map((menu) => (
+                                nextStatus === "active" && menu.status === "active"
+                                    ? { ...menu, status: "expired" as SpecialMenuStatus }
+                                    : menu
+                            )),
+                            nextMenu,
+                        ],
+                    }));
+                } else {
+                    mutate();
+                }
                 return { success: true, projectId: result?.projectId };
             } catch (e: any) {
                 return { success: false, error: e.message };
             }
         },
-        [mutate],
+        [mutate, mutateSpecialMenus],
     );
 
     const updateSpecialMenu = useCallback(

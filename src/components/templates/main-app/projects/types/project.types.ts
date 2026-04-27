@@ -70,6 +70,7 @@ export interface ProjectMetadata {
     projectId?: string;
     name: string | LocalizedText;
     description?: string | LocalizedText;
+    defaultLanguage?: string;
     projectImage?: string | null;
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
@@ -290,6 +291,7 @@ export interface Project {
     projectId?: string;
     name?: string | LocalizedText;
     description?: string | LocalizedText;
+    defaultLanguage?: string;
     files?: ProjectFileType[];
     languages?: string[];
     config?: ThemeConfig;

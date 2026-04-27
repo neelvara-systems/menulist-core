@@ -1,5 +1,6 @@
 import { DndContext, DragEndEvent, DragOverlay, rectIntersection } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getUID, removeObjRef } from '@util/utils';
 import { Button, Flex, Modal, Tag, Typography, theme } from 'antd';
 import { useState } from 'react';
@@ -71,7 +72,7 @@ function buildItemsForCategory(files: ProjectFileType[], categoryId: string, act
 
 const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuModalProps) => {
     const { token } = theme.useToken();
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
 
     // State for category selection and drag-drop
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);

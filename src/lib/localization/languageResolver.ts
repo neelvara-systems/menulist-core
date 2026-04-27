@@ -5,6 +5,10 @@
  * 1. URL ?lang=xx parameter (highest priority)
  * 2. store.defaultLanguage
  * 3. Fallback: 'en'
+ *
+ * Note:
+ * - This helper is for render-language resolution only.
+ * - English remains the canonical source language for AI and translation flows.
  * 
  * @see __docs__/projects/multi-language-translation/multi-language-translation_spec.md
  * @see __docs__/projects/multi-language-translation/multi-language-translation_impl.md

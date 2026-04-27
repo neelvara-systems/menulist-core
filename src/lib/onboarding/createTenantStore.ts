@@ -20,6 +20,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { slugify } from '@lib/utils/slugify';
 
 // ═══════════════════════════════════════════════════════════════
@@ -224,9 +225,11 @@ export async function createTenantStoreInTransaction(
         ...(timeSlotPresets ? { timeSlotPresets } : {}),
         publicPresence: {
             displayName: {
-                en: storeName,
+                [CANONICAL_SOURCE_LANGUAGE]: storeName,
             },
         },
+        activeLanguages: [CANONICAL_SOURCE_LANGUAGE],
+        defaultLanguage: CANONICAL_SOURCE_LANGUAGE,
         roles: defaultRoles,
         isMaster: true,
         onboardingSource,

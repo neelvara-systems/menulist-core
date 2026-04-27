@@ -1,4 +1,5 @@
 import { getProjectDataWithoutLoader, getProjectsListWithoutLoader } from '@database/projects';
+import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { firstText } from '@services/ai/businessCopy/utils';
 
@@ -87,15 +88,15 @@ async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultP
         items,
         projectDescription: getLocalizedText(
             targetProjectSummary?.description,
-            undefined,
-            getPrimaryLocalizedLanguage(targetProjectSummary?.description, 'en'),
+            CANONICAL_SOURCE_LANGUAGE,
+            getPrimaryLocalizedLanguage(targetProjectSummary?.description, CANONICAL_SOURCE_LANGUAGE),
             '',
         ),
         projectId: targetProjectSummary.projectId,
         projectName: getLocalizedText(
             targetProjectSummary?.name,
-            undefined,
-            getPrimaryLocalizedLanguage(targetProjectSummary?.name, 'en'),
+            CANONICAL_SOURCE_LANGUAGE,
+            getPrimaryLocalizedLanguage(targetProjectSummary?.name, CANONICAL_SOURCE_LANGUAGE),
             '',
         ),
     };

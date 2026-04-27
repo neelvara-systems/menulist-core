@@ -14,7 +14,11 @@ import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } fr
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
 import localizeBusinessCopyResult, { mergeLocalizedField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
+import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
+import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncMissingBusinessCopyTranslations";
+import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage } from "@lib/localization/storeContent";
+import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
     APP_TIME_FORMAT_COOKIES_KEY,
@@ -25,7 +29,7 @@ import {
 import { UserUploadedFileType } from "@type/common";
 import { getUTCDate } from "@util/dateTime";
 import { getObjectDifferance } from "@util/deepMerge";
-import { Button, Card, Flex, Form, Menu, Space, Typography, message } from "antd";
+import { Button, Card, Flex, Form, Menu, Space, Tag, Typography, message } from "antd";
 import { getCookie } from "cookies-next";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -99,30 +103,17 @@ function sanitizeSocialMediaMap(source?: Record<string, string> | null) {
 }
 
 function resolveStoreContentLanguage(storeDetails: any): string {
-    return storeDetails?.defaultLanguage
-        || storeDetails?.activeLanguages?.[0]
-        || storeDetails?.language
+    return getStorePreferredLanguage(storeDetails)
         || getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, 'en');
 }
 
 function getBusinessSettingsInitialValues(storeDetails: any) {
     const contentLanguage = resolveStoreContentLanguage(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
-    const displayNamePrimaryLanguage = getPrimaryLocalizedLanguage(
-        storeDetails?.publicPresence?.displayName,
-        contentLanguage,
-    );
-    const descriptorPrimaryLanguage = getPrimaryLocalizedLanguage(
-        storeDetails?.publicPresence?.descriptor,
-        contentLanguage,
-    );
-    const knownForPrimaryLanguage = getPrimaryLocalizedLanguage(
-        storeDetails?.publicPresence?.knownFor,
-        contentLanguage,
-    );
-
+    const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(storeDetails);
     return {
         ...storeDetails,
+        activeLanguages: normalizedLanguagePolicy.activeLanguages,
         __localizedPublicPresenceDrafts: Object.fromEntries(
             managedLanguages.map((languageCode) => [
                 languageCode,
@@ -150,45 +141,16 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
             ]),
         ),
         __storeContentLanguage: getStorePreferredLanguage(storeDetails),
-        metaDescription: getLocalizedText(
-            storeDetails?.metaDescription,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeDetails?.metaDescription, contentLanguage),
-            '',
-        ),
-        metaTitle: getLocalizedText(
-            storeDetails?.metaTitle,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeDetails?.metaTitle, contentLanguage),
-            '',
-        ),
+        defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
+        metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, contentLanguage, ''),
+        metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, contentLanguage, ''),
         publicPresence: {
             ...(storeDetails?.publicPresence || {}),
-            displayName: getLocalizedText(
-                storeDetails?.publicPresence?.displayName,
-                contentLanguage,
-                displayNamePrimaryLanguage,
-                '',
-            ),
-            descriptor: getLocalizedText(
-                storeDetails?.publicPresence?.descriptor,
-                contentLanguage,
-                descriptorPrimaryLanguage,
-                '',
-            ),
-            knownFor: getLocalizedText(
-                storeDetails?.publicPresence?.knownFor,
-                contentLanguage,
-                knownForPrimaryLanguage,
-                '',
-            ),
+            displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, ''),
+            descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, contentLanguage, ''),
+            knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, contentLanguage, ''),
         },
-        tagline: getLocalizedText(
-            storeDetails?.tagline,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
-            '',
-        ),
+        tagline: getLocalizedStoreValue(storeDetails?.tagline, contentLanguage, ''),
     };
 }
 
@@ -325,6 +287,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     const [reviewUrl, setReviewUrl] = useState<string>(
         storeDetails?.reviewUrl || ''
     );
+    const businessCopyCoverage = useMemo(
+        () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
+        [storeDetails],
+    );
 
     const scrollRefs = useRef(
         Array(20)
@@ -393,7 +359,16 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         },
         {
             key: "search-discovery",
-            label: "Search & Discovery",
+            label: (
+                <Flex align="center" gap={8}>
+                    <span>Search & Discovery</span>
+                    {businessCopyCoverage.repairableGapCount > 0 ? (
+                        <Tag color="warning">
+                            {t('businessCopyCoverageGapCount', { count: businessCopyCoverage.repairableGapCount })}
+                        </Tag>
+                    ) : null}
+                </Flex>
+            ),
             icon: <LuSearch />,
             tab: (
                 <Flex vertical gap={16} ref={scrollRefs.current[1]}>
@@ -441,6 +416,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 };
 
                                 const nextStoreUpdate: any = {
+                                    businessCopyMeta: buildBusinessCopyGeneratedMeta({
+                                        existingMeta: storeDetails?.businessCopyMeta,
+                                        includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
+                                        projectId,
+                                        sourceLanguage: resolveStoreContentLanguage(storeDetails),
+                                        storeDetails,
+                                    }),
                                     keywords: generated.keywords,
                                     metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
                                     metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
@@ -466,6 +448,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     keywords: generated.keywords,
                                     metaDescription: nextStoreUpdate.metaDescription,
                                     metaTitle: nextStoreUpdate.metaTitle,
+                                    businessCopyMeta: nextStoreUpdate.businessCopyMeta,
                                     publicPresence: nextPublicPresence,
                                     pwaSettings: {
                                         ...(storeDetails?.pwaSettings || {}),
@@ -475,6 +458,81 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     },
                                     tagline: nextStoreUpdate.tagline,
                                 });
+                            }}
+                            onGenerateMissingTranslations={async (projectId) => {
+                                if (!storeDetails?.storeId) return false;
+
+                                const localized = await syncMissingBusinessCopyTranslations({
+                                    includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
+                                    projectId,
+                                    storeDetails,
+                                });
+
+                                if (!localized) {
+                                    return false;
+                                }
+
+                                const nextCoverage = computeBusinessCopyCoverage(storeDetails, {
+                                    includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
+                                });
+
+                                const nextPublicPresence = {
+                                    ...(storeDetails?.publicPresence || {}),
+                                    displayName: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.displayName,
+                                        localized.displayName,
+                                    ),
+                                    descriptor: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.descriptor,
+                                        localized.descriptor,
+                                    ),
+                                    knownFor: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.knownFor,
+                                        localized.knownFor,
+                                    ),
+                                };
+
+                                const nextStoreUpdate: any = {
+                                    businessCopyMeta: buildBusinessCopyRepairMeta({
+                                        coverageFields: nextCoverage.fields,
+                                        existingMeta: storeDetails?.businessCopyMeta,
+                                        referenceLanguage: nextCoverage.referenceLanguage,
+                                    }),
+                                    metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
+                                    metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
+                                    ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                                        ? {
+                                            pwaSettings: {
+                                                ...(storeDetails?.pwaSettings || {}),
+                                                pwaShortName: mergeLocalizedField(
+                                                    storeDetails?.pwaSettings?.pwaShortName,
+                                                    localized.pwaShortName,
+                                                ),
+                                            },
+                                        }
+                                        : {}),
+                                    publicPresence: nextPublicPresence,
+                                    storeId: storeDetails.storeId,
+                                    tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
+                                };
+                                await updateStore(nextStoreUpdate);
+
+                                setStoreDetails({
+                                    ...storeDetails,
+                                    metaDescription: nextStoreUpdate.metaDescription,
+                                    metaTitle: nextStoreUpdate.metaTitle,
+                                    businessCopyMeta: nextStoreUpdate.businessCopyMeta,
+                                    publicPresence: nextPublicPresence,
+                                    pwaSettings: {
+                                        ...(storeDetails?.pwaSettings || {}),
+                                        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                                            ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                            : {}),
+                                    },
+                                    tagline: nextStoreUpdate.tagline,
+                                });
+
+                                return true;
                             }}
                             storeDetails={storeDetails}
                         />
@@ -503,7 +561,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             key: "locale",
             label: t('localeSettings'),
             icon: <LuGlobe />,
-            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 3 : 2]} />,
+            tab: (
+                <LocaleSettingsTab
+                    onOpenSearchDiscovery={() => scrollToSection(1)}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 3 : 2]}
+                    storeDetails={storeDetails}
+                />
+            ),
         },
         {
             key: "hours",
@@ -685,6 +749,19 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             changesToUpload.imageType = selectedFile.type;
         }
 
+        if (
+            'activeLanguages' in changesToUpload
+            || 'defaultLanguage' in changesToUpload
+            || 'language' in changesToUpload
+        ) {
+            const normalizedLanguagePolicy = normalizeStoreLanguagePolicy({
+                ...storeDetails,
+                ...changesToUpload,
+            });
+            changesToUpload.activeLanguages = normalizedLanguagePolicy.activeLanguages;
+            changesToUpload.defaultLanguage = normalizedLanguagePolicy.defaultLanguage;
+        }
+
         changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
         changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
         const contentLanguage = resolveStoreContentLanguage(storeDetails);
@@ -791,6 +868,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             Boolean(storeDetails?.storeId) ||
             storeDetails?.storeId == ECOMSAI_PLATFORM_STORE_ID
         ) {
+            const businessCopyFieldKeys = getBusinessCopyFieldKeysFromUpdate(changesToUpload);
+            if (businessCopyFieldKeys.length > 0) {
+                changesToUpload.businessCopyMeta = buildBusinessCopyManualOverrideMeta({
+                    existingMeta: storeDetails?.businessCopyMeta,
+                    fieldKeys: businessCopyFieldKeys,
+                });
+            }
             console.log("changesToUpload update request", changesToUpload);
 
             const updatedChanges: any = getObjectDifferance(

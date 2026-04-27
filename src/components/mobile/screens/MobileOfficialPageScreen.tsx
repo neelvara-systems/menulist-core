@@ -5,7 +5,8 @@ import useViewportInfo from '@hook/useViewportInfo';
 import { updateStore } from '@database/stores';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
+import { updateLocalizedText } from '@lib/localization/text';
+import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -22,12 +23,12 @@ import {
     LuTrash2,
     LuUpload
 } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
-import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
+import { getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 
 interface MobileOfficialPageScreenProps {
     onBack: () => void;
@@ -60,9 +61,9 @@ function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
         languages.map((languageCode) => [
             languageCode,
             {
-                descriptor: getLocalizedText(initialPresence.descriptor, languageCode, getPrimaryLocalizedLanguage(initialPresence.descriptor, languageCode), ''),
-                displayName: getLocalizedText(initialPresence.displayName, languageCode, getPrimaryLocalizedLanguage(initialPresence.displayName, languageCode), ''),
-                knownFor: getLocalizedText(initialPresence.knownFor, languageCode, getPrimaryLocalizedLanguage(initialPresence.knownFor, languageCode), ''),
+                descriptor: getLocalizedStoreValue(initialPresence.descriptor, languageCode, ''),
+                displayName: getLocalizedStoreValue(initialPresence.displayName, languageCode, ''),
+                knownFor: getLocalizedStoreValue(initialPresence.knownFor, languageCode, ''),
             },
         ]),
     );
@@ -131,6 +132,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             knownFor: storeDetails.publicPresence?.knownFor,
         } as any);
         const payload = {
+            businessCopyMeta: buildBusinessCopyManualOverrideMeta({
+                existingMeta: storeDetails?.businessCopyMeta,
+                fieldKeys: ['displayName', 'descriptor', 'knownFor'],
+            }),
             storeId: storeDetails.storeId,
             publicPresence: {
                 ...(storeDetails.publicPresence || {}),
@@ -144,6 +149,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
         setStoreDetails((previous: any) => ({
             ...previous,
+            businessCopyMeta: payload.businessCopyMeta,
             publicPresence: payload.publicPresence,
         }));
 
@@ -287,7 +293,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>Public display name</Text>
-                        <Input
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
                             maxLength={60}
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
@@ -297,6 +304,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 },
                             }))}
                             placeholder="e.g. Joe's Pizza"
+                            showCount
                             value={currentLocalizedDraft.displayName}
                         />
                         <Text type="secondary">{`Optional. Shown publicly instead of your internal store name for ${getStoreLanguageLabel(selectedLanguage)}.`}</Text>
@@ -391,7 +399,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('googleMapsLink')}</Text>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, googleMapsUrl: value }))} placeholder="https://maps.google.com/..." value={formData.googleMapsUrl} />
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, googleMapsUrl: value }))}
+                            placeholder="https://maps.google.com/..."
+                            value={formData.googleMapsUrl}
+                        />
                         <Text type="secondary">{t('googleMapsLinkHelp')}</Text>
                     </Flex>
                 </Card>
@@ -427,7 +440,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('reservationUrl')}</Text>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, reservationUrl: value }))} placeholder="https://..." value={formData.reservationUrl} />
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, reservationUrl: value }))}
+                            placeholder="https://..."
+                            value={formData.reservationUrl}
+                        />
                         <Text type="secondary">{t('reservationUrlHelp')}</Text>
                     </Flex>
                 </Card>
@@ -435,7 +453,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('orderUrl')}</Text>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, orderUrl: value }))} placeholder="https://..." value={formData.orderUrl} />
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, orderUrl: value }))}
+                            placeholder="https://..."
+                            value={formData.orderUrl}
+                        />
                         <Text type="secondary">{t('orderUrlHelp')}</Text>
                     </Flex>
                 </Card>
@@ -443,7 +466,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('googleReviewUrl')}</Text>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, googleReviewUrl: value }))} placeholder={t('googleReviewUrlPlaceholder')} value={formData.googleReviewUrl} />
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, googleReviewUrl: value }))}
+                            placeholder={t('googleReviewUrlPlaceholder')}
+                            value={formData.googleReviewUrl}
+                        />
                         <Text type="secondary">{t('googleReviewUrlDesc')}</Text>
                     </Flex>
                 </Card>

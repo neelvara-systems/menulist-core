@@ -1,4 +1,5 @@
 import { Alert, Flex, Select, Typography, theme } from 'antd';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { useEffect, useMemo, useState } from 'react';
 import type { Project } from '../../../types';
 import type {
@@ -24,7 +25,7 @@ export default function MoveCategoryAction({
 }: MoveCategoryActionProps) {
     const { token } = theme.useToken();
     const [destinationId, setDestinationId] = useState<string | null>(null);
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
 
     const categories = useMemo(
         () => getAllCategories(projectData, activeLang),

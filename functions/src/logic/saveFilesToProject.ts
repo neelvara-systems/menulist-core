@@ -50,6 +50,8 @@ export interface LanguageInput {
     isPrimary?: boolean;
 }
 
+const CANONICAL_SOURCE_LANGUAGE = 'en';
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -82,6 +84,31 @@ function parseProjectId(projectId: string): { tId: string; sId: string } {
 function getProjectRef(projectId: string) {
     const { tId, sId } = parseProjectId(projectId);
     return firestoreAdmin.collection(PROJECTS_COLLECTION).doc(tId).collection(sId).doc(projectId);
+}
+
+function normalizeProjectLanguages(
+    existingLanguages: string[] = [],
+    detectedLanguages: LanguageInput[] = [],
+): string[] {
+    const collected = [
+        ...existingLanguages,
+        ...detectedLanguages.map((language) => String(language.code || '').trim().toLowerCase()).filter(Boolean),
+    ];
+
+    const deduped = Array.from(new Set(collected));
+
+    return [
+        CANONICAL_SOURCE_LANGUAGE,
+        ...deduped.filter((languageCode) => languageCode !== CANONICAL_SOURCE_LANGUAGE),
+    ];
+}
+
+function getDetectedDefaultLanguage(detectedLanguages: LanguageInput[] = []): string {
+    const primaryLanguage = detectedLanguages.find((language) => language.isPrimary)?.code;
+    if (primaryLanguage) return String(primaryLanguage).trim().toLowerCase();
+
+    const firstLanguage = detectedLanguages[0]?.code;
+    return firstLanguage ? String(firstLanguage).trim().toLowerCase() : CANONICAL_SOURCE_LANGUAGE;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -144,6 +171,7 @@ export async function saveFilesToProject(
             const existingProject = projectDoc.exists ? projectDoc.data() : null;
             const existingFiles: ProjectFileEntry[] = existingProject?.files || [];
             const existingLanguages: string[] = existingProject?.languages || [];
+            const existingDefaultLanguage: string | undefined = existingProject?.defaultLanguage;
 
             logger.info('[saveFilesToProject] Existing project state', {
                 exists: !!existingProject,
@@ -152,7 +180,8 @@ export async function saveFilesToProject(
             });
 
             // 2. Get primary language for auto-merge
-            const primaryLang = existingLanguages[0] || languages[0]?.code || 'en';
+            const normalizedProjectLanguages = normalizeProjectLanguages(existingLanguages, languages);
+            const primaryLang = normalizedProjectLanguages[0] || CANONICAL_SOURCE_LANGUAGE;
 
             // 3. Auto-merge items if enabled and there are existing items (Section 8.13)
             let replacedCount = 0;
@@ -228,26 +257,19 @@ export async function saveFilesToProject(
             });
 
             // 5. Merge languages (unique by code, preserve primary flag)
-            const languageCodeSet = new Set(existingLanguages);
-            const newLanguageCodes: string[] = [];
-
-            languages.forEach(lang => {
-                if (!languageCodeSet.has(lang.code)) {
-                    languageCodeSet.add(lang.code);
-                    newLanguageCodes.push(lang.code);
-                }
-            });
-
-            // Language priority: if this is first upload, primary first; otherwise append
-            const mergedLanguages = existingLanguages.length > 0
-                ? [...existingLanguages, ...newLanguageCodes]
-                : languages.map(l => l.code); // For first upload, preserve AI-detected order
+            const mergedLanguages = normalizedProjectLanguages;
+            const newLanguageCodes = mergedLanguages.filter((languageCode) => !existingLanguages.includes(languageCode));
+            const detectedDefaultLanguage = getDetectedDefaultLanguage(languages);
+            const resolvedDefaultLanguage = mergedLanguages.includes(existingDefaultLanguage || '')
+                ? String(existingDefaultLanguage).trim().toLowerCase()
+                : (mergedLanguages.includes(detectedDefaultLanguage) ? detectedDefaultLanguage : CANONICAL_SOURCE_LANGUAGE);
 
             // 6. Prepare update data
             const updateData = {
                 projectId,
                 files: [...existingFiles, ...newFiles],
                 languages: mergedLanguages,
+                defaultLanguage: resolvedDefaultLanguage,
             };
 
             // 6b. Document size safety guard (Firestore 1MB limit)

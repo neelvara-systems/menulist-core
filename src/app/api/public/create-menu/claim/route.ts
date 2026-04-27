@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,6 +22,23 @@ import { withAuth } from 'src/middleware/auth';
 import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
+
+const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
+    Array.isArray(languages)
+        ? languages.map((language) => typeof language === 'string' ? language : language?.code)
+        : [],
+);
+
+const getDetectedDefaultLanguage = (languages: any): string => {
+    if (Array.isArray(languages)) {
+        const primary = languages.find((language) => language?.isPrimary)?.code;
+        if (primary) return String(primary).trim().toLowerCase();
+
+        const firstCode = typeof languages[0] === 'string' ? languages[0] : languages[0]?.code;
+        if (firstCode) return String(firstCode).trim().toLowerCase();
+    }
+    return CANONICAL_SOURCE_LANGUAGE;
+};
 
 const ClaimSchema = z.object({
     draftId: z.string().min(1),
@@ -101,6 +119,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // If they don't, create new tenant + store (full onboarding)
         const hasExistingAccount = !!(session.user.tenantId && session.user.storeId);
 
+        const extractedLanguageCodes = getCanonicalExtractionLanguages(draft.extractedData?.languages);
+        const detectedDefaultLanguage = getDetectedDefaultLanguage(draft.extractedData?.languages);
+
         let tenantId: number;
         let storeId: number;
         let subdomain: string;
@@ -129,7 +150,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
                     tenantExtra: { phone: phone || '' },
-                    storeExtra: { phone: phone || '', city: city || '' },
+                    storeExtra: {
+                        phone: phone || '',
+                        city: city || '',
+                        activeLanguages: extractedLanguageCodes,
+                        defaultLanguage: detectedDefaultLanguage,
+                    },
                 });
 
                 // Update User with tenant/store IDs
@@ -151,7 +177,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // Build project data from extraction
         const extractedData = draft.extractedData;
-        const language = extractedData.languages?.[0] || 'en';
 
         // Create a single file entry with the extracted data
         const fileEntry = {
@@ -164,6 +189,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 data: {
                     categories: extractedData.categories || [],
                     items: extractedData.items || [],
+                    languages: extractedData.languages || [],
                 },
             },
         };
@@ -174,7 +200,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             active: true,
             isDefault: true,
             files: [fileEntry],
-            languages: [{ code: language, name: language === 'en' ? 'English' : language }],
+            languages: extractedLanguageCodes,
+            defaultLanguage: detectedDefaultLanguage,
             config: {},
             tId: tenantId,
             sId: storeId,

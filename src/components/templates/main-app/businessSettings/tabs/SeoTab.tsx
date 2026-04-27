@@ -1,7 +1,6 @@
 'use client';
 import { FEATURE_FLAGS } from '@config/features';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
+import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
 import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
@@ -20,26 +19,11 @@ interface SeoTabProps {
 }
 
 function getLocalizedSeoValues(storeDetails?: any) {
-    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
+    const contentLanguage = getStorePreferredLanguage(storeDetails);
     return {
-        metaDescription: getLocalizedText(
-            storeDetails?.metaDescription,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeDetails?.metaDescription, contentLanguage),
-            '',
-        ),
-        metaTitle: getLocalizedText(
-            storeDetails?.metaTitle,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeDetails?.metaTitle, contentLanguage),
-            '',
-        ),
-        tagline: getLocalizedText(
-            storeDetails?.tagline,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
-            '',
-        ),
+        metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, contentLanguage, ''),
+        metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, contentLanguage, ''),
+        tagline: getLocalizedStoreValue(storeDetails?.tagline, contentLanguage, ''),
     };
 }
 
@@ -72,12 +56,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const currentLanguage = storeContentLanguage || getStorePreferredLanguage(storeDetails);
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
-    const currentPwaShortName = getLocalizedText(
-        storeDetails?.pwaSettings?.pwaShortName,
-        currentLanguage,
-        getPrimaryLocalizedLanguage(storeDetails?.pwaSettings?.pwaShortName, currentLanguage),
-        '',
-    );
+    const currentPwaShortName = getLocalizedStoreValue(storeDetails?.pwaSettings?.pwaShortName, currentLanguage, '');
     const isSeoDirty = JSON.stringify({
         canonicalUrl,
         keywords,
@@ -100,9 +79,9 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 managedLanguages.map((languageCode) => [
                     languageCode,
                     {
-                        metaDescription: getLocalizedText(storeDetails?.metaDescription, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaDescription, languageCode), ''),
-                        metaTitle: getLocalizedText(storeDetails?.metaTitle, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaTitle, languageCode), ''),
-                        tagline: getLocalizedText(storeDetails?.tagline, languageCode, getPrimaryLocalizedLanguage(storeDetails?.tagline, languageCode), ''),
+                        metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
+                        metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
+                        tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
                     },
                 ]),
             );
@@ -216,9 +195,9 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             managedLanguages.map((languageCode) => [
                 languageCode,
                 {
-                    metaDescription: getLocalizedText(storeDetails?.metaDescription, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaDescription, languageCode), ''),
-                    metaTitle: getLocalizedText(storeDetails?.metaTitle, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaTitle, languageCode), ''),
-                    tagline: getLocalizedText(storeDetails?.tagline, languageCode, getPrimaryLocalizedLanguage(storeDetails?.tagline, languageCode), ''),
+                    metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
+                    metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
+                    tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
                 },
             ]),
         );
@@ -271,7 +250,12 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 name="tagline"
                 extra={<Text type="secondary">{t('taglineHelp')}</Text>}
             >
-                <Input placeholder={t('taglinePlaceholder')} maxLength={100} showCount />
+                <TextArea
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    placeholder={t('taglinePlaceholder')}
+                    maxLength={100}
+                    showCount
+                />
             </Form.Item>
             {currentLanguage !== referenceLanguage ? (
                 <DesktopLocalizedReferenceHint
@@ -300,7 +284,12 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 name="metaTitle"
                 extra={<Text type="secondary">{t('metaTitleHelp')}</Text>}
             >
-                <Input placeholder={t('metaTitlePlaceholder')} maxLength={60} showCount />
+                <TextArea
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    placeholder={t('metaTitlePlaceholder')}
+                    maxLength={60}
+                    showCount
+                />
             </Form.Item>
             {currentLanguage !== referenceLanguage ? (
                 <DesktopLocalizedReferenceHint
@@ -371,7 +360,10 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 name="canonicalUrl"
                 extra={<Text type="secondary">{t('canonicalUrlHelp')}</Text>}
             >
-                <Input placeholder={t('canonicalUrlPlaceholder')} />
+                <TextArea
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    placeholder={t('canonicalUrlPlaceholder')}
+                />
             </Form.Item>
 
             <Card

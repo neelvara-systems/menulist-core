@@ -3,16 +3,21 @@
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import { updateStore } from '@database/stores';
+import { getStoreSourceLanguage } from '@lib/localization/storeContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import generateBusinessCopyViaAPI from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
 import localizeBusinessCopyResult, { mergeLocalizedField } from '@services/ai/businessCopy/localizeBusinessCopyResult';
+import { buildBusinessCopyGeneratedMeta, buildBusinessCopyRepairMeta } from '@services/ai/businessCopy/metadata';
+import syncMissingBusinessCopyTranslations from '@services/ai/businessCopy/syncMissingBusinessCopyTranslations';
+import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useState } from 'react';
-import { LuSparkles } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, List, NavBar, Text, Toast } from '../antd';
+import { useContext, useMemo, useState } from 'react';
+import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, List, NavBar, Tag, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { getStoreLanguageLabel, getStoreManagedLanguages } from '../utils/localizedStoreContent';
 
@@ -22,11 +27,19 @@ interface MobileBusinessCopySetupScreenProps {
 
 export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusinessCopySetupScreenProps) {
     const t = useTranslations('BusinessSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isGenerating, setIsGenerating] = useState(false);
-    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
+    const [isGeneratingTranslations, setIsGeneratingTranslations] = useState(false);
+    const contentLanguage = getStoreSourceLanguage();
     const sourceLanguage = GlobalLanguagesList.find((language) => language.code === contentLanguage);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
+    const coverage = useMemo(
+        () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
+        [storeDetails]
+    );
+    const businessCopyMeta = storeDetails?.businessCopyMeta;
+    const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
     const currentPwaShortName = getLocalizedText(
         (storeDetails as any)?.pwaSettings?.pwaShortName,
         contentLanguage,
@@ -72,12 +85,12 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     name: storeDetails.name,
                     publicPresence: {
                         accentColor: storeDetails?.publicPresence?.accentColor || '',
-                        descriptor: getLocalizedText(storeDetails?.publicPresence?.descriptor, storeDetails?.defaultLanguage || 'en', getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.descriptor, 'en'), ''),
-                        displayName: getLocalizedText(storeDetails?.publicPresence?.displayName, storeDetails?.defaultLanguage || 'en', getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, 'en'), ''),
+                        descriptor: getLocalizedText(storeDetails?.publicPresence?.descriptor, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.descriptor, contentLanguage), ''),
+                        displayName: getLocalizedText(storeDetails?.publicPresence?.displayName, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage), ''),
                         establishedYear: typeof storeDetails?.publicPresence?.establishedYear === 'number' ? storeDetails.publicPresence.establishedYear : undefined,
                         googleMapsUrl: storeDetails?.publicPresence?.googleMapsUrl || '',
                         googleReviewUrl: storeDetails?.publicPresence?.googleReviewUrl || '',
-                        knownFor: getLocalizedText(storeDetails?.publicPresence?.knownFor, storeDetails?.defaultLanguage || 'en', getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.knownFor, 'en'), ''),
+                        knownFor: getLocalizedText(storeDetails?.publicPresence?.knownFor, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.knownFor, contentLanguage), ''),
                         orderUrl: storeDetails?.publicPresence?.orderUrl || '',
                         reservationUrl: storeDetails?.publicPresence?.reservationUrl || '',
                         whatsappNumber: storeDetails?.publicPresence?.whatsappNumber || '',
@@ -122,6 +135,13 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             };
 
             const nextStoreUpdate: any = {
+                businessCopyMeta: buildBusinessCopyGeneratedMeta({
+                    existingMeta: storeDetails?.businessCopyMeta,
+                    includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
+                    projectId: projectContext?.projectId,
+                    sourceLanguage: contentLanguage,
+                    storeDetails,
+                }),
                 keywords: generated.keywords,
                 metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
                 metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
@@ -145,6 +165,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             setStoreDetails((previous: any) => ({
                 ...previous,
                 keywords: generated.keywords,
+                businessCopyMeta: nextStoreUpdate.businessCopyMeta,
                 metaDescription: nextStoreUpdate.metaDescription,
                 metaTitle: nextStoreUpdate.metaTitle,
                 publicPresence: nextPublicPresence,
@@ -162,6 +183,87 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             Toast.show({ content: error?.message || t('businessCopyFailed'), duration: 2000 });
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateMissingTranslations = async () => {
+        if (!storeDetails?.storeId) return;
+
+        try {
+            setIsGeneratingTranslations(true);
+            const projectContext = await getDefaultProjectAiContext(storeDetails);
+            const localized = await syncMissingBusinessCopyTranslations({
+                includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
+                projectId: projectContext?.projectId,
+                storeDetails,
+            });
+
+            if (!localized) {
+                Toast.show({ content: t('businessCopyCoverageGenerateNoMissing'), duration: 1500 });
+                return;
+            }
+
+            const nextPublicPresence = {
+                ...(storeDetails?.publicPresence || {}),
+                displayName: mergeLocalizedField(
+                    storeDetails?.publicPresence?.displayName,
+                    localized.displayName,
+                ),
+                descriptor: mergeLocalizedField(
+                    storeDetails?.publicPresence?.descriptor,
+                    localized.descriptor,
+                ),
+                knownFor: mergeLocalizedField(
+                    storeDetails?.publicPresence?.knownFor,
+                    localized.knownFor,
+                ),
+            };
+
+            const nextStoreUpdate: any = {
+                businessCopyMeta: buildBusinessCopyRepairMeta({
+                    coverageFields: coverage.fields,
+                    existingMeta: storeDetails?.businessCopyMeta,
+                    referenceLanguage: coverage.referenceLanguage,
+                }),
+                metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
+                metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
+                ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                    ? {
+                        pwaSettings: {
+                            ...(storeDetails?.pwaSettings || {}),
+                            pwaShortName: mergeLocalizedField(
+                                storeDetails?.pwaSettings?.pwaShortName,
+                                localized.pwaShortName,
+                            ),
+                        },
+                    }
+                    : {}),
+                publicPresence: nextPublicPresence,
+                storeId: storeDetails.storeId,
+                tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
+            };
+            await updateStore(nextStoreUpdate);
+
+            setStoreDetails((previous: any) => ({
+                ...previous,
+                businessCopyMeta: nextStoreUpdate.businessCopyMeta,
+                metaDescription: nextStoreUpdate.metaDescription,
+                metaTitle: nextStoreUpdate.metaTitle,
+                publicPresence: nextPublicPresence,
+                pwaSettings: {
+                    ...(previous?.pwaSettings || {}),
+                    ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                        ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                        : {}),
+                },
+                tagline: nextStoreUpdate.tagline,
+            }));
+
+            Toast.show({ content: t('businessCopyCoverageGenerateSuccess'), duration: 1500 });
+        } catch (error: any) {
+            Toast.show({ content: error?.message || t('businessCopyCoverageGenerateFailed'), duration: 2000 });
+        } finally {
+            setIsGeneratingTranslations(false);
         }
     };
 
@@ -190,7 +292,9 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     <Flex gap={12} vertical>
                         <Text>{t('businessCopySourceHint')}</Text>
                         <Text type="secondary">
-                            {`This generates store-level copy for all enabled languages: ${managedLanguages.map(getStoreLanguageLabel).join(', ')}.`}
+                            {t('businessCopyCoverageManagedLanguagesHint', {
+                                languages: managedLanguages.map(getStoreLanguageLabel).join(', '),
+                            })}
                         </Text>
                         <List>
                             <List.Item prefix="1.">{t('businessCopyUpdatesOfficialPage')}</List.Item>
@@ -200,6 +304,76 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                         <Text type="secondary">{t('businessCopyApplyNote')}</Text>
                     </Flex>
                 </Card>
+
+                <Card
+                    style={{
+                        backgroundColor: coverage.repairableGapCount > 0 ? token.colorFillAlter : token.colorSuccessBg,
+                    }}
+                >
+                    <Flex gap={12} vertical>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuLanguages size={16} />
+                                <Text strong>{t('businessCopyCoverageTitle')}</Text>
+                            </Flex>
+                            <Tag color={coverage.repairableGapCount > 0 ? 'warning' : 'success'}>
+                                {coverage.repairableGapCount > 0
+                                    ? t('businessCopyCoverageGapCount', { count: coverage.repairableGapCount })
+                                    : t('businessCopyCoverageAllClear')}
+                            </Tag>
+                        </Flex>
+                        <Text type="secondary">
+                            {t('businessCopyCoverageSummary', {
+                                languages: managedLanguages.map(getStoreLanguageLabel).join(', '),
+                            })}
+                        </Text>
+                        <List>
+                            {coverage.fields.map((field) => (
+                                <List.Item
+                                    key={field.key}
+                                    prefix={field.status === 'ok'
+                                        ? <LuCheckCircle color={token.colorSuccess} size={16} />
+                                        : <LuAlertCircle color={field.status === 'warning' ? token.colorWarning : token.colorTextTertiary} size={16} />}
+                                    title={t(`businessCopyCoverageFields.${field.key}`)}
+                                    description={field.status === 'ok'
+                                        ? t('businessCopyCoverageStatusReadyDesc')
+                                        : field.status === 'empty'
+                                            ? t('businessCopyCoverageStatusEmptyDesc')
+                                            : t('businessCopyCoverageMissing', {
+                                                languages: field.missingLanguages.map(getStoreLanguageLabel).join(', '),
+                                            })}
+                                />
+                            ))}
+                        </List>
+                        {coverage.repairableGapCount > 0 ? (
+                            <Button
+                                block
+                                loading={isGeneratingTranslations}
+                                onClick={() => void handleGenerateMissingTranslations()}
+                                size="large"
+                            >
+                                {t('businessCopyCoverageGenerateMissing')}
+                            </Button>
+                        ) : null}
+                    </Flex>
+                </Card>
+
+                {businessCopyMeta?.lastGeneratedAt || businessCopyMeta?.lastRepairedAt || businessCopyMeta?.lastManualOverrideAt ? (
+                    <Card>
+                        <Flex gap={6} vertical>
+                            <Text strong>{t('businessCopyAuditTitle')}</Text>
+                            {businessCopyMeta?.lastGeneratedAt ? (
+                                <Text type="secondary">{t('businessCopyAuditGenerated', { when: formatAuditTime(businessCopyMeta.lastGeneratedAt) })}</Text>
+                            ) : null}
+                            {businessCopyMeta?.lastRepairedAt ? (
+                                <Text type="secondary">{t('businessCopyAuditRepaired', { when: formatAuditTime(businessCopyMeta.lastRepairedAt) })}</Text>
+                            ) : null}
+                            {businessCopyMeta?.lastManualOverrideAt ? (
+                                <Text type="secondary">{t('businessCopyAuditManual', { when: formatAuditTime(businessCopyMeta.lastManualOverrideAt) })}</Text>
+                            ) : null}
+                        </Flex>
+                    </Card>
+                ) : null}
 
                 <Button
                     block

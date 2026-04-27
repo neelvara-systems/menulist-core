@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl';
 import { Card, Flex, Select, Text } from '../antd';
 import { getStoreLanguageLabel } from '../utils/localizedStoreContent';
 
@@ -12,12 +13,14 @@ interface MobileLocalizedLanguageSelectorProps {
 }
 
 export default function MobileLocalizedLanguageSelector({
-    helperText = 'Choose which language you want to edit on this screen.',
+    helperText,
     languages,
     onChange,
     selectedLanguage,
-    title = 'Content language',
+    title,
 }: MobileLocalizedLanguageSelectorProps) {
+    const t = useTranslations('BusinessSettings');
+
     if (languages.length <= 1) {
         return null;
     }
@@ -25,7 +28,7 @@ export default function MobileLocalizedLanguageSelector({
     return (
         <Card>
             <Flex gap={10} vertical>
-                <Text strong>{title}</Text>
+                <Text strong>{title || t('contentLanguageTitle')}</Text>
                 <Select
                     onChange={(value) => {
                         if (typeof value === 'string') onChange(value);
@@ -36,7 +39,7 @@ export default function MobileLocalizedLanguageSelector({
                     }))}
                     value={selectedLanguage}
                 />
-                <Text type="secondary">{helperText}</Text>
+                <Text type="secondary">{helperText || t('contentLanguageHelper')}</Text>
             </Flex>
         </Card>
     );

@@ -114,6 +114,21 @@ export type StoreDataType = {
         pwaShortName?: string | LocalizedText;
     };
 
+    businessCopyMeta?: {
+        lastGeneratedAt?: string;
+        lastGeneratedFieldKeys?: string[];
+        lastGeneratedProjectId?: string;
+        lastGeneratedSourceLanguage?: string;
+        lastGeneratedTargetLanguages?: string[];
+        lastManualOverrideAt?: string;
+        lastManualOverrideFieldKeys?: string[];
+        lastRepairedAt?: string;
+        lastRepairedFieldKeys?: string[];
+        lastRepairedGapCount?: number;
+        lastRepairedSourceLanguage?: string;
+        lastRepairedTargetLanguages?: string[];
+    };
+
     // Multi-tenant Domain Settings
     subdomain?: string; // e.g., "joespizza" → joespizza.menulist.ai
     customDomain?: string; // e.g., "joespizza.com"

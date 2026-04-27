@@ -1,9 +1,11 @@
 import GlobalLanguagesList from '@data/languages';
+import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { LocalizedText, toLocalizedText } from '@lib/localization/text';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
 import { BusinessCopyGenerationResult } from './generateBusinessCopyViaAPI';
+import { BUSINESS_COPY_FIELD_LIMITS, BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
 
 export type LocalizedBusinessCopyFields = {
     descriptor?: LocalizedText;
@@ -15,39 +17,30 @@ export type LocalizedBusinessCopyFields = {
     tagline?: LocalizedText;
 };
 
-const FIELD_LIMITS: Record<keyof LocalizedBusinessCopyFields, number> = {
-    descriptor: 140,
-    displayName: 80,
-    knownFor: 120,
-    metaDescription: 160,
-    metaTitle: 60,
-    pwaShortName: 12,
-    tagline: 100,
-};
+export const FIELD_LIMITS = BUSINESS_COPY_FIELD_LIMITS;
 
 const LANGUAGE_INDEX = new Map(
     GlobalLanguagesList.map((language) => [language.code.toLowerCase(), language]),
 );
 
-const resolveLanguageCode = (code?: string | null) => code?.trim().toLowerCase() || '';
+export const resolveLanguageCode = (code?: string | null) => code?.trim().toLowerCase() || '';
 
-const resolveLanguage = (code?: string | null): LanguageType | null => {
+export const resolveLanguage = (code?: string | null): LanguageType | null => {
     const normalized = resolveLanguageCode(code);
     if (!normalized) return null;
     return LANGUAGE_INDEX.get(normalized) || null;
 };
 
-const clampValue = (value: unknown, maxLength: number) => String(value || '').trim().slice(0, maxLength);
+export const clampValue = (value: unknown, maxLength: number) => String(value || '').trim().slice(0, maxLength);
 
-const toFieldPayload = (generated: BusinessCopyGenerationResult): Record<keyof LocalizedBusinessCopyFields, string> => ({
-    descriptor: clampValue(generated.descriptor, FIELD_LIMITS.descriptor),
-    displayName: clampValue(generated.displayName, FIELD_LIMITS.displayName),
-    knownFor: clampValue(generated.knownFor, FIELD_LIMITS.knownFor),
-    metaDescription: clampValue(generated.metaDescription, FIELD_LIMITS.metaDescription),
-    metaTitle: clampValue(generated.metaTitle, FIELD_LIMITS.metaTitle),
-    pwaShortName: clampValue(generated.pwaShortName, FIELD_LIMITS.pwaShortName),
-    tagline: clampValue(generated.tagline, FIELD_LIMITS.tagline),
-});
+const toFieldPayload = (generated: BusinessCopyGenerationResult): Record<keyof LocalizedBusinessCopyFields, string> => (
+    Object.fromEntries(
+        getBusinessCopyFieldConfigs(true).map((field) => [
+            field.key,
+            clampValue(generated[field.key] || '', FIELD_LIMITS[field.key]),
+        ]),
+    ) as Record<BusinessCopyLocalizedFieldKey, string>
+);
 
 function buildLocalizedFields(
     sourceLanguage: string,
@@ -61,7 +54,7 @@ function buildLocalizedFields(
     ) as LocalizedBusinessCopyFields;
 }
 
-async function getBatchTranslations({
+export async function getBatchTranslations({
     fileId,
     inputJson,
     projectId,
@@ -107,10 +100,10 @@ async function getBatchTranslations({
 
 function getEnabledLanguageCodes(storeDetails?: any): string[] {
     const base = [
-        storeDetails?.defaultLanguage,
+        CANONICAL_SOURCE_LANGUAGE,
         ...(Array.isArray(storeDetails?.activeLanguages) ? storeDetails.activeLanguages : []),
+        storeDetails?.defaultLanguage,
         storeDetails?.language,
-        'en',
     ];
 
     return Array.from(new Set(base.map(resolveLanguageCode).filter(Boolean)));
@@ -146,7 +139,7 @@ export default async function localizeBusinessCopyResult({
     storeDetails?: any;
 }): Promise<LocalizedBusinessCopyFields> {
     const enabledLanguageCodes = getEnabledLanguageCodes(storeDetails);
-    const sourceLanguage = enabledLanguageCodes[0] || 'en';
+    const sourceLanguage = CANONICAL_SOURCE_LANGUAGE;
     const sourceLanguageDef = resolveLanguage(sourceLanguage);
     const payload = toFieldPayload(generated);
     const localized = buildLocalizedFields(sourceLanguage, payload);

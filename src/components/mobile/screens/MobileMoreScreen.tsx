@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { signOutSession } from '@lib/auth/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
@@ -130,6 +131,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tPresence = useTranslations('MobilePresenceMonitor');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const businessCopyCoverage = useMemo(
+        () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
+        [storeDetails],
+    );
     const [subScreen, setSubScreen] = useState<MoreSubScreen>(initialScreen);
     const mainScrollTopRef = useRef(0);
     const { data: session } = useSession();
@@ -211,7 +216,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const businessIdentityItems: MoreListItem[] = [
         { key: 'businessProfileHub', icon: <LuBuilding2 color="#f97316" size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business Profile', description: 'Brand, public identity, social links, official page, and app branding.', onClick: () => openSubScreen('businessProfileHub') },
-        { key: 'searchDiscoveryHub', icon: <LuSearch color="#0ea5e9" size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, AI copy, and discovery setup in one place.', onClick: () => openSubScreen('searchDiscoveryHub') },
+        { key: 'searchDiscoveryHub', icon: <LuSearch color="#0ea5e9" size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, AI copy, and discovery setup in one place.', statusTag: businessCopyCoverage.repairableGapCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.repairableGapCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') },
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, keywords: ['timezone', 'time zone', 'date format', 'currency', 'language', 'region'], label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
@@ -236,7 +241,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const searchDiscoveryHubItems: MoreListItem[] = [
         { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
-        ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color="#2563eb" size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), onClick: () => openSubScreen('businessCopySetup') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color="#2563eb" size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), statusTag: businessCopyCoverage.repairableGapCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.repairableGapCount }) } : undefined, onClick: () => openSubScreen('businessCopySetup') }] : []),
         { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, keywords: ['seo', 'meta title', 'meta description', 'keywords', 'canonical', 'tagline'], label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
         ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color="#0f766e" size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
@@ -277,7 +282,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     if (subScreen === 'businessProfileHub') return <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     if (subScreen === 'searchDiscoveryHub') return <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     if (subScreen === 'basicSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
-    if (subScreen === 'locale') return <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'locale') return <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
     if (subScreen === 'hoursEdit') return <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'roles') return <MobileRolesScreen onBack={() => setSubScreen('main')} />;
     if (subScreen === 'digitalScreens') return <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;

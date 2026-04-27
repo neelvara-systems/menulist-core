@@ -466,7 +466,7 @@ async function processSingleBatch(
 
         const contentParts = [
             ...uploadedFiles.map(file => createPartFromUri(file.uri, file.mimeType)),
-            `Extract and translate menu data into ${languageString}`
+            `Extract menu data. Preserve the detected source language in the output and include translated values for: ${languageString}. Always include English in multilingual fields.`
         ];
 
         logger.info(`[processSingleBatch] Processing batch ${batchIndex + 1}`, {

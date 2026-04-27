@@ -16,6 +16,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import type { InheritanceState } from '@type/multiOutlet.types';
 import { Badge, Button, Flex, Input, InputNumber, Modal, Switch, Table, Tabs, Tag, theme, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -76,7 +77,7 @@ export default function StoreCustomizationModal({
     const [searchTerm, setSearchTerm] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
 
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
 
     // Extract all items from all files
     const itemRows = useMemo((): ItemOverrideRow[] => {

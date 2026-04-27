@@ -32,8 +32,15 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     getLocalizedText,
     getPrimaryLocalizedLanguage,
+    toLocalizedText,
     updateLocalizedText,
 } from "@lib/localization/text";
+import {
+    CANONICAL_SOURCE_LANGUAGE,
+    getCanonicalProjectSourceLanguage,
+    normalizeProjectLanguagePolicy,
+    normalizeProjectLanguages,
+} from "@lib/localization/languagePolicy";
 import { logger } from "@lib/monitoring/logger";
 import {
     buildSummaryProjectFieldPayload,
@@ -329,7 +336,7 @@ const extractProjectsSummaryMap = (
 
 const resolveProjectTextLanguage = (
     value: unknown,
-    fallbackLanguage: string = 'en',
+    fallbackLanguage: string = CANONICAL_SOURCE_LANGUAGE,
 ): string => getPrimaryLocalizedLanguage(value as any, fallbackLanguage);
 
 const resolveProjectSummaryName = (
@@ -340,6 +347,37 @@ const resolveProjectSummaryName = (
 const resolveProjectSummaryDescription = (
     value: ProjectSummaryData["description"] | undefined,
 ): string => getLocalizedText(value, undefined, resolveProjectTextLanguage(value), '');
+
+const normalizeProjectReadState = <T extends Partial<Project>>(projectData: T): T => ({
+    ...(() => {
+        const policy = normalizeProjectLanguagePolicy({
+            languages: projectData.languages || [],
+            defaultLanguage: projectData.defaultLanguage,
+        });
+        return {
+            ...projectData,
+            languages: policy.languages as any,
+            defaultLanguage: policy.defaultLanguage as any,
+        };
+    })(),
+    ...(projectData.name !== undefined
+        ? { name: toLocalizedText(projectData.name as any, resolveProjectTextLanguage(projectData.name, CANONICAL_SOURCE_LANGUAGE)) as any }
+        : {}),
+    ...(projectData.description !== undefined
+        ? { description: toLocalizedText(projectData.description as any, resolveProjectTextLanguage(projectData.description, CANONICAL_SOURCE_LANGUAGE)) as any }
+        : {}),
+    ...(projectData._specialMenu?.displayName
+        ? {
+            _specialMenu: {
+                ...projectData._specialMenu,
+                displayName: toLocalizedText(
+                    projectData._specialMenu.displayName as any,
+                    resolveProjectTextLanguage(projectData._specialMenu.displayName, CANONICAL_SOURCE_LANGUAGE),
+                ) as any,
+            },
+        }
+        : {}),
+});
 
 // ═══════════════════════════════════════════════════════════════
 // SLUG RESERVATION (T1-N-04 / A-12 PUBLIC-ROUTING-DOCTRINE)
@@ -521,10 +559,10 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             const projectLanguage = resolveProjectTextLanguage(data.name, 'en');
             const localizedName = typeof data.name === 'string'
                 ? updateLocalizedText(undefined, data.name, projectLanguage, 'en')
-                : data.name;
+                : toLocalizedText(data.name as any, projectLanguage);
             const localizedDescription = typeof data.description === 'string'
                 ? updateLocalizedText(undefined, data.description, projectLanguage, 'en')
-                : data.description;
+                : toLocalizedText(data.description as any, projectLanguage);
             const resolvedName = resolveProjectSummaryName(localizedName, "Untitled");
 
             // Generate project ID
@@ -539,6 +577,10 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             const projectData = await requestBodyComposer({
                 projectId,
                 files: [],
+                ...normalizeProjectLanguagePolicy({
+                    languages: (data as any).languages || [],
+                    defaultLanguage: (data as any).defaultLanguage || projectLanguage,
+                }),
                 // Lifecycle flags (for Cloud Function query efficiency)
                 active: isActive,
                 deleted: false,
@@ -575,7 +617,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             // Sync to projectsSummary (1 write for efficient listing)
             // Note: Firestore rejects undefined values — omit fields that may be undefined
             const summaryData: ProjectSummaryData = {
-                name: localizedName || { [projectLanguage]: "Untitled" },
+                name: localizedName || { [CANONICAL_SOURCE_LANGUAGE]: "Untitled" },
                 ...(localizedDescription != null ? { description: localizedDescription } : {}),
                 ...(data.projectImage !== undefined ? { projectImage: data.projectImage } : {}),
                 active: isActive,
@@ -628,10 +670,10 @@ export const updateProjectMetadata = async (
             const textLanguage = resolveProjectTextLanguage(currentSummary.name, 'en');
             const nextName = typeof data.name === 'string'
                 ? updateLocalizedText(currentSummary.name, data.name, textLanguage, 'en')
-                : data.name;
+                : toLocalizedText(data.name as any, textLanguage);
             const nextDescription = typeof data.description === 'string'
                 ? updateLocalizedText(currentSummary.description, data.description, textLanguage, 'en')
-                : data.description;
+                : toLocalizedText(data.description as any, textLanguage);
             const currentName = resolveProjectSummaryName(currentSummary.name, "Untitled");
             const resolvedNextName = resolveProjectSummaryName(nextName, currentName);
 
@@ -686,7 +728,7 @@ export const updateProjectMetadata = async (
                 ...slugUpdate,
                 ...(nextName !== undefined ? { name: nextName } : {}),
                 ...(nextDescription !== undefined ? { description: nextDescription } : {}),
-                name: nextName ?? currentSummary.name ?? { [textLanguage]: "Untitled" },
+                name: nextName ?? currentSummary.name ?? { [CANONICAL_SOURCE_LANGUAGE]: "Untitled" },
                 active: data.active ?? currentSummary.active ?? true,
             };
 
@@ -699,6 +741,32 @@ export const updateProjectMetadata = async (
 };
 
 const runUpdateProject = async (data: Partial<Project>) => {
+    if (Array.isArray(data.languages)) {
+        const normalizedPolicy = normalizeProjectLanguagePolicy({
+            languages: data.languages || [],
+            defaultLanguage: data.defaultLanguage,
+        });
+        data.languages = normalizedPolicy.languages;
+        data.defaultLanguage = normalizedPolicy.defaultLanguage;
+    } else if ('defaultLanguage' in data) {
+        data.defaultLanguage = String(data.defaultLanguage || '').trim().toLowerCase() || CANONICAL_SOURCE_LANGUAGE;
+    }
+
+    if ('name' in data) {
+        data.name = toLocalizedText(data.name as any, resolveProjectTextLanguage(data.name, CANONICAL_SOURCE_LANGUAGE));
+    }
+
+    if ('description' in data) {
+        data.description = toLocalizedText(data.description as any, resolveProjectTextLanguage(data.description, CANONICAL_SOURCE_LANGUAGE));
+    }
+
+    if (data._specialMenu?.displayName) {
+        data._specialMenu.displayName = toLocalizedText(
+            data._specialMenu.displayName as any,
+            resolveProjectTextLanguage(data._specialMenu.displayName, CANONICAL_SOURCE_LANGUAGE),
+        ) as any;
+    }
+
     // MOL v0 + Awareness: Fetch current state for change detection (if enabled)
     let oldProject: Project | null = null;
     if ((FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS || FEATURE_FLAGS.ENABLE_MCE) && data.projectId) {
@@ -1103,7 +1171,7 @@ const getProjectsListCore = async (includeInactive = false) => {
         : {};
 
     const projects = Object.entries(projectsMap)
-        .map(([projectId, data]) => ({
+        .map(([projectId, data]) => normalizeProjectReadState({
             projectId,
             ...(data as ProjectSummaryData),
         }))
@@ -1195,7 +1263,7 @@ const getProjectDataCore = async (projectId: string): Promise<Project> => {
     if (!docSnap.exists()) {
         throw new Error("Project not found");
     }
-    return docSnap.data() as Project;
+    return normalizeProjectReadState(docSnap.data() as Project) as Project;
 };
 
 export const getProjectData = async (projectId: string): Promise<Project> => {
@@ -1244,7 +1312,7 @@ export const getProjectDataByStore = async (
             if (!docSnap.exists()) {
                 throw new Error(`Project not found: ${projectId} in store ${sId}`);
             }
-            return docSnap.data() as Project;
+            return normalizeProjectReadState(docSnap.data() as Project) as Project;
         },
         { tId, sId, projectId },
         "getProjectDataByStore",
@@ -1274,8 +1342,8 @@ export const getProject = async (projectId: string) => {
 
             return {
                 projectId,
-                ...summaryData,
-                projectData,
+                ...normalizeProjectReadState(summaryData as any),
+                projectData: normalizeProjectReadState(projectData as any),
             };
         },
         projectId,
@@ -1329,6 +1397,23 @@ export const deleteProject = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
+            const summaryProjects = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
+                : {};
+            const currentSummary = summaryProjects[projectId];
+            const wasDefaultProject = currentSummary?.isDefault === true;
+            const fallbackDefaultEntry = wasDefaultProject
+                ? Object.entries(summaryProjects).find(([candidateProjectId, candidateSummary]) => (
+                    candidateProjectId !== projectId &&
+                    candidateSummary?.isSpecialMenu !== true &&
+                    candidateSummary?.active !== false
+                )) || Object.entries(summaryProjects).find(([candidateProjectId, candidateSummary]) => (
+                    candidateProjectId !== projectId &&
+                    candidateSummary?.isSpecialMenu !== true
+                )) || null
+                : null;
+
             // Multi-Outlet Protection: Block deletion of inherited projects (Feature #4C)
             if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
                 const projSnap = await getDoc(await getDataDocRef(projectId));
@@ -1354,10 +1439,6 @@ export const deleteProject = async (
 
             // Special Menu Guard: Block deletion if non-expired special menus reference this as base
             if (FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) {
-                const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
-                const summaryProjects = summaryDoc.exists()
-                    ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
-                    : {};
                 for (const [smId, smData] of Object.entries(summaryProjects) as [string, any][]) {
                     if (
                         smData.isSpecialMenu &&
@@ -1388,6 +1469,16 @@ export const deleteProject = async (
 
             // Remove from projectsSummary (deleted projects don't appear in listing)
             await removeProjectFromSummary(projectId);
+
+            if (wasDefaultProject && fallbackDefaultEntry) {
+                const [fallbackProjectId, fallbackSummary] = fallbackDefaultEntry;
+                await syncProjectToSummary(fallbackProjectId, {
+                    ...fallbackSummary,
+                    isDefault: true,
+                    active: fallbackSummary.active ?? true,
+                    name: fallbackSummary.name || 'Untitled',
+                });
+            }
 
             // Security Audit: Log project deletion
             logger.security('Project Deleted', {
@@ -1485,6 +1576,10 @@ export const duplicateProject = async (
                 projectId: newProjectId,
                 active: true,
                 deleted: false,
+                ...normalizeProjectLanguagePolicy({
+                    languages: originalData.languages || [],
+                    defaultLanguage: originalData.defaultLanguage,
+                }),
             });
 
             // 4. Save to projects collection
@@ -1492,7 +1587,7 @@ export const duplicateProject = async (
 
             // 5. Add to projectsSummary
             const summaryData: ProjectSummaryData = {
-                name: localizedName || { [textLanguage]: newName.trim() || 'Untitled' },
+                name: localizedName || { [CANONICAL_SOURCE_LANGUAGE]: newName.trim() || 'Untitled' },
                 description: localizedDescription,
                 projectImage: originalSummary.projectImage ?? null,
                 active: true,
@@ -1766,7 +1861,12 @@ export const createSpecialMenuProject = async (params: {
             const sess = await getActiveSession();
             const timestamp = Date.now().toString(36);
             const newProjectId = `${sess.tId}-${timestamp}-${sess.sId}`;
-            const textLanguage = baseData.languages?.[0] || 'en';
+            const baseLanguages = normalizeProjectLanguages(baseData.languages || []);
+            const baseDefaultLanguage = normalizeProjectLanguagePolicy({
+                languages: baseLanguages,
+                defaultLanguage: baseData.defaultLanguage,
+            }).defaultLanguage;
+            const textLanguage = baseLanguages[0] || CANONICAL_SOURCE_LANGUAGE;
             const resolvedLocalizedDisplayName = localizedDisplayName || updateLocalizedText(undefined, displayName, textLanguage, 'en')
                 || { [textLanguage]: displayName.trim() };
 
@@ -1782,7 +1882,8 @@ export const createSpecialMenuProject = async (params: {
             const newProjectData = await requestBodyComposer({
                 projectId: newProjectId,
                 files: baseData.files || [],
-                languages: baseData.languages || [],
+                languages: baseLanguages,
+                defaultLanguage: baseDefaultLanguage,
                 config: baseData.config || {},
                 menuSettings: baseData.menuSettings || {},
                 active: true,
@@ -1859,7 +1960,7 @@ export const updateSpecialMenuProject = async (params: {
 
             const projectData = projectDoc.data() as Project;
             if (!projectData._specialMenu) throw new Error("Not a special menu project");
-            const textLanguage = projectData.languages?.[0]
+            const textLanguage = getCanonicalProjectSourceLanguage(projectData.languages)
                 || resolveProjectTextLanguage(projectData._specialMenu.displayName, 'en');
             const resolvedLocalizedDisplayName = localizedDisplayName || updateLocalizedText(
                 projectData._specialMenu.displayName,

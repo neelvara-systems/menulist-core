@@ -3,6 +3,7 @@ import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { getProjectLanguageLabel } from '@lib/localization/projectContent';
 import { getBase64 } from '@util/utils';
 import { Button, Flex, Form, FormInstance, Image, Input, Modal, Select, Switch, Upload, message, theme, Typography } from "antd";
+import { useTranslations } from 'next-intl';
 import { LuImagePlus, LuTrash2 } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
 
@@ -16,6 +17,7 @@ export interface ProjectFormData {
 
 
 interface ProjectEditModalProps {
+    currentDefaultProjectName: string | null;
     isOpen: boolean;
     editingProject: ProjectMetadata | null;
     form: FormInstance<ProjectFormData>;
@@ -35,6 +37,7 @@ interface ProjectEditModalProps {
 }
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
+    currentDefaultProjectName,
     isOpen,
     editingProject,
     form,
@@ -53,9 +56,13 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     selectedLanguage,
 }) => {
     const { token } = theme.useToken();
+    const tBusiness = useTranslations('BusinessSettings');
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const projectImage = Form.useWatch('projectImage', form) as string | null | undefined;
+    const isDefault = Form.useWatch('isDefault', form) as boolean | undefined;
+    const currentProjectName = nameValue?.trim() || `This ${labels.offeringLower}`;
+    const currentDefaultLabel = currentDefaultProjectName || `No default ${labels.offeringLower} is set yet`;
 
     const handleProjectImageSelect = async (file: File) => {
         try {
@@ -112,7 +119,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <Flex gap={12} vertical>
                         {languages.length > 1 ? (
                             <Flex gap={8} vertical>
-                                <Typography.Text strong>Content language</Typography.Text>
+                                <Typography.Text strong>{tBusiness('contentLanguageTitle')}</Typography.Text>
                                 <Select
                                     onChange={onLanguageChange}
                                     options={languages.map((languageCode) => ({
@@ -172,13 +179,29 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                 </Form.Item>
                 {!(editingProject as any)?.isSpecialMenu ? (
-                    <Form.Item
-                        name="isDefault"
-                        label="Default"
-                        valuePropName="checked"
-                    >
-                        <Switch checkedChildren="Default" unCheckedChildren="Regular" />
-                    </Form.Item>
+                    <>
+                        <Form.Item
+                            name="isDefault"
+                            label="Default"
+                            valuePropName="checked"
+                        >
+                            <Switch checkedChildren="Default" unCheckedChildren="Regular" />
+                        </Form.Item>
+                        <Form.Item style={{ marginTop: -12 }}>
+                            <Flex gap={4} vertical>
+                                <Typography.Text type="secondary">
+                                    Current default {labels.offeringLower}: <strong>{currentDefaultLabel}</strong>
+                                </Typography.Text>
+                                <Typography.Text type="secondary">
+                                    {isDefault
+                                        ? `"${currentProjectName}" will become the default menu used by your main public menu link when you save.`
+                                        : editingProject?.isDefault
+                                            ? 'This menu is currently the default. To move the default role, turn this on for another menu instead.'
+                                            : 'If this stays off, your main public menu link keeps opening the current default menu.'}
+                                </Typography.Text>
+                            </Flex>
+                        </Form.Item>
+                    </>
                 ) : null}
                 <Form.Item hidden name="projectImage">
                     <Input type="hidden" />

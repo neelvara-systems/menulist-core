@@ -17,6 +17,10 @@ The governing rule is simple:
 - **Owner-authored customer-visible content** belongs on the entity as localized inline data
 - **Operational / technical identity fields** remain plain strings
 
+And one canonical language rule applies everywhere:
+
+- **English (`en`) is the required canonical source language for localization, AI generation, and fallback**
+
 ---
 
 ## Canonical Data Model
@@ -39,6 +43,13 @@ Core helper functions:
 - `getPrimaryLocalizedLanguage()`
 - `updateLocalizedText()`
 - `toLocalizedText()`
+
+Canonical language-policy helpers:
+
+- `src/lib/localization/languagePolicy.ts`
+- `CANONICAL_SOURCE_LANGUAGE = 'en'`
+- `normalizeStoreLanguagePolicy()`
+- `normalizeProjectLanguages()`
 
 ---
 
@@ -117,6 +128,7 @@ Localized:
 Language availability:
 
 - `languages`
+- `defaultLanguage`
 
 Also localized in summary / special-menu metadata:
 
@@ -141,6 +153,7 @@ Localized business-copy fields:
 - `metaTitle`
 - `metaDescription`
 - `pwaSettings.pwaShortName`
+- `keywords` remain shared/global for now and are intentionally excluded from translation fan-out and repair
 
 Language policy fields:
 
@@ -172,21 +185,25 @@ const text = getLocalizedText(value, activeLanguage, primaryLanguage, fallback);
 For localized content, rendering must follow this order:
 
 1. requested language
-2. entity primary language
-3. safe fallback string
+2. English (`en`)
+3. entity primary language
+4. safe fallback string
 
 For public business identity:
 
 1. `publicPresence.displayName[requestedLanguage]`
-2. `publicPresence.displayName[primaryLanguage]`
-3. `store.name`
-4. hard fallback like `Menu` or `Restaurant` only when no store identity exists
+2. `publicPresence.displayName.en`
+3. `publicPresence.displayName[primaryLanguage]`
+4. `store.name`
+5. hard fallback like `Menu` or `Restaurant` only when no store identity exists
 
 For project identity:
 
 1. `project.name[requestedLanguage]`
-2. `project.name[primaryLanguage]`
-3. safe fallback such as `Untitled`
+2. `project.name.en`
+3. `project.name[project.defaultLanguage]`
+4. `project.name[primaryLanguage]`
+5. safe fallback such as `Untitled`
 
 ---
 
@@ -205,19 +222,23 @@ Purpose:
 
 - defines the language policy for that store or outlet
 - defines the default public rendering language
+- may be initialized from the detected menu language during onboarding or first extraction
+- always includes `en` because English is the canonical source language
 - governs store-level public surfaces such as OBP, SEO, Customer App identity, manifest, screenshots, and business copy
 - constrains which languages projects are allowed to add
 
 ### Project-Level Content Availability
 
-Field:
+Fields:
 
 - `project.languages`
+- `project.defaultLanguage`
 
 Purpose:
 
 - defines which translations currently exist on that specific menu project
 - governs which languages a menu project can actually render
+- defines the default owner-facing and public render language for that project
 - is the availability input to `resolveRenderLanguage(...)`
 
 ### Canonical Rule
@@ -230,6 +251,17 @@ This is a layered model, not two competing sources of truth:
 
 - store = language policy
 - project = content availability
+- default language = regional/operator-facing preference
+- canonical source language = English (`en`) for AI stability and fallback
+
+Example:
+
+- Marathi upload:
+  - extraction metadata keeps `mr` as detected primary language
+  - `store.defaultLanguage = 'mr'`
+  - `project.defaultLanguage = 'mr'`
+  - `store.activeLanguages` and `project.languages` still include `en`
+  - AI generation, translation repair, and fallback still anchor on `en`
 
 ### Business Copy Rule
 
@@ -239,7 +271,9 @@ Therefore:
 
 - the selected/default project may be used as semantic context for AI generation
 - translation targets must come from `store.activeLanguages`
-- the default/source language must come from `store.defaultLanguage`
+- the source language is fixed to English (`en`) even when render language differs
+- generated SEO fields (`tagline`, `metaTitle`, `metaDescription`) are localized
+- SEO `keywords` remain shared/global until a dedicated multilingual keyword strategy exists
 
 The project helps the AI understand the menu.
 It does not decide the language policy for store-level copy.
@@ -254,10 +288,37 @@ When owner-edited content is saved:
 
 - string input from forms may be accepted
 - persistence must normalize to localized inline storage
+- persistence must preserve or backfill the `en` key so the canonical source is always present for fallback and AI flows
 
 Shared helpers:
 
 - `updateLocalizedText()`
+- `toLocalizedText()`
+
+### Auditability
+
+Store-level business-copy automation persists lightweight metadata on the store document under `businessCopyMeta`.
+
+Current audit fields:
+
+- `lastGeneratedAt`
+- `lastGeneratedSourceLanguage`
+- `lastGeneratedTargetLanguages`
+- `lastGeneratedProjectId`
+- `lastGeneratedFieldKeys`
+- `lastRepairedAt`
+- `lastRepairedSourceLanguage`
+- `lastRepairedTargetLanguages`
+- `lastRepairedGapCount`
+- `lastRepairedFieldKeys`
+- `lastManualOverrideAt`
+- `lastManualOverrideFieldKeys`
+
+This is the current long-term audit contract for answering:
+
+- when AI last generated store-level business copy
+- when missing translations were last repaired after language changes
+- when an owner last manually overrode store-level business-copy fields
 - `toLocalizedText()`
 
 ### Migration Compatibility
@@ -270,6 +331,7 @@ The long-term target remains:
 
 - localized business content stored as `LocalizedText`
 - no permanent dependence on `string | LocalizedText` for new canonical writes
+- English (`en`) present on every canonical localized field
 
 ---
 
@@ -341,8 +403,9 @@ For any future field or screen:
 2. use `LocalizedText` for customer-visible owner-authored content
 3. use helper-based rendering, never raw object rendering
 4. preserve `store.name` only as operational fallback, not public source of truth
-5. run `npx tsc --noEmit`
-6. grep the affected area for direct `.name` / display-name rendering before closing
+5. preserve English as the canonical source key on every localized write
+6. run `npx tsc --noEmit`
+7. grep the affected area for direct `.name` / display-name rendering before closing
 
 ---
 
@@ -370,4 +433,5 @@ That model is:
 
 - `next-intl` for product copy
 - inline localized fields for business content
+- English as required canonical source
 - helper-based fallback resolution everywhere

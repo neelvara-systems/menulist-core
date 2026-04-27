@@ -1,6 +1,7 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { updateProject } from '@database/projects';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { logger } from '@lib/monitoring/logger';
 import { addDescription, type DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
 import getDescriptionsViaAPI from '@services/ai/description/generateDescriptionViaAPI';
@@ -99,7 +100,9 @@ export async function runDescriptionGeneration({
         file.extractedData?.data && (sourceFile ? sourceFile.uid === file.uid : true)
     ) || [];
 
-    const sourceLanguage = GlobalLanguagesList.find((lang) => lang.code === (nextProject.languages?.[0] || 'en'));
+    const sourceLanguage = GlobalLanguagesList.find(
+        (lang) => lang.code === getCanonicalProjectSourceLanguage(nextProject.languages),
+    );
     const targetLanguages = nextProject.languages.map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang)).filter(Boolean);
 
     let processedFiles = 0;
@@ -156,7 +159,9 @@ export async function runSingleItemDescriptionGeneration({
     sourceFile,
     tone = DEFAULT_DESCRIPTION_TONE,
 }: RunSingleItemDescriptionGenerationParams): Promise<SingleItemDescriptionGenerationResult> {
-    const sourceLanguage = GlobalLanguagesList.find((lang) => lang.code === (projectData.languages?.[0] || 'en'));
+    const sourceLanguage = GlobalLanguagesList.find(
+        (lang) => lang.code === getCanonicalProjectSourceLanguage(projectData.languages),
+    );
     const targetLanguages = projectData.languages
         .map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang))
         .filter(Boolean);

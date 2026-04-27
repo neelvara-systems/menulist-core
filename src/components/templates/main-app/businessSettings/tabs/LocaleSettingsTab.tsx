@@ -1,21 +1,53 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
+import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import TIMEZONES_LIST from '@data/timeZones';
+import { normalizeStoreLanguagePolicy } from '@lib/localization/languagePolicy';
 import { DATE_FORMATS, TIME_FORMATS } from '@lib/localization/config';
+import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { getUTCDate } from '@util/dateTime';
-import { Card, Col, Divider, Form, Row, Select, Typography } from 'antd';
+import { Alert, Button, Card, Col, Divider, Form, Row, Select, Typography } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
+import { useMemo } from 'react';
 
 const { Title, Text } = Typography;
 
 interface LocaleSettingsTabProps {
+    onOpenSearchDiscovery?: () => void;
     scrollRef?: React.RefObject<HTMLDivElement>;
+    storeDetails?: any;
 }
 
-const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ scrollRef }) => {
+const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDiscovery, scrollRef, storeDetails }) => {
     const t = useTranslations('BusinessSettings');
     const format = useFormatter();
     const now = getUTCDate().newDate;
+    const watchedActiveLanguages = Form.useWatch('activeLanguages') || [];
+    const watchedDefaultLanguage = Form.useWatch('defaultLanguage');
+    const nextStorePolicy = useMemo(() => {
+        const normalized = normalizeStoreLanguagePolicy({
+            ...storeDetails,
+            activeLanguages: watchedActiveLanguages,
+            defaultLanguage: watchedDefaultLanguage,
+        });
+
+        return {
+            ...storeDetails,
+            activeLanguages: normalized.activeLanguages,
+            defaultLanguage: normalized.defaultLanguage,
+        };
+    }, [storeDetails, watchedActiveLanguages, watchedDefaultLanguage]);
+    const businessCopyCoverage = useMemo(
+        () => computeBusinessCopyCoverage(nextStorePolicy, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
+        [nextStorePolicy],
+    );
+    const hasLanguagePolicyChanges = JSON.stringify({
+        activeLanguages: nextStorePolicy.activeLanguages,
+        defaultLanguage: nextStorePolicy.defaultLanguage,
+    }) !== JSON.stringify({
+        activeLanguages: storeDetails?.activeLanguages?.length ? storeDetails.activeLanguages : ['en'],
+        defaultLanguage: storeDetails?.defaultLanguage || 'en',
+    });
 
     return (
         <Card size='small' ref={scrollRef}>
@@ -66,6 +98,9 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ scrollRef }) => {
             <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
                 {t('languageSettingsDesc')}
             </Text>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                {t('languageSettingsUsageHint')}
+            </Text>
 
             <Row gutter={[16, 0]}>
                 <Col xs={24} md={12}>
@@ -99,7 +134,10 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ scrollRef }) => {
                         dependencies={['activeLanguages']}
                     >
                         {({ getFieldValue }) => {
-                            const activeLanguages = getFieldValue('activeLanguages') || [];
+                            const activeLanguages = normalizeStoreLanguagePolicy({
+                                activeLanguages: getFieldValue('activeLanguages') || [],
+                                defaultLanguage: getFieldValue('defaultLanguage'),
+                            }).activeLanguages;
                             const availableOptions = activeLanguages.length > 0
                                 ? GlobalLanguagesList.filter(lang => activeLanguages.includes(lang.code))
                                 : GlobalLanguagesList;
@@ -123,6 +161,30 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ scrollRef }) => {
                     </Form.Item>
                 </Col>
             </Row>
+            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                {t('languageSourcePolicyHint')}
+            </Text>
+
+            {businessCopyCoverage.repairableGapCount > 0 ? (
+                <>
+                    <Divider />
+                    <Alert
+                        action={!hasLanguagePolicyChanges && onOpenSearchDiscovery ? (
+                            <Button onClick={onOpenSearchDiscovery} size="small" type="link">
+                                {t('businessCopyLanguageNudgeAction')}
+                            </Button>
+                        ) : undefined}
+                        description={hasLanguagePolicyChanges
+                            ? t('businessCopyLanguageNudgePendingSave')
+                            : t('businessCopyLanguageNudgeReady')}
+                        message={t('businessCopyLanguageNudgeTitle', {
+                            count: businessCopyCoverage.repairableGapCount,
+                        })}
+                        showIcon
+                        type="info"
+                    />
+                </>
+            ) : null}
         </Card>
     );
 };

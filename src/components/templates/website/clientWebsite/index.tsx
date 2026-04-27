@@ -3,6 +3,7 @@ import { CUSTOMER_MENU_REFRESH_EVENT, useMenuFreshness } from "@/hooks/useMenuFr
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
+import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import {
     DeviceTypes,
@@ -84,7 +85,7 @@ function ClientMenuRenderer({
         getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
         storeDetails?.name || "Menu",
     );
-    const defaultLanguage = projectData?.languages?.[0]?.code || "en";
+    const defaultLanguage = getProjectDefaultLanguage(projectData, storeDetails);
     const pageStorageKey = getCustomerMenuStateKey(storeId, PAGE_KEY);
     const languageStorageKey = getCustomerMenuStateKey(storeId, LANGUAGE_KEY);
     const scrollStorageKey = getCustomerMenuStateKey(storeId, SCROLL_KEY);

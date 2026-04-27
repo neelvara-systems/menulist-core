@@ -3,8 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
+import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row, Select, Switch, Typography, Upload, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -103,9 +102,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     managedLanguages.map((languageCode) => [
                         languageCode,
                         {
-                            descriptor: getLocalizedText(publicPresence?.descriptor, languageCode, getPrimaryLocalizedLanguage(publicPresence?.descriptor, languageCode), ''),
-                            displayName: getLocalizedText(publicPresence?.displayName, languageCode, getPrimaryLocalizedLanguage(publicPresence?.displayName, languageCode), ''),
-                            knownFor: getLocalizedText(publicPresence?.knownFor, languageCode, getPrimaryLocalizedLanguage(publicPresence?.knownFor, languageCode), ''),
+                            descriptor: getLocalizedStoreValue(publicPresence?.descriptor, languageCode, ''),
+                            displayName: getLocalizedStoreValue(publicPresence?.displayName, languageCode, ''),
+                            knownFor: getLocalizedStoreValue(publicPresence?.knownFor, languageCode, ''),
                         },
                     ]),
                 );

@@ -381,7 +381,8 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <Text type="secondary">{tBusiness('locationInformation')}</Text>
                         </Flex>
                         <Text type="secondary">Add the real customer-facing business address. This is the location people should visit, not internal notes or delivery instructions.</Text>
-                        <Input
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
                             placeholder={tBusiness('streetAddressPlaceholder')}
                             value={formData.addressLine}

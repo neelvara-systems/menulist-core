@@ -1,6 +1,7 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
@@ -106,7 +107,7 @@ export default function BulkActionsSheet({
     const items: ItemEntry[] = useMemo(() => {
         if (!workingProject) return [];
         const result: ItemEntry[] = [];
-        const activeLang = workingProject.languages?.[0] || 'en';
+        const activeLang = getProjectDefaultLanguage(workingProject);
 
         workingProject.files?.forEach((file: any) => {
             if (!file.extractedData?.data) return;
@@ -175,7 +176,7 @@ export default function BulkActionsSheet({
         return map;
     }, [filteredItems]);
 
-    const activeLang = useMemo(() => workingProject?.languages?.[0] || 'en', [workingProject?.languages]);
+    const activeLang = useMemo(() => getProjectDefaultLanguage(workingProject), [workingProject]);
 
     const destinationCategories = useMemo(() => {
         if (!workingProject) return [];

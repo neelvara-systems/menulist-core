@@ -12,6 +12,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -1006,7 +1007,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         t,
     ]);
 
-    const primaryLang = useMemo(() => menuData?.languages?.[0] || 'en', [menuData?.languages]);
+    const primaryLang = useMemo(
+        () => getProjectDefaultLanguage(menuData, storeDetails),
+        [menuData, storeDetails],
+    );
     const activeProjectLanguages = useMemo(() => menuData?.languages || ['en'], [menuData?.languages]);
     const showCategoryIcons = menuData?.config?.design?.menu?.showCategoryIcons ?? true;
     const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);

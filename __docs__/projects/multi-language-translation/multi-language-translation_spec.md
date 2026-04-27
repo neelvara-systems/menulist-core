@@ -12,6 +12,15 @@
 
 Multi-Language Translation enables menus and related public business content to be localized into 90+ languages using Gemini 2.5 Flash plus inline localized field storage. The feature operates at four levels for structured menu content: OCR extraction with translation, file-level re-translation, global language addition, and single-item translation. It also supports localized rendering of project names, special-menu display names, and public business identity fields used across the menu page, OBP, and related public routes. Full RTL language support is included.
 
+English (`en`) is the required canonical source language across both store-level business content and project/menu content. It is always present in language sets, is never removable, is used as the source for AI generation and translation flows, and is the first fallback when a requested localized value is missing.
+
+Store-level discovery content follows an explicit SEO policy:
+
+- localized: `tagline`, `metaTitle`, `metaDescription`
+- shared/global: `keywords`
+
+`keywords` are intentionally excluded from translation fan-out and missing-translation repair until a dedicated multilingual keyword strategy is introduced.
+
 ### What It Does
 
 | Capability                | Description                               |
@@ -23,6 +32,8 @@ Multi-Language Translation enables menus and related public business content to 
 | **Localized Public Identity** | Render project names and public business labels per language |
 | **RTL Support**           | Arabic, Hebrew, Persian, Urdu, Sindhi     |
 | **Primary Language Lock** | Source language protected from removal    |
+| **Canonical Source**      | English (`en`) for all AI and fallback flows |
+| **Default Operating Language** | Detected or configured local language for owner/public render |
 
 ### What It Does NOT Do
 
@@ -31,6 +42,7 @@ Multi-Language Translation enables menus and related public business content to 
 - ❌ Real-time collaboration on translations
 - ❌ Automatic quality scoring of translations
 - ❌ Automatic translation of legal/technical identity fields like slugs or store IDs
+- ❌ Arbitrary non-English source-language selection for AI generation or repair
 
 ---
 
@@ -317,6 +329,7 @@ When Multi-Store Consistency (Feature #4) is enabled, language management follow
 | **Store**   | `activeLanguages` | `string[]` | Languages available for this store's projects           |
 | **Store**   | `defaultLanguage` | `string`   | Default rendering language (QR/PDF/Screen)              |
 | **Project** | `languages`       | `string[]` | Languages with translations in this project (unchanged) |
+| **Project** | `defaultLanguage` | `string`   | Default owner/public render language for this project   |
 
 ### Authority Model
 
@@ -364,16 +377,24 @@ When user opens a project in an outlet:
 
 ```
 Priority 1: URL ?lang=xx parameter → use that language
-Priority 2: store.defaultLanguage → use store's default
-Priority 3: Fallback → "en" (English)
+Priority 2: project.defaultLanguage → use project default when available
+Priority 3: store.defaultLanguage → use store's default
+Priority 4: Fallback → "en" (English)
 ```
 
 | Surface        | Default Language        |
 | -------------- | ----------------------- |
-| QR Menu        | `store.defaultLanguage` |
-| PDF Export     | `store.defaultLanguage` |
-| Digital Screen | `store.defaultLanguage` |
+| QR Menu        | `project.defaultLanguage ?? store.defaultLanguage` |
+| PDF Export     | `project.defaultLanguage ?? store.defaultLanguage` |
+| Digital Screen | `project.defaultLanguage ?? store.defaultLanguage` |
 | URL Override   | `?lang=xx` wins always  |
+
+Important distinction:
+
+- `store.defaultLanguage` controls rendering preference
+- `project.defaultLanguage` controls the default language for a specific menu when it differs from the broader store policy
+- English (`en`) remains the canonical source language for AI generation, translation repair, and fallback
+- if a requested/render language is missing for a localized business or project field, the system falls back to English before any other fallback
 
 ### URL Language Persistence
 
@@ -386,11 +407,11 @@ Priority 3: Fallback → "en" (English)
 
 ### Multi-Menu Default Language
 
-**Decision: Inherit store default**
+**Decision: Per-project default with store fallback**
 
-- All menus in a store use `store.defaultLanguage`
-- No per-menu language override
-- Simplifies mental model
+- Each project can set `project.defaultLanguage`
+- If absent, rendering falls back to `store.defaultLanguage`
+- This preserves regional/operator intent from detected uploads while keeping one store-level policy layer
 
 ### Local-Only Items Translation
 

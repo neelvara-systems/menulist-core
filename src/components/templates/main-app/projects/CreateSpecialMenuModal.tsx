@@ -8,12 +8,14 @@
  * @see __docs__/special-menu-switching/special-menu-switching_impl.md
  */
 import { getSpecialMenuCapabilities } from "@config/specialMenuConfig";
+import { normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { applyLocalizedProjectDraftMap, getProjectLanguageLabel, getProjectPreferredLanguage } from "@lib/localization/projectContent";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import type { SpecialMenuMode } from "@template/main-app/projects/types";
 import { getClockTimeInputFormat } from "@util/dateTime";
 import { Button, DatePicker, Form, Input, Modal, Radio, Select, Typography, message, theme } from "antd";
 import dayjs from "dayjs";
+import { useTranslations } from "next-intl";
 import { useContext, useMemo, useState } from "react";
 import { LuCalendar, LuInfo } from "react-icons/lu";
 
@@ -46,13 +48,17 @@ export default function CreateSpecialMenuModal({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const { token } = theme.useToken();
+    const tBusiness = useTranslations('BusinessSettings');
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const dateTimePickerFormat = `YYYY-MM-DD ${getClockTimeInputFormat()}`;
     const managedLanguages = useMemo(
-        () => Array.from(new Set([...(baseProjectLanguages || []), storeDetails?.defaultLanguage || 'en'].filter(Boolean))),
+        () => normalizeProjectLanguages([...(baseProjectLanguages || []), storeDetails?.defaultLanguage || 'en']),
         [baseProjectLanguages, storeDetails?.defaultLanguage]
     );
-    const referenceLanguage = getProjectPreferredLanguage({ languages: managedLanguages });
+    const referenceLanguage = getProjectPreferredLanguage({
+        languages: managedLanguages,
+        defaultLanguage: storeDetails?.defaultLanguage,
+    });
     const [selectedLanguage, setSelectedLanguage] = useState(referenceLanguage);
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({ [referenceLanguage]: '' });
 
@@ -127,7 +133,7 @@ export default function CreateSpecialMenuModal({
                     <div style={{ display: 'grid', gap: 12 }}>
                         {managedLanguages.length > 1 ? (
                             <>
-                                <Typography.Text strong>Content language</Typography.Text>
+                                <Typography.Text strong>{tBusiness('contentLanguageTitle')}</Typography.Text>
                                 <Select
                                     onChange={setSelectedLanguage}
                                     options={managedLanguages.map((languageCode) => ({

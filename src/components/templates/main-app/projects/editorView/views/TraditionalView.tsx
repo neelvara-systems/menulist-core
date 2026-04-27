@@ -1,6 +1,7 @@
 import { InheritanceBadge } from "@atoms/InheritanceBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import GlobalLanguagesList from "@data/languages";
+import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import type { InheritanceState } from "@type/multiOutlet.types";
 import {
     Button,
@@ -100,8 +101,15 @@ export const TraditionalView = ({
         }
     }, [keyboardSelectedCategoryId]);
     const [activeLanguage, setActiveLanguage] = useState<string>(
-        projectData.languages[0] || "en",
+        getProjectDefaultLanguage(projectData),
     );
+    useEffect(() => {
+        setActiveLanguage((currentLanguage) => (
+            projectData.languages.includes(currentLanguage)
+                ? currentLanguage
+                : getProjectDefaultLanguage(projectData)
+        ));
+    }, [projectData.defaultLanguage, projectData.languages]);
     const [hideInactiveCategories, setHideInactiveCategories] =
         useState<boolean>(false);
     const [hideInactiveItems, setHideInactiveItems] = useState<boolean>(false);

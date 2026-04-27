@@ -4,7 +4,7 @@ import LoadingMessage from '@antdComponent/loadingMessage';
 import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import GlobalLanguagesList from '@data/languages';
-import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, uploadFile } from '@database/projects';
+import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import useDeviceType from '@hook/useDeviceType';
@@ -14,6 +14,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
+import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -235,7 +236,10 @@ function ProjectsPage() {
 
             // Check if the project already has defined languages
             if (!Boolean(project?.languages?.length)) {
-                project.languages = [DefaultLanguage];
+                project.languages = normalizeProjectLanguages([storeDetails?.defaultLanguage || DefaultLanguage]);
+            }
+            if (!project?.defaultLanguage) {
+                project.defaultLanguage = storeDetails?.defaultLanguage || DefaultLanguage;
             }
             return project;
         },
@@ -574,11 +578,22 @@ function ProjectsPage() {
                     projectImage: savedProjectImage,
                 };
                 const nextActive = values.active !== false;
+                const nextDefaultLanguage = projectFormSelectedLanguage;
                 const activeChanged = (editingProject as any).active !== nextActive;
                 const shouldBeDefault = promoteThisAsDefault || nextIsDefault;
                 updatePayload.isDefault = shouldBeDefault;
-                const updatedProject = { ...editingProject, ...updatePayload, active: nextActive };
+                const updatedProject = {
+                    ...editingProject,
+                    ...updatePayload,
+                    active: nextActive,
+                    defaultLanguage: nextDefaultLanguage,
+                };
                 await updateProjectMetadata(editingProject.projectId!, updatePayload);
+                await updateProjectWithoutLoader({
+                    projectId: editingProject.projectId!,
+                    languages: projectFormLanguages,
+                    defaultLanguage: nextDefaultLanguage,
+                });
                 if (activeChanged) {
                     await setProjectActive(editingProject.projectId!, nextActive);
                 }
@@ -615,6 +630,7 @@ function ProjectsPage() {
                     projectImage: savedProjectImage,
                     active: values.active !== false,
                     isDefault: shouldBeDefault,
+                    defaultLanguage: projectFormSelectedLanguage,
                 });
                 if (newProject) {
                     if (shouldBeDefault && otherDefault?.projectId) {
@@ -828,11 +844,12 @@ function ProjectsPage() {
     };
 
     const onCloseModal = () => {
+        const defaultLanguage = storeDetails?.defaultLanguage || DefaultLanguage;
         setConfirmActionVisible(false);
         setConfirmActionType(null);
         setIsModalOpen(false);
-        setProjectFormLanguages([DefaultLanguage]);
-        setProjectFormSelectedLanguage(DefaultLanguage);
+        setProjectFormLanguages([defaultLanguage]);
+        setProjectFormSelectedLanguage(defaultLanguage);
         setProjectNameDrafts({});
         setProjectDescriptionDrafts({});
     }
@@ -1839,6 +1856,16 @@ function ProjectsPage() {
                     )}
                 </ProjectsDataProvider>
                 <ProjectEditModal
+                    currentDefaultProjectName={(() => {
+                        const currentDefaultProject = (projectsData?.projects || []).find((project: any) => project?.isDefault === true);
+                        if (!currentDefaultProject) return null;
+                        return getLocalizedText(
+                            currentDefaultProject.name,
+                            undefined,
+                            getPrimaryLocalizedLanguage(currentDefaultProject.name, 'en'),
+                            ''
+                        );
+                    })()}
                     isOpen={isModalOpen}
                     editingProject={editingProject}
                     form={form}

@@ -2,6 +2,7 @@ import AIButtonIcon from '@atoms/aiButtonIcon';
 import CategoryIcon from '@atoms/CategoryIcon';
 import IconPicker from '@atoms/IconPicker';
 import { getSuggestedCategoryIcons } from '@lib/categoryIcons';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
@@ -64,7 +65,7 @@ const EditCategoryModal = ({
     const [showCreatePreset, setShowCreatePreset] = useState(false);
     const [newPresetData, setNewPresetData] = useState({ label: '', startTime: '09:00', endTime: '17:00', color: DEFAULT_PRESET_COLORS[0] });
     const [savingPreset, setSavingPreset] = useState(false);
-    const primaryLanguage = selectedLanguages[0] || 'en';
+    const primaryLanguage = getCanonicalProjectSourceLanguage(selectedLanguages);
     const shouldShowGenerateTranslations = useMemo(() => {
         if (!categoryData || selectedLanguages.length <= 1) return false;
         if (!categoryData.name?.[primaryLanguage]?.trim()) return false;

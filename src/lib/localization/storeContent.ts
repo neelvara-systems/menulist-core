@@ -1,21 +1,26 @@
-import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from './text';
+import { CANONICAL_SOURCE_LANGUAGE, normalizeStoreLanguagePolicy } from './languagePolicy';
+import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from './text';
 import GlobalLanguagesList from '@data/languages';
 
 export function getStoreManagedLanguages(storeDetails?: any): string[] {
-    const candidates = [
-        storeDetails?.defaultLanguage,
-        ...(Array.isArray(storeDetails?.activeLanguages) ? storeDetails.activeLanguages : []),
-        storeDetails?.language,
-        'en',
-    ]
-        .map((language) => String(language || '').trim())
-        .filter(Boolean);
-
-    return Array.from(new Set(candidates));
+    return normalizeStoreLanguagePolicy(storeDetails).activeLanguages;
 }
 
 export function getStorePreferredLanguage(storeDetails?: any): string {
-    return getStoreManagedLanguages(storeDetails)[0] || 'en';
+    return getStoreRenderLanguage(storeDetails);
+}
+
+export function getStoreSourceLanguage(): string {
+    return CANONICAL_SOURCE_LANGUAGE;
+}
+
+export function getStoreRenderLanguage(storeDetails?: any): string {
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
+    const defaultLanguage = String(storeDetails?.defaultLanguage || '').trim().toLowerCase();
+
+    return managedLanguages.includes(defaultLanguage)
+        ? defaultLanguage
+        : getStorePreferredLanguage(storeDetails);
 }
 
 export function getStoreLanguageLabel(languageCode: string): string {
@@ -31,12 +36,7 @@ export function getLocalizedStoreValue(
     languageCode: string,
     fallback = '',
 ): string {
-    return getLocalizedText(
-        value,
-        languageCode,
-        getPrimaryLocalizedLanguage(value, languageCode),
-        fallback,
-    );
+    return getLocalizedDraftText(value, languageCode, fallback);
 }
 
 export function applyLocalizedDraftMap(
@@ -45,7 +45,7 @@ export function applyLocalizedDraftMap(
 ): any {
     return Object.entries(draftsByLanguage).reduce(
         (nextValue, [languageCode, draftValue]) => (
-            updateLocalizedText(nextValue, draftValue, languageCode, 'en')
+            updateLocalizedText(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
         ),
         existingValue,
     );

@@ -1,5 +1,6 @@
 import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { Alert, Button, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
@@ -34,7 +35,7 @@ const DecisionBlocksSettingsModal = ({
 }: DecisionBlocksSettingsModalProps) => {
     const labels = useOfferingLabels();
     const { token } = theme.useToken();
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
 
     // Get current settings or defaults
     const currentSettings = getDecisionBlockSettings(projectData);

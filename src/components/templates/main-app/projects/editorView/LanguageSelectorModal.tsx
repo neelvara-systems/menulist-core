@@ -1,6 +1,7 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { canAddLanguage, getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet, getRemainingLanguageSlots } from '@lib/localization/languageResolver';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Flex, message, Modal, Progress, Select, Tag, theme, Tooltip, Typography } from 'antd';
@@ -98,7 +99,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
     const getTranslationQuality = (langCode: string) => {
         let translated = 0;
         let total = 0;
-        const sourceLang = projectData.languages?.[0] || 'en';
+        const sourceLang = getCanonicalProjectSourceLanguage(projectData.languages);
 
         projectData.files?.forEach(file => {
             const data = file.extractedData?.data;

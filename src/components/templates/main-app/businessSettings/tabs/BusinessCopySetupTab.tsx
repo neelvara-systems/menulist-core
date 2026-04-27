@@ -2,25 +2,29 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
+import { getStoreLanguageLabel, getStoreSourceLanguage } from '@lib/localization/storeContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import generateBusinessCopyViaAPI, { BusinessCopyGenerationResult } from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
+import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
-import { Alert, Button, Card, Divider, Form, List, Typography, message } from 'antd';
+import { Alert, Button, Card, Divider, Flex, Form, List, Tag, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
-import { LuSparkles } from 'react-icons/lu';
+import { useMemo, useState } from 'react';
+import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 
 interface BusinessCopySetupTabProps {
     onApplyGeneratedCopy: (generated: BusinessCopyGenerationResult, projectId?: string) => Promise<void>;
+    onGenerateMissingTranslations?: (projectId?: string) => Promise<boolean>;
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
 }
 
-export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, storeDetails }: BusinessCopySetupTabProps) {
+export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateMissingTranslations, scrollRef, storeDetails }: BusinessCopySetupTabProps) {
     const t = useTranslations('BusinessSettings');
+    const { token } = theme.useToken();
     const form = Form.useFormInstance();
     const businessName = Form.useWatch('name');
     const businessCategory = Form.useWatch('businessCategory');
@@ -35,8 +39,15 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
     const tagline = Form.useWatch('tagline');
     const businessAttributes = Form.useWatch('businessAttributes');
     const [isGenerating, setIsGenerating] = useState(false);
-    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
+    const [isGeneratingTranslations, setIsGeneratingTranslations] = useState(false);
+    const contentLanguage = getStoreSourceLanguage();
     const sourceLanguage = GlobalLanguagesList.find((language) => language.code === contentLanguage);
+    const coverage = useMemo(
+        () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
+        [storeDetails]
+    );
+    const businessCopyMeta = storeDetails?.businessCopyMeta;
+    const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
 
     const handleGenerate = async () => {
         if (!businessName?.trim()) {
@@ -94,7 +105,12 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
                     ),
                     socialMedia: socialValues,
                     state,
-                    tagline,
+                    tagline: getLocalizedText(
+                        storeDetails?.tagline,
+                        contentLanguage,
+                        getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
+                        '',
+                    ),
                 },
             });
 
@@ -121,6 +137,23 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
             message.error(error?.message || t('businessCopyFailed'));
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateMissingTranslations = async () => {
+        try {
+            setIsGeneratingTranslations(true);
+            const projectContext = await getDefaultProjectAiContext(storeDetails);
+            const generated = await onGenerateMissingTranslations?.(projectContext?.projectId);
+            if (!generated) {
+                message.info(t('businessCopyCoverageGenerateNoMissing'));
+                return;
+            }
+            message.success(t('businessCopyCoverageGenerateSuccess'));
+        } catch (error: any) {
+            message.error(error?.message || t('businessCopyCoverageGenerateFailed'));
+        } finally {
+            setIsGeneratingTranslations(false);
         }
     };
 
@@ -155,6 +188,93 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
                 renderItem={(item) => <List.Item>{item}</List.Item>}
                 style={{ marginBottom: 16 }}
             />
+
+            <Card
+                size="small"
+                style={{
+                    background: coverage.repairableGapCount > 0 ? token.colorFillAlter : token.colorSuccessBg,
+                    marginBottom: 16,
+                }}
+                title={(
+                    <Flex align="center" justify="space-between">
+                        <Flex align="center" gap={8}>
+                            <LuLanguages size={16} />
+                            <Text strong>{t('businessCopyCoverageTitle')}</Text>
+                        </Flex>
+                        <Tag color={coverage.repairableGapCount > 0 ? 'warning' : 'success'}>
+                            {coverage.repairableGapCount > 0
+                                ? t('businessCopyCoverageGapCount', { count: coverage.repairableGapCount })
+                                : t('businessCopyCoverageAllClear')}
+                        </Tag>
+                    </Flex>
+                )}
+            >
+                <Flex vertical gap={10}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {t('businessCopyCoverageSummary', {
+                            languages: coverage.managedLanguages.map(getStoreLanguageLabel).join(', '),
+                        })}
+                    </Text>
+                    <List
+                        dataSource={coverage.fields}
+                        renderItem={(field) => (
+                            <List.Item>
+                                <Flex align="center" justify="space-between" style={{ width: '100%' }} gap={12}>
+                                    <Flex align="center" gap={8}>
+                                        {field.status === 'ok'
+                                            ? <LuCheckCircle color={token.colorSuccess} size={16} />
+                                            : <LuAlertCircle color={field.status === 'warning' ? token.colorWarning : token.colorTextTertiary} size={16} />}
+                                        <div>
+                                            <Text>{t(`businessCopyCoverageFields.${field.key}`)}</Text>
+                                            <br />
+                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                                {field.status === 'ok'
+                                                    ? t('businessCopyCoverageStatusReadyDesc')
+                                                    : field.status === 'empty'
+                                                        ? t('businessCopyCoverageStatusEmptyDesc')
+                                                        : t('businessCopyCoverageMissing', {
+                                                            languages: field.missingLanguages.map(getStoreLanguageLabel).join(', '),
+                                                        })}
+                                            </Text>
+                                        </div>
+                                    </Flex>
+                                    {field.status === 'ok'
+                                        ? <Tag color="success">{t('businessCopyCoverageStatusReady')}</Tag>
+                                        : field.status === 'warning'
+                                            ? <Tag color="warning">{t('businessCopyCoverageStatusWarning')}</Tag>
+                                            : <Tag>{t('businessCopyCoverageStatusEmpty')}</Tag>}
+                                </Flex>
+                            </List.Item>
+                        )}
+                    />
+                    {coverage.repairableGapCount > 0 ? (
+                        <Button
+                            block
+                            loading={isGeneratingTranslations}
+                            onClick={() => void handleGenerateMissingTranslations()}
+                        >
+                            {t('businessCopyCoverageGenerateMissing')}
+                        </Button>
+                    ) : null}
+                </Flex>
+            </Card>
+
+            {businessCopyMeta?.lastGeneratedAt || businessCopyMeta?.lastRepairedAt || businessCopyMeta?.lastManualOverrideAt ? (
+                <Card size="small" style={{ marginBottom: 16 }}>
+                    <Flex vertical gap={6}>
+                        <Text strong>{t('businessCopyAuditTitle')}</Text>
+                        {businessCopyMeta?.lastGeneratedAt ? (
+                            <Text type="secondary">{t('businessCopyAuditGenerated', { when: formatAuditTime(businessCopyMeta.lastGeneratedAt) })}</Text>
+                        ) : null}
+                        {businessCopyMeta?.lastRepairedAt ? (
+                            <Text type="secondary">{t('businessCopyAuditRepaired', { when: formatAuditTime(businessCopyMeta.lastRepairedAt) })}</Text>
+                        ) : null}
+                        {businessCopyMeta?.lastManualOverrideAt ? (
+                            <Text type="secondary">{t('businessCopyAuditManual', { when: formatAuditTime(businessCopyMeta.lastManualOverrideAt) })}</Text>
+                        ) : null}
+                    </Flex>
+                </Card>
+            ) : null}
 
             <Button
                 block

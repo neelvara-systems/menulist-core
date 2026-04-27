@@ -1,6 +1,7 @@
 'use client'
 
 import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import {
     applyDecisionBlockSettings,
     buildAllItemOptions,
@@ -42,7 +43,7 @@ export default function SmartRecommendationsSheet({
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
     } as const;
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
     const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType), [businessType]);
     const popularLabels = useMemo(() => getBlockLabels('popular', businessType), [businessType]);
     const quickPickLabels = useMemo(() => getBlockLabels('quickPick', businessType), [businessType]);

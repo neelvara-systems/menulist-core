@@ -10,6 +10,7 @@ import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
 import { getProjectDataWithoutLoader } from '@database/projects';
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
+import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -154,8 +155,8 @@ function CreateSpecialMenuSheet({
     );
     const { token } = theme.useToken();
     const [baseProjectId, setBaseProjectId] = useState(defaultBaseProjectId);
-    const [managedLanguages, setManagedLanguages] = useState<string[]>([storeDetails?.defaultLanguage || 'en']);
-    const [selectedLanguage, setSelectedLanguage] = useState(storeDetails?.defaultLanguage || 'en');
+    const [managedLanguages, setManagedLanguages] = useState<string[]>([storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE]);
+    const [selectedLanguage, setSelectedLanguage] = useState<string>(storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE);
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({});
     const [mode, setMode] = useState<'replace' | 'overlay'>(capabilities.availableModes[0] || 'overlay');
     const [startsAt, setStartsAt] = useState(() => toInputValue(new Date().toISOString(), true));
@@ -166,7 +167,7 @@ function CreateSpecialMenuSheet({
         : false;
 
     const resetForm = () => {
-        const defaultLanguage = storeDetails?.defaultLanguage || 'en';
+        const defaultLanguage = storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE;
         setBaseProjectId(defaultBaseProjectId);
         setManagedLanguages([defaultLanguage]);
         setSelectedLanguage(defaultLanguage);
@@ -434,7 +435,7 @@ function EditSpecialMenuSheet({
     const tSettings = useTranslations('Settings');
     const { token } = theme.useToken();
     const [managedLanguages, setManagedLanguages] = useState<string[]>(['en']);
-    const [selectedLanguage, setSelectedLanguage] = useState('en');
+    const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({});
     const [descriptionDrafts, setDescriptionDrafts] = useState<Record<string, string>>({});
     const [initialDisplayNameDrafts, setInitialDisplayNameDrafts] = useState<Record<string, string>>({});
@@ -891,6 +892,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         selectedProjectId,
         selectedProjectSummary,
         projectsList,
+        upsertCachedProject,
     } = useMobileProjects();
     const {
         specialMenus,
@@ -964,8 +966,19 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
 
     const resolveProjectDetails = useCallback(async (projectId: string) => {
         if (!projectId) return null;
-        return projectsById[projectId] || await getProjectDataWithoutLoader(projectId);
-    }, [projectsById]);
+        if (projectsById[projectId]) {
+            return projectsById[projectId];
+        }
+
+        const summaryProject = (projectsList || []).find((project: any) => project.projectId === projectId) || null;
+        const detailedProject = await getProjectDataWithoutLoader(projectId);
+        upsertCachedProject({
+            ...(summaryProject || {}),
+            ...(detailedProject || {}),
+            projectId,
+        });
+        return detailedProject;
+    }, [projectsById, projectsList, upsertCachedProject]);
 
     const handleCreateSpecialMenu = async (payload: {
         allowOverlap?: boolean;

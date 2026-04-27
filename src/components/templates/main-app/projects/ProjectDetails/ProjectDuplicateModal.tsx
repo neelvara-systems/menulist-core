@@ -2,6 +2,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { Alert, Button, Card, Flex, Input, Modal, Select, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { ProjectMetadata } from '../types';
 
@@ -27,6 +28,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
     const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
     const [descriptionDrafts, setDescriptionDrafts] = useState<Record<string, string>>({});
     const { token } = useToken();
+    const tBusiness = useTranslations('BusinessSettings');
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
 
@@ -116,7 +118,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                 <Flex gap={12} vertical style={{ marginBottom: 16 }}>
                     {languages.length > 1 ? (
                         <>
-                            <Typography.Text strong>Content language</Typography.Text>
+                            <Typography.Text strong>{tBusiness('contentLanguageTitle')}</Typography.Text>
                             <Select
                                 onChange={setSelectedLanguage}
                                 options={languages.map((languageCode) => ({

@@ -6,8 +6,10 @@ import GlobalLanguagesList from "@data/languages";
 import { updateProject } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useOfferingLabels } from "@hook/useOfferingLabels";
+import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
+import { getCanonicalProjectSourceLanguage } from "@lib/localization/languagePolicy";
 import {
     PlatformGlobalDataContext,
     PlatformGlobalDataProviderType,
@@ -465,7 +467,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     // ============================
     const filteredItemsForNavigation = useMemo((): NavigableItem[] => {
         const allItems: ItemWithFile[] = [];
-        const defaultLang = projectData.languages?.[0] || "en";
+        const defaultLang = getProjectDefaultLanguage(projectData, storeDetails);
         const categoryActiveById: Record<string, boolean> = {};
 
         // Collect all items with file references
@@ -584,7 +586,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 const totalFiles =
                     prevData.files?.filter((f) => f.extractedData?.data)?.length || 0;
 
-                const sourceLanguage = prevData.languages?.[0] || "en";
+                const sourceLanguage = getCanonicalProjectSourceLanguage(prevData.languages);
                 const sourceLang = GlobalLanguagesList.find(
                     (lang) => lang.code === sourceLanguage,
                 );
@@ -679,7 +681,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const onRetryTranslations = async (file: any) => {
         try {
             let prevData = removeObjRef(projectData);
-            const sourceLanguage = projectData.languages?.[0] || "en";
+            const sourceLanguage = getCanonicalProjectSourceLanguage(projectData.languages);
             const sourceLang = GlobalLanguagesList.find(
                 (lang) => lang.code === sourceLanguage,
             );
@@ -853,7 +855,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                             />
                             <EditorFiltersPopover
                                 categories={getAllCategories()}
-                                activeLanguage={projectData.languages[0] || "en"}
+                                activeLanguage={getProjectDefaultLanguage(projectData, storeDetails)}
                                 filters={filters}
                                 onFiltersChange={setFilters}
                             />

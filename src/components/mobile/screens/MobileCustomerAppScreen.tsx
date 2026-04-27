@@ -17,10 +17,12 @@
 import { FEATURE_FLAGS } from '@config/features';
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
+import { updateStore } from '@database/stores';
 import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -46,7 +48,7 @@ interface Props {
 }
 
 export default function MobileCustomerAppScreen({ onBack }: Props) {
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const tMobile = useTranslations('MobileSettings');
 
@@ -147,6 +149,20 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
             }
             if (Object.keys(settingsPatch).length > 0) {
                 await updatePWASettings(storeDetails.storeId, settingsPatch);
+                if ('pwaShortName' in settingsPatch) {
+                    const nextBusinessCopyMeta = buildBusinessCopyManualOverrideMeta({
+                        existingMeta: storeDetails?.businessCopyMeta,
+                        fieldKeys: ['pwaShortName'],
+                    });
+                    await updateStore({
+                        businessCopyMeta: nextBusinessCopyMeta,
+                        storeId: storeDetails.storeId,
+                    });
+                    setStoreDetails((previous: any) => ({
+                        ...previous,
+                        businessCopyMeta: nextBusinessCopyMeta,
+                    }));
+                }
             }
 
             let nextIconUrl = savedIconUrl.trim();

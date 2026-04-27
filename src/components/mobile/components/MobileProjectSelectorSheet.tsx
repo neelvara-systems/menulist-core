@@ -4,6 +4,7 @@ import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoade
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
+import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -151,12 +152,12 @@ export default function MobileProjectSelectorSheet({
     const tShare = useTranslations('MobileShare');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
-    const { isLoading, projectsById, projectsList, refreshProjects, upsertCachedProject } = useMobileProjects();
+    const { isLoading, projectsById, projectsList, removeCachedProject, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
-    const [formLanguages, setFormLanguages] = useState<string[]>([storeDetails?.defaultLanguage || 'en']);
-    const [formSelectedLanguage, setFormSelectedLanguage] = useState(storeDetails?.defaultLanguage || 'en');
+    const [formLanguages, setFormLanguages] = useState<string[]>([storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE]);
+    const [formSelectedLanguage, setFormSelectedLanguage] = useState<string>(storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE);
     const [formNameDrafts, setFormNameDrafts] = useState<Record<string, string>>({});
     const [formDescriptionDrafts, setFormDescriptionDrafts] = useState<Record<string, string>>({});
     const [initialFormNameDrafts, setInitialFormNameDrafts] = useState<Record<string, string>>({});
@@ -253,11 +254,18 @@ export default function MobileProjectSelectorSheet({
     );
     const formName = formNameDrafts[formSelectedLanguage] || '';
     const formDescription = formDescriptionDrafts[formSelectedLanguage] || '';
+    const currentDefaultProject = useMemo(
+        () => projects.find((project) => project.isDefault === true) || null,
+        [projects]
+    );
+    const currentDefaultProjectName = currentDefaultProject
+        ? resolveProjectName(currentDefaultProject.name, '')
+        : null;
 
     const resetFormState = () => {
         setFormMode(null);
         setFormProjectId(null);
-        const defaultLanguage = storeDetails?.defaultLanguage || 'en';
+        const defaultLanguage = storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE;
         setFormLanguages([defaultLanguage]);
         setFormSelectedLanguage(defaultLanguage);
         setFormNameDrafts({});
@@ -273,7 +281,7 @@ export default function MobileProjectSelectorSheet({
     };
 
     const openCreate = () => {
-        const defaultLanguage = storeDetails?.defaultLanguage || 'en';
+        const defaultLanguage = storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE;
         setManagingProjectId(null);
         setFormMode('create');
         setFormProjectId(null);
@@ -290,8 +298,38 @@ export default function MobileProjectSelectorSheet({
         setFormEndsAt('');
     };
 
+    const loadDetailedProject = async (project: ProjectSheetProject) => {
+        const cachedProject = projectsById[project.projectId];
+        if (cachedProject) return cachedProject;
+
+        const detailedProject = await getProjectDataWithoutLoader(project.projectId);
+        upsertCachedProject({
+            ...project,
+            ...(detailedProject || {}),
+            projectId: project.projectId,
+        });
+        return detailedProject;
+    };
+
+    const getDeleteFallbackProject = (projectId: string) => (
+        orderedProjects.find((entry) => entry.projectId !== projectId && entry.active !== false)
+        || orderedProjects.find((entry) => entry.projectId !== projectId)
+        || null
+    );
+
+    const getDeleteDefaultReplacement = (projectId: string) => (
+        projects.find((entry) => (
+            entry.projectId !== projectId &&
+            entry.isSpecialMenu !== true &&
+            entry.active !== false
+        )) || projects.find((entry) => (
+            entry.projectId !== projectId &&
+            entry.isSpecialMenu !== true
+        )) || null
+    );
+
     const openEdit = async (project: ProjectSheetProject) => {
-        const detailedProject = projectsById[project.projectId] || await getProjectDataWithoutLoader(project.projectId);
+        const detailedProject = await loadDetailedProject(project);
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
         const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
@@ -313,7 +351,7 @@ export default function MobileProjectSelectorSheet({
     };
 
     const openDuplicate = async (project: ProjectSheetProject) => {
-        const detailedProject = projectsById[project.projectId] || await getProjectDataWithoutLoader(project.projectId);
+        const detailedProject = await loadDetailedProject(project);
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
         const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
@@ -335,12 +373,7 @@ export default function MobileProjectSelectorSheet({
         setFormEndsAt('');
     };
 
-    const refreshAndSync = async (preferredProjectId?: string | null) => {
-        await refreshProjects({
-            force: true,
-            preferredProjectId: preferredProjectId || null,
-            showLoader: false,
-        });
+    const syncSelectionOnly = async (preferredProjectId?: string | null) => {
         await onProjectsChanged(preferredProjectId);
     };
 
@@ -398,6 +431,7 @@ export default function MobileProjectSelectorSheet({
                 const currentDefault = projects.find((project) => project.isDefault === true);
                 const result = await addProject({
                     active: formActive,
+                    defaultLanguage: formSelectedLanguage,
                     description: localizedDescription,
                     isDefault: formIsDefault,
                     name: localizedName,
@@ -408,8 +442,30 @@ export default function MobileProjectSelectorSheet({
                     await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
                 }
 
+                if (currentDefault?.projectId && formIsDefault && currentDefault.projectId !== result?.projectId) {
+                    upsertCachedProject({
+                        ...(projectsById[currentDefault.projectId] || currentDefault),
+                        ...currentDefault,
+                        isDefault: false,
+                        projectId: currentDefault.projectId,
+                    });
+                }
+                if (result?.projectId) {
+                    upsertCachedProject({
+                        ...(result.projectData || {}),
+                        ...(result.summaryData || {}),
+                        active: formActive,
+                        description: localizedDescription,
+                        defaultLanguage: formSelectedLanguage,
+                        isDefault: formIsDefault,
+                        name: localizedName,
+                        projectId: result.projectId,
+                        projectImage: savedProjectImage || null,
+                    });
+                }
+
                 resetFormState();
-                await refreshAndSync(result?.projectId || null);
+                await syncSelectionOnly(result?.projectId || null);
                 Toast.show({ content: t('catalogCreated'), duration: 1400 });
                 return;
             }
@@ -428,14 +484,43 @@ export default function MobileProjectSelectorSheet({
                     await updateProjectMetadata(result.projectId, { projectImage: savedProjectImage || null });
                 }
                 if (result?.projectId) {
+                    await updateProjectWithoutLoader({
+                        projectId: result.projectId,
+                        languages: formLanguages,
+                        defaultLanguage: formSelectedLanguage,
+                    });
+                }
+                if (result?.projectId) {
                     await updateProjectMetadata(result.projectId, { isDefault: formIsDefault });
                 }
                 if (formIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
                     await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
                 }
 
+                if (currentDefault?.projectId && formIsDefault && currentDefault.projectId !== result?.projectId) {
+                    upsertCachedProject({
+                        ...(projectsById[currentDefault.projectId] || currentDefault),
+                        ...currentDefault,
+                        isDefault: false,
+                        projectId: currentDefault.projectId,
+                    });
+                }
+                if (result?.projectId) {
+                    upsertCachedProject({
+                        ...(result.projectData || {}),
+                        ...(result.summaryData || {}),
+                        active: true,
+                        description: localizedDescription,
+                        defaultLanguage: formSelectedLanguage,
+                        isDefault: formIsDefault,
+                        name: localizedName,
+                        projectId: result.projectId,
+                        projectImage: savedProjectImage || null,
+                    });
+                }
+
                 resetFormState();
-                await refreshAndSync(result?.projectId || null);
+                await syncSelectionOnly(result?.projectId || null);
                 Toast.show({ content: t('catalogDuplicated'), duration: 1400 });
                 return;
             }
@@ -461,6 +546,11 @@ export default function MobileProjectSelectorSheet({
                 }
 
                 await updateProjectMetadata(formProjectId, metadataUpdate);
+                await updateProjectWithoutLoader({
+                    projectId: formProjectId,
+                    languages: formLanguages,
+                    defaultLanguage: formSelectedLanguage,
+                });
                 if (activeChanged) {
                     await setProjectActive(formProjectId, nextActive);
                 }
@@ -479,8 +569,34 @@ export default function MobileProjectSelectorSheet({
                     });
                 }
 
+                if (shouldUnsetPreviousDefault && currentDefault?.projectId) {
+                    upsertCachedProject({
+                        ...(projectsById[currentDefault.projectId] || currentDefault),
+                        ...currentDefault,
+                        isDefault: false,
+                        projectId: currentDefault.projectId,
+                    });
+                }
+
+                upsertCachedProject({
+                    ...(projectsById[formProjectId] || formSourceProject || {}),
+                    ...(formSourceProject || {}),
+                    active: nextActive,
+                    description: localizedDescription,
+                    defaultLanguage: formSelectedLanguage,
+                    isDefault: formIsDefault,
+                    name: localizedName,
+                    projectId: formProjectId,
+                    projectImage: savedProjectImage || null,
+                    ...(isEditingSpecialMenu ? {
+                        specialMenuDisplayName: localizedName,
+                        specialMenuEndsAt: fromNativeDateTimeValue(formEndsAt),
+                        specialMenuStartsAt: fromNativeDateTimeValue(formStartsAt),
+                    } : {}),
+                });
+
                 resetFormState();
-                await refreshAndSync(formProjectId);
+                await syncSelectionOnly(formProjectId);
                 Toast.show({ content: t('catalogUpdated'), duration: 1400 });
             }
         } catch {
@@ -531,8 +647,23 @@ export default function MobileProjectSelectorSheet({
             await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
         }
 
+        if (currentDefault?.projectId) {
+            upsertCachedProject({
+                ...(projectsById[currentDefault.projectId] || currentDefault),
+                ...currentDefault,
+                isDefault: false,
+                projectId: currentDefault.projectId,
+            });
+        }
+        upsertCachedProject({
+            ...(projectsById[project.projectId] || project),
+            ...project,
+            isDefault: true,
+            projectId: project.projectId,
+        });
+
         setManagingProjectId(null);
-        await refreshAndSync(project.projectId);
+        await syncSelectionOnly(project.projectId);
         Toast.show({ content: `${resolveProjectName(project.name)} is now the default ${labels.offeringLower}.`, duration: 1600 });
     };
 
@@ -568,10 +699,11 @@ export default function MobileProjectSelectorSheet({
         const isCurrent = project.projectId === currentProjectId;
 
         if (!nextActive && isCurrent) {
-            const fallback = projects.find((entry) => entry.projectId !== project.projectId && entry.active !== false);
+            const fallback = getDeleteFallbackProject(project.projectId);
             await setProjectActive(project.projectId, false);
+            upsertCachedProject({ ...project, active: false });
             setManagingProjectId(null);
-            await refreshAndSync(fallback?.projectId || null);
+            await syncSelectionOnly(fallback?.projectId || null);
             Toast.show({ content: t('catalogInactive'), duration: 1400 });
             return;
         }
@@ -579,7 +711,7 @@ export default function MobileProjectSelectorSheet({
         await setProjectActive(project.projectId, nextActive);
         upsertCachedProject({ ...project, active: nextActive });
         setManagingProjectId(null);
-        await refreshAndSync(nextActive ? project.projectId : currentProjectId || null);
+        await syncSelectionOnly(nextActive ? project.projectId : currentProjectId || null);
         Toast.show({ content: nextActive ? t('catalogActive') : t('catalogInactive'), duration: 1400 });
     };
 
@@ -587,16 +719,26 @@ export default function MobileProjectSelectorSheet({
         setManagingProjectId(null);
         await updateProjectWithoutLoader({ files: [], projectId: project.projectId });
         upsertCachedProject({ ...project, files: [] });
-        await refreshAndSync(project.projectId);
+        await syncSelectionOnly(project.projectId);
         Toast.show({ content: t('catalogReset'), duration: 1400 });
     };
 
     const handleDeleteProject = async (project: ProjectSheetProject) => {
         const isCurrent = project.projectId === currentProjectId;
-        const fallback = orderedProjects.find((entry) => entry.projectId !== project.projectId && entry.active !== false);
+        const fallback = getDeleteFallbackProject(project.projectId);
+        const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
         setManagingProjectId(null);
         await deleteProject(project.projectId);
-        await refreshAndSync(isCurrent ? fallback?.projectId || null : currentProjectId || null);
+        removeCachedProject(project.projectId);
+        if (defaultReplacement?.projectId) {
+            upsertCachedProject({
+                ...(projectsById[defaultReplacement.projectId] || defaultReplacement),
+                ...defaultReplacement,
+                isDefault: true,
+                projectId: defaultReplacement.projectId,
+            });
+        }
+        await syncSelectionOnly(isCurrent ? fallback?.projectId || null : currentProjectId || null);
         Toast.show({ content: t('catalogDeleted'), duration: 1400 });
     };
 
@@ -849,7 +991,7 @@ export default function MobileProjectSelectorSheet({
                         </Text>
                         {currentProjectName ? (
                             <Text type="secondary" style={{ textAlign: 'left' }}>
-                                {t('currentCatalog', { name: currentProjectName })}
+                                {`Current: ${currentProjectName}`}
                             </Text>
                         ) : null}
                     </Flex>
@@ -1094,12 +1236,21 @@ export default function MobileProjectSelectorSheet({
                             ) : null}
 
                             {!isEditingSpecialMenu ? (
-                                <Flex align="center" justify="space-between" gap={12}>
-                                    <Flex gap={4} vertical>
+                                <Flex gap={8} vertical>
+                                    <Flex align="center" justify="space-between" gap={12}>
                                         <Text strong>Default</Text>
-                                        <Text type="secondary">This menu opens from your main public menu link.</Text>
+                                        <Switch checked={formIsDefault} onChange={setFormIsDefault} />
                                     </Flex>
-                                    <Switch checked={formIsDefault} onChange={setFormIsDefault} />
+                                    <Text type="secondary">
+                                        Current default {labels.offeringLower}: <strong>{currentDefaultProjectName || `No default ${labels.offeringLower} is set yet`}</strong>
+                                    </Text>
+                                    <Text type="secondary">
+                                        {formIsDefault
+                                            ? `"${formName.trim() || `This ${labels.offeringLower}`}" will become the default menu used by your main public menu link when you save.`
+                                            : formSourceProject?.isDefault
+                                                ? 'This menu is currently the default. To move the default role, turn this on for another menu instead.'
+                                                : 'If this stays off, your main public menu link keeps opening the current default menu.'}
+                                    </Text>
                                 </Flex>
                             ) : null}
                         </Flex>

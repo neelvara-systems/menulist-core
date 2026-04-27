@@ -1,3 +1,5 @@
+import { CANONICAL_SOURCE_LANGUAGE } from './languagePolicy';
+
 export type LocalizedText = Record<string, string>;
 export type LocalizedTextValue = LocalizedText | string | null | undefined;
 
@@ -22,6 +24,7 @@ export const getLocalizedLanguageCandidates = (
 
     pushCandidate(candidates, language);
     pushCandidate(candidates, language?.split('-')[0]);
+    pushCandidate(candidates, CANONICAL_SOURCE_LANGUAGE);
     pushCandidate(candidates, primaryLanguage);
     pushCandidate(candidates, primaryLanguage?.split('-')[0]);
 
@@ -30,9 +33,14 @@ export const getLocalizedLanguageCandidates = (
 
 export const getPrimaryLocalizedLanguage = (
     value: LocalizedTextValue,
-    fallbackLanguage: string = 'en',
+    fallbackLanguage: string = CANONICAL_SOURCE_LANGUAGE,
 ): string => {
     if (isLocalizedText(value)) {
+        const canonicalEntry = value[CANONICAL_SOURCE_LANGUAGE];
+        if (typeof canonicalEntry === 'string' && canonicalEntry.trim().length > 0) {
+            return CANONICAL_SOURCE_LANGUAGE;
+        }
+
         const firstNonEmpty = Object.entries(value).find(
             ([, entry]) => typeof entry === 'string' && entry.trim().length > 0,
         )?.[0];
@@ -67,13 +75,53 @@ export const getLocalizedText = (
     return fallback;
 };
 
+export const getLocalizedDraftText = (
+    value: LocalizedTextValue,
+    language?: string | null,
+    fallback: string = '',
+): string => {
+    const normalizedLanguage = language?.trim();
+    const baseLanguage = normalizedLanguage?.split('-')[0];
+
+    if (typeof value === 'string') {
+        if (!normalizedLanguage || normalizedLanguage === CANONICAL_SOURCE_LANGUAGE || baseLanguage === CANONICAL_SOURCE_LANGUAGE) {
+            return value.trim() || fallback;
+        }
+
+        return fallback;
+    }
+
+    if (!isLocalizedText(value) || !normalizedLanguage) return fallback;
+
+    const exactMatch = value[normalizedLanguage];
+    if (typeof exactMatch === 'string' && exactMatch.trim()) {
+        return exactMatch.trim();
+    }
+
+    if (baseLanguage && baseLanguage !== normalizedLanguage) {
+        const baseMatch = value[baseLanguage];
+        if (typeof baseMatch === 'string' && baseMatch.trim()) {
+            return baseMatch.trim();
+        }
+    }
+
+    return fallback;
+};
+
 export const toLocalizedText = (
     value: LocalizedTextValue,
     language: string,
 ): LocalizedText | undefined => {
     if (typeof value === 'string') {
         const trimmed = value.trim();
-        return trimmed ? { [language]: trimmed } : undefined;
+        if (!trimmed) return undefined;
+
+        return language === CANONICAL_SOURCE_LANGUAGE
+            ? { [CANONICAL_SOURCE_LANGUAGE]: trimmed }
+            : {
+                [language]: trimmed,
+                [CANONICAL_SOURCE_LANGUAGE]: trimmed,
+            };
     }
 
     if (!isLocalizedText(value)) return undefined;
@@ -84,6 +132,13 @@ export const toLocalizedText = (
         ),
     ) as LocalizedText;
 
+    if (!normalized[CANONICAL_SOURCE_LANGUAGE]) {
+        const sourceCandidate = normalized[language] || Object.values(normalized)[0];
+        if (sourceCandidate?.trim()) {
+            normalized[CANONICAL_SOURCE_LANGUAGE] = sourceCandidate.trim();
+        }
+    }
+
     return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
@@ -91,7 +146,7 @@ export const updateLocalizedText = (
     existingValue: LocalizedTextValue,
     nextValue: string | undefined | null,
     language?: string | null,
-    fallbackLanguage: string = 'en',
+    fallbackLanguage: string = CANONICAL_SOURCE_LANGUAGE,
 ): LocalizedText | undefined => {
     const resolvedLanguage =
         language?.trim() || getPrimaryLocalizedLanguage(existingValue, fallbackLanguage);

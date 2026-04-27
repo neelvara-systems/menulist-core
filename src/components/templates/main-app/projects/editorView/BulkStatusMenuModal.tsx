@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { removeObjRef } from '@util/utils';
 import { Alert, Button, Checkbox, Flex, Input, Modal, Tag, Typography, theme } from 'antd';
 import { useState } from 'react';
@@ -72,7 +73,7 @@ function buildItemsForCategory(files: ProjectFileType[], categoryId: string, act
 const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatusMenuModalProps) => {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
-    const activeLang = projectData.languages?.[0] || 'en';
+    const activeLang = getProjectDefaultLanguage(projectData);
 
     // State
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);

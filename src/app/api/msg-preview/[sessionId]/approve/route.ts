@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { secureError } from "@lib/security/secureLogger";
 import { slugify } from "@lib/utils/slugify";
@@ -23,6 +24,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const db = admin.firestore();
+
+const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
+  Array.isArray(languages)
+    ? languages.map((language) => typeof language === "string" ? language : language?.code)
+    : [],
+);
+
+const getDetectedDefaultLanguage = (languages: any): string => {
+  if (Array.isArray(languages)) {
+    const primary = languages.find((language) => language?.isPrimary)?.code;
+    if (primary) return String(primary).trim().toLowerCase();
+
+    const firstCode = typeof languages[0] === "string" ? languages[0] : languages[0]?.code;
+    if (firstCode) return String(firstCode).trim().toLowerCase();
+  }
+  return CANONICAL_SOURCE_LANGUAGE;
+};
 
 const ApproveSchema = z.object({
   token: z.string().min(20),
@@ -279,6 +297,8 @@ async function executePublishFromApiRoute(
   const generatedEmail = getGeneratedEmail(sessionData.providerDisplayId || "");
 
   const menuData = sessionData.extractedMenuData;
+  const extractedLanguageCodes = getCanonicalExtractionLanguages(menuData?.languages);
+  const detectedDefaultLanguage = getDetectedDefaultLanguage(menuData?.languages);
 
   // Story 3B: Check if user with this phone already exists (spec §Story 3B)
   // Query BEFORE transaction — if exists, we UPDATE instead of CREATE
@@ -305,7 +325,8 @@ async function executePublishFromApiRoute(
       storeExtra: {
         activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
         phoneNumber: sessionData.providerDisplayId || "",
-        defaultLanguage: menuData?.languages?.[0]?.code || "en",
+        activeLanguages: extractedLanguageCodes,
+        defaultLanguage: detectedDefaultLanguage,
         country,
         currencyCode: currency.code,
         currencySymbol: currency.symbol,
@@ -382,7 +403,8 @@ async function executePublishFromApiRoute(
         // (44 references across 13 editor files). Without wrapper → empty/broken menu.
         extractedData: index === 0 ? { data: menuData } : null,
       })),
-      languages: menuData?.languages || [{ code: "en", name: "English", isPrimary: true }],
+      languages: extractedLanguageCodes,
+      defaultLanguage: detectedDefaultLanguage,
       active: true,
       deleted: false,
       createdOn: core.now,

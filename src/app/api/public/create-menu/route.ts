@@ -16,6 +16,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
+import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import crypto from 'crypto';
@@ -28,6 +29,38 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const IMAGE_URL_EXPIRY_MS = 25 * 60 * 60 * 1000; // 25 hours (1h longer than draft TTL)
+
+const normalizeDraftExtractionLanguages = (languages: any): Array<{ code: string; name: string; isPrimary?: boolean }> => {
+    const normalized = Array.isArray(languages)
+        ? languages
+            .map((language) => typeof language === 'string'
+                ? { code: language, name: language === CANONICAL_SOURCE_LANGUAGE ? 'English' : language, isPrimary: language === CANONICAL_SOURCE_LANGUAGE }
+                : {
+                    code: String(language?.code || '').trim().toLowerCase(),
+                    name: String(language?.name || '').trim(),
+                    isPrimary: Boolean(language?.isPrimary),
+                })
+            .filter((language) => language.code)
+        : [];
+
+    const deduped = Array.from(
+        new Map(normalized.map((language) => [language.code, language])).values(),
+    );
+
+    const hasPrimary = deduped.some((language) => language.isPrimary);
+    const withPrimary = hasPrimary
+        ? deduped
+        : deduped.map((language, index) => ({ ...language, isPrimary: index === 0 }));
+
+    if (withPrimary.some((language) => language.code === CANONICAL_SOURCE_LANGUAGE)) {
+        return withPrimary;
+    }
+
+    return [
+        ...withPrimary,
+        { code: CANONICAL_SOURCE_LANGUAGE, name: 'English', isPrimary: false },
+    ];
+};
 
 /**
  * POST /api/public/create-menu
@@ -247,20 +280,26 @@ Return a JSON object with this exact structure:
     "categories": [
         {
             "id": "cat_1",
-            "name": { "en": "Category Name" }
+            "name": { "language code": "Category Name" }
         }
     ],
     "items": [
         {
             "id": "item_1",
             "category": "cat_1",
-            "name": { "en": "Item Name" },
-            "description": { "en": "Description if visible" },
+            "name": { "language code": "Item Name" },
+            "description": { "language code": "Description if visible" },
             "price": "price as string with currency symbol if visible",
             "attributes": []
         }
     ],
-    "languages": ["en"]
+    "languages": [
+        {
+            "code": "en",
+            "name": "English",
+            "isPrimary": false
+        }
+    ]
 }
 
 Rules:
@@ -268,7 +307,10 @@ Rules:
 - Preserve original category groupings
 - If price is visible, include it as a string (e.g., "₹250", "$12.99")
 - If description is visible, include it
-- Detect the language of the menu
+- Detect the primary language of the menu
+- Preserve the detected source/original language in multilingual field objects
+- Always include English translations in multilingual field objects
+- If the menu is already in English, return English as the primary language
 - Detect business name if visible on the menu
 - Detect business type from the content (restaurant, cafe, bakery, salon, etc.)
 - Return ONLY valid JSON, no markdown, no explanation`;
@@ -304,7 +346,7 @@ Rules:
             extractedData: {
                 categories: parsed.categories || [],
                 items: parsed.items || [],
-                languages: parsed.languages || ['en'],
+                languages: normalizeDraftExtractionLanguages(parsed.languages),
             },
             detectedBusinessName: parsed.businessName || null,
             detectedBusinessType: parsed.businessType || null,

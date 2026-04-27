@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
-import { Button, Card, Flex, Input, NavBar, Switch, Tag, Text, Toast } from '../antd';
+import { Button, Card, Flex, Input, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 
 interface MobilePosSyncScreenProps {
@@ -241,7 +241,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('webhookUrl')}</Text>
-                        <Input
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={setWebhookUrl}
                             placeholder={t('webhookUrlPlaceholder')}
                             value={webhookUrl}
