@@ -1,6 +1,7 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import GlobalLanguagesList from '@data/languages';
 import { updateStore } from '@database/stores';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -13,6 +14,7 @@ import { useContext, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, List, NavBar, Text, Toast } from '../antd';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { getStoreLanguageLabel, getStoreManagedLanguages } from '../utils/localizedStoreContent';
 
 interface MobileBusinessCopySetupScreenProps {
     onBack: () => void;
@@ -23,6 +25,8 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isGenerating, setIsGenerating] = useState(false);
     const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
+    const sourceLanguage = GlobalLanguagesList.find((language) => language.code === contentLanguage);
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
     const currentPwaShortName = getLocalizedText(
         (storeDetails as any)?.pwaSettings?.pwaShortName,
         contentLanguage,
@@ -50,6 +54,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 .slice(0, 12);
 
             const generated = await generateBusinessCopyViaAPI({
+                sourceLang: sourceLanguage,
                 menu: {
                     categories: projectContext?.categories || [],
                     items: projectContext?.items || [],
@@ -184,6 +189,9 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 <Card>
                     <Flex gap={12} vertical>
                         <Text>{t('businessCopySourceHint')}</Text>
+                        <Text type="secondary">
+                            {`This generates store-level copy for all enabled languages: ${managedLanguages.map(getStoreLanguageLabel).join(', ')}.`}
+                        </Text>
                         <List>
                             <List.Item prefix="1.">{t('businessCopyUpdatesOfficialPage')}</List.Item>
                             <List.Item prefix="2.">{t('businessCopyUpdatesSeo')}</List.Item>

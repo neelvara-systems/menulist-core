@@ -1,6 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import GlobalLanguagesList from '@data/languages';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import generateBusinessCopyViaAPI, { BusinessCopyGenerationResult } from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
 import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
@@ -34,6 +35,8 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
     const tagline = Form.useWatch('tagline');
     const businessAttributes = Form.useWatch('businessAttributes');
     const [isGenerating, setIsGenerating] = useState(false);
+    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
+    const sourceLanguage = GlobalLanguagesList.find((language) => language.code === contentLanguage);
 
     const handleGenerate = async () => {
         if (!businessName?.trim()) {
@@ -45,7 +48,6 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
             setIsGenerating(true);
 
             const projectContext = await getDefaultProjectAiContext(storeDetails);
-            const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
 
             const socialValues = [
                 ...Object.values(socialMedia || {}),
@@ -56,6 +58,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, scrollRef, 
                 .slice(0, 12);
 
             const generated = await generateBusinessCopyViaAPI({
+                sourceLang: sourceLanguage,
                 menu: {
                     categories: projectContext?.categories || [],
                     items: projectContext?.items || [],

@@ -1,11 +1,13 @@
 'use client';
 import { FEATURE_FLAGS } from '@config/features';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
+import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
 import { Button, Card, Divider, Form, Input, Select, Typography, message } from 'antd';
 import { useTranslations } from 'next-intl';
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
 import SeoPreviewCard from './SeoPreviewCard';
 
@@ -54,6 +56,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const customDomain = Form.useWatch('customDomain');
     const keywords = Form.useWatch('keywords');
     const logoUrl = Form.useWatch('logo');
+    const businessAttributes = Form.useWatch('businessAttributes');
     const metaDescription = Form.useWatch('metaDescription');
     const metaTitle = Form.useWatch('metaTitle');
     const addressLine = Form.useWatch('addressLine');
@@ -62,8 +65,19 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const state = Form.useWatch('state');
     const subdomain = Form.useWatch('subdomain');
     const tagline = Form.useWatch('tagline');
+    const localizedSeoDrafts = Form.useWatch('__localizedSeoDrafts') || {};
+    const storeContentLanguage = Form.useWatch('__storeContentLanguage');
     const [isGenerating, setIsGenerating] = useState(false);
     const localizedSeoValues = getLocalizedSeoValues(storeDetails);
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
+    const currentLanguage = storeContentLanguage || getStorePreferredLanguage(storeDetails);
+    const referenceLanguage = getStorePreferredLanguage(storeDetails);
+    const currentPwaShortName = getLocalizedText(
+        storeDetails?.pwaSettings?.pwaShortName,
+        currentLanguage,
+        getPrimaryLocalizedLanguage(storeDetails?.pwaSettings?.pwaShortName, currentLanguage),
+        '',
+    );
     const isSeoDirty = JSON.stringify({
         canonicalUrl,
         keywords,
@@ -77,6 +91,44 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         metaTitle: localizedSeoValues.metaTitle,
         tagline: localizedSeoValues.tagline,
     });
+
+    useEffect(() => {
+        if (!storeDetails) return;
+        const nextDrafts = Object.keys(localizedSeoDrafts || {}).length > 0
+            ? localizedSeoDrafts
+            : Object.fromEntries(
+                managedLanguages.map((languageCode) => [
+                    languageCode,
+                    {
+                        metaDescription: getLocalizedText(storeDetails?.metaDescription, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaDescription, languageCode), ''),
+                        metaTitle: getLocalizedText(storeDetails?.metaTitle, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaTitle, languageCode), ''),
+                        tagline: getLocalizedText(storeDetails?.tagline, languageCode, getPrimaryLocalizedLanguage(storeDetails?.tagline, languageCode), ''),
+                    },
+                ]),
+            );
+
+        form.setFieldsValue({
+            __localizedSeoDrafts: nextDrafts,
+            __storeContentLanguage: currentLanguage,
+            metaDescription: nextDrafts[currentLanguage]?.metaDescription || '',
+            metaTitle: nextDrafts[currentLanguage]?.metaTitle || '',
+            tagline: nextDrafts[currentLanguage]?.tagline || '',
+        });
+    }, [storeDetails]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (!currentLanguage) return;
+        form.setFieldsValue({
+            __localizedSeoDrafts: {
+                ...localizedSeoDrafts,
+                [currentLanguage]: {
+                    metaDescription: metaDescription || '',
+                    metaTitle: metaTitle || '',
+                    tagline: tagline || '',
+                },
+            },
+        });
+    }, [currentLanguage, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleGenerateSeo = async () => {
         if (!businessName?.trim()) {
@@ -106,6 +158,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 },
                 store: {
                     addressLine,
+                    businessAttributes: getActiveBusinessAttributeLabels(businessAttributes),
                     businessCategory,
                     businessType,
                     city,
@@ -118,11 +171,13 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                         displayName: firstText(publicPresence?.displayName),
                         establishedYear: typeof publicPresence?.establishedYear === 'number' ? publicPresence.establishedYear : undefined,
                         googleMapsUrl: publicPresence?.googleMapsUrl || '',
+                        googleReviewUrl: publicPresence?.googleReviewUrl || '',
                         knownFor: firstText(publicPresence?.knownFor),
                         orderUrl: publicPresence?.orderUrl || '',
                         reservationUrl: publicPresence?.reservationUrl || '',
                         whatsappNumber: publicPresence?.whatsappNumber || '',
                     },
+                    pwaShortName: currentPwaShortName,
                     socialMedia: socialValues,
                     state,
                     tagline,
@@ -135,6 +190,14 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             }
 
             form.setFieldsValue({
+                __localizedSeoDrafts: {
+                    ...localizedSeoDrafts,
+                    [currentLanguage]: {
+                        metaDescription: generated.metaDescription,
+                        metaTitle: generated.metaTitle,
+                        tagline: generated.tagline || '',
+                    },
+                },
                 keywords: generated.keywords,
                 metaDescription: generated.metaDescription,
                 metaTitle: generated.metaTitle,
@@ -149,12 +212,24 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     };
 
     const handleResetSeo = () => {
+        const resetDrafts = Object.fromEntries(
+            managedLanguages.map((languageCode) => [
+                languageCode,
+                {
+                    metaDescription: getLocalizedText(storeDetails?.metaDescription, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaDescription, languageCode), ''),
+                    metaTitle: getLocalizedText(storeDetails?.metaTitle, languageCode, getPrimaryLocalizedLanguage(storeDetails?.metaTitle, languageCode), ''),
+                    tagline: getLocalizedText(storeDetails?.tagline, languageCode, getPrimaryLocalizedLanguage(storeDetails?.tagline, languageCode), ''),
+                },
+            ]),
+        );
         form.setFieldsValue({
+            __localizedSeoDrafts: resetDrafts,
+            __storeContentLanguage: currentLanguage,
             canonicalUrl: storeDetails?.canonicalUrl || '',
             keywords: storeDetails?.keywords || [],
-            metaDescription: localizedSeoValues.metaDescription,
-            metaTitle: localizedSeoValues.metaTitle,
-            tagline: localizedSeoValues.tagline,
+            metaDescription: resetDrafts[currentLanguage]?.metaDescription || '',
+            metaTitle: resetDrafts[currentLanguage]?.metaTitle || '',
+            tagline: resetDrafts[currentLanguage]?.tagline || '',
         });
     };
 
@@ -162,6 +237,35 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         <Card size='small' ref={scrollRef}>
             <Title level={5} style={{ margin: "unset" }}>{t('title')}</Title>
             <Divider />
+            {managedLanguages.length > 1 ? (
+                <Form.Item label="SEO content language">
+                    <Select
+                        value={currentLanguage}
+                        options={managedLanguages.map((languageCode) => ({
+                            label: getStoreLanguageLabel(languageCode),
+                            value: languageCode,
+                        }))}
+                        onChange={(nextLanguage) => {
+                            const nextDrafts = {
+                                ...localizedSeoDrafts,
+                                [currentLanguage]: {
+                                    metaDescription: metaDescription || '',
+                                    metaTitle: metaTitle || '',
+                                    tagline: tagline || '',
+                                },
+                            };
+
+                            form.setFieldsValue({
+                                __localizedSeoDrafts: nextDrafts,
+                                __storeContentLanguage: nextLanguage,
+                                metaDescription: nextDrafts[nextLanguage]?.metaDescription || '',
+                                metaTitle: nextDrafts[nextLanguage]?.metaTitle || '',
+                                tagline: nextDrafts[nextLanguage]?.tagline || '',
+                            });
+                        }}
+                    />
+                </Form.Item>
+            ) : null}
             <Form.Item
                 label={t('tagline')}
                 name="tagline"
@@ -169,6 +273,27 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             >
                 <Input placeholder={t('taglinePlaceholder')} maxLength={100} showCount />
             </Form.Item>
+            {currentLanguage !== referenceLanguage ? (
+                <DesktopLocalizedReferenceHint
+                    onUseReference={() => {
+                        const nextDrafts = {
+                            ...localizedSeoDrafts,
+                            [currentLanguage]: {
+                                metaDescription: metaDescription || '',
+                                metaTitle: metaTitle || '',
+                                tagline: referenceValue(localizedSeoDrafts[referenceLanguage]?.tagline),
+                            },
+                        };
+
+                        form.setFieldsValue({
+                            __localizedSeoDrafts: nextDrafts,
+                            tagline: referenceValue(localizedSeoDrafts[referenceLanguage]?.tagline),
+                        });
+                    }}
+                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                    referenceValue={localizedSeoDrafts[referenceLanguage]?.tagline || ''}
+                />
+            ) : null}
 
             <Form.Item
                 label={t('metaTitle')}
@@ -177,6 +302,27 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             >
                 <Input placeholder={t('metaTitlePlaceholder')} maxLength={60} showCount />
             </Form.Item>
+            {currentLanguage !== referenceLanguage ? (
+                <DesktopLocalizedReferenceHint
+                    onUseReference={() => {
+                        const nextDrafts = {
+                            ...localizedSeoDrafts,
+                            [currentLanguage]: {
+                                metaDescription: metaDescription || '',
+                                metaTitle: referenceValue(localizedSeoDrafts[referenceLanguage]?.metaTitle),
+                                tagline: tagline || '',
+                            },
+                        };
+
+                        form.setFieldsValue({
+                            __localizedSeoDrafts: nextDrafts,
+                            metaTitle: referenceValue(localizedSeoDrafts[referenceLanguage]?.metaTitle),
+                        });
+                    }}
+                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                    referenceValue={localizedSeoDrafts[referenceLanguage]?.metaTitle || ''}
+                />
+            ) : null}
 
             <Form.Item
                 label={t('metaDescription')}
@@ -185,6 +331,27 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             >
                 <TextArea rows={3} placeholder={t('metaDescPlaceholder')} maxLength={160} showCount />
             </Form.Item>
+            {currentLanguage !== referenceLanguage ? (
+                <DesktopLocalizedReferenceHint
+                    onUseReference={() => {
+                        const nextDrafts = {
+                            ...localizedSeoDrafts,
+                            [currentLanguage]: {
+                                metaDescription: referenceValue(localizedSeoDrafts[referenceLanguage]?.metaDescription),
+                                metaTitle: metaTitle || '',
+                                tagline: tagline || '',
+                            },
+                        };
+
+                        form.setFieldsValue({
+                            __localizedSeoDrafts: nextDrafts,
+                            metaDescription: referenceValue(localizedSeoDrafts[referenceLanguage]?.metaDescription),
+                        });
+                    }}
+                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                    referenceValue={localizedSeoDrafts[referenceLanguage]?.metaDescription || ''}
+                />
+            ) : null}
 
             <Form.Item
                 label={t('keywords')}
@@ -280,6 +447,36 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
 
 export default memo(SeoTab);
 
+function DesktopLocalizedReferenceHint({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+}) {
+    return (
+        <div style={{ margin: '-12px 0 16px' }}>
+            <Card size="small" style={{ background: '#fafafa', borderColor: '#f0f0f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ minWidth: 0 }}>
+                        <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                        <div style={{ marginTop: 4 }}>
+                            <Text>{referenceValue || 'No reference content available yet.'}</Text>
+                        </div>
+                    </div>
+                    {referenceValue ? (
+                        <Button size="small" type="link" onClick={onUseReference}>
+                            Use reference
+                        </Button>
+                    ) : null}
+                </div>
+            </Card>
+        </div>
+    );
+}
+
 function firstText(value: unknown): string {
     if (!value) return '';
     if (typeof value === 'string') return value.trim();
@@ -291,4 +488,8 @@ function firstText(value: unknown): string {
         return typeof firstValue === 'string' ? firstValue.trim() : '';
     }
     return '';
+}
+
+function referenceValue(value: unknown): string {
+    return typeof value === 'string' ? value : '';
 }

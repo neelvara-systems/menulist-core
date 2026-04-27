@@ -3,10 +3,12 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row, Switch, Typography, Upload, message } from 'antd';
+import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row, Select, Switch, Typography, Upload, message } from 'antd';
 import { useTranslations } from 'next-intl';
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
 import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuPhone, LuShoppingBag, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
 import GoogleListingGuide from './GoogleListingGuide';
@@ -47,12 +49,21 @@ interface OfficialPageTabProps {
 const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
     ({ scrollRef, publicPresence = {}, onPublicPresenceChange, subdomain, customDomain, onGoogleLinkDone, onGoogleLinkDismiss }, ref) => {
         const t = useTranslations('BusinessSettings');
+        const form = Form.useFormInstance();
         const session = useClientAuthSession();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
         const [photos, setPhotos] = useState<string[]>(publicPresence?.photos || []);
         const officialPageUrl = generateOBPUrl(subdomain, customDomain);
-
-        if (!FEATURE_FLAGS.ENABLE_OBP) return null;
+        const localizedPresenceDrafts = Form.useWatch('__localizedPublicPresenceDrafts') || {};
+        const storeContentLanguage = Form.useWatch('__storeContentLanguage');
+        const activeLanguages = Form.useWatch('activeLanguages') || [];
+        const defaultLanguage = Form.useWatch('defaultLanguage');
+        const watchedDescriptor = Form.useWatch(['publicPresence', 'descriptor']);
+        const watchedDisplayName = Form.useWatch(['publicPresence', 'displayName']);
+        const watchedKnownFor = Form.useWatch(['publicPresence', 'knownFor']);
+        const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
+        const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
+        const referenceLanguage = getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
 
         const handleToggle = (field: string) => (checked: boolean) => {
             onPublicPresenceChange?.(field, checked);
@@ -85,6 +96,48 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             onPublicPresenceChange?.('photos', updated.filter(Boolean));
         };
 
+        useEffect(() => {
+            const nextDrafts = Object.keys(localizedPresenceDrafts || {}).length > 0
+                ? localizedPresenceDrafts
+                : Object.fromEntries(
+                    managedLanguages.map((languageCode) => [
+                        languageCode,
+                        {
+                            descriptor: getLocalizedText(publicPresence?.descriptor, languageCode, getPrimaryLocalizedLanguage(publicPresence?.descriptor, languageCode), ''),
+                            displayName: getLocalizedText(publicPresence?.displayName, languageCode, getPrimaryLocalizedLanguage(publicPresence?.displayName, languageCode), ''),
+                            knownFor: getLocalizedText(publicPresence?.knownFor, languageCode, getPrimaryLocalizedLanguage(publicPresence?.knownFor, languageCode), ''),
+                        },
+                    ]),
+                );
+
+            form.setFieldsValue({
+                __localizedPublicPresenceDrafts: nextDrafts,
+                __storeContentLanguage: currentLanguage,
+                publicPresence: {
+                    ...form.getFieldValue('publicPresence'),
+                    descriptor: nextDrafts[currentLanguage]?.descriptor || '',
+                    displayName: nextDrafts[currentLanguage]?.displayName || '',
+                    knownFor: nextDrafts[currentLanguage]?.knownFor || '',
+                },
+            });
+        }, [publicPresence]); // eslint-disable-line react-hooks/exhaustive-deps
+
+        useEffect(() => {
+            const visiblePresence = form.getFieldValue('publicPresence') || {};
+            form.setFieldsValue({
+                __localizedPublicPresenceDrafts: {
+                    ...localizedPresenceDrafts,
+                    [currentLanguage]: {
+                        descriptor: visiblePresence.descriptor || '',
+                        displayName: visiblePresence.displayName || '',
+                        knownFor: visiblePresence.knownFor || '',
+                    },
+                },
+            });
+        }, [currentLanguage, watchedDescriptor, watchedDisplayName, watchedKnownFor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+        if (!FEATURE_FLAGS.ENABLE_OBP) return null;
+
         return (
             <>
                 {officialPageUrl ? (
@@ -114,6 +167,42 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         {t('officialPageDesc')}
                     </Text>
                     <Divider />
+                    {managedLanguages.length > 1 ? (
+                        <Form.Item label="Official page content language">
+                            <Input.Group compact>
+                                <Select
+                                    value={currentLanguage}
+                                    style={{ width: '100%' }}
+                                    options={managedLanguages.map((languageCode) => ({
+                                        label: getStoreLanguageLabel(languageCode),
+                                        value: languageCode,
+                                    }))}
+                                    onChange={(nextLanguage) => {
+                                        const visiblePresence = form.getFieldValue('publicPresence') || {};
+                                        const nextDrafts = {
+                                            ...localizedPresenceDrafts,
+                                            [currentLanguage]: {
+                                                descriptor: visiblePresence.descriptor || '',
+                                                displayName: visiblePresence.displayName || '',
+                                                knownFor: visiblePresence.knownFor || '',
+                                            },
+                                        };
+
+                                        form.setFieldsValue({
+                                            __localizedPublicPresenceDrafts: nextDrafts,
+                                            __storeContentLanguage: nextLanguage,
+                                            publicPresence: {
+                                                ...visiblePresence,
+                                                descriptor: nextDrafts[nextLanguage]?.descriptor || '',
+                                                displayName: nextDrafts[nextLanguage]?.displayName || '',
+                                                knownFor: nextDrafts[nextLanguage]?.knownFor || '',
+                                            },
+                                        });
+                                    }}
+                                />
+                            </Input.Group>
+                        </Form.Item>
+                    ) : null}
 
                     <Row gutter={[16, 0]}>
                         <Col xs={24} md={12}>
@@ -129,6 +218,31 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     showCount
                                 />
                             </Form.Item>
+                            {currentLanguage !== referenceLanguage ? (
+                                <DesktopLocalizedReferenceHint
+                                    onUseReference={() => {
+                                        const visiblePresence = form.getFieldValue('publicPresence') || {};
+                                        const nextDrafts = {
+                                            ...localizedPresenceDrafts,
+                                            [currentLanguage]: {
+                                                descriptor: visiblePresence.descriptor || '',
+                                                displayName: referenceValue(localizedPresenceDrafts[referenceLanguage]?.displayName),
+                                                knownFor: visiblePresence.knownFor || '',
+                                            },
+                                        };
+
+                                        form.setFieldsValue({
+                                            __localizedPublicPresenceDrafts: nextDrafts,
+                                            publicPresence: {
+                                                ...visiblePresence,
+                                                displayName: referenceValue(localizedPresenceDrafts[referenceLanguage]?.displayName),
+                                            },
+                                        });
+                                    }}
+                                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                    referenceValue={localizedPresenceDrafts[referenceLanguage]?.displayName || ''}
+                                />
+                            ) : null}
                         </Col>
                         <Col xs={24} md={12}>
                             <Form.Item
@@ -143,6 +257,31 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     showCount
                                 />
                             </Form.Item>
+                            {currentLanguage !== referenceLanguage ? (
+                                <DesktopLocalizedReferenceHint
+                                    onUseReference={() => {
+                                        const visiblePresence = form.getFieldValue('publicPresence') || {};
+                                        const nextDrafts = {
+                                            ...localizedPresenceDrafts,
+                                            [currentLanguage]: {
+                                                descriptor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.descriptor),
+                                                displayName: visiblePresence.displayName || '',
+                                                knownFor: visiblePresence.knownFor || '',
+                                            },
+                                        };
+
+                                        form.setFieldsValue({
+                                            __localizedPublicPresenceDrafts: nextDrafts,
+                                            publicPresence: {
+                                                ...visiblePresence,
+                                                descriptor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.descriptor),
+                                            },
+                                        });
+                                    }}
+                                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                    referenceValue={localizedPresenceDrafts[referenceLanguage]?.descriptor || ''}
+                                />
+                            ) : null}
                         </Col>
                         <Col xs={24} md={12}>
                             <Form.Item
@@ -157,6 +296,31 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     showCount
                                 />
                             </Form.Item>
+                            {currentLanguage !== referenceLanguage ? (
+                                <DesktopLocalizedReferenceHint
+                                    onUseReference={() => {
+                                        const visiblePresence = form.getFieldValue('publicPresence') || {};
+                                        const nextDrafts = {
+                                            ...localizedPresenceDrafts,
+                                            [currentLanguage]: {
+                                                descriptor: visiblePresence.descriptor || '',
+                                                displayName: visiblePresence.displayName || '',
+                                                knownFor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.knownFor),
+                                            },
+                                        };
+
+                                        form.setFieldsValue({
+                                            __localizedPublicPresenceDrafts: nextDrafts,
+                                            publicPresence: {
+                                                ...visiblePresence,
+                                                knownFor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.knownFor),
+                                            },
+                                        });
+                                    }}
+                                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                    referenceValue={localizedPresenceDrafts[referenceLanguage]?.knownFor || ''}
+                                />
+                            ) : null}
                         </Col>
                     </Row>
 
@@ -477,3 +641,37 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
 OfficialPageTab.displayName = 'OfficialPageTab';
 
 export default OfficialPageTab;
+
+function DesktopLocalizedReferenceHint({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+}) {
+    return (
+        <div style={{ margin: '-12px 0 16px' }}>
+            <Card size="small" style={{ background: '#fafafa', borderColor: '#f0f0f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ minWidth: 0 }}>
+                        <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                        <div style={{ marginTop: 4 }}>
+                            <Text>{referenceValue || 'No reference content available yet.'}</Text>
+                        </div>
+                    </div>
+                    {referenceValue ? (
+                        <Button size="small" type="link" onClick={onUseReference}>
+                            Use reference
+                        </Button>
+                    ) : null}
+                </div>
+            </Card>
+        </div>
+    );
+}
+
+function referenceValue(value: unknown): string {
+    return typeof value === 'string' ? value : '';
+}

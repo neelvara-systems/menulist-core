@@ -19,7 +19,6 @@ import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
 import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
-import { updateLocalizedText } from '@lib/localization/text';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
@@ -39,6 +38,8 @@ import {
     Title,
     Toast,
 } from '../antd';
+import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
+import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 
 interface Props {
     onBack: () => void;
@@ -51,14 +52,20 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
 
     // ── Settings state ──
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
     const initialIconUrl = (storeDetails as any)?.publicPresence?.pwaIconOverrideUrl || '';
     const [enableInstallableApp, setEnableInstallableApp] = useState(initial.enableInstallableApp);
     const [promoteInstallation, setPromoteInstallation] = useState(initial.promoteInstallation);
-    const [pwaShortName, setPwaShortName] = useState(initial.pwaShortName);
+    const [selectedLanguage, setSelectedLanguage] = useState(getStorePreferredLanguage(storeDetails));
+    const [localizedShortNameDrafts, setLocalizedShortNameDrafts] = useState<Record<string, string>>(
+        Object.fromEntries(managedLanguages.map((languageCode) => [languageCode, getLocalizedStoreValue(storeDetails?.pwaSettings?.pwaShortName, languageCode, '')])),
+    );
+    const [originalLocalizedShortNameDrafts, setOriginalLocalizedShortNameDrafts] = useState<Record<string, string>>(
+        Object.fromEntries(managedLanguages.map((languageCode) => [languageCode, getLocalizedStoreValue(storeDetails?.pwaSettings?.pwaShortName, languageCode, '')])),
+    );
     const [originalDraft, setOriginalDraft] = useState({
         enableInstallableApp: initial.enableInstallableApp,
         promoteInstallation: initial.promoteInstallation,
-        pwaShortName: initial.pwaShortName,
         iconUrl: initialIconUrl,
     });
     const [savedIconUrl, setSavedIconUrl] = useState<string>(initialIconUrl);
@@ -78,10 +85,12 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const selectedIconUrl = (selectedIcon?.url || '').trim();
     const currentIconUrl = removeIconOnSave ? '' : selectedIconUrl;
+    const pwaShortName = localizedShortNameDrafts[selectedLanguage] || '';
+    const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const hasSettingsChanges = (
         enableInstallableApp !== originalDraft.enableInstallableApp
         || promoteInstallation !== originalDraft.promoteInstallation
-        || pwaShortName.trim() !== originalDraft.pwaShortName
+        || JSON.stringify(localizedShortNameDrafts) !== JSON.stringify(originalLocalizedShortNameDrafts)
     );
     const hasIconChanges = removeIconOnSave || selectedIconUrl !== originalDraft.iconUrl;
     const hasUnsavedChanges = hasSettingsChanges || hasIconChanges;
@@ -89,11 +98,16 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     useEffect(() => {
         setEnableInstallableApp(initial.enableInstallableApp);
         setPromoteInstallation(initial.promoteInstallation);
-        setPwaShortName(initial.pwaShortName);
+        const nextManagedLanguages = getStoreManagedLanguages(storeDetails);
+        const nextLocalizedDrafts = Object.fromEntries(
+            nextManagedLanguages.map((languageCode) => [languageCode, getLocalizedStoreValue(storeDetails?.pwaSettings?.pwaShortName, languageCode, '')]),
+        );
+        setSelectedLanguage(getStorePreferredLanguage(storeDetails));
+        setLocalizedShortNameDrafts(nextLocalizedDrafts);
+        setOriginalLocalizedShortNameDrafts(nextLocalizedDrafts);
         setOriginalDraft({
             enableInstallableApp: initial.enableInstallableApp,
             promoteInstallation: initial.promoteInstallation,
-            pwaShortName: initial.pwaShortName,
             iconUrl: initialIconUrl,
         });
         setSavedIconUrl(initialIconUrl);
@@ -108,14 +122,12 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                 : null,
         );
         setRemoveIconOnSave(false);
-    }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName, initialIconUrl]);
+    }, [initial.enableInstallableApp, initial.promoteInstallation, initial.pwaShortName, initialIconUrl, storeDetails]);
 
     const handleSave = async () => {
         if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
         setSaving(true);
         try {
-            const nextShortName = (pwaShortName || '').trim();
-            const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
             const settingsPatch: {
                 enableInstallableApp?: boolean;
                 promoteInstallation?: boolean;
@@ -127,12 +139,10 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
             if (promoteInstallation !== originalDraft.promoteInstallation) {
                 settingsPatch.promoteInstallation = promoteInstallation;
             }
-            if (nextShortName !== originalDraft.pwaShortName) {
-                settingsPatch.pwaShortName = updateLocalizedText(
+            if (JSON.stringify(localizedShortNameDrafts) !== JSON.stringify(originalLocalizedShortNameDrafts)) {
+                settingsPatch.pwaShortName = applyLocalizedDraftMap(
                     storeDetails?.pwaSettings?.pwaShortName,
-                    nextShortName,
-                    contentLanguage,
-                    'en',
+                    localizedShortNameDrafts,
                 );
             }
             if (Object.keys(settingsPatch).length > 0) {
@@ -189,9 +199,9 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
             setOriginalDraft({
                 enableInstallableApp,
                 promoteInstallation,
-                pwaShortName: nextShortName,
                 iconUrl: nextIconUrl,
             });
+            setOriginalLocalizedShortNameDrafts(localizedShortNameDrafts);
             Toast.show({ content: 'Customer App settings saved', duration: 1500 });
         } catch (err) {
             console.error('[MobileCustomerAppScreen] save failed:', err);
@@ -205,7 +215,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
         if (!hasUnsavedChanges || saving) return;
         setEnableInstallableApp(originalDraft.enableInstallableApp);
         setPromoteInstallation(originalDraft.promoteInstallation);
-        setPwaShortName(originalDraft.pwaShortName);
+        setLocalizedShortNameDrafts(originalLocalizedShortNameDrafts);
         setSavedIconUrl(originalDraft.iconUrl);
         setSelectedIcon(
             originalDraft.iconUrl
@@ -287,6 +297,14 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
             <NavBar onBack={onBack} />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <MobileLocalizedLanguageSelector
+                    helperText="Choose which language you want to edit for the home-screen app name. Install toggles, link, and icon stay shared for all languages."
+                    languages={managedLanguages}
+                    onChange={setSelectedLanguage}
+                    selectedLanguage={selectedLanguage}
+                    title="Customer app language"
+                />
+
                 {/* Intro */}
                 <Card>
                     <Flex align="center" gap={10} style={{ marginBottom: 8 }}>
@@ -379,8 +397,21 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                             value={pwaShortName}
                             maxLength={12}
                             placeholder="e.g. Joe's"
-                            onChange={(v) => setPwaShortName(v)}
+                            onChange={(value) => setLocalizedShortNameDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: value,
+                            }))}
                         />
+                        {selectedLanguage !== referenceLanguage ? (
+                            <LocalizedReferenceHint
+                                onUseReference={() => setLocalizedShortNameDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: previous[referenceLanguage] || '',
+                                }))}
+                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                referenceValue={localizedShortNameDrafts[referenceLanguage] || ''}
+                            />
+                        ) : null}
                     </div>
 
                     <div
@@ -703,6 +734,36 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                 compression={false}
                 maxSizeMB={10}
             />
+        </Flex>
+    );
+}
+
+function LocalizedReferenceHint({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+}) {
+    return (
+        <Flex
+            align="center"
+            justify="space-between"
+            style={{ background: '#f8fafc', borderRadius: 12, padding: '8px 10px', marginTop: 8 }}
+        >
+            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                <Text style={{ wordBreak: 'break-word' }}>
+                    {referenceValue || 'No content yet in the primary language.'}
+                </Text>
+            </Flex>
+            {referenceValue ? (
+                <Button fill="outline" onClick={onUseReference} size="small">
+                    Use
+                </Button>
+            ) : null}
         </Flex>
     );
 }

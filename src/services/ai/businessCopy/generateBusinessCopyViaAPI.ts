@@ -3,6 +3,12 @@ import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 
 export interface BusinessCopyGenerationPayload {
+    sourceLang?: {
+        code: string;
+        direction?: 'ltr' | 'rtl';
+        name: string;
+        nativeName?: string;
+    };
     menu?: {
         categories?: string[];
         items?: string[];

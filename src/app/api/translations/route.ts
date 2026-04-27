@@ -62,6 +62,7 @@ export const POST = withAuth(async (request, session) => {
 
         const validated = validation.data;
         const { inputJson, targetLang, sourceLang, action, projectId, fileId } = validated;
+        const targetLanguages = Array.isArray(targetLang) ? targetLang : [targetLang];
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(
@@ -81,7 +82,9 @@ export const POST = withAuth(async (request, session) => {
         const startTime = new Date().getTime();
         const prompt = getPrompt({
             inputJson: inputJson as Record<string, string>,
-            targetLang: `${targetLang.name} (${targetLang.code})`,
+            targetLang: Array.isArray(targetLang)
+                ? targetLang.map((language) => `${language.name} (${language.code})`)
+                : `${targetLang.name} (${targetLang.code})`,
             sourceLang: `${sourceLang.name} (${sourceLang.code})`
         });
         const generationConfig = {
@@ -170,7 +173,16 @@ export const POST = withAuth(async (request, session) => {
 
         await writeLogEntry({
             logFileName: LOG_FILE, userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
-            data: { action, request: { inputJson, targetLang: targetLang.code, sourceLang: sourceLang.code }, response: generatedData, transaction: transactionObject, }
+            data: {
+                action,
+                request: {
+                    inputJson,
+                    targetLang: targetLanguages.map((language) => language.code),
+                    sourceLang: sourceLang.code
+                },
+                response: generatedData,
+                transaction: transactionObject,
+            }
         });
 
         return NextResponse.json({

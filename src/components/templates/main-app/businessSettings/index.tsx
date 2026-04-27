@@ -3,6 +3,7 @@
 import ImageUploadInput from "@atoms/imageUploadInput";
 import { FEATURE_FLAGS } from "@config/features";
 import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
+import { getScreenState } from "@database/campaigns";
 import { extractBrandChanges, propagateBrandToOutlets } from "@database/multiOutlet/brandPropagation";
 import { getPlatformSummary } from "@database/platformSummary";
 import { addStore, updateStore } from "@database/stores";
@@ -10,7 +11,10 @@ import { updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from "@lib/localization/text";
+import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
+import { buildScreenUrl } from "@lib/screen/utils";
 import localizeBusinessCopyResult, { mergeLocalizedField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
+import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage } from "@lib/localization/storeContent";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
     APP_TIME_FORMAT_COOKIES_KEY,
@@ -21,7 +25,7 @@ import {
 import { UserUploadedFileType } from "@type/common";
 import { getUTCDate } from "@util/dateTime";
 import { getObjectDifferance } from "@util/deepMerge";
-import { Button, Card, Flex, Form, Menu, Space, Typography } from "antd";
+import { Button, Card, Flex, Form, Menu, Space, Typography, message } from "antd";
 import { getCookie } from "cookies-next";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -30,6 +34,7 @@ import { useFormatter, useTimeZone, useTranslations } from "next-intl";
 import { createRef, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuBarChart,
+    LuBuilding2,
     LuClock,
     LuGlobe,
     LuInfo,
@@ -49,6 +54,7 @@ import {
 } from "react-icons/lu";
 import { SiGooglemybusiness } from "react-icons/si";
 import DigitalScreenSettings from "../settings/DigitalScreenSettings";
+import PresenceMonitor from "../useMenuList/PresenceMonitor";
 import {
     AnalyticsTab,
     BasicInfoTab,
@@ -68,6 +74,7 @@ import {
     TimeSlotPresetsTab,
     WorkingHoursTab,
 } from "./tabs";
+import type { UseMenuListData } from "../useMenuList/types";
 
 dayjs.extend(customParseFormat);
 
@@ -100,6 +107,7 @@ function resolveStoreContentLanguage(storeDetails: any): string {
 
 function getBusinessSettingsInitialValues(storeDetails: any) {
     const contentLanguage = resolveStoreContentLanguage(storeDetails);
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
     const displayNamePrimaryLanguage = getPrimaryLocalizedLanguage(
         storeDetails?.publicPresence?.displayName,
         contentLanguage,
@@ -115,6 +123,33 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
 
     return {
         ...storeDetails,
+        __localizedPublicPresenceDrafts: Object.fromEntries(
+            managedLanguages.map((languageCode) => [
+                languageCode,
+                {
+                    descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, languageCode, ''),
+                    displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, languageCode, ''),
+                    knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, languageCode, ''),
+                },
+            ]),
+        ),
+        __localizedPwaShortNameDrafts: Object.fromEntries(
+            managedLanguages.map((languageCode) => [
+                languageCode,
+                getLocalizedStoreValue(storeDetails?.pwaSettings?.pwaShortName, languageCode, ''),
+            ]),
+        ),
+        __localizedSeoDrafts: Object.fromEntries(
+            managedLanguages.map((languageCode) => [
+                languageCode,
+                {
+                    metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
+                    metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
+                    tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
+                },
+            ]),
+        ),
+        __storeContentLanguage: getStorePreferredLanguage(storeDetails),
         metaDescription: getLocalizedText(
             storeDetails?.metaDescription,
             contentLanguage,
@@ -155,6 +190,90 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
             '',
         ),
     };
+}
+
+function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: any }) {
+    const [data, setData] = useState<UseMenuListData | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadPresenceData() {
+            if (!storeDetails || !FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR) {
+                if (isMounted) setData(null);
+                return;
+            }
+
+            const obpLink = generateOBPUrl(storeDetails.subdomain || '', storeDetails.customDomain);
+            let screenToken: string | null = null;
+
+            try {
+                const screenState = await getScreenState();
+                screenToken = screenState?.screenToken || null;
+            } catch {
+                screenToken = null;
+            }
+
+            if (!isMounted) return;
+
+            setData({
+                allProjects: [],
+                businessType: storeDetails.businessType || '',
+                customDomain: storeDetails.customDomain || null,
+                feedbackLink: '',
+                feedbackQrLink: '',
+                hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+                hasPosSync: false,
+                hasPublishedMenu: Boolean(obpLink),
+                hasScreen: Boolean(screenToken),
+                highlightsLink: screenToken ? `${buildScreenUrl(screenToken, obpLink)}?mode=highlights` : null,
+                installAppLink: null,
+                isDefaultProject: false,
+                menuBoardLink: screenToken ? buildScreenUrl(screenToken, obpLink) : null,
+                menuLink: '',
+                menuModifiedOn: null,
+                obpLink,
+                posSyncStatus: null,
+                projectId: null,
+                projectName: null,
+                screenLastSeenAt: null,
+                screenToken,
+                storeLogo: storeDetails.logo || null,
+                storeName: getLocalizedText(
+                    storeDetails?.publicPresence?.displayName,
+                    undefined,
+                    getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, 'en'),
+                    storeDetails?.name || 'Your Business',
+                ),
+                subdomain: storeDetails.subdomain || '',
+            });
+        }
+
+        void loadPresenceData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [storeDetails]);
+
+    if (!FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR || !storeDetails || !data) {
+        return null;
+    }
+
+    return (
+        <PresenceMonitor
+            data={data}
+            storeDetails={storeDetails}
+            onCopyLink={async (url, label) => {
+                try {
+                    await navigator.clipboard.writeText(url);
+                    message.success(`${label} copied`);
+                } catch {
+                    message.error(`Could not copy ${label.toLowerCase()}`);
+                }
+            }}
+        />
+    );
 }
 
 function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
@@ -215,76 +334,167 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
     const TAB_ITEMS_LIST = [
         {
-            key: "basic",
-            label: t('basicInformation'),
-            icon: <LuInfo />,
-            tab: <BasicInfoTab scrollRef={scrollRefs.current[0]} />,
-        },
-        {
-            key: "domain",
-            label: t('domain'),
-            icon: <LuLink />,
+            key: "business-profile",
+            label: "Business Profile",
+            icon: <LuBuilding2 />,
             tab: (
-                <DomainSettingsTab
-                    scrollRef={scrollRefs.current[1]}
-                    storeDetails={storeDetails}
-                    onStoreUpdate={(updates) => {
-                        const storeUpdate = { storeId: storeDetails.storeId, ...updates };
-                        updateStore(storeUpdate).then(() => {
-                            setStoreDetails({ ...storeDetails, ...updates });
-                        });
-                    }}
-                />
-            ),
-        },
-        {
-            key: "official-page",
-            label: t('officialPage'),
-            icon: <LuGlobe />,
-            tab: (
-                <OfficialPageTab
-                    scrollRef={scrollRefs.current[2]}
-                    publicPresence={storeDetails?.publicPresence}
-                    subdomain={storeDetails?.subdomain}
-                    customDomain={storeDetails?.customDomain}
-                    onGoogleLinkDone={() => {
-                        const updates = {
-                            storeId: storeDetails?.storeId,
-                            publicPresence: {
-                                ...(storeDetails?.publicPresence || {}),
-                                googleLinkUpdated: true,
-                                googleLinkUpdatedAt: new Date().toISOString(),
-                            },
-                        };
-                        updateStore(updates).then(() => {
-                            setStoreDetails({
-                                ...storeDetails,
+                <Flex vertical gap={16} ref={scrollRefs.current[0]}>
+                    <Card size="small">
+                        <Typography.Title level={5} style={{ margin: 'unset' }}>
+                            Business Profile
+                        </Typography.Title>
+                        <Typography.Text type="secondary">
+                            Keep your brand, public business identity, customer-facing links, and app branding in one place.
+                        </Typography.Text>
+                    </Card>
+                    <BasicInfoTab />
+                    <LocationInfoTab />
+                    <ContactPersonTab />
+                    <SocialMediaTab
+                        socialMedia={socialMedia}
+                        setSocialMedia={setSocialMedia}
+                    />
+                    <OfficialPageTab
+                        publicPresence={storeDetails?.publicPresence}
+                        subdomain={storeDetails?.subdomain}
+                        customDomain={storeDetails?.customDomain}
+                        onGoogleLinkDone={() => {
+                            const updates = {
+                                storeId: storeDetails?.storeId,
                                 publicPresence: {
                                     ...(storeDetails?.publicPresence || {}),
                                     googleLinkUpdated: true,
                                     googleLinkUpdatedAt: new Date().toISOString(),
                                 },
+                            };
+                            updateStore(updates).then(() => {
+                                setStoreDetails({
+                                    ...storeDetails,
+                                    publicPresence: {
+                                        ...(storeDetails?.publicPresence || {}),
+                                        googleLinkUpdated: true,
+                                        googleLinkUpdatedAt: new Date().toISOString(),
+                                    },
+                                });
                             });
-                        });
-                    }}
-                    onGoogleLinkDismiss={() => {
-                        // Silently dismiss — no persistence needed
-                    }}
-                />
+                        }}
+                        onGoogleLinkDismiss={() => {
+                            // Silently dismiss — no persistence needed
+                        }}
+                    />
+                    {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? (
+                        <BusinessAttributesTab />
+                    ) : null}
+                    {FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? (
+                        <CustomerAppTab />
+                    ) : null}
+                </Flex>
             ),
         },
         {
-            key: "location",
-            label: t('locationInformation'),
-            icon: <LuMapPin />,
-            tab: <LocationInfoTab scrollRef={scrollRefs.current[3]} />,
+            key: "search-discovery",
+            label: "Search & Discovery",
+            icon: <LuSearch />,
+            tab: (
+                <Flex vertical gap={16} ref={scrollRefs.current[1]}>
+                    <Card size="small">
+                        <Typography.Title level={5} style={{ margin: 'unset' }}>
+                            Search & Discovery
+                        </Typography.Title>
+                        <Typography.Text type="secondary">
+                            Manage how people find your business, what they read first, and which links carry your public presence.
+                        </Typography.Text>
+                    </Card>
+                    <DomainSettingsTab
+                        storeDetails={storeDetails}
+                        onStoreUpdate={(updates) => {
+                            const storeUpdate = { storeId: storeDetails.storeId, ...updates };
+                            updateStore(storeUpdate).then(() => {
+                                setStoreDetails({ ...storeDetails, ...updates });
+                            });
+                        }}
+                    />
+                    {FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? (
+                        <BusinessCopySetupTab
+                            onApplyGeneratedCopy={async (generated, projectId) => {
+                                if (!storeDetails?.storeId) return;
+
+                                const localized = await localizeBusinessCopyResult({
+                                    generated,
+                                    projectId,
+                                    storeDetails,
+                                });
+                                const nextPublicPresence = {
+                                    ...(storeDetails?.publicPresence || {}),
+                                    displayName: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.displayName,
+                                        localized.displayName,
+                                    ),
+                                    descriptor: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.descriptor,
+                                        localized.descriptor,
+                                    ),
+                                    knownFor: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.knownFor,
+                                        localized.knownFor,
+                                    ),
+                                };
+
+                                const nextStoreUpdate: any = {
+                                    keywords: generated.keywords,
+                                    metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
+                                    metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
+                                    ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
+                                        ? {
+                                            pwaSettings: {
+                                                ...(storeDetails?.pwaSettings || {}),
+                                                pwaShortName: mergeLocalizedField(
+                                                    storeDetails?.pwaSettings?.pwaShortName,
+                                                    localized.pwaShortName,
+                                                ),
+                                            },
+                                        }
+                                        : {}),
+                                    publicPresence: nextPublicPresence,
+                                    storeId: storeDetails.storeId,
+                                    tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
+                                };
+                                await updateStore(nextStoreUpdate);
+
+                                setStoreDetails({
+                                    ...storeDetails,
+                                    keywords: generated.keywords,
+                                    metaDescription: nextStoreUpdate.metaDescription,
+                                    metaTitle: nextStoreUpdate.metaTitle,
+                                    publicPresence: nextPublicPresence,
+                                    pwaSettings: {
+                                        ...(storeDetails?.pwaSettings || {}),
+                                        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
+                                            ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                            : {}),
+                                    },
+                                    tagline: nextStoreUpdate.tagline,
+                                });
+                            }}
+                            storeDetails={storeDetails}
+                        />
+                    ) : null}
+                    <SeoTab storeDetails={storeDetails} />
+                    {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? (
+                        <BusinessSettingsPresenceMonitorCard storeDetails={storeDetails} />
+                    ) : null}
+                    <IntegrationsTab
+                        storeDetails={storeDetails}
+                    />
+                </Flex>
+            ),
         },
         ...(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? [{
             key: "digital-screens",
             label: t('digitalScreens'),
             icon: <LuTv />,
             tab: (
-                <div ref={scrollRefs.current[4]}>
+                <div ref={scrollRefs.current[2]}>
                     <DigitalScreenSettings />
                 </div>
             ),
@@ -293,13 +503,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             key: "locale",
             label: t('localeSettings'),
             icon: <LuGlobe />,
-            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 5 : 4]} />,
-        },
-        {
-            key: "contact",
-            label: t('contactPerson'),
-            icon: <LuUser />,
-            tab: <ContactPersonTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 6 : 5]} />,
+            tab: <LocaleSettingsTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 3 : 2]} />,
         },
         {
             key: "hours",
@@ -307,7 +511,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuClock />,
             tab: (
                 <WorkingHoursTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 7 : 6]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 4 : 3]}
                     workingHours={workingHours}
                     setWorkingHours={setWorkingHours}
                     form={form}
@@ -320,7 +524,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuTimer />,
             tab: (
                 <TimeSlotPresetsTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 8 : 7]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 5 : 4]}
                     tenantId={storeDetails?.tenantId}
                     storeId={storeDetails?.storeId}
                     presets={timeSlotPresets}
@@ -329,116 +533,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             ),
         },
         {
-            key: "social",
-            label: t('socialMedia'),
-            icon: <LuLink />,
-            tab: (
-                <SocialMediaTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 9 : 8]}
-                    socialMedia={socialMedia}
-                    setSocialMedia={setSocialMedia}
-                />
-            ),
-        },
-        ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{
-            key: "business-attributes",
-            label: t('businessAttributes'),
-            icon: <LuList />,
-            tab: <BusinessAttributesTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 10 : 9]} />,
-        }] : []),
-        ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{
-            key: "business-copy",
-            label: t('businessCopySetup'),
-            icon: <LuSparkles />,
-            tab: (
-                <BusinessCopySetupTab
-                    onApplyGeneratedCopy={async (generated, projectId) => {
-                        if (!storeDetails?.storeId) return;
-
-                        const localized = await localizeBusinessCopyResult({
-                            generated,
-                            projectId,
-                            storeDetails,
-                        });
-                        const nextPublicPresence = {
-                            ...(storeDetails?.publicPresence || {}),
-                            displayName: mergeLocalizedField(
-                                storeDetails?.publicPresence?.displayName,
-                                localized.displayName,
-                            ),
-                            descriptor: mergeLocalizedField(
-                                storeDetails?.publicPresence?.descriptor,
-                                localized.descriptor,
-                            ),
-                            knownFor: mergeLocalizedField(
-                                storeDetails?.publicPresence?.knownFor,
-                                localized.knownFor,
-                            ),
-                        };
-
-                        const nextStoreUpdate: any = {
-                            keywords: generated.keywords,
-                            metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
-                            metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
-                            ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
-                                ? {
-                                    pwaSettings: {
-                                        ...(storeDetails?.pwaSettings || {}),
-                                        pwaShortName: mergeLocalizedField(
-                                            storeDetails?.pwaSettings?.pwaShortName,
-                                            localized.pwaShortName,
-                                        ),
-                                    },
-                                }
-                                : {}),
-                            publicPresence: nextPublicPresence,
-                            storeId: storeDetails.storeId,
-                            tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
-                        };
-                        await updateStore(nextStoreUpdate);
-
-                        setStoreDetails({
-                            ...storeDetails,
-                            keywords: generated.keywords,
-                            metaDescription: nextStoreUpdate.metaDescription,
-                            metaTitle: nextStoreUpdate.metaTitle,
-                            publicPresence: nextPublicPresence,
-                            pwaSettings: {
-                                ...(storeDetails?.pwaSettings || {}),
-                                ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
-                                    ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
-                                    : {}),
-                            },
-                            tagline: nextStoreUpdate.tagline,
-                        });
-                    }}
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 11 : 10) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0)]}
-                    storeDetails={storeDetails}
-                />
-            ),
-        }] : []),
-        {
-            key: "seo",
-            label: t('seoSettings'),
-            icon: <LuSearch />,
-            tab: <SeoTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 11 : 10) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]} storeDetails={storeDetails} />,
-        },
-        {
             key: "analytics",
             label: t('analytics'),
             icon: <LuBarChart />,
-            tab: <AnalyticsTab scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 12 : 11) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]} form={form} />,
-        },
-        {
-            key: "integrations",
-            label: t('integrations'),
-            icon: <SiGooglemybusiness />,
-            tab: (
-                <IntegrationsTab
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 13 : 12) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]}
-                    storeDetails={storeDetails}
-                />
-            ),
+            tab: <AnalyticsTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 6 : 5]} form={form} />,
         },
         {
             key: "feedback",
@@ -446,7 +544,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuMessageSquare />,
             tab: (
                 <FeedbackSettingsTab
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 14 : 13) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 7 : 6]}
                     feedbackEnabled={feedbackEnabled}
                     setFeedbackEnabled={setFeedbackEnabled}
                     feedbackDefaults={feedbackDefaults}
@@ -462,7 +560,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuShield />,
             tab: (
                 <PosSyncTab
-                    scrollRef={scrollRefs.current[(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 15 : 14) + (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) + (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)]}
+                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 8 : 7]}
                     storeDetails={storeDetails}
                     onStoreUpdate={(updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
@@ -473,24 +571,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 />
             ),
         },
-        // Customer App (PWA) — appended last so existing scrollRef indices above
-        // remain stable regardless of which feature flags are toggled.
-        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? [{
-            key: "customer-app",
-            label: "Customer App",
-            icon: <LuSmartphone />,
-            tab: (
-                <CustomerAppTab
-                        scrollRef={
-                            scrollRefs.current[
-                        (FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 16 : 15) +
-                        (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? 1 : 0) +
-                        (FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? 1 : 0)
-                        ]
-                    }
-                />
-            ),
-        }] : []),
     ];
     scrollRefs.current = TAB_ITEMS_LIST.map(
         (_, i) => scrollRefs.current[i] ?? createRef(),
@@ -611,47 +691,92 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
         if (changesToUpload.publicPresence) {
             const currentPresence = storeDetails?.publicPresence || {};
+            const localizedPresenceDrafts = changesToUpload.__localizedPublicPresenceDrafts;
             changesToUpload.publicPresence = {
                 ...changesToUpload.publicPresence,
-                displayName: updateLocalizedText(
-                    currentPresence.displayName,
-                    changesToUpload.publicPresence.displayName,
-                    contentLanguage,
-                    'en',
-                ),
-                descriptor: updateLocalizedText(
-                    currentPresence.descriptor,
-                    changesToUpload.publicPresence.descriptor,
-                    contentLanguage,
-                    'en',
-                ),
-                knownFor: updateLocalizedText(
-                    currentPresence.knownFor,
-                    changesToUpload.publicPresence.knownFor,
-                    contentLanguage,
-                    'en',
-                ),
+                displayName: localizedPresenceDrafts
+                    ? applyLocalizedDraftMap(
+                        currentPresence.displayName,
+                        Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.displayName || ''])),
+                    )
+                    : updateLocalizedText(
+                        currentPresence.displayName,
+                        changesToUpload.publicPresence.displayName,
+                        contentLanguage,
+                        'en',
+                    ),
+                descriptor: localizedPresenceDrafts
+                    ? applyLocalizedDraftMap(
+                        currentPresence.descriptor,
+                        Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.descriptor || ''])),
+                    )
+                    : updateLocalizedText(
+                        currentPresence.descriptor,
+                        changesToUpload.publicPresence.descriptor,
+                        contentLanguage,
+                        'en',
+                    ),
+                knownFor: localizedPresenceDrafts
+                    ? applyLocalizedDraftMap(
+                        currentPresence.knownFor,
+                        Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.knownFor || ''])),
+                    )
+                    : updateLocalizedText(
+                        currentPresence.knownFor,
+                        changesToUpload.publicPresence.knownFor,
+                        contentLanguage,
+                        'en',
+                    ),
             };
         }
 
-        changesToUpload.tagline = updateLocalizedText(
-            storeDetails?.tagline,
-            changesToUpload.tagline,
-            contentLanguage,
-            'en',
-        );
-        changesToUpload.metaTitle = updateLocalizedText(
-            storeDetails?.metaTitle,
-            changesToUpload.metaTitle,
-            contentLanguage,
-            'en',
-        );
-        changesToUpload.metaDescription = updateLocalizedText(
-            storeDetails?.metaDescription,
-            changesToUpload.metaDescription,
-            contentLanguage,
-            'en',
-        );
+        changesToUpload.tagline = changesToUpload.__localizedSeoDrafts
+            ? applyLocalizedDraftMap(
+                storeDetails?.tagline,
+                Object.fromEntries(Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.tagline || ''])),
+            )
+            : updateLocalizedText(
+                storeDetails?.tagline,
+                changesToUpload.tagline,
+                contentLanguage,
+                'en',
+            );
+        changesToUpload.metaTitle = changesToUpload.__localizedSeoDrafts
+            ? applyLocalizedDraftMap(
+                storeDetails?.metaTitle,
+                Object.fromEntries(Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.metaTitle || ''])),
+            )
+            : updateLocalizedText(
+                storeDetails?.metaTitle,
+                changesToUpload.metaTitle,
+                contentLanguage,
+                'en',
+            );
+        changesToUpload.metaDescription = changesToUpload.__localizedSeoDrafts
+            ? applyLocalizedDraftMap(
+                storeDetails?.metaDescription,
+                Object.fromEntries(Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.metaDescription || ''])),
+            )
+            : updateLocalizedText(
+                storeDetails?.metaDescription,
+                changesToUpload.metaDescription,
+                contentLanguage,
+                'en',
+            );
+        if (changesToUpload.__localizedPwaShortNameDrafts) {
+            changesToUpload.pwaSettings = {
+                ...(storeDetails?.pwaSettings || {}),
+                ...(changesToUpload.pwaSettings || {}),
+                pwaShortName: applyLocalizedDraftMap(
+                    storeDetails?.pwaSettings?.pwaShortName,
+                    changesToUpload.__localizedPwaShortNameDrafts,
+                ),
+            };
+        }
+        delete changesToUpload.__localizedPublicPresenceDrafts;
+        delete changesToUpload.__localizedSeoDrafts;
+        delete changesToUpload.__localizedPwaShortNameDrafts;
+        delete changesToUpload.__storeContentLanguage;
 
         // Feedback settings (managed as React state, not Form fields)
         changesToUpload.feedbackEnabled = feedbackEnabled;

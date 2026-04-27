@@ -75,6 +75,10 @@ Examples already covered by this contract:
 - `store.publicPresence.displayName`
 - `store.publicPresence.descriptor`
 - `store.publicPresence.knownFor`
+- `store.tagline`
+- `store.metaTitle`
+- `store.metaDescription`
+- `store.pwaSettings.pwaShortName`
 
 These values are customer-facing business content and must not be detached into a separate translation document unless a future workflow requires it.
 
@@ -110,6 +114,10 @@ Localized:
 - `name`
 - `description`
 
+Language availability:
+
+- `languages`
+
 Also localized in summary / special-menu metadata:
 
 - `specialMenuDisplayName`
@@ -126,6 +134,18 @@ Localized public-presence fields:
 - `publicPresence.displayName`
 - `publicPresence.descriptor`
 - `publicPresence.knownFor`
+
+Localized business-copy fields:
+
+- `tagline`
+- `metaTitle`
+- `metaDescription`
+- `pwaSettings.pwaShortName`
+
+Language policy fields:
+
+- `activeLanguages`
+- `defaultLanguage`
 
 Operational fallback remains:
 
@@ -167,6 +187,62 @@ For project identity:
 1. `project.name[requestedLanguage]`
 2. `project.name[primaryLanguage]`
 3. safe fallback such as `Untitled`
+
+---
+
+## Language Governance Contract
+
+There are two language layers, and they are intentionally different.
+
+### Store-Level Language Policy
+
+Fields:
+
+- `store.activeLanguages`
+- `store.defaultLanguage`
+
+Purpose:
+
+- defines the language policy for that store or outlet
+- defines the default public rendering language
+- governs store-level public surfaces such as OBP, SEO, Customer App identity, manifest, screenshots, and business copy
+- constrains which languages projects are allowed to add
+
+### Project-Level Content Availability
+
+Field:
+
+- `project.languages`
+
+Purpose:
+
+- defines which translations currently exist on that specific menu project
+- governs which languages a menu project can actually render
+- is the availability input to `resolveRenderLanguage(...)`
+
+### Canonical Rule
+
+- store-level business content targets `store.activeLanguages`
+- project/menu content targets `project.languages`
+- `project.languages` must remain a subset of `store.activeLanguages`
+
+This is a layered model, not two competing sources of truth:
+
+- store = language policy
+- project = content availability
+
+### Business Copy Rule
+
+Business Copy is store-authored, store-wide public identity content.
+
+Therefore:
+
+- the selected/default project may be used as semantic context for AI generation
+- translation targets must come from `store.activeLanguages`
+- the default/source language must come from `store.defaultLanguage`
+
+The project helps the AI understand the menu.
+It does not decide the language policy for store-level copy.
 
 ---
 

@@ -5,7 +5,7 @@ function listOrFallback(items?: string[], fallback = 'Not provided') {
 }
 
 export default function businessCopyPrompt(payload: BusinessCopyGenerationRequest) {
-    const { store, menu } = payload;
+    const { store, menu, sourceLang } = payload;
 
     return `Generate factual business copy for a small business public presence.
 
@@ -24,6 +24,7 @@ Rules:
 - Generate fresh copy. Improve existing values when possible, but do not repeat them verbatim unless there is no better factual rewrite.
 - Do not include quotation marks around values.
 - Do not generate canonicalUrl.
+- Generate every returned value in ${sourceLang?.name || 'English'}${sourceLang?.code ? ` (${sourceLang.code})` : ''}.
 
 Business:
 - Name: ${store.name}

@@ -1,6 +1,7 @@
 import GlobalLanguagesList from '@data/languages';
 import { LocalizedText, toLocalizedText } from '@lib/localization/text';
-import getTranslations from '../../../components/templates/main-app/projects/generateTranslations';
+import { syncBalanceFromResponse } from '@services/ai/balanceSync';
+import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
 import { BusinessCopyGenerationResult } from './generateBusinessCopyViaAPI';
 
@@ -58,6 +59,50 @@ function buildLocalizedFields(
             toLocalizedText(value, sourceLanguage),
         ]),
     ) as LocalizedBusinessCopyFields;
+}
+
+async function getBatchTranslations({
+    fileId,
+    inputJson,
+    projectId,
+    sourceLang,
+    targetLang,
+}: {
+    fileId: string;
+    inputJson: Record<string, string>;
+    projectId: string;
+    sourceLang: LanguageType;
+    targetLang: LanguageType[];
+}): Promise<Record<string, Record<string, string>> | null> {
+    try {
+        const response = await fetch('/api/translations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'language_addition',
+                fileId,
+                inputJson,
+                projectId,
+                sourceLang,
+                targetLang,
+            }),
+        });
+
+        await checkCapacityResponse(response);
+        if (!response.ok) {
+            throw new Error(`Translation request failed: ${response.statusText}`);
+        }
+
+        const responseJson = await response.json();
+        syncBalanceFromResponse(responseJson);
+        return responseJson?.data?.translationsByLanguage || null;
+    } catch (error) {
+        if (error instanceof AICapacityError) throw error;
+        console.error('Error calling batch translation API:', error);
+        return null;
+    }
 }
 
 function getEnabledLanguageCodes(storeDetails?: any): string[] {
@@ -119,16 +164,20 @@ export default async function localizeBusinessCopyResult({
         return localized;
     }
 
-    await Promise.all(targetLanguages.map(async (targetLanguage) => {
-        const translated = await getTranslations({
-            action: 'LANGUAGE_ADDITION',
-            fileId: `business-copy-${storeDetails?.storeId || 'store'}-${targetLanguage.code}`,
-            inputJson: payload,
-            projectId: projectId || String(storeDetails?.storeId || 'business-copy'),
-            sourceLang: sourceLanguageDef,
-            targetLang: targetLanguage,
-        });
+    const translatedByLanguage = await getBatchTranslations({
+        fileId: `business-copy-${storeDetails?.storeId || 'store'}-batch`,
+        inputJson: payload,
+        projectId: projectId || String(storeDetails?.storeId || 'business-copy'),
+        sourceLang: sourceLanguageDef,
+        targetLang: targetLanguages,
+    });
 
+    if (!translatedByLanguage) {
+        return localized;
+    }
+
+    targetLanguages.forEach((targetLanguage) => {
+        const translated = translatedByLanguage[targetLanguage.code];
         if (!translated) return;
 
         (Object.keys(payload) as Array<keyof LocalizedBusinessCopyFields>).forEach((field) => {
@@ -140,7 +189,7 @@ export default async function localizeBusinessCopyResult({
                 [targetLanguage.code]: nextValue,
             };
         });
-    }));
+    });
 
     return localized;
 }

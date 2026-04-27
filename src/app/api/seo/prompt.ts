@@ -31,12 +31,15 @@ Business:
 - Address line: ${store.addressLine || 'Not provided'}
 - Existing description: ${store.description || 'Not provided'}
 - Current tagline to improve or replace: ${store.tagline || 'Not provided'}
+- Current Customer App short name: ${store.pwaShortName || 'Not provided'}
+- Active business attributes: ${listOrFallback(store.businessAttributes)}
 - Social media handles/links: ${listOrFallback(store.socialMedia)}
 - Public display name: ${store.publicPresence?.displayName || 'Not provided'}
 - Public descriptor: ${store.publicPresence?.descriptor || 'Not provided'}
 - Known for: ${store.publicPresence?.knownFor || 'Not provided'}
 - WhatsApp number present: ${store.publicPresence?.whatsappNumber ? 'Yes' : 'No'}
 - Google Maps URL present: ${store.publicPresence?.googleMapsUrl ? 'Yes' : 'No'}
+- Google Review URL present: ${store.publicPresence?.googleReviewUrl ? 'Yes' : 'No'}
 - Reservation URL present: ${store.publicPresence?.reservationUrl ? 'Yes' : 'No'}
 - Order URL present: ${store.publicPresence?.orderUrl ? 'Yes' : 'No'}
 - Established year: ${store.publicPresence?.establishedYear || 'Not provided'}

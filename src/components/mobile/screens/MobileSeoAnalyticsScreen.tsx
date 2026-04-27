@@ -2,8 +2,9 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
-import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
 import { theme } from 'antd';
@@ -11,7 +12,9 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, Toast } from '../antd';
+import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
 
 interface MobileSeoAnalyticsScreenProps {
@@ -36,17 +39,18 @@ type SeoDraft = {
     tagline: string;
 };
 
-function resolveContentLanguage(storeDetails?: any): string {
-    return storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
-}
+type LocalizedSeoFields = Pick<SeoDraft, 'metaDescription' | 'metaTitle' | 'tagline'>;
 
-function getLocalizedSeoField(value: any, storeDetails?: any): string {
-    const contentLanguage = resolveContentLanguage(storeDetails);
-    return getLocalizedText(
-        value,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(value, contentLanguage),
-        '',
+function buildLocalizedSeoDrafts(storeDetails: any, languages: string[]): Record<string, LocalizedSeoFields> {
+    return Object.fromEntries(
+        languages.map((languageCode) => [
+            languageCode,
+            {
+                metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
+                metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
+                tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
+            },
+        ]),
     );
 }
 
@@ -57,11 +61,11 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const tMobile = useTranslations('MobileSettings');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
-    const [tagline, setTagline] = useState('');
-    const [metaTitle, setMetaTitle] = useState('');
-    const [metaDescription, setMetaDescription] = useState('');
     const [canonicalUrl, setCanonicalUrl] = useState('');
     const [keywords, setKeywords] = useState('');
+    const [selectedLanguage, setSelectedLanguage] = useState('en');
+    const [localizedSeoDrafts, setLocalizedSeoDrafts] = useState<Record<string, LocalizedSeoFields>>({});
+    const [originalLocalizedSeoDrafts, setOriginalLocalizedSeoDrafts] = useState<Record<string, LocalizedSeoFields>>({});
     const [gaId, setGaId] = useState('');
     const [fbPixelId, setFbPixelId] = useState('');
     const [searchConsole, setSearchConsole] = useState('');
@@ -77,7 +81,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
     const [wizardStep, setWizardStep] = useState(0);
     const [guideTab, setGuideTab] = useState<'quick' | 'complete'>('quick');
-    const contentLanguage = resolveContentLanguage(storeDetails);
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
+    const contentLanguage = selectedLanguage || getStorePreferredLanguage(storeDetails);
+    const referenceLanguage = getStorePreferredLanguage(storeDetails);
+    const currentSeoDraft = localizedSeoDrafts[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' };
     const publicDisplayName = getLocalizedText(
         storeDetails?.publicPresence?.displayName,
         contentLanguage,
@@ -87,9 +94,11 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
 
     useEffect(() => {
         if (!storeDetails) return;
-        setTagline(getLocalizedSeoField(storeDetails.tagline, storeDetails));
-        setMetaTitle(getLocalizedSeoField(storeDetails.metaTitle, storeDetails));
-        setMetaDescription(getLocalizedSeoField(storeDetails.metaDescription, storeDetails));
+        const nextSelectedLanguage = getStorePreferredLanguage(storeDetails);
+        const nextLocalizedDrafts = buildLocalizedSeoDrafts(storeDetails, getStoreManagedLanguages(storeDetails));
+        setSelectedLanguage(nextSelectedLanguage);
+        setLocalizedSeoDrafts(nextLocalizedDrafts);
+        setOriginalLocalizedSeoDrafts(nextLocalizedDrafts);
         setCanonicalUrl(storeDetails.canonicalUrl || '');
         setKeywords((storeDetails.keywords || []).join(', '));
         setOriginalSeoState(getSeoDraft(storeDetails));
@@ -115,9 +124,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 const analyticsKey = field.replace('analytics.', '');
                 update.analytics = { ...storeDetails.analytics, [analyticsKey]: value };
             } else {
-                update[field] = ['tagline', 'metaTitle', 'metaDescription'].includes(field)
-                    ? updateLocalizedText(storeDetails?.[field], value, contentLanguage, 'en')
-                    : value;
+                update[field] = value;
             }
             await updateStore(update);
             setStoreDetails({ ...storeDetails, ...update });
@@ -145,12 +152,15 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const seoDraft: SeoDraft = {
         canonicalUrl,
         keywords,
-        metaDescription,
-        metaTitle,
-        tagline,
+        metaDescription: currentSeoDraft.metaDescription,
+        metaTitle: currentSeoDraft.metaTitle,
+        tagline: currentSeoDraft.tagline,
     };
     const isSeoDirty = isSeoMode && originalSeoState !== null
-        && JSON.stringify(seoDraft) !== JSON.stringify(originalSeoState);
+        && (
+            JSON.stringify(seoDraft) !== JSON.stringify(originalSeoState)
+            || JSON.stringify(localizedSeoDrafts) !== JSON.stringify(originalLocalizedSeoDrafts)
+        );
 
     const wizardSteps = [
         {
@@ -386,9 +396,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
 
     const resetSeoSettings = () => {
         if (!originalSeoState) return;
-        setTagline(originalSeoState.tagline);
-        setMetaTitle(originalSeoState.metaTitle);
-        setMetaDescription(originalSeoState.metaDescription);
+        setLocalizedSeoDrafts(originalLocalizedSeoDrafts);
         setKeywords(originalSeoState.keywords);
         setCanonicalUrl(originalSeoState.canonicalUrl);
     };
@@ -403,14 +411,24 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                     .split(',')
                     .map((item) => item.trim())
                     .filter(Boolean),
-                metaDescription: updateLocalizedText(storeDetails?.metaDescription, metaDescription, contentLanguage, 'en'),
-                metaTitle: updateLocalizedText(storeDetails?.metaTitle, metaTitle, contentLanguage, 'en'),
+                metaDescription: applyLocalizedDraftMap(
+                    storeDetails?.metaDescription,
+                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaDescription])),
+                ),
+                metaTitle: applyLocalizedDraftMap(
+                    storeDetails?.metaTitle,
+                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaTitle])),
+                ),
                 storeId: storeDetails.storeId,
-                tagline: updateLocalizedText(storeDetails?.tagline, tagline, contentLanguage, 'en'),
+                tagline: applyLocalizedDraftMap(
+                    storeDetails?.tagline,
+                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.tagline])),
+                ),
             };
             await updateStore(update);
             setStoreDetails({ ...storeDetails, ...update });
             setOriginalSeoState(seoDraft);
+            setOriginalLocalizedSeoDrafts(localizedSeoDrafts);
             Toast.show({ content: t('saved'), duration: 800 });
         } catch {
             Toast.show({ content: t('failedToSave'), duration: 1500 });
@@ -447,6 +465,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 },
                 store: {
                     addressLine: storeDetails?.addressLine || '',
+                    businessAttributes: getActiveBusinessAttributeLabels(storeDetails?.businessAttributes),
                     businessCategory: storeDetails?.businessCategory || '',
                     businessType: storeDetails?.businessType || '',
                     city: storeDetails?.city || '',
@@ -461,14 +480,21 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             ? storeDetails.publicPresence.establishedYear
                             : undefined,
                         googleMapsUrl: storeDetails?.publicPresence?.googleMapsUrl || '',
+                        googleReviewUrl: storeDetails?.publicPresence?.googleReviewUrl || '',
                         knownFor: firstText(storeDetails?.publicPresence?.knownFor),
                         orderUrl: storeDetails?.publicPresence?.orderUrl || '',
                         reservationUrl: storeDetails?.publicPresence?.reservationUrl || '',
                         whatsappNumber: storeDetails?.publicPresence?.whatsappNumber || '',
                     },
+                    pwaShortName: getLocalizedText(
+                        storeDetails?.pwaSettings?.pwaShortName,
+                        contentLanguage,
+                        getPrimaryLocalizedLanguage(storeDetails?.pwaSettings?.pwaShortName, contentLanguage),
+                        '',
+                    ),
                     socialMedia: socialValues,
                     state: storeDetails?.state || '',
-                    tagline,
+                    tagline: currentSeoDraft.tagline,
                 },
             });
 
@@ -477,9 +503,14 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 return;
             }
 
-            setTagline(generated.tagline || '');
-            setMetaTitle(generated.metaTitle);
-            setMetaDescription(generated.metaDescription);
+            setLocalizedSeoDrafts((previous) => ({
+                ...previous,
+                [contentLanguage]: {
+                    metaDescription: generated.metaDescription,
+                    metaTitle: generated.metaTitle,
+                    tagline: generated.tagline || '',
+                },
+            }));
             setKeywords(generated.keywords.join(', '));
             Toast.show({ content: tSeo('generateSeoSuccess'), duration: 1200 });
         } catch (error: any) {
@@ -504,17 +535,96 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 />
                 {isSeoMode ? (
                     <>
+                        <MobileLocalizedLanguageSelector
+                            helperText="Choose which store language you want to edit. SEO keywords and canonical URL remain shared across languages."
+                            languages={managedLanguages}
+                            onChange={setSelectedLanguage}
+                            selectedLanguage={contentLanguage}
+                            title="SEO content language"
+                        />
                         <Card>
                             <Flex gap={12} vertical>
                                 <FieldGroup hint={tSeo('taglineHelp')} label={tSeo('tagline')}>
-                                    <Input maxLength={100} onChange={setTagline} placeholder={tSeo('taglinePlaceholder')} value={tagline} />
+                                    <Input
+                                        maxLength={100}
+                                        onChange={(value) => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                tagline: value,
+                                            },
+                                        }))}
+                                        placeholder={tSeo('taglinePlaceholder')}
+                                        value={currentSeoDraft.tagline}
+                                    />
                                 </FieldGroup>
+                                {contentLanguage !== referenceLanguage ? (
+                                    <LocalizedReferenceHint
+                                        onUseReference={() => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                tagline: previous[referenceLanguage]?.tagline || '',
+                                            },
+                                        }))}
+                                        referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                        referenceValue={localizedSeoDrafts[referenceLanguage]?.tagline || ''}
+                                    />
+                                ) : null}
                                 <FieldGroup hint={tSeo('metaTitleHelp')} label={tSeo('metaTitle')}>
-                                    <Input maxLength={60} onChange={setMetaTitle} placeholder={tSeo('metaTitlePlaceholder')} value={metaTitle} />
+                                    <Input
+                                        maxLength={60}
+                                        onChange={(value) => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                metaTitle: value,
+                                            },
+                                        }))}
+                                        placeholder={tSeo('metaTitlePlaceholder')}
+                                        value={currentSeoDraft.metaTitle}
+                                    />
                                 </FieldGroup>
+                                {contentLanguage !== referenceLanguage ? (
+                                    <LocalizedReferenceHint
+                                        onUseReference={() => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                metaTitle: previous[referenceLanguage]?.metaTitle || '',
+                                            },
+                                        }))}
+                                        referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                        referenceValue={localizedSeoDrafts[referenceLanguage]?.metaTitle || ''}
+                                    />
+                                ) : null}
                                 <FieldGroup hint={tSeo('metaDescHelp')} label={tSeo('metaDescription')}>
-                                    <Input maxLength={160} onChange={setMetaDescription} placeholder={tSeo('metaDescPlaceholder')} value={metaDescription} />
+                                    <Input
+                                        maxLength={160}
+                                        onChange={(value) => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                metaDescription: value,
+                                            },
+                                        }))}
+                                        placeholder={tSeo('metaDescPlaceholder')}
+                                        value={currentSeoDraft.metaDescription}
+                                    />
                                 </FieldGroup>
+                                {contentLanguage !== referenceLanguage ? (
+                                    <LocalizedReferenceHint
+                                        onUseReference={() => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                metaDescription: previous[referenceLanguage]?.metaDescription || '',
+                                            },
+                                        }))}
+                                        referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                        referenceValue={localizedSeoDrafts[referenceLanguage]?.metaDescription || ''}
+                                    />
+                                ) : null}
                                 <FieldGroup hint={tSeo('keywordsHelp')} label={tSeo('keywords')}>
                                     <Input
                                         onChange={setKeywords}
@@ -573,10 +683,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             customDomain={storeDetails?.customDomain}
                             keywords={keywords}
                             logoUrl={storeDetails?.logo}
-                            metaDescription={metaDescription}
-                            metaTitle={metaTitle}
+                            metaDescription={currentSeoDraft.metaDescription}
+                            metaTitle={currentSeoDraft.metaTitle}
                             subdomain={storeDetails?.subdomain}
-                            tagline={tagline}
+                            tagline={currentSeoDraft.tagline}
                         />
                     </>
                 ) : (
@@ -933,12 +1043,13 @@ function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
 }
 
 function getSeoDraft(storeDetails: any): SeoDraft {
+    const preferredLanguage = getStorePreferredLanguage(storeDetails);
     return {
         canonicalUrl: storeDetails?.canonicalUrl || '',
         keywords: (storeDetails?.keywords || []).join(', '),
-        metaDescription: getLocalizedSeoField(storeDetails?.metaDescription, storeDetails),
-        metaTitle: getLocalizedSeoField(storeDetails?.metaTitle, storeDetails),
-        tagline: getLocalizedSeoField(storeDetails?.tagline, storeDetails),
+        metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, preferredLanguage, ''),
+        metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, preferredLanguage, ''),
+        tagline: getLocalizedStoreValue(storeDetails?.tagline, preferredLanguage, ''),
     };
 }
 
@@ -953,4 +1064,34 @@ function firstText(value: unknown): string {
         return typeof firstValue === 'string' ? firstValue.trim() : '';
     }
     return '';
+}
+
+function LocalizedReferenceHint({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+}) {
+    return (
+        <Flex
+            align="center"
+            justify="space-between"
+            style={{ background: '#f8fafc', borderRadius: 12, padding: '8px 10px', marginTop: -4 }}
+        >
+            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                <Text style={{ wordBreak: 'break-word' }}>
+                    {referenceValue || 'No content yet in the primary language.'}
+                </Text>
+            </Flex>
+            {referenceValue ? (
+                <Button fill="outline" onClick={onUseReference} size="small">
+                    Use
+                </Button>
+            ) : null}
+        </Flex>
+    );
 }

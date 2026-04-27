@@ -31,7 +31,16 @@ export interface TranslationAPIParams {
     inputJson: any;
     targetLang: LanguageType;
     sourceLang: LanguageType;
-    action: keyof typeof languageActionType;
+    action: keyof typeof languageActionType | string;
+    projectId: string;
+    fileId: string;
+}
+
+export interface BatchTranslationAPIParams {
+    inputJson: any;
+    targetLang: LanguageType[];
+    sourceLang: LanguageType;
+    action: keyof typeof languageActionType | string;
     projectId: string;
     fileId: string;
 }

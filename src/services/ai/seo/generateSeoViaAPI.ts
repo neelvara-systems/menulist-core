@@ -11,6 +11,7 @@ export interface SeoGenerationPayload {
     };
     store: {
         addressLine?: string;
+        businessAttributes?: string[];
         businessCategory?: string;
         businessType?: string;
         city?: string;
@@ -23,11 +24,13 @@ export interface SeoGenerationPayload {
             displayName?: string;
             establishedYear?: number;
             googleMapsUrl?: string;
+            googleReviewUrl?: string;
             knownFor?: string;
             orderUrl?: string;
             reservationUrl?: string;
             whatsappNumber?: string;
         };
+        pwaShortName?: string;
         socialMedia?: string[];
         state?: string;
         tagline?: string;

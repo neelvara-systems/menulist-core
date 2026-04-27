@@ -75,12 +75,15 @@ export const SeoGenerationRequestSchema = z.object({
         addressLine: z.string().max(300).optional(),
         tagline: z.string().max(200).optional(),
         socialMedia: z.array(z.string().max(200)).max(20).optional(),
+        businessAttributes: z.array(z.string().max(100)).max(20).optional(),
+        pwaShortName: z.string().max(40).optional(),
         publicPresence: z.object({
             accentColor: z.string().max(50).optional(),
             descriptor: z.string().max(120).optional(),
             displayName: z.string().max(120).optional(),
             establishedYear: z.number().int().min(1800).max(3000).optional(),
             googleMapsUrl: z.string().max(500).optional(),
+            googleReviewUrl: z.string().max(500).optional(),
             knownFor: z.string().max(120).optional(),
             orderUrl: z.string().max(500).optional(),
             reservationUrl: z.string().max(500).optional(),
@@ -102,6 +105,7 @@ export type SeoGenerationRequest = z.infer<typeof SeoGenerationRequestSchema>;
 // ═══════════════════════════════════════════════════════════
 
 export const BusinessCopyGenerationRequestSchema = z.object({
+    sourceLang: languageObjectSchema.optional(),
     store: z.object({
         name: z.string().min(1).max(120),
         businessCategory: shortStringSchema,
@@ -147,7 +151,10 @@ export const TranslationRequestSchema = z.object({
         obj => Object.keys(obj).length <= 1000,
         'Too many items to translate'
     ),
-    targetLang: languageObjectSchema,  // Language object with code and name
+    targetLang: z.union([
+        languageObjectSchema,
+        z.array(languageObjectSchema).min(1).max(20)
+    ]),  // Single or batched language objects
     sourceLang: languageObjectSchema,  // Language object with code and name
     action: z.enum(['language_addition', 'image_translation', 'item_translation']),  // Match AI_ACTIONS_TYPES
     projectId: z.string().max(100).optional(),

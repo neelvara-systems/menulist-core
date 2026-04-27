@@ -1,14 +1,16 @@
+import { languageActionType } from './types/api.types';
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { TranslationAPIParams } from './types';
 
 async function getTranslations({ inputJson, targetLang, sourceLang, action, projectId, fileId }: TranslationAPIParams): Promise<Record<string, string>> {
     try {
+        const normalizedAction = (languageActionType as Record<string, string>)[action] || action;
         const payload = {
             inputJson,
             targetLang,
             sourceLang,
-            action,
+            action: normalizedAction,
             projectId,
             fileId
         }
@@ -28,7 +30,7 @@ async function getTranslations({ inputJson, targetLang, sourceLang, action, proj
         const responseJson = await response.json();
         syncBalanceFromResponse(responseJson);
         const { data } = responseJson;
-        return data?.translations || null;
+        return data?.translations || data || null;
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;

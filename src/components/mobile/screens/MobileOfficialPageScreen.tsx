@@ -23,9 +23,11 @@ import {
     LuUpload
 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, Toast } from '../antd';
+import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
+import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 
 interface MobileOfficialPageScreenProps {
     onBack: () => void;
@@ -33,20 +35,13 @@ interface MobileOfficialPageScreenProps {
 
 function getInitialPresenceForm(storeDetails: any) {
     const initialPresence = storeDetails?.publicPresence || {};
-    const contentLanguage = storeDetails?.defaultLanguage
-        || storeDetails?.activeLanguages?.[0]
-        || storeDetails?.language
-        || 'en';
     return {
         accentColor: initialPresence.accentColor || '#1677ff',
-        displayName: getLocalizedText(initialPresence.displayName, contentLanguage, getPrimaryLocalizedLanguage(initialPresence.displayName, contentLanguage), ''),
-        descriptor: getLocalizedText(initialPresence.descriptor, contentLanguage, getPrimaryLocalizedLanguage(initialPresence.descriptor, contentLanguage), ''),
         establishedYear: initialPresence.establishedYear,
         googleMapsUrl: initialPresence.googleMapsUrl || '',
         googleRating: initialPresence.googleRating,
         googleReviewCount: initialPresence.googleReviewCount,
         googleReviewUrl: initialPresence.googleReviewUrl || '',
-        knownFor: getLocalizedText(initialPresence.knownFor, contentLanguage, getPrimaryLocalizedLanguage(initialPresence.knownFor, contentLanguage), ''),
         orderUrl: initialPresence.orderUrl || '',
         photos: initialPresence.photos || [],
         reservationUrl: initialPresence.reservationUrl || '',
@@ -59,6 +54,20 @@ function getInitialPresenceForm(storeDetails: any) {
     };
 }
 
+function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
+    const initialPresence = storeDetails?.publicPresence || {};
+    return Object.fromEntries(
+        languages.map((languageCode) => [
+            languageCode,
+            {
+                descriptor: getLocalizedText(initialPresence.descriptor, languageCode, getPrimaryLocalizedLanguage(initialPresence.descriptor, languageCode), ''),
+                displayName: getLocalizedText(initialPresence.displayName, languageCode, getPrimaryLocalizedLanguage(initialPresence.displayName, languageCode), ''),
+                knownFor: getLocalizedText(initialPresence.knownFor, languageCode, getPrimaryLocalizedLanguage(initialPresence.knownFor, languageCode), ''),
+            },
+        ]),
+    );
+}
+
 export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
@@ -67,6 +76,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const { isCompactHandheld } = useViewportInfo();
     const session = useClientAuthSession();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const managedLanguages = getStoreManagedLanguages(storeDetails);
+    const [selectedLanguage, setSelectedLanguage] = useState(getStorePreferredLanguage(storeDetails));
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
@@ -78,7 +89,13 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
     const [formData, setFormData] = useState(getInitialPresenceForm(storeDetails));
     const [originalFormData, setOriginalFormData] = useState(() => getInitialPresenceForm(storeDetails));
-    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+    const [localizedDrafts, setLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
+    const [originalLocalizedDrafts, setOriginalLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
+    const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' };
+    const referenceLanguage = getStorePreferredLanguage(storeDetails);
+    const isDirty =
+        JSON.stringify(formData) !== JSON.stringify(originalFormData)
+        || JSON.stringify(localizedDrafts) !== JSON.stringify(originalLocalizedDrafts);
 
     const photoSlots = useMemo(() => {
         const slots = Array.from({ length: 3 }, (_, index) => formData.photos[index] || '');
@@ -88,29 +105,39 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
+        const nextLocalizedPresence = Object.entries(localizedDrafts).reduce((presence, [languageCode, draft]) => ({
+            ...presence,
+            displayName: updateLocalizedText(
+                presence.displayName,
+                draft.displayName,
+                languageCode,
+                'en',
+            ),
+            descriptor: updateLocalizedText(
+                presence.descriptor,
+                draft.descriptor,
+                languageCode,
+                'en',
+            ),
+            knownFor: updateLocalizedText(
+                presence.knownFor,
+                draft.knownFor,
+                languageCode,
+                'en',
+            ),
+        }), {
+            displayName: storeDetails.publicPresence?.displayName,
+            descriptor: storeDetails.publicPresence?.descriptor,
+            knownFor: storeDetails.publicPresence?.knownFor,
+        } as any);
         const payload = {
             storeId: storeDetails.storeId,
             publicPresence: {
                 ...(storeDetails.publicPresence || {}),
                 ...nextPresence,
-                displayName: updateLocalizedText(
-                    storeDetails.publicPresence?.displayName,
-                    nextPresence.displayName,
-                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
-                    'en',
-                ),
-                descriptor: updateLocalizedText(
-                    storeDetails.publicPresence?.descriptor,
-                    nextPresence.descriptor,
-                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
-                    'en',
-                ),
-                knownFor: updateLocalizedText(
-                    storeDetails.publicPresence?.knownFor,
-                    nextPresence.knownFor,
-                    storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',
-                    'en',
-                ),
+                displayName: nextLocalizedPresence.displayName,
+                descriptor: nextLocalizedPresence.descriptor,
+                knownFor: nextLocalizedPresence.knownFor,
                 photos: nextPresence.photos.filter(Boolean),
             },
         };
@@ -123,6 +150,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         try {
             await updateStore(payload as any);
             setOriginalFormData(nextPresence);
+            setOriginalLocalizedDrafts(localizedDrafts);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch {
             setStoreDetails((previous: any) => ({
@@ -133,7 +161,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         } finally {
             setIsSaving(false);
         }
-    }, [setStoreDetails, storeDetails, tMobile]);
+    }, [localizedDrafts, setStoreDetails, storeDetails, tMobile]);
 
     const handleSave = useCallback(() => {
         void updatePresence(formData);
@@ -198,6 +226,16 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
     }, []);
 
+    useEffect(() => {
+        if (!storeDetails) return;
+        setSelectedLanguage(getStorePreferredLanguage(storeDetails));
+        setFormData(getInitialPresenceForm(storeDetails));
+        setOriginalFormData(getInitialPresenceForm(storeDetails));
+        const nextLocalizedDrafts = buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails));
+        setLocalizedDrafts(nextLocalizedDrafts);
+        setOriginalLocalizedDrafts(nextLocalizedDrafts);
+    }, [storeDetails]);
+
     if (!FEATURE_FLAGS.ENABLE_OBP) {
         return null;
     }
@@ -217,6 +255,14 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <MobileScreenIntro
                     subtitle={t('officialPageSubtitle')}
                     title={t('officialPage')}
+                />
+
+                <MobileLocalizedLanguageSelector
+                    helperText="Choose which public-content language you want to edit. Links, toggles, ratings, and photos stay shared for all languages."
+                    languages={managedLanguages}
+                    onChange={setSelectedLanguage}
+                    selectedLanguage={selectedLanguage}
+                    title="Official page content language"
                 />
 
                 {officialPageUrl ? (
@@ -241,24 +287,96 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>Public display name</Text>
-                        <Input maxLength={60} onChange={(value) => setFormData((previous) => ({ ...previous, displayName: value }))} placeholder="e.g. Joe's Pizza" value={formData.displayName} />
-                        <Text type="secondary">Optional. Shown publicly instead of your internal store name for this language.</Text>
+                        <Input
+                            maxLength={60}
+                            onChange={(value) => setLocalizedDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: {
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                    displayName: value,
+                                },
+                            }))}
+                            placeholder="e.g. Joe's Pizza"
+                            value={currentLocalizedDraft.displayName}
+                        />
+                        <Text type="secondary">{`Optional. Shown publicly instead of your internal store name for ${getStoreLanguageLabel(selectedLanguage)}.`}</Text>
+                        {selectedLanguage !== referenceLanguage ? (
+                            <LocalizedReferenceHint
+                                onUseReference={() => setLocalizedDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: {
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                        displayName: previous[referenceLanguage]?.displayName || '',
+                                    },
+                                }))}
+                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                referenceValue={localizedDrafts[referenceLanguage]?.displayName || ''}
+                            />
+                        ) : null}
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('shortDescriptor')}</Text>
-                        <Input maxLength={40} onChange={(value) => setFormData((previous) => ({ ...previous, descriptor: value }))} placeholder={t('shortDescriptorPlaceholder')} value={formData.descriptor} />
+                        <Input
+                            maxLength={40}
+                            onChange={(value) => setLocalizedDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: {
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                    descriptor: value,
+                                },
+                            }))}
+                            placeholder={t('shortDescriptorPlaceholder')}
+                            value={currentLocalizedDraft.descriptor}
+                        />
                         <Text type="secondary">{t('shortDescriptorHelp')}</Text>
+                        {selectedLanguage !== referenceLanguage ? (
+                            <LocalizedReferenceHint
+                                onUseReference={() => setLocalizedDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: {
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                        descriptor: previous[referenceLanguage]?.descriptor || '',
+                                    },
+                                }))}
+                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                referenceValue={localizedDrafts[referenceLanguage]?.descriptor || ''}
+                            />
+                        ) : null}
                     </Flex>
                 </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('knownFor')}</Text>
-                        <Input maxLength={40} onChange={(value) => setFormData((previous) => ({ ...previous, knownFor: value }))} placeholder={t('knownForPlaceholder')} value={formData.knownFor} />
+                        <Input
+                            maxLength={40}
+                            onChange={(value) => setLocalizedDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: {
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                    knownFor: value,
+                                },
+                            }))}
+                            placeholder={t('knownForPlaceholder')}
+                            value={currentLocalizedDraft.knownFor}
+                        />
                         <Text type="secondary">{t('knownForHelp')}</Text>
+                        {selectedLanguage !== referenceLanguage ? (
+                            <LocalizedReferenceHint
+                                onUseReference={() => setLocalizedDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: {
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                        knownFor: previous[referenceLanguage]?.knownFor || '',
+                                    },
+                                }))}
+                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                referenceValue={localizedDrafts[referenceLanguage]?.knownFor || ''}
+                            />
+                        ) : null}
                     </Flex>
                 </Card>
 
@@ -469,6 +587,36 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 url={withSource(officialPageUrl, 'qr')}
                 visible={isQrSheetOpen}
             />
+        </Flex>
+    );
+}
+
+function LocalizedReferenceHint({
+    onUseReference,
+    referenceLabel,
+    referenceValue,
+}: {
+    onUseReference: () => void;
+    referenceLabel: string;
+    referenceValue: string;
+}) {
+    return (
+        <Flex
+            align="center"
+            justify="space-between"
+            style={{ background: '#f8fafc', borderRadius: 12, padding: '8px 10px' }}
+        >
+            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                <Text type="secondary">{`${referenceLabel} reference`}</Text>
+                <Text style={{ wordBreak: 'break-word' }}>
+                    {referenceValue || 'No content yet in the primary language.'}
+                </Text>
+            </Flex>
+            {referenceValue ? (
+                <Button fill="outline" onClick={onUseReference} size="small">
+                    Use
+                </Button>
+            ) : null}
         </Flex>
     );
 }
