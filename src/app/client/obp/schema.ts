@@ -18,6 +18,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import {
     buildAddress,
     buildAmenityFeatures,
@@ -48,6 +49,7 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
         getPrimaryLocalizedLanguage(storeData?.publicPresence?.knownFor, contentLanguage),
         '',
     );
+    const publicDescription = getPublicBusinessDescription(storeData);
     const address = buildAddress(storeData);
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
@@ -81,14 +83,8 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
             name: 'MenuList Entity ID',
             value: `ml_${storeData?.storeId || 'unknown'}`,
         },
-        ...(publicDescriptor && {
-            description: publicDescriptor,
-        }),
-        ...(!publicDescriptor && publicKnownFor && {
-            description: publicKnownFor,
-        }),
-        ...(!storeData?.publicPresence?.descriptor && !storeData?.publicPresence?.knownFor && storeData?.description && {
-            description: storeData.description,
+        ...(publicDescription && {
+            description: publicDescription,
         }),
         ...buildImageSchema(storeData?.logo, storeData?.publicPresence?.photos),
         url: canonicalUrl,

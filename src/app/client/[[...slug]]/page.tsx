@@ -34,6 +34,7 @@ import {
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
@@ -775,12 +776,13 @@ function generateSchemaOrgJsonLd(
     const openingHours = buildOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
     const schemaType = getMenuSchemaType(storeData?.businessType);
+    const publicDescription = getPublicBusinessDescription(storeData);
 
     return {
         "@context": "https://schema.org",
         "@type": schemaType,
         name: storeName,
-        ...(storeData?.description && { description: storeData.description }),
+        ...(publicDescription && { description: publicDescription }),
         ...(storeData?.logo && { image: storeData.logo }),
         url: canonicalUrl,
         ...(storeData?.phoneNumber && { telephone: storeData.phoneNumber }),

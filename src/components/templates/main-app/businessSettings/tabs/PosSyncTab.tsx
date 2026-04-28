@@ -45,6 +45,7 @@ import {
 } from "react-icons/lu";
 
 const { Title, Text } = Typography;
+const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
 
 interface PosSyncTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -81,6 +82,8 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const [deliveryEntries, setDeliveryEntries] = useState<DeliveryLogEntry[]>([]);
     const [loadingEntries, setLoadingEntries] = useState(false);
     const [secretVisible, setSecretVisible] = useState(false);
+    const [regenerateSecretModalOpen, setRegenerateSecretModalOpen] = useState(false);
+    const [regenerateSecretConfirmationText, setRegenerateSecretConfirmationText] = useState('');
     const [providerEmail, setProviderEmail] = useState('');
     const [sendingInstructions, setSendingInstructions] = useState(false);
 
@@ -194,22 +197,26 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     }, [storeId, tenantId, fetchDeliveryHistory]);
 
     const handleRegenerateSecret = useCallback(() => {
-        Modal.confirm({
-            title: 'Regenerate Signing Secret',
-            content: 'The current secret will stop working immediately. Your POS provider will need the new secret to verify webhook signatures.',
-            okText: 'Regenerate',
-            okType: 'danger',
-            onOk: () => {
-                const bytes = new Uint8Array(32);
-                crypto.getRandomValues(bytes);
-                const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-                setWebhookSecret(newSecret);
-                setSecretVisible(true);
-                onStoreUpdate?.({ 'posSync.webhookSecret': newSecret });
-                message.success('New secret generated. Share it with your POS provider.');
-            },
-        });
-    }, [onStoreUpdate]);
+        setRegenerateSecretConfirmationText('');
+        setRegenerateSecretModalOpen(true);
+    }, []);
+
+    const confirmSecretRegeneration = useCallback(() => {
+        if (regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION) {
+            message.error(`Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`);
+            return;
+        }
+
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        setWebhookSecret(newSecret);
+        setSecretVisible(true);
+        onStoreUpdate?.({ 'posSync.webhookSecret': newSecret });
+        setRegenerateSecretModalOpen(false);
+        setRegenerateSecretConfirmationText('');
+        message.success('New secret generated. Share it with your POS provider.');
+    }, [onStoreUpdate, regenerateSecretConfirmationText]);
 
     const handleCopySecret = useCallback(() => {
         navigator.clipboard.writeText(webhookSecret);
@@ -584,6 +591,35 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     </>
                 )}
             </Flex>
+
+            <Modal
+                title="Regenerate Signing Secret"
+                open={regenerateSecretModalOpen}
+                onOk={confirmSecretRegeneration}
+                onCancel={() => {
+                    setRegenerateSecretModalOpen(false);
+                    setRegenerateSecretConfirmationText('');
+                }}
+                okText="Regenerate"
+                okButtonProps={{
+                    danger: true,
+                    disabled: regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION,
+                }}
+            >
+                <Flex vertical gap={12}>
+                    <Text>
+                        The current secret will stop working immediately. Share the new secret with your POS provider or their existing webhook configuration will fail.
+                    </Text>
+                    <Text type="secondary">
+                        Type {REGENERATE_SECRET_CONFIRMATION} to confirm.
+                    </Text>
+                    <Input
+                        value={regenerateSecretConfirmationText}
+                        onChange={(event) => setRegenerateSecretConfirmationText(event.target.value)}
+                        placeholder={`Type ${REGENERATE_SECRET_CONFIRMATION}`}
+                    />
+                </Flex>
+            </Modal>
         </Card>
     );
 };

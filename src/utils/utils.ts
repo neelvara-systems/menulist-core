@@ -1,5 +1,6 @@
 // This file will export the basic utitlity function to use globally.
 import Compressor from 'compressorjs';
+import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { Timestamp } from 'firebase/firestore';
 import { v4 as uuid } from 'uuid';
 import { windowRef } from './window';
@@ -267,7 +268,7 @@ export function updateManifestFile(storeData: any) {
       "background_color": theme_color || "#dee1ec",
       "theme_color": theme_color || "#dee1ec",
       "orientation": "standalone",
-      "description": storeData.description,
+      "description": getPublicBusinessDescription(storeData),
       "id": storeData.tenantId,
       "icons": [
         {

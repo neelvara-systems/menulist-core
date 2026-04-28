@@ -97,7 +97,6 @@ interface CatalogCardProps {
     token: any;
     onSelect: () => void;
     onEdit: () => void;
-    onSetDefault: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
     index: number;
@@ -110,7 +109,6 @@ const CatalogCard = ({
     token,
     onSelect,
     onEdit,
-    onSetDefault,
     onDuplicate,
     onDelete,
     index,
@@ -133,9 +131,6 @@ const CatalogCard = ({
 
     const menuItems = [
         { key: 'edit', label: 'Edit', icon: <LuPen size={14} />, onClick: (e: any) => handleMenuClick(e, onEdit) },
-        ...(!project.isDefault && !project.isSpecialMenu ? [
-            { key: 'default', label: 'Make default', icon: <LuCheck size={14} />, onClick: (e: any) => handleMenuClick(e, onSetDefault) },
-        ] : []),
         ...(project.isSpecialMenu ? [] : [
             { key: 'duplicate', label: 'Duplicate', icon: <LuCopy size={14} />, onClick: (e: any) => handleMenuClick(e, onDuplicate) },
         ]),
@@ -346,7 +341,6 @@ interface ProjectSelectorProps {
     onOpenModal: (project?: SelectorProjectMetadata) => void;
     onDuplicateProject: (project: SelectorProjectMetadata) => void;
     onDeleteProject: (project: SelectorProjectMetadata) => void;
-    onSetDefaultProject: (project: SelectorProjectMetadata) => void;
 }
 
 export const ProjectSelector = ({
@@ -356,7 +350,6 @@ export const ProjectSelector = ({
     onOpenModal,
     onDuplicateProject,
     onDeleteProject,
-    onSetDefaultProject,
 }: ProjectSelectorProps) => {
     const { token } = useToken();
     const [modalOpen, setModalOpen] = useState(false);
@@ -510,10 +503,6 @@ export const ProjectSelector = ({
                                 onEdit={() => {
                                     onOpenModal(project);
                                     setModalOpen(false);
-                                }}
-                                onSetDefault={() => {
-                                    setModalOpen(false);
-                                    onSetDefaultProject(project);
                                 }}
                                 onDuplicate={() => confirmDuplicate(project)}
                                 onDelete={() => confirmDelete(project)}

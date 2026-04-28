@@ -561,17 +561,28 @@ function ProjectsPage() {
                 promoteThisAsDefault = decision === 'promote';
             }
 
-            if (thisIsDefault && values.isDefault === false) {
-                message.error(`Choose another ${labels.offeringPhrase} as default before removing this one.`);
-                return;
-            }
-
             const savedProjectImage = await resolveProjectImageForSave(
                 values.projectImage ?? null,
                 editingProject?.projectId || sanitizedName,
             );
 
             if (editingProject) {
+                const defaultReplacement = thisIsDefault && !nextIsDefault
+                    ? existingProjects.find((project: any) => (
+                        project?.projectId !== editingProject.projectId &&
+                        project?.isSpecialMenu !== true &&
+                        project?.active !== false
+                    )) || existingProjects.find((project: any) => (
+                        project?.projectId !== editingProject.projectId &&
+                        project?.isSpecialMenu !== true
+                    )) || null
+                    : null;
+
+                if (thisIsDefault && !nextIsDefault && !defaultReplacement) {
+                    message.error(`Add another regular ${labels.offeringPhrase} before removing the default one.`);
+                    return;
+                }
+
                 const updatePayload: { name?: any; description?: any; isDefault?: boolean; projectImage?: string | null } = {
                     name: localizedName,
                     description: localizedDescription,
@@ -597,10 +608,11 @@ function ProjectsPage() {
                 if (activeChanged) {
                     await setProjectActive(editingProject.projectId!, nextActive);
                 }
-                // G-13: if this was promoted to default, flip the previous
-                // default off so there is exactly one isDefault project.
                 if (shouldBeDefault && otherDefault?.projectId) {
                     await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
+                }
+                if (defaultReplacement?.projectId) {
+                    await updateProjectMetadata(defaultReplacement.projectId, { isDefault: true });
                 }
 
                 // Update selected project if editing current
@@ -615,6 +627,9 @@ function ProjectsPage() {
                             if (p.projectId === editingProject.projectId) return updatedProject;
                             if (shouldBeDefault && p.projectId === otherDefault?.projectId) {
                                 return { ...p, isDefault: false };
+                            }
+                            if (defaultReplacement?.projectId === p.projectId) {
+                                return { ...p, isDefault: true };
                             }
                             return p;
                         })
@@ -685,49 +700,6 @@ function ProjectsPage() {
                 message.error(`Failed to delete ${labels.offeringPhrase}`);
             }
             dispatch(stopLoader("Deleting project"))
-        }
-    };
-
-    const handleSetDefaultProject = async (project: ProjectMetadata) => {
-        try {
-            const projectName = getLocalizedText(
-                project.name,
-                undefined,
-                getPrimaryLocalizedLanguage(project.name, 'en'),
-                offeringName,
-            );
-            const currentDefault = (projectsData?.projects || []).find(
-                (entry: any) => entry?.isDefault === true && entry?.projectId !== project.projectId,
-            );
-
-            await updateProjectMetadata(project.projectId!, { isDefault: true });
-            if (currentDefault?.projectId) {
-                await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
-            }
-
-            const updatedProject = { ...project, isDefault: true };
-            if (selectedProject?.projectId === project.projectId) {
-                setSelectedProject(updatedProject);
-            }
-
-            mutateProjects(
-                (current) => current ? {
-                    ...current,
-                    projects: current.projects.map((entry) => {
-                        if (entry.projectId === project.projectId) return updatedProject;
-                        if (entry.projectId === currentDefault?.projectId) {
-                            return { ...entry, isDefault: false };
-                        }
-                        return entry;
-                    }),
-                } : current,
-                { revalidate: false }
-            );
-
-            message.success(`${projectName} is now the default ${labels.offeringPhrase}`);
-        } catch (error) {
-            console.error('Error setting default project:', error);
-            message.error(`Failed to set default ${labels.offeringPhrase}`);
         }
     };
 
@@ -1445,7 +1417,6 @@ function ProjectsPage() {
                             onOpenModal={openModal}
                             onDuplicateProject={handleDuplicateProject}
                             onDeleteProject={handleDeleteProjectFromSelector}
-                            onSetDefaultProject={handleSetDefaultProject}
                             activeDeviceType={activeDeviceType}
                             setActiveDeviceType={setActiveDeviceType}
                             onPreview={selectedProject?.projectId ? handlePreview : undefined}

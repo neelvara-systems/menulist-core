@@ -5,6 +5,7 @@ import GlobalLanguagesList from '@data/languages';
 import { updateStore } from '@database/stores';
 import { getStoreSourceLanguage } from '@lib/localization/storeContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import generateBusinessCopyViaAPI from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
 import localizeBusinessCopyResult, { mergeLocalizedField } from '@services/ai/businessCopy/localizeBusinessCopyResult';
@@ -81,7 +82,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     businessType: storeDetails?.businessType || '',
                     city: storeDetails?.city || '',
                     country: storeDetails?.country || '',
-                    description: storeDetails?.description || '',
+                    description: getPublicBusinessDescription(storeDetails),
                     name: storeDetails.name,
                     publicPresence: {
                         accentColor: storeDetails?.publicPresence?.accentColor || '',

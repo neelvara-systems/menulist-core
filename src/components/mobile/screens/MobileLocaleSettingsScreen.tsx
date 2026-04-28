@@ -203,24 +203,6 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
                     </Flex>
                 </Card>
 
-                {prospectiveCoverage.repairableGapCount > 0 ? (
-                    <Card>
-                        <Flex gap={8} vertical>
-                            <Text strong>{tBusiness('businessCopyLanguageNudgeTitle', { count: prospectiveCoverage.repairableGapCount })}</Text>
-                            <Text type="secondary">
-                                {isDirty
-                                    ? tBusiness('businessCopyLanguageNudgePendingSave')
-                                    : tBusiness('businessCopyLanguageNudgeReady')}
-                            </Text>
-                            {!isDirty && onOpenBusinessCopySetup ? (
-                                <Button block onClick={onOpenBusinessCopySetup}>
-                                    {tBusiness('businessCopyLanguageNudgeAction')}
-                                </Button>
-                            ) : null}
-                        </Flex>
-                    </Card>
-                ) : null}
-
                 <Card>
                     <Flex gap={8} vertical>
                         <Text type="secondary">{tBusiness('dateFormat')}</Text>
@@ -246,6 +228,24 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
                         />
                     </Flex>
                 </Card>
+
+                {prospectiveCoverage.repairableGapCount > 0 ? (
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text strong>{tBusiness('businessCopyLanguageNudgeTitle', { count: prospectiveCoverage.repairableGapCount })}</Text>
+                            <Text type="secondary">
+                                {isDirty
+                                    ? tBusiness('businessCopyLanguageNudgePendingSave')
+                                    : tBusiness('businessCopyLanguageNudgeReady')}
+                            </Text>
+                            {!isDirty && onOpenBusinessCopySetup ? (
+                                <Button block onClick={onOpenBusinessCopySetup}>
+                                    {tBusiness('businessCopyLanguageNudgeAction')}
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    </Card>
+                ) : null}
 
                 <Card>
                     <Flex gap={8} vertical>

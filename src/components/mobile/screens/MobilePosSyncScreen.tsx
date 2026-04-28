@@ -3,7 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { theme } from 'antd';
+import { Modal, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
@@ -14,6 +14,8 @@ interface MobilePosSyncScreenProps {
     onBack: () => void;
 }
 
+const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
+
 export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps) {
     const t = useTranslations('PosSync');
     const tMobile = useTranslations('MobileSettings');
@@ -22,6 +24,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [regenerateSecretModalOpen, setRegenerateSecretModalOpen] = useState(false);
+    const [regenerateSecretConfirmationText, setRegenerateSecretConfirmationText] = useState('');
 
     const currentPosSync = useMemo(() => ({
         enabled: storeDetails?.posSync?.enabled ?? false,
@@ -141,8 +145,21 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     };
 
     const handleRegenerateSecret = () => {
+        setRegenerateSecretConfirmationText('');
+        setRegenerateSecretModalOpen(true);
+    };
+
+    const confirmSecretRegeneration = () => {
+        if (regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION) {
+            Toast.show({ content: `Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`, duration: 1500 });
+            return;
+        }
+
         const nextSecret = generateSecret();
         setWebhookSecret(nextSecret);
+        setRegenerateSecretModalOpen(false);
+        setRegenerateSecretConfirmationText('');
+        Toast.show({ content: 'New secret generated. Share it with your POS provider.', duration: 1500 });
     };
 
     const handleReset = () => {
@@ -319,6 +336,36 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     </Button>
                 </Flex>
             </Flex>
+            <Modal
+                title="Regenerate signing secret"
+                open={regenerateSecretModalOpen}
+                onOk={confirmSecretRegeneration}
+                onCancel={() => {
+                    setRegenerateSecretModalOpen(false);
+                    setRegenerateSecretConfirmationText('');
+                }}
+                okText="Regenerate"
+                okButtonProps={{
+                    danger: true,
+                    disabled: regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION,
+                }}
+                cancelText="Keep current secret"
+            >
+                <Flex gap={12} vertical>
+                    <Text>
+                        Your current secret will stop working immediately. Share the new secret with your POS provider or their existing webhook configuration will fail.
+                    </Text>
+                    <Text type="secondary">
+                        Type {REGENERATE_SECRET_CONFIRMATION} to confirm.
+                    </Text>
+                    <Input
+                        autoCapitalize="characters"
+                        onChange={setRegenerateSecretConfirmationText}
+                        placeholder={`Type ${REGENERATE_SECRET_CONFIRMATION}`}
+                        value={regenerateSecretConfirmationText}
+                    />
+                </Flex>
+            </Modal>
         </Flex>
     );
 }

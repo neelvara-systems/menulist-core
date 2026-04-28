@@ -32,7 +32,6 @@ export type StoreDataType = {
     dialCode?: string;
     phoneNumber: string;
     alternatePhoneNumber?: string;
-    description?: string;
     gstn?: string;
     domain?: string;
     url?: string;

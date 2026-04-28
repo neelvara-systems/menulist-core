@@ -109,7 +109,7 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
     }
     templates.push({
         id: 'menu_location',
-        title: `${labels.offeringTitle} + Location`,
+        title: `${labels.offeringTitle} + Address`,
         description: 'Include address and hours with the link',
         message: buildMessage(locationLines),
     });

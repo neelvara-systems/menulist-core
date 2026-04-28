@@ -33,7 +33,6 @@ function getInitialFormData(storeDetails: any, tenantDetails?: any) {
         contactPersonName: storeDetails?.contactPersonName || '',
         contactPersonNumber: storeDetails?.contactPersonNumber || '',
         country: storeDetails?.country || '',
-        description: storeDetails?.description || '',
         district: storeDetails?.district || '',
         email: storeDetails?.email || '',
         gstn: storeDetails?.gstn || '',
@@ -101,7 +100,6 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             contactPersonName: formData.contactPersonName,
             contactPersonNumber: formData.contactPersonNumber,
             country: formData.country,
-            description: formData.description,
             district: formData.district,
             email: formData.email,
             gstn: formData.gstn,
@@ -167,7 +165,6 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 contactPersonNumber: storeDetails.contactPersonNumber,
                 country: storeDetails.country,
                 email: storeDetails.email,
-                description: storeDetails.description,
                 district: storeDetails.district,
                 geo: storeDetails.geo,
                 gstn: storeDetails.gstn,
@@ -221,44 +218,44 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     </Flex>
                 </Card>
                 <Card>
-                    <Flex align="center" gap={10} justify="center" style={{ minHeight: 120 }} vertical>
+                    <Flex align="center" gap={12}>
                         {(selectedLogo?.url || storeDetails.logo) ? (
-                            <>
-                                <Image
-                                    alt={displayName}
-                                    height={72}
-                                    preview={false}
-                                    src={selectedLogo?.url || storeDetails.logo}
-                                    style={{ borderRadius: 12, objectFit: 'cover' }}
-                                    width={72}
-                                />
-                                <Text strong>{tBusiness('uploadLogo')}</Text>
-                                <Text type="secondary">Tap to replace</Text>
-                                <Button fill="outline" onClick={() => fileInputRef.current?.click()} size="small">
-                                    {tBusiness('uploadLogo')}
-                                </Button>
-                            </>
+                            <Image
+                                alt={displayName}
+                                height={72}
+                                preview={false}
+                                src={selectedLogo?.url || storeDetails.logo}
+                                style={{ borderRadius: 12, objectFit: 'cover' }}
+                                width={72}
+                            />
                         ) : (
-                            <>
-                                <Flex
-                                    align="center"
-                                    justify="center"
-                                    style={{
-                                        background: token.colorFillAlter,
-                                        borderRadius: 14,
-                                        color: token.colorPrimary,
-                                        height: 44,
-                                        width: 44,
-                                    }}
-                                >
-                                    <LuUpload size={20} />
-                                </Flex>
-                                <Text strong>{tBusiness('uploadLogo')}</Text>
-                                <Button onClick={() => fileInputRef.current?.click()} size="small">
+                            <Flex
+                                align="center"
+                                justify="center"
+                                style={{
+                                    background: token.colorFillAlter,
+                                    borderRadius: 14,
+                                    color: token.colorPrimary,
+                                    flexShrink: 0,
+                                    height: 72,
+                                    width: 72,
+                                }}
+                            >
+                                <LuUpload size={24} />
+                            </Flex>
+                        )}
+
+                        <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
+                            <Text strong>{tBusiness('uploadLogo')}</Text>
+                            <Text type="secondary">
+                                {(selectedLogo?.url || storeDetails.logo) ? 'Tap to replace your current logo.' : 'Add a square logo for your brand and public pages.'}
+                            </Text>
+                            <Flex>
+                                <Button fill={(selectedLogo?.url || storeDetails.logo) ? 'outline' : 'solid'} onClick={() => fileInputRef.current?.click()} size="small">
                                     {tBusiness('uploadLogo')}
                                 </Button>
-                            </>
-                        )}
+                            </Flex>
+                        </Flex>
                     </Flex>
                 </Card>
 
@@ -349,20 +346,6 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             placeholder={tBusiness('phonePlaceholder')}
                             type="tel"
                             value={formData.contactPersonNumber}
-                        />
-                    </Flex>
-                </Card>
-
-                <Card>
-                    <Flex gap={8} vertical>
-                        <Text type="secondary">{tBusiness('businessDescription')}</Text>
-                        <TextArea
-                            maxLength={300}
-                            onChange={(value) => setFormData((previous) => ({ ...previous, description: value }))}
-                            placeholder={tBusiness('businessDescPlaceholder')}
-                            rows={4}
-                            showCount
-                            value={formData.description}
                         />
                     </Flex>
                 </Card>

@@ -14,6 +14,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
 import { notFound } from 'next/navigation';
@@ -160,7 +161,7 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
                     contentLanguage,
                     getPrimaryLocalizedLanguage(storeData.tagline, contentLanguage),
                     '',
-                ) || storeData.description || ''
+                ) || getPublicBusinessDescription(storeData) || ''
             ) as string | undefined,
             whatsappNumber: (storeData.publicPresence?.whatsappNumber || '') as string | undefined,
         };

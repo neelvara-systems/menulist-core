@@ -196,7 +196,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     {isDefault
                                         ? `"${currentProjectName}" will become the default menu used by your main public menu link when you save.`
                                         : editingProject?.isDefault
-                                            ? 'This menu is currently the default. To move the default role, turn this on for another menu instead.'
+                                            ? 'If you turn this off, the default role will move to the next available regular menu automatically.'
                                             : 'If this stays off, your main public menu link keeps opening the current default menu.'}
                                 </Typography.Text>
                             </Flex>

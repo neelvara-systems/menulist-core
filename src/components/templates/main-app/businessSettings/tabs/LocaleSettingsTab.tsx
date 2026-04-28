@@ -161,9 +161,6 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                     </Form.Item>
                 </Col>
             </Row>
-            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                {t('languageSourcePolicyHint')}
-            </Text>
 
             {businessCopyCoverage.repairableGapCount > 0 ? (
                 <>
@@ -185,6 +182,9 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                     />
                 </>
             ) : null}
+            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                {t('languageSourcePolicyHint')}
+            </Text>
         </Card>
     );
 };

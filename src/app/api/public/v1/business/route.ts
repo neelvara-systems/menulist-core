@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from "@config/features";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { apiError, generateETag, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { secureError } from "@lib/security/secureLogger";
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
             getPrimaryLocalizedLanguage(storeData.publicPresence?.knownFor, contentLanguage),
             '',
         );
+        const publicDescription = getPublicBusinessDescription(storeData);
 
         // Abuse logging
         logApiRequest(request, storeId, 'GET /business');
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
             storeId: Number(storeId),
             name: publicName || null,
             businessType: storeData.businessType || null,
-            description: storeData.description || null,
+            description: publicDescription || null,
             descriptor: publicDescriptor || null,
             knownFor: publicKnownFor || null,
             phone: storeData.phoneNumber || null,

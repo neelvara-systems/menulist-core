@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import React, { forwardRef, memo, useMemo } from 'react';
 import { LuMail, LuPhoneCall } from 'react-icons/lu';
 
-const { TextArea } = Input;
 const { Title } = Typography;
 
 interface BasicInfoTabProps {
@@ -70,21 +69,6 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
                                 // Remove empty groups
                                 return grouped.filter(group => group.options.length > 0);
                             }, [])}
-                        />
-                    </Form.Item>
-                </Col>
-            </Row>
-
-            <Row gutter={[16, 0]}>
-                <Col xs={24}>
-                    <Form.Item
-                        name="description"
-                        label={t('businessDescription')}
-                    >
-                        <TextArea
-                            placeholder={t('businessDescPlaceholder')}
-                            rows={3}
-                            autoSize={{ minRows: 3 }}
                         />
                     </Form.Item>
                 </Col>

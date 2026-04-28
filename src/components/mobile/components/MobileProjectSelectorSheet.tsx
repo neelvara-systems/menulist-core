@@ -14,7 +14,7 @@ import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { LuArchiveRestore, LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
+import { LuArchiveRestore, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -395,11 +395,6 @@ export default function MobileProjectSelectorSheet({
             return;
         }
 
-        if (formSourceProject?.isDefault && !formIsDefault) {
-            Toast.show({ content: `Choose another ${labels.offeringLower} as default before removing this one.`, duration: 2000 });
-            return;
-        }
-
         if (isEditingSpecialMenu) {
             if (!formStartsAt || !formEndsAt) {
                 Toast.show({ content: 'Set both the start and end date and time.', duration: 1800 });
@@ -526,6 +521,22 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'edit' && formProjectId) {
+                const defaultReplacement = formSourceProject?.isDefault && !formIsDefault
+                    ? projects.find((project) => (
+                        project.projectId !== formProjectId &&
+                        project.isSpecialMenu !== true &&
+                        project.active !== false
+                    )) || projects.find((project) => (
+                        project.projectId !== formProjectId &&
+                        project.isSpecialMenu !== true
+                    )) || null
+                    : null;
+
+                if (formSourceProject?.isDefault && !formIsDefault && !defaultReplacement) {
+                    Toast.show({ content: `Add another regular ${labels.offeringLower} before removing the default one.`, duration: 2200 });
+                    return;
+                }
+
                 const metadataUpdate: Record<string, any> = {
                     description: localizedDescription,
                     isDefault: formIsDefault,
@@ -557,6 +568,9 @@ export default function MobileProjectSelectorSheet({
                 if (shouldUnsetPreviousDefault && currentDefault?.projectId) {
                     await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
                 }
+                if (defaultReplacement?.projectId) {
+                    await updateProjectMetadata(defaultReplacement.projectId, { isDefault: true });
+                }
 
                 if (isEditingSpecialMenu) {
                     await updateProjectWithoutLoader({
@@ -575,6 +589,14 @@ export default function MobileProjectSelectorSheet({
                         ...currentDefault,
                         isDefault: false,
                         projectId: currentDefault.projectId,
+                    });
+                }
+                if (defaultReplacement?.projectId) {
+                    upsertCachedProject({
+                        ...(projectsById[defaultReplacement.projectId] || defaultReplacement),
+                        ...defaultReplacement,
+                        isDefault: true,
+                        projectId: defaultReplacement.projectId,
                     });
                 }
 
@@ -635,36 +657,6 @@ export default function MobileProjectSelectorSheet({
         setFormActive(formSourceProject.active !== false);
         setFormStartsAt(toNativeDateTimeValue(formSourceProject.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(formSourceProject.specialMenuEndsAt));
-    };
-
-    const handleMakeDefaultProject = async (project: ProjectSheetProject) => {
-        const currentDefault = projects.find(
-            (entry) => entry.isDefault === true && entry.projectId !== project.projectId,
-        );
-
-        await updateProjectMetadata(project.projectId, { isDefault: true });
-        if (currentDefault?.projectId) {
-            await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
-        }
-
-        if (currentDefault?.projectId) {
-            upsertCachedProject({
-                ...(projectsById[currentDefault.projectId] || currentDefault),
-                ...currentDefault,
-                isDefault: false,
-                projectId: currentDefault.projectId,
-            });
-        }
-        upsertCachedProject({
-            ...(projectsById[project.projectId] || project),
-            ...project,
-            isDefault: true,
-            projectId: project.projectId,
-        });
-
-        setManagingProjectId(null);
-        await syncSelectionOnly(project.projectId);
-        Toast.show({ content: `${resolveProjectName(project.name)} is now the default ${labels.offeringLower}.`, duration: 1600 });
     };
 
     const handleProjectImageSelect = async (file: File) => {
@@ -878,15 +870,6 @@ export default function MobileProjectSelectorSheet({
             labelStyle: undefined,
             onClick: () => { openEdit(managingProject); },
         },
-        ...(!managingProject.isDefault && !managingProject.isSpecialMenu ? [{
-            key: 'make-default',
-            label: 'Make default',
-            description: `Use this ${labels.offeringLower} for the main public menu link.`,
-            icon: <LuCheck size={16} />,
-            iconBackground: token.colorPrimaryBg,
-            labelStyle: { color: token.colorPrimary },
-            onClick: () => void handleMakeDefaultProject(managingProject),
-        }] : []),
         ...(managingProject.isSpecialMenu ? [] : [{
             key: 'duplicate',
             label: t('duplicateCatalog'),
@@ -1248,7 +1231,7 @@ export default function MobileProjectSelectorSheet({
                                         {formIsDefault
                                             ? `"${formName.trim() || `This ${labels.offeringLower}`}" will become the default menu used by your main public menu link when you save.`
                                             : formSourceProject?.isDefault
-                                                ? 'This menu is currently the default. To move the default role, turn this on for another menu instead.'
+                                                ? 'If you turn this off, the default role will move to the next available regular menu automatically.'
                                                 : 'If this stays off, your main public menu link keeps opening the current default menu.'}
                                     </Text>
                                 </Flex>

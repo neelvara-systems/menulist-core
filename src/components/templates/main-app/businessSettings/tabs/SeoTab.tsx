@@ -1,13 +1,9 @@
 'use client';
-import { FEATURE_FLAGS } from '@config/features';
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
-import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
-import generateSeoViaAPI from '@services/ai/seo/generateSeoViaAPI';
-import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
-import { Button, Card, Divider, Form, Input, Select, Typography, message, theme } from 'antd';
+import { Button, Card, Divider, Form, Input, Select, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { memo, useEffect, useState } from 'react';
-import { LuSparkles } from 'react-icons/lu';
+import { memo, useEffect } from 'react';
+import { LuInfo } from 'react-icons/lu';
 import SeoPreviewCard from './SeoPreviewCard';
 
 const { TextArea } = Input;
@@ -31,27 +27,16 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const t = useTranslations('SEO');
     const form = Form.useFormInstance();
     const businessName = Form.useWatch('name');
-    const businessCategory = Form.useWatch('businessCategory');
-    const businessType = Form.useWatch('businessType');
-    const city = Form.useWatch('city');
-    const country = Form.useWatch('country');
-    const description = Form.useWatch('description');
     const canonicalUrl = Form.useWatch('canonicalUrl');
     const customDomain = Form.useWatch('customDomain');
     const keywords = Form.useWatch('keywords');
     const logoUrl = Form.useWatch('logo');
-    const businessAttributes = Form.useWatch('businessAttributes');
     const metaDescription = Form.useWatch('metaDescription');
     const metaTitle = Form.useWatch('metaTitle');
-    const addressLine = Form.useWatch('addressLine');
-    const publicPresence = Form.useWatch('publicPresence');
-    const socialMedia = Form.useWatch('socialMedia');
-    const state = Form.useWatch('state');
     const subdomain = Form.useWatch('subdomain');
     const tagline = Form.useWatch('tagline');
     const localizedSeoDrafts = Form.useWatch('__localizedSeoDrafts') || {};
     const storeContentLanguage = Form.useWatch('__storeContentLanguage');
-    const [isGenerating, setIsGenerating] = useState(false);
     const localizedSeoValues = getLocalizedSeoValues(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const currentLanguage = storeContentLanguage || getStorePreferredLanguage(storeDetails);
@@ -108,87 +93,6 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             },
         });
     }, [currentLanguage, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleGenerateSeo = async () => {
-        if (!businessName?.trim()) {
-            message.error(t('generateSeoMissingName'));
-            return;
-        }
-
-        try {
-            setIsGenerating(true);
-
-            const projectContext = await getDefaultProjectAiContext(storeDetails);
-
-            const socialValues = [
-                ...Object.values(socialMedia || {}),
-                ...Object.values(publicPresence || {}).filter((value) => typeof value === 'string'),
-            ]
-                .map((value) => String(value || '').trim())
-                .filter(Boolean)
-                .slice(0, 12);
-
-            const generated = await generateSeoViaAPI({
-                menu: {
-                    categories: projectContext?.categories || [],
-                    items: projectContext?.items || [],
-                    projectDescription: projectContext?.projectDescription || '',
-                    projectName: projectContext?.projectName || '',
-                },
-                store: {
-                    addressLine,
-                    businessAttributes: getActiveBusinessAttributeLabels(businessAttributes),
-                    businessCategory,
-                    businessType,
-                    city,
-                    country,
-                    description,
-                    name: businessName,
-                    publicPresence: {
-                        accentColor: publicPresence?.accentColor || '',
-                        descriptor: firstText(publicPresence?.descriptor),
-                        displayName: firstText(publicPresence?.displayName),
-                        establishedYear: typeof publicPresence?.establishedYear === 'number' ? publicPresence.establishedYear : undefined,
-                        googleMapsUrl: publicPresence?.googleMapsUrl || '',
-                        googleReviewUrl: publicPresence?.googleReviewUrl || '',
-                        knownFor: firstText(publicPresence?.knownFor),
-                        orderUrl: publicPresence?.orderUrl || '',
-                        reservationUrl: publicPresence?.reservationUrl || '',
-                        whatsappNumber: publicPresence?.whatsappNumber || '',
-                    },
-                    pwaShortName: currentPwaShortName,
-                    socialMedia: socialValues,
-                    state,
-                    tagline,
-                },
-            });
-
-            if (!generated) {
-                message.error(t('generateSeoFailed'));
-                return;
-            }
-
-            form.setFieldsValue({
-                __localizedSeoDrafts: {
-                    ...localizedSeoDrafts,
-                    [currentLanguage]: {
-                        metaDescription: generated.metaDescription,
-                        metaTitle: generated.metaTitle,
-                        tagline: generated.tagline || '',
-                    },
-                },
-                keywords: generated.keywords,
-                metaDescription: generated.metaDescription,
-                metaTitle: generated.metaTitle,
-                tagline: generated.tagline || '',
-            });
-            message.success(t('generateSeoSuccess'));
-        } catch (error: any) {
-            message.error(error?.message || t('generateSeoFailed'));
-        } finally {
-            setIsGenerating(false);
-        }
-    };
 
     const handleResetSeo = () => {
         const resetDrafts = Object.fromEntries(
@@ -280,9 +184,8 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             ) : null}
 
             <Form.Item
-                label={t('metaTitle')}
+                label={<FieldLabel label={t('metaTitle')} tooltip={t('metaTitleHelp')} />}
                 name="metaTitle"
-                extra={<Text type="secondary">{t('metaTitleHelp')}</Text>}
             >
                 <TextArea
                     autoSize={{ minRows: 2, maxRows: 4 }}
@@ -314,9 +217,8 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             ) : null}
 
             <Form.Item
-                label={t('metaDescription')}
+                label={<FieldLabel label={t('metaDescription')} tooltip={t('metaDescHelp')} />}
                 name="metaDescription"
-                extra={<Text type="secondary">{t('metaDescHelp')}</Text>}
             >
                 <TextArea rows={3} placeholder={t('metaDescPlaceholder')} maxLength={160} showCount />
             </Form.Item>
@@ -343,9 +245,8 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             ) : null}
 
             <Form.Item
-                label={t('keywords')}
+                label={<FieldLabel label={t('keywords')} tooltip={t('keywordsHelp')} />}
                 name="keywords"
-                extra={<Text type="secondary">{t('keywordsHelp')}</Text>}
             >
                 <Select
                     mode="tags"
@@ -356,9 +257,8 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             </Form.Item>
 
             <Form.Item
-                label={t('canonicalUrl')}
+                label={<FieldLabel label={t('canonicalUrl')} tooltip={t('canonicalUrlHelp')} />}
                 name="canonicalUrl"
-                extra={<Text type="secondary">{t('canonicalUrlHelp')}</Text>}
             >
                 <TextArea
                     autoSize={{ minRows: 2, maxRows: 4 }}
@@ -390,17 +290,12 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 </Text>
             </Card>
 
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap' }}>
-                {FEATURE_FLAGS.ENABLE_SEO_AEO_GENERATION ? (
-                    <Button icon={<LuSparkles />} loading={isGenerating} onClick={() => void handleGenerateSeo()} type="default">
-                        {t('generateSeoButton')}
-                    </Button>
-                ) : <div />}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginBottom: 16, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Button disabled={!isSeoDirty} onClick={handleResetSeo}>
                         Reset
                     </Button>
-                    <Button disabled={!isSeoDirty || isGenerating} onClick={() => form.submit()} type="primary">
+                    <Button disabled={!isSeoDirty} onClick={() => form.submit()} type="primary">
                         Save
                     </Button>
                 </div>
@@ -477,19 +372,19 @@ function DesktopLocalizedReferenceHint({
     );
 }
 
-function firstText(value: unknown): string {
-    if (!value) return '';
-    if (typeof value === 'string') return value.trim();
-    if (typeof value === 'object') {
-        const firstValue = Object.entries(value as Record<string, unknown>)
-            .sort(([leftKey], [rightKey]) => (leftKey === 'en' ? -1 : rightKey === 'en' ? 1 : leftKey.localeCompare(rightKey)))
-            .map(([, entry]) => entry)
-            .find((entry) => typeof entry === 'string' && entry.trim());
-        return typeof firstValue === 'string' ? firstValue.trim() : '';
-    }
-    return '';
-}
-
 function referenceValue(value: unknown): string {
     return typeof value === 'string' ? value : '';
+}
+
+function FieldLabel({ label, tooltip }: { label: string; tooltip: string }) {
+    return (
+        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 6 }}>
+            <span>{label}</span>
+            <Tooltip title={tooltip}>
+                <span style={{ color: 'inherit', display: 'inline-flex', lineHeight: 0 }}>
+                    <LuInfo size={14} />
+                </span>
+            </Tooltip>
+        </span>
+    );
 }

@@ -1162,6 +1162,36 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         });
                     });
                 });
+
+                const uncategorizedItems = menuItems.filter((item) => !item.category || !categoryMap[item.category]);
+                uncategorizedItems.forEach((item) => {
+                    const itemName = resolveItemName(item, displayLanguage, t('unnamedItem'));
+                    const itemDescription = resolveItemDescription(item, displayLanguage);
+                    const price = normalizeExtractedPrice(item.price);
+                    const available = item.available !== false;
+                    const active = item.active !== false;
+                    items.push({
+                        id: item.id || `${uncategorizedLabel}-${itemName}`,
+                        name: itemName,
+                        price: price,
+                        attributes: item.attributes?.map((attribute: any) => ({
+                            id: attribute.id,
+                            name: resolveAttributeName(attribute, displayLanguage, 'Attribute'),
+                            price: normalizeExtractedPrice(attribute.price),
+                            active: attribute.active !== false,
+                        })),
+                        available,
+                        active,
+                        categoryId: item.category,
+                        categoryName: uncategorizedLabel,
+                        hiddenByCategory: false,
+                        description: itemDescription,
+                        fileId: file.uid,
+                        image: item.images?.[0]?.url || '',
+                        rawItem: removeObjRef(item),
+                        translationMissing: hasMissingTranslationsForLanguage(item, primaryLang, displayLanguage),
+                    });
+                });
             }
         });
         return items;
@@ -1295,14 +1325,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         const scopedItems = draftFilters.categoryIds.length > 0
             ? menuItems.filter((item) => item.categoryId && draftFilters.categoryIds.includes(item.categoryId))
             : menuItems;
+        const reviewableItems = scopedItems.filter((item) => isItemEffectivelyActive(item));
         return {
             available: scopedItems.filter((item) => item.available).length,
             hidden: scopedItems.filter((item) => !isItemEffectivelyActive(item)).length,
-            missingPhoto: scopedItems.filter((item) => !item.image).length,
-            missingDescription: scopedItems.filter((item) => !item.description?.trim()).length,
-            missingPrice: scopedItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
-            priceOutliers: scopedItems.filter((item) => priceOutlierItemIds.has(item.id)).length,
-            missingTranslation: scopedItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
+            missingPhoto: reviewableItems.filter((item) => !item.image).length,
+            missingDescription: reviewableItems.filter((item) => !item.description?.trim()).length,
+            missingPrice: reviewableItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
+            priceOutliers: reviewableItems.filter((item) => priceOutlierItemIds.has(item.id)).length,
+            missingTranslation: reviewableItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
             shown: scopedItems.filter((item) => isItemEffectivelyActive(item)).length,
             unavailable: scopedItems.filter((item) => !item.available).length,
         };

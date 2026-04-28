@@ -73,281 +73,272 @@ export default function SeoPreviewCard({
     const secondaryTextColor = token.colorTextSecondary;
 
     return (
-        <div
-            style={{
-                background: token.colorBgContainer,
-                border: `1px solid ${token.colorBorderSecondary}`,
-                borderRadius: token.borderRadiusLG,
-                padding: 16,
-            }}
-        >
-            <Flex gap={16} vertical>
-                <Flex gap={4} vertical>
-                    <Text strong style={{ fontSize: 16 }}>{t('previewCardTitle')}</Text>
-                    <Text type="secondary">{t('previewCardHelp')}</Text>
-                </Flex>
+        <Flex gap={16} vertical>
+            <Flex gap={4} vertical>
+                <Text strong style={{ fontSize: 16 }}>{t('previewCardTitle')}</Text>
+                <Text type="secondary">{t('previewCardHelp')}</Text>
+            </Flex>
 
+            <div
+                style={{
+                    background: whatsAppShellBackground,
+                    border: `1px solid ${token.colorBorder}`,
+                    borderRadius: 18,
+                    overflow: 'hidden',
+                    padding: 14,
+                }}
+            >
                 <div
                     style={{
-                        background: whatsAppShellBackground,
-                        border: `1px solid ${token.colorBorder}`,
-                        borderRadius: 18,
-                        overflow: 'hidden',
-                        padding: 14,
+                        alignItems: 'center',
+                        display: 'flex',
+                        gap: 8,
+                        marginBottom: 12,
                     }}
                 >
                     <div
                         style={{
                             alignItems: 'center',
+                            background: whatsAppAccentBackground,
+                            borderRadius: 999,
                             display: 'flex',
-                            gap: 8,
-                            marginBottom: 12,
+                            height: 28,
+                            justifyContent: 'center',
+                            width: 28,
                         }}
                     >
-                        <div
-                            style={{
-                                alignItems: 'center',
-                                background: whatsAppAccentBackground,
-                                borderRadius: 999,
-                                display: 'flex',
-                                height: 28,
-                                justifyContent: 'center',
-                                width: 28,
-                            }}
-                        >
-                            <LuMessageCircle color={whatsAppAccentForeground} size={16} />
-                        </div>
-                        <Text strong>{t('whatsAppPreview')}</Text>
+                        <LuMessageCircle color={whatsAppAccentForeground} size={16} />
                     </div>
-
-                    <div
-                        style={{
-                            background: previewSurfaceBackground,
-                            border: `1px solid ${previewSurfaceBorder}`,
-                            borderRadius: 16,
-                            boxShadow: token.boxShadowTertiary,
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <div
-                            style={{
-                                alignItems: 'center',
-                                background: logoUrl
-                                    ? previewImageLogoBackground
-                                    : previewImageFallbackBackground,
-                                display: 'flex',
-                                height: previewImageHeight,
-                                justifyContent: 'center',
-                                overflow: 'hidden',
-                                width: '100%',
-                            }}
-                        >
-                            {logoUrl ? (
-                                <img
-                                    alt={normalizedName}
-                                    src={logoUrl}
-                                    style={{ height: '100%', objectFit: 'cover', width: '100%' }}
-                                />
-                            ) : (
-                                <Flex align="center" gap={10} vertical>
-                                    <div
-                                        style={{
-                                            alignItems: 'center',
-                                            background: previewImageBadgeBackground,
-                                            borderRadius: 999,
-                                            boxShadow: previewImageBadgeShadow,
-                                            display: 'flex',
-                                            height: 44,
-                                            justifyContent: 'center',
-                                            width: 44,
-                                        }}
-                                    >
-                                        <LuGlobe color={token.colorPrimary} size={22} />
-                                    </div>
-                                    <Text type="secondary">{normalizedName}</Text>
-                                </Flex>
-                            )}
-                        </div>
-
-                        <Flex gap={6} style={{ padding: 14 }} vertical>
-                            <Text
-                                style={{
-                                    color: secondaryTextColor,
-                                    fontSize: 12,
-                                    ...clampText(1),
-                                }}
-                            >
-                                {visibleUrl}
-                            </Text>
-                            <Text strong style={{ fontSize: 15, lineHeight: 1.35, ...clampText(2) }}>{previewTitle}</Text>
-                            <Text type="secondary" style={{ lineHeight: 1.45, ...clampText(3) }}>{previewDescription}</Text>
-                            <Flex align="center" gap={6}>
-                                <LuExternalLink color={secondaryTextColor} size={14} />
-                                <Text style={{ color: secondaryTextColor, fontSize: 12 }}>{t('previewTapHint')}</Text>
-                            </Flex>
-                        </Flex>
-                    </div>
+                    <Text strong>{t('whatsAppPreview')}</Text>
                 </div>
 
                 <div
                     style={{
-                        background: token.colorBgLayout,
-                        border: `1px solid ${token.colorBorderSecondary}`,
-                        borderRadius: token.borderRadiusLG,
+                        background: previewSurfaceBackground,
+                        border: `1px solid ${previewSurfaceBorder}`,
+                        borderRadius: 16,
+                        boxShadow: token.boxShadowTertiary,
                         overflow: 'hidden',
                     }}
                 >
-                    <Flex
-                        align="center"
-                        gap={8}
-                        style={{
-                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                            padding: '10px 14px',
-                        }}
-                    >
-                        <LuGlobe color={token.colorPrimary} size={16} />
-                        <Text strong>{t('googlePreview')}</Text>
-                    </Flex>
-
                     <div
                         style={{
-                            background: token.colorBgContainer,
+                            alignItems: 'center',
+                            background: logoUrl
+                                ? previewImageLogoBackground
+                                : previewImageFallbackBackground,
+                            display: 'flex',
+                            height: previewImageHeight,
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            width: '100%',
+                        }}
+                    >
+                        {logoUrl ? (
+                            <img
+                                alt={normalizedName}
+                                src={logoUrl}
+                                style={{ height: '100%', objectFit: 'cover', width: '100%' }}
+                            />
+                        ) : (
+                            <Flex align="center" gap={10} vertical>
+                                <div
+                                    style={{
+                                        alignItems: 'center',
+                                        background: previewImageBadgeBackground,
+                                        borderRadius: 999,
+                                        boxShadow: previewImageBadgeShadow,
+                                        display: 'flex',
+                                        height: 44,
+                                        justifyContent: 'center',
+                                        width: 44,
+                                    }}
+                                >
+                                    <LuGlobe color={token.colorPrimary} size={22} />
+                                </div>
+                                <Text type="secondary">{normalizedName}</Text>
+                            </Flex>
+                        )}
+                    </div>
+
+                    <Flex gap={6} style={{ padding: 14 }} vertical>
+                        <Text
+                            style={{
+                                color: secondaryTextColor,
+                                fontSize: 12,
+                                ...clampText(1),
+                            }}
+                        >
+                            {visibleUrl}
+                        </Text>
+                        <Text strong style={{ fontSize: 15, lineHeight: 1.35, ...clampText(2) }}>{previewTitle}</Text>
+                        <Text type="secondary" style={{ lineHeight: 1.45, ...clampText(3) }}>{previewDescription}</Text>
+                        <Flex align="center" gap={6}>
+                            <LuExternalLink color={secondaryTextColor} size={14} />
+                            <Text style={{ color: secondaryTextColor, fontSize: 12 }}>{t('previewTapHint')}</Text>
+                        </Flex>
+                    </Flex>
+                </div>
+            </div>
+
+            <div
+                style={{
+                    background: token.colorBgLayout,
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: token.borderRadiusLG,
+                    overflow: 'hidden',
+                }}
+            >
+                <Flex
+                    align="center"
+                    gap={8}
+                    style={{
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                        padding: '10px 14px',
+                    }}
+                >
+                    <LuGlobe color={token.colorPrimary} size={16} />
+                    <Text strong>{t('googlePreview')}</Text>
+                </Flex>
+
+                <div
+                    style={{
+                        background: token.colorBgContainer,
+                        padding: 14,
+                    }}
+                >
+                    <div
+                        style={{
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 16,
                             padding: 14,
                         }}
                     >
-                        <div
-                            style={{
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 16,
-                                padding: 14,
-                            }}
-                        >
-                            <Flex gap={10} vertical>
-                                <Flex align="center" gap={10}>
-                                    <div
-                                        style={{
-                                            alignItems: 'center',
-                                            background: token.colorPrimaryBg,
-                                            borderRadius: 999,
-                                            display: 'flex',
-                                            height: 32,
-                                            justifyContent: 'center',
-                                            width: 32,
-                                        }}
-                                    >
-                                        <LuGlobe color={token.colorPrimary} size={16} />
-                                    </div>
-                                    <Flex gap={1} style={{ minWidth: 0 }} vertical>
-                                        <Text strong style={{ ...clampText(1) }}>{normalizedName}</Text>
-                                        <Text style={{ color: secondaryTextColor, fontSize: 12, ...clampText(1) }}>
-                                            {visibleUrl}
-                                        </Text>
-                                    </Flex>
+                        <Flex gap={10} vertical>
+                            <Flex align="center" gap={10}>
+                                <div
+                                    style={{
+                                        alignItems: 'center',
+                                        background: token.colorPrimaryBg,
+                                        borderRadius: 999,
+                                        display: 'flex',
+                                        height: 32,
+                                        justifyContent: 'center',
+                                        width: 32,
+                                    }}
+                                >
+                                    <LuGlobe color={token.colorPrimary} size={16} />
+                                </div>
+                                <Flex gap={1} style={{ minWidth: 0 }} vertical>
+                                    <Text strong style={{ ...clampText(1) }}>{normalizedName}</Text>
+                                    <Text style={{ color: secondaryTextColor, fontSize: 12, ...clampText(1) }}>
+                                        {visibleUrl}
+                                    </Text>
                                 </Flex>
-
-                                <Text
-                                    style={{
-                                        color: token.colorLink,
-                                        fontSize: 21,
-                                        fontWeight: 500,
-                                        lineHeight: 1.3,
-                                        ...clampText(2),
-                                    }}
-                                >
-                                    {previewTitle}
-                                </Text>
-
-                                <Text
-                                    type="secondary"
-                                    style={{
-                                        fontSize: 14,
-                                        lineHeight: 1.5,
-                                        ...clampText(3),
-                                    }}
-                                >
-                                    {previewDescription}
-                                </Text>
                             </Flex>
-                        </div>
+
+                            <Text
+                                style={{
+                                    color: token.colorLink,
+                                    fontSize: 21,
+                                    fontWeight: 500,
+                                    lineHeight: 1.3,
+                                    ...clampText(2),
+                                }}
+                            >
+                                {previewTitle}
+                            </Text>
+
+                            <Text
+                                type="secondary"
+                                style={{
+                                    fontSize: 14,
+                                    lineHeight: 1.5,
+                                    ...clampText(3),
+                                }}
+                            >
+                                {previewDescription}
+                            </Text>
+                        </Flex>
                     </div>
                 </div>
+            </div>
 
-                <div
+            <div
+                style={{
+                    background: token.colorBgLayout,
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: token.borderRadiusLG,
+                    overflow: 'hidden',
+                }}
+            >
+                <Flex
+                    align="center"
+                    gap={8}
                     style={{
-                        background: token.colorBgLayout,
-                        border: `1px solid ${token.colorBorderSecondary}`,
-                        borderRadius: token.borderRadiusLG,
-                        overflow: 'hidden',
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                        padding: '10px 14px',
                     }}
                 >
-                    <Flex
-                        align="center"
-                        gap={8}
+                    <LuGlobe color={token.colorPrimary} size={16} />
+                    <Text strong>{t('metaPreview')}</Text>
+                </Flex>
+
+                <Flex gap={10} style={{ padding: 14 }} vertical>
+                    <ResolvedMetaItem
+                        label="Open Graph / Twitter title"
+                        tone="primary"
+                        token={token}
+                        value={previewTitle}
+                    />
+                    <ResolvedMetaItem
+                        label="Open Graph / Twitter description"
+                        tone="neutral"
+                        token={token}
+                        value={previewDescription}
+                    />
+                    <ResolvedMetaItem
+                        label={t('canonicalUrl')}
+                        mono
+                        tone="neutral"
+                        token={token}
+                        value={previewUrl}
+                    />
+                    <div
                         style={{
-                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                            padding: '10px 14px',
+                            background: token.colorBgContainer,
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 14,
+                            padding: 12,
                         }}
                     >
-                        <LuGlobe color={token.colorPrimary} size={16} />
-                        <Text strong>{t('metaPreview')}</Text>
-                    </Flex>
-
-                    <Flex gap={10} style={{ padding: 14 }} vertical>
-                        <ResolvedMetaItem
-                            label="Open Graph / Twitter title"
-                            tone="primary"
-                            token={token}
-                            value={previewTitle}
-                        />
-                        <ResolvedMetaItem
-                            label="Open Graph / Twitter description"
-                            tone="neutral"
-                            token={token}
-                            value={previewDescription}
-                        />
-                        <ResolvedMetaItem
-                            label={t('canonicalUrl')}
-                            mono
-                            tone="neutral"
-                            token={token}
-                            value={previewUrl}
-                        />
-                        <div
-                            style={{
-                                background: token.colorBgContainer,
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 14,
-                                padding: 12,
-                            }}
-                        >
-                            <Flex gap={8} vertical>
-                                <MetaPill label={t('keywords')} token={token} tone="neutral" />
-                                {keywordList.length ? (
-                                    <Flex gap={8} wrap="wrap">
-                                        {keywordList.map((keyword) => (
-                                            <div
-                                                key={keyword}
-                                                style={{
-                                                    background: token.colorBgLayout,
-                                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 999,
-                                                    maxWidth: '100%',
-                                                    padding: '5px 10px',
-                                                }}
-                                            >
-                                                <Text style={{ ...clampText(1) }}>{keyword}</Text>
-                                            </div>
-                                        ))}
-                                    </Flex>
-                                ) : (
-                                    <Text type="secondary">{t('notSet')}</Text>
-                                )}
-                            </Flex>
-                        </div>
-                    </Flex>
-                </div>
-            </Flex>
-        </div>
+                        <Flex gap={8} vertical>
+                            <MetaPill label={t('keywords')} token={token} tone="neutral" />
+                            {keywordList.length ? (
+                                <Flex gap={8} wrap="wrap">
+                                    {keywordList.map((keyword) => (
+                                        <div
+                                            key={keyword}
+                                            style={{
+                                                background: token.colorBgLayout,
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 999,
+                                                maxWidth: '100%',
+                                                padding: '5px 10px',
+                                            }}
+                                        >
+                                            <Text style={{ ...clampText(1) }}>{keyword}</Text>
+                                        </div>
+                                    ))}
+                                </Flex>
+                            ) : (
+                                <Text type="secondary">{t('notSet')}</Text>
+                            )}
+                        </Flex>
+                    </div>
+                </Flex>
+            </div>
+        </Flex>
     );
 }
 
