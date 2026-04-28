@@ -68,6 +68,31 @@ export interface DailyAnalytics {
   hourlyItemViews: {
     [hour: string]: number; // Aggregate item views by hour
   };
+  hourlySearches?: {
+    [hour: string]: number;
+  };
+  totalSearches?: number;
+  searchTerms?: {
+    [term: string]: number;
+  };
+  zeroResultSearches?: number;
+  zeroResultSearchTerms?: {
+    [term: string]: number;
+  };
+  totalUnavailableItemTaps?: number;
+  unavailableItemTapsByItem?: {
+    [menuItemId: string]: number;
+  };
+  hourlyUnavailableItemTaps?: {
+    [hour: string]: number;
+  };
+  totalMenuActionClicks?: number;
+  menuActionClicks?: {
+    [action: string]: number;
+  };
+  hourlyMenuActionClicks?: {
+    [hour: string]: number;
+  };
 
   // Metadata
   lastUpdated: Date;
@@ -77,6 +102,19 @@ export interface AnalyticsSummary {
   // Lifetime totals
   lifetimeTotalViews: number;
   lifetimeTotalClicks: number;
+  lifetimeTotalSearches?: number;
+  lifetimeZeroResultSearches?: number;
+  lifetimeTotalUnavailableItemTaps?: number;
+  lifetimeTotalMenuActionClicks?: number;
+  menuActionClicks?: {
+    [action: string]: number;
+  };
+  searchTerms?: {
+    [term: string]: number;
+  };
+  unavailableItemTapsByItem?: {
+    [menuItemId: string]: number;
+  };
 
   // Top items (limited to prevent document size issues)
   topItems: Array<{

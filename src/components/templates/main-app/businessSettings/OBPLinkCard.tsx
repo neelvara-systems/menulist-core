@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectsList } from '@database/projects';
+import { isOBPAnalyticsEnabled } from '@lib/analytics/preferences';
 import { trackOBPShare } from '@lib/analytics/unified';
 import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
 import { slugify } from '@lib/utils/slugify';
@@ -54,6 +55,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         storeDetails?.customDomain,
         defaultSlug,
     );
+    const obpTrackingEnabled = isOBPAnalyticsEnabled(storeDetails?.analytics);
 
     if (!obpUrl) return null;
 
@@ -65,7 +67,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
             setCopied(true);
             message.success('Link copied');
             setTimeout(() => setCopied(false), 2000);
-            if (storeId) trackOBPShare(storeId, 'copy_link').catch(() => { });
+            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_link').catch(() => { });
         } catch {
             message.error('Could not copy link');
         }
@@ -76,7 +78,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         try {
             await navigator.clipboard.writeText(msg);
             message.success('Message copied — paste it in WhatsApp or anywhere');
-            if (storeId) trackOBPShare(storeId, 'copy_message').catch(() => { });
+            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_message').catch(() => { });
         } catch {
             message.error('Could not copy message');
         }
@@ -86,7 +88,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         const storeName = storeDetails?.name || 'our business';
         const msg = `${storeName} — menu, timings & contact:\n${obpUrl}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        if (storeId) trackOBPShare(storeId, 'whatsapp').catch(() => { });
+        if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'whatsapp').catch(() => { });
     };
 
     const handleOpen = () => {

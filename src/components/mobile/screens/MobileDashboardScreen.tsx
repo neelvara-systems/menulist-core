@@ -171,6 +171,9 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         <Flex gap={12} wrap>
             {renderMetricTile(labels.scansLabel, (metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={14} />)}
             {renderMetricTile(t('itemTaps'), (metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={14} />)}
+            {renderMetricTile('Customer Actions', (metrics?.menuActionClicks || 0).toLocaleString(), <LuHeart color={token.colorSuccess} size={14} />)}
+            {renderMetricTile('Searches', (metrics?.searches || 0).toLocaleString(), <LuBarChart3 color={token.colorInfo} size={14} />)}
+            {renderMetricTile('Unavailable Interest', (metrics?.unavailableItemTaps || 0).toLocaleString(), <LuShield color={token.colorWarning} size={14} />)}
             {metrics?.smartPicksRendered > 0 ? (
                 <>
                     {renderMetricTile(t('smartPicks'), metrics.smartPicksRendered.toLocaleString(), <LuZap color={token.colorInfo} size={14} />)}
@@ -179,6 +182,36 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             ) : null}
         </Flex>
     );
+
+    const renderDemandAndActions = (data?: any) => {
+        const hasActions = Object.values(data?.menuActions || {}).some((value) => Number(value) > 0);
+        const hasSearchTerms = Boolean(data?.topSearchTerms?.length);
+        const hasUnavailable = Boolean(data?.unavailableItems?.length);
+
+        if (!hasActions && !hasSearchTerms && !hasUnavailable) return null;
+
+        return (
+            <Card size="small" title={<Text strong>Customer Intent</Text>}>
+                <Flex gap={8} vertical>
+                    {hasActions ? (
+                        <Text type="secondary">
+                            {`Actions: Call ${data.menuActions?.call || 0}, WhatsApp ${data.menuActions?.whatsapp || 0}, Directions ${data.menuActions?.directions || 0}, Reserve ${data.menuActions?.reserve || 0}, Order ${data.menuActions?.order || 0}`}
+                        </Text>
+                    ) : null}
+                    {hasSearchTerms ? (
+                        <Text type="secondary">
+                            {`Top searches: ${data.topSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ')}`}
+                        </Text>
+                    ) : null}
+                    {hasUnavailable ? (
+                        <Text type="secondary">
+                            {`Unavailable interest: ${data.unavailableItems.map((item: any) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}`}
+                        </Text>
+                    ) : null}
+                </Flex>
+            </Card>
+        );
+    };
 
     const renderTopItems = (items?: any[]) => items?.length ? (
         <Card size="small" title={<Text strong>{t('topItems')}</Text>}>
@@ -241,6 +274,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 </Card>
 
                 {renderTopItems(periodData.topItems)}
+                {renderDemandAndActions(periodData)}
             </>
         );
     };
@@ -343,6 +377,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 {renderMetricsCards(wtd.metrics)}
                             </Card>
                         ) : null}
+                        {renderDemandAndActions(wtd)}
 
                         {/* Customer App (installable PWA) — store-scoped analytics.
                             Sits alongside menu analytics on purpose: owners see both in one place. */}
@@ -414,6 +449,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 ) : null}
                             </Card>
                         ) : null}
+                        {renderDemandAndActions(mtd)}
 
                         {storeDetails?.healthSignals ? (
                             (() => {
@@ -475,7 +511,15 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 <Flex gap={12} wrap>
                                     {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile('Unavailable Interest', overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
                                 </Flex>
+                                {overall.menuActions ? (
+                                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                                        {`Actions: Call ${overall.menuActions.call}, WhatsApp ${overall.menuActions.whatsapp}, Directions ${overall.menuActions.directions}, Reserve ${overall.menuActions.reserve}, Order ${overall.menuActions.order}`}
+                                    </Text>
+                                ) : null}
                                 {overall.firstDataDate ? (
                                     <Text type="secondary">
                                         {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}

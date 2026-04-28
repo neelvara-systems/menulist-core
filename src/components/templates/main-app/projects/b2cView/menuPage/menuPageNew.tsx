@@ -14,6 +14,9 @@ import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
+import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
+import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
+import { trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -78,6 +81,7 @@ function MenuPageNew({
     businessType,
     precomputedBlocks
 }: MenuPageNewProps) {
+    const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const getMenuBasePath = useCallback(() => {
         if (typeof window === 'undefined') return '/menu';
 
@@ -130,6 +134,7 @@ function MenuPageNew({
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
 
     // B.1: Track if category tabs are visible (for tabs/FAB mutual exclusivity)
@@ -160,6 +165,10 @@ function MenuPageNew({
 
     // Get unavailable label based on business type
     const unavailableLabel = useMemo(() => getUnavailableLabel(businessType), [businessType]);
+    const clearSearch = useCallback(() => {
+        setSearchTerm('');
+        setDebouncedSearch('');
+    }, []);
 
     // Get all categories from project files
     const allCategories = useMemo(() => {
@@ -178,6 +187,85 @@ function MenuPageNew({
 
         return cats;
     }, [projectData?.files]);
+    const suggestedCategories = useMemo(() => allCategories.slice(0, 4), [allCategories]);
+    const recoveryActions = useMemo(() => {
+        const addressParts = [
+            storeDetails?.addressLine,
+            storeDetails?.area,
+            storeDetails?.city,
+            storeDetails?.state,
+            storeDetails?.postalCode,
+        ].filter(Boolean);
+        const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : undefined;
+        const publicPresence = storeDetails?.publicPresence;
+        const normalizedPhone = storeDetails?.phoneNumber?.replace(/\s+/g, '');
+        const callHref = storeDetails?.phoneNumber
+            ? storeDetails.phoneNumber.startsWith('+')
+                ? `tel:${normalizedPhone}`
+                : storeDetails?.dialCode
+                    ? `tel:${storeDetails.dialCode.startsWith('+') ? storeDetails.dialCode : `+${storeDetails.dialCode}`}${normalizedPhone?.replace(/^0+/, '') || ''}`
+                    : `tel:${normalizedPhone}`
+            : undefined;
+        const whatsappNumber = (publicPresence?.whatsappNumber || storeDetails?.phoneNumber || '').replace(/[^0-9+]/g, '');
+        const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : undefined;
+        const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
+        const analyticsIds = storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId
+            ? {
+                tenantId: storeDetails.tenantId,
+                storeId: String(storeDetails.storeId),
+                projectId: projectData.projectId,
+            }
+            : null;
+        const trackRecoveryAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
+            if (!analyticsPreferences.trackMenuViews || !analyticsIds) return;
+            void trackMenuAction(menuAction, analyticsIds);
+        };
+
+        return [
+            (publicPresence?.showCall !== false) && callHref ? {
+                label: 'Call',
+                href: callHref,
+                onClick: () => trackRecoveryAction('call'),
+            } : null,
+            (publicPresence?.showWhatsApp !== false) && whatsappHref ? {
+                label: 'WhatsApp',
+                href: whatsappHref,
+                external: true,
+                onClick: () => trackRecoveryAction('whatsapp'),
+            } : null,
+            (publicPresence?.showDirections !== false) && directionsHref ? {
+                label: 'Directions',
+                href: directionsHref,
+                external: true,
+                onClick: () => trackRecoveryAction('directions'),
+            } : null,
+            (publicPresence?.showReservation !== false) && publicPresence?.reservationUrl ? {
+                label: 'Reserve',
+                href: publicPresence.reservationUrl,
+                external: true,
+                onClick: () => trackRecoveryAction('reserve'),
+            } : null,
+            (publicPresence?.showOrder !== false) && publicPresence?.orderUrl ? {
+                label: 'Order',
+                href: publicPresence.orderUrl,
+                external: true,
+                onClick: () => trackRecoveryAction('order'),
+            } : null,
+        ].filter(Boolean);
+    }, [
+        analyticsPreferences.trackMenuViews,
+        projectData?.projectId,
+        storeDetails?.addressLine,
+        storeDetails?.area,
+        storeDetails?.city,
+        storeDetails?.dialCode,
+        storeDetails?.phoneNumber,
+        storeDetails?.postalCode,
+        storeDetails?.publicPresence,
+        storeDetails?.state,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+    ]);
 
     // P0.2 - Restore state from sessionStorage on mount (runs once when categories load)
     useEffect(() => {
@@ -387,6 +475,35 @@ function MenuPageNew({
         return items;
     }, [allItems, debouncedSearch, activeLanguage, activeFilter]);
 
+    useEffect(() => {
+        if (!analyticsPreferences.trackMenuViews) return;
+        if (!storeDetails?.tenantId || !storeDetails?.storeId || !projectData?.projectId) return;
+
+        const normalizedSearch = debouncedSearch.trim();
+        if (normalizedSearch.length < 2) return;
+        if (hasTrackedSearchTermInSession(storeDetails.storeId, projectData.projectId, normalizedSearch)) return;
+
+        const timer = window.setTimeout(() => {
+            markSearchTermTrackedInSession(storeDetails.storeId, projectData.projectId, normalizedSearch);
+            void trackSearch(normalizedSearch, filteredItems.length, {
+                tenantId: storeDetails.tenantId,
+                storeId: String(storeDetails.storeId),
+                projectId: projectData.projectId,
+                includeLocation: analyticsPreferences.trackLocation,
+            });
+        }, 900);
+
+        return () => window.clearTimeout(timer);
+    }, [
+        analyticsPreferences.trackLocation,
+        analyticsPreferences.trackMenuViews,
+        debouncedSearch,
+        filteredItems.length,
+        projectData?.projectId,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+    ]);
+
     // Get items for a category
     const getItemsForCategory = useCallback((categoryId: string) => {
         return filteredItems.filter((item: any) =>
@@ -399,26 +516,40 @@ function MenuPageNew({
 
     // G14 - Handle item click with history state
     const handleItemClick = useCallback((item: any) => {
-        if (item.available !== false) {
+        if (item.available === false) {
+            if (analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
+                const itemName = item.name?.[activeLanguage] || item.name?.en || 'Unavailable Item';
+                void trackUnavailableItemAttempt(item.id, itemName, item.category, {
+                    tenantId: storeDetails.tenantId,
+                    storeId: String(storeDetails.storeId),
+                    projectId: projectData.projectId,
+                    includeLocation: analyticsPreferences.trackLocation,
+                });
+            }
+            setSelectedItemTrackView(false);
             setSelectedItem(item);
-
-            // G14: Push history state for back button support
-            // Human-readable slug URLs for shareability + AI crawlability
-            // Format: /menu/item/{slug}-{shortId} — slug for readability, shortId for uniqueness
-            const itemName = item.name?.[activeLanguage] || item.name?.en || '';
-            const itemSlug = slugify(itemName);
-            const shortId = item.id?.slice(-6) || '';
-            const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
-            const basePath = getMenuBasePath();
-
-            historyPushedRef.current = true;
-            window.history.pushState(
-                { modal: 'item', itemId: item.id },
-                '',
-                `${basePath}/item/${urlSegment}`
-            );
+            return;
         }
-    }, [activeLanguage, getMenuBasePath]);
+
+        setSelectedItemTrackView(true);
+        setSelectedItem(item);
+
+        // G14: Push history state for back button support
+        // Human-readable slug URLs for shareability + AI crawlability
+        // Format: /menu/item/{slug}-{shortId} — slug for readability, shortId for uniqueness
+        const itemName = item.name?.[activeLanguage] || item.name?.en || '';
+        const itemSlug = slugify(itemName);
+        const shortId = item.id?.slice(-6) || '';
+        const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
+        const basePath = getMenuBasePath();
+
+        historyPushedRef.current = true;
+        window.history.pushState(
+            { modal: 'item', itemId: item.id },
+            '',
+            `${basePath}/item/${urlSegment}`
+        );
+    }, [activeLanguage, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, getMenuBasePath, projectData?.projectId, storeDetails?.storeId, storeDetails?.tenantId]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -431,6 +562,7 @@ function MenuPageNew({
             window.history.replaceState({}, '', getMenuBasePath());
             setSelectedItem(null);
         }
+        setSelectedItemTrackView(true);
     }, [getMenuBasePath]);
 
     // G14 - Track selected item for popstate handler (avoids stale closure)
@@ -447,6 +579,7 @@ function MenuPageNew({
             if (selectedItemRef.current) {
                 historyPushedRef.current = false;
                 setSelectedItem(null);
+                setSelectedItemTrackView(true);
             }
         };
 
@@ -483,6 +616,7 @@ function MenuPageNew({
             }
 
             if (item && item.available !== false) {
+                setSelectedItemTrackView(true);
                 setSelectedItem(item);
                 // Don't push history - we're already at the correct URL
                 historyPushedRef.current = false;
@@ -631,6 +765,7 @@ function MenuPageNew({
                                 storeId: String(storeDetails?.storeId || ''),
                                 projectId: projectData?.projectId,
                             }}
+                            trackingEnabled={isDecisionBlockAnalyticsEnabled(storeDetails?.analytics)}
                         />
                     )}
 
@@ -943,7 +1078,76 @@ function MenuPageNew({
                                     color: moodConfig.bodyColor,
                                     fontFamily: moodConfig.bodyFont,
                                 }}>
-                                    No items found for &ldquo;{debouncedSearch}&rdquo;
+                                    <div style={{ fontSize: 18, fontWeight: 600, color: moodConfig.headingColor }}>
+                                        No {labels.itemsPlural} found for &ldquo;{debouncedSearch}&rdquo;
+                                    </div>
+                                    <p style={{ margin: '10px auto 0', maxWidth: 420, lineHeight: 1.5 }}>
+                                        Try a different search, jump back into a category, or contact the business directly.
+                                    </p>
+                                    <div style={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        marginTop: 16,
+                                    }}>
+                                        <button
+                                            type="button"
+                                            onClick={clearSearch}
+                                            style={{
+                                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                borderRadius: 999,
+                                                padding: '8px 14px',
+                                                background: moodConfig.itemStyle.background,
+                                                color: moodConfig.accentColor,
+                                                fontFamily: moodConfig.bodyFont,
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            Show all
+                                        </button>
+                                        {suggestedCategories.map((category: any) => (
+                                            <button
+                                                key={category.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    clearSearch();
+                                                    handleCategorySelect(category);
+                                                }}
+                                                style={{
+                                                    border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                    borderRadius: 999,
+                                                    padding: '8px 14px',
+                                                    background: moodConfig.itemStyle.background,
+                                                    color: moodConfig.bodyColor,
+                                                    fontFamily: moodConfig.bodyFont,
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {category.name?.[activeLanguage] || category.name?.en}
+                                            </button>
+                                        ))}
+                                        {recoveryActions.map((action) => (
+                                            <a
+                                                key={action.label}
+                                                href={action.href}
+                                                onClick={action.onClick}
+                                                target={action.external ? '_blank' : undefined}
+                                                rel={action.external ? 'noopener noreferrer' : undefined}
+                                                style={{
+                                                    border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                    borderRadius: 999,
+                                                    padding: '8px 14px',
+                                                    background: moodConfig.itemStyle.background,
+                                                    color: moodConfig.accentColor,
+                                                    fontFamily: moodConfig.bodyFont,
+                                                    textDecoration: 'none',
+                                                }}
+                                            >
+                                                {action.label}
+                                            </a>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -984,6 +1188,12 @@ function MenuPageNew({
                         feedbackEnabled={projectData?.menuSettings?.feedback}
                         menuVersion={projectData?.menuVersion}
                         lastPublishedAt={projectData?.lastPublishedAt}
+                        analyticsIds={{
+                            tenantId: storeDetails?.tenantId,
+                            storeId: String(storeDetails?.storeId || ''),
+                            projectId: projectData?.projectId,
+                        }}
+                        trackingEnabled={analyticsPreferences.trackMenuViews}
                     />
                 </div>
             </div>
@@ -1012,6 +1222,8 @@ function MenuPageNew({
                 projectData={projectData}
                 showItemPrices={showItemPrices}
                 unavailableLabel={unavailableLabel}
+                trackView={selectedItemTrackView}
+                recoveryActions={recoveryActions}
             />
         </div>
     );

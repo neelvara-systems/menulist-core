@@ -12,10 +12,10 @@ function UnAuthorized() {
     const searchParams = useSearchParams();
 
     // Get error message from query parameter
-    const errorParam = searchParams.get('error');
+    const errorParam = searchParams?.get('error') || '';
 
     // Check if this is an email validation error
-    const isEmailError = errorParam && (
+    const isEmailError = (
         errorParam.includes('disposable') ||
         errorParam.includes('temporary') ||
         errorParam.includes('email') ||

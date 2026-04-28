@@ -14,7 +14,7 @@ interface TrendAnalysisProps {
 
 const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
   const labels = useOfferingLabels();
-  const [metric, setMetric] = useState<'views' | 'clicks'>('views');
+  const [metric, setMetric] = useState<'views' | 'clicks' | 'searches' | 'actions'>('views');
 
   if (!dailyData || dailyData.length === 0) {
     return (
@@ -28,8 +28,20 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
   // Prepare data for the chart
   const chartData = dailyData.map(day => ({
     date: day.date || '',
-    value: metric === 'views' ? (day.totalViews || 0) : (day.totalClicks || 0),
-    type: metric === 'views' ? labels.viewsLabel : 'Item Clicks'
+    value: metric === 'views'
+      ? (day.totalViews || 0)
+      : metric === 'clicks'
+        ? (day.totalClicks || 0)
+        : metric === 'searches'
+          ? (day.totalSearches || 0)
+          : (day.totalMenuActionClicks || 0),
+    type: metric === 'views'
+      ? labels.viewsLabel
+      : metric === 'clicks'
+        ? 'Item Clicks'
+        : metric === 'searches'
+          ? 'Searches'
+          : 'Customer Actions'
   }));
 
   // Sort data by date
@@ -47,7 +59,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
         duration: 1000,
       },
     },
-    color: metric === 'views' ? '#1890ff' : '#52c41a',
+    color: metric === 'views' ? '#1890ff' : metric === 'clicks' ? '#52c41a' : metric === 'searches' ? '#fa8c16' : '#722ed1',
     point: {
       size: 5,
       shape: 'diamond',
@@ -83,6 +95,8 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
         >
           <Radio.Button value="views">{labels.viewsLabel}</Radio.Button>
           <Radio.Button value="clicks">Item Clicks</Radio.Button>
+          <Radio.Button value="searches">Searches</Radio.Button>
+          <Radio.Button value="actions">Actions</Radio.Button>
         </Radio.Group>
       </div>
       <div style={{ height: 350 }}>

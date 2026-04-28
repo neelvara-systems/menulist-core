@@ -1,12 +1,14 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { LOGO_SMALL } from '@constant/common';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
+import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { generateProjectUrl, slugify } from '@lib/utils/slugify';
 import { Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa6';
-import { LuAlertTriangle, LuCopy, LuDownload, LuExternalLink, LuFileText } from 'react-icons/lu';
+import { LuAlertTriangle, LuCopy, LuDownload, LuExternalLink, LuFileJson, LuFileText, LuSheet } from 'react-icons/lu';
 import MenuKitSection from './MenuKitSection';
 
 const { Text, Title } = Typography;
@@ -28,27 +30,10 @@ interface ShareModalProps {
     // BusinessType for category-aware labels
     businessType?: string;
     // PDF Export data
-    items?: Array<{
-        id: string;
-        name: Record<string, string>;
-        description?: Record<string, string>;
-        price?: string;
-        category?: string;
-        active?: boolean;
-        available?: boolean;
-        attributes?: Array<{
-            id: string;
-            name: Record<string, string>;
-            price?: string;
-            active?: boolean;
-        }>;
-    }>;
-    categories?: Array<{
-        id: string;
-        name: Record<string, string>;
-        active?: boolean;
-    }>;
+    items?: ExtractedDataItem[];
+    categories?: ExtractedDataCategory[];
     language?: string;
+    languages?: string[];
     currency?: string;
 }
 
@@ -84,6 +69,7 @@ function ShareModal({
     items = [],
     categories = [],
     language = 'en',
+    languages = [],
     currency = '',
     menuModifiedOn,
     businessType,
@@ -187,6 +173,38 @@ function ShareModal({
     };
 
     const [generatingPdf, setGeneratingPdf] = useState(false);
+    const [exportingFormat, setExportingFormat] = useState<'json' | 'xlsx' | null>(null);
+
+    const exportFilenameBase = useMemo(() => {
+        const source = projectName || storeName || 'menu_data';
+        return source.toLowerCase().replace(/[^a-z0-9\s_-]/g, '').trim().replace(/\s+/g, '_') || 'menu_data';
+    }, [projectName, storeName]);
+
+    const handleStructuredExport = async (type: 'json' | 'xlsx') => {
+        if (items.length === 0 && categories.length === 0) {
+            message.warning(`No ${labels.offeringLower} data to export`);
+            return;
+        }
+
+        setExportingFormat(type);
+        try {
+            await downloadMenuData(
+                {
+                    items,
+                    categories,
+                    languages: languages.length > 0 ? languages : (language ? [language] : []),
+                },
+                type,
+                { filenameBase: exportFilenameBase },
+            );
+            message.success(type === 'xlsx' ? 'Excel export downloaded' : 'JSON export downloaded');
+        } catch (error) {
+            console.error('[ShareModal] Structured export failed:', error);
+            message.error(`Failed to export ${type.toUpperCase()}`);
+        } finally {
+            setExportingFormat(null);
+        }
+    };
 
     const handleDownloadPdf = async () => {
         if (items.length === 0) {
@@ -366,6 +384,35 @@ function ShareModal({
                         : 'We auto-optimize previews for each platform'
                     }
                 </Text>
+
+                <Card size="small" styles={{ body: { padding: 16 } }}>
+                    <Flex vertical gap={12}>
+                        <Flex vertical gap={2}>
+                            <Text strong>Export Data</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Download the current {labels.offeringLower} structure for backup, migration, or spreadsheet editing.
+                            </Text>
+                        </Flex>
+                        <Flex gap={12}>
+                            <Button
+                                block
+                                icon={<LuSheet />}
+                                onClick={() => handleStructuredExport('xlsx')}
+                                loading={exportingFormat === 'xlsx'}
+                            >
+                                Export XLSX
+                            </Button>
+                            <Button
+                                block
+                                icon={<LuFileJson />}
+                                onClick={() => handleStructuredExport('json')}
+                                loading={exportingFormat === 'json'}
+                            >
+                                Export JSON
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </Card>
 
                 {/* Menu Kit — Print + Social asset pack */}
                 {FEATURE_FLAGS.ENABLE_MENU_KIT && (

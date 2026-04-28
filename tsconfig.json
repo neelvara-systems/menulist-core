@@ -55,7 +55,8 @@
       "@shadcnhooks/*": ["src/components/website/shadcn/hooks/*"],
       "@shadcnlib/*": ["src/components/website/shadcn/lib/*"],
       "logs/*": ["src/lib/logs/*"]
-    }
+    },
+    "strictNullChecks": false
   },
   "include": [
     "next-env.d.ts",

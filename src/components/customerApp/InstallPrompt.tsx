@@ -34,6 +34,7 @@ interface Props {
     /** Deferred Chromium install prompt event captured by the controller. Null on iOS. */
     deferredPrompt: BeforeInstallPromptEvent | null;
     trackingEnabled: boolean;
+    locationTrackingEnabled?: boolean;
     onDismiss: () => void;
     onInstallAccepted: () => void;
 }
@@ -44,6 +45,7 @@ export default function InstallPrompt({
     storeName,
     deferredPrompt,
     trackingEnabled,
+    locationTrackingEnabled = true,
     onDismiss,
     onInstallAccepted,
 }: Props) {
@@ -62,9 +64,10 @@ export default function InstallPrompt({
             storeId: String(storeId),
             tenantId,
             sessionId: getSessionId(),
+            includeLocation: locationTrackingEnabled,
         });
         recordPromptShown(storeId);
-    }, [storeId, tenantId, trackingEnabled]);
+    }, [storeId, tenantId, trackingEnabled, locationTrackingEnabled]);
 
     const handleDismiss = useCallback(() => {
         if (trackingEnabled) {
@@ -72,10 +75,11 @@ export default function InstallPrompt({
                 storeId: String(storeId),
                 tenantId,
                 sessionId: getSessionId(),
+                includeLocation: locationTrackingEnabled,
             });
         }
         onDismiss();
-    }, [storeId, tenantId, trackingEnabled, onDismiss]);
+    }, [storeId, tenantId, trackingEnabled, locationTrackingEnabled, onDismiss]);
 
     const handleInstall = useCallback(async () => {
         if (busy) return;
@@ -86,6 +90,7 @@ export default function InstallPrompt({
                 storeId: String(storeId),
                 tenantId,
                 sessionId: getSessionId(),
+                includeLocation: locationTrackingEnabled,
             });
         }
 
@@ -115,7 +120,7 @@ export default function InstallPrompt({
         // Fallback (desktop Firefox, etc.) — just show instructions hint
         setShowIosInstructions(true);
         setBusy(false);
-    }, [busy, deferredPrompt, platform.platform, storeId, tenantId, trackingEnabled, onInstallAccepted]);
+    }, [busy, deferredPrompt, platform.platform, storeId, tenantId, trackingEnabled, locationTrackingEnabled, onInstallAccepted]);
 
     return (
         <>

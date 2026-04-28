@@ -167,6 +167,17 @@ function resolveItemDescription(
     return resolveLocalizedText(item?.description, activeLang);
 }
 
+function hasMissingDescriptionForLanguages(
+    item: Partial<ExtractedDataItem> | null | undefined,
+    languageCodes: string[]
+): boolean {
+    if (!item?.description || typeof item.description !== 'object') return true;
+    return languageCodes.some((languageCode) => {
+        const localizedValue = item.description?.[languageCode];
+        return typeof localizedValue !== 'string' || localizedValue.trim().length === 0;
+    });
+}
+
 function resolveAttributeName(
     attribute: Partial<ExtractedDataAttribute> | null | undefined,
     activeLang: string,
@@ -1025,6 +1036,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         return activeProjectLanguages.map((lang) => {
             let totalCategories = 0;
             let totalItems = 0;
+            let totalDescriptions = 0;
+            let totalAttributeNames = 0;
             let filled = 0;
 
             menuData?.files?.forEach((file: any) => {
@@ -1033,6 +1046,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
                 totalCategories += categories.length;
                 totalItems += items.length;
+                totalDescriptions += items.length;
 
                 categories.forEach((category) => {
                     if (hasLocalizedValue(category.name, lang)) filled += 1;
@@ -1040,10 +1054,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
                 items.forEach((item) => {
                     if (hasLocalizedValue(item.name, lang)) filled += 1;
+                    if (hasLocalizedValue(item.description, lang)) filled += 1;
+                    totalAttributeNames += toArray(item.attributes).length;
+                    toArray(item.attributes).forEach((attribute) => {
+                        if (hasLocalizedValue(attribute?.name, lang)) filled += 1;
+                    });
                 });
             });
 
-            const total = totalCategories + totalItems;
+            const total = totalCategories + totalItems + totalDescriptions + totalAttributeNames;
             return {
                 code: lang,
                 filled,
@@ -1157,6 +1176,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             categoryName,
                             hiddenByCategory,
                             description: itemDescription,
+                            descriptionMissing: hasMissingDescriptionForLanguages(item, activeProjectLanguages),
                             fileId: file.uid,
                             image: item.images?.[0]?.url || '',
                             rawItem: removeObjRef(item),
@@ -1188,6 +1208,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         categoryName: uncategorizedLabel,
                         hiddenByCategory: false,
                         description: itemDescription,
+                        descriptionMissing: hasMissingDescriptionForLanguages(item, activeProjectLanguages),
                         fileId: file.uid,
                         image: item.images?.[0]?.url || '',
                         rawItem: removeObjRef(item),
@@ -1265,7 +1286,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             const categoryId = item.categoryId || 'uncategorized';
             const summary = getSummary(categoryId);
 
-            if (!item.description?.trim()) summary.missingDescriptions += 1;
+            if (item.descriptionMissing) summary.missingDescriptions += 1;
             if (!item.image) summary.missingImages += 1;
             if (!(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
             if (!isItemEffectivelyActive(item)) summary.hidden += 1;
@@ -1288,7 +1309,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 if (hasImage !== filters.hasImage) return false;
             }
             if (filters.hasDescription !== null) {
-                const hasDescription = Boolean(item.description?.trim());
+                const hasDescription = !item.descriptionMissing;
                 if (hasDescription !== filters.hasDescription) return false;
             }
             if (filters.hasPrice !== null) {
@@ -1332,7 +1353,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             available: scopedItems.filter((item) => item.available).length,
             hidden: scopedItems.filter((item) => !isItemEffectivelyActive(item)).length,
             missingPhoto: reviewableItems.filter((item) => !item.image).length,
-            missingDescription: reviewableItems.filter((item) => !item.description?.trim()).length,
+            missingDescription: reviewableItems.filter((item) => item.descriptionMissing).length,
             missingPrice: reviewableItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
             priceOutliers: reviewableItems.filter((item) => priceOutlierItemIds.has(item.id)).length,
             missingTranslation: reviewableItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
@@ -1389,7 +1410,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         };
     }, [menuIssueCounts.missingDescription, menuIssueCounts.missingPhoto, menuIssueCounts.missingPrice, menuIssueCounts.missingTranslation, menuIssueCounts.priceOutliers, t]);
     const menuCompletionChips = useMemo(() => {
-        const chips: Array<{ key: string; label: string }> = [];
+        const chips: Array<{ key: 'prices' | 'images' | 'descriptions' | 'translations' | 'price-outliers'; label: string }> = [];
         if (menuIssueCounts.missingPrice > 0) {
             chips.push({ key: 'prices', label: t('menuCompletionMissingPricesChip', { count: menuIssueCounts.missingPrice }) });
         }
@@ -1744,12 +1765,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     hiddenByCategory: categoryId !== 'uncategorized' && categoryActiveById.get(categoryId) === false && item.active !== false,
                     price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
                     hasImage: Boolean(item.images?.[0]?.url),
-                    hasDescription: Boolean(resolveItemDescription(item, displayLanguage).trim()),
+                    hasDescription: !hasMissingDescriptionForLanguages(item, activeProjectLanguages),
                 });
             });
         });
         return grouped;
-    }, [categoryActiveById, displayLanguage, menuData?.files, t]);
+    }, [activeProjectLanguages, categoryActiveById, displayLanguage, menuData?.files, t]);
     const categorySummaryById = useMemo(() => {
         const map = new Map<string, CategorySummary>();
         categorySummary.forEach((category) => map.set(category.id, category));
@@ -2075,6 +2096,33 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         });
     }, [handlePreviewMenu]);
 
+    const handleMenuCompletionChipClick = useCallback((chipKey: 'prices' | 'images' | 'descriptions' | 'translations' | 'price-outliers') => {
+        setSearchQuery('');
+        setIsMenuQualityExpanded(false);
+        setFilters(() => {
+            switch (chipKey) {
+                case 'prices':
+                    return { ...DEFAULT_FILTERS, hasPrice: false };
+                case 'images':
+                    return { ...DEFAULT_FILTERS, hasImage: false };
+                case 'descriptions':
+                    return { ...DEFAULT_FILTERS, hasDescription: false };
+                case 'price-outliers':
+                    return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
+                case 'translations':
+                    if (firstLanguageWithMissingTranslations) {
+                        setDisplayLanguage(firstLanguageWithMissingTranslations);
+                    }
+                    return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
+                default:
+                    return DEFAULT_FILTERS;
+            }
+        });
+        requestAnimationFrame(() => {
+            menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }, [firstLanguageWithMissingTranslations]);
+
     if (!storeDetails || (loadingProjects && !menuData)) {
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
@@ -2166,40 +2214,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 {menuCompletionChips.length > 0 ? (
                                     <Flex gap={8} wrap="wrap">
                                         {menuCompletionChips.map((chip) => (
-                                            <Tag key={chip.key}>{chip.label}</Tag>
+                                            <Tag
+                                                key={chip.key}
+                                                onClick={() => handleMenuCompletionChipClick(chip.key)}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                {chip.label}
+                                            </Tag>
                                         ))}
                                     </Flex>
                                 ) : null}
 
                                 <Flex gap={8} wrap="wrap">
                                     <Button
+                                        block
                                         color="primary"
-                                        onClick={() => handleMenuCompletionAction(menuCompletionSummary.primaryAction)}
-                                        size="small"
+                                        onClick={() => handleMenuCompletionAction('repair')}
+                                        size="middle"
                                     >
-                                        {menuCompletionSummary.primaryAction === 'repair'
-                                            ? t('repairMenuAiAction')
-                                            : menuCompletionSummary.primaryAction === 'prices'
-                                                ? t('menuCompletionFinishPrices')
-                                                : menuCompletionSummary.primaryAction === 'images'
-                                                    ? t('menuCompletionReviewImages')
-                                                    : t('viewUpdatedMenu')}
+                                        {t('repairMenuAiAction')}
                                     </Button>
-                                    {menuIssueCounts.missingPhoto > 0 && menuCompletionSummary.primaryAction !== 'images' ? (
-                                        <Button fill="outline" onClick={() => handleMenuCompletionAction('images')} size="small">
-                                            {t('menuCompletionReviewImages')}
-                                        </Button>
-                                    ) : null}
-                                    {menuIssueCounts.missingPrice > 0 && menuCompletionSummary.primaryAction !== 'prices' ? (
-                                        <Button fill="outline" onClick={() => handleMenuCompletionAction('prices')} size="small">
-                                            {t('menuCompletionReviewPrices')}
-                                        </Button>
-                                    ) : null}
-                                    {menuCompletionSummary.primaryAction !== 'preview' ? (
-                                        <Button fill="outline" onClick={() => handleMenuCompletionAction('preview')} size="small">
-                                            {t('viewUpdatedMenu')}
-                                        </Button>
-                                    ) : null}
                                 </Flex>
                             </Flex>
                         </Card>

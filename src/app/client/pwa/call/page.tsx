@@ -14,6 +14,7 @@
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaCallHandoffClient from './PwaCallHandoffClient';
 
@@ -44,7 +45,7 @@ export default async function PwaCallHandoffPage() {
     const telUrl = buildTelUrl(store.phoneNumber, store.dialCode || store.countryCode);
     if (!telUrl) return notFound();
 
-    const trackingEnabled = store.analytics?.trackMenuViews !== false;
+    const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
     const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
     const storeName = getLocalizedText(
         store.publicPresence?.displayName,
@@ -59,7 +60,8 @@ export default async function PwaCallHandoffPage() {
             tenantId={store.tenantId}
             telUrl={telUrl}
             storeName={storeName}
-            trackingEnabled={trackingEnabled}
+            trackingEnabled={analyticsPreferences.trackCustomerApp}
+            locationTrackingEnabled={analyticsPreferences.trackLocation}
         />
     );
 }

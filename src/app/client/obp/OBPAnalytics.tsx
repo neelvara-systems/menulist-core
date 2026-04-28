@@ -18,9 +18,10 @@ interface OBPAnalyticsProps {
     tenantId: number;
     storeId: number;
     trackViews?: boolean;
+    includeLocation?: boolean;
 }
 
-export default function OBPAnalytics({ tenantId, storeId, trackViews = true }: OBPAnalyticsProps) {
+export default function OBPAnalytics({ tenantId, storeId, trackViews = true, includeLocation = true }: OBPAnalyticsProps) {
     useEffect(() => {
         if (!trackViews || !tenantId || !storeId) return;
 
@@ -35,6 +36,7 @@ export default function OBPAnalytics({ tenantId, storeId, trackViews = true }: O
             trackOBPView(storeId, {
                 tenantId,
                 sessionId,
+                includeLocation,
                 utm_source,
                 utm_medium,
                 utm_campaign,

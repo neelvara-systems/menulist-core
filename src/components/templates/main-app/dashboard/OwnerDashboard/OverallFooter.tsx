@@ -76,7 +76,34 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                         className={styles.overallStat}
                     />
                 </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic
+                        title="Searches"
+                        value={lifetimeMetrics.totalSearches || 0}
+                        className={styles.overallStat}
+                    />
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic
+                        title="Customer Actions"
+                        value={lifetimeMetrics.totalMenuActionClicks || 0}
+                        className={styles.overallStat}
+                    />
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic
+                        title="Unavailable Interest"
+                        value={lifetimeMetrics.totalUnavailableItemTaps || 0}
+                        className={styles.overallStat}
+                    />
+                </Col>
             </Row>
+
+            {data.menuActions && (
+                <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
+                    {`Actions: Call ${data.menuActions.call}, WhatsApp ${data.menuActions.whatsapp}, Directions ${data.menuActions.directions}, Reserve ${data.menuActions.reserve}, Order ${data.menuActions.order}`}
+                </Text>
+            )}
 
             {lastUpdated && (
                 <Text type="secondary" className={styles.lastUpdated}>

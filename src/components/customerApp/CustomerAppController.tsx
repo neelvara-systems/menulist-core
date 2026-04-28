@@ -46,6 +46,7 @@ interface Props {
     promoteInstallation?: boolean;
     /** From store.analytics.trackMenuViews !== false (default true). */
     trackingEnabled?: boolean;
+    locationTrackingEnabled?: boolean;
 }
 
 export default function CustomerAppController({
@@ -54,6 +55,7 @@ export default function CustomerAppController({
     storeName,
     promoteInstallation = true,
     trackingEnabled = true,
+    locationTrackingEnabled = true,
 }: Props) {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
@@ -71,10 +73,10 @@ export default function CustomerAppController({
         incrementVisitCount(storeId);
 
         // 2. Fire OPENED event if this is a standalone-mode launch.
-        void detectAndTrackAppOpen(storeId, { tenantId, trackingEnabled });
+        void detectAndTrackAppOpen(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // 3. Fire SHORTCUT_* event if launched from a manifest shortcut.
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // 4. Compute prompt eligibility AFTER incrementing visits.
         //    Direct-install intent (?pwa=install on the URL) bypasses the visit
@@ -86,7 +88,7 @@ export default function CustomerAppController({
             !detectInstalled() &&
             canShowPrompt(storeId, directIntent);
         if (eligible) setShouldShowPrompt(true);
-    }, [featureOn, storeId, tenantId, trackingEnabled, promoteInstallation]);
+    }, [featureOn, storeId, tenantId, trackingEnabled, locationTrackingEnabled, promoteInstallation]);
 
     // ── beforeinstallprompt capture (Chromium only) ──
     useEffect(() => {
@@ -109,11 +111,11 @@ export default function CustomerAppController({
 
         const handler = () => {
             setInstalledInThisSession(true);
-            void fireInstalledEventOnce(storeId, { tenantId, trackingEnabled });
+            void fireInstalledEventOnce(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
         };
         window.addEventListener('appinstalled', handler);
         return () => window.removeEventListener('appinstalled', handler);
-    }, [featureOn, storeId, tenantId, trackingEnabled]);
+    }, [featureOn, storeId, tenantId, trackingEnabled, locationTrackingEnabled]);
 
     if (!featureOn) return null;
     if (installedInThisSession) return null;
@@ -126,6 +128,7 @@ export default function CustomerAppController({
             storeName={storeName}
             deferredPrompt={deferredPrompt}
             trackingEnabled={trackingEnabled}
+            locationTrackingEnabled={locationTrackingEnabled}
             onDismiss={() => {
                 markPromptDismissed(storeId);
                 setShouldShowPrompt(false);

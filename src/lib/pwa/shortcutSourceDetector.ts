@@ -53,6 +53,7 @@ export interface ShortcutDetectorOptions {
   tenantId?: string | number;
   /** Owner opt-out flag; explicit `false` suppresses all events. */
   trackingEnabled?: boolean;
+  includeLocation?: boolean;
 }
 
 /**
@@ -69,7 +70,7 @@ export async function detectAndTrackShortcutLaunch(
   if (typeof window === 'undefined') return null;
   if (!detectInstalled()) return null;
 
-  const { tenantId } = options;
+  const { tenantId, includeLocation = true } = options;
 
   const source = parseShortcutSource(window.location.search);
   if (!source) return null;
@@ -79,6 +80,7 @@ export async function detectAndTrackShortcutLaunch(
       storeId: String(storeId),
       tenantId,
       sessionId: getSessionId(),
+      includeLocation,
     });
     return source;
   } catch (err) {

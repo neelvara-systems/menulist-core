@@ -1,3 +1,4 @@
+import AnalyticsInsightsSection from './AnalyticsInsightsSection';
 import StickyCta from '../shared/StickyCta';
 import BusinessSection from './BusinessSection';
 import FaqSection from './FaqSection';
@@ -22,6 +23,7 @@ export default function HomePage() {
       <PreparedForYouSection />
       <SurfacesSection />
       <SmartFeaturesSection />
+      <AnalyticsInsightsSection />
       <StatsSection />
       <BusinessSection />
       <IndustrySection />

@@ -246,15 +246,13 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                         )}
 
                         <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
-                            <Text strong>{tBusiness('uploadLogo')}</Text>
                             <Text type="secondary">
-                                {(selectedLogo?.url || storeDetails.logo) ? 'Tap to replace your current logo.' : 'Add a square logo for your brand and public pages.'}
+                                Best results: square PNG or JPG, at least 512 x 512 px.
                             </Text>
-                            <Flex>
-                                <Button fill={(selectedLogo?.url || storeDetails.logo) ? 'outline' : 'solid'} onClick={() => fileInputRef.current?.click()} size="small">
-                                    {tBusiness('uploadLogo')}
-                                </Button>
-                            </Flex>
+                            <Text type="secondary">Keep the logo clear with some spacing around the edges.</Text>
+                            <Button onClick={() => fileInputRef.current?.click()} size="small">
+                                Upload New Logo
+                            </Button>
                         </Flex>
                     </Flex>
                 </Card>

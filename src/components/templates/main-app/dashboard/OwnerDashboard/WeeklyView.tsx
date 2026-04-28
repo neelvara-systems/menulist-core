@@ -110,6 +110,27 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                         tooltip="Percentage of customers who used Smart Picks"
                     />
                 </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Customer Actions"
+                        value={metrics.menuActionClicks || 0}
+                        tooltip="Final actions like call, WhatsApp, directions, reserve, and order"
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Searches"
+                        value={metrics.searches || 0}
+                        tooltip="De-duplicated search demand from the menu"
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Unavailable Interest"
+                        value={metrics.unavailableItemTaps || 0}
+                        tooltip="Taps on unavailable items"
+                    />
+                </Col>
             </Row>
 
             {/* Top Items and Block Performance */}
@@ -139,6 +160,71 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                                     {blockPerformance.bestValue.clicks} clicks from {blockPerformance.bestValue.rendered} views
                                 </Text>
                             </div>
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card className={styles.blockPerformanceCard} variant="borderless">
+                        <Title level={5}>Customer Actions</Title>
+                        <div className={styles.blockList}>
+                            <div className={styles.blockItem}>
+                                <Text>Call</Text>
+                                <Text type="secondary">{data.menuActions?.call || 0}</Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>WhatsApp</Text>
+                                <Text type="secondary">{data.menuActions?.whatsapp || 0}</Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>Directions</Text>
+                                <Text type="secondary">{data.menuActions?.directions || 0}</Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>Reserve</Text>
+                                <Text type="secondary">{data.menuActions?.reserve || 0}</Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>Order</Text>
+                                <Text type="secondary">{data.menuActions?.order || 0}</Text>
+                            </div>
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card className={styles.blockPerformanceCard} variant="borderless">
+                        <Title level={5}>Search Demand</Title>
+                        <div className={styles.blockList}>
+                            <div className={styles.blockItem}>
+                                <Text>Total Searches</Text>
+                                <Text type="secondary">{metrics.searches || 0}</Text>
+                            </div>
+                            <div className={styles.blockItem}>
+                                <Text>No-result Searches</Text>
+                                <Text type="secondary">{metrics.zeroResultSearches || 0}</Text>
+                            </div>
+                            {data.topSearchTerms?.slice(0, 3).map((term) => (
+                                <div className={styles.blockItem} key={term.term}>
+                                    <Text>{term.term}</Text>
+                                    <Text type="secondary">{term.count}</Text>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card className={styles.blockPerformanceCard} variant="borderless">
+                        <Title level={5}>Unavailable Interest</Title>
+                        <div className={styles.blockList}>
+                            <div className={styles.blockItem}>
+                                <Text>Total Taps</Text>
+                                <Text type="secondary">{metrics.unavailableItemTaps || 0}</Text>
+                            </div>
+                            {data.unavailableItems?.slice(0, 3).map((item) => (
+                                <div className={styles.blockItem} key={item.itemId}>
+                                    <Text>{item.name || item.itemId}</Text>
+                                    <Text type="secondary">{item.clicks}</Text>
+                                </div>
+                            ))}
                         </div>
                     </Card>
                 </Col>

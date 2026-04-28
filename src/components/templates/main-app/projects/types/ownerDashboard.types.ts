@@ -71,6 +71,23 @@ export interface OwnerDashboardMetrics {
     itemClicks: number;
     smartPicksRendered: number;
     smartPicksClicks: number;
+    searches?: number;
+    unavailableItemTaps?: number;
+    menuActionClicks?: number;
+    zeroResultSearches?: number;
+}
+
+export interface MenuActionBreakdown {
+    call: number;
+    whatsapp: number;
+    directions: number;
+    reserve: number;
+    order: number;
+}
+
+export interface SearchTerm {
+    term: string;
+    count: number;
 }
 
 export interface BlockPerformance {
@@ -94,6 +111,9 @@ export interface DailyViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    menuActions?: MenuActionBreakdown;
+    topSearchTerms?: SearchTerm[];
+    unavailableItems?: TopItem[];
     aiSummary?: AISummary;
     isLowActivity: boolean; // < 20 views
 }
@@ -111,6 +131,9 @@ export interface WeeklyViewData {
     };
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    menuActions?: MenuActionBreakdown;
+    topSearchTerms?: SearchTerm[];
+    unavailableItems?: TopItem[];
     aiSummary?: WeeklyAISummary;
 }
 
@@ -125,6 +148,9 @@ export interface MonthlyViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    menuActions?: MenuActionBreakdown;
+    topSearchTerms?: SearchTerm[];
+    unavailableItems?: TopItem[];
     aiSummary?: AISummary;
 }
 
@@ -139,6 +165,9 @@ export interface WTDViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    menuActions?: MenuActionBreakdown;
+    topSearchTerms?: SearchTerm[];
+    unavailableItems?: TopItem[];
 }
 
 // ================================================================
@@ -154,6 +183,9 @@ export interface MTDViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    menuActions?: MenuActionBreakdown;
+    topSearchTerms?: SearchTerm[];
+    unavailableItems?: TopItem[];
     avgDailyScans: number;
 }
 
@@ -193,7 +225,11 @@ export interface OverallData {
         totalClicks: number;
         totalSmartPicksRendered: number;
         totalSmartPicksClicks: number;
+        totalSearches?: number;
+        totalUnavailableItemTaps?: number;
+        totalMenuActionClicks?: number;
     };
+    menuActions?: MenuActionBreakdown;
     firstDataDate?: string; // When tracking started
     lastUpdated?: Date;
 }

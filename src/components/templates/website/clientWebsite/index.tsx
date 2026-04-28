@@ -3,6 +3,7 @@ import { CUSTOMER_MENU_REFRESH_EVENT, useMenuFreshness } from "@/hooks/useMenuFr
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
+import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import {
@@ -77,6 +78,7 @@ function ClientMenuRenderer({
     projectId,
     menuResolutionLayer,
 }: ClientMenuRendererProps) {
+    const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const storeId = storeDetails?.storeId;
     const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || "en";
     const storeDisplayName = getLocalizedText(
@@ -228,7 +230,8 @@ function ClientMenuRenderer({
                     promoteInstallation={
                         (storeDetails as any)?.pwaSettings?.promoteInstallation !== false
                     }
-                    trackingEnabled={storeDetails?.analytics?.trackMenuViews !== false}
+                    trackingEnabled={analyticsPreferences.trackCustomerApp}
+                    locationTrackingEnabled={analyticsPreferences.trackLocation}
                 />
             )}
         </>

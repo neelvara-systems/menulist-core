@@ -16,23 +16,17 @@ interface GoogleAnalyticsProps {
 }
 
 const GoogleAnalytics = ({ storeDetails }: GoogleAnalyticsProps) => {
-    const gaId = storeDetails?.analytics?.googleAnalyticsId;//"G-8QJNFHDGNL"
+    const gaId = storeDetails?.analytics?.googleAnalyticsId;
 
     useEffect(() => {
-        if (gaId) {
-            // Initialize gtag
+        if (!gaId) return;
+
+        window.gaId = gaId;
+        if (typeof window.gtag !== 'function') {
             window.gtag = function gtag() {
-                // @ts-ignore
                 window.dataLayer = window.dataLayer || [];
-                // @ts-ignore
                 window.dataLayer.push(arguments);
             };
-
-            // Initial pageview
-            window.gtag('js', new Date());
-            window.gtag('config', gaId, {
-                page_path: window.location.pathname,
-            });
         }
     }, [gaId]);
 

@@ -17,6 +17,7 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
@@ -509,8 +510,9 @@ export default async function OBPContent({
     const schema = generateOBPSchema(store, obpUrl);
     const faqSchema = buildFaqSchema(store, obpUrl);
 
-    // Analytics: track OBP views using same pattern as digital menu
-    const trackingEnabled = store?.analytics?.trackMenuViews !== false;
+    const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
+    const trackingEnabled = analyticsPreferences.trackOfficialBusinessPage;
+    const includeLocation = analyticsPreferences.trackLocation;
 
     return (
         <>
@@ -518,6 +520,7 @@ export default async function OBPContent({
                 tenantId={store?.tenantId}
                 storeId={store?.storeId}
                 trackViews={trackingEnabled}
+                includeLocation={includeLocation}
             />
             <script
                 type="application/ld+json"
@@ -638,6 +641,8 @@ export default async function OBPContent({
                             // That's the signal that this is the outlet OBP
                             // surface, not the brand root.
                             obpSurface={storeOverride ? 'outlet' : 'brand'}
+                            trackingEnabled={trackingEnabled}
+                            includeLocation={includeLocation}
                         />
                     ) : (
                         <span className={styles.menuButtonDisabled}>
@@ -682,6 +687,8 @@ export default async function OBPContent({
                 <OBPActions
                     tenantId={store?.tenantId}
                     storeId={store?.storeId}
+                    trackingEnabled={trackingEnabled}
+                    includeLocation={includeLocation}
                     phoneNumber={store?.phoneNumber}
                     whatsappNumber={whatsappNumber}
                     directionsUrl={directionsUrl}

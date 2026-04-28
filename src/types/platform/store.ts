@@ -193,8 +193,11 @@ export type StoreDataType = {
         googleSearchConsole?: string;
         facebookPixelId?: string;
         enhancedEcommerce?: boolean;
+        trackCustomerApp?: boolean;
+        trackDecisionBlocks?: boolean;
         trackMenuViews?: boolean;
         trackLocation?: boolean;
+        trackOfficialBusinessPage?: boolean;
         dashboardPreferences?: {
             dateRange: string;
             favoriteMetrics: string[];

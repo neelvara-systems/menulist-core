@@ -125,6 +125,60 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
         );
     };
 
+    const renderActionSummary = (actions?: any) => {
+        if (!actions) return null;
+        const entries = Object.entries(actions).filter(([, count]) => Number(count) > 0);
+        if (entries.length === 0) return null;
+
+        return (
+            <Col span={24}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Customer Actions:</Text>
+                <div style={{ marginTop: 4 }}>
+                    {entries.map(([action, count]) => (
+                        <Tag key={action} style={{ marginBottom: 4 }}>
+                            {action} ({Number(count)})
+                        </Tag>
+                    ))}
+                </div>
+            </Col>
+        );
+    };
+
+    const renderDemandSummary = (terms?: any[], unavailableItems?: any[]) => {
+        if ((!terms || terms.length === 0) && (!unavailableItems || unavailableItems.length === 0)) {
+            return null;
+        }
+
+        return (
+            <Col span={24}>
+                {terms?.length ? (
+                    <>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Top Searches:</Text>
+                        <div style={{ marginTop: 4, marginBottom: 8 }}>
+                            {terms.map((term) => (
+                                <Tag key={term.term} style={{ marginBottom: 4 }}>
+                                    {term.term} ({term.count})
+                                </Tag>
+                            ))}
+                        </div>
+                    </>
+                ) : null}
+                {unavailableItems?.length ? (
+                    <>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Unavailable Interest:</Text>
+                        <div style={{ marginTop: 4 }}>
+                            {unavailableItems.map((item) => (
+                                <Tag key={item.itemId} style={{ marginBottom: 4 }}>
+                                    {item.name || item.itemId} ({item.clicks})
+                                </Tag>
+                            ))}
+                        </div>
+                    </>
+                ) : null}
+            </Col>
+        );
+    };
+
     const collapseItems = [
         {
             key: 'wtd',
@@ -169,6 +223,24 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                             prefix={<RiseOutlined />}
                         />
                     </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Searches"
+                            value={wtd.metrics.searches || 0}
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Customer Actions"
+                            value={wtd.metrics.menuActionClicks || 0}
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Unavailable Interest"
+                            value={wtd.metrics.unavailableItemTaps || 0}
+                        />
+                    </Col>
                     {wtd.topItems && wtd.topItems.length > 0 && (
                         <Col span={24}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -183,6 +255,8 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                             </div>
                         </Col>
                     )}
+                    {renderActionSummary(wtd.menuActions)}
+                    {renderDemandSummary(wtd.topSearchTerms, wtd.unavailableItems)}
                 </Row>
             ) : (
                 <Text type="secondary">No data for the last 7 days</Text>
@@ -231,6 +305,26 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                             prefix={<FireOutlined />}
                         />
                     </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Searches"
+                            value={mtd.metrics.searches || 0}
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Customer Actions"
+                            value={mtd.metrics.menuActionClicks || 0}
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Unavailable Interest"
+                            value={mtd.metrics.unavailableItemTaps || 0}
+                        />
+                    </Col>
+                    {renderActionSummary(mtd.menuActions)}
+                    {renderDemandSummary(mtd.topSearchTerms, mtd.unavailableItems)}
                 </Row>
             ) : (
                 <Text type="secondary">Month data will appear as days pass</Text>

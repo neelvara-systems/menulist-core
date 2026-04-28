@@ -184,26 +184,28 @@ export default function GenerateDescriptionsSheet({
                         </Flex>
                     </Card>
 
-                    <Card size="small" style={sectionCardStyle}>
-                        <Flex gap={10} vertical>
-                            <Flex align="center" justify="space-between">
-                                <Text strong>{t('menuStatus')}</Text>
-                                <Text type="secondary">{t('itemsDescribed', { count: itemsWithDescriptions })}</Text>
+                    {!allDescriptionsReady ? (
+                        <Card size="small" style={sectionCardStyle}>
+                            <Flex gap={10} vertical>
+                                <Flex align="center" justify="space-between">
+                                    <Text strong>{t('menuStatus')}</Text>
+                                    <Text type="secondary">{t('itemsDescribed', { count: itemsWithDescriptions })}</Text>
+                                </Flex>
+                                <Flex gap={8} wrap="wrap">
+                                    <Text>{t('itemsMissing', { count: itemsWithoutDescriptions })}</Text>
+                                </Flex>
+                                {isProcessing ? (
+                                    <Text type="secondary">
+                                        {totalFiles > 1
+                                            ? t('processingFileProgress', { current: Math.min(processedCount + 1, totalFiles), total: totalFiles })
+                                            : t('workingOnMenu')}
+                                    </Text>
+                                ) : (
+                                    <Text type="secondary">{t('descriptionsAutoSaved')}</Text>
+                                )}
                             </Flex>
-                            <Flex gap={8} wrap="wrap">
-                                <Text>{t('itemsMissing', { count: itemsWithoutDescriptions })}</Text>
-                            </Flex>
-                            {isProcessing ? (
-                                <Text type="secondary">
-                                    {totalFiles > 1
-                                        ? t('processingFileProgress', { current: Math.min(processedCount + 1, totalFiles), total: totalFiles })
-                                        : t('workingOnMenu')}
-                                </Text>
-                            ) : (
-                                <Text type="secondary">{t('descriptionsAutoSaved')}</Text>
-                            )}
-                        </Flex>
-                    </Card>
+                        </Card>
+                    ) : null}
 
                     {itemsWithoutDescriptions > 0 || itemsWithDescriptions > 0 ? (
                         <Flex gap={12}>

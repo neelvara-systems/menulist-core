@@ -1,7 +1,8 @@
 'use client';
 
 import { QuestionCircleOutlined, RocketOutlined, SettingOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Form, Input, Space, Switch, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, Form, Input, Space, Switch, Tooltip, Typography } from 'antd';
+import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES } from '@lib/analytics/settingsDisclosure';
 import { useTranslations } from 'next-intl';
 import { memo, useState } from 'react';
 import AnalyticsGuideModal from './AnalyticsGuideModal';
@@ -68,6 +69,12 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                     </Space>
                 </Card>
 
+                <Card size="small">
+                    <Text type="secondary">
+                        MenuList does not use this analytics data for its own marketing. It is connected only so you can see how your menu is performing.
+                    </Text>
+                </Card>
+
                 <Card title={t('essentialTracking')} size="small">
                     <Form.Item
                         label={(
@@ -117,6 +124,42 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                 </Card>
 
                 <Card title={t('trackingFeatures')} size="small" style={{ marginTop: '16px' }}>
+                    <Alert
+                        style={{ marginBottom: 16 }}
+                        message="Tracked by default"
+                        description="Client-facing screens currently record menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, recommendation block impressions and taps, OBP views and CTA taps, customer-app prompt and install events, device/session totals, UTM source tags, and approximate location unless you switch a category off below."
+                        type="info"
+                        showIcon
+                    />
+                    <Alert
+                        style={{ marginBottom: 16 }}
+                        message="How these switches work"
+                        description={ANALYTICS_SETTINGS_GROUPING_NOTE}
+                        type="info"
+                        showIcon
+                    />
+                    <Collapse
+                        ghost
+                        items={ANALYTICS_TRACKING_CATEGORY_DISCLOSURES.map((category) => ({
+                            key: category.key,
+                            label: category.title,
+                            children: (
+                                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                    <Text type="secondary">{category.description}</Text>
+                                    <Text strong>Included signals</Text>
+                                    <Space direction="vertical" size={4}>
+                                        {category.details.map((detail) => (
+                                            <Text key={detail}>• {detail}</Text>
+                                        ))}
+                                    </Space>
+                                    {category.note ? (
+                                        <Text type="secondary">{category.note}</Text>
+                                    ) : null}
+                                </Space>
+                            ),
+                        }))}
+                        style={{ marginBottom: 16 }}
+                    />
                     <Form.Item
                         label={(
                             <Space>
@@ -136,15 +179,15 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                     <Form.Item
                         label={(
                             <Space>
-                                <span>{t('menuItemViews')}</span>
-                                <Tooltip title={t('menuItemViewsTooltip')}>
+                                <span>Menu activity</span>
+                                <Tooltip title="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu.">
                                     <QuestionCircleOutlined />
                                 </Tooltip>
                             </Space>
                         )}
                         name={["analytics", "trackMenuViews"]}
                         valuePropName="checked"
-                        extra={<Text type="secondary">{t('menuItemViewsHelp')}</Text>}
+                        extra={<Text type="secondary">Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu.</Text>}
                     >
                         <Switch />
                     </Form.Item>
@@ -152,15 +195,63 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                     <Form.Item
                         label={(
                             <Space>
-                                <span>{t('customerLocations')}</span>
-                                <Tooltip title={t('customerLocationsTooltip')}>
+                                <span>Recommendation analytics</span>
+                                <Tooltip title="Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu.">
+                                    <QuestionCircleOutlined />
+                                </Tooltip>
+                            </Space>
+                        )}
+                        name={["analytics", "trackDecisionBlocks"]}
+                        valuePropName="checked"
+                        extra={<Text type="secondary">Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu.</Text>}
+                    >
+                        <Switch />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={(
+                            <Space>
+                                <span>Official business page activity</span>
+                                <Tooltip title="Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches.">
+                                    <QuestionCircleOutlined />
+                                </Tooltip>
+                            </Space>
+                        )}
+                        name={["analytics", "trackOfficialBusinessPage"]}
+                        valuePropName="checked"
+                        extra={<Text type="secondary">Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches.</Text>}
+                    >
+                        <Switch />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={(
+                            <Space>
+                                <span>Customer app activity</span>
+                                <Tooltip title="Tracks customer app install prompts, installs, standalone opens, and shortcut launches.">
+                                    <QuestionCircleOutlined />
+                                </Tooltip>
+                            </Space>
+                        )}
+                        name={["analytics", "trackCustomerApp"]}
+                        valuePropName="checked"
+                        extra={<Text type="secondary">Tracks customer app install prompts, installs, standalone opens, and shortcut launches.</Text>}
+                    >
+                        <Switch />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={(
+                            <Space>
+                                <span>Approximate location</span>
+                                <Tooltip title="Adds approximate location to analytics reports using rounded geolocation or timezone region when available.">
                                     <QuestionCircleOutlined />
                                 </Tooltip>
                             </Space>
                         )}
                         name={["analytics", "trackLocation"]}
                         valuePropName="checked"
-                        extra={<Text type="secondary">{t('customerLocationsHelp')}</Text>}
+                        extra={<Text type="secondary">Adds approximate location to analytics reports using rounded geolocation or timezone region when available.</Text>}
                     >
                         <Switch />
                     </Form.Item>

@@ -25,7 +25,7 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
@@ -50,6 +50,7 @@ import OBPMetricsCard from './OBPMetricsCard';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text } = Typography;
+const DASHBOARD_PROJECT_STORAGE_KEY = 'menulist_dashboard_project_id';
 
 const OwnerDashboard: React.FC = () => {
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
@@ -60,7 +61,10 @@ const OwnerDashboard: React.FC = () => {
         : null;
 
     // Project selection state — seed with fallback so dashboard can start fetching immediately
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+        if (typeof window === 'undefined') return null;
+        return window.sessionStorage.getItem(DASHBOARD_PROJECT_STORAGE_KEY);
+    });
 
     // Use selector-chosen project if available, otherwise fall back to derived default
     const activeProjectId = selectedProjectId || fallbackProjectId;
@@ -72,6 +76,13 @@ const OwnerDashboard: React.FC = () => {
     const handleProjectSelectorReady = useCallback(() => {
         // no-op — we no longer block on selector ready
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (activeProjectId) {
+            window.sessionStorage.setItem(DASHBOARD_PROJECT_STORAGE_KEY, activeProjectId);
+        }
+    }, [activeProjectId]);
 
     const {
         data,

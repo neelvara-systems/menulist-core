@@ -10,6 +10,7 @@ import { addStore, updateStore } from "@database/stores";
 import { updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
+import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
@@ -111,8 +112,17 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
     const contentLanguage = resolveStoreContentLanguage(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(storeDetails);
+    const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     return {
         ...storeDetails,
+        analytics: {
+            ...(storeDetails?.analytics || {}),
+            trackCustomerApp: analyticsPreferences.trackCustomerApp,
+            trackDecisionBlocks: analyticsPreferences.trackDecisionBlocks,
+            trackLocation: analyticsPreferences.trackLocation,
+            trackMenuViews: analyticsPreferences.trackMenuViews,
+            trackOfficialBusinessPage: analyticsPreferences.trackOfficialBusinessPage,
+        },
         activeLanguages: normalizedLanguagePolicy.activeLanguages,
         __localizedPublicPresenceDrafts: Object.fromEntries(
             managedLanguages.map((languageCode) => [

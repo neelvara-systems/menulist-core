@@ -108,7 +108,48 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                         </Col>
                     </>
                 )}
+                <Col xs={24} sm={12}>
+                    <MetricCard
+                        title="Customer Actions"
+                        value={metrics.menuActionClicks || 0}
+                        size="small"
+                    />
+                </Col>
+                <Col xs={24} sm={12}>
+                    <MetricCard
+                        title="Searches"
+                        value={metrics.searches || 0}
+                        size="small"
+                    />
+                </Col>
+                <Col xs={24} sm={12}>
+                    <MetricCard
+                        title="Unavailable Interest"
+                        value={metrics.unavailableItemTaps || 0}
+                        size="small"
+                    />
+                </Col>
             </Row>
+
+            {(data.menuActions || data.topSearchTerms?.length || data.unavailableItems?.length) && (
+                <Card className={styles.detailCard} variant="borderless">
+                    {data.menuActions ? (
+                        <Text type="secondary">
+                            Customer actions: Call {data.menuActions.call}, WhatsApp {data.menuActions.whatsapp}, Directions {data.menuActions.directions}, Reserve {data.menuActions.reserve}, Order {data.menuActions.order}
+                        </Text>
+                    ) : null}
+                    {data.topSearchTerms?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            Top searches: {data.topSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ')}
+                        </Text>
+                    ) : null}
+                    {data.unavailableItems?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            Unavailable interest: {data.unavailableItems.map((item) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}
+                        </Text>
+                    ) : null}
+                </Card>
+            )}
         </div>
     );
 };

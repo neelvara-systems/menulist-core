@@ -85,10 +85,12 @@ function getPrimaryLang(files: ProjectFileType[] | undefined, projectLanguages?:
     return 'en';
 }
 
-function isDescriptionMissing(item: ExtractedDataItem, lang: string): boolean {
+function isDescriptionMissing(item: ExtractedDataItem, languages: string[]): boolean {
     if (!item.description) return true;
-    const text = item.description[lang] || Object.values(item.description)[0];
-    return !text?.trim();
+    return languages.some((lang) => {
+        const text = item.description?.[lang];
+        return !text?.trim();
+    });
 }
 
 function isImageMissing(item: ExtractedDataItem): boolean {
@@ -137,7 +139,11 @@ function isTranslationMissing(item: ExtractedDataItem, primaryLang: string, allL
 }
 
 function getAllLanguageCodes(files: ProjectFileType[] | undefined, projectLanguages?: string[]): string[] {
-    const unique = new Set<string>(projectLanguages || []);
+    if (projectLanguages?.length) {
+        return Array.from(new Set(projectLanguages.filter(Boolean)));
+    }
+
+    const unique = new Set<string>();
 
     if (!files) return Array.from(unique);
 
@@ -222,7 +228,7 @@ export function computeQualitySignals(files: ProjectFileType[] | undefined, proj
     const signals: QualitySignal[] = [];
 
     // Signal 1: Description coverage
-    const missingDesc = activeItems.filter(item => isDescriptionMissing(item, lang)).length;
+    const missingDesc = activeItems.filter(item => isDescriptionMissing(item, allLanguages)).length;
     signals.push({
         id: 'descriptions',
         label: missingDesc > 0

@@ -44,6 +44,8 @@ interface OBPMenuCTAProps {
      * broken down by surface in the owner dashboard.
      */
     obpSurface?: 'brand' | 'outlet';
+    trackingEnabled?: boolean;
+    includeLocation?: boolean;
 }
 
 export default function OBPMenuCTA({
@@ -53,19 +55,25 @@ export default function OBPMenuCTA({
     storeId,
     projects = [],
     obpSurface = 'brand',
+    trackingEnabled = true,
+    includeLocation = true,
 }: OBPMenuCTAProps) {
     const trackPrimary = () => {
+        if (!trackingEnabled) return;
         trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
+            includeLocation,
         }).catch(() => { });
     };
 
     const trackSecondary = (project: OBPMenuCTAProjectEntry) => {
+        if (!trackingEnabled) return;
         // Primary OBP→menu conversion metric.
         trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
+            includeLocation,
         }).catch(() => { });
         // G-10: also tag this as a customer-side project switch so the
         // dashboard can tell cross-project exploration apart from straight
@@ -75,7 +83,7 @@ export default function OBPMenuCTA({
             project.slug,
             null, // OBP is a fresh entry point; there is no "from" project.
             'obp_secondary_card',
-            { tenantId, sessionId: getSessionId() },
+            { tenantId, sessionId: getSessionId(), includeLocation },
         ).catch(() => { });
     };
 

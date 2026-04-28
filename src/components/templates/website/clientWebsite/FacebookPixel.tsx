@@ -17,26 +17,23 @@ const FacebookPixel = ({ storeDetails }: FacebookPixelProps) => {
     const pixelId = storeDetails?.analytics?.facebookPixelId;
 
     useEffect(() => {
-        if (pixelId) {
-            // Initialize fbq
-            window.fbq = function fbq() {
+        if (!pixelId) return;
+
+        if (typeof window.fbq !== 'function') {
+            const fbq = function fbq() {
                 // @ts-ignore
-                window.fbq.callMethod ? window.fbq.callMethod.apply(window.fbq, arguments) : window.fbq.queue.push(arguments);
+                fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
             };
 
-            // Initialize queue
             // @ts-ignore
-            window.fbq.push = window.fbq;
+            fbq.push = fbq;
             // @ts-ignore
-            window.fbq.loaded = true;
+            fbq.loaded = true;
             // @ts-ignore
-            window.fbq.version = '2.0';
+            fbq.version = '2.0';
             // @ts-ignore
-            window.fbq.queue = [];
-
-            // Track PageView
-            window.fbq('init', pixelId);
-            window.fbq('track', 'PageView');
+            fbq.queue = [];
+            window.fbq = fbq as typeof window.fbq;
         }
     }, [pixelId]);
 

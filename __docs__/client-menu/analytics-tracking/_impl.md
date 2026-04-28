@@ -3,7 +3,7 @@
 **Sub-Feature of:** Client Menu  
 **Document Type:** Technical Implementation  
 **Status:** ✅ Implemented  
-**Last Updated:** January 12, 2026
+**Last Updated:** April 29, 2026
 
 ---
 
@@ -15,6 +15,9 @@ src/lib/analytics/
 
 src/database/analytics/
 └── index.ts                          # Firestore DAL
+
+src/database/ownerDashboard/
+└── index.ts                          # Owner dashboard read adapter
 
 src/components/templates/website/clientWebsite/
 ├── AnalyticsContext.tsx              # React context for tracking
@@ -35,7 +38,7 @@ functions/src/
 ```
 Customer interaction (click, view, etc.)
     ↓
-AnalyticsContext.trackMenuView() / trackItemView()
+AnalyticsContext.trackMenuView() / trackItemView() / menuPageNew search + unavailable handlers / MenuFooter and PDP recovery final action handlers
     ↓
 unified.ts → trackEvent()
     ↓
@@ -88,6 +91,79 @@ export async function trackEvent(eventType: string, data: TrackingData) {
   await trackFirebaseEvent(eventType, data);
 }
 ```
+
+### Search Tracking (cost-safe)
+
+```typescript
+useEffect(() => {
+  if (!trackMenuViews) return;
+  if (search.length < 2) return;
+  if (hasTrackedSearchTermInSession(storeId, projectId, search)) return;
+
+  const timer = window.setTimeout(() => {
+    markSearchTermTrackedInSession(storeId, projectId, search);
+    trackSearch(search, filteredItems.length, { tenantId, storeId, projectId });
+  }, 900);
+
+  return () => window.clearTimeout(timer);
+}, [search, filteredItems.length]);
+```
+
+- Fires once per unique search term per session
+- Never writes on each keystroke
+- Zero-result searches are preserved because they are decision-grade
+
+### Unavailable Item Demand
+
+```typescript
+if (item.available === false) {
+  trackUnavailableItemAttempt(item.id, itemName, item.category, {
+    tenantId,
+    storeId,
+    projectId,
+  });
+  return;
+}
+```
+
+- Fires only on explicit taps
+- Captures missed demand without passive-noise cost
+- Reuses the existing daily analytics doc
+- Opens the PDP in recovery mode without firing an additional `ITEM_VIEW`
+- Reuses the same final action links already defined in `publicPresence`
+
+### Menu Action Conversion
+
+```typescript
+const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
+  trackMenuAction(menuAction, {
+    tenantId,
+    storeId,
+    projectId,
+  });
+};
+```
+
+- Fires only on final outbound action clicks
+- Reuses existing `publicPresence` action URLs and visibility toggles
+- Avoids tracking hover, scroll, and intermediate UI states
+- The same tracking path is reused in the footer, zero-result recovery state, and unavailable-item PDP recovery actions
+
+### Dashboard Surfacing
+
+- Owner dashboard reads these metrics from the same analytics documents.
+- `aggregateCustomerAnalytics.ts` now rolls search demand, unavailable-item demand, and menu CTA clicks into summary / weekly / monthly rollups.
+- Desktop and mobile owner dashboards surface:
+  - total searches
+  - no-result searches
+  - unavailable-item taps
+  - final CTA clicks and action breakdown
+  - top search terms
+- AI owner summaries now also reference:
+  - top search demand
+  - no-result search friction
+  - unavailable demand
+  - strongest final customer action
 
 ### Write to Firestore
 
@@ -233,6 +309,24 @@ STEP 4: Daily AI Summary (ALWAYS)
 STEP 5: TTL Cleanup (ALWAYS)
   └── Deletes daily docs older than 90 days
 ```
+
+### Additive Fields Only
+
+The April 2026 expansion keeps the nightly flow unchanged by storing everything as additive fields on the same daily document:
+
+- `totalSearches`
+- `searchTerms.*`
+- `zeroResultSearches`
+- `zeroResultSearchTerms.*`
+- `totalUnavailableItemTaps`
+- `unavailableItemTapsByItem.*`
+
+This means:
+
+- no new collection
+- no extra fan-out write
+- no new scheduler
+- no change to document key patterns
 
 ### AI Summary Tones
 

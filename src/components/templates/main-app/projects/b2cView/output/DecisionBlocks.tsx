@@ -48,6 +48,8 @@ interface DecisionBlocksProps {
     precomputedBlocks?: PrecomputedDecisionBlocks | null;
     /** Required for project-wise analytics storage */
     analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId'>>;
+    /** Controls whether decision-block analytics should fire. */
+    trackingEnabled?: boolean;
 }
 
 interface ComputedBlock {
@@ -458,6 +460,7 @@ export default function DecisionBlocks({
     menuSettings,
     precomputedBlocks,
     analyticsIds,
+    trackingEnabled = true,
 }: DecisionBlocksProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -540,6 +543,13 @@ export default function DecisionBlocks({
         const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
         const price = parseFloat(rec.item.price || '0');
 
+        if (!trackingEnabled) {
+            if (onItemClick) {
+                onItemClick(rec.item);
+            }
+            return;
+        }
+
         // Track the click (pass analyticsIds for project-wise Firestore storage)
         trackDecisionBlockClick(
             rec.blockType,
@@ -565,14 +575,14 @@ export default function DecisionBlocks({
         if (onItemClick) {
             onItemClick(rec.item);
         }
-    }, [activeLanguage, onItemClick]);
+    }, [activeLanguage, onItemClick, trackingEnabled, analyticsIds]);
 
     // Track when blocks are rendered (once per session)
     // Why not use menu_view? It fires even when blocks DON'T render (feature off, no items, TTL expired)
     // Accurate CTR = clicks / renders (not clicks / menu_views)
     const hasTrackedRender = useRef(false);
     useEffect(() => {
-        if (blocks.length > 0 && !hasTrackedRender.current) {
+        if (trackingEnabled && blocks.length > 0 && !hasTrackedRender.current) {
             hasTrackedRender.current = true;
             const blockTypes = blocks.map(b => b.blockType);
             trackDecisionBlocksRendered(
@@ -580,7 +590,7 @@ export default function DecisionBlocks({
                 { ...analyticsIds }
             );
         }
-    }, [blocks]);
+    }, [blocks, analyticsIds, trackingEnabled]);
 
     // Don't render if no blocks to show
     if (blocks.length === 0) {

@@ -9,6 +9,7 @@ interface Props {
     mapsUrl: string;
     storeName: string;
     trackingEnabled: boolean;
+    locationTrackingEnabled?: boolean;
 }
 
 export default function PwaDirectionsHandoffClient({
@@ -17,11 +18,12 @@ export default function PwaDirectionsHandoffClient({
     mapsUrl,
     storeName,
     trackingEnabled,
+    locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         const t = window.setTimeout(() => {
             window.location.replace(mapsUrl);
@@ -29,7 +31,7 @@ export default function PwaDirectionsHandoffClient({
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, mapsUrl, trackingEnabled]);
+    }, [storeId, tenantId, mapsUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div

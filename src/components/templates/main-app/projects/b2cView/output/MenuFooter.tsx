@@ -20,6 +20,7 @@
  */
 
 import GlobalLanguagesList from '@data/languages';
+import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import { MenuMoodConfig } from '../designSystem';
@@ -39,6 +40,8 @@ interface MenuFooterProps {
     menuVersion?: number;
     /** When menu was last published (from project.lastPublishedAt) */
     lastPublishedAt?: any; // Firestore Timestamp or Date
+    analyticsIds?: Partial<Pick<TrackingData, 'tenantId' | 'storeId' | 'projectId'>>;
+    trackingEnabled?: boolean;
 }
 
 // Social media icon mapping
@@ -84,6 +87,8 @@ export default function MenuFooter({
     feedbackEnabled,
     menuVersion,
     lastPublishedAt,
+    analyticsIds,
+    trackingEnabled = true,
 }: MenuFooterProps) {
     // Feedback visibility: Both store-level AND project-level must be enabled
     // Default: true if undefined (opt-out pattern)
@@ -105,6 +110,24 @@ export default function MenuFooter({
     ].filter(Boolean);
 
     const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : undefined;
+    const publicPresence = storeDetails?.publicPresence;
+    const normalizedPhone = storeDetails?.phoneNumber?.replace(/\s+/g, '');
+    const callHref = storeDetails?.phoneNumber
+        ? storeDetails.phoneNumber.startsWith('+')
+            ? `tel:${normalizedPhone}`
+            : storeDetails?.dialCode
+                ? `tel:${storeDetails.dialCode.startsWith('+') ? storeDetails.dialCode : `+${storeDetails.dialCode}`}${normalizedPhone?.replace(/^0+/, '') || ''}`
+                : `tel:${normalizedPhone}`
+        : undefined;
+    const showCall = (publicPresence?.showCall !== false) && !!callHref;
+    const whatsappNumber = (publicPresence?.whatsappNumber || storeDetails?.phoneNumber || '').replace(/[^0-9+]/g, '');
+    const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : undefined;
+    const showWhatsApp = (publicPresence?.showWhatsApp !== false) && !!whatsappHref;
+    const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
+    const showDirections = (publicPresence?.showDirections !== false) && !!directionsHref;
+    const showReservation = (publicPresence?.showReservation !== false) && !!publicPresence?.reservationUrl;
+    const showOrder = (publicPresence?.showOrder !== false) && !!publicPresence?.orderUrl;
+    const shouldTrackMenuActions = trackingEnabled && !!analyticsIds?.tenantId && !!analyticsIds?.storeId && !!analyticsIds?.projectId;
 
     // Get social media links that have values
     const socialLinks = storeDetails?.socialMedia
@@ -114,6 +137,15 @@ export default function MenuFooter({
     // Handle language indicator click - scroll to top to access header selector
     const handleLanguageClick = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
+        if (!shouldTrackMenuActions) return;
+        void trackMenuAction(menuAction, {
+            tenantId: analyticsIds?.tenantId,
+            storeId: String(analyticsIds?.storeId),
+            projectId: analyticsIds?.projectId,
+        });
     };
 
     // Get language native names for display
@@ -163,6 +195,110 @@ export default function MenuFooter({
                 </p>
             )}
 
+            {(showCall || showWhatsApp || showDirections || showReservation || showOrder) && (
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginTop: '12px',
+                }}>
+                    {showCall && callHref && (
+                        <a
+                            href={callHref}
+                            onClick={() => handleMenuAction('call')}
+                            style={{
+                                color: moodConfig.accentColor,
+                                textDecoration: 'none',
+                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                borderRadius: 999,
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontFamily: moodConfig.bodyFont,
+                            }}
+                        >
+                            Call
+                        </a>
+                    )}
+                    {showWhatsApp && whatsappHref && (
+                        <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleMenuAction('whatsapp')}
+                            style={{
+                                color: moodConfig.accentColor,
+                                textDecoration: 'none',
+                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                borderRadius: 999,
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontFamily: moodConfig.bodyFont,
+                            }}
+                        >
+                            WhatsApp
+                        </a>
+                    )}
+                    {showDirections && directionsHref && (
+                        <a
+                            href={directionsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleMenuAction('directions')}
+                            style={{
+                                color: moodConfig.accentColor,
+                                textDecoration: 'none',
+                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                borderRadius: 999,
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontFamily: moodConfig.bodyFont,
+                            }}
+                        >
+                            Directions
+                        </a>
+                    )}
+                    {showReservation && publicPresence?.reservationUrl && (
+                        <a
+                            href={publicPresence.reservationUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleMenuAction('reserve')}
+                            style={{
+                                color: moodConfig.accentColor,
+                                textDecoration: 'none',
+                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                borderRadius: 999,
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontFamily: moodConfig.bodyFont,
+                            }}
+                        >
+                            Reserve
+                        </a>
+                    )}
+                    {showOrder && publicPresence?.orderUrl && (
+                        <a
+                            href={publicPresence.orderUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleMenuAction('order')}
+                            style={{
+                                color: moodConfig.accentColor,
+                                textDecoration: 'none',
+                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                borderRadius: 999,
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontFamily: moodConfig.bodyFont,
+                            }}
+                        >
+                            Order
+                        </a>
+                    )}
+                </div>
+            )}
+
             {storeDetails?.phoneNumber && (
                 <p style={{
                     color: moodConfig.bodyColor,
@@ -170,15 +306,22 @@ export default function MenuFooter({
                     margin: '4px 0 0 0',
                     fontFamily: moodConfig.bodyFont,
                 }}>
-                    <a
-                        href={`tel:${storeDetails?.dialCode || ''}${storeDetails.phoneNumber.replace(/\s/g, '')}`}
-                        style={{
-                            color: moodConfig.accentColor,
-                            textDecoration: 'none',
-                        }}
-                    >
-                        {storeDetails?.dialCode && `${storeDetails.dialCode} `}{storeDetails.phoneNumber}
-                    </a>
+                    {showCall && callHref ? (
+                        <a
+                            href={callHref}
+                            onClick={() => handleMenuAction('call')}
+                            style={{
+                                color: moodConfig.accentColor,
+                                textDecoration: 'none',
+                            }}
+                        >
+                            {storeDetails?.dialCode && `${storeDetails.dialCode} `}{storeDetails.phoneNumber}
+                        </a>
+                    ) : (
+                        <span>
+                            {storeDetails?.dialCode && `${storeDetails.dialCode} `}{storeDetails.phoneNumber}
+                        </span>
+                    )}
                 </p>
             )}
 

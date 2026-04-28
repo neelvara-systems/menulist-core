@@ -21,6 +21,7 @@ interface Props {
     title: string;
     message: string;
     trackingEnabled: boolean;
+    locationTrackingEnabled?: boolean;
 }
 
 export default function PwaExternalRedirectClient({
@@ -30,12 +31,13 @@ export default function PwaExternalRedirectClient({
     title,
     message,
     trackingEnabled,
+    locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
         // Fire-and-forget analytics; never block the redirect.
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // Small delay so the tracking write can leave before the navigation.
         const t = window.setTimeout(() => {
@@ -44,7 +46,7 @@ export default function PwaExternalRedirectClient({
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, targetUrl, trackingEnabled]);
+    }, [storeId, tenantId, targetUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div

@@ -108,6 +108,27 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                         subtitle={`${metrics.smartPicksClicks} total clicks`}
                     />
                 </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <MetricCard
+                        title="Customer Actions"
+                        value={metrics.menuActionClicks || 0}
+                        subtitle="final clicks"
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <MetricCard
+                        title="Searches"
+                        value={metrics.searches || 0}
+                        subtitle="demand checks"
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <MetricCard
+                        title="Unavailable Interest"
+                        value={metrics.unavailableItemTaps || 0}
+                        subtitle="missed demand"
+                    />
+                </Col>
             </Row>
 
             {/* Subscription Value Summary */}
@@ -142,6 +163,25 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                     </Col>
                 </Row>
             </Card>
+
+            {(data.menuActions || data.topSearchTerms?.length || data.unavailableItems?.length) && (
+                <Card className={styles.detailCard} variant="borderless">
+                    <Title level={5}>What customers tried to do</Title>
+                    <Text type="secondary">
+                        Actions: Call {data.menuActions?.call || 0}, WhatsApp {data.menuActions?.whatsapp || 0}, Directions {data.menuActions?.directions || 0}, Reserve {data.menuActions?.reserve || 0}, Order {data.menuActions?.order || 0}
+                    </Text>
+                    {data.topSearchTerms?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            Top searches: {data.topSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ')}
+                        </Text>
+                    ) : null}
+                    {data.unavailableItems?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            Unavailable interest: {data.unavailableItems.map((item) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}
+                        </Text>
+                    ) : null}
+                </Card>
+            )}
         </div>
     );
 };

@@ -1,13 +1,15 @@
 'use client'
 
 import { updateStore } from '@database/stores';
+import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
+import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES } from '@lib/analytics/settingsDisclosure';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { Popover, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
+import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
@@ -23,8 +25,11 @@ type AnalyticsDraft = {
     facebookPixelId: string;
     googleAnalyticsId: string;
     googleSearchConsole: string;
+    trackCustomerApp: boolean;
+    trackDecisionBlocks: boolean;
     trackLocation: boolean;
     trackMenuViews: boolean;
+    trackOfficialBusinessPage: boolean;
 };
 
 type SeoDraft = {
@@ -67,6 +72,9 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const [searchConsole, setSearchConsole] = useState('');
     const [enhancedEcommerce, setEnhancedEcommerce] = useState(false);
     const [trackMenuViews, setTrackMenuViews] = useState(false);
+    const [trackDecisionBlocks, setTrackDecisionBlocks] = useState(false);
+    const [trackOfficialBusinessPage, setTrackOfficialBusinessPage] = useState(false);
+    const [trackCustomerApp, setTrackCustomerApp] = useState(false);
     const [trackLocation, setTrackLocation] = useState(false);
     const [originalSeoState, setOriginalSeoState] = useState<SeoDraft | null>(null);
     const [originalAnalyticsState, setOriginalAnalyticsState] = useState<AnalyticsDraft | null>(null);
@@ -92,12 +100,16 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setCanonicalUrl(storeDetails.canonicalUrl || '');
         setKeywords((storeDetails.keywords || []).join(', '));
         setOriginalSeoState(getSeoDraft(storeDetails));
+        const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails.analytics);
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
         setFbPixelId(storeDetails.analytics?.facebookPixelId || '');
         setSearchConsole(storeDetails.analytics?.googleSearchConsole || '');
         setEnhancedEcommerce(storeDetails.analytics?.enhancedEcommerce || false);
-        setTrackMenuViews(storeDetails.analytics?.trackMenuViews || false);
-        setTrackLocation(storeDetails.analytics?.trackLocation || false);
+        setTrackMenuViews(analyticsPreferences.trackMenuViews);
+        setTrackDecisionBlocks(analyticsPreferences.trackDecisionBlocks);
+        setTrackOfficialBusinessPage(analyticsPreferences.trackOfficialBusinessPage);
+        setTrackCustomerApp(analyticsPreferences.trackCustomerApp);
+        setTrackLocation(analyticsPreferences.trackLocation);
         setOriginalAnalyticsState(getAnalyticsDraft(storeDetails));
     }, [storeDetails]);
 
@@ -134,8 +146,11 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         facebookPixelId: fbPixelId,
         googleAnalyticsId: gaId,
         googleSearchConsole: searchConsole,
+        trackCustomerApp,
+        trackDecisionBlocks,
         trackLocation,
         trackMenuViews,
+        trackOfficialBusinessPage,
     };
     const isAnalyticsDirty = !isSeoMode && originalAnalyticsState !== null
         && JSON.stringify(analyticsDraft) !== JSON.stringify(originalAnalyticsState);
@@ -299,18 +314,36 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         />
                         <FeatureToggleCard
                             checked={trackMenuViews}
-                            description={tAnalytics('menuItemViewsHelp')}
-                            label={tAnalytics('menuItemViews')}
+                            description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu."
+                            label="Menu activity"
                             onChange={setTrackMenuViews}
                         />
                         <FeatureToggleCard
+                            checked={trackDecisionBlocks}
+                            description="Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu."
+                            label="Recommendation analytics"
+                            onChange={setTrackDecisionBlocks}
+                        />
+                        <FeatureToggleCard
+                            checked={trackOfficialBusinessPage}
+                            description="Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches."
+                            label="Official business page activity"
+                            onChange={setTrackOfficialBusinessPage}
+                        />
+                        <FeatureToggleCard
+                            checked={trackCustomerApp}
+                            description="Tracks customer app install prompts, installs, standalone opens, and shortcut launches."
+                            label="Customer app activity"
+                            onChange={setTrackCustomerApp}
+                        />
+                        <FeatureToggleCard
                             checked={trackLocation}
-                            description={tAnalytics('customerLocationsHelp')}
-                            label={tAnalytics('customerLocations')}
+                            description="Adds approximate location to analytics reports using rounded geolocation or timezone region when available."
+                            label="Approximate location"
                             onChange={setTrackLocation}
                         />
                         <InfoCallout
-                            description="We only track general analytics information, not personal customer identity."
+                            description="By default, MenuList tracks anonymous menu activity, search demand including no-result searches, unavailable-item demand, final menu CTA clicks, recommendation usage, OBP activity, customer-app events, device type, session totals, entry UTM tags, and approximate location. We do not collect customer names, emails, payment details, or exact GPS coordinates in this analytics flow."
                             title="Privacy"
                         />
                     </Flex>
@@ -358,6 +391,9 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setFbPixelId(originalAnalyticsState.facebookPixelId);
         setEnhancedEcommerce(originalAnalyticsState.enhancedEcommerce);
         setTrackMenuViews(originalAnalyticsState.trackMenuViews);
+        setTrackDecisionBlocks(originalAnalyticsState.trackDecisionBlocks);
+        setTrackOfficialBusinessPage(originalAnalyticsState.trackOfficialBusinessPage);
+        setTrackCustomerApp(originalAnalyticsState.trackCustomerApp);
         setTrackLocation(originalAnalyticsState.trackLocation);
     };
 
@@ -622,6 +658,12 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             </Flex>
                         </Card>
 
+                        <Card size="small">
+                            <Text type="secondary">
+                                MenuList does not use this analytics data for its own marketing. It is connected only so you can see how your menu is performing.
+                            </Text>
+                        </Card>
+
                         <Card title={tAnalytics('essentialTracking')}>
                             <Flex gap={12} vertical>
                                 <FieldGroup hint={tAnalytics('googleAnalyticsIdHelp')} label={tAnalytics('googleAnalyticsId')}>
@@ -642,6 +684,15 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
 
                         <Card title={tAnalytics('trackingFeatures')}>
                             <Flex gap={16} vertical>
+                                <InfoCallout
+                                    title="Tracked by default"
+                                    description="Client-facing screens currently record menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, recommendation block impressions and taps, OBP views and CTA taps, customer-app prompt and install events, device/session totals, UTM source tags, and approximate location unless you switch a category off below."
+                                />
+                                <InfoCallout
+                                    title="How these switches work"
+                                    description={ANALYTICS_SETTINGS_GROUPING_NOTE}
+                                />
+                                <TrackingCategoryDisclosureList />
                                 <ToggleRow
                                     checked={enhancedEcommerce}
                                     description={tAnalytics('enhancedEcommerceHelp')}
@@ -650,14 +701,32 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 />
                                 <ToggleRow
                                     checked={trackMenuViews}
-                                    description={tAnalytics('menuItemViewsHelp')}
-                                    label={tAnalytics('menuItemViews')}
+                                    description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu."
+                                    label="Menu activity"
                                     onChange={setTrackMenuViews}
                                 />
                                 <ToggleRow
+                                    checked={trackDecisionBlocks}
+                                    description="Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu."
+                                    label="Recommendation analytics"
+                                    onChange={setTrackDecisionBlocks}
+                                />
+                                <ToggleRow
+                                    checked={trackOfficialBusinessPage}
+                                    description="Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches."
+                                    label="Official business page activity"
+                                    onChange={setTrackOfficialBusinessPage}
+                                />
+                                <ToggleRow
+                                    checked={trackCustomerApp}
+                                    description="Tracks customer app install prompts, installs, standalone opens, and shortcut launches."
+                                    label="Customer app activity"
+                                    onChange={setTrackCustomerApp}
+                                />
+                                <ToggleRow
                                     checked={trackLocation}
-                                    description={tAnalytics('customerLocationsHelp')}
-                                    label={tAnalytics('customerLocations')}
+                                    description="Adds approximate location to analytics reports using rounded geolocation or timezone region when available."
+                                    label="Approximate location"
                                     onChange={setTrackLocation}
                                 />
                             </Flex>
@@ -911,6 +980,29 @@ function FeatureToggleCard({ checked, description, label, onChange }: { checked:
     );
 }
 
+function TrackingCategoryDisclosureList() {
+    return (
+        <Card size="small">
+            <Collapse accordion>
+                {ANALYTICS_TRACKING_CATEGORY_DISCLOSURES.map((category) => (
+                    <Collapse.Panel key={category.key} title={category.title}>
+                        <Flex gap={8} vertical>
+                            <Text type="secondary">{category.description}</Text>
+                            <Flex gap={4} vertical>
+                                <Text strong>Included signals</Text>
+                                {category.details.map((detail) => (
+                                    <Text key={detail}>• {detail}</Text>
+                                ))}
+                            </Flex>
+                            {category.note ? <Text type="secondary">{category.note}</Text> : null}
+                        </Flex>
+                    </Collapse.Panel>
+                ))}
+            </Collapse>
+        </Card>
+    );
+}
+
 function GuideSection({ description, items, title }: { description?: string; items?: string[]; title: string }) {
     return (
         <Card size="small">
@@ -987,8 +1079,7 @@ function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
         facebookPixelId: storeDetails?.analytics?.facebookPixelId || '',
         googleAnalyticsId: storeDetails?.analytics?.googleAnalyticsId || '',
         googleSearchConsole: storeDetails?.analytics?.googleSearchConsole || '',
-        trackLocation: storeDetails?.analytics?.trackLocation || false,
-        trackMenuViews: storeDetails?.analytics?.trackMenuViews || false,
+        ...getResolvedAnalyticsPreferences(storeDetails?.analytics),
     };
 }
 

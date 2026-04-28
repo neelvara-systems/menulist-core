@@ -70,11 +70,11 @@ const trustPillars = [
   {
     icon: LuUserCheck,
     title: 'Privacy-conscious analytics',
-    desc: "Customer analytics are passive and aggregate-only. We track menu engagement patterns — never personal identities. We don't know who your customers are.",
+    desc: "MenuList tracks business signals that help owners make decisions without building a profile of the customer. The system is designed to show demand and action intent, not personal identity.",
     points: [
-      'No personal customer data collected',
-      'Aggregate behaviour patterns only (views, clicks, timing)',
-      'GDPR-aware design — no PII in analytics pipeline',
+      'No customer names, emails, payment details, or exact GPS in this analytics flow',
+      'Tracks useful business signals like searches, no-result searches, unavailable-item demand, and final customer actions',
+      'Owner-facing category controls and disclosure explain what is tracked by default',
     ],
   },
   {
@@ -93,6 +93,7 @@ const securityFacts = [
   { label: 'Password breaches possible', value: 'Zero — we store no passwords' },
   { label: 'Data sold to third parties', value: 'Never' },
   { label: 'Cross-account data access', value: 'Impossible by design' },
+  { label: 'Customer identities in analytics', value: 'Not collected' },
   { label: 'Infrastructure provider', value: 'Google Cloud / Firebase' },
   { label: 'Transit encryption', value: 'TLS/HTTPS everywhere' },
   { label: 'Webhook verification', value: 'HMAC-SHA256 signed' },

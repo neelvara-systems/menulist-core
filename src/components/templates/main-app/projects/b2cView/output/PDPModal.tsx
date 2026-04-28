@@ -27,9 +27,26 @@ interface PDPModalProps {
     projectData: Project;
     showItemPrices?: boolean;
     unavailableLabel?: string;
+    trackView?: boolean;
+    recoveryActions?: Array<{
+        label: string;
+        href: string;
+        external?: boolean;
+        onClick?: () => void;
+    }>;
 }
 
-function PDPModal({ item, onClose, language, moodConfig, projectData, showItemPrices = true, unavailableLabel }: PDPModalProps) {
+function PDPModal({
+    item,
+    onClose,
+    language,
+    moodConfig,
+    projectData,
+    showItemPrices = true,
+    unavailableLabel,
+    trackView = true,
+    recoveryActions = [],
+}: PDPModalProps) {
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [category, setCategory] = useState<ExtractedDataCategory>();
@@ -46,20 +63,21 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, showItemPr
             document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
 
-            // Track menu item view for analytics
-            trackMenuItemView({
-                itemId: item.id,
-                name: item.name?.[language] || 'Unknown Item',
-                category: item.category?.[language] || undefined,
-                price: typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price,
-                currency: 'USD',
-                attributes: item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
-                    if (attr.name?.[language]) {
-                        acc[attr.name[language]] = String(attr.price);
-                    }
-                    return acc;
-                }, {})
-            });
+            if (trackView) {
+                trackMenuItemView({
+                    itemId: item.id,
+                    name: item.name?.[language] || 'Unknown Item',
+                    category: item.category?.[language] || undefined,
+                    price: typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price,
+                    currency: 'USD',
+                    attributes: item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
+                        if (attr.name?.[language]) {
+                            acc[attr.name[language]] = String(attr.price);
+                        }
+                        return acc;
+                    }, {})
+                });
+            }
 
             // Find category for this item
             const file = projectData?.files?.find(f => {
@@ -71,7 +89,7 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, showItemPr
             document.documentElement.style.overflow = '';
             document.body.style.overflow = '';
         };
-    }, [item, language, trackMenuItemView, projectData]);
+    }, [item, language, trackMenuItemView, projectData, trackView]);
 
     useEffect(() => {
         if (!item) return;
@@ -295,6 +313,37 @@ function PDPModal({ item, onClose, language, moodConfig, projectData, showItemPr
                                     >
                                         {item.description[language]}
                                     </p>
+                                )}
+
+                                {!isAvailable && recoveryActions.length > 0 && (
+                                    <div className="mt-4">
+                                        <h3
+                                            className="text-sm font-medium mb-2"
+                                            style={{ color: moodConfig.headingColor }}
+                                        >
+                                            Need help instead?
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {recoveryActions.map((action) => (
+                                                <a
+                                                    key={action.label}
+                                                    href={action.href}
+                                                    onClick={action.onClick}
+                                                    target={action.external ? '_blank' : undefined}
+                                                    rel={action.external ? 'noopener noreferrer' : undefined}
+                                                    className="px-3 py-2 text-sm rounded-lg"
+                                                    style={{
+                                                        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                        color: moodConfig.accentColor,
+                                                        textDecoration: 'none',
+                                                        fontFamily: moodConfig.bodyFont,
+                                                    }}
+                                                >
+                                                    {action.label}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
 
                                 {/* Attributes/Variants */}

@@ -9,6 +9,7 @@ interface Props {
     waUrl: string;
     storeName: string;
     trackingEnabled: boolean;
+    locationTrackingEnabled?: boolean;
 }
 
 export default function PwaWhatsAppHandoffClient({
@@ -17,11 +18,12 @@ export default function PwaWhatsAppHandoffClient({
     waUrl,
     storeName,
     trackingEnabled,
+    locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         const t = window.setTimeout(() => {
             window.location.replace(waUrl);
@@ -29,7 +31,7 @@ export default function PwaWhatsAppHandoffClient({
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, waUrl, trackingEnabled]);
+    }, [storeId, tenantId, waUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div

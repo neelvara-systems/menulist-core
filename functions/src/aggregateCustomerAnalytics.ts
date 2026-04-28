@@ -57,6 +57,9 @@ interface DailyMetrics {
     totalOrders?: number;
     totalRevenue?: number;
     totalSearches?: number;
+    zeroResultSearches?: number;
+    totalUnavailableItemTaps?: number;
+    totalMenuActionClicks?: number;
     totalRecommendationClicks?: number;
     // Decision Blocks rendered - CRITICAL for engagement rate calculation
     totalDecisionBlocksRendered?: number;
@@ -68,6 +71,9 @@ interface DailyMetrics {
     recommendationClicks?: Record<string, number>;
     recommendationClicksByItem?: Record<string, number>;
     searchTerms?: Record<string, number>;
+    menuActionClicks?: Record<string, number>;
+    unavailableItemTapsByItem?: Record<string, number>;
+    itemNames?: Record<string, string>;
 
     // ── Customer App (installable PWA surface) fields — additive-only, projectId='customerApp' ──
     // All optional so existing menu analytics projects (obp, menu slugs) are unaffected.
@@ -119,6 +125,8 @@ function hasMenuAnalyticsActivity(data: DailyMetrics | Record<string, any> | nul
         || (typeof data.totalOrders === 'number' && data.totalOrders > 0)
         || (typeof data.totalRevenue === 'number' && data.totalRevenue > 0)
         || (typeof data.totalSearches === 'number' && data.totalSearches > 0)
+        || (typeof data.totalUnavailableItemTaps === 'number' && data.totalUnavailableItemTaps > 0)
+        || (typeof data.totalMenuActionClicks === 'number' && data.totalMenuActionClicks > 0)
         || (typeof data.totalRecommendationClicks === 'number' && data.totalRecommendationClicks > 0)
         || (typeof data.totalDecisionBlocksRendered === 'number' && data.totalDecisionBlocksRendered > 0)
     );
@@ -327,6 +335,13 @@ async function updateSummaryDocument(
     if (dailyData.totalOrders) updates.lifetimeTotalOrders = FieldValue.increment(dailyData.totalOrders);
     if (dailyData.totalRevenue) updates.lifetimeTotalRevenue = FieldValue.increment(dailyData.totalRevenue);
     if (dailyData.totalSearches) updates.lifetimeTotalSearches = FieldValue.increment(dailyData.totalSearches);
+    if (dailyData.zeroResultSearches) updates.lifetimeZeroResultSearches = FieldValue.increment(dailyData.zeroResultSearches);
+    if (dailyData.totalUnavailableItemTaps) {
+        updates.lifetimeTotalUnavailableItemTaps = FieldValue.increment(dailyData.totalUnavailableItemTaps);
+    }
+    if (dailyData.totalMenuActionClicks) {
+        updates.lifetimeTotalMenuActionClicks = FieldValue.increment(dailyData.totalMenuActionClicks);
+    }
     if (dailyData.totalRecommendationClicks) {
         updates.lifetimeTotalRecommendationClicks = FieldValue.increment(dailyData.totalRecommendationClicks);
     }
@@ -396,6 +411,33 @@ async function updateSummaryDocument(
         for (const [itemId, clicks] of Object.entries(dailyData.recommendationClicksByItem)) {
             if (typeof clicks === 'number') {
                 updates[`recommendationClicksByItem.${itemId}`] = FieldValue.increment(clicks);
+            }
+        }
+    }
+
+    if (dailyData.menuActionClicks) {
+        for (const [action, clicks] of Object.entries(dailyData.menuActionClicks)) {
+            if (typeof clicks === 'number') {
+                updates[`menuActionClicks.${action}`] = FieldValue.increment(clicks);
+            }
+        }
+    }
+
+    if (dailyData.searchTerms) {
+        for (const [term, count] of Object.entries(dailyData.searchTerms)) {
+            if (typeof count === 'number') {
+                updates[`searchTerms.${term}`] = FieldValue.increment(count);
+            }
+        }
+    }
+
+    if (dailyData.unavailableItemTapsByItem) {
+        for (const [itemId, taps] of Object.entries(dailyData.unavailableItemTapsByItem)) {
+            if (typeof taps === 'number') {
+                updates[`unavailableItemTapsByItem.${itemId}`] = FieldValue.increment(taps);
+            }
+            if (dailyData.itemNames?.[itemId]) {
+                updates[`itemNames.${itemId}`] = dailyData.itemNames[itemId];
             }
         }
     }
@@ -590,6 +632,9 @@ function aggregateDailyDocs(docs: any[]): any {
         totalOrders: 0,
         totalRevenue: 0,
         totalSearches: 0,
+        zeroResultSearches: 0,
+        totalUnavailableItemTaps: 0,
+        totalMenuActionClicks: 0,
         totalRecommendationClicks: 0,
         // Decision Blocks rendered - for owner dashboard
         totalDecisionBlocksRendered: 0,
@@ -597,9 +642,13 @@ function aggregateDailyDocs(docs: any[]): any {
         viewsByLocation: {},
         viewsBySource: {},
         clicksByItem: {},
+        searchTerms: {},
+        unavailableItemTapsByItem: {},
+        menuActionClicks: {},
         recommendationClicks: {},
         decisionBlocksRendered: {},
         recommendationClicksByItem: {},
+        itemNames: {},
         // ── Customer App (projectId='customerApp') fields ──
         // Stay zero for all other projects; summed only when daily docs contain these keys.
         totalPromptShown: 0,
@@ -624,6 +673,9 @@ function aggregateDailyDocs(docs: any[]): any {
         if (doc.totalOrders) result.totalOrders += doc.totalOrders;
         if (doc.totalRevenue) result.totalRevenue += doc.totalRevenue;
         if (doc.totalSearches) result.totalSearches += doc.totalSearches;
+        if (doc.zeroResultSearches) result.zeroResultSearches += doc.zeroResultSearches;
+        if (doc.totalUnavailableItemTaps) result.totalUnavailableItemTaps += doc.totalUnavailableItemTaps;
+        if (doc.totalMenuActionClicks) result.totalMenuActionClicks += doc.totalMenuActionClicks;
         if (doc.totalRecommendationClicks) result.totalRecommendationClicks += doc.totalRecommendationClicks;
         // Decision Blocks rendered
         if (doc.totalDecisionBlocksRendered) result.totalDecisionBlocksRendered += doc.totalDecisionBlocksRendered;
@@ -641,10 +693,16 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.viewsByLocation, doc.viewsByLocation);
         mergeMapField(result.viewsBySource, doc.viewsBySource);
         mergeMapField(result.clicksByItem, doc.clicksByItem);
+        mergeMapField(result.searchTerms, doc.searchTerms);
+        mergeMapField(result.unavailableItemTapsByItem, doc.unavailableItemTapsByItem);
+        mergeMapField(result.menuActionClicks, doc.menuActionClicks);
         mergeMapField(result.recommendationClicks, doc.recommendationClicks);
         // Decision Blocks breakdown
         mergeMapField(result.decisionBlocksRendered, doc.decisionBlocksRendered);
         mergeMapField(result.recommendationClicksByItem, doc.recommendationClicksByItem);
+        if (doc.itemNames) {
+            Object.assign(result.itemNames, doc.itemNames);
+        }
         // Customer App map fields (additive merge — keys summed, never replaced)
         mergeMapField(result.shortcutClicks, doc.shortcutClicks);
         mergeMapField(result.installsByDevice, doc.installsByDevice);
@@ -667,6 +725,18 @@ function mergeMapField(target: Record<string, number>, source: Record<string, nu
             target[key] = (target[key] || 0) + value;
         }
     }
+}
+
+function getTopMetricEntry(source?: Record<string, number>): { key: string; count: number } | undefined {
+    if (!source) return undefined;
+
+    const entries = Object.entries(source)
+        .filter(([, count]) => typeof count === 'number' && count > 0)
+        .sort((a, b) => b[1] - a[1]);
+
+    if (!entries.length) return undefined;
+
+    return { key: entries[0][0], count: entries[0][1] };
 }
 
 /**
@@ -771,6 +841,10 @@ async function generateAndSaveWeeklyAISummary(
         },
     };
 
+    const topSearchTerm = getTopMetricEntry(aggregated.searchTerms);
+    const topUnavailableItem = getTopMetricEntry(aggregated.unavailableItemTapsByItem);
+    const topMenuAction = getTopMetricEntry(aggregated.menuActionClicks);
+
     // Build metrics for AI
     const metrics: OwnerDashboardMetrics = {
         period: 'last_7_days',
@@ -779,6 +853,13 @@ async function generateAndSaveWeeklyAISummary(
         menuVisits: aggregated.totalViews || 0,
         menuVisitsChange,
         itemClicks: aggregated.totalClicks || 0,
+        searches: aggregated.totalSearches || 0,
+        zeroResultSearches: aggregated.zeroResultSearches || 0,
+        unavailableItemTaps: aggregated.totalUnavailableItemTaps || 0,
+        menuActionClicks: aggregated.totalMenuActionClicks || 0,
+        topSearchTerm: topSearchTerm ? { term: topSearchTerm.key, count: topSearchTerm.count } : undefined,
+        topUnavailableItem: topUnavailableItem ? { itemId: topUnavailableItem.key, taps: topUnavailableItem.count } : undefined,
+        topMenuAction: topMenuAction ? { action: topMenuAction.key, count: topMenuAction.count } : undefined,
         smartPicksRendered: aggregated.totalDecisionBlocksRendered || 0,
         smartPicksClicks: aggregated.totalRecommendationClicks || 0,
         topItems,
@@ -799,6 +880,9 @@ async function generateAndSaveWeeklyAISummary(
             period: { start: weekStart, end: weekEnd },
             generatedAt: Timestamp.now(),
             promptVersion: 'v1',
+        },
+        ownerDashboardSummaryMetrics: {
+            menuVisitsChange,
         },
         lastOwnerSummaryGenerated: FieldValue.serverTimestamp(),
     }, { merge: true });
@@ -846,12 +930,23 @@ async function generateAndSaveDailyAISummary(
         },
     };
 
+    const topSearchTerm = getTopMetricEntry(dailyData.searchTerms);
+    const topUnavailableItem = getTopMetricEntry(dailyData.unavailableItemTapsByItem);
+    const topMenuAction = getTopMetricEntry(dailyData.menuActionClicks);
+
     // Build metrics for AI
     const metrics: DailyDashboardMetrics = {
         period: 'yesterday',
         date,
         menuVisits: dailyData.totalViews || 0,
         itemClicks: dailyData.totalClicks || 0,
+        searches: dailyData.totalSearches || 0,
+        zeroResultSearches: dailyData.zeroResultSearches || 0,
+        unavailableItemTaps: dailyData.totalUnavailableItemTaps || 0,
+        menuActionClicks: dailyData.totalMenuActionClicks || 0,
+        topSearchTerm: topSearchTerm ? { term: topSearchTerm.key, count: topSearchTerm.count } : undefined,
+        topUnavailableItem: topUnavailableItem ? { itemId: topUnavailableItem.key, taps: topUnavailableItem.count } : undefined,
+        topMenuAction: topMenuAction ? { action: topMenuAction.key, count: topMenuAction.count } : undefined,
         smartPicksRendered: dailyData.totalDecisionBlocksRendered || 0,
         smartPicksClicks: dailyData.totalRecommendationClicks || 0,
         topItems,
@@ -919,6 +1014,10 @@ async function generateAndSaveMonthlyAISummary(
         },
     };
 
+    const topSearchTerm = getTopMetricEntry(aggregated.searchTerms);
+    const topUnavailableItem = getTopMetricEntry(aggregated.unavailableItemTapsByItem);
+    const topMenuAction = getTopMetricEntry(aggregated.menuActionClicks);
+
     // Build metrics for AI
     const metrics: MonthlyDashboardMetrics = {
         period: 'last_month',
@@ -927,6 +1026,13 @@ async function generateAndSaveMonthlyAISummary(
         daysWithData,
         menuVisits: aggregated.totalViews || 0,
         itemClicks: aggregated.totalClicks || 0,
+        searches: aggregated.totalSearches || 0,
+        zeroResultSearches: aggregated.zeroResultSearches || 0,
+        unavailableItemTaps: aggregated.totalUnavailableItemTaps || 0,
+        menuActionClicks: aggregated.totalMenuActionClicks || 0,
+        topSearchTerm: topSearchTerm ? { term: topSearchTerm.key, count: topSearchTerm.count } : undefined,
+        topUnavailableItem: topUnavailableItem ? { itemId: topUnavailableItem.key, taps: topUnavailableItem.count } : undefined,
+        topMenuAction: topMenuAction ? { action: topMenuAction.key, count: topMenuAction.count } : undefined,
         smartPicksRendered: aggregated.totalDecisionBlocksRendered || 0,
         smartPicksClicks: aggregated.totalRecommendationClicks || 0,
         topItems,

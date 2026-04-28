@@ -19,6 +19,7 @@ interface Props {
     telUrl: string;
     storeName: string;
     trackingEnabled: boolean;
+    locationTrackingEnabled?: boolean;
 }
 
 export default function PwaCallHandoffClient({
@@ -27,12 +28,13 @@ export default function PwaCallHandoffClient({
     telUrl,
     storeName,
     trackingEnabled,
+    locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
         // Fire-and-forget analytics; never block the redirect.
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // Give the event a tick to leave before navigating away.
         const t = window.setTimeout(() => {
@@ -41,7 +43,7 @@ export default function PwaCallHandoffClient({
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, telUrl, trackingEnabled]);
+    }, [storeId, tenantId, telUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div

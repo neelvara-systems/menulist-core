@@ -176,9 +176,9 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                                     <div>
-                                        <Text strong={true}>Track Popular Items</Text>
+                                        <Text strong={true}>Track Menu Activity</Text>
                                         <br />
-                                        <Text type="secondary">See which dishes people like most</Text>
+                                        <Text type="secondary">Track menu opens, item detail opens, search demand, unavailable-item demand, final menu CTA clicks, and project switches</Text>
                                     </div>
                                     <Switch
                                         checked={form.getFieldValue(['analytics', 'trackMenuViews'])}
@@ -188,9 +188,45 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                                     <div>
-                                        <Text strong={true}>Track Customer Locations</Text>
+                                        <Text strong={true}>Track Recommendations</Text>
                                         <br />
-                                        <Text type="secondary">See where your customers are from</Text>
+                                        <Text type="secondary">See when smart recommendation blocks are shown and tapped</Text>
+                                    </div>
+                                    <Switch
+                                        checked={form.getFieldValue(['analytics', 'trackDecisionBlocks'])}
+                                        onChange={(checked) => form.setFieldValue(['analytics', 'trackDecisionBlocks'], checked)}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                                    <div>
+                                        <Text strong={true}>Track Official Business Page</Text>
+                                        <br />
+                                        <Text type="secondary">See OBP views, CTA taps, and menu conversion</Text>
+                                    </div>
+                                    <Switch
+                                        checked={form.getFieldValue(['analytics', 'trackOfficialBusinessPage'])}
+                                        onChange={(checked) => form.setFieldValue(['analytics', 'trackOfficialBusinessPage'], checked)}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                                    <div>
+                                        <Text strong={true}>Track Customer App</Text>
+                                        <br />
+                                        <Text type="secondary">See install prompt, install, open, and shortcut activity</Text>
+                                    </div>
+                                    <Switch
+                                        checked={form.getFieldValue(['analytics', 'trackCustomerApp'])}
+                                        onChange={(checked) => form.setFieldValue(['analytics', 'trackCustomerApp'], checked)}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                                    <div>
+                                        <Text strong={true}>Track Approximate Location</Text>
+                                        <br />
+                                        <Text type="secondary">Use rounded geolocation or timezone region, never exact GPS</Text>
                                     </div>
                                     <Switch
                                         checked={form.getFieldValue(['analytics', 'trackLocation'])}

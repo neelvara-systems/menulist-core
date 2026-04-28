@@ -47,6 +47,7 @@ type ItemEntry = {
     name: string;
     price: string;
     description?: string;
+    missingDescription: boolean;
     image?: string;
     category: string;
     categoryName: string;
@@ -63,6 +64,14 @@ const STATUS_COLORS = {
 } as const;
 
 const DISTINCT_SCRIPT_LANGUAGE_CODES = new Set(['ar', 'bn', 'hi', 'mr', 'ta', 'te', 'zh']);
+
+function hasMissingDescriptionInLanguages(item: any, languageCodes: string[]): boolean {
+    if (!item?.description || typeof item.description !== 'object') return true;
+    return languageCodes.some((languageCode) => {
+        const localizedDescription = item.description?.[languageCode];
+        return typeof localizedDescription !== 'string' || localizedDescription.trim().length === 0;
+    });
+}
 
 export default function BulkActionsSheet({
     visible,
@@ -119,6 +128,7 @@ export default function BulkActionsSheet({
         if (!workingProject) return [];
         const result: ItemEntry[] = [];
         const activeLang = getProjectDefaultLanguage(workingProject);
+        const activeProjectLanguages = workingProject.languages?.filter(Boolean) || [activeLang];
 
         workingProject.files?.forEach((file: any) => {
             if (!file.extractedData?.data) return;
@@ -135,6 +145,7 @@ export default function BulkActionsSheet({
                     name: item.name?.[activeLang] || item.name?.en || 'Untitled',
                     price: item.price || '',
                     description: item.description?.[activeLang] || item.description?.en || '',
+                    missingDescription: hasMissingDescriptionInLanguages(item, activeProjectLanguages),
                     image: item.images?.[0]?.url || '',
                     category: item.category,
                     categoryName: catMap[item.category] || 'Uncategorized',
@@ -321,7 +332,7 @@ export default function BulkActionsSheet({
         return !(Number.isFinite(price) && price > 0) && !item.attributes?.length;
     };
 
-    const hasMissingDescription = (item: ItemEntry) => !item.description?.trim();
+    const hasMissingDescription = (item: ItemEntry) => item.missingDescription;
     const hasMissingImage = (item: ItemEntry) => !(item.image?.trim());
 
     const languageIssues = useMemo(() => {
@@ -361,6 +372,7 @@ export default function BulkActionsSheet({
     const hasLatinScriptRepairLanguages = useMemo(() => (
         languagesNeedingRepair.some((issue) => !DISTINCT_SCRIPT_LANGUAGE_CODES.has(issue.code))
     ), [languagesNeedingRepair]);
+    const hasManualReviewItems = aiRepairSummary.missingPrices > 0 || aiRepairSummary.missingImages > 0;
 
     const toggleCategory = (categoryName: string, checked: boolean) => {
         const next = new Set(selectedIds);
@@ -676,16 +688,24 @@ export default function BulkActionsSheet({
                             <Flex gap={10} vertical>
                                 <Flex align="center" gap={8}>
                                     <LuSparkles size={16} style={{ color: token.colorSuccess }} />
-                                    <Text strong>{t('repairMenuAiFixNow')}</Text>
+                                    <Text strong>{fixableNowCount === 0 ? t('menuRepairNotNeeded') : t('repairMenuAiFixNow')}</Text>
                                 </Flex>
-                                <Flex gap={8} wrap="wrap">
-                                    <Tag color={aiRepairSummary.descriptionsToGenerate > 0 ? 'success' : undefined}>
-                                        {t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })}
-                                    </Tag>
-                                    <Tag color={aiRepairSummary.languageIssueCount > 0 ? 'processing' : undefined}>
-                                        {t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })}
-                                    </Tag>
-                                </Flex>
+                                {fixableNowCount > 0 ? (
+                                    <Flex gap={8} wrap="wrap">
+                                        {aiRepairSummary.descriptionsToGenerate > 0 ? (
+                                            <Tag color="success">
+                                                {t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })}
+                                            </Tag>
+                                        ) : null}
+                                        {aiRepairSummary.languageIssueCount > 0 ? (
+                                            <Tag color="processing">
+                                                {t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })}
+                                            </Tag>
+                                        ) : null}
+                                    </Flex>
+                                ) : (
+                                    <Text type="secondary">{t('menuCompletionReadyDesc')}</Text>
+                                )}
                                 {languagesNeedingRepair.length > 0 ? (
                                     <Flex gap={8} vertical>
                                         {languagesNeedingRepair.map((issue) => (
@@ -706,22 +726,32 @@ export default function BulkActionsSheet({
                             </Flex>
                         </Card>
 
-                        <Card size="small">
-                            <Flex gap={10} vertical>
-                                <Flex align="center" gap={8}>
-                                    <LuFileText size={16} style={{ color: token.colorWarning }} />
-                                    <Text strong>{t('repairMenuAiNeedsManualReview')}</Text>
+                        {hasManualReviewItems ? (
+                            <Card size="small">
+                                <Flex gap={10} vertical>
+                                    <Flex align="center" gap={8}>
+                                        <LuFileText size={16} style={{ color: token.colorWarning }} />
+                                        <Text strong>{t('repairMenuAiNeedsManualReview')}</Text>
+                                    </Flex>
+                                    <Flex gap={8} wrap="wrap">
+                                        {aiRepairSummary.missingPrices > 0 ? (
+                                            <Tag>{t('repairMenuAiMissingPricesCount', { count: aiRepairSummary.missingPrices })}</Tag>
+                                        ) : null}
+                                        {aiRepairSummary.missingImages > 0 ? (
+                                            <Tag>{t('repairMenuAiMissingImagesCount', { count: aiRepairSummary.missingImages })}</Tag>
+                                        ) : null}
+                                    </Flex>
+                                    <Text type="secondary">{t('repairMenuAiManualReviewHint')}</Text>
+                                    {hasLatinScriptRepairLanguages ? (
+                                        <Text type="secondary">{t('repairMenuAiLatinLanguageHint')}</Text>
+                                    ) : null}
                                 </Flex>
-                                <Flex gap={8} wrap="wrap">
-                                    <Tag>{t('repairMenuAiMissingPricesCount', { count: aiRepairSummary.missingPrices })}</Tag>
-                                    <Tag>{t('repairMenuAiMissingImagesCount', { count: aiRepairSummary.missingImages })}</Tag>
-                                </Flex>
-                                <Text type="secondary">{t('repairMenuAiManualReviewHint')}</Text>
-                                {hasLatinScriptRepairLanguages ? (
-                                    <Text type="secondary">{t('repairMenuAiLatinLanguageHint')}</Text>
-                                ) : null}
-                            </Flex>
-                        </Card>
+                            </Card>
+                        ) : hasLatinScriptRepairLanguages ? (
+                            <Card size="small">
+                                <Text type="secondary">{t('repairMenuAiLatinLanguageHint')}</Text>
+                            </Card>
+                        ) : null}
 
                         {applying ? (
                             <Card size="small" style={{ borderColor: token.colorBorderSecondary }}>

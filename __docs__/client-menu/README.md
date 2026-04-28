@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu  
 **Status:** ✅ Production Ready  
-**Last Updated:** March 15, 2026
+**Last Updated:** April 28, 2026
 
 ---
 
@@ -127,6 +127,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-03-15 | Implemented all 8 ChatGPT review items: lazy language loading, progressive rendering, dish metadata schema, analytics lazy loading, state version key, text-first fallback |
+| 2026-04-28 | Analytics tracking tightened for Firebase cost discipline: added de-duplicated search demand, unavailable-item demand, and final menu CTA conversion clicks; explicitly rejected scroll-depth telemetry |
 | 2026-03-11 | Responsive layout architecture (mobile/tablet/desktop sidebar)                                                                                                             |
 | 2026-02-22 | URL routing architecture: slug chains, outlet routing, reserved namespaces                                                                                                 |
 | 2026-02-21 | Special menu switching (replace + overlay modes)                                                                                                                           |
@@ -142,4 +143,4 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 ---
 
-_Documentation Index — Last Updated: January 12, 2026_
+_Documentation Index — Last Updated: April 28, 2026_

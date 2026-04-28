@@ -10,6 +10,7 @@
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
 
@@ -29,7 +30,7 @@ export default async function PwaReservationHandoffPage() {
     const reservationUrl: string | undefined = store.publicPresence?.reservationUrl;
     if (!reservationUrl) return notFound();
 
-    const trackingEnabled = store.analytics?.trackMenuViews !== false;
+    const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
     const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
     const storeName = getLocalizedText(
         store.publicPresence?.displayName,
@@ -45,7 +46,8 @@ export default async function PwaReservationHandoffPage() {
             targetUrl={reservationUrl}
             title={`Book a table at ${storeName}`}
             message="Opening reservations…"
-            trackingEnabled={trackingEnabled}
+            trackingEnabled={analyticsPreferences.trackCustomerApp}
+            locationTrackingEnabled={analyticsPreferences.trackLocation}
         />
     );
 }

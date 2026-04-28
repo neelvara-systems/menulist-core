@@ -119,6 +119,8 @@ export enum TrackingEvent {
 
   // User events
   SEARCH = 'search',                 // User searching for items
+  UNAVAILABLE_ITEM_ATTEMPT = 'unavailable_item_attempt', // User tapped an unavailable item
+  MENU_ACTION_CLICK = 'menu_action_click', // Customer clicked a final CTA from the menu
   LOGIN = 'login',                   // User login
   SIGN_UP = 'sign_up',               // User registration
   SHARE = 'share',                   // Sharing content
@@ -204,10 +206,12 @@ export interface TrackingData {
   region?: string;            // User's region/state
   country?: string;           // User's country
   timezone?: string;          // User's timezone
+  includeLocation?: boolean;  // Whether approximate location data may be collected
 
   // Search properties
   searchTerm?: string;        // What the user searched for
   searchResults?: number;     // Number of search results
+  menuAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order';
 
   // Recommendation properties (Decision Intelligence)
   blockType?: 'popular' | 'quickPick' | 'bestValue';  // Which recommendation block
@@ -328,12 +332,25 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     // Create device key
     const deviceKey = deviceInfo.type || 'unknown';
 
-    // Try to get location information
-    let locationKey = 'unknown';
-    try {
-      locationKey = await getLocationInfo();
-    } catch (error) {
-      console.warn('Could not get location info:', error);
+    const includeLocation = data.includeLocation !== false;
+    const locationAwareEvents = new Set<TrackingEvent>([
+      TrackingEvent.PAGE_VIEW,
+      TrackingEvent.MENU_VIEW,
+      TrackingEvent.ITEM_CLICK,
+      TrackingEvent.PURCHASE,
+      TrackingEvent.OBP_VIEW,
+      TrackingEvent.CUSTOMER_APP_INSTALLED,
+      TrackingEvent.CUSTOMER_APP_OPENED,
+    ]);
+
+    // Try to get location information only for event families that use it.
+    let locationKey: string | null = null;
+    if (includeLocation && locationAwareEvents.has(eventName)) {
+      try {
+        locationKey = await getLocationInfo();
+      } catch (error) {
+        console.warn('Could not get location info:', error);
+      }
     }
 
     // Ensure we have a session ID
@@ -351,7 +368,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.MENU_VIEW:
         updateData.totalViews = 1;
         updateData[`viewsByDevice.${deviceKey}`] = 1;
-        updateData[`viewsByLocation.${locationKey}`] = 1;
+        if (locationKey) updateData[`viewsByLocation.${locationKey}`] = 1;
         updateData[`hourlyViews.${hour}`] = 1;
         // COST OPTIMIZATION: Track session count, not individual session IDs
         // This prevents document size from growing unbounded (Firestore 1MB limit)
@@ -400,7 +417,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
         updateData.totalClicks = 1;
         updateData[`clicksByDevice.${deviceKey}`] = 1;
-        updateData[`clicksByLocation.${locationKey}`] = 1;
+        if (locationKey) updateData[`clicksByLocation.${locationKey}`] = 1;
         updateData[`clicksByItem.${data.itemId}`] = 1;
         updateData[`hourlyClicks.${hour}`] = 1;
         // NEW: Track which items are clicked at which hours (for time eligibility)
@@ -416,15 +433,43 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalOrders = 1;
         updateData.totalRevenue = data.revenue || 0;
         updateData[`ordersByDevice.${deviceKey}`] = 1;
-        updateData[`ordersByLocation.${locationKey}`] = 1;
+        if (locationKey) updateData[`ordersByLocation.${locationKey}`] = 1;
         updateData[`hourlyOrders.${hour}`] = 1;
         break;
 
       case TrackingEvent.SEARCH:
         updateData.totalSearches = 1;
+        updateData[`hourlySearches.${hour}`] = 1;
         if (data.searchTerm) {
           updateData[`searchTerms.${data.searchTerm.toLowerCase()}`] = 1;
+          if ((data.searchResults || 0) === 0) {
+            updateData.zeroResultSearches = 1;
+            updateData[`zeroResultSearchTerms.${data.searchTerm.toLowerCase()}`] = 1;
+          }
         }
+        break;
+
+      case TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT:
+        if (!data.itemId) {
+          console.error('Item ID is required for unavailable item tracking');
+          return;
+        }
+        updateData.totalUnavailableItemTaps = 1;
+        updateData[`unavailableItemTapsByItem.${data.itemId}`] = 1;
+        updateData[`hourlyUnavailableItemTaps.${hour}`] = 1;
+        if (data.itemName) {
+          updateData[`itemNames.${data.itemId}`] = data.itemName;
+        }
+        break;
+
+      case TrackingEvent.MENU_ACTION_CLICK:
+        if (!data.menuAction) {
+          console.error('menuAction is required for menu action click tracking');
+          return;
+        }
+        updateData.totalMenuActionClicks = 1;
+        updateData[`menuActionClicks.${data.menuAction}`] = 1;
+        updateData[`hourlyMenuActionClicks.${hour}`] = 1;
         break;
 
       case TrackingEvent.DECISION_BLOCK_CLICK:
@@ -442,7 +487,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // Official Business Page view — stored with projectId='obp'
         updateData.totalOBPViews = 1;
         updateData[`viewsByDevice.${deviceKey}`] = 1;
-        updateData[`viewsByLocation.${locationKey}`] = 1;
+        if (locationKey) updateData[`viewsByLocation.${locationKey}`] = 1;
         updateData[`hourlyViews.${hour}`] = 1;
         updateData.totalSessions = 1;
         if (data.utm_source) {
@@ -527,7 +572,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalInstalled = 1;
         updateData.uniqueInstallSessions = 1;
         updateData[`installsByDevice.${deviceKey}`] = 1;
-        updateData[`installsByLocation.${locationKey}`] = 1;
+        if (locationKey) updateData[`installsByLocation.${locationKey}`] = 1;
         // Platform breakdown (iOS / Android / Desktop). Optional — only
         // writes when caller supplied pwaPlatform.
         if (data.pwaPlatform) {
@@ -548,7 +593,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.CUSTOMER_APP_OPENED:
         updateData.totalAppOpens = 1;
         updateData[`viewsByDevice.${deviceKey}`] = 1;
-        updateData[`viewsByLocation.${locationKey}`] = 1;
+        if (locationKey) updateData[`viewsByLocation.${locationKey}`] = 1;
         updateData[`hourlyAppOpens.${hour}`] = 1;
         updateData.totalSessions = 1;
         // Per-platform app-open count — used by the "active by platform" row
@@ -831,6 +876,38 @@ export const trackPurchase = (transactionId: string, revenue: number, items: any
  */
 export const trackSearch = (searchTerm: string, searchResults: number, additionalData: Partial<TrackingData> = {}): Promise<void> => {
   return trackEvent(TrackingEvent.SEARCH, { searchTerm, searchResults, ...additionalData });
+};
+
+/**
+ * Track when a customer taps an unavailable item.
+ * Sparse, high-intent signal for missed demand.
+ */
+export const trackUnavailableItemAttempt = (
+  itemId: string,
+  itemName: string,
+  itemCategory?: string,
+  additionalData: Partial<TrackingData> = {}
+): Promise<void> => {
+  return trackEvent(TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT, {
+    itemId,
+    itemName,
+    itemCategory,
+    ...additionalData,
+  });
+};
+
+/**
+ * Track a final customer action click from the public menu.
+ * Stored against the active project analytics document.
+ */
+export const trackMenuAction = (
+  menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order',
+  additionalData: Partial<TrackingData> = {}
+): Promise<void> => {
+  return trackEvent(TrackingEvent.MENU_ACTION_CLICK, {
+    menuAction,
+    ...additionalData,
+  });
 };
 
 /**

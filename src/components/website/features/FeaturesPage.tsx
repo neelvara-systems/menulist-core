@@ -138,6 +138,76 @@ export default function FeaturesPage() {
         </SectionWrapper>
       ))}
 
+      <SectionWrapper variant="subtle">
+        <AnimateOnScroll>
+          <SectionHeading
+            title="Analytics that help owners decide what to change next"
+            subtitle="MenuList measures the signals a business can actually act on: what customers searched for, which searches returned nothing, which unavailable items still get tapped, and which final action they chose next."
+          />
+        </AnimateOnScroll>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 'var(--ws-space-4)',
+            marginTop: 'var(--ws-space-10)',
+            maxWidth: '1040px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
+        >
+          {[
+            {
+              title: 'Search demand',
+              desc: 'See what customers actively searched for, including no-result searches that reveal missing items or unclear naming.',
+            },
+            {
+              title: 'Unavailable demand',
+              desc: 'See when customers still tap unavailable items so you can restock, replace, or bring them back with confidence.',
+            },
+            {
+              title: 'Customer action preference',
+              desc: 'Track final actions like call, WhatsApp, directions, reserve, and order to understand how customers prefer to contact or buy.',
+            },
+            {
+              title: 'Owner-friendly controls',
+              desc: 'Simple category-based controls explain what is tracked by default without forcing owners to manage dozens of event switches.',
+            },
+          ].map((item, index) => (
+            <AnimateStaggerChild key={item.title} index={index}>
+              <div className="ws-card" style={{ height: '100%' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
+              </div>
+            </AnimateStaggerChild>
+          ))}
+        </div>
+
+        <AnimateOnScroll delay={0.1}>
+          <div
+            style={{
+              marginTop: 'var(--ws-space-8)',
+              maxWidth: '920px',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              padding: 'var(--ws-space-6)',
+              borderRadius: 'var(--ws-radius-xl)',
+              border: '1px solid rgba(15, 23, 42, 0.08)',
+              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(14, 165, 233, 0.08) 100%)',
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>
+              No vanity analytics. No invasive tracking.
+            </p>
+            <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)', maxWidth: '720px', marginLeft: 'auto', marginRight: 'auto' }}>
+              MenuList focuses on decision-ready signals and privacy-conscious reporting: no customer names, no emails, no payment details, and no exact GPS in this analytics flow.
+            </p>
+          </div>
+        </AnimateOnScroll>
+      </SectionWrapper>
+
       {/* Final CTA */}
       <SectionWrapper variant="default">
         <AnimateOnScroll>

@@ -30,6 +30,13 @@ export interface OwnerDashboardMetrics {
     menuVisits: number;
     menuVisitsChange: number; // % change from previous week
     itemClicks: number;
+    searches: number;
+    zeroResultSearches: number;
+    unavailableItemTaps: number;
+    menuActionClicks: number;
+    topSearchTerm?: { term: string; count: number };
+    topUnavailableItem?: { itemId: string; taps: number };
+    topMenuAction?: { action: string; count: number };
     smartPicksRendered: number;
     smartPicksClicks: number;
     topItems: Array<{ itemId: string; clicks: number }>;
@@ -46,6 +53,13 @@ export interface DailyDashboardMetrics {
     date: string;
     menuVisits: number;
     itemClicks: number;
+    searches: number;
+    zeroResultSearches: number;
+    unavailableItemTaps: number;
+    menuActionClicks: number;
+    topSearchTerm?: { term: string; count: number };
+    topUnavailableItem?: { itemId: string; taps: number };
+    topMenuAction?: { action: string; count: number };
     smartPicksRendered: number;
     smartPicksClicks: number;
     topItems: Array<{ itemId: string; clicks: number }>;
@@ -64,6 +78,13 @@ export interface MonthlyDashboardMetrics {
     daysWithData: number;
     menuVisits: number;
     itemClicks: number;
+    searches: number;
+    zeroResultSearches: number;
+    unavailableItemTaps: number;
+    menuActionClicks: number;
+    topSearchTerm?: { term: string; count: number };
+    topUnavailableItem?: { itemId: string; taps: number };
+    topMenuAction?: { action: string; count: number };
     smartPicksRendered: number;
     smartPicksClicks: number;
     topItems: Array<{ itemId: string; clicks: number }>;
@@ -147,6 +168,7 @@ Rules:
 - Do NOT suggest tools or features
 - Do NOT repeat raw numbers unnecessarily
 - Focus on what worked and what was missed
+- Search demand and customer actions are important if the data shows them
 - If something is neutral, omit it
 - If there is nothing meaningful, say nothing about it
 - Mention increases or decreases only if meaningful (>5%)
@@ -159,6 +181,13 @@ Data:
 - Click rate: ${clickRate}%
 - Smart Picks shown: ${smartPicksVisibilityPct}% of visitors saw recommendations
 - Smart Picks used: ${smartPicksEngagementPct}% clicked on recommendations
+- Searches: ${metrics.searches}
+- No-result searches: ${metrics.zeroResultSearches}
+- Unavailable item taps: ${metrics.unavailableItemTaps}
+- Final customer actions: ${metrics.menuActionClicks}
+- Top search term: ${metrics.topSearchTerm?.term || 'none'} (${metrics.topSearchTerm?.count || 0})
+- Top unavailable item: ${metrics.topUnavailableItem?.itemId || 'none'} (${metrics.topUnavailableItem?.taps || 0} taps)
+- Top customer action: ${metrics.topMenuAction?.action || 'none'} (${metrics.topMenuAction?.count || 0})
 - Best performing recommendation type: ${bestBlock} (${Math.round(bestBlockEngagement)}% engagement)
 - Top clicked item: ${metrics.topItems[0]?.itemId || 'none'} (${metrics.topItems[0]?.clicks || 0} clicks)
 
@@ -303,6 +332,24 @@ function generateFallbackSummary(metrics: OwnerDashboardMetrics): OwnerDashboard
         );
     }
 
+    if (metrics.searches > 0 && metrics.topSearchTerm?.term) {
+        bulletPoints.push(
+            `Search demand was active, with "${metrics.topSearchTerm.term}" showing up most often`
+        );
+    }
+
+    if (metrics.menuActionClicks > 0 && metrics.topMenuAction?.action) {
+        bulletPoints.push(
+            `Customers most often used the ${metrics.topMenuAction.action} action from the menu`
+        );
+    }
+
+    if (metrics.unavailableItemTaps > 0 && metrics.topUnavailableItem?.itemId) {
+        bulletPoints.push(
+            `Some customer demand landed on unavailable items, led by ${metrics.topUnavailableItem.itemId}`
+        );
+    }
+
     // Top item
     if (metrics.topItems.length > 0 && metrics.topItems[0].clicks > 0) {
         bulletPoints.push(
@@ -368,6 +415,13 @@ Rules:
 Data:
 - Date: ${metrics.date}
 - Menu scans: ${metrics.menuVisits}
+- Searches: ${metrics.searches}
+- No-result searches: ${metrics.zeroResultSearches}
+- Unavailable item taps: ${metrics.unavailableItemTaps}
+- Final customer actions: ${metrics.menuActionClicks}
+- Top search term: ${metrics.topSearchTerm?.term || 'none'} (${metrics.topSearchTerm?.count || 0})
+- Top unavailable item: ${metrics.topUnavailableItem?.itemId || 'none'} (${metrics.topUnavailableItem?.taps || 0} taps)
+- Top customer action: ${metrics.topMenuAction?.action || 'none'} (${metrics.topMenuAction?.count || 0})
 - Smart Picks shown to: ${smartPicksVisibilityPct}% of visitors
 - Smart Picks used by: ${smartPicksEngagementPct}% of those who saw them
 - Top clicked item: ${metrics.topItems[0]?.itemId || 'none'} (${metrics.topItems[0]?.clicks || 0} clicks)
@@ -444,6 +498,14 @@ function generateDailyFallback(metrics: DailyDashboardMetrics): OwnerDashboardSu
         bulletPoints.push(`Smart Picks were used by ${engagementPct}% of customers who saw them`);
     }
 
+    if (metrics.searches > 0 && metrics.topSearchTerm?.term) {
+        bulletPoints.push(`"${metrics.topSearchTerm.term}" was the most common search yesterday`);
+    }
+
+    if (metrics.menuActionClicks > 0 && metrics.topMenuAction?.action) {
+        bulletPoints.push(`The ${metrics.topMenuAction.action} action was used most often yesterday`);
+    }
+
     if (bulletPoints.length === 0) {
         bulletPoints.push('No menu activity recorded yesterday.');
     }
@@ -501,6 +563,13 @@ Data:
 - Period: ${metrics.monthStart} to ${metrics.monthEnd}
 - Days with activity: ${metrics.daysWithData}
 - Total menu scans: ${metrics.menuVisits}
+- Searches: ${metrics.searches}
+- No-result searches: ${metrics.zeroResultSearches}
+- Unavailable item taps: ${metrics.unavailableItemTaps}
+- Final customer actions: ${metrics.menuActionClicks}
+- Top search term: ${metrics.topSearchTerm?.term || 'none'} (${metrics.topSearchTerm?.count || 0})
+- Top unavailable item: ${metrics.topUnavailableItem?.itemId || 'none'} (${metrics.topUnavailableItem?.taps || 0} taps)
+- Top customer action: ${metrics.topMenuAction?.action || 'none'} (${metrics.topMenuAction?.count || 0})
 - Smart Picks shown to: ${smartPicksVisibilityPct}% of visitors
 - Smart Picks used by: ${smartPicksEngagementPct}% of those who saw them
 - Top clicked item: ${metrics.topItems[0]?.itemId || 'none'} (${metrics.topItems[0]?.clicks || 0} clicks)
@@ -580,6 +649,14 @@ function generateMonthlyFallback(metrics: MonthlyDashboardMetrics): OwnerDashboa
 
     if (metrics.topItems.length > 0 && metrics.topItems[0].clicks > 0) {
         bulletPoints.push(`Your menu features were actively used throughout the month`);
+    }
+
+    if (metrics.searches > 0 && metrics.topSearchTerm?.term) {
+        bulletPoints.push(`Customers kept checking for "${metrics.topSearchTerm.term}" during the month`);
+    }
+
+    if (metrics.menuActionClicks > 0 && metrics.topMenuAction?.action) {
+        bulletPoints.push(`The ${metrics.topMenuAction.action} action kept getting used from the menu`);
     }
 
     if (bulletPoints.length === 0) {

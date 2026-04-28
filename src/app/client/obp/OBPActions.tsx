@@ -14,6 +14,8 @@ import styles from './obp.module.scss';
 interface OBPActionsProps {
     tenantId: number;
     storeId: number;
+    trackingEnabled?: boolean;
+    includeLocation?: boolean;
     phoneNumber?: string;
     whatsappNumber?: string;
     directionsUrl?: string;
@@ -29,6 +31,8 @@ interface OBPActionsProps {
 export default function OBPActions({
     tenantId,
     storeId,
+    trackingEnabled = true,
+    includeLocation = true,
     phoneNumber,
     whatsappNumber,
     directionsUrl,
@@ -44,9 +48,11 @@ export default function OBPActions({
     if (!hasAnyAction) return null;
 
     const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
+        if (!trackingEnabled) return;
         trackOBPAction(storeId, action, {
             tenantId,
             sessionId: getSessionId(),
+            includeLocation,
         }).catch(() => { });
     };
 

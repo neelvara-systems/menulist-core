@@ -36,6 +36,7 @@ export function getDescriptionGenerationStats(
     const filesToCheck = sourceFile
         ? projectData.files?.filter((file) => file.uid === sourceFile.uid)
         : projectData.files;
+    const activeLanguages = projectData.languages?.filter(Boolean) || [];
 
     filesToCheck?.forEach((file) => {
         const items = file.extractedData?.data?.items || [];
@@ -46,8 +47,14 @@ export function getDescriptionGenerationStats(
 
             itemsCount++;
 
-            const hasDescription = item.description &&
-                Object.values(item.description).some((desc) => desc && String(desc).trim().length > 0);
+            const hasDescription = item.description && (
+                activeLanguages.length > 0
+                    ? activeLanguages.every((languageCode) => {
+                        const localizedDescription = item.description?.[languageCode];
+                        return Boolean(localizedDescription && String(localizedDescription).trim().length > 0);
+                    })
+                    : Object.values(item.description).some((desc) => desc && String(desc).trim().length > 0)
+            );
 
             if (hasDescription) {
                 itemsWithDescriptions++;

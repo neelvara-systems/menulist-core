@@ -182,6 +182,7 @@ export function middleware(request: NextRequest) {
             response.headers.set('x-product-name', product.name);
             return applySecurityHeaders(request, response);
         }
+
     }
 
     // ═══════════════════════════════════════════════════════════

@@ -41,6 +41,8 @@ export interface InstallTrackerOptions {
   /** Owner opt-out flag. When explicitly `false` (trackMenuViews === false), the
    *  event is suppressed entirely, matching the OBP/menu-view privacy precedent. */
   trackingEnabled?: boolean;
+  /** Whether approximate location may be collected for this event. */
+  includeLocation?: boolean;
   /** Source of the install — native prompt, iOS prompted/manual heuristic, or unknown. */
   source?: 'native' | 'ios-inferred' | 'ios-standalone' | 'unknown';
 }
@@ -59,7 +61,7 @@ export async function fireInstalledEventOnce(
   // Customer App analytics are suppressed too.
   if (options.trackingEnabled === false) return;
 
-  const { tenantId, source = 'native' } = options;
+  const { tenantId, source = 'native', includeLocation = true } = options;
   const { platform } = detectPlatform();
   // T2-N-03 / §6 rule 4 PUBLIC-ROUTING-DOCTRINE: classify the surface the
   // customer was on when the install fired. Paired with G-03's per-surface
@@ -72,6 +74,7 @@ export async function fireInstalledEventOnce(
       storeId: String(storeId),
       tenantId,
       sessionId: getSessionId(),
+      includeLocation,
       pwaPlatform: platform,
       pwaInstallSource: source,
       pwaInstallSurface: installSurface,
@@ -90,6 +93,7 @@ export async function fireInstalledEventOnce(
       storeId: String(storeId),
       tenantId,
       sessionId: getSessionId(),
+      includeLocation,
       pwaPlatform: platform,
       pwaInstallSource: source,
       pwaInstallSurface: installSurface,

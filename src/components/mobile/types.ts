@@ -21,6 +21,7 @@ export type MobileMenuItemType = {
     categoryName?: string;
     hiddenByCategory?: boolean;
     description?: string;
+    descriptionMissing?: boolean;
     fileId?: string;
     image?: string;
     rawItem?: ExtractedDataItem;

@@ -1936,6 +1936,7 @@ function ProjectsPage() {
                         items={activeProject?.files?.flatMap(f => f.extractedData?.data?.items || []) || []}
                         categories={activeProject?.files?.flatMap(f => f.extractedData?.data?.categories || []) || []}
                         language={activeProject?.languages?.[0] || 'en'}
+                        languages={activeProject?.languages || []}
                         currency={storeDetails?.currencySymbol || ''}
                         businessType={storeDetails?.businessType}
                     />

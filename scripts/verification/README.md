@@ -31,6 +31,20 @@ node verify-recycle-bin.js
 - Summary of all verification results
 - Next steps for manual testing
 
+### verify-menu-export.js
+Automated verification script for menu data export normalization and workbook generation.
+
+**Purpose:**
+- Validates duplicate ID handling and deterministic ordering
+- Checks multilingual workbook row expansion
+- Ensures missing flags/defaults are normalized safely
+- Verifies attribute rows are exported for variant-based pricing
+
+**Usage:**
+```bash
+npm run verify:menu-export
+```
+
 ## Adding New Verification Scripts
 
 Follow this pattern:
