@@ -27,6 +27,7 @@ interface MobileMenuCommandSheetProps {
     onAddImages: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
+    onRepairMenu: () => void;
     onPreview: () => void;
     onTextCase: () => void;
     onUploadMenu: () => void;
@@ -48,6 +49,7 @@ export default function MobileMenuCommandSheet({
     onAddImages,
     onGenerateDescriptions,
     onManageLanguages,
+    onRepairMenu,
     onPreview,
     onTextCase,
     onUploadMenu,
@@ -112,20 +114,27 @@ export default function MobileMenuCommandSheet({
             onClick: onAddImages,
         },
         {
+            key: 'repair-menu',
+            icon: <LuSparkles style={{ fontSize: 20 }} />,
+            title: t('repairMenuAi'),
+            description: t('repairMenuAiDesc'),
+            onClick: onRepairMenu,
+        },
+        {
             key: 'description',
             icon: <LuSparkles style={{ fontSize: 20 }} />,
-            title: t('generateDescriptionsAi'),
-            description: t('generateDescriptionsAiDesc'),
+            title: t('addMissingDescriptions'),
+            description: t('addMissingDescriptionsDesc'),
             onClick: onGenerateDescriptions,
         },
         {
             key: 'language',
             icon: <LuLanguages style={{ fontSize: 20 }} />,
             title: t('menuLanguages'),
-            description: 'Add or reorder menu languages.',
+            description: t('menuLanguagesManualDesc'),
             onClick: onManageLanguages,
         },
-    ], [onAddImages, onGenerateDescriptions, onManageLanguages, onSmartRecommendations, t]);
+    ], [onAddImages, onGenerateDescriptions, onManageLanguages, onRepairMenu, t]);
 
     const menuSetupActions = useMemo<CommandAction[]>(() => [
         {

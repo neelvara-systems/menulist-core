@@ -1,14 +1,16 @@
 'use client'
 
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
 import { Popover, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFilter, LuFolderInput, LuX } from 'react-icons/lu';
+import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFileText, LuFilter, LuFolderInput, LuLanguages, LuSparkles, LuX } from 'react-icons/lu';
 import {
     applyBulkActiveInactive,
     applyBulkAvailability,
@@ -20,20 +22,25 @@ import {
     computePricingPreview,
     getAllCategories,
 } from '../../templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations';
+import {
+    getDescriptionGenerationStats,
+    runDescriptionGeneration,
+} from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import type { Project } from '../../templates/main-app/projects/types';
 import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
+import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
 
 interface BulkActionsSheetProps {
     visible: boolean;
     onClose: () => void;
-    onApply: (updatedProject: Project, context?: { previousProject?: Project; updatedCount?: number }) => void;
+    onApply: (updatedProject: Project, context?: { previousProject?: Project; successMessage?: string; updatedCount?: number }) => void;
     projectData: Project | null;
     initialAction?: BulkAction;
     initialSelectedIds?: string[];
 }
 
-type BulkAction = 'availability' | 'showHide' | 'pricing' | 'moveCategory' | null;
+type BulkAction = 'availability' | 'showHide' | 'pricing' | 'moveCategory' | 'aiRepair' | null;
 type StatusFilter = 'all' | 'active' | 'inactive' | 'soldOut';
 type ItemEntry = {
     id: string;
@@ -54,6 +61,8 @@ const STATUS_COLORS = {
     unavailable: '#f59e0b',
     inactive: '#9ca3af',
 } as const;
+
+const DISTINCT_SCRIPT_LANGUAGE_CODES = new Set(['ar', 'bn', 'hi', 'mr', 'ta', 'te', 'zh']);
 
 export default function BulkActionsSheet({
     visible,
@@ -79,6 +88,7 @@ export default function BulkActionsSheet({
     const [destinationCategoryId, setDestinationCategoryId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
+    const [applyDetail, setApplyDetail] = useState('');
     const selectionSummaryStyle = {
         backgroundColor: token.colorFillAlter,
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -102,6 +112,7 @@ export default function BulkActionsSheet({
         setDestinationCategoryId(null);
         setStatusFilter('all');
         setIsStatusFilterOpen(false);
+        setApplyDetail('');
     }, [initialAction, initialSelectedIds, projectData, visible]);
 
     const items: ItemEntry[] = useMemo(() => {
@@ -313,6 +324,44 @@ export default function BulkActionsSheet({
     const hasMissingDescription = (item: ItemEntry) => !item.description?.trim();
     const hasMissingImage = (item: ItemEntry) => !(item.image?.trim());
 
+    const languageIssues = useMemo(() => {
+        if (!workingProject) return [];
+        const sourceLanguageCode = getProjectDefaultLanguage(workingProject);
+        return getProjectLanguageIssues(workingProject, sourceLanguageCode);
+    }, [workingProject]);
+
+    const languagesNeedingRepair = useMemo(
+        () => languageIssues.filter((issue) => issue.total > 0),
+        [languageIssues]
+    );
+
+    const descriptionStats = useMemo(() => {
+        if (!workingProject) {
+            return {
+                aiDescriptionCount: 0,
+                itemsCount: 0,
+                itemsWithDescriptions: 0,
+                itemsWithoutDescriptions: 0,
+                manualDescriptionCount: 0,
+            };
+        }
+        return getDescriptionGenerationStats(workingProject, null, undefined);
+    }, [workingProject]);
+
+    const aiRepairSummary = useMemo(() => {
+        const reviewableItems = items.filter((item) => item.active);
+        return {
+            descriptionsToGenerate: descriptionStats.itemsWithoutDescriptions,
+            languageIssueCount: languagesNeedingRepair.reduce((total, issue) => total + issue.total, 0),
+            languagesToRepair: languagesNeedingRepair.length,
+            missingImages: reviewableItems.filter((item) => !item.image).length,
+            missingPrices: reviewableItems.filter(hasMissingPrice).length,
+        };
+    }, [descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair]);
+    const hasLatinScriptRepairLanguages = useMemo(() => (
+        languagesNeedingRepair.some((issue) => !DISTINCT_SCRIPT_LANGUAGE_CODES.has(issue.code))
+    ), [languagesNeedingRepair]);
+
     const toggleCategory = (categoryName: string, checked: boolean) => {
         const next = new Set(selectedIds);
         const categoryItems = categories.get(categoryName) || [];
@@ -321,6 +370,78 @@ export default function BulkActionsSheet({
             else next.delete(item.id);
         });
         setSelectedIds(next);
+    };
+
+    const handleAiRepair = async () => {
+        if (!workingProject) return;
+
+        const totalFixes = aiRepairSummary.languageIssueCount + aiRepairSummary.descriptionsToGenerate;
+        if (totalFixes === 0) {
+            Toast.show({ content: t('menuRepairNotNeeded'), duration: 1600 });
+            return;
+        }
+
+        Dialog.confirm({
+            cancelText: t('keep'),
+            confirmText: t('repairMenuAiAction'),
+            content: t('repairMenuAiConfirm', {
+                descriptions: aiRepairSummary.descriptionsToGenerate,
+                languages: aiRepairSummary.languagesToRepair,
+            }),
+            onConfirm: async () => {
+                setApplying(true);
+                setApplyDetail(t('repairMenuAiPreparing'));
+                try {
+                    const previousProject = removeObjRef(workingProject);
+                    let updated = removeObjRef(workingProject);
+                    const sourceLanguageCode = getProjectDefaultLanguage(updated);
+
+                    for (const issue of languagesNeedingRepair) {
+                        setApplyDetail(t('repairMenuAiLanguageStep', { code: issue.code.toUpperCase() }));
+                        updated = await repairLanguageProject(updated, issue.code, sourceLanguageCode);
+                    }
+
+                    if (descriptionStats.itemsWithoutDescriptions > 0) {
+                        setApplyDetail(t('repairMenuAiDescriptionsStep'));
+                        updated = await runDescriptionGeneration({
+                            action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+                            contentLength: 'Standard',
+                            projectData: updated,
+                        });
+                    }
+
+                    const repairSummaryParts = [
+                        aiRepairSummary.languageIssueCount > 0
+                            ? t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })
+                            : null,
+                        aiRepairSummary.descriptionsToGenerate > 0
+                            ? t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })
+                            : null,
+                        aiRepairSummary.missingPrices > 0
+                            ? t('repairMenuAiPricesReviewCount', { count: aiRepairSummary.missingPrices })
+                            : null,
+                    ].filter(Boolean) as string[];
+
+                    setWorkingProject(updated);
+                    onApply(updated, {
+                        previousProject,
+                        successMessage: repairSummaryParts.join(' · '),
+                        updatedCount: totalFixes,
+                    });
+                    onClose();
+                } catch (error) {
+                    if (error instanceof AICapacityError) {
+                        Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+                    } else {
+                        Toast.show({ content: t('repairMenuAiFailed'), duration: 2200 });
+                    }
+                } finally {
+                    setApplying(false);
+                    setApplyDetail('');
+                }
+            },
+            title: t('repairMenuAi'),
+        });
     };
 
     const handleApply = async (target?: string) => {
@@ -382,7 +503,9 @@ export default function BulkActionsSheet({
             ? t('visibility')
             : action === 'pricing'
                 ? t('editPricesBulk')
-                : t('moveItems');
+                : action === 'moveCategory'
+                    ? t('moveItems')
+                    : t('repairMenuAi');
 
     const pricingMode = pricingMethod === 'setFixed'
         ? 'set'
@@ -516,6 +639,124 @@ export default function BulkActionsSheet({
     const missingPriceItems = searchScopedItems.filter(hasMissingPrice);
     const missingDescriptionItems = searchScopedItems.filter(hasMissingDescription);
     const missingImageItems = searchScopedItems.filter(hasMissingImage);
+
+    if (action === 'aiRepair') {
+        const fixableNowCount = aiRepairSummary.languageIssueCount + aiRepairSummary.descriptionsToGenerate;
+
+        return (
+            <Popup
+                bodyStyle={{ minHeight: '64vh', maxHeight: '90vh', overflowX: 'hidden', padding: 0 }}
+                destroyOnClose
+                onMaskClick={applying ? undefined : onClose}
+                position="bottom"
+                visible={visible}
+            >
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar onBack={applying ? undefined : onClose}>
+                        {actionTitle}
+                    </NavBar>
+
+                    <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                        <Card size="small" style={{ borderColor: token.colorPrimaryBorder }}>
+                            <Flex gap={10} vertical>
+                                <Flex align="center" gap={8}>
+                                    <LuSparkles size={18} style={{ color: token.colorPrimary }} />
+                                    <Flex gap={2} vertical>
+                                        <Text strong>{t('repairMenuAi')}</Text>
+                                        <Text type="secondary">{t('repairMenuAiDesc')}</Text>
+                                    </Flex>
+                                </Flex>
+                                <Text type="secondary">
+                                    {t('repairMenuAiSummary')}
+                                </Text>
+                            </Flex>
+                        </Card>
+
+                        <Card size="small">
+                            <Flex gap={10} vertical>
+                                <Flex align="center" gap={8}>
+                                    <LuSparkles size={16} style={{ color: token.colorSuccess }} />
+                                    <Text strong>{t('repairMenuAiFixNow')}</Text>
+                                </Flex>
+                                <Flex gap={8} wrap="wrap">
+                                    <Tag color={aiRepairSummary.descriptionsToGenerate > 0 ? 'success' : undefined}>
+                                        {t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })}
+                                    </Tag>
+                                    <Tag color={aiRepairSummary.languageIssueCount > 0 ? 'processing' : undefined}>
+                                        {t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })}
+                                    </Tag>
+                                </Flex>
+                                {languagesNeedingRepair.length > 0 ? (
+                                    <Flex gap={8} vertical>
+                                        {languagesNeedingRepair.map((issue) => (
+                                            <Flex align="center" gap={8} key={issue.code} justify="space-between">
+                                                <Flex align="center" gap={8}>
+                                                    <LuLanguages size={14} style={{ color: token.colorPrimary }} />
+                                                    <Text>{issue.code.toUpperCase()}</Text>
+                                                </Flex>
+                                                <Text type="secondary">
+                                                    {issue.missing > 0 ? `${issue.missing} ${t('repairMenuAiMissingShort')}` : null}
+                                                    {issue.missing > 0 && issue.mismatched > 0 ? ' · ' : null}
+                                                    {issue.mismatched > 0 ? `${issue.mismatched} ${t('repairMenuAiWrongShort')}` : null}
+                                                </Text>
+                                            </Flex>
+                                        ))}
+                                    </Flex>
+                                ) : null}
+                            </Flex>
+                        </Card>
+
+                        <Card size="small">
+                            <Flex gap={10} vertical>
+                                <Flex align="center" gap={8}>
+                                    <LuFileText size={16} style={{ color: token.colorWarning }} />
+                                    <Text strong>{t('repairMenuAiNeedsManualReview')}</Text>
+                                </Flex>
+                                <Flex gap={8} wrap="wrap">
+                                    <Tag>{t('repairMenuAiMissingPricesCount', { count: aiRepairSummary.missingPrices })}</Tag>
+                                    <Tag>{t('repairMenuAiMissingImagesCount', { count: aiRepairSummary.missingImages })}</Tag>
+                                </Flex>
+                                <Text type="secondary">{t('repairMenuAiManualReviewHint')}</Text>
+                                {hasLatinScriptRepairLanguages ? (
+                                    <Text type="secondary">{t('repairMenuAiLatinLanguageHint')}</Text>
+                                ) : null}
+                            </Flex>
+                        </Card>
+
+                        {applying ? (
+                            <Card size="small" style={{ borderColor: token.colorBorderSecondary }}>
+                                <Flex gap={8} vertical>
+                                    <Text strong>{t('repairMenuAiWorking')}</Text>
+                                    <Text type="secondary">{applyDetail || t('repairMenuAiPreparing')}</Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                    </Flex>
+
+                    <div
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            flexShrink: 0,
+                            padding: '12px 16px',
+                        }}
+                    >
+                        <Button
+                            block
+                            color="primary"
+                            disabled={fixableNowCount === 0}
+                            loading={applying}
+                            onClick={() => void handleAiRepair()}
+                            size="large"
+                        >
+                            {fixableNowCount === 0 ? t('menuRepairNotNeeded') : t('repairMenuAiAction')}
+                        </Button>
+                    </div>
+                </Flex>
+            </Popup>
+        );
+    }
 
     const renderSelectionShortcut = (label: string, nextItems: ItemEntry[]) => (
         <Flex

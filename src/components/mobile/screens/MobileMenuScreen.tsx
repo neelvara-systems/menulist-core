@@ -417,7 +417,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const [addSheetInitialCategoryId, setAddSheetInitialCategoryId] = useState<string | null>(null);
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
-    const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | null>(null);
+    const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | 'aiRepair' | null>(null);
     const [bulkActionInitialSelectedIds, setBulkActionInitialSelectedIds] = useState<string[]>([]);
     const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
     const [categorySheetMode, setCategorySheetMode] = useState<'manage' | 'reorder'>('manage');
@@ -641,11 +641,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         Toast.show({ content: 'Price review marked as done.', duration: 1200 });
     }, [applyLocalMenuUpdate]);
 
-    const applyUndoableBulkMenuUpdate = useCallback((updatedProject: any, previousProject?: any, updatedCount?: number) => {
+    const applyUndoableBulkMenuUpdate = useCallback((updatedProject: any, previousProject?: any, updatedCount?: number, successMessage?: string) => {
         applyLocalMenuUpdate(updatedProject);
 
+        const baseMessage = successMessage || t('itemsUpdated', { count: updatedCount || 0 });
+
         if (!previousProject) {
-            Toast.show({ content: t('itemsUpdated', { count: updatedCount || 0 }), duration: 1500 });
+            Toast.show({ content: baseMessage, duration: 1800 });
             return;
         }
 
@@ -654,7 +656,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         Toast.show({
             content: (
                 <Flex align="center" gap={12} justify="space-between" style={{ minWidth: 0, width: '100%' }}>
-                    <Text style={{ flex: 1, minWidth: 0 }}>{t('itemsUpdated', { count: updatedCount || 0 })}</Text>
+                    <Text style={{ flex: 1, minWidth: 0 }}>{baseMessage}</Text>
                     <Flex align="center" gap={4}>
                         <Button
                             fill="none"
@@ -1338,6 +1340,73 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             unavailable: scopedItems.filter((item) => !item.available).length,
         };
     }, [draftFilters.categoryIds, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds]);
+    const menuCompletionSummary = useMemo(() => {
+        const aiFixableCount = menuIssueCounts.missingDescription + menuIssueCounts.missingTranslation;
+        const manualReviewCount = menuIssueCounts.missingPrice + menuIssueCounts.missingPhoto + menuIssueCounts.priceOutliers;
+        const totalCount = aiFixableCount + manualReviewCount;
+
+        if (totalCount === 0) {
+            return {
+                description: t('menuCompletionReadyDesc'),
+                primaryAction: 'preview' as const,
+                status: t('menuCompletionReady'),
+                tone: 'success' as const,
+            };
+        }
+
+        if (menuIssueCounts.missingPrice > 0) {
+            return {
+                description: t('menuCompletionMissingPricesDesc', { count: menuIssueCounts.missingPrice }),
+                primaryAction: 'prices' as const,
+                status: t('menuCompletionNeedsAttention'),
+                tone: 'warning' as const,
+            };
+        }
+
+        if (aiFixableCount > 0) {
+            return {
+                description: t('menuCompletionAiFixDesc', { count: aiFixableCount }),
+                primaryAction: 'repair' as const,
+                status: t('menuCompletionAlmostReady'),
+                tone: 'processing' as const,
+            };
+        }
+
+        if (menuIssueCounts.missingPhoto > 0) {
+            return {
+                description: t('menuCompletionMissingImagesDesc', { count: menuIssueCounts.missingPhoto }),
+                primaryAction: 'images' as const,
+                status: t('menuCompletionAlmostReady'),
+                tone: 'warning' as const,
+            };
+        }
+
+        return {
+            description: t('menuCompletionReviewDesc', { count: manualReviewCount }),
+            primaryAction: 'prices' as const,
+            status: t('menuCompletionNeedsAttention'),
+            tone: 'warning' as const,
+        };
+    }, [menuIssueCounts.missingDescription, menuIssueCounts.missingPhoto, menuIssueCounts.missingPrice, menuIssueCounts.missingTranslation, menuIssueCounts.priceOutliers, t]);
+    const menuCompletionChips = useMemo(() => {
+        const chips: Array<{ key: string; label: string }> = [];
+        if (menuIssueCounts.missingPrice > 0) {
+            chips.push({ key: 'prices', label: t('menuCompletionMissingPricesChip', { count: menuIssueCounts.missingPrice }) });
+        }
+        if (menuIssueCounts.missingPhoto > 0) {
+            chips.push({ key: 'images', label: t('menuCompletionMissingImagesChip', { count: menuIssueCounts.missingPhoto }) });
+        }
+        if (menuIssueCounts.missingDescription > 0) {
+            chips.push({ key: 'descriptions', label: t('menuCompletionMissingDescriptionsChip', { count: menuIssueCounts.missingDescription }) });
+        }
+        if (menuIssueCounts.missingTranslation > 0) {
+            chips.push({ key: 'translations', label: t('menuCompletionMissingTranslationsChip', { count: menuIssueCounts.missingTranslation }) });
+        }
+        if (menuIssueCounts.priceOutliers > 0) {
+            chips.push({ key: 'price-outliers', label: t('menuCompletionPriceReviewChip', { count: menuIssueCounts.priceOutliers }) });
+        }
+        return chips;
+    }, [menuIssueCounts.missingDescription, menuIssueCounts.missingPhoto, menuIssueCounts.missingPrice, menuIssueCounts.missingTranslation, menuIssueCounts.priceOutliers, t]);
     const listingStatusLegend = useMemo(() => {
         const entries: { color: string; key: string; label: string }[] = [];
         if (menuIssueCounts.hidden > 0) {
@@ -1984,6 +2053,28 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         window.open(`${menuPreviewUrl}${menuPreviewUrl.includes('?') ? '&' : '?'}src=direct`, '_blank');
     }, [menuPreviewUrl, tShare]);
 
+    const handleMenuCompletionAction = useCallback((action: 'repair' | 'prices' | 'images' | 'preview') => {
+        if (action === 'repair') {
+            setBulkActionType('aiRepair');
+            setIsBulkActionsOpen(true);
+            return;
+        }
+
+        if (action === 'preview') {
+            handlePreviewMenu();
+            return;
+        }
+
+        setSearchQuery('');
+        setIsMenuQualityExpanded(false);
+        setFilters(action === 'prices'
+            ? { ...DEFAULT_FILTERS, hasPrice: false }
+            : { ...DEFAULT_FILTERS, hasImage: false });
+        requestAnimationFrame(() => {
+            menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }, [handlePreviewMenu]);
+
     if (!storeDetails || (loadingProjects && !menuData)) {
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
@@ -2047,6 +2138,69 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 <Text type="secondary">
                                     You are editing the special menu, not the regular menu.
                                 </Text>
+                            </Flex>
+                        </Card>
+                    ) : null}
+
+                    {menuData?.files && !isFirstRunProject ? (
+                        <Card
+                            size="small"
+                            style={{
+                                backgroundColor: menuCompletionSummary.tone === 'success' ? token.colorSuccessBg : token.colorInfoBg,
+                                borderColor: menuCompletionSummary.tone === 'success' ? token.colorSuccessBorder : token.colorInfoBorder,
+                            }}
+                        >
+                            <Flex gap={12} vertical>
+                                <Flex align="center" gap={10} justify="space-between" wrap="wrap">
+                                    <Flex gap={4} vertical style={{ flex: 1, minWidth: 0 }}>
+                                        <Flex align="center" gap={8} wrap="wrap">
+                                            <Text strong>{t('menuCompletionTitle')}</Text>
+                                            <Tag color={menuCompletionSummary.tone}>
+                                                {menuCompletionSummary.status}
+                                            </Tag>
+                                        </Flex>
+                                        <Text type="secondary">{menuCompletionSummary.description}</Text>
+                                    </Flex>
+                                </Flex>
+
+                                {menuCompletionChips.length > 0 ? (
+                                    <Flex gap={8} wrap="wrap">
+                                        {menuCompletionChips.map((chip) => (
+                                            <Tag key={chip.key}>{chip.label}</Tag>
+                                        ))}
+                                    </Flex>
+                                ) : null}
+
+                                <Flex gap={8} wrap="wrap">
+                                    <Button
+                                        color="primary"
+                                        onClick={() => handleMenuCompletionAction(menuCompletionSummary.primaryAction)}
+                                        size="small"
+                                    >
+                                        {menuCompletionSummary.primaryAction === 'repair'
+                                            ? t('repairMenuAiAction')
+                                            : menuCompletionSummary.primaryAction === 'prices'
+                                                ? t('menuCompletionFinishPrices')
+                                                : menuCompletionSummary.primaryAction === 'images'
+                                                    ? t('menuCompletionReviewImages')
+                                                    : t('viewUpdatedMenu')}
+                                    </Button>
+                                    {menuIssueCounts.missingPhoto > 0 && menuCompletionSummary.primaryAction !== 'images' ? (
+                                        <Button fill="outline" onClick={() => handleMenuCompletionAction('images')} size="small">
+                                            {t('menuCompletionReviewImages')}
+                                        </Button>
+                                    ) : null}
+                                    {menuIssueCounts.missingPrice > 0 && menuCompletionSummary.primaryAction !== 'prices' ? (
+                                        <Button fill="outline" onClick={() => handleMenuCompletionAction('prices')} size="small">
+                                            {t('menuCompletionReviewPrices')}
+                                        </Button>
+                                    ) : null}
+                                    {menuCompletionSummary.primaryAction !== 'preview' ? (
+                                        <Button fill="outline" onClick={() => handleMenuCompletionAction('preview')} size="small">
+                                            {t('viewUpdatedMenu')}
+                                        </Button>
+                                    ) : null}
+                                </Flex>
                             </Flex>
                         </Card>
                     ) : null}
@@ -3071,6 +3225,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
                 onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
                 onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
+                onRepairMenu={() => launchCommandAction(() => {
+                    setBulkActionType('aiRepair');
+                    setIsBulkActionsOpen(true);
+                })}
                 onPreview={handlePreviewMenu}
                 onTextCase={() => launchCommandAction(() => setIsTextCaseOpen(true))}
                 onMoveCategory={() => launchCommandAction(() => {
@@ -3452,7 +3610,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 initialAction={bulkActionType}
                 initialSelectedIds={bulkActionInitialSelectedIds}
                 onApply={(updatedProject, context) => {
-                    applyUndoableBulkMenuUpdate(updatedProject, context?.previousProject, context?.updatedCount);
+                    applyUndoableBulkMenuUpdate(updatedProject, context?.previousProject, context?.updatedCount, context?.successMessage);
                     resetCommandActionFlow();
                 }}
                 projectData={menuData}
