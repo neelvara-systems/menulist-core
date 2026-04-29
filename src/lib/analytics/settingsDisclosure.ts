@@ -43,9 +43,8 @@ export const ANALYTICS_TRACKING_CATEGORY_DISCLOSURES: AnalyticsTrackingCategoryD
     description: 'Tracks traffic and action intent on the official business page before a customer enters the menu.',
     details: [
       'Official business page views',
-      'CTA taps',
-      'Menu CTA clicks',
-      'OBP project switches',
+      'CTA taps such as call, WhatsApp, directions, reserve, and order',
+      'View Menu clicks',
     ],
   },
   {

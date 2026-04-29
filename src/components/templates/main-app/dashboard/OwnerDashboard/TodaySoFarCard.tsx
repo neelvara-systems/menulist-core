@@ -1,7 +1,7 @@
-import { ClockCircleOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData } from '@template/main-app/projects/types';
-import { Button, Card, Col, Row, Skeleton, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Col, Popover, Row, Skeleton, Statistic, Tag, Typography } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
 
@@ -49,21 +49,51 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     const hasActions = Object.values(data.menuActions || {}).some((value) => Number(value) > 0);
     const topSearch = data.topSearchTerms?.[0];
     const topUnavailable = data.unavailableItems?.[0];
+    const detailContent = (
+        <div style={{ maxWidth: 320 }}>
+            <Text type="secondary" style={{ display: 'block' }}>
+                This is today&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.
+            </Text>
+            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
+            </Text>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+            </Text>
+            {topSearch ? (
+                <Text style={{ display: 'block', marginTop: 8 }}>
+                    Top search right now: {topSearch.term} ({topSearch.count})
+                </Text>
+            ) : null}
+            <Text style={{ display: 'block', marginTop: 8 }}>
+                No-result searches so far: {data.metrics.zeroResultSearches || 0}
+            </Text>
+            {topUnavailable ? (
+                <Text style={{ display: 'block', marginTop: 8 }}>
+                    Most tapped unavailable item: {topUnavailable.name || topUnavailable.itemId} ({topUnavailable.clicks})
+                </Text>
+            ) : null}
+            {hasActions ? (
+                <Text style={{ display: 'block', marginTop: 8 }}>
+                    Customer actions: Call {data.menuActions?.call || 0}, WhatsApp {data.menuActions?.whatsapp || 0}, Directions {data.menuActions?.directions || 0}, Reserve {data.menuActions?.reserve || 0}, Order {data.menuActions?.order || 0}
+                </Text>
+            ) : null}
+        </div>
+    );
 
     return (
         <Card className={styles.todayCard}>
             <div className={styles.todayCardHeader}>
                 <div>
-                    <Tag color="blue">Today so far</Tag>
+                    <div style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
+                        <Tag color="blue">Today so far</Tag>
+                        <Popover content={detailContent} title="Today so far">
+                            <Button icon={<InfoCircleOutlined />} size="small" type="text" />
+                        </Popover>
+                    </div>
                     <Title level={5} style={{ margin: '8px 0 0' }}>
                         Current activity for today
                     </Title>
-                    <Text type="secondary">
-                        This is today&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.
-                    </Text>
-                    <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                        Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
-                    </Text>
                 </div>
                 <div className={styles.todayCardMeta}>
                     <ClockCircleOutlined />
@@ -93,32 +123,6 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                     <Button onClick={onShowHistorical} type="default">
                         View settled analytics
                     </Button>
-                </div>
-            ) : null}
-
-            {(topSearch || topUnavailable || hasActions || (data.metrics.zeroResultSearches || 0) > 0) ? (
-                <div className={styles.todayCardNotes}>
-                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
-                        Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
-                    </Text>
-                    {topSearch ? (
-                        <Text style={{ display: 'block' }}>
-                            Top search right now: {topSearch.term} ({topSearch.count})
-                        </Text>
-                    ) : null}
-                    <Text style={{ display: 'block', marginTop: 4 }}>
-                        No-result searches so far: {data.metrics.zeroResultSearches || 0}
-                    </Text>
-                    {topUnavailable ? (
-                        <Text style={{ display: 'block', marginTop: 4 }}>
-                            Most tapped unavailable item: {topUnavailable.name || topUnavailable.itemId} ({topUnavailable.clicks})
-                        </Text>
-                    ) : null}
-                    {hasActions ? (
-                        <Text style={{ display: 'block', marginTop: 4 }}>
-                            Customer actions: Call {data.menuActions?.call || 0}, WhatsApp {data.menuActions?.whatsapp || 0}, Directions {data.menuActions?.directions || 0}, Reserve {data.menuActions?.reserve || 0}, Order {data.menuActions?.order || 0}
-                        </Text>
-                    ) : null}
                 </div>
             ) : null}
         </Card>

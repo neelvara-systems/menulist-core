@@ -9,9 +9,9 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, List, NavBar, Tabs, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, List, NavBar, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -21,6 +21,10 @@ import { useMobileProjects } from '../providers/MobileProjectsProvider';
 // unconditionally here alongside menu analytics.
 const MobileCustomerAppMetrics = dynamic(
     () => import('./dashboardSections/MobileCustomerAppMetrics'),
+    { ssr: false },
+);
+const MobileOBPMetricsCard = dynamic(
+    () => import('./dashboardSections/MobileOBPMetricsCard'),
     { ssr: false },
 );
 
@@ -261,21 +265,61 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         if (!today) return null;
 
         const updatedLabel = formatUpdatedTime(data?.lastFetched);
-
-        return (
-            <Card size="small" title={<Text strong>Today so far</Text>}>
-                <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+        const hasActions = Object.values(today.menuActions || {}).some((value) => Number(value) > 0);
+        const topSearch = today.topSearchTerms?.[0];
+        const topUnavailable = today.unavailableItems?.[0];
+        const todayInfoContent = (
+            <div style={{ maxWidth: 280 }}>
+                <Text type="secondary" style={{ display: 'block' }}>
                     {updatedLabel
                         ? `Updated ${updatedLabel}. This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.`
                         : "This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow."}
                 </Text>
-                <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
                     Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
                 </Text>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                    Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+                </Text>
+                {topSearch ? (
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        {`Top search right now: ${topSearch.term} (${topSearch.count})`}
+                    </Text>
+                ) : null}
+                <Text style={{ display: 'block', marginTop: 8 }}>
+                    {`No-result searches so far: ${today.metrics.zeroResultSearches || 0}`}
+                </Text>
+                {topUnavailable ? (
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        {`Most tapped unavailable item: ${topUnavailable.name || topUnavailable.itemId} (${topUnavailable.clicks})`}
+                    </Text>
+                ) : null}
+                {hasActions ? (
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        {`Customer actions: Call ${today.menuActions?.call || 0}, WhatsApp ${today.menuActions?.whatsapp || 0}, Directions ${today.menuActions?.directions || 0}, Reserve ${today.menuActions?.reserve || 0}, Order ${today.menuActions?.order || 0}`}
+                    </Text>
+                ) : null}
+            </div>
+        );
+
+        return (
+            <Card
+                size="small"
+                title={(
+                    <Flex align="center" justify="space-between">
+                        <Text strong>Today so far</Text>
+                        <Popover content={todayInfoContent} placement="bottom" trigger="click">
+                            <Button
+                                fill="none"
+                                style={{ minHeight: 'auto', padding: 4 }}
+                            >
+                                <LuInfo color={token.colorTextSecondary} size={16} />
+                            </Button>
+                        </Popover>
+                    </Flex>
+                )}
+            >
                 {renderMetricsCards(today.metrics)}
-                <div style={{ marginTop: 12 }}>
-                    {renderDemandAndActions(today)}
-                </div>
                 {!showHistorical ? (
                     <div style={{ marginTop: 12 }}>
                         <Button block onClick={() => setShowHistorical(true)}>
@@ -469,6 +513,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         {/* Customer App (installable PWA) — store-scoped analytics.
                             Sits alongside menu analytics on purpose: owners see both in one place. */}
                         <MobileCustomerAppMetrics />
+
+                        {/* Official Business Page analytics — separate from menu analytics,
+                            but shown in the same dashboard so owners can compare discovery
+                            on OBP vs engagement inside the menu. */}
+                        <MobileOBPMetricsCard />
 
                         {overview?.aiSummary?.bulletPoints?.length ? (
                             <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>

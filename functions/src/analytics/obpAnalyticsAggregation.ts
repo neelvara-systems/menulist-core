@@ -41,6 +41,8 @@ interface OBPDailyData {
         call?: number;
         whatsapp?: number;
         directions?: number;
+        reserve?: number;
+        order?: number;
     };
     obpShares?: {
         whatsapp?: number;
@@ -57,7 +59,7 @@ interface OBPAggregatedMetrics {
     totalOBPActionClicks: number;
     totalOBPMenuClicks: number;
     totalOBPShares: number;
-    obpActionClicks: { call: number; whatsapp: number; directions: number };
+    obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
     obpShares: { whatsapp: number; copy_link: number; copy_message: number };
     daysWithData: number;
 }
@@ -82,7 +84,7 @@ function emptyMetrics(): OBPAggregatedMetrics {
         totalOBPActionClicks: 0,
         totalOBPMenuClicks: 0,
         totalOBPShares: 0,
-        obpActionClicks: { call: 0, whatsapp: 0, directions: 0 },
+        obpActionClicks: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
         obpShares: { whatsapp: 0, copy_link: 0, copy_message: 0 },
         daysWithData: 0,
     };
@@ -112,6 +114,8 @@ async function aggregateOBPDailyDocs(
             metrics.obpActionClicks.call += data.obpActionClicks?.call || 0;
             metrics.obpActionClicks.whatsapp += data.obpActionClicks?.whatsapp || 0;
             metrics.obpActionClicks.directions += data.obpActionClicks?.directions || 0;
+            metrics.obpActionClicks.reserve += data.obpActionClicks?.reserve || 0;
+            metrics.obpActionClicks.order += data.obpActionClicks?.order || 0;
             metrics.obpShares.whatsapp += data.obpShares?.whatsapp || 0;
             metrics.obpShares.copy_link += data.obpShares?.copy_link || 0;
             metrics.obpShares.copy_message += data.obpShares?.copy_message || 0;
@@ -213,6 +217,8 @@ async function aggregateOBPForStore(
             call: (existingLifetime.obpActionClicks?.call || 0) + (yesterdayData?.obpActionClicks?.call || 0),
             whatsapp: (existingLifetime.obpActionClicks?.whatsapp || 0) + (yesterdayData?.obpActionClicks?.whatsapp || 0),
             directions: (existingLifetime.obpActionClicks?.directions || 0) + (yesterdayData?.obpActionClicks?.directions || 0),
+            reserve: (existingLifetime.obpActionClicks?.reserve || 0) + (yesterdayData?.obpActionClicks?.reserve || 0),
+            order: (existingLifetime.obpActionClicks?.order || 0) + (yesterdayData?.obpActionClicks?.order || 0),
         },
         obpShares: {
             whatsapp: (existingLifetime.obpShares?.whatsapp || 0) + (yesterdayData?.obpShares?.whatsapp || 0),

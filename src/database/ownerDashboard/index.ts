@@ -1067,6 +1067,8 @@ export interface OBPActionBreakdown {
     call: number;
     whatsapp: number;
     directions: number;
+    reserve: number;
+    order: number;
 }
 
 export interface OBPPeriodMetrics {
@@ -1121,7 +1123,7 @@ interface OBPDailyDoc {
     totalOBPActionClicks: number;
     totalOBPMenuClicks: number;
     totalOBPShares: number;
-    obpActionClicks: { call: number; whatsapp: number; directions: number };
+    obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
 }
 
 // ── OBP Aggregation Helpers ──
@@ -1150,6 +1152,8 @@ async function fetchOBPDailyDocs(
                     call: data.obpActionClicks?.call || 0,
                     whatsapp: data.obpActionClicks?.whatsapp || 0,
                     directions: data.obpActionClicks?.directions || 0,
+                    reserve: data.obpActionClicks?.reserve || 0,
+                    order: data.obpActionClicks?.order || 0,
                 },
             });
         }
@@ -1164,7 +1168,7 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         actionClicks: 0,
         menuClicks: 0,
         shares: 0,
-        actions: { call: 0, whatsapp: 0, directions: 0 },
+        actions: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
         daysWithData: docs.length,
     };
 
@@ -1176,6 +1180,8 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         result.actions.call += d.obpActionClicks.call;
         result.actions.whatsapp += d.obpActionClicks.whatsapp;
         result.actions.directions += d.obpActionClicks.directions;
+        result.actions.reserve += d.obpActionClicks.reserve;
+        result.actions.order += d.obpActionClicks.order;
     }
 
     return result;
@@ -1338,6 +1344,8 @@ export async function getOBPDashboardOverall(
                     call: lifetime.obpActionClicks?.call || 0,
                     whatsapp: lifetime.obpActionClicks?.whatsapp || 0,
                     directions: lifetime.obpActionClicks?.directions || 0,
+                    reserve: lifetime.obpActionClicks?.reserve || 0,
+                    order: lifetime.obpActionClicks?.order || 0,
                 },
                 firstDataDate: data.firstDataDate,
                 lastUpdated: data.modifiedOn?.toDate?.() || undefined,

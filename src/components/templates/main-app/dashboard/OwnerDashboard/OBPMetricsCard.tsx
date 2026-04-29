@@ -13,6 +13,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import {
     getOBPDashboardData,
+    OBPActionBreakdown,
     OBPHistoricalWeek
 } from '@database/ownerDashboard';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -43,8 +44,8 @@ function ChangeIndicator({ change }: { change: number | null }) {
     return <Tag icon={<LuArrowDownRight size={10} />} color="warning" style={{ fontSize: 11 }}>{change}% vs last week</Tag>;
 }
 
-function ActionBreakdown({ actions }: { actions: { call: number; whatsapp: number; directions: number } }) {
-    const hasAny = actions.call > 0 || actions.whatsapp > 0 || actions.directions > 0;
+function ActionBreakdown({ actions }: { actions: OBPActionBreakdown }) {
+    const hasAny = actions.call > 0 || actions.whatsapp > 0 || actions.directions > 0 || actions.reserve > 0 || actions.order > 0;
     if (!hasAny) return null;
 
     return (
@@ -57,6 +58,12 @@ function ActionBreakdown({ actions }: { actions: { call: number; whatsapp: numbe
             )}
             {actions.directions > 0 && (
                 <Statistic title="Directions" value={actions.directions} prefix={<LuMapPin size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {actions.reserve > 0 && (
+                <Statistic title="Reserve" value={actions.reserve} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {actions.order > 0 && (
+                <Statistic title="Order" value={actions.order} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
             )}
         </Flex>
     );
@@ -160,7 +167,7 @@ const OBPMetricsCard: React.FC = () => {
                         </Col>
                         <Col xs={12} sm={6}>
                             <Statistic
-                                title="Menu Opens"
+                                title="View Menu Clicks"
                                 value={overview.wtd.menuClicks}
                                 prefix={<LuExternalLink size={14} />}
                             />
@@ -217,7 +224,7 @@ const OBPMetricsCard: React.FC = () => {
                     <Divider style={{ margin: '16px 0 12px' }} />
                     <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} menu opens, {overall.lifetimeActionClicks.toLocaleString()} actions
+                            Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions
                         </Text>
                         {overall.firstDataDate && (
                             <Text type="secondary" style={{ fontSize: 11 }}>
