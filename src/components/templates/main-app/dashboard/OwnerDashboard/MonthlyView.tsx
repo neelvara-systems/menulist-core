@@ -124,6 +124,13 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
+                        title="No-result Searches"
+                        value={metrics.zeroResultSearches || 0}
+                        subtitle="no match found"
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <MetricCard
                         title="Unavailable Interest"
                         value={metrics.unavailableItemTaps || 0}
                         subtitle="missed demand"
@@ -164,7 +171,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 </Row>
             </Card>
 
-            {(data.menuActions || data.topSearchTerms?.length || data.unavailableItems?.length) && (
+            {(data.menuActions || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
                 <Card className={styles.detailCard} variant="borderless">
                     <Title level={5}>What customers tried to do</Title>
                     <Text type="secondary">
@@ -175,6 +182,9 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                             Top searches: {data.topSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ')}
                         </Text>
                     ) : null}
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        No-result searches: {metrics.zeroResultSearches || 0}
+                    </Text>
                     {data.unavailableItems?.length ? (
                         <Text style={{ display: 'block', marginTop: 8 }}>
                             Unavailable interest: {data.unavailableItems.map((item) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}

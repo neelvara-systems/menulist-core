@@ -85,6 +85,13 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
+                        title="No-result Searches"
+                        value={lifetimeMetrics.totalZeroResultSearches || 0}
+                        className={styles.overallStat}
+                    />
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic
                         title="Customer Actions"
                         value={lifetimeMetrics.totalMenuActionClicks || 0}
                         className={styles.overallStat}

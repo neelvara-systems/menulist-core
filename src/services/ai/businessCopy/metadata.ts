@@ -59,7 +59,7 @@ export function buildBusinessCopyRepairMeta({
 }): BusinessCopyMeta {
     const repairedFieldKeys = coverageFields
         .filter((field) => field.missingLanguages.length > 0)
-        .map((field) => field.key);
+        .map((field) => field.key as BusinessCopyLocalizedFieldKey);
     const targetLanguages = Array.from(new Set(
         coverageFields.flatMap((field) => field.missingLanguages),
     ));

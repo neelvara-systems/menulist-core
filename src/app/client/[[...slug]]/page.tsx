@@ -46,7 +46,7 @@ import {
     doc,
     getDoc
 } from "firebase/firestore";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import { unstable_cache } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -696,7 +696,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
                         },
                     }
                     : {}),
-                themeColor,
             };
         }
     }
@@ -744,7 +743,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
                 },
             }
             : {}),
-        themeColor,
+    };
+}
+
+export async function generateViewport(): Promise<Viewport> {
+    const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
+
+    let storeData: any = null;
+    if (tenantType === "subdomain" && subdomain) {
+        storeData = await withRetry(() => getStoreBySubdomain(subdomain));
+    } else if (tenantType === "custom" && customDomain) {
+        storeData = await withRetry(() => getStoreByCustomDomain(customDomain));
+    }
+
+    return {
+        themeColor: storeData?.publicPresence?.accentColor || APP_THEME_COLOR,
     };
 }
 

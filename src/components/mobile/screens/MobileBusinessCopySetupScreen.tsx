@@ -39,6 +39,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails]
     );
+    const hasEmptyBusinessCopyFields = coverage.fields.some((field) => field.status === 'empty');
+    const hasCoverageGaps = coverage.missingFieldCount > 0;
+    const showFullGenerationCta = coverage.repairableGapCount === 0 || hasEmptyBusinessCopyFields;
+    const fullGenerationLabel = hasCoverageGaps ? t('generateBusinessCopy') : t('regenerateBusinessCopy');
     const businessCopyMeta = storeDetails?.businessCopyMeta;
     const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
     const currentPwaShortName = getLocalizedText(
@@ -308,7 +312,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
 
                 <Card
                     style={{
-                        backgroundColor: coverage.repairableGapCount > 0 ? token.colorFillAlter : token.colorSuccessBg,
+                        backgroundColor: hasCoverageGaps ? token.colorFillAlter : token.colorSuccessBg,
                     }}
                 >
                     <Flex gap={12} vertical>
@@ -317,9 +321,9 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                                 <LuLanguages size={16} />
                                 <Text strong>{t('businessCopyCoverageTitle')}</Text>
                             </Flex>
-                            <Tag color={coverage.repairableGapCount > 0 ? 'warning' : 'success'}>
-                                {coverage.repairableGapCount > 0
-                                    ? t('businessCopyCoverageGapCount', { count: coverage.repairableGapCount })
+                            <Tag color={hasCoverageGaps ? 'warning' : 'success'}>
+                                {hasCoverageGaps
+                                    ? t('businessCopyCoverageGapCount', { count: coverage.missingFieldCount })
                                     : t('businessCopyCoverageAllClear')}
                             </Tag>
                         </Flex>
@@ -337,9 +341,13 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                                         : <LuAlertCircle color={field.status === 'warning' ? token.colorWarning : token.colorTextTertiary} size={16} />}
                                     title={t(`businessCopyCoverageFields.${field.key}`)}
                                     description={field.status === 'ok'
-                                        ? t('businessCopyCoverageStatusReadyDesc')
+                                        ? (field.scope === 'shared'
+                                            ? t('businessCopyCoverageStatusSharedReadyDesc')
+                                            : t('businessCopyCoverageStatusReadyDesc'))
                                         : field.status === 'empty'
-                                            ? t('businessCopyCoverageStatusEmptyDesc')
+                                            ? (field.scope === 'shared'
+                                                ? t('businessCopyCoverageStatusSharedEmptyDesc')
+                                                : t('businessCopyCoverageStatusEmptyDesc'))
                                             : t('businessCopyCoverageMissing', {
                                                 languages: field.missingLanguages.map(getStoreLanguageLabel).join(', '),
                                             })}
@@ -376,18 +384,20 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     </Card>
                 ) : null}
 
-                <Button
-                    block
-                    color="primary"
-                    loading={isGenerating}
-                    onClick={() => void handleGenerate()}
-                    size="large"
-                >
-                    <Flex align="center" gap={8} justify="center">
-                        <LuSparkles size={18} />
-                        <span>{t('generateBusinessCopy')}</span>
-                    </Flex>
-                </Button>
+                {showFullGenerationCta ? (
+                    <Button
+                        block
+                        color="primary"
+                        loading={isGenerating}
+                        onClick={() => void handleGenerate()}
+                        size="large"
+                    >
+                        <Flex align="center" gap={8} justify="center">
+                            <LuSparkles size={18} />
+                            <span>{fullGenerationLabel}</span>
+                        </Flex>
+                    </Button>
+                ) : null}
             </Flex>
         </Flex>
     );

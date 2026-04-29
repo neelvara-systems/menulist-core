@@ -231,6 +231,12 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
+                            title="No-result Searches"
+                            value={wtd.metrics.zeroResultSearches || 0}
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
                             title="Customer Actions"
                             value={wtd.metrics.menuActionClicks || 0}
                         />
@@ -309,6 +315,12 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                         <Statistic
                             title="Searches"
                             value={mtd.metrics.searches || 0}
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="No-result Searches"
+                            value={mtd.metrics.zeroResultSearches || 0}
                         />
                     </Col>
                     <Col xs={12} sm={6}>

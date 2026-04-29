@@ -34,6 +34,7 @@ import LoadingState from './LoadingState';
 import MonthlyView from './MonthlyView';
 import OverallFooter from './OverallFooter';
 import OverviewView from './OverviewView';
+import TodaySoFarCard from './TodaySoFarCard';
 import ViewModeTabs from './ViewModeTabs';
 import WeeklyView from './WeeklyView';
 
@@ -65,6 +66,7 @@ const OwnerDashboard: React.FC = () => {
         if (typeof window === 'undefined') return null;
         return window.sessionStorage.getItem(DASHBOARD_PROJECT_STORAGE_KEY);
     });
+    const [showHistorical, setShowHistorical] = useState(false);
 
     // Use selector-chosen project if available, otherwise fall back to derived default
     const activeProjectId = selectedProjectId || fallbackProjectId;
@@ -90,10 +92,14 @@ const OwnerDashboard: React.FC = () => {
         error,
         viewMode,
         setViewMode,
+        loadingToday,
         loadingDaily,
         loadingWeekly,
         loadingMonthly,
-    } = useOwnerDashboard({ projectId: activeProjectId || undefined });
+    } = useOwnerDashboard({
+        projectId: activeProjectId || undefined,
+        loadHistorical: showHistorical,
+    });
 
     // Show loading while storeDetails hasn't loaded yet OR data is still fetching
     if (!storeDetails?.storeId || loading) {
@@ -113,7 +119,7 @@ const OwnerDashboard: React.FC = () => {
         );
     }
 
-    const hasAnyData = data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall;
+    const hasAnyData = data?.today || data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall;
 
     if (!hasAnyData) {
         return (
@@ -145,47 +151,57 @@ const OwnerDashboard: React.FC = () => {
     return (
         <div className={styles.ownerDashboard}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                {/* Dashboard Header - Project Selector + View Mode Tabs */}
-                <Flex
-                    justify="space-between"
-                    align="center"
-                    wrap="wrap"
-                    gap={16}
-                    className={styles.dashboardHeader}
-                >
-                    {/* Project Selector */}
-                    <Flex align="center" gap={8}>
-                        <Text type="secondary" style={{ fontSize: 13 }}>Viewing:</Text>
-                        <DashboardProjectSelector
-                            selectedProjectId={activeProjectId}
-                            onProjectChange={handleProjectChange}
-                            onReady={handleProjectSelectorReady}
-                        />
-                    </Flex>
-
-                    {/* View Mode Tabs */}
-                    <ViewModeTabs
-                        activeMode={viewMode}
-                        onModeChange={setViewMode}
-                        hasOverview={true}
-                        hasDaily={true}
-                        hasWeekly={true}
-                        hasMonthly={true}
+                <Flex align="center" gap={8}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>Viewing:</Text>
+                    <DashboardProjectSelector
+                        selectedProjectId={activeProjectId}
+                        onProjectChange={handleProjectChange}
+                        onReady={handleProjectSelectorReady}
                     />
                 </Flex>
 
-                {/* Main Content Area */}
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={viewMode}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        {renderCurrentView()}
-                    </motion.div>
-                </AnimatePresence>
+                <TodaySoFarCard
+                    data={data?.today || null}
+                    loading={loadingToday}
+                    showHistorical={showHistorical}
+                    onShowHistorical={() => setShowHistorical(true)}
+                />
+
+                {showHistorical ? (
+                    <>
+                        {/* Dashboard Header - Project Selector + View Mode Tabs */}
+                        <Flex
+                            justify="space-between"
+                            align="center"
+                            wrap="wrap"
+                            gap={16}
+                            className={styles.dashboardHeader}
+                        >
+                            {/* View Mode Tabs */}
+                            <ViewModeTabs
+                                activeMode={viewMode}
+                                onModeChange={setViewMode}
+                                hasOverview={true}
+                                hasDaily={true}
+                                hasWeekly={true}
+                                hasMonthly={true}
+                            />
+                        </Flex>
+
+                        {/* Main Content Area */}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={viewMode}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                {renderCurrentView()}
+                            </motion.div>
+                        </AnimatePresence>
+                    </>
+                ) : null}
 
                 {/* Hours Freshness Nudge — correction trigger for stale hours
                     Shows only when ENABLE_OUTPUT_CONTROL is ON and hours are RISKY/BROKEN.
@@ -222,7 +238,7 @@ const OwnerDashboard: React.FC = () => {
                 <ReviewReplyTool businessType={storeDetails?.businessType} />
 
                 {/* Overall Footer - Always visible */}
-                {data?.overall && (
+                {showHistorical && data?.overall && (
                     <OverallFooter data={data.overall} />
                 )}
             </Space>

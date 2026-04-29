@@ -27,7 +27,7 @@
 
 export const GEMINI_MODELS = {
     // Text Generation Models
-    TEXT_GEN: 'gemini-3-flash-preview',
+    TEXT_GEN: 'gemini-2.5-flash',
     // Image Generation Models
     IMAGE_GEN: 'gemini-2.5-flash-image',
     IMAGEN_3: 'imagen-3.0-generate-002',

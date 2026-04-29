@@ -73,6 +73,10 @@ function getYesterdayDate(): string {
     return yesterday.toISOString().split('T')[0];
 }
 
+function getTodayDate(): string {
+    return new Date().toISOString().split('T')[0];
+}
+
 function getCurrentWeekId(): string {
     const now = new Date();
     const year = now.getFullYear();
@@ -430,9 +434,73 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     return { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems };
 }
 
+function buildDailyViewData(
+    data: Record<string, any>,
+    date: string,
+    options?: {
+        includeAiSummary?: boolean;
+        isPartial?: boolean;
+    }
+): DailyViewData {
+    const menuVisits = data.totalViews || 0;
+
+    return {
+        date,
+        metrics: {
+            menuVisits,
+            itemClicks: data.totalClicks || 0,
+            searches: data.totalSearches || 0,
+            unavailableItemTaps: data.totalUnavailableItemTaps || 0,
+            menuActionClicks: data.totalMenuActionClicks || 0,
+            zeroResultSearches: data.zeroResultSearches || 0,
+            smartPicksRendered: data.totalDecisionBlocksRendered || 0,
+            smartPicksClicks: data.totalRecommendationClicks || 0,
+        },
+        blockPerformance: transformBlockPerformance(data),
+        topItems: transformToTopItems(data),
+        menuActions: transformMenuActions(data),
+        topSearchTerms: transformTopSearchTerms(data),
+        unavailableItems: transformUnavailableItems(data),
+        aiSummary: options?.includeAiSummary && data.aiSummary ? {
+            markdown: data.aiSummary.markdown,
+            bulletPoints: data.aiSummary.bulletPoints || [],
+            generatedAt: data.aiSummary.generatedAt?.toDate?.() || new Date(),
+            promptVersion: data.aiSummary.promptVersion || 'v1',
+        } : undefined,
+        isLowActivity: menuVisits < DAILY_GUARDRAILS.LOW_ACTIVITY_THRESHOLD,
+        isPartial: options?.isPartial,
+        lastUpdated: data.lastUpdated?.toDate?.() || undefined,
+    } as DailyViewData;
+}
+
 // ================================================================
 // FETCH DAILY DATA
 // ================================================================
+
+export async function getOwnerDashboardToday(
+    tId: string,
+    sId: string,
+    projectId: string
+): Promise<DailyViewData | null> {
+    return await apiCallComposer(
+        async () => {
+            const todayDate = getTodayDate();
+            const docId = getDocId.daily(tId, sId, projectId, todayDate);
+            const docRef = doc(firebaseClient, COLLECTION, docId);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                return null;
+            }
+
+            return buildDailyViewData(docSnap.data(), todayDate, {
+                includeAiSummary: false,
+                isPartial: true,
+            });
+        },
+        "getOwnerDashboardToday"
+    );
+}
 
 export async function getOwnerDashboardDaily(
     tId: string,
@@ -450,34 +518,10 @@ export async function getOwnerDashboardDaily(
                 return null;
             }
 
-            const data = docSnap.data();
-            const menuVisits = data.totalViews || 0;
-
-            return {
-                date: yesterdayDate,
-                metrics: {
-                    menuVisits,
-                    itemClicks: data.totalClicks || 0,
-                    searches: data.totalSearches || 0,
-                    unavailableItemTaps: data.totalUnavailableItemTaps || 0,
-                    menuActionClicks: data.totalMenuActionClicks || 0,
-                    zeroResultSearches: data.zeroResultSearches || 0,
-                    smartPicksRendered: data.totalDecisionBlocksRendered || 0,
-                    smartPicksClicks: data.totalRecommendationClicks || 0,
-                },
-                blockPerformance: transformBlockPerformance(data),
-                topItems: transformToTopItems(data),
-                menuActions: transformMenuActions(data),
-                topSearchTerms: transformTopSearchTerms(data),
-                unavailableItems: transformUnavailableItems(data),
-                aiSummary: data.aiSummary ? {
-                    markdown: data.aiSummary.markdown,
-                    bulletPoints: data.aiSummary.bulletPoints || [],
-                    generatedAt: data.aiSummary.generatedAt?.toDate?.() || new Date(),
-                    promptVersion: data.aiSummary.promptVersion || 'v1',
-                } : undefined,
-                isLowActivity: menuVisits < DAILY_GUARDRAILS.LOW_ACTIVITY_THRESHOLD,
-            } as DailyViewData;
+            return buildDailyViewData(docSnap.data(), yesterdayDate, {
+                includeAiSummary: true,
+                isPartial: false,
+            });
         },
         "getOwnerDashboardDaily"
     );
@@ -854,48 +898,10 @@ export async function getOwnerDashboardOverview(
             const yesterdayDoc = docsMap.get(yesterdayDate);
             let yesterday: DailyViewData | null = null;
             if (yesterdayDoc) {
-                const menuVisits = yesterdayDoc.totalViews;
-                yesterday = {
-                    date: yesterdayDate,
-                    metrics: {
-                        menuVisits,
-                        itemClicks: yesterdayDoc.totalClicks,
-                        searches: yesterdayDoc.totalSearches || 0,
-                        unavailableItemTaps: yesterdayDoc.totalUnavailableItemTaps || 0,
-                        menuActionClicks: yesterdayDoc.totalMenuActionClicks || 0,
-                        zeroResultSearches: yesterdayDoc.zeroResultSearches || 0,
-                        smartPicksRendered: yesterdayDoc.totalDecisionBlocksRendered,
-                        smartPicksClicks: yesterdayDoc.totalRecommendationClicks,
-                    },
-                    blockPerformance: {
-                        popular: {
-                            rendered: yesterdayDoc.decisionBlocksRendered?.popular || 0,
-                            clicks: yesterdayDoc.recommendationClicks?.popular || 0,
-                        },
-                        quickPick: {
-                            rendered: yesterdayDoc.decisionBlocksRendered?.quickPick || 0,
-                            clicks: yesterdayDoc.recommendationClicks?.quickPick || 0,
-                        },
-                        bestValue: {
-                            rendered: yesterdayDoc.decisionBlocksRendered?.bestValue || 0,
-                            clicks: yesterdayDoc.recommendationClicks?.bestValue || 0,
-                        },
-                    },
-                    topItems: yesterdayDoc.recommendationClicksByItem
-                        ? Object.entries(yesterdayDoc.recommendationClicksByItem)
-                            .map(([itemId, clicks]) => ({
-                                itemId,
-                                clicks: clicks as number,
-                                name: yesterdayDoc.itemNames?.[itemId],
-                            }))
-                            .sort((a, b) => b.clicks - a.clicks)
-                            .slice(0, 5)
-                        : [],
-                    menuActions: transformMenuActions(yesterdayDoc),
-                    topSearchTerms: transformTopSearchTerms(yesterdayDoc),
-                    unavailableItems: transformUnavailableItems(yesterdayDoc),
-                    isLowActivity: menuVisits < DAILY_GUARDRAILS.LOW_ACTIVITY_THRESHOLD,
-                };
+                yesterday = buildDailyViewData(yesterdayDoc, yesterdayDate, {
+                    includeAiSummary: false,
+                    isPartial: false,
+                });
             }
 
             // Step 7: Build historical weeks from cached data
@@ -981,6 +987,7 @@ export async function getOwnerDashboardOverall(
                     totalSmartPicksRendered: data.lifetimeTotalDecisionBlocksRendered || lifetime.totalDecisionBlocksRendered || 0,
                     totalSmartPicksClicks: data.lifetimeTotalRecommendationClicks || lifetime.totalRecommendationClicks || 0,
                     totalSearches: data.lifetimeTotalSearches || 0,
+                    totalZeroResultSearches: data.lifetimeZeroResultSearches || 0,
                     totalUnavailableItemTaps: data.lifetimeTotalUnavailableItemTaps || 0,
                     totalMenuActionClicks: data.lifetimeTotalMenuActionClicks || 0,
                 },

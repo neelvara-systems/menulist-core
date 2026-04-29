@@ -372,9 +372,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             label: (
                 <Flex align="center" gap={8}>
                     <span>Search & Discovery</span>
-                    {businessCopyCoverage.repairableGapCount > 0 ? (
+                    {businessCopyCoverage.missingFieldCount > 0 ? (
                         <Tag color="warning">
-                            {t('businessCopyCoverageGapCount', { count: businessCopyCoverage.repairableGapCount })}
+                            {t('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount })}
                         </Tag>
                     ) : null}
                 </Flex>

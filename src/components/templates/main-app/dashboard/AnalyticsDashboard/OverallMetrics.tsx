@@ -15,7 +15,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
 
   // Calculate totals from daily data if summary is not available
   const calculateTotals = () => {
-    if (!data) return { views: 0, clicks: 0, searches: 0, actions: 0, unavailable: 0, recent7Views: 0, recent7Clicks: 0, recent30Views: 0, recent30Clicks: 0 };
+    if (!data) return { views: 0, clicks: 0, searches: 0, zeroResultSearches: 0, actions: 0, unavailable: 0, recent7Views: 0, recent7Clicks: 0, recent30Views: 0, recent30Clicks: 0 };
 
     if (data.summary) {
       // Use summary data if available
@@ -23,6 +23,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
         views: data.summary.lifetimeTotalViews || 0,
         clicks: data.summary.lifetimeTotalClicks || 0,
         searches: data.summary.lifetimeTotalSearches || 0,
+        zeroResultSearches: data.summary.lifetimeZeroResultSearches || 0,
         actions: data.summary.lifetimeTotalMenuActionClicks || 0,
         unavailable: data.summary.lifetimeTotalUnavailableItemTaps || 0,
         recent7Views: data.summary.last7Days?.totalViews || 0,
@@ -52,6 +53,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
         views: data.daily.reduce((sum, day) => sum + (day.totalViews || 0), 0),
         clicks: data.daily.reduce((sum, day) => sum + (day.totalClicks || 0), 0),
         searches: data.daily.reduce((sum, day) => sum + (day.totalSearches || 0), 0),
+        zeroResultSearches: data.daily.reduce((sum, day) => sum + (day.zeroResultSearches || 0), 0),
         actions: data.daily.reduce((sum, day) => sum + (day.totalMenuActionClicks || 0), 0),
         unavailable: data.daily.reduce((sum, day) => sum + (day.totalUnavailableItemTaps || 0), 0),
         recent7Views: last7Days.reduce((sum, day) => sum + (day.totalViews || 0), 0),
@@ -61,10 +63,10 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
       };
     }
 
-    return { views: 0, clicks: 0, searches: 0, actions: 0, unavailable: 0, recent7Views: 0, recent7Clicks: 0, recent30Views: 0, recent30Clicks: 0 };
+    return { views: 0, clicks: 0, searches: 0, zeroResultSearches: 0, actions: 0, unavailable: 0, recent7Views: 0, recent7Clicks: 0, recent30Views: 0, recent30Clicks: 0 };
   };
 
-  const { views, clicks, searches, actions, unavailable, recent7Views, recent7Clicks, recent30Views, recent30Clicks } = calculateTotals();
+  const { views, clicks, searches, zeroResultSearches, actions, unavailable, recent7Views, recent7Clicks, recent30Views, recent30Clicks } = calculateTotals();
 
   // Calculate CTR (Click-Through Rate)
   const ctr = views > 0 ? ((clicks / views) * 100).toFixed(2) : '0.00';
@@ -147,6 +149,13 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
             title="Searches"
             value={searches}
             prefix={<FireOutlined />}
+          />
+        </Col>
+        <Col xs={12} sm={6}>
+          <Statistic
+            title="No-result Searches"
+            value={zeroResultSearches}
+            prefix={<LineChartOutlined />}
           />
         </Col>
         <Col xs={12} sm={6}>

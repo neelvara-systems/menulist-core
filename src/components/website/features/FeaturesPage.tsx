@@ -141,8 +141,8 @@ export default function FeaturesPage() {
       <SectionWrapper variant="subtle">
         <AnimateOnScroll>
           <SectionHeading
-            title="Analytics that help owners decide what to change next"
-            subtitle="MenuList measures the signals a business can actually act on: what customers searched for, which searches returned nothing, which unavailable items still get tapped, and which final action they chose next."
+            title="Your menu, understood after it goes live"
+            subtitle="MenuList quietly records what customers notice on the public menu — what they search for, what has no clear result, what still attracts attention, and which next step they choose."
           />
         </AnimateOnScroll>
 
@@ -159,20 +159,20 @@ export default function FeaturesPage() {
         >
           {[
             {
-              title: 'Search demand',
-              desc: 'See what customers actively searched for, including no-result searches that reveal missing items or unclear naming.',
+              title: 'Searches stay visible',
+              desc: 'Searches and no-result searches remain visible after the menu is live.',
             },
             {
-              title: 'Unavailable demand',
-              desc: 'See when customers still tap unavailable items so you can restock, replace, or bring them back with confidence.',
+              title: 'Unavailable interest does not disappear',
+              desc: 'When customers still tap unavailable items, MenuList keeps that signal visible.',
             },
             {
-              title: 'Customer action preference',
-              desc: 'Track final actions like call, WhatsApp, directions, reserve, and order to understand how customers prefer to contact or buy.',
+              title: 'Final actions are recorded',
+              desc: 'Calls, WhatsApp, directions, reservations, and order clicks stay attached to the menu they came from.',
             },
             {
-              title: 'Owner-friendly controls',
-              desc: 'Simple category-based controls explain what is tracked by default without forcing owners to manage dozens of event switches.',
+              title: 'Controls stay simple',
+              desc: 'What is recorded is grouped into clear categories instead of dozens of technical switches.',
             },
           ].map((item, index) => (
             <AnimateStaggerChild key={item.title} index={index}>
@@ -185,26 +185,18 @@ export default function FeaturesPage() {
         </div>
 
         <AnimateOnScroll delay={0.1}>
-          <div
+          <p
+            className="ws-caption"
             style={{
+              textAlign: 'center',
               marginTop: 'var(--ws-space-8)',
-              maxWidth: '920px',
+              maxWidth: '720px',
               marginLeft: 'auto',
               marginRight: 'auto',
-              padding: 'var(--ws-space-6)',
-              borderRadius: 'var(--ws-radius-xl)',
-              border: '1px solid rgba(15, 23, 42, 0.08)',
-              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(14, 165, 233, 0.08) 100%)',
-              textAlign: 'center',
             }}
           >
-            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>
-              No vanity analytics. No invasive tracking.
-            </p>
-            <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)', maxWidth: '720px', marginLeft: 'auto', marginRight: 'auto' }}>
-              MenuList focuses on decision-ready signals and privacy-conscious reporting: no customer names, no emails, no payment details, and no exact GPS in this analytics flow.
-            </p>
-          </div>
+            No vanity analytics. No invasive tracking. MenuList focuses on decision-ready signals and privacy-conscious reporting: no customer names, no emails, no payment details, and no exact GPS in this analytics flow.
+          </p>
         </AnimateOnScroll>
       </SectionWrapper>
 

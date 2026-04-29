@@ -199,6 +199,10 @@ Total: ~₹183/month
 ### Owner Dashboard Reporting
 
 - The owner dashboard reads these signals from the same summary / weekly / monthly / daily documents.
+- The default owner dashboard remains settled and yesterday-bounded for `Yesterday`, `Last 7 Days`, and month-to-date confirmation views.
+- A separate `Today so far` card may read the current day daily document directly for partial live activity.
+- The recommended owner flow is: load `Today so far` first, then load settled historical analytics only when the owner asks for them.
+- That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.
 - Search demand, unavailable-item demand, and final menu CTA clicks are visible in dashboard views after nightly aggregation.
 - AI summaries also surface the top search term, strongest final action, and unavailable-demand signals from the same rolled-up documents.
 - No separate analytics collection or scheduler path is introduced for these metrics.

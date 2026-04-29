@@ -23,6 +23,7 @@ import {
     getOwnerDashboardMonthly,
     getOwnerDashboardOverall,
     getOwnerDashboardOverview,
+    getOwnerDashboardToday,
     getOwnerDashboardWeekly,
 } from '@database/ownerDashboard';
 import {
@@ -45,6 +46,7 @@ import useSWR from 'swr';
 
 interface UseOwnerDashboardOptions {
     projectId?: string;
+    loadHistorical?: boolean;
 }
 
 /**
@@ -73,6 +75,11 @@ const SWR_CONFIG = {
 const SWR_CONFIG_DAILY = {
     ...SWR_CONFIG,
     dedupingInterval: 3600000, // 1 hour for daily data
+};
+
+const SWR_CONFIG_TODAY = {
+    ...SWR_CONFIG,
+    dedupingInterval: 600000, // 10 minutes for live "today so far"
 };
 
 /**
@@ -109,9 +116,29 @@ async function cachedFetcher<T>(
     return data;
 }
 
+async function cachedFetcherWithTTL<T>(
+    cacheKey: string,
+    fetcher: () => Promise<T | null>,
+    maxAgeMs: number
+): Promise<T | null> {
+    const cached = getCachedData<T>(cacheKey, maxAgeMs);
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const data = await fetcher();
+
+    if (data !== null) {
+        setCachedData(cacheKey, data);
+    }
+
+    return data;
+}
+
 export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerDashboardReturn {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const projectId = options?.projectId;
+    const loadHistorical = options?.loadHistorical ?? true;
     const [viewMode, setViewMode] = useState<OwnerDashboardViewMode>('overview');
 
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
@@ -127,12 +154,27 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         isLoading: overviewLoading,
         mutate: mutateOverview,
     } = useSWR(
-        canFetch ? ['ownerDashboard', 'overview', tId, sId, projectId] : null,
+        canFetch && loadHistorical ? ['ownerDashboard', 'overview', tId, sId, projectId] : null,
         () => cachedFetcher(
             createCacheKey('overview', tId!, sId!, projectId!),
             () => getOwnerDashboardOverview(tId!, sId!, projectId!)
         ),
         SWR_CONFIG
+    );
+
+    const {
+        data: todayData,
+        error: todayError,
+        isLoading: todayLoading,
+        mutate: mutateToday,
+    } = useSWR(
+        canFetch ? ['ownerDashboard', 'today', tId, sId, projectId] : null,
+        () => cachedFetcherWithTTL(
+            createCacheKey('today', tId!, sId!, projectId!),
+            () => getOwnerDashboardToday(tId!, sId!, projectId!),
+            600000
+        ),
+        SWR_CONFIG_TODAY
     );
 
     // Overall data - fetched with overview (always needed for footer)
@@ -141,7 +183,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         error: overallError,
         mutate: mutateOverall,
     } = useSWR(
-        canFetch ? ['ownerDashboard', 'overall', tId, sId, projectId] : null,
+        canFetch && loadHistorical ? ['ownerDashboard', 'overall', tId, sId, projectId] : null,
         () => cachedFetcher(
             createCacheKey('overall', tId!, sId!, projectId!),
             () => getOwnerDashboardOverall(tId!, sId!, projectId!)
@@ -157,7 +199,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         isLoading: dailyLoading,
         mutate: mutateDaily,
     } = useSWR(
-        canFetch && viewMode === 'daily' ? ['ownerDashboard', 'daily', tId, sId, projectId] : null,
+        canFetch && loadHistorical && viewMode === 'daily' ? ['ownerDashboard', 'daily', tId, sId, projectId] : null,
         () => cachedFetcher(
             createCacheKey('daily', tId!, sId!, projectId!),
             () => getOwnerDashboardDaily(tId!, sId!, projectId!)
@@ -172,7 +214,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         isLoading: weeklyLoading,
         mutate: mutateWeekly,
     } = useSWR(
-        canFetch && viewMode === 'weekly' ? ['ownerDashboard', 'weekly', tId, sId, projectId] : null,
+        canFetch && loadHistorical && viewMode === 'weekly' ? ['ownerDashboard', 'weekly', tId, sId, projectId] : null,
         () => cachedFetcher(
             createCacheKey('weekly', tId!, sId!, projectId!),
             () => getOwnerDashboardWeekly(tId!, sId!, projectId!)
@@ -187,7 +229,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         isLoading: monthlyLoading,
         mutate: mutateMonthly,
     } = useSWR(
-        canFetch && viewMode === 'monthly' ? ['ownerDashboard', 'monthly', tId, sId, projectId] : null,
+        canFetch && loadHistorical && viewMode === 'monthly' ? ['ownerDashboard', 'monthly', tId, sId, projectId] : null,
         () => cachedFetcher(
             createCacheKey('monthly', tId!, sId!, projectId!),
             () => getOwnerDashboardMonthly(tId!, sId!, projectId!)
@@ -197,6 +239,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
 
     // Determine loading state based on current view
     const loading = useMemo(() => {
+        if (todayLoading && !todayData) {
+            return true;
+        }
+
+        if (!loadHistorical) {
+            return false;
+        }
+
         switch (viewMode) {
             case 'overview':
                 return overviewLoading;
@@ -209,10 +259,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             default:
                 return overviewLoading;
         }
-    }, [viewMode, overviewLoading, dailyLoading, weeklyLoading, monthlyLoading]);
+    }, [viewMode, loadHistorical, todayLoading, todayData, overviewLoading, dailyLoading, weeklyLoading, monthlyLoading]);
 
     // Combine errors
     const error = useMemo(() => {
+        if (!loadHistorical) {
+            return todayError || null;
+        }
+
         switch (viewMode) {
             case 'overview':
                 return overviewError || overallError || null;
@@ -225,16 +279,17 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             default:
                 return overviewError || overallError || null;
         }
-    }, [viewMode, overviewError, dailyError, weeklyError, monthlyError, overallError]);
+    }, [viewMode, loadHistorical, todayError, overviewError, dailyError, weeklyError, monthlyError, overallError]);
 
     // Combined data object
     const data = useMemo((): OwnerDashboardData | null => {
-        if (!overviewData && !dailyData && !weeklyData && !monthlyData && !overallData) {
+        if (!overviewData && !todayData && !dailyData && !weeklyData && !monthlyData && !overallData) {
             return null;
         }
 
         return {
             overview: overviewData || null,
+            today: todayData || null,
             daily: dailyData || overviewData?.yesterday || null,
             weekly: weeklyData || null,
             monthly: monthlyData || null,
@@ -245,7 +300,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             projectId: projectId || '',
             lastFetched: new Date(),
         };
-    }, [overviewData, dailyData, weeklyData, monthlyData, overallData, projectId]);
+    }, [overviewData, todayData, dailyData, weeklyData, monthlyData, overallData, projectId]);
 
     // Current view data based on selected mode
     const currentViewData = useMemo((): OverviewData | DailyViewData | WeeklyViewData | MonthlyViewData | null => {
@@ -272,22 +327,22 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     const refetch = useCallback(async () => {
         switch (viewMode) {
             case 'overview':
-                await Promise.all([mutateOverview(), mutateOverall()]);
+                await Promise.all(loadHistorical ? [mutateOverview(), mutateToday(), mutateOverall()] : [mutateToday()]);
                 break;
             case 'daily':
-                await mutateDaily();
+                await Promise.all(loadHistorical ? [mutateToday(), mutateDaily()] : [mutateToday()]);
                 break;
             case 'weekly':
-                await mutateWeekly();
+                await Promise.all(loadHistorical ? [mutateToday(), mutateWeekly()] : [mutateToday()]);
                 break;
             case 'monthly':
-                await mutateMonthly();
+                await Promise.all(loadHistorical ? [mutateToday(), mutateMonthly()] : [mutateToday()]);
                 break;
             default:
-                await Promise.all([mutateOverview(), mutateOverall()]);
+                await Promise.all(loadHistorical ? [mutateOverview(), mutateToday(), mutateOverall()] : [mutateToday()]);
                 break;
         }
-    }, [viewMode, mutateOverview, mutateDaily, mutateWeekly, mutateMonthly, mutateOverall]);
+    }, [viewMode, loadHistorical, mutateOverview, mutateToday, mutateDaily, mutateWeekly, mutateMonthly, mutateOverall]);
 
     return {
         data,
@@ -298,6 +353,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         viewMode,
         setViewMode: handleSetViewMode,
         // Loading states for lazy-loaded views
+        loadingToday: todayLoading,
         loadingDaily: dailyLoading,
         loadingWeekly: weeklyLoading,
         loadingMonthly: monthlyLoading,

@@ -153,12 +153,25 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 
 - Owner dashboard reads these metrics from the same analytics documents.
 - `aggregateCustomerAnalytics.ts` now rolls search demand, unavailable-item demand, and menu CTA clicks into summary / weekly / monthly rollups.
+- Settled owner dashboard views still end on yesterday. They are intentionally not mixed with the current partial day.
+- A separate `Today so far` card reads the current day daily doc directly through the owner-dashboard DAL.
+- The live card uses SWR plus local cache with a short TTL only for that slice, so Firebase cost stays bounded.
+- The existing overview / daily / weekly / monthly historical flow is now owner-triggered on demand, instead of being fetched by default.
+- The deep analytics dashboard caches `summary` and `daily range` separately via SWR/local cache:
+  - `summary` stays day-cached because it is scheduler-backed
+  - `daily range` uses day-cache for settled ranges and short TTL only when the selected range includes today
 - Desktop and mobile owner dashboards surface:
   - total searches
   - no-result searches
   - unavailable-item taps
   - final CTA clicks and action breakdown
   - top search terms
+- Desktop and mobile owner dashboards also surface:
+  - `Today so far` menu visits
+  - `Today so far` searches
+  - `Today so far` no-result searches
+  - `Today so far` unavailable interest
+  - `Today so far` final customer actions
 - AI owner summaries now also reference:
   - top search demand
   - no-result search friction

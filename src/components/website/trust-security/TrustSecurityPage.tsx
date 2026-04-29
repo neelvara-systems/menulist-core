@@ -70,11 +70,11 @@ const trustPillars = [
   {
     icon: LuUserCheck,
     title: 'Privacy-conscious analytics',
-    desc: "MenuList tracks business signals that help owners make decisions without building a profile of the customer. The system is designed to show demand and action intent, not personal identity.",
+    desc: 'MenuList keeps menu activity visible without turning customers into profiles. The system records menu behavior, not personal identity.',
     points: [
       'No customer names, emails, payment details, or exact GPS in this analytics flow',
-      'Tracks useful business signals like searches, no-result searches, unavailable-item demand, and final customer actions',
-      'Owner-facing category controls and disclosure explain what is tracked by default',
+      'Searches, no-result searches, unavailable-item attention, and final menu actions remain visible',
+      'Owner-facing category controls show what is recorded by default',
     ],
   },
   {

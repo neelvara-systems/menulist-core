@@ -46,6 +46,10 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails]
     );
+    const hasEmptyBusinessCopyFields = coverage.fields.some((field) => field.status === 'empty');
+    const hasCoverageGaps = coverage.missingFieldCount > 0;
+    const showFullGenerationCta = coverage.repairableGapCount === 0 || hasEmptyBusinessCopyFields;
+    const fullGenerationLabel = hasCoverageGaps ? t('generateBusinessCopy') : t('regenerateBusinessCopy');
     const businessCopyMeta = storeDetails?.businessCopyMeta;
     const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
 
@@ -192,7 +196,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
             <Card
                 size="small"
                 style={{
-                    background: coverage.repairableGapCount > 0 ? token.colorFillAlter : token.colorSuccessBg,
+                    background: hasCoverageGaps ? token.colorFillAlter : token.colorSuccessBg,
                     marginBottom: 16,
                 }}
                 title={(
@@ -201,9 +205,9 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                             <LuLanguages size={16} />
                             <Text strong>{t('businessCopyCoverageTitle')}</Text>
                         </Flex>
-                        <Tag color={coverage.repairableGapCount > 0 ? 'warning' : 'success'}>
-                            {coverage.repairableGapCount > 0
-                                ? t('businessCopyCoverageGapCount', { count: coverage.repairableGapCount })
+                        <Tag color={hasCoverageGaps ? 'warning' : 'success'}>
+                            {hasCoverageGaps
+                                ? t('businessCopyCoverageGapCount', { count: coverage.missingFieldCount })
                                 : t('businessCopyCoverageAllClear')}
                         </Tag>
                     </Flex>
@@ -229,9 +233,13 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                                             <br />
                                             <Text type="secondary" style={{ fontSize: 11 }}>
                                                 {field.status === 'ok'
-                                                    ? t('businessCopyCoverageStatusReadyDesc')
+                                                    ? (field.scope === 'shared'
+                                                        ? t('businessCopyCoverageStatusSharedReadyDesc')
+                                                        : t('businessCopyCoverageStatusReadyDesc'))
                                                     : field.status === 'empty'
-                                                        ? t('businessCopyCoverageStatusEmptyDesc')
+                                                        ? (field.scope === 'shared'
+                                                            ? t('businessCopyCoverageStatusSharedEmptyDesc')
+                                                            : t('businessCopyCoverageStatusEmptyDesc'))
                                                         : t('businessCopyCoverageMissing', {
                                                             languages: field.missingLanguages.map(getStoreLanguageLabel).join(', '),
                                                         })}
@@ -276,19 +284,23 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 </Card>
             ) : null}
 
-            <Button
-                block
-                icon={<LuSparkles />}
-                loading={isGenerating}
-                onClick={() => void handleGenerate()}
-                type="primary"
-            >
-                {t('generateBusinessCopy')}
-            </Button>
+            {showFullGenerationCta ? (
+                <>
+                    <Button
+                        block
+                        icon={<LuSparkles />}
+                        loading={isGenerating}
+                        onClick={() => void handleGenerate()}
+                        type="primary"
+                    >
+                        {fullGenerationLabel}
+                    </Button>
 
-            <Text style={{ display: 'block', fontSize: 12, marginTop: 12 }} type="secondary">
-                {t('businessCopyApplyNote')}
-            </Text>
+                    <Text style={{ display: 'block', fontSize: 12, marginTop: 12 }} type="secondary">
+                        {t('businessCopyApplyNote')}
+                    </Text>
+                </>
+            ) : null}
         </Card>
     );
 }

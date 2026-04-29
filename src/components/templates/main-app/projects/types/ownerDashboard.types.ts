@@ -116,6 +116,8 @@ export interface DailyViewData {
     unavailableItems?: TopItem[];
     aiSummary?: AISummary;
     isLowActivity: boolean; // < 20 views
+    isPartial?: boolean; // true for live "today so far" data
+    lastUpdated?: Date;
 }
 
 // ================================================================
@@ -226,6 +228,7 @@ export interface OverallData {
         totalSmartPicksRendered: number;
         totalSmartPicksClicks: number;
         totalSearches?: number;
+        totalZeroResultSearches?: number;
         totalUnavailableItemTaps?: number;
         totalMenuActionClicks?: number;
     };
@@ -243,6 +246,7 @@ export interface OwnerDashboardData {
     overview: OverviewData | null;
 
     // Period views
+    today: DailyViewData | null;
     daily: DailyViewData | null;
     weekly: WeeklyViewData | null;
     monthly: MonthlyViewData | null;
@@ -278,6 +282,7 @@ export interface UseOwnerDashboardReturn {
     setViewMode: (mode: OwnerDashboardViewMode) => void;
 
     // Loading states for lazy-loaded data
+    loadingToday: boolean;
     loadingDaily: boolean;
     loadingWeekly: boolean;
     loadingMonthly: boolean;

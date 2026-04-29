@@ -2,9 +2,12 @@ import { getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/locali
 import { BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
 import { BusinessCopyFieldValue, computeBusinessCopyCoverageCore } from './translationCoverageCore';
 
+export type BusinessCopyCoverageFieldKey = BusinessCopyLocalizedFieldKey | 'keywords';
+
 export type BusinessCopyCoverageField = {
-    key: BusinessCopyLocalizedFieldKey;
+    key: BusinessCopyCoverageFieldKey;
     missingLanguages: string[];
+    scope: 'localized' | 'shared';
     sourceValue: string;
     status: 'empty' | 'ok' | 'warning';
 };
@@ -12,6 +15,20 @@ export type BusinessCopyCoverageField = {
 type CoverageOptions = {
     includePwaShortName?: boolean;
 };
+
+function getKeywordsCoverageField(storeDetails?: any): BusinessCopyCoverageField {
+    const keywords = Array.isArray(storeDetails?.keywords)
+        ? storeDetails.keywords.map((keyword: unknown) => String(keyword || '').trim()).filter(Boolean)
+        : [];
+
+    return {
+        key: 'keywords',
+        missingLanguages: [],
+        scope: 'shared',
+        sourceValue: keywords.join(', '),
+        status: keywords.length > 0 ? 'ok' : 'empty',
+    };
+}
 
 export function computeBusinessCopyCoverage(
     storeDetails?: any,
@@ -33,11 +50,17 @@ export function computeBusinessCopyCoverage(
         managedLanguages,
         preferredLanguage: getStorePreferredLanguage(storeDetails),
     });
+    const localizedFields: BusinessCopyCoverageField[] = result.fields.map((field) => ({
+        ...field,
+        scope: 'localized',
+    }));
+    const keywordsField = getKeywordsCoverageField(storeDetails);
+    const fields = [...localizedFields, keywordsField];
 
     return {
-        fields: result.fields,
+        fields,
         managedLanguages,
-        missingFieldCount: result.missingFieldCount,
+        missingFieldCount: fields.filter((field) => field.status !== 'ok').length,
         referenceLanguage: result.referenceLanguage,
         repairableGapCount: result.repairableGapCount,
     };

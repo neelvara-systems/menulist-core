@@ -264,6 +264,7 @@
         "businessCopyUpdatesSeo": "SEO and AEO tagline, meta title, description, and keywords",
         "businessCopyUpdatesCustomerApp": "Customer App short name",
         "generateBusinessCopy": "Generate Business Copy",
+        "regenerateBusinessCopy": "Regenerate Business Copy",
         "businessCopyMissingName": "Add your business name first",
         "businessCopySuccess": "Business copy generated and applied",
         "businessCopyFailed": "Could not generate business copy",

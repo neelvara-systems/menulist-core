@@ -6,6 +6,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
@@ -23,6 +24,7 @@ const LOG_FILE = "business-copy-generation.log";
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
     const action = AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION;
+    const requestId = crypto.randomUUID();
 
     try {
         const { checkSafeMode } = await import('@lib/ops/safeMode');
@@ -50,6 +52,8 @@ export const POST = withAuth(async (request, session) => {
         logger.info('Business copy generation requested', {
             categoryCount: payload.menu?.categories?.length || 0,
             itemCount: payload.menu?.items?.length || 0,
+            model: AI_MODEL,
+            requestId,
             sourceLang: payload.sourceLang?.code || 'unspecified',
             storeId: session.sId,
             storeName: payload.store?.name,
@@ -67,23 +71,64 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const startTime = Date.now();
-        const response = await genAIClient.models.generateContent({
-            model: AI_MODEL,
-            contents: businessCopyPrompt(payload),
-            config: {
-                responseMimeType: "application/json",
-                temperature: 0.55,
-                topP: 0.9,
-                topK: 40,
-                systemInstruction: businessCopyPromptSystemInstruction,
-                safetySettings: [
-                    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                ],
-            },
-        });
+        let response;
+        try {
+            response = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: businessCopyPrompt(payload),
+                config: {
+                    responseMimeType: "application/json",
+                    temperature: 0.55,
+                    topP: 0.9,
+                    topK: 40,
+                    systemInstruction: businessCopyPromptSystemInstruction,
+                    safetySettings: [
+                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+                    ],
+                },
+            });
+        } catch (generationError) {
+            const errorDiagnostics = getAIErrorDiagnostics(generationError);
+            const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
+
+            logger.error('Business copy generation model call failed', generationError, {
+                ...errorDiagnostics,
+                action,
+                categoryCount: payload.menu?.categories?.length || 0,
+                gatewayDiagnostics,
+                itemCount: payload.menu?.items?.length || 0,
+                model: AI_MODEL,
+                requestId,
+                sourceLang: payload.sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                logType: 'MODEL_CALL_ERROR',
+                data: {
+                    action,
+                    categoryCount: payload.menu?.categories?.length || 0,
+                    gatewayDiagnostics,
+                    itemCount: payload.menu?.items?.length || 0,
+                    model: AI_MODEL,
+                    requestId,
+                    sourceLang: payload.sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    tenantId: session.tId,
+                },
+                error: errorDiagnostics,
+            });
+            if (generationError && typeof generationError === 'object') {
+                (generationError as Record<string, unknown>).__businessCopyLogged = true;
+            }
+            throw generationError;
+        }
 
         let rawText = response.text || '';
         rawText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
@@ -92,11 +137,61 @@ export const POST = withAuth(async (request, session) => {
         try {
             generatedData = JSON.parse(rawText);
         } catch (parseError) {
-            logger.error('Business copy generation returned invalid JSON', parseError, { userId, rawTextPreview: rawText.slice(0, 200) });
+            logger.error('Business copy generation returned invalid JSON', parseError, {
+                model: AI_MODEL,
+                rawTextLength: rawText.length,
+                rawTextPreview: getPreviewText(rawText, 400),
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: payload.sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                logType: 'INVALID_JSON_RESPONSE',
+                data: {
+                    model: AI_MODEL,
+                    rawTextLength: rawText.length,
+                    rawTextPreview: getPreviewText(rawText, 400),
+                    requestId,
+                    responseUsage: response.usageMetadata || null,
+                    sourceLang: payload.sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    tenantId: session.tId,
+                },
+                error: parseError,
+            });
             return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
         }
 
         if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
+            logger.error('Business copy generation returned non-object response', null, {
+                isArray: Array.isArray(generatedData),
+                model: AI_MODEL,
+                requestId,
+                responseType: typeof generatedData,
+                sourceLang: payload.sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                logType: 'NON_OBJECT_RESPONSE',
+                data: {
+                    isArray: Array.isArray(generatedData),
+                    model: AI_MODEL,
+                    requestId,
+                    responseType: typeof generatedData,
+                    sourceLang: payload.sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    tenantId: session.tId,
+                },
+            });
             return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
         }
 
@@ -153,6 +248,7 @@ export const POST = withAuth(async (request, session) => {
             metaDescriptionLength: cleaned.metaDescription.length,
             metaTitleLength: cleaned.metaTitle.length,
             pwaShortNameLength: cleaned.pwaShortName.length,
+            requestId,
             sourceLang: payload.sourceLang?.code || 'unspecified',
             taglineLength: cleaned.tagline.length,
             transactionId: transactionObject.transactionId,
@@ -170,7 +266,18 @@ export const POST = withAuth(async (request, session) => {
             remainingBalance,
         }, { status: 200 });
     } catch (error) {
-        logger.error('Business copy generation API error', error, { userId });
+        if (!(error && typeof error === 'object' && '__businessCopyLogged' in error)) {
+            logger.error('Business copy generation API error', error, {
+                action,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                requestId,
+                ...getAIErrorDiagnostics(error),
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+        }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
     }
