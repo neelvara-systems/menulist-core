@@ -2,7 +2,6 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { collection, doc, DocumentData, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "firebase/firestore";
-import { AnalyticsData } from '../../lib/analytics/types';
 
 // Base collection path
 const COLLECTION = DB_COLLECTIONS.ANALYTICS;
@@ -137,49 +136,6 @@ export const getTopItems = async (tId: string | number, sId: string | number, pr
       }
     },
     "getTopItems"
-  );
-};
-
-/**
- * Get complete analytics data (summary and daily data) for a specific project
- */
-export const getAnalyticsData = async (
-  tId: string | number,
-  sId: string | number,
-  projectId: string,
-  startDate?: string,
-  endDate?: string
-): Promise<AnalyticsData> => {
-  return await apiCallComposer(
-    async () => {
-      // Get summary data
-      const summaryPromise = getAnalyticsSummary(tId, sId, projectId);
-
-      // Get daily data if date range provided
-      let dailyDataPromise;
-      if (startDate && endDate) {
-        dailyDataPromise = getDailyAnalyticsRange(tId, sId, projectId, startDate, endDate);
-      } else {
-        // Default to last 7 days
-        const today = new Date();
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 7);
-
-        const todayStr = today.toISOString().split('T')[0];
-        const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
-
-        dailyDataPromise = getDailyAnalyticsRange(tId, sId, projectId, sevenDaysAgoStr, todayStr);
-      }
-
-      // Wait for both promises to resolve
-      const [summary, daily] = await Promise.all([summaryPromise, dailyDataPromise]);
-
-      return {
-        summary,
-        daily: daily || []
-      };
-    },
-    "getAnalyticsData"
   );
 };
 

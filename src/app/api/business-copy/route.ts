@@ -20,6 +20,19 @@ import businessCopyPrompt, { businessCopyPromptSystemInstruction } from "./promp
 
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "business-copy-generation.log";
+const GENERATION_CONFIG = {
+    responseMimeType: "application/json" as const,
+    temperature: 0.55,
+    topP: 0.9,
+    topK: 40,
+    systemInstruction: businessCopyPromptSystemInstruction,
+    safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    ],
+};
 
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
@@ -76,19 +89,7 @@ export const POST = withAuth(async (request, session) => {
             response = await genAIClient.models.generateContent({
                 model: AI_MODEL,
                 contents: businessCopyPrompt(payload),
-                config: {
-                    responseMimeType: "application/json",
-                    temperature: 0.55,
-                    topP: 0.9,
-                    topK: 40,
-                    systemInstruction: businessCopyPromptSystemInstruction,
-                    safetySettings: [
-                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-                    ],
-                },
+                config: GENERATION_CONFIG,
             });
         } catch (generationError) {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
@@ -130,17 +131,15 @@ export const POST = withAuth(async (request, session) => {
             throw generationError;
         }
 
-        let rawText = response.text || '';
-        rawText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
         let generatedData: any;
+        let parsedRawText = getResponseText(response);
         try {
-            generatedData = JSON.parse(rawText);
+            generatedData = parseJsonLikeResponse(parsedRawText);
         } catch (parseError) {
-            logger.error('Business copy generation returned invalid JSON', parseError, {
+            logger.warn('Business copy generation returned invalid JSON, retrying once', {
                 model: AI_MODEL,
-                rawTextLength: rawText.length,
-                rawTextPreview: getPreviewText(rawText, 400),
+                rawTextLength: parsedRawText.length,
+                rawTextPreview: getPreviewText(parsedRawText, 400),
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: payload.sourceLang?.code || 'unspecified',
@@ -148,23 +147,47 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: session.tId,
                 userId,
             });
-            await writeLogEntry({
-                logFileName: LOG_FILE,
-                userId,
-                logType: 'INVALID_JSON_RESPONSE',
-                data: {
+
+            const retryResponse = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: `${businessCopyPrompt(payload)}\n\nReturn valid JSON only. Do not add markdown, commentary, or code fences.`,
+                config: GENERATION_CONFIG,
+            });
+            parsedRawText = getResponseText(retryResponse);
+
+            try {
+                generatedData = parseJsonLikeResponse(parsedRawText);
+                response = retryResponse;
+            } catch (retryParseError) {
+                logger.error('Business copy generation returned invalid JSON after retry', retryParseError, {
                     model: AI_MODEL,
-                    rawTextLength: rawText.length,
-                    rawTextPreview: getPreviewText(rawText, 400),
+                    rawTextLength: parsedRawText.length,
+                    rawTextPreview: getPreviewText(parsedRawText, 400),
                     requestId,
-                    responseUsage: response.usageMetadata || null,
+                    responseUsage: retryResponse.usageMetadata || null,
                     sourceLang: payload.sourceLang?.code || 'unspecified',
                     storeId: session.sId,
                     tenantId: session.tId,
-                },
-                error: parseError,
-            });
-            return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
+                    userId,
+                });
+                await writeLogEntry({
+                    logFileName: LOG_FILE,
+                    userId,
+                    logType: 'INVALID_JSON_RESPONSE',
+                    data: {
+                        model: AI_MODEL,
+                        rawTextLength: parsedRawText.length,
+                        rawTextPreview: getPreviewText(parsedRawText, 400),
+                        requestId,
+                        responseUsage: retryResponse.usageMetadata || null,
+                        sourceLang: payload.sourceLang?.code || 'unspecified',
+                        storeId: session.sId,
+                        tenantId: session.tId,
+                    },
+                    error: retryParseError,
+                });
+                return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
+            }
         }
 
         if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
@@ -282,3 +305,33 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
     }
 });
+
+function getResponseText(response: any) {
+    return String(
+        response?.text
+        || response?.candidates?.[0]?.content?.parts?.map((part: any) => part?.text || '').join('')
+        || '',
+    ).trim();
+}
+
+function parseJsonLikeResponse(rawText: string) {
+    const cleaned = rawText
+        .replace(/^```(?:json)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+
+    if (!cleaned) {
+        throw new Error('Empty AI response');
+    }
+
+    try {
+        return JSON.parse(cleaned);
+    } catch {
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+        }
+        throw new Error('Invalid JSON response');
+    }
+}

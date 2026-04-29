@@ -7,7 +7,7 @@ import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
-import { Popover, Segmented, theme } from 'antd';
+import { Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFileText, LuFilter, LuFolderInput, LuLanguages, LuSparkles, LuX } from 'react-icons/lu';
@@ -28,7 +28,7 @@ import {
 } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import type { Project } from '../../templates/main-app/projects/types';
 import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
-import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popover, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
 
 interface BulkActionsSheetProps {

@@ -3,7 +3,7 @@ import { AnalyticsData } from '@lib/analytics/types';
 import { Card, Empty, Radio, Table, Typography } from 'antd';
 import React, { useState } from 'react';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 interface LocationBreakdownProps {
   data: AnalyticsData | null;
@@ -148,6 +148,9 @@ const LocationBreakdown: React.FC<LocationBreakdownProps> = ({ data }) => {
         pagination={false}
         size="small"
       />
+      <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 12 }}>
+        Locations are approximate city or region-level only and can include rounded geolocation or timezone-based inference.
+      </Text>
     </Card>
   );
 };

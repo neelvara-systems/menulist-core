@@ -5,11 +5,11 @@ import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES } from '@lib/analytics/settingsDisclosure';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
-import { Popover, theme } from 'antd';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
-import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
+import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popover, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileScreenIntro from '../components/MobileScreenIntro';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
@@ -931,7 +931,7 @@ function FieldGroup({
                 <Text strong>{label}</Text>
                 {tooltip ? (
                     <Popover
-                        content={<div style={{ maxWidth: 240 }}>{tooltip}</div>}
+                        content={tooltip}
                         placement="bottomLeft"
                         trigger="click"
                     >

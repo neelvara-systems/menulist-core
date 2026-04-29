@@ -7,11 +7,20 @@ import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
 
+function formatUpdatedTime(value?: Date | string): string | null {
+    if (!value) return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    return parsed.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+}
+
 interface TodaySoFarCardProps {
     data: DailyViewData | null;
     loading?: boolean;
     showHistorical?: boolean;
     onShowHistorical?: () => void;
+    fetchedAt?: Date | string;
 }
 
 const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
@@ -19,6 +28,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     loading = false,
     showHistorical = true,
     onShowHistorical,
+    fetchedAt,
 }) => {
     const labels = useOfferingLabels();
 
@@ -34,9 +44,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
         return null;
     }
 
-    const updatedLabel = data.lastUpdated
-        ? data.lastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
-        : null;
+    const updatedLabel = formatUpdatedTime(fetchedAt);
 
     const hasActions = Object.values(data.menuActions || {}).some((value) => Number(value) > 0);
     const topSearch = data.topSearchTerms?.[0];
@@ -52,6 +60,9 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                     </Title>
                     <Text type="secondary">
                         This is today&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.
+                    </Text>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                        Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
                     </Text>
                 </div>
                 <div className={styles.todayCardMeta}>
@@ -87,6 +98,9 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
 
             {(topSearch || topUnavailable || hasActions || (data.metrics.zeroResultSearches || 0) > 0) ? (
                 <div className={styles.todayCardNotes}>
+                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
+                        Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+                    </Text>
                     {topSearch ? (
                         <Text style={{ display: 'block' }}>
                             Top search right now: {topSearch.term} ({topSearch.count})

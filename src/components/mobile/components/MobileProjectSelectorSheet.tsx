@@ -39,7 +39,7 @@ type ProjectSheetProject = {
 
 interface MobileProjectSelectorSheetProps {
     currentProjectId?: string | null;
-    currentProjectName?: string | null;
+    currentProjectName?: string | Record<string, string> | null;
     onClose: () => void;
     onOpenDesignEditor?: () => void;
     onProjectsChanged: (preferredProjectId?: string | null) => Promise<void> | void;
@@ -138,6 +138,22 @@ const buildLocalizedDrafts = (
         ])
     )
 );
+
+const pickBestDraftLanguage = (
+    preferredLanguage: string,
+    languages: string[],
+    draftsByLanguage: Record<string, string>,
+) => {
+    if ((draftsByLanguage[preferredLanguage] || '').trim()) {
+        return preferredLanguage;
+    }
+
+    const firstPopulatedLanguage = languages.find((languageCode) => (
+        (draftsByLanguage[languageCode] || '').trim().length > 0
+    ));
+
+    return firstPopulatedLanguage || preferredLanguage;
+};
 
 export default function MobileProjectSelectorSheet({
     currentProjectId,
@@ -261,6 +277,9 @@ export default function MobileProjectSelectorSheet({
     const currentDefaultProjectName = currentDefaultProject
         ? resolveProjectName(currentDefaultProject.name, '')
         : null;
+    const resolvedCurrentProjectName = currentProjectName
+        ? resolveProjectName(currentProjectName, '')
+        : null;
 
     const resetFormState = () => {
         setFormMode(null);
@@ -331,9 +350,13 @@ export default function MobileProjectSelectorSheet({
     const openEdit = async (project: ProjectSheetProject) => {
         const detailedProject = await loadDetailedProject(project);
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
-        const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
         const nextDescriptionDrafts = buildLocalizedDrafts(detailedProject?.description || project.description, languages);
+        const selectedLanguage = pickBestDraftLanguage(
+            getProjectPreferredLanguage(detailedProject, storeDetails),
+            languages,
+            nextNameDrafts,
+        );
 
         setFormMode('edit');
         setFormProjectId(project.projectId);
@@ -353,9 +376,13 @@ export default function MobileProjectSelectorSheet({
     const openDuplicate = async (project: ProjectSheetProject) => {
         const detailedProject = await loadDetailedProject(project);
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
-        const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
         const nextDescriptionDrafts = buildLocalizedDrafts(detailedProject?.description || project.description, languages);
+        const selectedLanguage = pickBestDraftLanguage(
+            getProjectPreferredLanguage(detailedProject, storeDetails),
+            languages,
+            nextNameDrafts,
+        );
         nextNameDrafts[selectedLanguage] = `Copy of ${nextNameDrafts[selectedLanguage] || resolveProjectName(project.name)}`;
 
         setFormMode('duplicate');
@@ -651,7 +678,9 @@ export default function MobileProjectSelectorSheet({
         if (!formSourceProject) return;
         setFormNameDrafts(initialFormNameDrafts);
         setFormDescriptionDrafts(initialFormDescriptionDrafts);
-        setFormSelectedLanguage(formReferenceLanguage);
+        setFormSelectedLanguage(
+            pickBestDraftLanguage(formReferenceLanguage, formLanguages, initialFormNameDrafts)
+        );
         setFormProjectImage(formSourceProject.projectImage || null);
         setFormIsDefault(formSourceProject.isDefault === true);
         setFormActive(formSourceProject.active !== false);
@@ -972,9 +1001,9 @@ export default function MobileProjectSelectorSheet({
                         <Text type="secondary" style={{ textAlign: 'left' }}>
                             {t('selectCatalogDesc')}
                         </Text>
-                        {currentProjectName ? (
+                        {resolvedCurrentProjectName ? (
                             <Text type="secondary" style={{ textAlign: 'left' }}>
-                                {`Current: ${currentProjectName}`}
+                                {`Current: ${resolvedCurrentProjectName}`}
                             </Text>
                         ) : null}
                     </Flex>

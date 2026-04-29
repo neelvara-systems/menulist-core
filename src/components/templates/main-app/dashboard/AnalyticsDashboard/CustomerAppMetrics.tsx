@@ -249,6 +249,18 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 </Col>
             </Row>
 
+            <Alert
+                style={{ marginTop: 16 }}
+                type="info"
+                showIcon
+                message="iOS Safari installs may be inferred"
+                description={
+                    iosManualInstalls > 0
+                        ? `Safari does not provide a standard install event. ${iosManualInstalls.toLocaleString()} iOS installs in this view were inferred from standalone launches or Add to Home Screen behavior, so iOS install counts can be estimated rather than fully confirmed and may appear after the first standalone app open. Installed customer counts are device and browser-based, not exact people.`
+                        : 'Safari does not provide a standard install event. iOS install counts can be inferred from standalone launches or Add to Home Screen behavior, so they may be estimated rather than fully confirmed and can appear after the first standalone app open. Installed customer counts are device and browser-based, not exact people.'
+                }
+            />
+
             {/* Shortcut breakdown — helps owners see which quick-actions customers value most */}
             {summary?.shortcutClicks && Object.keys(summary.shortcutClicks).length > 0 ? (
                 <Row gutter={[16, 16]} style={{ marginTop: 20 }}>

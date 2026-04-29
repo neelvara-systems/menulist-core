@@ -165,6 +165,7 @@ const OwnerDashboard: React.FC = () => {
                     loading={loadingToday}
                     showHistorical={showHistorical}
                     onShowHistorical={() => setShowHistorical(true)}
+                    fetchedAt={data?.lastFetched}
                 />
 
                 {showHistorical ? (

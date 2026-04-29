@@ -10,6 +10,7 @@ import {
     Empty as AntEmpty,
     Input as AntInput,
     List as AntList,
+    Popover as AntPopover,
     Result as AntResult,
     Select as AntSelect,
     Space as AntSpace,
@@ -452,6 +453,46 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     );
 }
 
+export function Popover({
+    children,
+    content,
+    onOpenChange,
+    open,
+    placement = 'bottomLeft',
+    trigger = 'click',
+}: {
+    children?: ReactNode;
+    content?: ReactNode;
+    onOpenChange?: (open: boolean) => void;
+    open?: boolean;
+    placement?: ComponentProps<typeof AntPopover>['placement'];
+    trigger?: ComponentProps<typeof AntPopover>['trigger'];
+}) {
+    return (
+        <AntPopover
+            content={(
+                <div
+                    style={{
+                        maxWidth: 'min(280px, calc(100vw - 64px))',
+                        overflowWrap: 'anywhere',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                    }}
+                >
+                    {content}
+                </div>
+            )}
+            onOpenChange={onOpenChange}
+            open={open}
+            overlayStyle={{ maxWidth: 'calc(100vw - 32px)' }}
+            placement={placement}
+            trigger={trigger}
+        >
+            {children}
+        </AntPopover>
+    );
+}
+
 export function PullToRefresh({ children }: { children?: ReactNode; onRefresh?: () => Promise<void> | void }) {
     return <Fragment>{children}</Fragment>;
 }
@@ -891,7 +932,7 @@ function normalizeTabKey(key: string | null, fallback: string): string {
     return key?.replace(/^\.\$/, '') || fallback;
 }
 
-function TabsComponent({ activeKey, children, onChange, style }: { activeKey?: string; children?: ReactNode; onChange?: (key: string) => void; style?: AnyStyle }) {
+function TabsComponent({ activeKey, centered, children, onChange, style }: { activeKey?: string; centered?: boolean; children?: ReactNode; onChange?: (key: string) => void; style?: AnyStyle }) {
     const items = useMemo(
         () => Children.toArray(children)
             .filter((child): child is ReactElement<TabPaneProps> => isValidElement(child))
@@ -903,7 +944,7 @@ function TabsComponent({ activeKey, children, onChange, style }: { activeKey?: s
         [children]
     );
 
-    return <AntTabs activeKey={activeKey} items={items} onChange={(key) => onChange?.(normalizeTabKey(key, key))} style={sanitizeStyle(style)} />;
+    return <AntTabs activeKey={activeKey} centered={centered} items={items} onChange={(key) => onChange?.(normalizeTabKey(key, key))} style={sanitizeStyle(style)} />;
 }
 
 function TabPane(_: TabPaneProps) {

@@ -206,6 +206,12 @@ export default function MobileCustomerAppMetrics() {
                 </Card>
             </Flex>
 
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 12 }}>
+                {iosManualInstalls > 0
+                    ? `iOS Safari installs may be inferred. Safari does not provide a standard install event, so ${iosManualInstalls.toLocaleString()} iOS installs here were estimated from standalone launches or Add to Home Screen behavior and may appear after the first standalone app open. Installed customer counts are device and browser-based, not exact people.`
+                    : 'iOS Safari installs may be inferred. Safari does not provide a standard install event, so iOS install counts can be estimated from standalone launches or Add to Home Screen behavior and can appear after the first standalone app open. Installed customer counts are device and browser-based, not exact people.'}
+            </Text>
+
             {/* Shortcut breakdown — per-shortcut rows (matches desktop, adapted for narrow mobile) */}
             {summary?.shortcutClicks && Object.keys(summary.shortcutClicks).length > 0 ? (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>

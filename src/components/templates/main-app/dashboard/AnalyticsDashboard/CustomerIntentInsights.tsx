@@ -116,6 +116,10 @@ const CustomerIntentInsights: React.FC<CustomerIntentInsightsProps> = ({ data })
         </Col>
       </Row>
 
+      <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 16 }}>
+        Searches are de-duplicated within a session for cleaner trends. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+      </Text>
+
       {sumMapValues(computed.actionBreakdown) > 0 && (
         <>
           <Text type="secondary">Action breakdown</Text>

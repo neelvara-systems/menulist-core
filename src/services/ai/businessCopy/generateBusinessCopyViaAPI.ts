@@ -64,7 +64,14 @@ export default async function generateBusinessCopyViaAPI(payload: BusinessCopyGe
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            throw new Error(`Business copy generation request failed: ${response.statusText}`);
+            let serverMessage = response.statusText;
+            try {
+                const errorJson = await response.json();
+                serverMessage = errorJson?.details || errorJson?.error || serverMessage;
+            } catch {
+                // Ignore JSON parse failure for error bodies.
+            }
+            throw new Error(`Business copy generation request failed: ${serverMessage}`);
         }
 
         const responseJson = await response.json();

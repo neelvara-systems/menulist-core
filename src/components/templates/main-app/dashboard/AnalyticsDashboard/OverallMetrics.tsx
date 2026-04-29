@@ -174,6 +174,10 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
         </Col>
       </Row>
 
+      <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 16 }}>
+        Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+      </Typography.Text>
+
       <Title level={5}>Recent Performance</Title>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
@@ -214,6 +218,10 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
           </Tooltip>
         </Col>
       </Row>
+
+      <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 16 }}>
+        Location counts are approximate city or region-level only. MenuList does not use exact GPS in this analytics flow.
+      </Typography.Text>
 
       <Title level={5}>Top Performing {labels.itemSingular.charAt(0).toUpperCase() + labels.itemSingular.slice(1)}</Title>
       <Row gutter={[16, 16]}>

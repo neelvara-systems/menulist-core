@@ -39,6 +39,14 @@ const FULL_WIDTH_TAG_STYLE = {
     width: '100%',
 };
 
+function formatUpdatedTime(value?: Date | string): string | null {
+    if (!value) return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    return parsed.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+}
+
 export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
     const { token } = theme.useToken();
@@ -146,6 +154,17 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         stable: token.colorSuccess,
         watch: token.colorWarning,
     };
+    const stickyHistoricalHeaderStyle = {
+        background: token.colorBgLayout,
+        backdropFilter: 'blur(10px)',
+        marginInline: -16,
+        paddingInline: 16,
+        paddingTop: 4,
+        paddingBottom: 8,
+        position: 'sticky' as const,
+        top: 0,
+        zIndex: 20,
+    };
 
     const renderMetricTile = (
         label: ReactNode,
@@ -201,6 +220,9 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         return (
             <Card size="small" title={<Text strong>Customer Intent</Text>}>
                 <Flex gap={8} vertical>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+                    </Text>
                     {hasActions ? (
                         <Text type="secondary">
                             {`Actions: Call ${data.menuActions?.call || 0}, WhatsApp ${data.menuActions?.whatsapp || 0}, Directions ${data.menuActions?.directions || 0}, Reserve ${data.menuActions?.reserve || 0}, Order ${data.menuActions?.order || 0}`}
@@ -238,9 +260,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
         if (!today) return null;
 
-        const updatedLabel = today.lastUpdated
-            ? today.lastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
-            : null;
+        const updatedLabel = formatUpdatedTime(data?.lastFetched);
 
         return (
             <Card size="small" title={<Text strong>Today so far</Text>}>
@@ -248,6 +268,9 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     {updatedLabel
                         ? `Updated ${updatedLabel}. This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.`
                         : "This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow."}
+                </Text>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+                    Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
                 </Text>
                 {renderMetricsCards(today.metrics)}
                 <div style={{ marginTop: 12 }}>
@@ -331,7 +354,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     };
 
     return (
-        <Flex style={{ height: '100%' }} vertical>
+        <Flex style={{ minHeight: '100%' }} vertical>
             <NavBar
                 onBack={onBack}
                 right={
@@ -343,11 +366,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 }
             />
 
-            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+            <Flex gap={16} style={{ padding: 16, paddingBottom: 24 }} vertical>
                 <MobileScreenIntro
                     subtitle={t('subtitle', { offering: labels.offeringLower })}
                     title={t('title')}
                 />
+
                 <ProjectSelectorTrigger
                     clickable={projectsList.length > 1}
                     currentProject={{
@@ -370,25 +394,27 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 {renderTodaySoFar()}
 
                 {showHistorical ? (
-                    <>
-                        <Card size="small">
-                            <Tabs activeKey={viewMode} onChange={handleViewModeChange}>
-                                <Tabs.Tab title={t('overview')} key="overview" />
-                                <Tabs.Tab title={t('daily')} key="daily" />
-                                <Tabs.Tab title={t('weekly')} key="weekly" />
-                                <Tabs.Tab title={t('monthly')} key="monthly" />
-                            </Tabs>
+                    <div style={stickyHistoricalHeaderStyle}>
+                        <Card className="mobile-dashboard-tabs-card" size="small">
+                            <div className="mobile-dashboard-tabs">
+                                <Tabs activeKey={viewMode} centered onChange={handleViewModeChange}>
+                                    <Tabs.Tab title={t('overview')} key="overview" />
+                                    <Tabs.Tab title={t('daily')} key="daily" />
+                                    <Tabs.Tab title={t('weekly')} key="weekly" />
+                                    <Tabs.Tab title={t('monthly')} key="monthly" />
+                                </Tabs>
+                            </div>
                         </Card>
+                    </div>
+                ) : null}
 
-                        {viewMode === 'overview' ? (
-                            <Tag
-                                color={overviewStatus.color}
-                                style={FULL_WIDTH_TAG_STYLE}
-                            >
-                                {overviewStatus.text}
-                            </Tag>
-                        ) : null}
-                    </>
+                {showHistorical && viewMode === 'overview' ? (
+                    <Tag
+                        color={overviewStatus.color}
+                        style={{ ...FULL_WIDTH_TAG_STYLE }}
+                    >
+                        {overviewStatus.text}
+                    </Tag>
                 ) : null}
 
                 {showHistorical && isLoading ? (
@@ -603,6 +629,16 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     </>
                 ) : null}
             </Flex>
+
+            <style jsx global>{`
+                .mobile-dashboard-tabs-card .adm-card-body {
+                    padding: 10px 14px;
+                }
+
+                .mobile-dashboard-tabs .adm-tabs-header {
+                    margin-bottom: 0;
+                }
+            `}</style>
 
             <MobileProjectSelectorSheet
                 currentProjectId={selectedProjectId}
