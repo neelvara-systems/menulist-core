@@ -33,6 +33,7 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { sanitizeForClient } from "@lib/mce/utils";
@@ -661,7 +662,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             return {
                 title,
                 description,
-                keywords: metadataStore.keywords?.join(", "),
+                keywords: getResolvedStoreKeywords(
+                    metadataStore?.keywords,
+                    contentLanguage,
+                    [],
+                ).join(", "),
                 manifest: manifestUrl,
                 alternates: contextMetadata.alternates,
                 openGraph: {
@@ -703,7 +708,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
         title,
         description,
-        keywords: metadataStore.keywords?.join(", "),
+        keywords: getResolvedStoreKeywords(
+            metadataStore?.keywords,
+            contentLanguage,
+            [],
+        ).join(", "),
         manifest: manifestUrl,
         alternates: {
             // Precedence: owner-supplied custom canonical (rare) > R5 Layer 2

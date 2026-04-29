@@ -3,6 +3,7 @@
 import { updateStore } from '@database/stores';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES } from '@lib/analytics/settingsDisclosure';
+import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { theme } from 'antd';
@@ -12,7 +13,7 @@ import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } fro
 import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popover, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileScreenIntro from '../components/MobileScreenIntro';
-import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
+import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
 
 interface MobileSeoAnalyticsScreenProps {
@@ -40,13 +41,14 @@ type SeoDraft = {
     tagline: string;
 };
 
-type LocalizedSeoFields = Pick<SeoDraft, 'metaDescription' | 'metaTitle' | 'tagline'>;
+type LocalizedSeoFields = Pick<SeoDraft, 'keywords' | 'metaDescription' | 'metaTitle' | 'tagline'>;
 
 function buildLocalizedSeoDrafts(storeDetails: any, languages: string[]): Record<string, LocalizedSeoFields> {
     return Object.fromEntries(
         languages.map((languageCode) => [
             languageCode,
             {
+                keywords: getLocalizedStoreKeywords(storeDetails?.keywords, languageCode, []).join(', '),
                 metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
                 metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
                 tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
@@ -63,7 +65,6 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [canonicalUrl, setCanonicalUrl] = useState('');
-    const [keywords, setKeywords] = useState('');
     const [selectedLanguage, setSelectedLanguage] = useState('en');
     const [localizedSeoDrafts, setLocalizedSeoDrafts] = useState<Record<string, LocalizedSeoFields>>({});
     const [originalLocalizedSeoDrafts, setOriginalLocalizedSeoDrafts] = useState<Record<string, LocalizedSeoFields>>({});
@@ -87,7 +88,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const contentLanguage = selectedLanguage || getStorePreferredLanguage(storeDetails);
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
-    const currentSeoDraft = localizedSeoDrafts[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' };
+    const currentSeoDraft = localizedSeoDrafts[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' };
     const publicDisplayName = getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, '');
 
     useEffect(() => {
@@ -98,7 +99,6 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setLocalizedSeoDrafts(nextLocalizedDrafts);
         setOriginalLocalizedSeoDrafts(nextLocalizedDrafts);
         setCanonicalUrl(storeDetails.canonicalUrl || '');
-        setKeywords((storeDetails.keywords || []).join(', '));
         setOriginalSeoState(getSeoDraft(storeDetails));
         const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails.analytics);
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
@@ -117,12 +117,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         if (!storeDetails?.storeId) return;
         try {
             const update: any = { storeId: storeDetails.storeId };
-            if (field === 'keywords') {
-                update.keywords = String(value)
-                    .split(',')
-                    .map((item) => item.trim())
-                    .filter(Boolean);
-            } else if (field.startsWith('analytics.')) {
+            if (field.startsWith('analytics.')) {
                 const analyticsKey = field.replace('analytics.', '');
                 update.analytics = { ...storeDetails.analytics, [analyticsKey]: value };
             } else {
@@ -156,7 +151,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         && JSON.stringify(analyticsDraft) !== JSON.stringify(originalAnalyticsState);
     const seoDraft: SeoDraft = {
         canonicalUrl,
-        keywords,
+        keywords: currentSeoDraft.keywords,
         metaDescription: currentSeoDraft.metaDescription,
         metaTitle: currentSeoDraft.metaTitle,
         tagline: currentSeoDraft.tagline,
@@ -423,7 +418,6 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const resetSeoSettings = () => {
         if (!originalSeoState) return;
         setLocalizedSeoDrafts(originalLocalizedSeoDrafts);
-        setKeywords(originalSeoState.keywords);
         setCanonicalUrl(originalSeoState.canonicalUrl);
     };
 
@@ -434,13 +428,19 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             const update = {
                 businessCopyMeta: buildBusinessCopyManualOverrideMeta({
                     existingMeta: storeDetails?.businessCopyMeta,
-                    fieldKeys: ['metaTitle', 'metaDescription', 'tagline'],
+                    fieldKeys: ['metaTitle', 'metaDescription', 'tagline', 'keywords'],
                 }),
                 canonicalUrl,
-                keywords: keywords
-                    .split(',')
-                    .map((item) => item.trim())
-                    .filter(Boolean),
+                keywords: applyLocalizedKeywordDraftMap(
+                    storeDetails?.keywords,
+                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [
+                        languageCode,
+                        String(draft.keywords || '')
+                            .split(',')
+                            .map((item) => item.trim())
+                            .filter(Boolean),
+                    ])),
+                ),
                 metaDescription: applyLocalizedDraftMap(
                     storeDetails?.metaDescription,
                     Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaDescription])),
@@ -483,7 +483,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 {isSeoMode ? (
                     <>
                         <MobileLocalizedLanguageSelector
-                            helperText="Choose which store language you want to edit. SEO keywords and canonical URL remain shared across languages."
+                            helperText="Choose which store language you want to edit. Canonical URL remains shared across languages."
                             languages={managedLanguages}
                             onChange={setSelectedLanguage}
                             selectedLanguage={contentLanguage}
@@ -498,7 +498,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
                                             [contentLanguage]: {
-                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
                                                 tagline: value,
                                             },
                                         }))}
@@ -512,7 +512,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                         onUseReference={() => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
                                             [contentLanguage]: {
-                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
                                                 tagline: previous[referenceLanguage]?.tagline || '',
                                             },
                                         }))}
@@ -527,7 +527,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
                                             [contentLanguage]: {
-                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
                                                 metaTitle: value,
                                             },
                                         }))}
@@ -541,7 +541,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                         onUseReference={() => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
                                             [contentLanguage]: {
-                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
                                                 metaTitle: previous[referenceLanguage]?.metaTitle || '',
                                             },
                                         }))}
@@ -556,7 +556,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
                                             [contentLanguage]: {
-                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
                                                 metaDescription: value,
                                             },
                                         }))}
@@ -570,7 +570,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                         onUseReference={() => setLocalizedSeoDrafts((previous) => ({
                                             ...previous,
                                             [contentLanguage]: {
-                                                ...(previous[contentLanguage] || { metaDescription: '', metaTitle: '', tagline: '' }),
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
                                                 metaDescription: previous[referenceLanguage]?.metaDescription || '',
                                             },
                                         }))}
@@ -582,10 +582,16 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     <TextArea
                                         autoSize={{ minRows: 2, maxRows: 5 }}
                                         maxLength={300}
-                                        onChange={setKeywords}
+                                        onChange={(value) => setLocalizedSeoDrafts((previous) => ({
+                                            ...previous,
+                                            [contentLanguage]: {
+                                                ...(previous[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' }),
+                                                keywords: value,
+                                            },
+                                        }))}
                                         placeholder={tSeo('keywordsPlaceholder')}
                                         showCount
-                                        value={keywords}
+                                        value={currentSeoDraft.keywords}
                                     />
                                 </FieldGroup>
                                 <FieldGroup label={tSeo('canonicalUrl')} tooltip={tSeo('canonicalUrlHelp')}>
@@ -631,7 +637,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             businessName={storeDetails?.name}
                             canonicalUrl={canonicalUrl}
                             customDomain={storeDetails?.customDomain}
-                            keywords={keywords}
+                            keywords={currentSeoDraft.keywords}
                             logoUrl={storeDetails?.logo}
                             metaDescription={currentSeoDraft.metaDescription}
                             metaTitle={currentSeoDraft.metaTitle}
@@ -1087,7 +1093,7 @@ function getSeoDraft(storeDetails: any): SeoDraft {
     const preferredLanguage = getStorePreferredLanguage(storeDetails);
     return {
         canonicalUrl: storeDetails?.canonicalUrl || '',
-        keywords: (storeDetails?.keywords || []).join(', '),
+        keywords: getLocalizedStoreKeywords(storeDetails?.keywords, preferredLanguage, []).join(', '),
         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, preferredLanguage, ''),
         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, preferredLanguage, ''),
         tagline: getLocalizedStoreValue(storeDetails?.tagline, preferredLanguage, ''),

@@ -1,5 +1,5 @@
 import { Timestamp } from "firebase/firestore";
-import type { LocalizedText } from "@lib/localization/text";
+import type { LocalizedStringList, LocalizedText } from "@lib/localization/text";
 import type { OutletPolicy } from "../multiOutlet.types";
 import { StoreRoleDataType } from "./roles";
 
@@ -103,7 +103,7 @@ export type StoreDataType = {
     // SEO Settings (from Business Settings)
     metaTitle?: string | LocalizedText;
     metaDescription?: string | LocalizedText;
-    keywords?: string[];
+    keywords?: string[] | LocalizedStringList;
     canonicalUrl?: string;
     tagline?: string | LocalizedText;
 

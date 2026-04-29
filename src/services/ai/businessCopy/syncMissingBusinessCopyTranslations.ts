@@ -1,5 +1,5 @@
 import { getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
-import { getPrimaryLocalizedLanguage, getLocalizedText, toLocalizedText } from '@lib/localization/text';
+import { getLocalizedDraftStringList, getPrimaryLocalizedLanguage, getLocalizedText, toLocalizedStringList, toLocalizedText } from '@lib/localization/text';
 import { logger } from '@lib/monitoring/logger';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
 import {
@@ -8,6 +8,7 @@ import {
     getBatchTranslations,
     LocalizedBusinessCopyFields,
     mergeLocalizedField,
+    mergeLocalizedKeywordField,
     resolveLanguage,
 } from './localizeBusinessCopyResult';
 import { BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
@@ -86,7 +87,14 @@ export default async function syncMissingBusinessCopyTranslations({
 
     const translatedByLanguage = await translateBatch({
         fileId: `business-copy-coverage-${storeDetails?.storeId || 'store'}-batch`,
-        inputJson: payload,
+        inputJson: {
+            ...payload,
+            ...(coverage.fields.some((field) => field.key === 'keywords' && field.status !== 'empty')
+                ? {
+                    keywords: getLocalizedDraftStringList(storeDetails?.keywords, referenceLanguage, []).join(', '),
+                }
+                : {}),
+        },
         projectId: projectId || String(storeDetails?.storeId || 'business-copy'),
         sourceLang: sourceLanguageDef,
         targetLang: targetLanguages,
@@ -112,9 +120,22 @@ export default async function syncMissingBusinessCopyTranslations({
             ...baseLocalized,
         };
     });
+    localized.keywords = toLocalizedStringList(storeDetails?.keywords, referenceLanguage) || {};
 
     coverage.fields.forEach((field) => {
         field.missingLanguages.forEach((languageCode) => {
+            if (field.key === 'keywords') {
+                const keywordValues = String(translatedByLanguage?.[languageCode]?.keywords || '')
+                    .split(/[,\u060C\uFF0C;\u061B]/)
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                    .slice(0, 10);
+                if (!keywordValues.length) return;
+                localized.keywords = mergeLocalizedKeywordField(localized.keywords, {
+                    [languageCode]: keywordValues,
+                });
+                return;
+            }
             const translatedFieldValue = translatedByLanguage?.[languageCode]?.[field.key];
             const clampedValue = clampValue(translatedFieldValue, FIELD_LIMITS[field.key]);
             if (!clampedValue) return;

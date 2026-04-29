@@ -1,4 +1,5 @@
 import { getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
+import { getLocalizedDraftStringList, getLocalizedStringList, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
 import { BusinessCopyFieldValue, computeBusinessCopyCoverageCore } from './translationCoverageCore';
 
@@ -16,17 +17,30 @@ type CoverageOptions = {
     includePwaShortName?: boolean;
 };
 
-function getKeywordsCoverageField(storeDetails?: any): BusinessCopyCoverageField {
-    const keywords = Array.isArray(storeDetails?.keywords)
-        ? storeDetails.keywords.map((keyword: unknown) => String(keyword || '').trim()).filter(Boolean)
+function getKeywordsCoverageField(
+    storeDetails: any,
+    managedLanguages: string[],
+    referenceLanguage: string,
+): BusinessCopyCoverageField {
+    const keywords = getLocalizedStringList(
+        storeDetails?.keywords,
+        referenceLanguage,
+        getPrimaryLocalizedLanguage(storeDetails?.keywords, referenceLanguage),
+        [],
+    );
+    const missingLanguages = keywords.length > 0
+        ? managedLanguages.filter((languageCode) => (
+            languageCode !== referenceLanguage
+            && getLocalizedDraftStringList(storeDetails?.keywords, languageCode, []).length === 0
+        ))
         : [];
 
     return {
         key: 'keywords',
-        missingLanguages: [],
-        scope: 'shared',
+        missingLanguages,
+        scope: 'localized',
         sourceValue: keywords.join(', '),
-        status: keywords.length > 0 ? 'ok' : 'empty',
+        status: !keywords.length ? 'empty' : missingLanguages.length > 0 ? 'warning' : 'ok',
     };
 }
 
@@ -54,7 +68,7 @@ export function computeBusinessCopyCoverage(
         ...field,
         scope: 'localized',
     }));
-    const keywordsField = getKeywordsCoverageField(storeDetails);
+    const keywordsField = getKeywordsCoverageField(storeDetails, managedLanguages, result.referenceLanguage);
     const fields = [...localizedFields, keywordsField];
 
     return {

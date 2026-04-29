@@ -1,5 +1,11 @@
 'use client';
-import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
+import {
+    getStoreLanguageLabel,
+    getStoreManagedLanguages,
+    getStorePreferredLanguage,
+    getLocalizedStoreKeywords,
+    getLocalizedStoreValue,
+} from '@lib/localization/storeContent';
 import { Button, Card, Divider, Form, Input, Select, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useEffect } from 'react';
@@ -17,6 +23,7 @@ interface SeoTabProps {
 function getLocalizedSeoValues(storeDetails?: any) {
     const contentLanguage = getStorePreferredLanguage(storeDetails);
     return {
+        keywords: getLocalizedStoreKeywords(storeDetails?.keywords, contentLanguage, []),
         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, contentLanguage, ''),
         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, contentLanguage, ''),
         tagline: getLocalizedStoreValue(storeDetails?.tagline, contentLanguage, ''),
@@ -50,7 +57,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         tagline,
     }) !== JSON.stringify({
         canonicalUrl: storeDetails?.canonicalUrl || '',
-        keywords: storeDetails?.keywords || [],
+        keywords: localizedSeoValues.keywords,
         metaDescription: localizedSeoValues.metaDescription,
         metaTitle: localizedSeoValues.metaTitle,
         tagline: localizedSeoValues.tagline,
@@ -64,6 +71,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                 managedLanguages.map((languageCode) => [
                     languageCode,
                     {
+                        keywords: getLocalizedStoreKeywords(storeDetails?.keywords, languageCode, []),
                         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
                         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
                         tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
@@ -74,6 +82,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         form.setFieldsValue({
             __localizedSeoDrafts: nextDrafts,
             __storeContentLanguage: currentLanguage,
+            keywords: nextDrafts[currentLanguage]?.keywords || [],
             metaDescription: nextDrafts[currentLanguage]?.metaDescription || '',
             metaTitle: nextDrafts[currentLanguage]?.metaTitle || '',
             tagline: nextDrafts[currentLanguage]?.tagline || '',
@@ -86,22 +95,24 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             __localizedSeoDrafts: {
                 ...localizedSeoDrafts,
                 [currentLanguage]: {
+                    keywords: Array.isArray(keywords) ? keywords : [],
                     metaDescription: metaDescription || '',
                     metaTitle: metaTitle || '',
                     tagline: tagline || '',
                 },
             },
         });
-    }, [currentLanguage, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [currentLanguage, keywords, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleResetSeo = () => {
         const resetDrafts = Object.fromEntries(
             managedLanguages.map((languageCode) => [
-                languageCode,
-                {
-                    metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
-                    metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
-                    tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
+                    languageCode,
+                    {
+                        keywords: getLocalizedStoreKeywords(storeDetails?.keywords, languageCode, []),
+                        metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
+                        metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
+                        tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
                 },
             ]),
         );
@@ -109,7 +120,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             __localizedSeoDrafts: resetDrafts,
             __storeContentLanguage: currentLanguage,
             canonicalUrl: storeDetails?.canonicalUrl || '',
-            keywords: storeDetails?.keywords || [],
+            keywords: resetDrafts[currentLanguage]?.keywords || [],
             metaDescription: resetDrafts[currentLanguage]?.metaDescription || '',
             metaTitle: resetDrafts[currentLanguage]?.metaTitle || '',
             tagline: resetDrafts[currentLanguage]?.tagline || '',
@@ -132,6 +143,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                             const nextDrafts = {
                                 ...localizedSeoDrafts,
                                 [currentLanguage]: {
+                                    keywords: Array.isArray(keywords) ? keywords : [],
                                     metaDescription: metaDescription || '',
                                     metaTitle: metaTitle || '',
                                     tagline: tagline || '',
@@ -141,6 +153,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                             form.setFieldsValue({
                                 __localizedSeoDrafts: nextDrafts,
                                 __storeContentLanguage: nextLanguage,
+                                keywords: nextDrafts[nextLanguage]?.keywords || [],
                                 metaDescription: nextDrafts[nextLanguage]?.metaDescription || '',
                                 metaTitle: nextDrafts[nextLanguage]?.metaTitle || '',
                                 tagline: nextDrafts[nextLanguage]?.tagline || '',
@@ -167,6 +180,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                         const nextDrafts = {
                             ...localizedSeoDrafts,
                             [currentLanguage]: {
+                                keywords: Array.isArray(keywords) ? keywords : [],
                                 metaDescription: metaDescription || '',
                                 metaTitle: metaTitle || '',
                                 tagline: referenceValue(localizedSeoDrafts[referenceLanguage]?.tagline),
@@ -200,6 +214,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                         const nextDrafts = {
                             ...localizedSeoDrafts,
                             [currentLanguage]: {
+                                keywords: Array.isArray(keywords) ? keywords : [],
                                 metaDescription: metaDescription || '',
                                 metaTitle: referenceValue(localizedSeoDrafts[referenceLanguage]?.metaTitle),
                                 tagline: tagline || '',
@@ -228,6 +243,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                         const nextDrafts = {
                             ...localizedSeoDrafts,
                             [currentLanguage]: {
+                                keywords: Array.isArray(keywords) ? keywords : [],
                                 metaDescription: referenceValue(localizedSeoDrafts[referenceLanguage]?.metaDescription),
                                 metaTitle: metaTitle || '',
                                 tagline: tagline || '',
@@ -255,6 +271,31 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                     tokenSeparators={[',']}
                 />
             </Form.Item>
+            {currentLanguage !== referenceLanguage ? (
+                <DesktopLocalizedReferenceHint
+                    onUseReference={() => {
+                        const referenceKeywords = Array.isArray(localizedSeoDrafts[referenceLanguage]?.keywords)
+                            ? localizedSeoDrafts[referenceLanguage].keywords
+                            : [];
+                        const nextDrafts = {
+                            ...localizedSeoDrafts,
+                            [currentLanguage]: {
+                                keywords: referenceKeywords,
+                                metaDescription: metaDescription || '',
+                                metaTitle: metaTitle || '',
+                                tagline: tagline || '',
+                            },
+                        };
+
+                        form.setFieldsValue({
+                            __localizedSeoDrafts: nextDrafts,
+                            keywords: referenceKeywords,
+                        });
+                    }}
+                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                    referenceValue={Array.isArray(localizedSeoDrafts[referenceLanguage]?.keywords) ? localizedSeoDrafts[referenceLanguage].keywords.join(', ') : ''}
+                />
+            ) : null}
 
             <Form.Item
                 label={<FieldLabel label={t('canonicalUrl')} tooltip={t('canonicalUrlHelp')} />}

@@ -1,7 +1,7 @@
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getStoreManagedLanguages } from '@lib/localization/storeContent';
 import { BusinessCopyCoverageField } from './translationCoverage';
-import { BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
+import { getBusinessCopyFieldConfigs } from './fieldConfig';
 
 export type BusinessCopyMeta = {
     lastGeneratedAt?: string;
@@ -18,7 +18,7 @@ export type BusinessCopyMeta = {
     lastRepairedTargetLanguages?: string[];
 };
 
-export function getBusinessCopyFieldKeys(includePwaShortName: boolean = true): BusinessCopyLocalizedFieldKey[] {
+export function getBusinessCopyFieldKeys(includePwaShortName: boolean = true): string[] {
     return getBusinessCopyFieldConfigs(includePwaShortName).map((field) => field.key);
 }
 
@@ -41,7 +41,7 @@ export function buildBusinessCopyGeneratedMeta({
     return {
         ...(existingMeta || {}),
         lastGeneratedAt: new Date().toISOString(),
-        lastGeneratedFieldKeys: getBusinessCopyFieldKeys(includePwaShortName),
+        lastGeneratedFieldKeys: [...getBusinessCopyFieldKeys(includePwaShortName), 'keywords'],
         lastGeneratedProjectId: projectId,
         lastGeneratedSourceLanguage: resolvedSourceLanguage,
         lastGeneratedTargetLanguages: targetLanguages,
@@ -59,7 +59,7 @@ export function buildBusinessCopyRepairMeta({
 }): BusinessCopyMeta {
     const repairedFieldKeys = coverageFields
         .filter((field) => field.missingLanguages.length > 0)
-        .map((field) => field.key as BusinessCopyLocalizedFieldKey);
+        .map((field) => field.key);
     const targetLanguages = Array.from(new Set(
         coverageFields.flatMap((field) => field.missingLanguages),
     ));
@@ -79,7 +79,7 @@ export function buildBusinessCopyManualOverrideMeta({
     fieldKeys,
 }: {
     existingMeta?: BusinessCopyMeta;
-    fieldKeys: BusinessCopyLocalizedFieldKey[];
+    fieldKeys: string[];
 }): BusinessCopyMeta {
     if (!fieldKeys.length) {
         return existingMeta || {};
@@ -92,8 +92,8 @@ export function buildBusinessCopyManualOverrideMeta({
     };
 }
 
-export function getBusinessCopyFieldKeysFromUpdate(update: any): BusinessCopyLocalizedFieldKey[] {
-    const fieldKeys = new Set<BusinessCopyLocalizedFieldKey>();
+export function getBusinessCopyFieldKeysFromUpdate(update: any): string[] {
+    const fieldKeys = new Set<string>();
 
     if (update?.publicPresence) {
         if ('displayName' in update.publicPresence) fieldKeys.add('displayName');
@@ -103,6 +103,7 @@ export function getBusinessCopyFieldKeysFromUpdate(update: any): BusinessCopyLoc
     if ('tagline' in (update || {})) fieldKeys.add('tagline');
     if ('metaTitle' in (update || {})) fieldKeys.add('metaTitle');
     if ('metaDescription' in (update || {})) fieldKeys.add('metaDescription');
+    if ('keywords' in (update || {})) fieldKeys.add('keywords');
     if (update?.pwaSettings && 'pwaShortName' in update.pwaSettings) fieldKeys.add('pwaShortName');
 
     return Array.from(fieldKeys);

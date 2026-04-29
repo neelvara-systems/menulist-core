@@ -1,6 +1,9 @@
 export {
+    applyLocalizedKeywordDraftMap,
     applyLocalizedDraftMap,
+    getLocalizedStoreKeywords,
     getLocalizedStoreValue,
+    getResolvedStoreKeywords,
     getStoreLanguageLabel,
     getStoreManagedLanguages,
     getStorePreferredLanguage,

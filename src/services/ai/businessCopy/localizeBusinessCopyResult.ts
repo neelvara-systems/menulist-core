@@ -1,6 +1,6 @@
 import GlobalLanguagesList from '@data/languages';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
-import { LocalizedText, toLocalizedText } from '@lib/localization/text';
+import { LocalizedStringList, LocalizedText, normalizeStringList, toLocalizedStringList, toLocalizedText } from '@lib/localization/text';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
@@ -10,6 +10,7 @@ import { BUSINESS_COPY_FIELD_LIMITS, BusinessCopyLocalizedFieldKey, getBusinessC
 export type LocalizedBusinessCopyFields = {
     descriptor?: LocalizedText;
     displayName?: LocalizedText;
+    keywords?: LocalizedStringList;
     knownFor?: LocalizedText;
     metaDescription?: LocalizedText;
     metaTitle?: LocalizedText;
@@ -33,7 +34,7 @@ export const resolveLanguage = (code?: string | null): LanguageType | null => {
 
 export const clampValue = (value: unknown, maxLength: number) => String(value || '').trim().slice(0, maxLength);
 
-const toFieldPayload = (generated: BusinessCopyGenerationResult): Record<keyof LocalizedBusinessCopyFields, string> => (
+const toFieldPayload = (generated: BusinessCopyGenerationResult): Record<BusinessCopyLocalizedFieldKey, string> => (
     Object.fromEntries(
         getBusinessCopyFieldConfigs(true).map((field) => [
             field.key,
@@ -44,7 +45,7 @@ const toFieldPayload = (generated: BusinessCopyGenerationResult): Record<keyof L
 
 function buildLocalizedFields(
     sourceLanguage: string,
-    payload: Record<keyof LocalizedBusinessCopyFields, string>,
+    payload: Record<BusinessCopyLocalizedFieldKey, string>,
 ): LocalizedBusinessCopyFields {
     return Object.fromEntries(
         Object.entries(payload).map(([field, value]) => [
@@ -143,6 +144,7 @@ export default async function localizeBusinessCopyResult({
     const sourceLanguageDef = resolveLanguage(sourceLanguage);
     const payload = toFieldPayload(generated);
     const localized = buildLocalizedFields(sourceLanguage, payload);
+    localized.keywords = toLocalizedStringList(generated.keywords, sourceLanguage);
 
     if (!sourceLanguageDef) {
         return localized;
@@ -159,7 +161,10 @@ export default async function localizeBusinessCopyResult({
 
     const translatedByLanguage = await getBatchTranslations({
         fileId: `business-copy-${storeDetails?.storeId || 'store'}-batch`,
-        inputJson: payload,
+        inputJson: {
+            ...payload,
+            keywords: generated.keywords.join(', '),
+        },
         projectId: projectId || String(storeDetails?.storeId || 'business-copy'),
         sourceLang: sourceLanguageDef,
         targetLang: targetLanguages,
@@ -173,7 +178,7 @@ export default async function localizeBusinessCopyResult({
         const translated = translatedByLanguage[targetLanguage.code];
         if (!translated) return;
 
-        (Object.keys(payload) as Array<keyof LocalizedBusinessCopyFields>).forEach((field) => {
+        (Object.keys(payload) as BusinessCopyLocalizedFieldKey[]).forEach((field) => {
             const nextValue = clampValue(translated[field], FIELD_LIMITS[field]);
             if (!nextValue) return;
             const current = localized[field] || {};
@@ -182,7 +187,43 @@ export default async function localizeBusinessCopyResult({
                 [targetLanguage.code]: nextValue,
             };
         });
+
+        const translatedKeywords = parseKeywordString(translated.keywords);
+        if (translatedKeywords.length > 0) {
+            localized.keywords = {
+                ...(localized.keywords || {}),
+                [targetLanguage.code]: translatedKeywords,
+            };
+        }
     });
 
     return localized;
+}
+
+export function mergeLocalizedKeywordField(
+    existingValue: unknown,
+    nextValue?: LocalizedStringList,
+): LocalizedStringList | undefined {
+    const existing = toLocalizedStringList(existingValue as any, 'en') || {};
+    const next = nextValue || {};
+    const merged = {
+        ...existing,
+        ...next,
+    };
+
+    const normalized = Object.fromEntries(
+        Object.entries(merged).map(([key, value]) => [key, normalizeStringList(value)]).filter(
+            ([key, value]) => key && Array.isArray(value) && value.length > 0,
+        ),
+    ) as LocalizedStringList;
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function parseKeywordString(value: unknown): string[] {
+    return String(value || '')
+        .split(/[,\u060C\uFF0C;\u061B]/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 10);
 }

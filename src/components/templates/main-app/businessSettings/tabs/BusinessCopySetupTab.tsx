@@ -125,6 +125,16 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
 
             await onApplyGeneratedCopy(generated, projectContext?.projectId);
             form.setFieldsValue({
+                __localizedSeoDrafts: {
+                    ...(form.getFieldValue('__localizedSeoDrafts') || {}),
+                    [contentLanguage]: {
+                        ...((form.getFieldValue('__localizedSeoDrafts') || {})[contentLanguage] || {}),
+                        keywords: generated.keywords,
+                        metaDescription: generated.metaDescription,
+                        metaTitle: generated.metaTitle,
+                        tagline: generated.tagline,
+                    },
+                },
                 keywords: generated.keywords,
                 metaDescription: generated.metaDescription,
                 metaTitle: generated.metaTitle,

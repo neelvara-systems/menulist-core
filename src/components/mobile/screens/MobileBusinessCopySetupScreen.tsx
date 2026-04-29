@@ -8,7 +8,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import generateBusinessCopyViaAPI from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
-import localizeBusinessCopyResult, { mergeLocalizedField } from '@services/ai/businessCopy/localizeBusinessCopyResult';
+import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from '@services/ai/businessCopy/localizeBusinessCopyResult';
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyRepairMeta } from '@services/ai/businessCopy/metadata';
 import syncMissingBusinessCopyTranslations from '@services/ai/businessCopy/syncMissingBusinessCopyTranslations';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
@@ -147,7 +147,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     sourceLanguage: contentLanguage,
                     storeDetails,
                 }),
-                keywords: generated.keywords,
+                keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
                 metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
                 metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
                 ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
@@ -169,7 +169,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
 
             setStoreDetails((previous: any) => ({
                 ...previous,
-                keywords: generated.keywords,
+                keywords: nextStoreUpdate.keywords,
                 businessCopyMeta: nextStoreUpdate.businessCopyMeta,
                 metaDescription: nextStoreUpdate.metaDescription,
                 metaTitle: nextStoreUpdate.metaTitle,
@@ -230,6 +230,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     existingMeta: storeDetails?.businessCopyMeta,
                     referenceLanguage: coverage.referenceLanguage,
                 }),
+                keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
                 metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
                 metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
                 ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
@@ -251,6 +252,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
 
             setStoreDetails((previous: any) => ({
                 ...previous,
+                keywords: nextStoreUpdate.keywords,
                 businessCopyMeta: nextStoreUpdate.businessCopyMeta,
                 metaDescription: nextStoreUpdate.metaDescription,
                 metaTitle: nextStoreUpdate.metaTitle,

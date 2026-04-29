@@ -1,5 +1,13 @@
 import { CANONICAL_SOURCE_LANGUAGE, normalizeStoreLanguagePolicy } from './languagePolicy';
-import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from './text';
+import {
+    getLocalizedDraftStringList,
+    getLocalizedDraftText,
+    getLocalizedStringList,
+    getLocalizedText,
+    getPrimaryLocalizedLanguage,
+    updateLocalizedStringList,
+    updateLocalizedText,
+} from './text';
 import GlobalLanguagesList from '@data/languages';
 
 export function getStoreManagedLanguages(storeDetails?: any): string[] {
@@ -39,6 +47,22 @@ export function getLocalizedStoreValue(
     return getLocalizedDraftText(value, languageCode, fallback);
 }
 
+export function getLocalizedStoreKeywords(
+    value: any,
+    languageCode: string,
+    fallback: string[] = [],
+): string[] {
+    return getLocalizedDraftStringList(value, languageCode, fallback);
+}
+
+export function getResolvedStoreKeywords(
+    value: any,
+    languageCode: string,
+    fallback: string[] = [],
+): string[] {
+    return getLocalizedStringList(value, languageCode, getPrimaryLocalizedLanguage(value, CANONICAL_SOURCE_LANGUAGE), fallback);
+}
+
 export function applyLocalizedDraftMap(
     existingValue: any,
     draftsByLanguage: Record<string, string>,
@@ -46,6 +70,18 @@ export function applyLocalizedDraftMap(
     return Object.entries(draftsByLanguage).reduce(
         (nextValue, [languageCode, draftValue]) => (
             updateLocalizedText(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
+        ),
+        existingValue,
+    );
+}
+
+export function applyLocalizedKeywordDraftMap(
+    existingValue: any,
+    draftsByLanguage: Record<string, string[]>,
+): any {
+    return Object.entries(draftsByLanguage).reduce(
+        (nextValue, [languageCode, draftValue]) => (
+            updateLocalizedStringList(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
         ),
         existingValue,
     );

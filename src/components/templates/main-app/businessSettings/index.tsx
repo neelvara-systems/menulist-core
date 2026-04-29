@@ -11,14 +11,14 @@ import { updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
-import { getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from "@lib/localization/text";
+import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
-import localizeBusinessCopyResult, { mergeLocalizedField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
+import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
 import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncMissingBusinessCopyTranslations";
 import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
-import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage } from "@lib/localization/storeContent";
+import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage } from "@lib/localization/storeContent";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
@@ -144,6 +144,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
             managedLanguages.map((languageCode) => [
                 languageCode,
                 {
+                    keywords: getLocalizedStoreKeywords(storeDetails?.keywords, languageCode, []),
                     metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, languageCode, ''),
                     metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, languageCode, ''),
                     tagline: getLocalizedStoreValue(storeDetails?.tagline, languageCode, ''),
@@ -152,6 +153,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
         ),
         __storeContentLanguage: getStorePreferredLanguage(storeDetails),
         defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
+        keywords: getLocalizedStoreKeywords(storeDetails?.keywords, contentLanguage, []),
         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, contentLanguage, ''),
         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, contentLanguage, ''),
         publicPresence: {
@@ -433,7 +435,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                         sourceLanguage: resolveStoreContentLanguage(storeDetails),
                                         storeDetails,
                                     }),
-                                    keywords: generated.keywords,
+                                    keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
                                     metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
                                     metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
                                     ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
@@ -455,7 +457,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
                                 setStoreDetails({
                                     ...storeDetails,
-                                    keywords: generated.keywords,
+                                    keywords: nextStoreUpdate.keywords,
                                     metaDescription: nextStoreUpdate.metaDescription,
                                     metaTitle: nextStoreUpdate.metaTitle,
                                     businessCopyMeta: nextStoreUpdate.businessCopyMeta,
@@ -510,6 +512,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     }),
                                     metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
                                     metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
+                                    keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
                                     ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
                                         ? {
                                             pwaSettings: {
@@ -529,6 +532,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
                                 setStoreDetails({
                                     ...storeDetails,
+                                    keywords: nextStoreUpdate.keywords,
                                     metaDescription: nextStoreUpdate.metaDescription,
                                     metaTitle: nextStoreUpdate.metaTitle,
                                     businessCopyMeta: nextStoreUpdate.businessCopyMeta,
@@ -850,6 +854,19 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 contentLanguage,
                 'en',
             );
+        changesToUpload.keywords = changesToUpload.__localizedSeoDrafts
+            ? applyLocalizedKeywordDraftMap(
+                storeDetails?.keywords,
+                Object.fromEntries(
+                    Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [
+                        languageCode,
+                        Array.isArray(draft?.keywords)
+                            ? draft.keywords
+                            : [],
+                    ]),
+                ),
+            )
+            : getLocalizedStringList(storeDetails?.keywords, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.keywords, contentLanguage), []);
         if (changesToUpload.__localizedPwaShortNameDrafts) {
             changesToUpload.pwaSettings = {
                 ...(storeDetails?.pwaSettings || {}),
