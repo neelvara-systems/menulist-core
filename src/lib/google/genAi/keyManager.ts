@@ -60,11 +60,11 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000;
 const MAX_COOLDOWN_MS = 5 * 60_000;
 
 /** Env var names for API keys (in order) */
-const KEY_ENV_VARS = [
-    'GEMINI_AI_KEY',
-    'GEMINI_AI_KEY_2',
-    'GEMINI_AI_KEY_3',
-    'GEMINI_AI_KEY_4',
+const KEY_ENV_VAR_CANDIDATES = [
+    ['GEMINI_AI_KEY', 'GEMINI_API_KEY'],
+    ['GEMINI_AI_KEY_2'],
+    ['GEMINI_AI_KEY_3'],
+    ['GEMINI_AI_KEY_4'],
 ] as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -84,9 +84,13 @@ export class KeyManager {
      * Creates a GoogleGenAI client for each valid key.
      */
     private discoverKeys(): void {
-        for (let i = 0; i < KEY_ENV_VARS.length; i++) {
-            const envVar = KEY_ENV_VARS[i];
-            const key = process.env[envVar];
+        for (let i = 0; i < KEY_ENV_VAR_CANDIDATES.length; i++) {
+            const candidates = KEY_ENV_VAR_CANDIDATES[i];
+            const matchedEnvVar = candidates.find((envVar) => {
+                const value = process.env[envVar];
+                return typeof value === 'string' && value.trim().length > 0;
+            });
+            const key = matchedEnvVar ? process.env[matchedEnvVar] : undefined;
 
             if (key && key.trim().length > 0) {
                 this.keys.push({
@@ -98,11 +102,21 @@ export class KeyManager {
                     totalRequests: 0,
                     totalRateLimits: 0,
                 });
+
+                if (matchedEnvVar && matchedEnvVar !== candidates[0]) {
+                    logger.warn(
+                        `[KeyManager] Using legacy Gemini env var ${matchedEnvVar} for key slot ${i + 1}. ` +
+                        `Migrate this deploy to ${candidates[0]}.`
+                    );
+                }
             }
         }
 
         if (this.keys.length === 0) {
-            logger.warn('[KeyManager] No GEMINI_AI_KEY found in environment variables');
+            logger.warn(
+                '[KeyManager] No Gemini API key found in environment variables. ' +
+                `Checked: ${KEY_ENV_VAR_CANDIDATES.flat().join(', ')}`
+            );
             // Create a dummy entry so the system doesn't crash at startup
             this.keys.push({
                 index: 0,

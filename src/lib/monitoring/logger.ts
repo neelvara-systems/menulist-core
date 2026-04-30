@@ -1,13 +1,57 @@
 /**
  * Unified Logging System
  * 
- * Console-based logging for both dev and production.
- * Sentry integration removed — will be re-added with fresh setup later.
- * 
- * API surface is preserved so all callers continue working.
+ * Console logging remains the first debugging surface.
+ * Sentry adds searchable production events, breadcrumbs, and user context.
  */
 
+import * as Sentry from '@sentry/nextjs';
+import { applyMonitoringContext, getSanitizedMonitoringContext, monitoringDsn } from './sentryShared';
+
 const isDev = process.env.NODE_ENV === 'development';
+const hasMonitoring = Boolean(monitoringDsn.client || monitoringDsn.server);
+const isServer = typeof window === 'undefined';
+const shouldWriteInfoLog = isDev || isServer;
+
+const addBreadcrumb = (message: string, category: string, data?: Record<string, unknown>, level: 'info' | 'warning' | 'error' = 'info') => {
+  if (!hasMonitoring) return;
+
+  Sentry.addBreadcrumb({
+    category,
+    data: getSanitizedMonitoringContext(data),
+    level,
+    message,
+    timestamp: Date.now() / 1000,
+  });
+};
+
+const captureWithScope = (
+  level: 'error' | 'warning' | 'info' | 'fatal',
+  message: string,
+  error?: Error | unknown,
+  context?: Record<string, unknown>
+) => {
+  if (!hasMonitoring) return;
+
+  Sentry.withScope((scope) => {
+    scope.setLevel(level);
+    applyMonitoringContext(scope, context);
+
+    if (error instanceof Error) {
+      scope.setFingerprint([message, error.name]);
+      Sentry.captureException(error);
+      return;
+    }
+
+    if (error) {
+      scope.setContext('error_payload', getSanitizedMonitoringContext({ error }));
+      Sentry.captureMessage(message, level);
+      return;
+    }
+
+    Sentry.captureMessage(message, level);
+  });
+};
 
 /**
  * Structured logger that adapts to environment
@@ -16,12 +60,16 @@ export const logger = {
   /**
    * Info-level logs
    * Dev: Console with blue styling
-   * Prod: Silent (re-enable with monitoring service later)
+   * Prod: Server console info + Sentry breadcrumb
    */
   info(message: string, data?: any) {
     if (isDev) {
       console.info('%c[INFO]', 'background: blue; color: white; padding: 2px 6px; border-radius: 3px;', message, data || '');
+    } else if (shouldWriteInfoLog) {
+      console.info(`[INFO] ${message}`, data || '');
     }
+
+    addBreadcrumb(message, 'log', data, 'info');
   },
 
   /**
@@ -35,6 +83,8 @@ export const logger = {
     } else {
       console.warn(`[WARN] ${message}`, data || '');
     }
+
+    addBreadcrumb(message, 'log', data, 'warning');
   },
 
   /**
@@ -48,6 +98,8 @@ export const logger = {
     } else {
       console.error(`[ERROR] ${message}`, error, context || '');
     }
+
+    captureWithScope('error', message, error, context);
   },
 
   /**
@@ -119,6 +171,17 @@ export const logger = {
       const logFn = severity === 'critical' || severity === 'high' ? console.error : console.warn;
       logFn(`[SECURITY:${severity.toUpperCase()}] ${event}`, details);
     }
+
+    captureWithScope(
+      severity === 'critical' ? 'fatal' : severity === 'high' ? 'error' : 'warning',
+      event,
+      undefined,
+      {
+        ...details,
+        severity,
+        securityCategory: this.categorizeEvent(event),
+      }
+    );
   },
 
   /**
@@ -166,14 +229,40 @@ export function setUserContext(user: {
   subscriptionPlan?: string;
   subscriptionStatus?: string;
 }) {
-  void user;
+  if (!hasMonitoring) return;
+
+  Sentry.setUser({
+    email: user.email,
+    id: user.id,
+    username: [user.name, user.tenantName, user.storeName].filter(Boolean).join(' | ') || undefined,
+  });
+
+  Sentry.setTag('tenantId', String(user.tId || 'unknown'));
+  Sentry.setTag('storeId', String(user.sId || 'unknown'));
+  Sentry.setTag('role', String(user.role || 'unknown'));
+  Sentry.setTag('subscriptionPlan', String(user.subscriptionPlan || 'unknown'));
+  Sentry.setTag('subscriptionStatus', String(user.subscriptionStatus || 'unknown'));
+
+  Sentry.setContext('user_details', getSanitizedMonitoringContext({
+    email: user.email,
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    storeName: user.storeName,
+    subscriptionPlan: user.subscriptionPlan,
+    subscriptionStatus: user.subscriptionStatus,
+    tenantName: user.tenantName,
+    tId: user.tId,
+    sId: user.sId,
+  }));
 }
 
 /**
  * Clear user context (call on logout)
  */
 export function clearUserContext() {
-  return;
+  if (!hasMonitoring) return;
+  Sentry.setUser(null);
 }
 
 /**
@@ -185,10 +274,15 @@ export function trackAPICall(
   statusCode?: number,
   duration?: number
 ) {
-  if (statusCode && statusCode >= 400) {
-    if (isDev) {
-      console.warn(`❌ API call failed: ${method} ${endpoint} (${statusCode})`);
-    }
+  addBreadcrumb(`API ${method} ${endpoint}`, 'api', {
+    duration,
+    endpoint,
+    method,
+    statusCode,
+  }, statusCode && statusCode >= 400 ? 'warning' : 'info');
+
+  if (statusCode && statusCode >= 400 && isDev) {
+    console.warn(`❌ API call failed: ${method} ${endpoint} (${statusCode})`);
   }
 }
 
@@ -196,6 +290,8 @@ export function trackAPICall(
  * Track user actions for debugging
  */
 export function trackUserAction(action: string, details?: Record<string, any>) {
+  addBreadcrumb(action, 'user', details, 'info');
+
   if (isDev) {
     console.log(`👤 User action: ${action}`, details || '');
   }
@@ -205,6 +301,8 @@ export function trackUserAction(action: string, details?: Record<string, any>) {
  * Track navigation events
  */
 export function trackNavigation(from: string, to: string) {
+  addBreadcrumb('Navigation', 'navigation', { from, to }, 'info');
+
   if (isDev) {
     console.log(`🧭 Navigated: ${from} → ${to}`);
   }
@@ -214,6 +312,8 @@ export function trackNavigation(from: string, to: string) {
  * Track important business events
  */
 export function trackBusinessEvent(event: string, details?: Record<string, any>) {
+  addBreadcrumb(event, 'business', details, 'info');
+
   if (isDev) {
     console.log(`💼 Business event: ${event}`, details || '');
   }
@@ -222,8 +322,9 @@ export function trackBusinessEvent(event: string, details?: Record<string, any>)
 /**
  * Add custom context to errors (no-op until monitoring service is re-added)
  */
-export function setContext(_key: string, _value: any) {
-  // No-op — will be re-wired when monitoring service is set up
+export function setContext(key: string, value: any) {
+  if (!hasMonitoring) return;
+  Sentry.setContext(key, getSanitizedMonitoringContext(value));
 }
 
 export default logger;

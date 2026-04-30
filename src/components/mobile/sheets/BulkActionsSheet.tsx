@@ -7,7 +7,7 @@ import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import { removeObjRef } from '@util/utils';
-import { Segmented, theme } from 'antd';
+import { Modal, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFileText, LuFilter, LuFolderInput, LuLanguages, LuSparkles, LuX } from 'react-icons/lu';
@@ -393,64 +393,72 @@ export default function BulkActionsSheet({
             return;
         }
 
-        Dialog.confirm({
-            cancelText: t('keep'),
-            confirmText: t('repairMenuAiAction'),
+        const runAiRepair = async () => {
+            setApplying(true);
+            setApplyDetail(t('repairMenuAiPreparing'));
+            try {
+                const previousProject = removeObjRef(workingProject);
+                let updated = removeObjRef(workingProject);
+                const sourceLanguageCode = getProjectDefaultLanguage(updated);
+
+                for (const issue of languagesNeedingRepair) {
+                    setApplyDetail(t('repairMenuAiLanguageStep', { code: issue.code.toUpperCase() }));
+                    updated = await repairLanguageProject(updated, issue.code, sourceLanguageCode);
+                }
+
+                if (descriptionStats.itemsWithoutDescriptions > 0) {
+                    setApplyDetail(t('repairMenuAiDescriptionsStep'));
+                    updated = await runDescriptionGeneration({
+                        action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+                        contentLength: 'Standard',
+                        projectData: updated,
+                    });
+                }
+
+                const repairSummaryParts = [
+                    aiRepairSummary.languageIssueCount > 0
+                        ? t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })
+                        : null,
+                    aiRepairSummary.descriptionsToGenerate > 0
+                        ? t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })
+                        : null,
+                    aiRepairSummary.missingPrices > 0
+                        ? t('repairMenuAiPricesReviewCount', { count: aiRepairSummary.missingPrices })
+                        : null,
+                ].filter(Boolean) as string[];
+
+                setWorkingProject(updated);
+                onApply(updated, {
+                    previousProject,
+                    successMessage: repairSummaryParts.join(' · '),
+                    updatedCount: totalFixes,
+                });
+                onClose();
+            } catch (error) {
+                if (error instanceof AICapacityError) {
+                    Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+                } else {
+                    Toast.show({ content: t('repairMenuAiFailed'), duration: 2200 });
+                }
+            } finally {
+                setApplying(false);
+                setApplyDetail('');
+            }
+        };
+
+        Modal.confirm({
+            cancelButtonProps: {
+                style: { display: 'none' },
+            },
+            closable: true,
             content: t('repairMenuAiConfirm', {
                 descriptions: aiRepairSummary.descriptionsToGenerate,
                 languages: aiRepairSummary.languagesToRepair,
             }),
-            onConfirm: async () => {
-                setApplying(true);
-                setApplyDetail(t('repairMenuAiPreparing'));
-                try {
-                    const previousProject = removeObjRef(workingProject);
-                    let updated = removeObjRef(workingProject);
-                    const sourceLanguageCode = getProjectDefaultLanguage(updated);
-
-                    for (const issue of languagesNeedingRepair) {
-                        setApplyDetail(t('repairMenuAiLanguageStep', { code: issue.code.toUpperCase() }));
-                        updated = await repairLanguageProject(updated, issue.code, sourceLanguageCode);
-                    }
-
-                    if (descriptionStats.itemsWithoutDescriptions > 0) {
-                        setApplyDetail(t('repairMenuAiDescriptionsStep'));
-                        updated = await runDescriptionGeneration({
-                            action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
-                            contentLength: 'Standard',
-                            projectData: updated,
-                        });
-                    }
-
-                    const repairSummaryParts = [
-                        aiRepairSummary.languageIssueCount > 0
-                            ? t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })
-                            : null,
-                        aiRepairSummary.descriptionsToGenerate > 0
-                            ? t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })
-                            : null,
-                        aiRepairSummary.missingPrices > 0
-                            ? t('repairMenuAiPricesReviewCount', { count: aiRepairSummary.missingPrices })
-                            : null,
-                    ].filter(Boolean) as string[];
-
-                    setWorkingProject(updated);
-                    onApply(updated, {
-                        previousProject,
-                        successMessage: repairSummaryParts.join(' · '),
-                        updatedCount: totalFixes,
-                    });
-                    onClose();
-                } catch (error) {
-                    if (error instanceof AICapacityError) {
-                        Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
-                    } else {
-                        Toast.show({ content: t('repairMenuAiFailed'), duration: 2200 });
-                    }
-                } finally {
-                    setApplying(false);
-                    setApplyDetail('');
-                }
+            icon: null,
+            okText: t('repairMenuAiAction'),
+            onOk: () => {
+                void runAiRepair();
             },
             title: t('repairMenuAi'),
         });

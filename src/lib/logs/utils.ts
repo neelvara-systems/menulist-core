@@ -1,5 +1,5 @@
 import { join } from 'path';
-const enableLocalLogs = true;
+const enableLocalLogs = process.env.NODE_ENV !== 'production';
 // Generic logging function (kept local due to file creation issues, but made more generic)
 export async function writeLogEntry({ logFileName, userId = 'N/A', projectId, fileId, logType, data, error, }: { logFileName: string; userId?: string; projectId?: string; fileId?: string; logType: string; data?: any; error?: any; }) {
     if (!enableLocalLogs) return;

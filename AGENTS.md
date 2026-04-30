@@ -6,359 +6,263 @@
 
 ---
 
-# 0. CORE DIRECTIVE (HIGHEST PRIORITY)
+## Purpose
 
-This is not a feature product.  
-This is **infrastructure**.
-
-All actions must optimize for:
-
-- Authority (source of truth)
-- Inevitability (default adoption)
-- Simplicity (zero cognitive load)
-- Cost discipline (Firebase-aware)
-- System permanence (not speed)
-
-If any task violates this → **REJECT or REDESIGN**
+This file serves as the **persistent brain** for Codex, replacing Windsurf memory. Contains system decisions, architecture truths, and critical gotchas that must be remembered across all sessions.
 
 ---
 
-# 1. PRODUCT IDENTITY (LOCKED)
+## System Decisions
 
-## MenuList
+### Product Architecture
 
-- Canonical **customer-facing business truth layer**
-- Owns:
-  - Menu (structured)
-  - Hours
-  - Public identity
-  - OBP (Official Business Page)
-  - Presence layer (QR, PWA)
-- Does NOT own:
-  - POS
-  - Inventory
-  - CRM
-  - Payroll
-  - Internal tools
+- **MenuList**: Canonical public business truth infrastructure for SMB restaurants
+- **Canonica**: Support Knowledge Control Plane for SaaS (separate product)
+- **3-Product Separation**: MenuList vs GrowthOS vs VisualMeta - never merge
+- **Infrastructure Identity**: MenuList is public utility, not SaaS software
 
-Strict boundary: **customer-facing layer only**
+### Technology Stack Decisions
 
----
+- **Next.js 14.2.5**: Frozen for 3-year period - no upgrades
+- **Dual Platform**: Desktop (Ant Design + SCSS) vs Mobile (antd-mobile + Tailwind)
+- **State Management**: Redux Toolkit + Redux Persist - no alternatives
+- **Backend**: Firebase (Firestore, Functions, Auth) - cost-optimized patterns
+- **Authentication**: NextAuth.js - session management with security guards
 
-## System Separation (NON-NEGOTIABLE)
+### Development Philosophy
 
-- MenuList → Truth Layer
-- SurfaceOS → Distribution Control
-- GrowthOS → Execution Engine
-- VisualMeta → Content Preparation
-
-No overlap. No shared logic.
+- **Docs-First Development**: 7-document set before any code
+- **3-Year Freeze**: Complete features ship, no "Phase 2" promises
+- **Zero Tolerance Bug Policy**: Fix immediately, no exceptions
+- **Constitutional Governance**: All decisions follow MenuList Constitution v3.0
 
 ---
 
-# 2. ARCHITECTURE TRUTHS (IMMUTABLE)
+## Architecture Truths
 
-## Entity Model
+### Data Access Layer (DAL) Patterns
 
-Tenant → Store → Project
+- **Client-Side Preference**: Use client-side DAL over unnecessary API routes
+- **Compositional Patterns**: apiCallComposer, requestBodyComposer for consistency
+- **Firebase Cost Awareness**: Every read/write/delete impacts revenue
+- **Single Sources of Truth**: Eliminate redundant data access patterns
 
-## Public Routing
+### Mobile Architecture
 
-- `/` → OBP (root identity)
-- `/{outletSlug}` → Outlet OBP
-- `/{projectSlug}` or `/{outletSlug}/{projectSlug}` → Menu
+- **Mandatory Mobile Support**: Every feature needs mobile layer
+- **Inheritance Model**: Mobile inherits auth, localization, settings from shared logic
+- **Optimistic Updates**: UI updates instantly, backend syncs after
+- **Touch Optimization**: Large targets, instant feedback, no desktop refactoring
 
-Rules:
+### Security Architecture
 
-- OBP is always root (never redirect to menu)
-- Slugs = lookup only
-- IDs = identity (immutable)
-- Max 3 reads per request
-- No fanout queries
-
----
-
-## QR System
-
-- Permanent (never break)
-- Types:
-  - Business QR
-  - Store QR
-  - Project QR
+- **Input Sanitization**: DOMPurify for all user content
+- **Auth Guards**: NextAuth.js with session validation
+- **Type Safety**: TypeScript strict mode with Zod validation
+- **Data Validation**: Runtime validation at all boundaries
 
 ---
 
-# 3. PRODUCT PHILOSOPHY FILTERS
+## Critical Gotchas
 
-Apply BEFORE any implementation:
+### Development Gotchas
 
-## 3.1 Authority Filter
+- **Never Mix Icon Libraries**: Use react-icons/lu (Lucide) only
+- **No Version Upgrades**: 3-year freeze applies to all dependencies
+- **Mobile Files**: Every feature needs `[feature-name]_mobile-support.md`
+- **Feature Flags**: Required in `src/config/features.ts` for all new features
+- **Type Check**: Must pass `npx tsc --noEmit` before completion
 
-Does this strengthen MenuList as the **source of truth**?
-If no → reject
+### Documentation Gotchas
 
-## 3.2 Simplicity Filter
+- **7-Document Standard**: spec, impl, marketing, website, helpdoc, firebase, README
+- **Path Verification**: Every claim must link to exact `file:line` evidence
+- **Language Governance**: No "AI-powered", "Smart", "Dynamic" in public content
+- **Constitutional Language**: Use "No action needed", "Menu state is stable"
 
-Does this reduce user thinking?
-If no → reject
+### Firebase Gotchas
 
-## 3.3 Surface Discipline
+- **Cost Tracking**: Document every operation's revenue impact
+- **Read Optimization**: Prefer client-side queries over server functions
+- **Write Patterns**: Batch operations, minimize document writes
+- **Auth Context**: User context affects security rules and costs
 
-Reject if it introduces:
+### Mobile Gotchas
 
-- dashboards
-- analytics noise
-- configuration complexity
-
-## 3.4 Silent Infrastructure Bias
-
-Prefer:
-
-- automatic systems
-- background intelligence
-- no user interaction
-
-Avoid:
-
-- toggles
-- settings
-- multi-step flows
+- **antd-mobile Components**: Use mobile-native components only
+- **Tailwind CSS**: Mobile styling layer, don't mix with SCSS modules
+- **Touch Events**: Handle touch interactions properly
+- **Performance**: Mobile-first optimization required
 
 ---
 
-# 4. HARD REJECTION RULES
+## Product Context Memory
 
-DO NOT BUILD:
+### MenuList Identity
 
-- Analytics dashboards (unless infrastructure-critical)
-- Marketing tools inside MenuList
-- CMS-style editors
-- Multi-step onboarding flows
-- Feature-heavy UI panels
-- “All-in-one SaaS” patterns
+- **North Star**: "The system keeps working when no one is watching"
+- **10 Laws**: Default Authority, Silence Is Feature, No Explanations, etc.
+- **Infrastructure Mentality**: Upstream positioning, cleanest source
+- **Zero Cognitive Load**: If it makes owners think, don't ship
 
-If detected → STOP immediately
+### Canonica Identity (if working on Canonica)
 
----
-
-# 5. TECHNOLOGY & STACK (FROZEN)
-
-- Next.js 14.2.5 (no upgrades)
-- TypeScript (strict)
-- Firebase (Firestore, Functions, Auth)
-- Redux Toolkit + Persist
-- NextAuth.js
+- **Support Knowledge Control Plane**: Help center, KB, tickets, chat
+- **5 Pillars**: Canonical answers, drift detection, etc.
+- **Infrastructure Freeze**: Independent 3-year freeze
+- **Non-Goals Charter**: What NOT to build (feature rejection filter)
 
 ---
 
-# 6. DATA & FIREBASE RULES
+## Workflow Memory
 
-## Principles
+### Master Execution Protocol
 
-- Every read/write has cost
-- Optimize reads > writes
-- Prefer flat structures
-- No unnecessary collections
+- **Product Detection**: Auto-detect MenuList vs Canonica context
+- **Context Loading**: Load appropriate constitution/rules/doctrine
+- **Workflow Routing**: 17 integrated workflows
+- **Validation**: Web search + codebase reuse + ChatGPT input handling
 
-## Rules
+### Documentation Workflow
 
-- Batch writes
-- Avoid chained queries
-- Cache when safe
-- No redundant fetches
-
----
-
-# 7. MENU SYSTEM (CRITICAL INFRASTRUCTURE)
-
-Menu is **structured data**, not content.
-
-Rules:
-
-- No free-form structure
-- No duplication unless explicit override
-- Every change traceable (MOL)
-- Consistent schema enforced
-
-Never:
-
-- Treat menu as CMS
-- Allow schema drift
+- **IDE_PROMPTS**: 19 integrated prompts for all phases
+- **Slash Commands**: Use `/help` for workflow routing
+- **Validation Strengthening**: Cross-check after implementation
+- **End-of-Session**: 8-phase wrap-up protocol
 
 ---
 
-# 8. MCE (MENU CORRECTNESS ENGINE)
+## Codebase Structure Memory
 
-- Deterministic validation only
-- Runs pre-publish
-- Must be:
-  - O(1) or bounded
-  - zero/near-zero cost
+### Key Directories
 
-No:
+- `__docs__/`: All documentation (constitution, features, canonica)
+- `IDE_PROMPTS/`: Development workflow prompts
+- `.cascade/rules/`: Security and implementation rules
+- `src/config/features.ts`: Feature flag management
+- `src/constants/database.ts`: Database constants
+- `.kilocode/rules/`: Custom instructions for AI
 
-- AI validation
-- extra collections
+### Critical Files
 
----
-
-# 9. OBP (OFFICIAL BUSINESS PAGE)
-
-- Single-page identity layer
-- Minimal editable fields
-- No customization system
-
-Purpose:
-
-- canonical public link
-- distribution anchor (GBP, QR)
+- `package.json`: Frozen dependency versions
+- `next.config.js`: Next.js configuration with optimizations
+- `tsconfig.json`: TypeScript strict configuration
+- `firebase.json`: Firebase configuration and rules
+- `tailwind.config.ts`: Tailwind configuration for mobile
 
 ---
 
-# 10. DEVELOPMENT RULES
+## Testing Memory
 
-## Before Coding
+### Testing Requirements
 
-Ask:
+- **3 Perspectives**: Unit, Integration, E2E
+- **Type Safety**: `npx tsc --noEmit` mandatory
+- **Mobile Testing**: Touch interactions, responsive design
+- **Performance**: Firebase cost optimization validation
 
-- Should this exist?
-- Does it increase authority?
-- Is this the simplest version?
+### Validation Checklist
 
-## During Coding
-
-- Prefer deletion over addition
-- Avoid abstraction unless necessary
-- Reduce moving parts
-
-## Output
-
-- Production-ready code only
-- No verbose explanations
-- No generic comments
+- **Code Review**: Security, performance, maintainability
+- **Documentation Review**: Completeness, accuracy, governance
+- **Cross-Feature Review**: Consistency, redundancy elimination
+- **UI/UX Review**: Mobile optimization, accessibility
 
 ---
 
-# 11. MOBILE SYSTEM (MANDATORY)
+## Cost Memory
 
-- Every feature must support mobile
-- Use:
-  - antd-mobile
-  - Tailwind CSS
-- Touch-first UX
-- Optimistic updates required
+### Firebase Cost Impact
 
----
+- **Read Operations**: Most expensive, optimize queries
+- **Write Operations**: Batch when possible
+- **Delete Operations**: Document cleanup costs
+- **Auth Operations**: Session management overhead
 
-# 12. SECURITY RULES
+### Development Cost Discipline
 
-- Zod validation at boundaries
-- DOMPurify for user input
-- Strict auth context (NextAuth)
-- Minimize data exposure
-
-Never compromise for speed
+- **Client-Side Preference**: Reduce server function calls
+- **Data Reuse**: Cache results, avoid duplicate reads
+- **Query Optimization**: Index planning, selective fetching
+- **Real-time Updates**: Use judiciously, cost-aware
 
 ---
 
-# 13. PERFORMANCE RULES
+## Security Memory
 
-- Maximize read efficiency
-- Optimize bundle size
-- Lazy load aggressively
-- Prevent memory leaks
-- Mobile performance first
+### Security Implementation Rules
 
----
+- **Input Validation**: Zod schemas at all boundaries
+- **Content Sanitization**: DOMPurify for user content
+- **Auth Context**: User-based security rules
+- **Data Exposure**: Minimize client-side data access
 
-# 14. COST DISCIPLINE
+### Common Security Gotchas
 
-- Firebase cost = core constraint
-- Reads are most expensive
-- Batch operations always preferred
-- Avoid real-time unless critical
-
-Every feature must justify cost
+- **XSS Prevention**: Sanitize all user content
+- **CSRF Protection**: NextAuth.js handles automatically
+- **Data Leaks**: Avoid over-fetching from Firestore
+- **Session Management**: Proper token handling
 
 ---
 
-# 15. DOCUMENTATION SYSTEM
+## Performance Memory
 
-Mandatory 7-doc structure:
+### Performance Optimization
 
-- spec
-- implementation
-- marketing
-- website
-- helpdoc
-- firebase
-- README
+- **Bundle Size**: Code splitting, lazy loading
+- **Image Optimization**: Compressor.js, React Cropper
+- **Database Queries**: Optimized Firestore queries
+- **Mobile Performance**: Touch response time, battery usage
 
-Rules:
+### Common Performance Gotchas
 
-- No vague claims
-- Must map to actual code
-- No “AI-powered” language
+- **Large Bundle Sizes**: Monitor with bundle analyzer
+- **Slow Database Queries**: Use composite indexes
+- **Memory Leaks**: Proper cleanup in React components
+- **Mobile Battery**: Optimize background operations
 
 ---
 
-# 16. CRITICAL GOTCHAS
+## Decision Framework Memory
 
-- Use ONLY `react-icons/lu`
-- No dependency upgrades
-- Feature flags required
-- Type check must pass:
-  - `npx tsc --noEmit`
+### Decision Hierarchy
 
----
+1. **MenuList Constitution** - Supreme authority
+2. **Master Rules** - Development governance
+3. **Security Rules** - Implementation constraints
+4. **Feature Documentation** - Feature-specific truth
+5. **Existing Code** - Current implementation
 
-# 17. DECISION HIERARCHY
+### Decision Patterns
 
-1. Constitution (highest)
-2. Architecture rules
-3. Security rules
-4. Feature docs
-5. Existing code
-
-Always follow in order
+- **Codebase > External Research**: Our code is truth
+- **Constitution > Assumptions**: Governance documents override
+- **Security > Convenience**: Never compromise security
+- **Cost > Features**: Firebase costs impact revenue
 
 ---
 
-# 18. COMMUNICATION MODE
+## Communication Memory
 
-Use:
-
-- Direct, factual statements
-- No fluff
-- No marketing tone
-
-Preferred phrases:
+### Canonical Phrases (Use These)
 
 - "No action needed."
-- "This is set."
-- "Handled automatically."
+- "Everything is running normally."
 - "Menu state is stable."
+- "Handled automatically."
+- "No change today."
+- "This is set."
+
+### Communication Standards
+
+- **Direct and Factual**: Clear file/line references
+- **Evidence-Based**: Back claims with code evidence
+- **Structured Updates**: Use markdown headings and bullets
+- **Constitutional Language**: Use approved phrases
 
 ---
 
-# 19. FOUNDER CONSTRAINT
-
-- Solo execution only
-- No team assumptions
-- No operational complexity
-- No maintenance-heavy systems
-
----
-
-# 20. FINAL RULE
-
-Do not optimize for:
-
-- speed
-- feature count
-
-Optimize for:
-
-- inevitability
-- authority
-- permanence
+**Document Signature:** Persistent Brain - System Memory Replacement  
+**Authority:** Maximum - Critical system memory for all AI sessions

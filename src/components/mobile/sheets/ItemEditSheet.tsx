@@ -116,6 +116,12 @@ export default function ItemEditSheet({
     const [isAiWorking, setIsAiWorking] = useState(false);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
 
+    const resetDraft = () => {
+        setDraftItem(createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
+        setImagePreview(item?.image || null);
+        setActiveLanguageKey([primaryLanguage]);
+    };
+
     const collapseKeyboard = () => {
         const activeElement = document.activeElement;
         if (activeElement instanceof HTMLElement) {
@@ -670,8 +676,29 @@ export default function ItemEditSheet({
                     >
                         <Flex gap={12} vertical>
                             <Flex gap={12}>
-                                <Button block disabled={isSaving} fill="outline" onClick={onClose} size="large">
-                                    {t('cancel')}
+                                {!isAddMode && onDelete && item?.id ? (
+                                    <Button
+                                        color="danger"
+                                        disabled={isSaving}
+                                        fill="outline"
+                                        onClick={() => {
+                                            if (isSaving) return;
+                                            Dialog.confirm({
+                                                title: t('deleteItemTitle'),
+                                                content: t('deleteItemConfirm', { item: item.name }),
+                                                confirmText: t('delete'),
+                                                cancelText: t('cancel'),
+                                                onConfirm: () => onDelete(item.id),
+                                            });
+                                        }}
+                                        size="large"
+                                        style={{ minWidth: 52, paddingInline: 0 }}
+                                    >
+                                        <LuTrash2 size={18} />
+                                    </Button>
+                                ) : null}
+                                <Button block disabled={isSaving} fill="outline" onClick={resetDraft} size="large">
+                                    Reset
                                 </Button>
                                 <Button
                                     block
@@ -686,28 +713,6 @@ export default function ItemEditSheet({
                                     {isAddMode ? t('addItem') : t('save')}
                                 </Button>
                             </Flex>
-
-                            {!isAddMode && onDelete && item?.id ? (
-                                <Button
-                                    block
-                                    color="danger"
-                                    disabled={isSaving}
-                                    fill="outline"
-                                    onClick={() => {
-                                        if (isSaving) return;
-                                        Dialog.confirm({
-                                            title: t('deleteItemTitle'),
-                                            content: t('deleteItemConfirm', { item: item.name }),
-                                            confirmText: t('delete'),
-                                            cancelText: t('cancel'),
-                                            onConfirm: () => onDelete(item.id),
-                                        });
-                                    }}
-                                    size="large"
-                                >
-                                    {t('deleteItemAction')}
-                                </Button>
-                            ) : null}
                         </Flex>
                     </div>
                 </Flex>

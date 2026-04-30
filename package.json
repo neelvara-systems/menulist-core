@@ -52,6 +52,7 @@
     "@radix-ui/react-toast": "^1.2.13",
     "@radix-ui/react-tooltip": "^1.2.6",
     "@reduxjs/toolkit": "^1.9.7",
+    "@sentry/nextjs": "^10.22.0",
     "@svgr/webpack": "^8.1.0",
     "@tiptap/extension-character-count": "^2.11.0",
     "@tiptap/extension-color": "^2.11.0",

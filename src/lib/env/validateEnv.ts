@@ -17,19 +17,21 @@ interface EnvValidationResult {
     warnings: string[];
 }
 
+type EnvRequirement = string | readonly string[];
+
 /** Required for app to function at all */
-const REQUIRED_VARS = [
+const REQUIRED_VARS: readonly EnvRequirement[] = [
     'NEXT_PUBLIC_FIREBASE_API_KEY',
     'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
     'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
     'NEXTAUTH_SECRET',
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',
-    'GEMINI_AI_KEY',
+    ['GEMINI_AI_KEY', 'GEMINI_API_KEY'],
 ] as const;
 
 /** Required for payments — app starts without them but billing breaks */
-const PAYMENT_VARS = [
+const PAYMENT_VARS: readonly string[] = [
     'RAZORPAY_KEY_ID',
     'RAZORPAY_KEY_SECRET',
     'RAZORPAY_WEBHOOK_SECRET',
@@ -37,14 +39,14 @@ const PAYMENT_VARS = [
 ] as const;
 
 /** Required for Firebase Admin SDK (server-side operations) */
-const ADMIN_VARS = [
+const ADMIN_VARS: readonly string[] = [
     'FIREBASE_PROJECT_ID',
     'FIREBASE_CLIENT_EMAIL',
     'FIREBASE_PRIVATE_KEY',
 ] as const;
 
 /** Optional — feature-flagged, app works without them */
-const OPTIONAL_VARS = [
+const OPTIONAL_VARS: readonly string[] = [
     'UPSTASH_REDIS_REST_URL',       // Rate limiting (ENABLE_RATE_LIMITING)
     'UPSTASH_REDIS_REST_TOKEN',     // Rate limiting
     'SMTP_HOST',                     // Lifecycle messaging (ENABLE_LIFECYCLE_MESSAGING)
@@ -63,11 +65,19 @@ const OPTIONAL_VARS = [
 export function validateEnvironment(): EnvValidationResult {
     const missing: string[] = [];
     const warnings: string[] = [];
+    const isEnvAliasGroup = (requirement: EnvRequirement): requirement is readonly string[] =>
+        typeof requirement !== 'string';
+    const hasAnyEnvVar = (requirement: EnvRequirement) =>
+        isEnvAliasGroup(requirement)
+            ? requirement.some((varName: string) => Boolean(process.env[varName]))
+            : Boolean(process.env[requirement]);
+    const describeRequirement = (requirement: EnvRequirement) =>
+        isEnvAliasGroup(requirement) ? requirement.join(' or ') : requirement;
 
     // Check required vars
-    for (const varName of REQUIRED_VARS) {
-        if (!process.env[varName]) {
-            missing.push(varName);
+    for (const requirement of REQUIRED_VARS) {
+        if (!hasAnyEnvVar(requirement)) {
+            missing.push(describeRequirement(requirement));
         }
     }
 

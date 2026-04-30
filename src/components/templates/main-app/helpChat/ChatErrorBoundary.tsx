@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '@lib/monitoring/logger';
 import { Button, Card, Flex, Result } from 'antd';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
@@ -31,8 +32,9 @@ class ChatErrorBoundary extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        // Errors are caught here — no console.error per codebase rules
-        // In production, this could be sent to Sentry or similar
+        logger.error('Help chat error boundary triggered', error, {
+            componentStack: errorInfo.componentStack,
+        });
     }
 
     handleReset = () => {

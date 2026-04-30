@@ -94,7 +94,18 @@ function isDescriptionMissing(item: ExtractedDataItem, languages: string[]): boo
 }
 
 function isImageMissing(item: ExtractedDataItem): boolean {
-    return !item.images || item.images.length === 0;
+    if (!item.images) return true;
+
+    if (Array.isArray(item.images)) {
+        return !item.images.some((image) => typeof image?.url === 'string' && image.url.trim().length > 0);
+    }
+
+    if (typeof item.images === 'object') {
+        return !Object.values(item.images as Record<string, any>)
+            .some((image) => typeof image?.url === 'string' && image.url.trim().length > 0);
+    }
+
+    return true;
 }
 
 function isPriceMissing(item: ExtractedDataItem): boolean {

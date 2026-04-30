@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 const path = require('path');
+const { withSentryConfig } = require('@sentry/nextjs');
 const createNextIntlPlugin = require('next-intl/plugin');
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
     enabled: process.env.ANALYZE === 'true',
@@ -240,4 +241,20 @@ const withPWA = require("next-pwa")({
         },
     ],
 });
-module.exports = withBundleAnalyzer(withPWA(withNextIntl(nextConfig)));
+
+const sentryWebpackPluginOptions = {
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    disableLogger: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: true,
+    sourcemaps: {
+        disable: !process.env.SENTRY_AUTH_TOKEN,
+    },
+    widenClientFileUpload: true,
+};
+
+module.exports = withSentryConfig(
+    withBundleAnalyzer(withPWA(withNextIntl(nextConfig))),
+    sentryWebpackPluginOptions
+);

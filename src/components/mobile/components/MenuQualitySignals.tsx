@@ -7,7 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
-import { Collapse, Flex, List, Tag, Text } from '../antd';
+import { Button, Collapse, Flex, List, Tag, Text } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
@@ -23,11 +23,13 @@ interface MobileMenuQualitySignalsProps {
     files: ProjectFileType[] | undefined;
     projectLanguages?: string[];
     onExpandedChange?: (expanded: boolean) => void;
+    onOpenRepairMenu?: () => void;
     onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, onExpandedChange, onReviewSignal }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
+    const tMenu = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const allSignals = useMemo(() => computeQualitySignals(files, projectLanguages), [files, projectLanguages]);
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
@@ -94,6 +96,16 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectLang
                                     />
                                 ))}
                             </List>
+                            {onOpenRepairMenu ? (
+                                <Button
+                                    block
+                                    color="primary"
+                                    onClick={() => onOpenRepairMenu()}
+                                    size="middle"
+                                >
+                                    {tMenu('repairMenuAiAction')}
+                                </Button>
+                            ) : null}
                         </Flex>
                     )}
                 </Collapse.Panel>

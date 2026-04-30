@@ -4,6 +4,7 @@ import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
@@ -23,6 +24,7 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    const requestId = crypto.randomUUID();
     try {
 
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -63,6 +65,23 @@ export const POST = withAuth(async (request, session) => {
 
         const validated = validation.data;
         const { itemsList, targetLang, sourceLang, projectId, fileId, contentLength, tone } = validated;
+        const targetLangList = (Array.isArray(targetLang) ? targetLang : [targetLang]) as Array<{ code?: string }>;
+        const targetLangCodes = targetLangList.map((language) => language?.code || 'unspecified');
+
+        logger.info('Description generation requested', {
+            action: validated.action,
+            contentLength,
+            itemCount: itemsList.length,
+            model: AI_MODEL,
+            projectId,
+            requestId,
+            sourceLang: sourceLang?.code || 'unspecified',
+            storeId: session.sId,
+            targetLangs: targetLangCodes,
+            tenantId: session.tId,
+            tone: tone || 'default',
+            userId,
+        });
 
         // 🔒 TENANT ISOLATION: Verify user owns this project
         if (projectId) {
@@ -142,11 +161,59 @@ export const POST = withAuth(async (request, session) => {
 
 
         // No need to pass generationConfig here, it's part of the model
-        const response = await genAIClient.models.generateContent({
-            model: AI_MODEL,
-            contents: prompt,
-            config: generationConfig,
-        });
+        let response;
+        try {
+            response = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: prompt,
+                config: generationConfig,
+            });
+        } catch (generationError) {
+            const errorDiagnostics = getAIErrorDiagnostics(generationError);
+            const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
+
+            logger.error('Description generation model call failed', generationError, {
+                ...errorDiagnostics,
+                action,
+                contentLength,
+                gatewayDiagnostics,
+                itemCount: itemsList.length,
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                tone: tone || 'default',
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'MODEL_CALL_ERROR',
+                data: {
+                    action,
+                    contentLength,
+                    gatewayDiagnostics,
+                    itemCount: itemsList.length,
+                    model: AI_MODEL,
+                    requestId,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    targetLangs: targetLangCodes,
+                    tenantId: session.tId,
+                    tone: tone || 'default',
+                },
+                error: errorDiagnostics,
+            });
+            if (generationError && typeof generationError === 'object') {
+                (generationError as Record<string, unknown>).__descriptionLogged = true;
+            }
+            throw generationError;
+        }
         await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'API_RESPONSE', data: response });
 
         const endTime = new Date().getTime();
@@ -160,9 +227,37 @@ export const POST = withAuth(async (request, session) => {
             generatedData = JSON.parse(rawText);
         } catch (parseError) {
             logger.error('Description generation returned invalid JSON', parseError, {
-                userId, projectId, fileId,
+                fileId,
+                model: AI_MODEL,
+                projectId,
                 rawTextLength: rawText.length,
-                rawTextPreview: rawText.substring(0, 200),
+                rawTextPreview: getPreviewText(rawText, 300),
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'INVALID_JSON_RESPONSE',
+                data: {
+                    model: AI_MODEL,
+                    rawTextLength: rawText.length,
+                    rawTextPreview: getPreviewText(rawText, 300),
+                    requestId,
+                    responseUsage: response.usageMetadata || null,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    targetLangs: targetLangCodes,
+                    tenantId: session.tId,
+                },
+                error: parseError,
             });
             return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
@@ -170,9 +265,33 @@ export const POST = withAuth(async (request, session) => {
         // Type guard — ensure response is an object (not array, string, null, etc.)
         if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
             logger.error('Description generation returned non-object response', null, {
-                userId, projectId, fileId,
-                responseType: typeof generatedData,
                 isArray: Array.isArray(generatedData),
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                responseType: typeof generatedData,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'NON_OBJECT_RESPONSE',
+                data: {
+                    isArray: Array.isArray(generatedData),
+                    model: AI_MODEL,
+                    requestId,
+                    responseType: typeof generatedData,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    targetLangs: targetLangCodes,
+                    tenantId: session.tId,
+                },
             });
             return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
@@ -241,6 +360,15 @@ export const POST = withAuth(async (request, session) => {
             }
         });
 
+        logger.info('Description generation completed', {
+            itemCount: itemsList.length,
+            processingTime,
+            projectId,
+            requestId,
+            transactionId: transactionObject.transactionId,
+            userId,
+        });
+
         return NextResponse.json({
             data: generatedData,
             message: "",
@@ -253,7 +381,17 @@ export const POST = withAuth(async (request, session) => {
             remainingBalance,
         }, { status: 200 });
     } catch (error) {
-        logger.error('Description API error', error, { userId });
+        if (!(error && typeof error === 'object' && '__descriptionLogged' in error)) {
+            logger.error('Description API error', error, {
+                ...getAIErrorDiagnostics(error),
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                requestId,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+        }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
     }
