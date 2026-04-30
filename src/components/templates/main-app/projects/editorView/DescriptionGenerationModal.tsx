@@ -1,6 +1,7 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getProjectDescriptionContentLength, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -8,7 +9,7 @@ import { DescriptionGovernanceOptions } from '@services/ai/description/descripti
 import { InheritanceState } from '@type/multiOutlet.types';
 import { message as antdMessage, Button, Flex, Grid, Modal, Popconfirm, theme, Typography } from 'antd';
 import { motion } from 'framer-motion';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
 import { Project } from '../types';
 import {
@@ -52,7 +53,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const labels = useOfferingLabels();
-    const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
+    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData));
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
@@ -62,12 +63,19 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
         [governance, modalData.sourceFile, projectData]
     );
 
+    useEffect(() => {
+        setContentLength(getProjectDescriptionContentLength(projectData));
+    }, [projectData]);
+
     const handleDescriptionRequest = async (action: string, nextContentLength: DescriptionContentLength) => {
         setIsProcessing(true);
         setProcessedCount(0);
         dispatch(startLoader("adding description"));
 
         try {
+            const projectWithPreferences = mergeProjectAIPreferences(projectData, {
+                description: { contentLength: nextContentLength },
+            });
             setTotalFiles(projectData.files?.filter((file) =>
                 file.extractedData?.data && (modalData.sourceFile ? modalData.sourceFile.uid === file.uid : true)
             ).length || 0);
@@ -82,7 +90,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                     setTotalFiles(nextTotalFiles);
                 },
                 onProjectUpdate: setActiveProject,
-                projectData,
+                projectData: projectWithPreferences,
                 sourceFile: modalData.sourceFile,
             });
 

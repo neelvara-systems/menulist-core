@@ -33,7 +33,10 @@
 | ---------------------- | ----------- | ---------------------------------------- | --------------------------- | ------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
 | Save OBP settings      | `stores`    | Owner updates Business Profile           | Rare (once then occasional) | 1            | merge update | Uses existing `updateStore()` DAL — `requestBodyComposer` adds timestamps                                                     |
 | Track OBP page view    | `analytics` | Customer visits OBP URL                  | Per visit (rate-limited)    | 1            | merge update | Daily doc: `{tId}_{sId}_obp_daily_{date}`. Uses `increment()` for atomic counters. Rate-limited: 30s cooldown, 30 events/min. |
-| Track OBP action click | `analytics` | Customer clicks Call/WhatsApp/Directions | Per click (debounced)       | 1            | merge update | Same daily doc. Tracks `obpActionClicks.{call                                                                                 | whatsapp | directions}`. 1s debounce. |
+| Track OBP action click | `analytics` | Customer clicks Call/WhatsApp/Directions/Reserve/Order | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `obpActionClicks.{call,whatsapp,directions,reserve,order}`. 1s debounce. |
+| Track OBP menu click | `analytics` | Customer clicks View Menu from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPMenuClicks` and `obpMenuClicksBySurface.{brand|outlet}`. |
+| Track OBP link click | `analytics` | Customer clicks Google review, Instagram, Facebook, or website from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPLinkClicks` and `obpLinkClicks.{google_review,instagram,facebook,website}`. |
+| Track OBP share action | `analytics` | Owner shares official business link from settings | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPShares` and `obpShares.{whatsapp,copy_link,copy_message}`. |
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
 

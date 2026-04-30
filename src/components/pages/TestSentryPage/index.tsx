@@ -10,8 +10,8 @@ const { Title, Text, Paragraph } = Typography;
  * Sentry Testing Dashboard Component
  * 
  * Provides UI to test different Sentry log levels and error scenarios
- * - Dev Mode: Logs appear in console only
- * - Production: Logs sent to Sentry dashboard with full context
+ * - Dev Mode: Dev Sentry project when ENABLE_SENTRY is on, console only when off
+ * - Production: Logs sent to production Sentry dashboard with full context
  * 
  * Usage: Mount under /platform/test-sentry for authenticated testing
  */
@@ -119,8 +119,8 @@ export default function TestSentryPage() {
           Test your Sentry integration by triggering different types of logs.
         </Paragraph>
         <Paragraph type="secondary">
-          <strong>Dev Mode:</strong> Logs appear in console only<br />
-          <strong>Production:</strong> Logs sent to Sentry dashboard
+          <strong>Dev Mode:</strong> Dev Sentry project when enabled, otherwise console only<br />
+          <strong>Production:</strong> Logs sent to production Sentry dashboard
         </Paragraph>
         <Paragraph type="warning" style={{ marginTop: 16 }}>
           ⚠️ <strong>Note:</strong> Make sure you&apos;re logged in to see full tenant/store context in Sentry!
@@ -206,6 +206,7 @@ export default function TestSentryPage() {
           <Text>• Login to your account first</Text>
           <Text>• Click test buttons</Text>
           <Text>• Verify styled logs appear in console</Text>
+          <Text>• If `ENABLE_SENTRY` is on, check the dev Sentry dashboard</Text>
           <Text>• Check for user context log after login</Text>
           <Text>• Test breadcrumb tracking (user actions, API calls)</Text>
           

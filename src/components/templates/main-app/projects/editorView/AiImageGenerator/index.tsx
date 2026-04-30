@@ -28,6 +28,7 @@ interface AiImageGeneratorProps {
     setGenerationConfig: (config: ImageGenerationConfigType) => void;
     uploadProps: any;
     onUploadGeneratedImage: (images: UserUploadedFileType[]) => void;
+    onPreferencesUsed?: (config: ImageGenerationConfigType) => Promise<void> | void;
     batchItemCount?: number; // Number of items in the batch
 }
 
@@ -37,6 +38,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
     setGenerationConfig,
     uploadProps,
     onUploadGeneratedImage,
+    onPreferencesUsed,
     batchItemCount
 }) => {
 
@@ -135,7 +137,6 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
         setGenerationConfig({ ...generationConfig, loading: true, generatedImages: [] });
         dispatch(startLoader("Generating Image"))
         try {
-
             const genratedImages = await generateImageViaApi({
                 itemDetails: selectedItem,
                 generationConfig,
@@ -168,6 +169,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                     referanceImage: null,
                     selectedImageTypes: []
                 });
+                await onPreferencesUsed?.(generationConfig);
                 setSelectedGeneratedForUpload(newGenImages);
                 message.success('Image generated successfully!');
                 dispatch(stopLoader("Generating Image"))

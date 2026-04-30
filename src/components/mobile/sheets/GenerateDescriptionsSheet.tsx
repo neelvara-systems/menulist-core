@@ -1,10 +1,11 @@
 'use client'
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { getProjectDescriptionContentLength, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { AICapacityError } from '@services/ai/capacityError';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw, LuSparkles } from 'react-icons/lu';
 import type { Project } from '../../templates/main-app/projects/types';
 import {
@@ -35,10 +36,14 @@ export default function GenerateDescriptionsSheet({
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
     } as const;
-    const [contentLength, setContentLength] = useState<DescriptionContentLength>('Standard');
+    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData));
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
+
+    useEffect(() => {
+        setContentLength(getProjectDescriptionContentLength(projectData));
+    }, [projectData]);
 
     const { itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(
         () => getDescriptionGenerationStats(projectData, null, undefined),
@@ -50,6 +55,9 @@ export default function GenerateDescriptionsSheet({
         setProcessedCount(0);
 
         try {
+            const projectWithPreferences = mergeProjectAIPreferences(projectData, {
+                description: { contentLength },
+            });
             const updatedProject = await runDescriptionGeneration({
                 action,
                 contentLength,
@@ -58,7 +66,7 @@ export default function GenerateDescriptionsSheet({
                     setTotalFiles(nextTotalFiles);
                 },
                 onProjectUpdate: onSaved,
-                projectData,
+                projectData: projectWithPreferences,
             });
 
             onSaved(updatedProject);

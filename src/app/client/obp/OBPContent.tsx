@@ -36,6 +36,7 @@ import BrandOBPContent from "./BrandOBPContent";
 import OBPActions from "./OBPActions";
 import OBPAnalytics from "./OBPAnalytics";
 import OBPCustomerAppMount from "./OBPCustomerAppMount";
+import OBPExternalLinks from "./OBPExternalLinks";
 import OBPMenuCTA from "./OBPMenuCTA";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
@@ -602,16 +603,18 @@ export default async function OBPContent({
 
                     {/* Google rating as subtle reference signal (NOT dominant) */}
                     {hasGoogleReview && (
-                        <a
-                            href={googleReviewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ textDecoration: 'none', color: '#666', fontSize: 13 }}
-                        >
-                            {googleReviewCount
-                                ? t('publicGoogleRatingWithCount', { count: googleReviewCount, rating: googleRating })
-                                : t('publicGoogleRating', { rating: googleRating })}
-                        </a>
+                        <OBPExternalLinks
+                            tenantId={store?.tenantId}
+                            storeId={store?.storeId}
+                            trackingEnabled={trackingEnabled}
+                            includeLocation={includeLocation}
+                            googleReviewUrl={googleReviewUrl}
+                            googleReviewLabel={
+                                googleReviewCount
+                                    ? t('publicGoogleRatingWithCount', { count: googleReviewCount, rating: googleRating })
+                                    : t('publicGoogleRating', { rating: googleRating })
+                            }
+                        />
                     )}
 
                     {knownFor && (
@@ -771,41 +774,15 @@ export default async function OBPContent({
 
                 {/* ── Social Links ── */}
                 {hasSocials && (
-                    <div className={styles.socials}>
-                        {instagram && (
-                            <a
-                                href={instagram.startsWith('http') ? instagram : `https://instagram.com/${instagram}`}
-                                className={styles.socialLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Instagram"
-                            >
-                                IG
-                            </a>
-                        )}
-                        {facebook && (
-                            <a
-                                href={facebook.startsWith('http') ? facebook : `https://facebook.com/${facebook}`}
-                                className={styles.socialLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Facebook"
-                            >
-                                FB
-                            </a>
-                        )}
-                        {website && (
-                            <a
-                                href={website.startsWith('http') ? website : `https://${website}`}
-                                className={styles.socialLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Website"
-                            >
-                                🌐
-                            </a>
-                        )}
-                    </div>
+                    <OBPExternalLinks
+                        tenantId={store?.tenantId}
+                        storeId={store?.storeId}
+                        trackingEnabled={trackingEnabled}
+                        includeLocation={includeLocation}
+                        instagram={instagram}
+                        facebook={facebook}
+                        website={website}
+                    />
                 )}
 
                 {/* ── Freshness Signal ── */}

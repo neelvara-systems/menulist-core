@@ -36,6 +36,7 @@ import {
     DailyViewData,
     MonthlyViewData,
     OverviewData,
+    OverallData,
     OwnerDashboardData,
     OwnerDashboardViewMode,
     UseOwnerDashboardReturn,
@@ -63,9 +64,7 @@ interface UseOwnerDashboardOptions {
 const SWR_CONFIG = {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
-    // Let SWR start the initial request. `cachedFetcher` still prevents
-    // same-day Firestore reads when localStorage has fresh dashboard data.
-    revalidateOnMount: true,
+    revalidateIfStale: false,
     dedupingInterval: 86400000, // 24 hours - scheduler data
     errorRetryCount: 2,
     focusThrottleInterval: 3600000, // 1 hour throttle
@@ -135,6 +134,14 @@ async function cachedFetcherWithTTL<T>(
     return data;
 }
 
+function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number): T | undefined {
+    if (typeof window === 'undefined' || !cacheKey) {
+        return undefined;
+    }
+
+    return getCachedData<T>(cacheKey, maxAgeMs);
+}
+
 export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerDashboardReturn {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const projectId = options?.projectId;
@@ -144,6 +151,20 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
     const canFetch = Boolean(tId && sId && projectId);
+
+    const overviewCacheKey = canFetch ? createCacheKey('overview', tId!, sId!, projectId!) : null;
+    const todayCacheKey = canFetch ? createCacheKey('today', tId!, sId!, projectId!) : null;
+    const overallCacheKey = canFetch ? createCacheKey('overall', tId!, sId!, projectId!) : null;
+    const dailyCacheKey = canFetch ? createCacheKey('daily', tId!, sId!, projectId!) : null;
+    const weeklyCacheKey = canFetch ? createCacheKey('weekly', tId!, sId!, projectId!) : null;
+    const monthlyCacheKey = canFetch ? createCacheKey('monthly', tId!, sId!, projectId!) : null;
+
+    const overviewFallbackData = useMemo(() => getInitialCachedValue<OverviewData>(overviewCacheKey), [overviewCacheKey]);
+    const todayFallbackData = useMemo(() => getInitialCachedValue<DailyViewData>(todayCacheKey, 600000), [todayCacheKey]);
+    const overallFallbackData = useMemo(() => getInitialCachedValue<OverallData>(overallCacheKey), [overallCacheKey]);
+    const dailyFallbackData = useMemo(() => getInitialCachedValue<DailyViewData>(dailyCacheKey), [dailyCacheKey]);
+    const weeklyFallbackData = useMemo(() => getInitialCachedValue<WeeklyViewData>(weeklyCacheKey), [weeklyCacheKey]);
+    const monthlyFallbackData = useMemo(() => getInitialCachedValue<MonthlyViewData>(monthlyCacheKey), [monthlyCacheKey]);
 
     // Overview data - fetched on initial load (default view)
     // Includes: WTD, MTD, yesterday, historical weeks, AI summary
@@ -156,10 +177,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     } = useSWR(
         canFetch && loadHistorical ? ['ownerDashboard', 'overview', tId, sId, projectId] : null,
         () => cachedFetcher(
-            createCacheKey('overview', tId!, sId!, projectId!),
+            overviewCacheKey!,
             () => getOwnerDashboardOverview(tId!, sId!, projectId!)
         ),
-        SWR_CONFIG
+        {
+            ...SWR_CONFIG,
+            fallbackData: overviewFallbackData,
+            revalidateOnMount: overviewFallbackData === undefined,
+        }
     );
 
     const {
@@ -170,11 +195,15 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     } = useSWR(
         canFetch ? ['ownerDashboard', 'today', tId, sId, projectId] : null,
         () => cachedFetcherWithTTL(
-            createCacheKey('today', tId!, sId!, projectId!),
+            todayCacheKey!,
             () => getOwnerDashboardToday(tId!, sId!, projectId!),
             600000
         ),
-        SWR_CONFIG_TODAY
+        {
+            ...SWR_CONFIG_TODAY,
+            fallbackData: todayFallbackData,
+            revalidateOnMount: todayFallbackData === undefined,
+        }
     );
 
     // Overall data - fetched with overview (always needed for footer)
@@ -185,10 +214,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     } = useSWR(
         canFetch && loadHistorical ? ['ownerDashboard', 'overall', tId, sId, projectId] : null,
         () => cachedFetcher(
-            createCacheKey('overall', tId!, sId!, projectId!),
+            overallCacheKey!,
             () => getOwnerDashboardOverall(tId!, sId!, projectId!)
         ),
-        SWR_CONFIG
+        {
+            ...SWR_CONFIG,
+            fallbackData: overallFallbackData,
+            revalidateOnMount: overallFallbackData === undefined,
+        }
     );
 
     // Daily data - LAZY: only fetch when viewMode is 'daily'
@@ -201,10 +234,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     } = useSWR(
         canFetch && loadHistorical && viewMode === 'daily' ? ['ownerDashboard', 'daily', tId, sId, projectId] : null,
         () => cachedFetcher(
-            createCacheKey('daily', tId!, sId!, projectId!),
+            dailyCacheKey!,
             () => getOwnerDashboardDaily(tId!, sId!, projectId!)
         ),
-        SWR_CONFIG_DAILY
+        {
+            ...SWR_CONFIG_DAILY,
+            fallbackData: dailyFallbackData,
+            revalidateOnMount: dailyFallbackData === undefined,
+        }
     );
 
     // Weekly data - LAZY: only fetch when viewMode is 'weekly'
@@ -216,10 +253,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     } = useSWR(
         canFetch && loadHistorical && viewMode === 'weekly' ? ['ownerDashboard', 'weekly', tId, sId, projectId] : null,
         () => cachedFetcher(
-            createCacheKey('weekly', tId!, sId!, projectId!),
+            weeklyCacheKey!,
             () => getOwnerDashboardWeekly(tId!, sId!, projectId!)
         ),
-        SWR_CONFIG
+        {
+            ...SWR_CONFIG,
+            fallbackData: weeklyFallbackData,
+            revalidateOnMount: weeklyFallbackData === undefined,
+        }
     );
 
     // Monthly data - LAZY: only fetch when viewMode is 'monthly'
@@ -231,10 +272,14 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     } = useSWR(
         canFetch && loadHistorical && viewMode === 'monthly' ? ['ownerDashboard', 'monthly', tId, sId, projectId] : null,
         () => cachedFetcher(
-            createCacheKey('monthly', tId!, sId!, projectId!),
+            monthlyCacheKey!,
             () => getOwnerDashboardMonthly(tId!, sId!, projectId!)
         ),
-        SWR_CONFIG
+        {
+            ...SWR_CONFIG,
+            fallbackData: monthlyFallbackData,
+            revalidateOnMount: monthlyFallbackData === undefined,
+        }
     );
 
     // Determine loading state based on current view

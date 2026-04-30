@@ -1071,13 +1071,35 @@ export interface OBPActionBreakdown {
     order: number;
 }
 
+export interface OBPShareBreakdown {
+    whatsapp: number;
+    copy_link: number;
+    copy_message: number;
+}
+
+export interface OBPLinkBreakdown {
+    google_review: number;
+    instagram: number;
+    facebook: number;
+    website: number;
+}
+
 export interface OBPPeriodMetrics {
     views: number;
     actionClicks: number;
     menuClicks: number;
+    linkClicks: number;
     shares: number;
     actions: OBPActionBreakdown;
+    shareMethods: OBPShareBreakdown;
+    links: OBPLinkBreakdown;
     daysWithData: number;
+}
+
+export interface OBPTodayData extends OBPPeriodMetrics {
+    date: string;
+    isPartial?: boolean;
+    lastUpdated?: Date;
 }
 
 export interface OBPHistoricalWeek {
@@ -1103,8 +1125,11 @@ export interface OBPOverallData {
     lifetimeViews: number;
     lifetimeActionClicks: number;
     lifetimeMenuClicks: number;
+    lifetimeLinkClicks: number;
     lifetimeShares: number;
     lifetimeActions: OBPActionBreakdown;
+    lifetimeShareMethods: OBPShareBreakdown;
+    lifetimeLinks: OBPLinkBreakdown;
     firstDataDate?: string;
     lastUpdated?: Date;
 }
@@ -1122,8 +1147,11 @@ interface OBPDailyDoc {
     totalOBPViews: number;
     totalOBPActionClicks: number;
     totalOBPMenuClicks: number;
+    totalOBPLinkClicks: number;
     totalOBPShares: number;
     obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
+    obpShares: OBPShareBreakdown;
+    obpLinkClicks: OBPLinkBreakdown;
 }
 
 // ── OBP Aggregation Helpers ──
@@ -1147,6 +1175,7 @@ async function fetchOBPDailyDocs(
                 totalOBPViews: data.totalOBPViews || 0,
                 totalOBPActionClicks: data.totalOBPActionClicks || 0,
                 totalOBPMenuClicks: data.totalOBPMenuClicks || 0,
+                totalOBPLinkClicks: data.totalOBPLinkClicks || 0,
                 totalOBPShares: data.totalOBPShares || 0,
                 obpActionClicks: {
                     call: data.obpActionClicks?.call || 0,
@@ -1154,6 +1183,17 @@ async function fetchOBPDailyDocs(
                     directions: data.obpActionClicks?.directions || 0,
                     reserve: data.obpActionClicks?.reserve || 0,
                     order: data.obpActionClicks?.order || 0,
+                },
+                obpShares: {
+                    whatsapp: data.obpShares?.whatsapp || 0,
+                    copy_link: data.obpShares?.copy_link || 0,
+                    copy_message: data.obpShares?.copy_message || 0,
+                },
+                obpLinkClicks: {
+                    google_review: data.obpLinkClicks?.google_review || 0,
+                    instagram: data.obpLinkClicks?.instagram || 0,
+                    facebook: data.obpLinkClicks?.facebook || 0,
+                    website: data.obpLinkClicks?.website || 0,
                 },
             });
         }
@@ -1167,8 +1207,11 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         views: 0,
         actionClicks: 0,
         menuClicks: 0,
+        linkClicks: 0,
         shares: 0,
         actions: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
+        shareMethods: { whatsapp: 0, copy_link: 0, copy_message: 0 },
+        links: { google_review: 0, instagram: 0, facebook: 0, website: 0 },
         daysWithData: docs.length,
     };
 
@@ -1176,15 +1219,55 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         result.views += d.totalOBPViews;
         result.actionClicks += d.totalOBPActionClicks;
         result.menuClicks += d.totalOBPMenuClicks;
+        result.linkClicks += d.totalOBPLinkClicks;
         result.shares += d.totalOBPShares;
         result.actions.call += d.obpActionClicks.call;
         result.actions.whatsapp += d.obpActionClicks.whatsapp;
         result.actions.directions += d.obpActionClicks.directions;
         result.actions.reserve += d.obpActionClicks.reserve;
         result.actions.order += d.obpActionClicks.order;
+        result.shareMethods.whatsapp += d.obpShares.whatsapp;
+        result.shareMethods.copy_link += d.obpShares.copy_link;
+        result.shareMethods.copy_message += d.obpShares.copy_message;
+        result.links.google_review += d.obpLinkClicks.google_review;
+        result.links.instagram += d.obpLinkClicks.instagram;
+        result.links.facebook += d.obpLinkClicks.facebook;
+        result.links.website += d.obpLinkClicks.website;
     }
 
     return result;
+}
+
+function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayData {
+    return {
+        date,
+        views: data.totalOBPViews || 0,
+        actionClicks: data.totalOBPActionClicks || 0,
+        menuClicks: data.totalOBPMenuClicks || 0,
+        linkClicks: data.totalOBPLinkClicks || 0,
+        shares: data.totalOBPShares || 0,
+        actions: {
+            call: data.obpActionClicks?.call || 0,
+            whatsapp: data.obpActionClicks?.whatsapp || 0,
+            directions: data.obpActionClicks?.directions || 0,
+            reserve: data.obpActionClicks?.reserve || 0,
+            order: data.obpActionClicks?.order || 0,
+        },
+        shareMethods: {
+            whatsapp: data.obpShares?.whatsapp || 0,
+            copy_link: data.obpShares?.copy_link || 0,
+            copy_message: data.obpShares?.copy_message || 0,
+        },
+        links: {
+            google_review: data.obpLinkClicks?.google_review || 0,
+            instagram: data.obpLinkClicks?.instagram || 0,
+            facebook: data.obpLinkClicks?.facebook || 0,
+            website: data.obpLinkClicks?.website || 0,
+        },
+        daysWithData: 1,
+        isPartial: true,
+        lastUpdated: data.lastUpdated?.toDate?.() || undefined,
+    };
 }
 
 // ── OBP Overview Fetch (mirrors getOwnerDashboardOverview) ──
@@ -1226,8 +1309,11 @@ export async function getOBPDashboardOverview(
                 views: yesterdayDoc.totalOBPViews,
                 actionClicks: yesterdayDoc.totalOBPActionClicks,
                 menuClicks: yesterdayDoc.totalOBPMenuClicks,
+                linkClicks: yesterdayDoc.totalOBPLinkClicks,
                 shares: yesterdayDoc.totalOBPShares,
                 actions: yesterdayDoc.obpActionClicks,
+                shareMethods: yesterdayDoc.obpShares,
+                links: yesterdayDoc.obpLinkClicks,
                 daysWithData: 1,
             } : null;
 
@@ -1316,6 +1402,27 @@ export async function getOBPDashboardOverview(
     );
 }
 
+export async function getOBPDashboardToday(
+    tId: string,
+    sId: string,
+): Promise<OBPTodayData | null> {
+    return await apiCallComposer(
+        async () => {
+            const todayDate = getTodayDate();
+            const docId = getDocId.daily(tId, sId, OBP_PROJECT_ID, todayDate);
+            const docRef = doc(firebaseClient, COLLECTION, docId);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                return null;
+            }
+
+            return buildOBPTodayData(docSnap.data(), todayDate);
+        },
+        "getOBPDashboardToday"
+    );
+}
+
 // ── OBP Overall (Lifetime) Fetch ──
 
 export async function getOBPDashboardOverall(
@@ -1339,6 +1446,7 @@ export async function getOBPDashboardOverall(
                 lifetimeViews: lifetime.totalOBPViews || 0,
                 lifetimeActionClicks: lifetime.totalOBPActionClicks || 0,
                 lifetimeMenuClicks: lifetime.totalOBPMenuClicks || 0,
+                lifetimeLinkClicks: lifetime.totalOBPLinkClicks || 0,
                 lifetimeShares: lifetime.totalOBPShares || 0,
                 lifetimeActions: {
                     call: lifetime.obpActionClicks?.call || 0,
@@ -1346,6 +1454,17 @@ export async function getOBPDashboardOverall(
                     directions: lifetime.obpActionClicks?.directions || 0,
                     reserve: lifetime.obpActionClicks?.reserve || 0,
                     order: lifetime.obpActionClicks?.order || 0,
+                },
+                lifetimeShareMethods: {
+                    whatsapp: lifetime.obpShares?.whatsapp || 0,
+                    copy_link: lifetime.obpShares?.copy_link || 0,
+                    copy_message: lifetime.obpShares?.copy_message || 0,
+                },
+                lifetimeLinks: {
+                    google_review: lifetime.obpLinkClicks?.google_review || 0,
+                    instagram: lifetime.obpLinkClicks?.instagram || 0,
+                    facebook: lifetime.obpLinkClicks?.facebook || 0,
+                    website: lifetime.obpLinkClicks?.website || 0,
                 },
                 firstDataDate: data.firstDataDate,
                 lastUpdated: data.modifiedOn?.toDate?.() || undefined,

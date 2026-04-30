@@ -36,6 +36,7 @@ interface OBPDailyData {
     totalOBPViews?: number;
     totalOBPActionClicks?: number;
     totalOBPMenuClicks?: number;
+    totalOBPLinkClicks?: number;
     totalOBPShares?: number;
     obpActionClicks?: {
         call?: number;
@@ -43,6 +44,12 @@ interface OBPDailyData {
         directions?: number;
         reserve?: number;
         order?: number;
+    };
+    obpLinkClicks?: {
+        google_review?: number;
+        instagram?: number;
+        facebook?: number;
+        website?: number;
     };
     obpShares?: {
         whatsapp?: number;
@@ -58,8 +65,10 @@ interface OBPAggregatedMetrics {
     totalOBPViews: number;
     totalOBPActionClicks: number;
     totalOBPMenuClicks: number;
+    totalOBPLinkClicks: number;
     totalOBPShares: number;
     obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
+    obpLinkClicks: { google_review: number; instagram: number; facebook: number; website: number };
     obpShares: { whatsapp: number; copy_link: number; copy_message: number };
     daysWithData: number;
 }
@@ -83,8 +92,10 @@ function emptyMetrics(): OBPAggregatedMetrics {
         totalOBPViews: 0,
         totalOBPActionClicks: 0,
         totalOBPMenuClicks: 0,
+        totalOBPLinkClicks: 0,
         totalOBPShares: 0,
         obpActionClicks: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
+        obpLinkClicks: { google_review: 0, instagram: 0, facebook: 0, website: 0 },
         obpShares: { whatsapp: 0, copy_link: 0, copy_message: 0 },
         daysWithData: 0,
     };
@@ -110,12 +121,17 @@ async function aggregateOBPDailyDocs(
             metrics.totalOBPViews += data.totalOBPViews || 0;
             metrics.totalOBPActionClicks += data.totalOBPActionClicks || 0;
             metrics.totalOBPMenuClicks += data.totalOBPMenuClicks || 0;
+            metrics.totalOBPLinkClicks += data.totalOBPLinkClicks || 0;
             metrics.totalOBPShares += data.totalOBPShares || 0;
             metrics.obpActionClicks.call += data.obpActionClicks?.call || 0;
             metrics.obpActionClicks.whatsapp += data.obpActionClicks?.whatsapp || 0;
             metrics.obpActionClicks.directions += data.obpActionClicks?.directions || 0;
             metrics.obpActionClicks.reserve += data.obpActionClicks?.reserve || 0;
             metrics.obpActionClicks.order += data.obpActionClicks?.order || 0;
+            metrics.obpLinkClicks.google_review += data.obpLinkClicks?.google_review || 0;
+            metrics.obpLinkClicks.instagram += data.obpLinkClicks?.instagram || 0;
+            metrics.obpLinkClicks.facebook += data.obpLinkClicks?.facebook || 0;
+            metrics.obpLinkClicks.website += data.obpLinkClicks?.website || 0;
             metrics.obpShares.whatsapp += data.obpShares?.whatsapp || 0;
             metrics.obpShares.copy_link += data.obpShares?.copy_link || 0;
             metrics.obpShares.copy_message += data.obpShares?.copy_message || 0;
@@ -212,6 +228,7 @@ async function aggregateOBPForStore(
         totalOBPViews: (existingLifetime.totalOBPViews || 0) + (yesterdayData?.totalOBPViews || 0),
         totalOBPActionClicks: (existingLifetime.totalOBPActionClicks || 0) + (yesterdayData?.totalOBPActionClicks || 0),
         totalOBPMenuClicks: (existingLifetime.totalOBPMenuClicks || 0) + (yesterdayData?.totalOBPMenuClicks || 0),
+        totalOBPLinkClicks: (existingLifetime.totalOBPLinkClicks || 0) + (yesterdayData?.totalOBPLinkClicks || 0),
         totalOBPShares: (existingLifetime.totalOBPShares || 0) + (yesterdayData?.totalOBPShares || 0),
         obpActionClicks: {
             call: (existingLifetime.obpActionClicks?.call || 0) + (yesterdayData?.obpActionClicks?.call || 0),
@@ -219,6 +236,12 @@ async function aggregateOBPForStore(
             directions: (existingLifetime.obpActionClicks?.directions || 0) + (yesterdayData?.obpActionClicks?.directions || 0),
             reserve: (existingLifetime.obpActionClicks?.reserve || 0) + (yesterdayData?.obpActionClicks?.reserve || 0),
             order: (existingLifetime.obpActionClicks?.order || 0) + (yesterdayData?.obpActionClicks?.order || 0),
+        },
+        obpLinkClicks: {
+            google_review: (existingLifetime.obpLinkClicks?.google_review || 0) + (yesterdayData?.obpLinkClicks?.google_review || 0),
+            instagram: (existingLifetime.obpLinkClicks?.instagram || 0) + (yesterdayData?.obpLinkClicks?.instagram || 0),
+            facebook: (existingLifetime.obpLinkClicks?.facebook || 0) + (yesterdayData?.obpLinkClicks?.facebook || 0),
+            website: (existingLifetime.obpLinkClicks?.website || 0) + (yesterdayData?.obpLinkClicks?.website || 0),
         },
         obpShares: {
             whatsapp: (existingLifetime.obpShares?.whatsapp || 0) + (yesterdayData?.obpShares?.whatsapp || 0),

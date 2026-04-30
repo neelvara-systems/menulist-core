@@ -8,7 +8,7 @@ import type { OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
@@ -71,6 +71,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         projectId: selectedProjectId,
         loadHistorical: showHistorical,
     } : undefined);
+
+    useEffect(() => {
+        if (!loadingToday && !showHistorical && !data?.today) {
+            setShowHistorical(true);
+        }
+    }, [loadingToday, showHistorical, data?.today]);
 
     const viewModeLabel = viewMode === 'overview'
         ? t('overview')
@@ -262,7 +268,20 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             );
         }
 
-        if (!today) return null;
+        if (!today) {
+            return (
+                <Card size="small" title={<Text strong>Today so far</Text>}>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                        No activity yet today. Settled analytics from previous days are available below.
+                    </Text>
+                    {!showHistorical ? (
+                        <Button block onClick={() => setShowHistorical(true)}>
+                            View settled analytics
+                        </Button>
+                    ) : null}
+                </Card>
+            );
+        }
 
         const updatedLabel = formatUpdatedTime(data?.lastFetched);
         const hasActions = Object.values(today.menuActions || {}).some((value) => Number(value) > 0);
@@ -276,7 +295,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         : "This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow."}
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                    Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
+                    Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
                     Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.

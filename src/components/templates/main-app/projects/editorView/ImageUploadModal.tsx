@@ -1,6 +1,7 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
 import { addImageBatchProcessingJob } from '@database/imageBatchProcessing';
+import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferencePatch, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
 import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenPreferences';
@@ -34,6 +35,7 @@ interface ImageUploadModalProps {
     open: boolean;
     onClose: () => void;
     projectData: Project;
+    onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
     itemToUpdate: ExtractedDataItem | null;
     onImageUpload: (item: ItemForDropdown, imagesToUse?: UserUploadedFileType[]) => Promise<void>;
     from: string;
@@ -97,6 +99,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     open,
     onClose,
     projectData,
+    onProjectDataUpdate,
     itemToUpdate,
     onImageUpload,
     from,
@@ -121,33 +124,43 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const [batchGenerationConfig, setBatchGenerationConfig] = useState<GenerateImageViaApiPayloadGenerationConfiType>(DefaultGenerationConfig);
     const dispatch = useAppDispatch()
 
+    const persistProjectImagePreferences = useCallback(async (config: Partial<ImageGenerationConfigType>) => {
+        const updatedProject = mergeProjectAIPreferences(projectData, {
+            image: extractImagePreferencePatch(config),
+        });
+
+        await onProjectDataUpdate?.(updatedProject);
+    }, [onProjectDataUpdate, projectData]);
+
     // Debug logging removed for production
 
     const resetGenerateState = useCallback(() => {
         const savedPrefs = storeDetails?.tenantId && storeDetails?.storeId
             ? loadImageGenPreferences(storeDetails.tenantId, storeDetails.storeId)
             : null;
-        const configWithPrefs: ImageGenerationConfigType = savedPrefs
-            ? {
-                ...DefaultGenerationConfig,
-                stylesCategory: savedPrefs.stylesCategory || DefaultGenerationConfig.stylesCategory,
-                styles: savedPrefs.styles?.length ? savedPrefs.styles : DefaultGenerationConfig.styles,
-                aspectRatio: savedPrefs.aspectRatio || DefaultGenerationConfig.aspectRatio,
-                environments: savedPrefs.environments,
-                lighting: savedPrefs.lighting,
-                colors: savedPrefs.colors,
-                moods: savedPrefs.moods,
-                compositions: savedPrefs.compositions,
-                isMultiMode: savedPrefs.isMultiMode,
-            }
-            : DefaultGenerationConfig;
+        const configWithPrefs: ImageGenerationConfigType = projectData?.aiPreferences?.image
+            ? applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData)
+            : savedPrefs
+                ? {
+                    ...DefaultGenerationConfig,
+                    stylesCategory: savedPrefs.stylesCategory || DefaultGenerationConfig.stylesCategory,
+                    styles: savedPrefs.styles?.length ? savedPrefs.styles : DefaultGenerationConfig.styles,
+                    aspectRatio: savedPrefs.aspectRatio || DefaultGenerationConfig.aspectRatio,
+                    environments: savedPrefs.environments,
+                    lighting: savedPrefs.lighting,
+                    colors: savedPrefs.colors,
+                    moods: savedPrefs.moods,
+                    compositions: savedPrefs.compositions,
+                    isMultiMode: savedPrefs.isMultiMode,
+                }
+                : DefaultGenerationConfig;
         configWithPrefs.referanceImages = normalizeReferenceImages(configWithPrefs.referanceImages);
         setGenerationConfig(configWithPrefs);
         setBatchGenerationConfig(configWithPrefs);
         setActiveTab(preferredInitialTab);
         setSelectedImages([]);
         setSelectedItemsForBatch([]);
-    }, [preferredInitialTab, storeDetails?.tenantId, storeDetails?.storeId]);
+    }, [preferredInitialTab, projectData, storeDetails?.tenantId, storeDetails?.storeId]);
 
     const closeModal = useCallback(() => {
         if (generationConfig.loading) return;
@@ -310,6 +323,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             if (storeDetails?.tenantId && storeDetails?.storeId) {
                 saveImageGenPreferences(storeDetails.tenantId, storeDetails.storeId, generationConfig);
             }
+            await persistProjectImagePreferences(generationConfig);
             setGenerationConfig({ ...generationConfig, generatedImages: [] });
             resetGenerateState();
         } finally {
@@ -362,6 +376,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             if (storeDetails?.tenantId && storeDetails?.storeId) {
                 saveImageGenPreferences(storeDetails.tenantId, storeDetails.storeId, batchGenerationConfig);
             }
+            await persistProjectImagePreferences(batchGenerationConfig);
             message.success('Batch image generation started successfully');
 
         } catch (error: any) {
@@ -596,6 +611,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                                     generationConfig={generationConfig}
                                     setGenerationConfig={setGenerationConfig}
                                     uploadProps={uploadProps}
+                                    onPreferencesUsed={persistProjectImagePreferences}
                                     onUploadGeneratedImage={onUploadGeneratedImage}
                                 />
                             },

@@ -130,6 +130,7 @@ export enum TrackingEvent {
   OBP_VIEW = 'obp_view',                    // Customer opened the OBP page
   OBP_ACTION_CLICK = 'obp_action_click',    // Customer clicked Call/WhatsApp/Directions on OBP
   OBP_MENU_CLICK = 'obp_menu_click',        // Customer clicked "View Menu" from OBP → measures OBP→menu conversion
+  OBP_LINK_CLICK = 'obp_link_click',        // Customer clicked review/social/website link from OBP
   OBP_SHARE = 'obp_share',                  // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
 
   // G-10 (§11 + D-04 PUBLIC-ROUTING-DOCTRINE): customer-side project switch.
@@ -212,6 +213,7 @@ export interface TrackingData {
   searchTerm?: string;        // What the user searched for
   searchResults?: number;     // Number of search results
   menuAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order';
+  obpLink?: 'google_review' | 'instagram' | 'facebook' | 'website';
 
   // Recommendation properties (Decision Intelligence)
   blockType?: 'popular' | 'quickPick' | 'bestValue';  // Which recommendation block
@@ -520,6 +522,16 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`obpMenuClicksBySurface.${obpSurface}`] = 1;
         break;
       }
+
+      case TrackingEvent.OBP_LINK_CLICK:
+        if (!data.obpLink) {
+          console.error('obpLink is required for OBP link click tracking');
+          return;
+        }
+        updateData.totalOBPLinkClicks = 1;
+        updateData[`obpLinkClicks.${data.obpLink}`] = 1;
+        updateData[`hourlyOBPLinkClicks.${hour}`] = 1;
+        break;
 
       case TrackingEvent.OBP_SHARE:
         // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
@@ -1038,6 +1050,19 @@ export const trackOBPMenuClick = (
     storeId: String(storeId),
     projectId: 'obp',
     obpSurface,
+    ...additionalData
+  });
+};
+
+export const trackOBPLinkClick = (
+  storeId: string | number,
+  obpLink: 'google_review' | 'instagram' | 'facebook' | 'website',
+  additionalData: Partial<TrackingData> = {}
+): Promise<void> => {
+  return trackEvent(TrackingEvent.OBP_LINK_CLICK, {
+    storeId: String(storeId),
+    projectId: 'obp',
+    obpLink,
     ...additionalData
   });
 };

@@ -4,6 +4,8 @@ import { getOwnerLabels } from '@config/businessLabels';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getProjectDescriptionContentLength } from '@lib/ai/projectAIPreferences';
+import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -156,7 +158,7 @@ export default function ItemEditSheet({
         return images;
     }, [draftItem.images, imagePreview]);
     const imageActionLabel = itemImagePreviews.length > 0 ? t('editImages') : t('addImages');
-    const hasAnyDescription = Object.values(draftItem.description || {}).some((description) => String(description || '').trim().length > 0);
+    const hasAnyDescription = Object.values(draftItem.description || {}).some((description) => hasMeaningfulDescription(description));
     const contentActionLabel = isAddMode || !hasAnyDescription
         ? t('generateContent')
         : t('regenerateContent');
@@ -237,7 +239,6 @@ export default function ItemEditSheet({
         try {
             const payload: NewItemMetadataAPIParams = {
                 businessType: storeDetails?.businessType || '',
-                contentLength: 'Standard',
                 fileId: sourceFile.uid,
                 item: {
                     attributes: (draftItem.attributes || []).map((attribute) => ({
@@ -253,6 +254,7 @@ export default function ItemEditSheet({
                 projectId: projectData.projectId,
                 sourceLang: sourceLanguage,
                 targetLang: targetLanguages as any,
+                contentLength: getProjectDescriptionContentLength(projectData),
             };
 
             const result = await getNewItemMetadataViaAPI(payload);

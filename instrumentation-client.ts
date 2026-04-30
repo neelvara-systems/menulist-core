@@ -1,7 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
-import { monitoringDsn, monitoringEnvironment, monitoringRelease, shouldSendMonitoringEvent } from './src/lib/monitoring/sentryShared';
+import {
+    isSentryMonitoringEnabled,
+    monitoringDsn,
+    monitoringEnvironment,
+    monitoringRelease,
+    shouldSendMonitoringEvent,
+} from './src/lib/monitoring/sentryShared';
 
-if (monitoringDsn.client) {
+if (isSentryMonitoringEnabled && monitoringDsn.client) {
     Sentry.init({
         dsn: monitoringDsn.client,
         enabled: true,
@@ -21,4 +27,3 @@ if (monitoringDsn.client) {
 }
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
-

@@ -1073,6 +1073,17 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 open={isImageModalOpen.active}
                 onClose={() => setIsImageModalOpen({ active: false, item: null })}
                 projectData={projectData}
+                onProjectDataUpdate={async (updatedProject) => {
+                    await updateProject({
+                        ...updatedProject,
+                        projectId: activeProject.projectId,
+                    });
+                    const cleanProject = removeObjRef(updatedProject);
+                    setProjectData(cleanProject);
+                    setActiveProject(cleanProject);
+                    setHasChanges(false);
+                    hasChangesRef.current = false;
+                }}
                 itemToUpdate={isImageModalOpen.item}
                 onImageUpload={onImageUpload}
                 from={isImageModalOpen.from}

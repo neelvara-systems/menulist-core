@@ -122,7 +122,7 @@ export default function ManageLanguagesSheet({
             updated.languages = [...projectLanguages, targetLang.code];
 
             const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
-            let translatedFilesCount = 0;
+            let hadTranslationError = false;
 
             for (const file of filesToTranslate) {
                 const fileLanguages = file.extractedData?.data?.languages || [];
@@ -147,15 +147,16 @@ export default function ManageLanguagesSheet({
                     AI_ACTIONS_TYPES.LANGUAGE_ADDITION
                 );
 
-                if (result.messageType === 'success') {
-                    translatedFilesCount += 1;
+                if (result.messageType === 'error') {
+                    hadTranslationError = true;
+                    break;
                 }
 
                 updated = result.updatedProject;
             }
 
-            if (filesToTranslate.length > 0 && translatedFilesCount === 0) {
-                throw new Error('No translations were merged for the added language.');
+            if (hadTranslationError) {
+                throw new Error('Language translation failed.');
             }
 
             onSaved(updated);

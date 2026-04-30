@@ -101,6 +101,12 @@ const OwnerDashboard: React.FC = () => {
         loadHistorical: showHistorical,
     });
 
+    useEffect(() => {
+        if (!loadingToday && !showHistorical && !data?.today) {
+            setShowHistorical(true);
+        }
+    }, [loadingToday, showHistorical, data?.today]);
+
     // Show loading while storeDetails hasn't loaded yet OR data is still fetching
     if (!storeDetails?.storeId || loading) {
         return <LoadingState />;

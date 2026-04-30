@@ -188,6 +188,28 @@ export interface MenuSettings {
     feedback?: boolean;
 }
 
+export interface ProjectAIDescriptionPreferences {
+    contentLength?: 'Standard' | 'Detailed';
+    tone?: 'Professional';
+}
+
+export interface ProjectAIImagePreferences {
+    stylesCategory?: string;
+    styles?: string[];
+    aspectRatio?: string;
+    environments?: string[];
+    lighting?: string[];
+    colors?: string[];
+    moods?: string[];
+    compositions?: string[];
+    isMultiMode?: boolean;
+}
+
+export interface ProjectAIPreferences {
+    description?: ProjectAIDescriptionPreferences;
+    image?: ProjectAIImagePreferences;
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // MULTI-STORE OVERRIDE TYPES (Feature #4)
 // Store projects only contain overrides — no full menu data.
@@ -297,6 +319,7 @@ export interface Project {
     config?: ThemeConfig;
     // G06 - Business/operational settings (separate from design)
     menuSettings?: MenuSettings;
+    aiPreferences?: ProjectAIPreferences;
     // Project lifecycle flags (moved from ProjectMetadata for query efficiency)
     active?: boolean; // Default: true - set to false to disable project
     deleted?: boolean; // Soft delete flag

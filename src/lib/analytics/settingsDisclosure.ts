@@ -40,11 +40,13 @@ export const ANALYTICS_TRACKING_CATEGORY_DISCLOSURES: AnalyticsTrackingCategoryD
   {
     key: 'official-business-page-activity',
     title: 'Official business page activity',
-    description: 'Tracks traffic and action intent on the official business page before a customer enters the menu.',
+    description: 'Tracks traffic, customer actions, and owner sharing around the official business page.',
     details: [
       'Official business page views',
       'CTA taps such as call, WhatsApp, directions, reserve, and order',
       'View Menu clicks',
+      'Google review, Instagram, Facebook, and website link taps',
+      'Owner share actions from the official business link card such as WhatsApp, copy link, and copy message',
     ],
   },
   {

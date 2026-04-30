@@ -7,6 +7,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getProjectDescriptionContentLength } from '@lib/ai/projectAIPreferences';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -383,7 +384,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 sourceLang: sourceLanguage as any,
                 projectId: projectData.projectId,
                 fileId: fileData.uid,
-                contentLength: "Standard",
+                contentLength: getProjectDescriptionContentLength(projectData),
                 businessType: storeDetails.businessType
             }
             const result = await getNewItemMetadataViaAPI(payload)

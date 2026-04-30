@@ -1,3 +1,5 @@
+import { FEATURE_FLAGS } from '@config/features';
+
 const runtimeEnvironment =
     process.env.NEXT_PUBLIC_ENV
     || process.env.VERCEL_ENV
@@ -30,6 +32,9 @@ export const monitoringDsn = {
     client: clientDsn,
     server: serverDsn,
 };
+
+export const isSentryMonitoringEnabled =
+    FEATURE_FLAGS.ENABLE_SENTRY && Boolean(clientDsn || serverDsn);
 
 function sanitizeMonitoringValue(value: unknown, depth: number = 0): unknown {
     if (value == null) return value;
@@ -111,4 +116,3 @@ export function shouldSendMonitoringEvent(hint?: { originalException?: unknown }
 
     return !ignoredErrorPatterns.some((pattern) => pattern.test(message));
 }
-

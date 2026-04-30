@@ -4,6 +4,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
@@ -23,6 +24,7 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    const requestId = crypto.randomUUID();
 
     try {
         // 🛡️ SAFE_MODE: Block expensive AI operations during system maintenance
@@ -69,6 +71,23 @@ export const POST = withAuth(async (request, session) => {
         const targetLang = rawData.targetLang;
         const sourceLang = rawData.sourceLang;
         const { projectId, fileId, contentLength, businessType } = validated;
+        const targetLangCodes = Array.isArray(targetLang)
+            ? targetLang.map((language: { code?: string }) => language?.code || 'unspecified')
+            : [targetLang?.code || 'unspecified'];
+
+        logger.info('New item metadata requested', {
+            businessType: businessType || 'unspecified',
+            contentLength,
+            fileId,
+            model: AI_MODEL,
+            projectId,
+            requestId,
+            sourceLang: sourceLang?.code || 'unspecified',
+            storeId: session.sId,
+            targetLangs: targetLangCodes,
+            tenantId: session.tId,
+            userId,
+        });
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(
@@ -108,17 +127,134 @@ export const POST = withAuth(async (request, session) => {
             }]
         };
 
-        const response = await genAIClient.models.generateContent({
-            model: AI_MODEL,
-            contents: prompt,
-            config: generationConfig,
-        });
+        let response;
+        try {
+            response = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: prompt,
+                config: generationConfig,
+            });
+        } catch (generationError) {
+            const errorDiagnostics = getAIErrorDiagnostics(generationError);
+            const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
+
+            logger.error('New item metadata model call failed', generationError, {
+                ...errorDiagnostics,
+                businessType: businessType || 'unspecified',
+                contentLength,
+                gatewayDiagnostics,
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'MODEL_CALL_ERROR',
+                data: {
+                    businessType: businessType || 'unspecified',
+                    contentLength,
+                    gatewayDiagnostics,
+                    model: AI_MODEL,
+                    projectId,
+                    requestId,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    targetLangs: targetLangCodes,
+                    tenantId: session.tId,
+                },
+                error: errorDiagnostics,
+            });
+            if (generationError && typeof generationError === 'object') {
+                (generationError as Record<string, unknown>).__newItemMetadataLogged = true;
+            }
+            throw generationError;
+        }
         await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'API_RESPONSE', data: response });
 
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
 
-        let generatedData: any = JSON.parse(response.text);
+        let generatedData: any;
+        try {
+            const rawText = String(response.text || '').replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+            generatedData = JSON.parse(rawText);
+        } catch (parseError) {
+            const rawText = String(response.text || '').trim();
+            logger.error('New item metadata returned invalid JSON', parseError, {
+                model: AI_MODEL,
+                projectId,
+                rawTextLength: rawText.length,
+                rawTextPreview: getPreviewText(rawText, 300),
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'INVALID_JSON_RESPONSE',
+                data: {
+                    model: AI_MODEL,
+                    rawTextLength: rawText.length,
+                    rawTextPreview: getPreviewText(rawText, 300),
+                    requestId,
+                    responseUsage: response.usageMetadata || null,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    targetLangs: targetLangCodes,
+                    tenantId: session.tId,
+                },
+                error: parseError,
+            });
+            return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
+        }
+
+        if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
+            logger.error('New item metadata returned non-object response', null, {
+                isArray: Array.isArray(generatedData),
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                responseType: typeof generatedData,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'NON_OBJECT_RESPONSE',
+                data: {
+                    isArray: Array.isArray(generatedData),
+                    model: AI_MODEL,
+                    requestId,
+                    responseType: typeof generatedData,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    targetLangs: targetLangCodes,
+                    tenantId: session.tId,
+                },
+            });
+            return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
+        }
 
         let transactionObject = {
             transactionId: null,
@@ -157,7 +293,7 @@ export const POST = withAuth(async (request, session) => {
                 remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
             }
         } catch (transactionError) {
-            console.error("Failed to record translation transaction:", transactionError);
+            logger.error('Failed to record new item metadata transaction', transactionError, { userId, projectId, fileId });
             await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
         }
 
@@ -169,6 +305,20 @@ export const POST = withAuth(async (request, session) => {
                 response: generatedData,
                 transaction: transactionObject,
             }
+        });
+
+        logger.info('New item metadata completed', {
+            businessType: businessType || 'unspecified',
+            contentLength,
+            fileId,
+            projectId,
+            requestId,
+            sourceLang: sourceLang?.code || 'unspecified',
+            storeId: session.sId,
+            targetLangs: targetLangCodes,
+            tenantId: session.tId,
+            transactionId: transactionObject.transactionId,
+            userId,
         });
 
         return NextResponse.json({
@@ -183,7 +333,18 @@ export const POST = withAuth(async (request, session) => {
             remainingBalance,
         }, { status: 200 });
     } catch (error) {
-        console.error('New item metadata API error:', error);
+        if (!(error && typeof error === 'object' && '__newItemMetadataLogged' in error)) {
+            logger.error('New item metadata API error', error, {
+                action,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                requestId,
+                ...getAIErrorDiagnostics(error),
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+        }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
     }

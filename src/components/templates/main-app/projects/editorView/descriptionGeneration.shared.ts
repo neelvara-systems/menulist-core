@@ -2,6 +2,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { updateProject } from '@database/projects';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
+import { hasMeaningfulDescription, hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { logger } from '@lib/monitoring/logger';
 import { addDescription, type DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
 import getDescriptionsViaAPI from '@services/ai/description/generateDescriptionViaAPI';
@@ -49,11 +50,8 @@ export function getDescriptionGenerationStats(
 
             const hasDescription = item.description && (
                 activeLanguages.length > 0
-                    ? activeLanguages.every((languageCode) => {
-                        const localizedDescription = item.description?.[languageCode];
-                        return Boolean(localizedDescription && String(localizedDescription).trim().length > 0);
-                    })
-                    : Object.values(item.description).some((desc) => desc && String(desc).trim().length > 0)
+                    ? hasMeaningfulDescriptionsForLanguages(item.description, activeLanguages)
+                    : Object.values(item.description).some((description) => hasMeaningfulDescription(description))
             );
 
             if (hasDescription) {

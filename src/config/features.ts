@@ -100,6 +100,44 @@ export const FEATURE_FLAGS = {
     ENABLE_APP_CHECK: true, // Toggle this for dev/prod
 
     /**
+     * Enable Sentry error tracking and monitoring
+     *
+     * ✅ PRODUCTION-READY - Dual dev/prod projects configured!
+     *
+     * true: Enable Sentry tracking
+     * false: Disable Sentry completely (no events sent, no overhead)
+     *
+     * How It Works (Dual Projects):
+     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     *
+     * 🔧 DEVELOPMENT:
+     *    - Errors → Dev Sentry project
+     *    - Clean separation from production
+     *    - Full context: tenant, store, subscription
+     *
+     * 🚀 PRODUCTION:
+     *    - Errors → Production Sentry project
+     *    - Release tracking with git commit SHA
+     *    - User context with email-friendly username
+     *    - Session replay for visual debugging
+     *    - Performance monitoring (10% sample rate)
+     *
+     * What Gets Tracked:
+     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * - ✅ Errors with full stack traces
+     * - ✅ User context (tenant/store/subscription)
+     * - ✅ API call breadcrumbs
+     * - ✅ User action breadcrumbs
+     * - ✅ Business events
+     * - ✅ Performance metrics
+     * - ✅ Session replays (on errors)
+     *
+     * Production: ALWAYS keep this true
+     * Development: Keep true to test error tracking, false for pure local dev
+     */
+    ENABLE_SENTRY: true,
+
+    /**
      * Enable Keyboard Shortcuts in Editor
      *
      * ✅ Power User Feature - Boost productivity!

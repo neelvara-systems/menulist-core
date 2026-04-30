@@ -4,6 +4,7 @@ import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
@@ -122,6 +123,8 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    const requestId = crypto.randomUUID();
+    let requestAction = 'unknown';
     try {
 
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -162,15 +165,21 @@ export const POST = withAuth(async (request, session) => {
 
         const validated = validation.data;
         const { inputJson, targetLang, sourceLang, action, projectId, fileId } = validated;
+        requestAction = action;
         const targetLanguages = Array.isArray(targetLang) ? targetLang : [targetLang];
         logger.info('Translation requested', {
             action,
             fileId,
             inputKeyCount: Object.keys(inputJson || {}).length,
             isBatch: Array.isArray(targetLang),
+            model: AI_MODEL,
             projectId,
+            requestId,
             sourceLang: sourceLang.code,
+            storeId: session.sId,
             targetLangs: targetLanguages.map((language) => language.code),
+            tenantId: session.tId,
+            userId,
         });
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
@@ -208,11 +217,58 @@ export const POST = withAuth(async (request, session) => {
                 threshold: HarmBlockThreshold.BLOCK_NONE
             }]
         }
-        const response = await genAIClient.models.generateContent({
-            model: AI_MODEL,
-            contents: prompt,
-            config: generationConfig,
-        });
+        let response;
+        try {
+            response = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: prompt,
+                config: generationConfig,
+            });
+        } catch (generationError) {
+            const errorDiagnostics = getAIErrorDiagnostics(generationError);
+            const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
+
+            logger.error('Translation model call failed', generationError, {
+                ...errorDiagnostics,
+                action,
+                gatewayDiagnostics,
+                inputKeyCount: Object.keys(inputJson || {}).length,
+                isBatch: Array.isArray(targetLang),
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                sourceLang: sourceLang.code,
+                storeId: session.sId,
+                targetLangs: targetLanguages.map((language) => language.code),
+                tenantId: session.tId,
+                userId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'MODEL_CALL_ERROR',
+                data: {
+                    action,
+                    gatewayDiagnostics,
+                    inputKeyCount: Object.keys(inputJson || {}).length,
+                    isBatch: Array.isArray(targetLang),
+                    model: AI_MODEL,
+                    projectId,
+                    requestId,
+                    sourceLang: sourceLang.code,
+                    storeId: session.sId,
+                    targetLangs: targetLanguages.map((language) => language.code),
+                    tenantId: session.tId,
+                },
+                error: errorDiagnostics,
+            });
+            if (generationError && typeof generationError === 'object') {
+                (generationError as Record<string, unknown>).__translationLogged = true;
+            }
+            throw generationError;
+        }
 
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
@@ -223,17 +279,114 @@ export const POST = withAuth(async (request, session) => {
             generatedData = JSON.parse(response.text);
         } catch (parseError) {
             // Retry once — LLMs occasionally produce malformed JSON
-            console.error('Translation JSON parse failed, retrying:', parseError);
-            const retryResponse = await genAIClient.models.generateContent({
+            logger.warn('Translation returned invalid JSON, retrying once', {
+                inputKeyCount: Object.keys(inputJson || {}).length,
+                isBatch: Array.isArray(targetLang),
                 model: AI_MODEL,
-                contents: prompt,
-                config: generationConfig,
+                rawTextLength: response.text?.length || 0,
+                rawTextPreview: getPreviewText(response.text, 300),
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: sourceLang.code,
+                storeId: session.sId,
+                targetLangs: targetLanguages.map((language) => language.code),
+                tenantId: session.tId,
+                userId,
             });
+            let retryResponse;
+            try {
+                retryResponse = await genAIClient.models.generateContent({
+                    model: AI_MODEL,
+                    contents: prompt,
+                    config: generationConfig,
+                });
+            } catch (retryGenerationError) {
+                const errorDiagnostics = getAIErrorDiagnostics(retryGenerationError);
+                const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
+
+                logger.error('Translation retry model call failed', retryGenerationError, {
+                    ...errorDiagnostics,
+                    action,
+                    attempt: 'retry',
+                    gatewayDiagnostics,
+                    inputKeyCount: Object.keys(inputJson || {}).length,
+                    isBatch: Array.isArray(targetLang),
+                    model: AI_MODEL,
+                    projectId,
+                    requestId,
+                    sourceLang: sourceLang.code,
+                    storeId: session.sId,
+                    targetLangs: targetLanguages.map((language) => language.code),
+                    tenantId: session.tId,
+                    userId,
+                });
+                await writeLogEntry({
+                    logFileName: LOG_FILE,
+                    userId,
+                    projectId,
+                    fileId,
+                    logType: 'MODEL_CALL_ERROR',
+                    data: {
+                        action,
+                        attempt: 'retry',
+                        gatewayDiagnostics,
+                        inputKeyCount: Object.keys(inputJson || {}).length,
+                        isBatch: Array.isArray(targetLang),
+                        model: AI_MODEL,
+                        projectId,
+                        requestId,
+                        sourceLang: sourceLang.code,
+                        storeId: session.sId,
+                        targetLangs: targetLanguages.map((language) => language.code),
+                        tenantId: session.tId,
+                    },
+                    error: errorDiagnostics,
+                });
+                if (retryGenerationError && typeof retryGenerationError === 'object') {
+                    (retryGenerationError as Record<string, unknown>).__translationLogged = true;
+                }
+                throw retryGenerationError;
+            }
             if (!retryResponse.text) throw new Error('Gemini retry also returned empty response');
             try {
                 generatedData = JSON.parse(retryResponse.text);
+                response = retryResponse;
             } catch (retryParseError) {
-                console.error('Translation retry JSON parse also failed:', retryParseError);
+                logger.error('Translation returned invalid JSON after retry', retryParseError, {
+                    inputKeyCount: Object.keys(inputJson || {}).length,
+                    isBatch: Array.isArray(targetLang),
+                    model: AI_MODEL,
+                    rawTextLength: retryResponse.text.length,
+                    rawTextPreview: getPreviewText(retryResponse.text, 300),
+                    requestId,
+                    responseUsage: retryResponse.usageMetadata || null,
+                    sourceLang: sourceLang.code,
+                    storeId: session.sId,
+                    targetLangs: targetLanguages.map((language) => language.code),
+                    tenantId: session.tId,
+                    userId,
+                });
+                await writeLogEntry({
+                    logFileName: LOG_FILE,
+                    userId,
+                    projectId,
+                    fileId,
+                    logType: 'INVALID_JSON_RESPONSE',
+                    data: {
+                        inputKeyCount: Object.keys(inputJson || {}).length,
+                        isBatch: Array.isArray(targetLang),
+                        model: AI_MODEL,
+                        rawTextLength: retryResponse.text.length,
+                        rawTextPreview: getPreviewText(retryResponse.text, 300),
+                        requestId,
+                        responseUsage: retryResponse.usageMetadata || null,
+                        sourceLang: sourceLang.code,
+                        storeId: session.sId,
+                        targetLangs: targetLanguages.map((language) => language.code),
+                        tenantId: session.tId,
+                    },
+                    error: retryParseError,
+                });
                 throw new Error('Translation failed: AI returned invalid JSON after retry');
             }
         }
@@ -296,7 +449,15 @@ export const POST = withAuth(async (request, session) => {
                 remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
             }
         } catch (transactionError) {
-            console.error("Failed to record translation transaction:", transactionError);
+            logger.error('Failed to record translation transaction', transactionError, {
+                action,
+                fileId,
+                projectId,
+                requestId,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
             await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
         }
 
@@ -320,8 +481,11 @@ export const POST = withAuth(async (request, session) => {
                 fileId,
                 inputKeyCount: inputKeys.length,
                 projectId,
+                requestId,
                 sourceLang: sourceLang.code,
+                storeId: session.sId,
                 targetLangs: targetLanguages.map((language) => language.code),
+                tenantId: session.tId,
                 translationCoverage,
                 transactionId: transactionObject.transactionId,
             });
@@ -332,8 +496,11 @@ export const POST = withAuth(async (request, session) => {
                 inputKeyCount: inputKeys.length,
                 isBatch: isBatchRequest,
                 projectId,
+                requestId,
                 sourceLang: sourceLang.code,
+                storeId: session.sId,
                 targetLangs: targetLanguages.map((language) => language.code),
+                tenantId: session.tId,
                 transactionId: transactionObject.transactionId,
             });
         }
@@ -351,7 +518,18 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
 
     } catch (error) {
-        console.error('Translation API error:', error);
+        if (!(error && typeof error === 'object' && '__translationLogged' in error)) {
+            logger.error('Translation API error', error, {
+                action: requestAction,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                requestId,
+                ...getAIErrorDiagnostics(error),
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+        }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json(
             { error: 'Translation failed', message: (error as Error).message },

@@ -1,7 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
-import { monitoringDsn, monitoringEnvironment, monitoringRelease, shouldSendMonitoringEvent } from './src/lib/monitoring/sentryShared';
+import {
+    isSentryMonitoringEnabled,
+    monitoringDsn,
+    monitoringEnvironment,
+    monitoringRelease,
+    shouldSendMonitoringEvent,
+} from './src/lib/monitoring/sentryShared';
 
-if (monitoringDsn.server) {
+if (isSentryMonitoringEnabled && monitoringDsn.server) {
     Sentry.init({
         dsn: monitoringDsn.server,
         enabled: true,
@@ -14,4 +20,3 @@ if (monitoringDsn.server) {
         },
     });
 }
-

@@ -2,7 +2,9 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getOwnerLabels } from '@config/businessLabels';
+import { getProjectDescriptionContentLength } from '@lib/ai/projectAIPreferences';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -66,11 +68,7 @@ const STATUS_COLORS = {
 const DISTINCT_SCRIPT_LANGUAGE_CODES = new Set(['ar', 'bn', 'hi', 'mr', 'ta', 'te', 'zh']);
 
 function hasMissingDescriptionInLanguages(item: any, languageCodes: string[]): boolean {
-    if (!item?.description || typeof item.description !== 'object') return true;
-    return languageCodes.some((languageCode) => {
-        const localizedDescription = item.description?.[languageCode];
-        return typeof localizedDescription !== 'string' || localizedDescription.trim().length === 0;
-    });
+    return !hasMeaningfulDescriptionsForLanguages(item?.description, languageCodes);
 }
 
 export default function BulkActionsSheet({
@@ -410,7 +408,7 @@ export default function BulkActionsSheet({
                     setApplyDetail(t('repairMenuAiDescriptionsStep'));
                     updated = await runDescriptionGeneration({
                         action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
-                        contentLength: 'Standard',
+                        contentLength: getProjectDescriptionContentLength(updated),
                         projectData: updated,
                     });
                 }

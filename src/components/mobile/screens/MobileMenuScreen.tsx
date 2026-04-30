@@ -14,6 +14,7 @@ import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/com
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -171,11 +172,7 @@ function hasMissingDescriptionForLanguages(
     item: Partial<ExtractedDataItem> | null | undefined,
     languageCodes: string[]
 ): boolean {
-    if (!item?.description || typeof item.description !== 'object') return true;
-    return languageCodes.some((languageCode) => {
-        const localizedValue = item.description?.[languageCode];
-        return typeof localizedValue !== 'string' || localizedValue.trim().length === 0;
-    });
+    return !hasMeaningfulDescriptionsForLanguages(item?.description, languageCodes);
 }
 
 function resolveAttributeName(
@@ -3450,6 +3447,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         }}
                         initialBatchItemIds={imageModalInitialBatchItemIds}
                         onImageUpload={handleModalImageUpload}
+                        onProjectDataUpdate={async (updatedProject) => {
+                            if (!updatedProject.projectId) return;
+                            const savedProject = await updateProjectWithoutLoader(updatedProject);
+                            syncSavedMenuProject(savedProject || updatedProject);
+                        }}
                         open={isImageUploadOpen}
                         preferredInitialTab={imageModalInitialTab}
                         projectData={menuData}

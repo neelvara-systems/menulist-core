@@ -3,6 +3,7 @@ import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { canAddLanguage, getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet, getRemainingLanguageSlots } from '@lib/localization/languageResolver';
+import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Flex, message, Modal, Progress, Select, Tag, theme, Tooltip, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
@@ -59,7 +60,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                 totalCategories += data.categories?.length || 0;
                 totalItems += data.items?.length || 0;
                 totalDescriptions += data.items?.filter(item =>
-                    item.description && Object.values(item.description).some(d => d?.trim())
+                    item.description && Object.values(item.description).some((description) => hasMeaningfulDescription(description))
                 ).length || 0;
             }
         });
@@ -117,9 +118,9 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                         total++;
                         if (item.name?.[langCode]?.trim()) translated++;
                     }
-                    if (item.description?.[sourceLang]?.trim()) {
+                    if (hasMeaningfulDescription(item.description?.[sourceLang])) {
                         total++;
-                        if (item.description?.[langCode]?.trim()) translated++;
+                        if (hasMeaningfulDescription(item.description?.[langCode])) translated++;
                     }
                 });
             }

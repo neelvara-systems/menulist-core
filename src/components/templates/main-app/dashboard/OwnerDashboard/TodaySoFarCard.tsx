@@ -41,7 +41,29 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     }
 
     if (!data) {
-        return null;
+        return (
+            <Card className={styles.todayCard}>
+                <div className={styles.todayCardHeader}>
+                    <div>
+                        <Tag color="default">Today so far</Tag>
+                        <Title level={5} style={{ margin: '8px 0 0' }}>
+                            No activity yet today
+                        </Title>
+                        <Text type="secondary">
+                            Settled analytics from previous days are available below.
+                        </Text>
+                    </div>
+                </div>
+
+                {!showHistorical && onShowHistorical ? (
+                    <div className={styles.todayCardAction}>
+                        <Button onClick={onShowHistorical} type="default">
+                            View settled analytics
+                        </Button>
+                    </div>
+                ) : null}
+            </Card>
+        );
     }
 
     const updatedLabel = formatUpdatedTime(fetchedAt);
@@ -55,7 +77,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                 This is today&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.
             </Text>
             <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                Fresh data appears when this screen is opened again or refreshed after a short cache window. It does not auto-update continuously.
+                Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.
             </Text>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
                 Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.

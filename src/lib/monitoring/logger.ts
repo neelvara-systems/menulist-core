@@ -6,10 +6,10 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
-import { applyMonitoringContext, getSanitizedMonitoringContext, monitoringDsn } from './sentryShared';
+import { applyMonitoringContext, getSanitizedMonitoringContext, isSentryMonitoringEnabled } from './sentryShared';
 
 const isDev = process.env.NODE_ENV === 'development';
-const hasMonitoring = Boolean(monitoringDsn.client || monitoringDsn.server);
+const hasMonitoring = isSentryMonitoringEnabled;
 const isServer = typeof window === 'undefined';
 const shouldWriteInfoLog = isDev || isServer;
 
@@ -172,16 +172,23 @@ export const logger = {
       logFn(`[SECURITY:${severity.toUpperCase()}] ${event}`, details);
     }
 
-    captureWithScope(
-      severity === 'critical' ? 'fatal' : severity === 'high' ? 'error' : 'warning',
-      event,
-      undefined,
-      {
+    if (!hasMonitoring) return;
+
+    const category = this.categorizeEvent(event);
+    Sentry.withScope((scope) => {
+      scope.setLevel(severity === 'critical' ? 'fatal' : severity === 'high' ? 'error' : 'warning');
+      scope.setTag('type', 'security');
+      scope.setTag('category', category);
+      scope.setTag('severity', severity);
+      scope.setFingerprint(['security', category, event]);
+      applyMonitoringContext(scope, {
         ...details,
+        category,
         severity,
-        securityCategory: this.categorizeEvent(event),
-      }
-    );
+        type: 'security',
+      });
+      Sentry.captureMessage(event);
+    });
   },
 
   /**

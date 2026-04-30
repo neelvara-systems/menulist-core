@@ -12,13 +12,14 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import {
-    getOBPDashboardData,
     OBPActionBreakdown,
-    OBPHistoricalWeek
+    OBPLinkBreakdown,
+    OBPHistoricalWeek,
+    OBPShareBreakdown,
 } from '@database/ownerDashboard';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { Card, Col, Divider, Flex, Row, Statistic, Tag, Typography } from 'antd';
-import React, { useContext } from 'react';
+import React from 'react';
 import {
     LuArrowDownRight,
     LuArrowUpRight,
@@ -30,7 +31,6 @@ import {
     LuPhone,
     LuTrendingUp
 } from 'react-icons/lu';
-import useSWR from 'swr';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text } = Typography;
@@ -64,6 +64,47 @@ function ActionBreakdown({ actions }: { actions: OBPActionBreakdown }) {
             )}
             {actions.order > 0 && (
                 <Statistic title="Order" value={actions.order} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+        </Flex>
+    );
+}
+
+function ShareBreakdown({ shares }: { shares: OBPShareBreakdown }) {
+    const hasAny = shares.whatsapp > 0 || shares.copy_link > 0 || shares.copy_message > 0;
+    if (!hasAny) return null;
+
+    return (
+        <Flex gap={16} wrap="wrap">
+            {shares.whatsapp > 0 && (
+                <Statistic title="WhatsApp Shares" value={shares.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {shares.copy_link > 0 && (
+                <Statistic title="Copy Link" value={shares.copy_link} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {shares.copy_message > 0 && (
+                <Statistic title="Copy Message" value={shares.copy_message} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+        </Flex>
+    );
+}
+
+function LinkBreakdown({ links }: { links: OBPLinkBreakdown }) {
+    const hasAny = links.google_review > 0 || links.instagram > 0 || links.facebook > 0 || links.website > 0;
+    if (!hasAny) return null;
+
+    return (
+        <Flex gap={16} wrap="wrap">
+            {links.google_review > 0 && (
+                <Statistic title="Google Reviews" value={links.google_review} prefix={<LuGlobe size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {links.instagram > 0 && (
+                <Statistic title="Instagram" value={links.instagram} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {links.facebook > 0 && (
+                <Statistic title="Facebook" value={links.facebook} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
+            )}
+            {links.website > 0 && (
+                <Statistic title="Website" value={links.website} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />
             )}
         </Flex>
     );
@@ -108,26 +149,11 @@ function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
 // ── Main Component ──
 
 const OBPMetricsCard: React.FC = () => {
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { data, loading, loadingToday } = useOBPDashboard();
 
-    const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
-    const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
-    const canFetch = FEATURE_FLAGS.ENABLE_OBP && !!tId && !!sId;
+    if (!FEATURE_FLAGS.ENABLE_OBP || loading) return null;
 
-    const { data, isLoading } = useSWR(
-        canFetch ? ['obpDashboard', tId, sId] : null,
-        () => getOBPDashboardData(tId!, sId!),
-        {
-            revalidateOnFocus: false,
-            revalidateOnReconnect: false,
-            revalidateOnMount: false,
-            dedupingInterval: 3600000,
-            errorRetryCount: 1,
-        }
-    );
-
-    if (!FEATURE_FLAGS.ENABLE_OBP || isLoading) return null;
-
+    const today = data?.today;
     const overview = data?.overview;
     const overall = data?.overall;
 
@@ -153,9 +179,57 @@ const OBPMetricsCard: React.FC = () => {
                         : <Tag style={{ fontSize: 11 }}>No Data</Tag>
             }
         >
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
+                Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. They show customer intent, not completed calls or orders.
+            </Text>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
+                Shares come from the official business link card. Link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+            </Text>
+
+            <Text type="secondary" style={{ fontSize: 12 }}>Today so far</Text>
+            {loadingToday && !today ? (
+                <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                    Loading current OBP activity…
+                </Text>
+            ) : today ? (
+                <>
+                    <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Page Views" value={today.views} prefix={<LuGlobe size={14} />} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="View Menu Clicks" value={today.menuClicks} prefix={<LuExternalLink size={14} />} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Actions" value={today.actionClicks} prefix={<LuTrendingUp size={14} />} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Shares" value={today.shares} valueStyle={{ fontSize: 18 }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Link Taps" value={today.linkClicks} prefix={<LuExternalLink size={14} />} />
+                        </Col>
+                    </Row>
+                    <div style={{ marginTop: 12 }}>
+                        <ActionBreakdown actions={today.actions} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <LinkBreakdown links={today.links} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <ShareBreakdown shares={today.shareMethods} />
+                    </div>
+                </>
+            ) : (
+                <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                    No OBP activity yet today. Settled OBP analytics appear below.
+                </Text>
+            )}
+
             {/* This Week (WTD) */}
             {overview?.wtd && (
                 <>
+                    <Divider style={{ margin: '16px 0 12px' }} />
                     <Text type="secondary" style={{ fontSize: 12 }}>This Week</Text>
                     <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
                         <Col xs={12} sm={6}>
@@ -180,6 +254,13 @@ const OBPMetricsCard: React.FC = () => {
                             />
                         </Col>
                         <Col xs={12} sm={6}>
+                            <Statistic
+                                title="Link Taps"
+                                value={overview.wtd.linkClicks}
+                                prefix={<LuExternalLink size={14} />}
+                            />
+                        </Col>
+                        <Col xs={12} sm={6}>
                             <div style={{ paddingTop: 4 }}>
                                 <ChangeIndicator change={overview.viewsChange} />
                             </div>
@@ -187,6 +268,12 @@ const OBPMetricsCard: React.FC = () => {
                     </Row>
                     <div style={{ marginTop: 12 }}>
                         <ActionBreakdown actions={overview.wtd.actions} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <LinkBreakdown links={overview.wtd.links} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <ShareBreakdown shares={overview.wtd.shareMethods} />
                     </div>
                 </>
             )}
@@ -202,6 +289,14 @@ const OBPMetricsCard: React.FC = () => {
                         </Col>
                         <Col xs={12} sm={8}>
                             <Statistic title="Actions" value={overview.mtd.actionClicks} valueStyle={{ fontSize: 18 }} />
+                        </Col>
+                        <Col xs={12} sm={8}>
+                            <Statistic title="Link Taps" value={overview.mtd.linkClicks} valueStyle={{ fontSize: 18 }} />
+                        </Col>
+                    </Row>
+                    <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
+                        <Col xs={12} sm={8}>
+                            <Statistic title="Shares" value={overview.mtd.shares} valueStyle={{ fontSize: 18 }} />
                         </Col>
                         <Col xs={12} sm={8}>
                             <Statistic title="Days Active" value={overview.mtd.daysWithData} valueStyle={{ fontSize: 18 }} />
@@ -224,7 +319,7 @@ const OBPMetricsCard: React.FC = () => {
                     <Divider style={{ margin: '16px 0 12px' }} />
                     <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions
+                            Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions, {overall.lifetimeLinkClicks.toLocaleString()} link taps, {overall.lifetimeShares.toLocaleString()} shares
                         </Text>
                         {overall.firstDataDate && (
                             <Text type="secondary" style={{ fontSize: 11 }}>
@@ -232,6 +327,15 @@ const OBPMetricsCard: React.FC = () => {
                             </Text>
                         )}
                     </Flex>
+                    <div style={{ marginTop: 12 }}>
+                        <ActionBreakdown actions={overall.lifetimeActions} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <LinkBreakdown links={overall.lifetimeLinks} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <ShareBreakdown shares={overall.lifetimeShareMethods} />
+                    </div>
                 </>
             )}
         </Card>
