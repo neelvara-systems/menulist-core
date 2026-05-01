@@ -1,6 +1,7 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import AntdLayoutWrapper from '@antdComponent/layoutWrapper'
 import { authOptions } from '@lib/auth'
+import { APP_THEME_COLOR } from '@constant/common'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
 import { ReduxStoreProvider } from '@providers/reduxProvider'
@@ -10,9 +11,7 @@ import type { Metadata, Viewport } from 'next'
 import { getServerSession } from 'next-auth'
 import { getLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
 import SessionExpiryMonitor from '../../components/auth/SessionExpiryMonitor'
-import ServerSidePageLoader from '../loading'
 
 export const metadata: Metadata = {
   title: 'Menulist Ai Dashboard Main',
@@ -33,10 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'cyan' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
+  themeColor: APP_THEME_COLOR,
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -58,14 +54,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <AntdRegistry>
       <LocalisationProvider locale={locale}>
         <ReduxStoreProvider>
-          <SessionProvider session={session}>
+            <SessionProvider session={session}>
             {/* Monitor session expiry and show friendly modal when session expires */}
             <SessionExpiryMonitor />
             <NoSSRProvider>
               <AntdLayoutWrapper>
-                <Suspense fallback={<ServerSidePageLoader page="Main Layout" />}>
-                  {children}
-                </Suspense>
+                {children}
               </AntdLayoutWrapper>
             </NoSSRProvider>
           </SessionProvider>

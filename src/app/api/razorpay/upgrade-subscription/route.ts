@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getSubscriptionById, updateSubscription } from '@database/subscriptions';
+import { safeSyncStorePlanEntitlementFromSubscription } from '@lib/billing/subscriptionEntitlementSync';
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -111,6 +112,10 @@ export const POST = withAuth(async (request, session) => {
                 },
             ],
         });
+        await safeSyncStorePlanEntitlementFromSubscription(
+            { ...internalSub, status: 'expired' },
+            'api:upgrade-subscription:old-expired',
+        );
         await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_SUCCESS', data: { internalSub }, });
         logger.info('Subscription upgraded successfully', {
             oldSubscriptionId: internalSub.id,

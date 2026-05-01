@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -88,6 +89,10 @@ export const POST = withAuth(async (request, session) => {
                 },
             ],
         });
+        await safeSyncStorePlanEntitlementFromSubscription(
+            { ...internalSub, status: 'paused' },
+            'api:pause-subscription',
+        );
 
         logger.info('Subscription paused successfully', {
             subscriptionId: internalSub.id,

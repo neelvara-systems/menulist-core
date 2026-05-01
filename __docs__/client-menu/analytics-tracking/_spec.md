@@ -24,6 +24,7 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 - ❌ A customer-visible analytics dashboard
 - ❌ Personal data collection
 - ❌ Real-time reporting (aggregated nightly)
+- ❌ Raw-event lake / API ingestion pipeline
 
 ---
 
@@ -50,6 +51,34 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 | `MENU_ACTION_CLICK`        | Final CTA click from menu footer or recovery UI | Track action intent without passive telemetry cost |
 
 Passive/engagement events may be coalesced on the client for a short flush window before writing to Firestore. Final action/conversion events are not delayed.
+
+### Session Milestones
+
+Session milestones are added to existing daily-doc writes. They do not create a separate Firestore event stream.
+
+| Counter | Trigger | Purpose |
+| ------- | ------- | ------- |
+| `menuSessions` | First accepted menu view per session/project/local date | Session denominator for owner-facing rates |
+| `engagedSessions` | First session that views 2 distinct items, searches, taps unavailable item, taps a Decision Block, or clicks a final menu action | Measures real menu interest |
+| `intentSessions` | First session with search, 2 distinct item views, unavailable-item tap, Decision Block tap, or final action | Measures buying intent without claiming conversion |
+| `actionSessions` | First final menu action per session | Measures sessions that moved to call/WhatsApp/directions/reserve/order |
+
+Milestone state is stored in `sessionStorage` by tenant/store/project/local date/session id. If browser storage is unavailable, normal counters still write, but milestone de-duplication is skipped to avoid unsafe persistence assumptions.
+
+### Source Quality and Owner Action Plan
+
+Entry source is attached to existing menu view and final action writes. It does not create a separate event stream.
+
+| Counter | Trigger | Purpose |
+| ------- | ------- | ------- |
+| `viewsByEntrySource` | Accepted `MENU_VIEW` | Shows where menu traffic started |
+| `menuSessionsBySource` | First menu session by source | Denominator for action-rate-by-source |
+| `actionSessionsBySource` | First final action session by source | Shows which source creates real customer action |
+| `menuActionClicksBySource` | Final menu action click by source | Shows total CTA taps by source |
+
+The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the dashboard read model for all owners. The Pro analytics assistant layer adds `ownerActionPlan` plus daily / weekly / monthly wording summaries.
+
+Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and `platformSummary/storesSummary.stores.{sId}.activePlanType`. Only `pro` and `premium` are eligible. Missing plan data fails closed and writes an `analyticsAiEntitlement` lock state into the dashboard read model. When enabled, owner analytics wording uses the analytics-specific `gemini-2.5-flash-lite` model because the underlying metrics and action choices are deterministic.
 
 ### Explicitly Not Tracked
 
@@ -80,6 +109,10 @@ Passive/engagement events may be coalesced on the client for a short flush windo
   totalViews: number;
   totalClicks: number;
   totalSessions: number;
+  menuSessions: number;
+  engagedSessions: number;
+  intentSessions: number;
+  actionSessions: number;
 
   // Device breakdown
   viewsByDevice: { mobile: n, tablet: n, desktop: n };
@@ -90,6 +123,13 @@ Passive/engagement events may be coalesced on the client for a short flush windo
   // Item breakdown
   clicksByItem: { "item_id": n };
   viewsByItem: { "item_id": n };
+  clicksByCategory: { "category_id": n };
+  viewsByCategory: { "category_id": n };
+  categoryNames: { "category_id": "Starters" };
+  viewsByEntrySource: { qr: n, whatsapp: n, obp: n, direct: n };
+  menuSessionsBySource: { qr: n, whatsapp: n, obp: n, direct: n };
+  actionSessionsBySource: { qr: n, whatsapp: n, obp: n, direct: n };
+  menuActionClicksBySource: { qr: n, whatsapp: n, obp: n, direct: n };
   hourlyClicksByItem: { "item_id": { "12": 5, "13": 8 } };
 
   // Hourly (store-local)
@@ -131,6 +171,10 @@ Passive/engagement events may be coalesced on the client for a short flush windo
 {
   lifetimeTotalViews: number;
   lifetimeTotalClicks: number;
+  lifetimeMenuSessions: number;
+  lifetimeEngagedSessions: number;
+  lifetimeIntentSessions: number;
+  lifetimeActionSessions: number;
   lifetimeTotalSearches: number;
   lifetimeZeroResultSearches: number;
   lifetimeTotalUnavailableItemTaps: number;
@@ -138,6 +182,9 @@ Passive/engagement events may be coalesced on the client for a short flush windo
   menuActionClicks: { "call": n, "whatsapp": n, "directions": n, "reserve": n, "order": n };
   searchTerms: { "chicken biryani": n };
   unavailableItemTapsByItem: { "item_id": n };
+  viewsByCategory: { "category_id": n };
+  clicksByCategory: { "category_id": n };
+  categoryNames: { "category_id": "Starters" };
   lifetimeTotalSessions: number;
   topItems: Array<{ menuItemId; name; totalClicks }>;
   last7Days: {
@@ -162,6 +209,8 @@ Passive/engagement events may be coalesced on the client for a short flush windo
 | Debounce window    | 1 second   | Block rapid-fire     |
 | Menu view cooldown | 30 seconds | Prevent refresh spam |
 | Search dedupe      | 1 unique term / session | Prevent per-keystroke writes |
+| Passive flush delay | 15 seconds | Coalesce low-priority counters |
+| Passive flush max | 20 queued events | Bound local queue size before flush |
 
 ### Write Optimization
 
@@ -171,6 +220,8 @@ Passive/engagement events may be coalesced on the client for a short flush windo
 | Real-time summary | Nightly batch | 99%     |
 | Unlimited events  | Rate limited  | ~70%    |
 | Scroll telemetry  | Rejected      | Avoids noisy per-scroll writes |
+| Session milestones | Existing writes | Adds decision rates without extra event docs |
+| Category interest | Existing item events | Adds category-level demand without scroll/open tracking |
 
 ### Estimated Monthly Cost (100 projects)
 
@@ -225,6 +276,9 @@ Total: ~₹183/month
 - The recommended owner flow is: load `Today so far` first, then load settled historical analytics only when the owner asks for them.
 - That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.
 - Search demand, unavailable-item demand, and final menu CTA clicks are visible in dashboard views after nightly aggregation.
+- Dashboard read models carry `engagedSessionRate`, `intentRate`, and `actionRate` precomputed by the scheduler/DAL from `menuSessions`.
+- Dashboard read models also carry `sourceQuality`, `ownerConfidence`, and `ownerActionPlan` so Dashboard and Today screens render owner guidance without client-side daily-doc aggregation.
+- Owner-facing wording uses `Action Rate`, not conversion rate, because MenuList only observes final CTA clicks unless a future integration confirms booking/order/payment completion.
 - AI summaries also surface the top search term, strongest final action, and unavailable-demand signals from the same rolled-up documents.
 - No separate analytics collection or standalone scheduler path is introduced for these metrics.
 - Menu analytics and OBP analytics now settle in the same store-scoped nightly pass. If the OBP step fails for a store, that store's menu analytics rollup is treated as failed for the same run.

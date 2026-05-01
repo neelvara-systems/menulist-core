@@ -261,6 +261,7 @@ This file serves as the **persistent brain** for Codex, replacing Windsurf memor
 - **Evidence-Based**: Back claims with code evidence
 - **Structured Updates**: Use markdown headings and bullets
 - **Constitutional Language**: Use approved phrases
+- **Pricing Currency**: Always present pricing and cost estimates in INR rupees for the user. If a vendor publishes USD pricing, convert it to INR and state the exchange-rate assumption.
 
 ---
 

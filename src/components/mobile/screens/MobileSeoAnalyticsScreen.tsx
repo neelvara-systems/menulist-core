@@ -338,7 +338,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             onChange={setTrackLocation}
                         />
                         <InfoCallout
-                            description="By default, MenuList tracks anonymous menu activity, search demand including no-result searches, unavailable-item demand, final menu CTA clicks, recommendation usage, OBP activity, customer-app events, device type, session totals, entry UTM tags, and approximate location. We do not collect customer names, emails, payment details, or exact GPS coordinates in this analytics flow."
+                            description="By default, MenuList tracks anonymous menu activity, session milestones, category interest from item views and taps, search demand including no-result searches, unavailable-item demand, final menu CTA clicks, recommendation usage, OBP activity, customer-app events, device type, session totals, entry UTM tags, and approximate location. We do not collect customer names, emails, payment details, exact GPS coordinates, scroll heatmaps, hover activity, or per-keystroke tracking in this analytics flow."
                             title="Privacy"
                         />
                     </Flex>
@@ -692,7 +692,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             <Flex gap={16} vertical>
                                 <InfoCallout
                                     title="Tracked by default"
-                                    description="Client-facing screens currently record menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, recommendation block impressions and taps, OBP views and CTA taps, customer-app prompt and install events, device/session totals, UTM source tags, and approximate location unless you switch a category off below."
+                                    description="Client-facing screens currently record menu opens, item detail opens, anonymous session milestones, category interest from item views and taps, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, recommendation block impressions and taps, OBP views and CTA taps, customer-app prompt and install events, device/session totals, entry source tags for action-rate-by-source reporting, and approximate location unless you switch a category off below. We do not collect customer names, emails, payment details, exact GPS coordinates, scroll heatmaps, hover activity, or per-keystroke tracking in this analytics flow."
                                 />
                                 <InfoCallout
                                     title="How these switches work"

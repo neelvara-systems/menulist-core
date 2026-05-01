@@ -76,17 +76,10 @@ export default function StatsSection() {
                   </span>
                 )}
               </p>
-              <p
-                style={{
-                  fontSize: '0.9375rem',
-                  fontWeight: 600,
-                  color: 'var(--ws-text-primary)',
-                  marginBottom: 'var(--ws-space-2)',
-                }}
-              >
+              <p className="ws-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--ws-space-2)' }}>
                 {stat.label}
               </p>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-muted)', lineHeight: 1.5 }}>
+              <p className="ws-caption" style={{ lineHeight: 1.5 }}>
                 {stat.desc}
               </p>
             </div>

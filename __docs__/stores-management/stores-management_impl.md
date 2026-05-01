@@ -356,7 +356,8 @@ Updates the `storesList` array in tenant document when store is added or name ch
             businessType: string,
             businessCategory: string,
             active: boolean,
-            name: string
+            name: string,
+            activePlanType?: string // Denormalized billing plan id for scheduler entitlements
         }
     }
 }

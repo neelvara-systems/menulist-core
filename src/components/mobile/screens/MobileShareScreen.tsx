@@ -165,8 +165,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         [data]
     );
 
-    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') =>
-        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') => {
+        if (!url) return url;
+        const entrySource = src === 'qr' ? 'qr' : src === 'share' ? 'other' : 'direct';
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}src=${src}&utm_source=${entrySource}&entry_source=${entrySource}&source=${entrySource}`;
+    };
 
     const openInternalLink = (url: string) => {
         if (!url) return;

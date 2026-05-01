@@ -51,6 +51,7 @@ Debounce check (1 second window)
 Menu view cooldown check (30 seconds)
     ↓ PASS
 trackFirebaseEvent()
+    └── Adds anonymous session milestones/category interest to the same accepted write when applicable
     ↓
 database/analytics → trackAnalyticsEvent()
     ↓
@@ -153,14 +154,38 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 - The same tracking path is reused in the footer, zero-result recovery state, and unavailable-item PDP recovery actions
 - Writes immediately instead of waiting for the passive-event queue, because these are owner-facing conversion signals.
 
+### Session Milestones and Category Interest
+
+```typescript
+// src/lib/analytics/unified.ts
+MENU_VIEW -> menuSessions
+ITEM_VIEW -> viewsByCategory + categoryNames + engaged/intent after 2 distinct items
+ITEM_CLICK -> clicksByCategory + categoryNames + engaged/intent
+SEARCH / UNAVAILABLE_ITEM_ATTEMPT / DECISION_BLOCK_CLICK -> engagedSessions + intentSessions
+MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
+```
+
+- Milestone state lives in `sessionStorage`, keyed by tenant/store/project/local date/session id.
+- Milestones are attached to existing Firestore counter writes; there is no raw event table and no extra event document.
+- If storage is unavailable, normal menu/item/search/action counters still write, but milestone de-duplication is skipped.
+- Category interest only comes from existing item view/click events. MenuList does not track category scroll/open events.
+- Public PDP tracking resolves the stable category id/name from the project file categories before sending analytics metadata.
+- Entry source is stored in sessionStorage and attached to existing `MENU_VIEW` / `MENU_ACTION_CLICK` writes as `viewsByEntrySource`, `menuSessionsBySource`, `actionSessionsBySource`, and `menuActionClicksBySource`. This supports action-rate-by-source without a new source event stream.
+- Paid Gemini wording for owner analytics is off unless Cloud Functions has `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and the store summary has `activePlanType` set to `pro` or `premium`. Missing plan data fails closed.
+- Non-Pro dashboards keep factual metrics, source quality, and confidence. The Pro action-list / summary layer writes `analyticsAiEntitlement` so desktop and mobile can show a locked state instead of silently hiding the card.
+- Owner analytics wording uses `gemini-2.5-flash-lite`, not the global extraction model, because this flow only rewrites deterministic summaries/actions.
+- When analytics AI is enabled, daily / weekly / monthly summaries are generated as in-memory payloads and saved inside the existing `{tId}_{sId}_{projectId}_dashboard_summary` write. They are not written as separate daily / summary / monthly documents.
+
 ### Dashboard Surfacing
 
 - Owner dashboard reads settled metrics from nightly dashboard read-model docs, not by rebuilding every card from daily docs on each visit.
 - `aggregateCustomerAnalytics.ts` rolls search demand, unavailable-item demand, menu CTA clicks, and Customer App metrics into summary / weekly / monthly rollups, then writes `{tId}_{sId}_{projectId}_dashboard_summary`.
 - `analytics/dashboardSummaryAggregation.ts` writes menu and Customer App owner-dashboard read models. `analytics/obpAnalyticsAggregation.ts` writes the OBP dashboard read model.
 - The menu, OBP, and Customer App dashboard read models update incrementally in steady state: existing compact daily rows are reused, the settled day is added when present, and wide daily-range rebuilds happen only for first deploy/cache gaps.
+- Weekly/monthly rollups also prefer the same dashboard read-model cache. Daily-doc range reads are fallback only when the compact cache does not cover the required window.
+- The next nightly pass checks the previously settled local date for late passive writes and applies only positive deltas to lifetime summaries and cached daily rows.
 - The menu dashboard read model includes compact rolling daily rows for the deeper analytics screen. This keeps recent trend, device, location, and customer-intent cards to one read-model read instead of a daily-range query.
-- The same nightly writer stores `{tId}_{sId}_{projectId}_intelligence_7d` for Decision Blocks and Menu Intelligence. The scheduler reads this compact input doc instead of rebuilding the same 7-day analytics window from daily docs; missing/stale snapshots settle as empty for that run.
+- The same nightly writer stores `{tId}_{sId}_{projectId}_intelligence_7d` for Decision Blocks and Menu Intelligence. The scheduler reads this compact input doc instead of rebuilding the same 7-day analytics window from daily docs; missing/stale snapshots settle as empty for that run and are counted in scheduler ops details.
 - Nightly settlement is driven by `computeDecisionBlocksScores`, which runs at each store's local 2:30 AM window.
 - The scheduler uses `platformSummary/projects_{sId}` as the active project index, then fetches full project docs only for active projects that need Decision Blocks / Menu Intelligence.
 - OBP analytics settle first for the store/date. If OBP settlement fails, menu/customer-app settlement for that same store/date does not run.
@@ -184,12 +209,20 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
   - unavailable-item taps
   - final CTA clicks and action breakdown
   - top search terms
+  - anonymous engaged-session rate
+  - anonymous action rate
+  - top category interest
+  - action rate by source
+  - owner confidence status
+  - Today Action List cards from the settled read model
 - Desktop and mobile owner dashboards also surface:
   - `Today so far` menu visits
   - `Today so far` searches
   - `Today so far` no-result searches
   - `Today so far` unavailable interest
   - `Today so far` final customer actions
+  - `Today so far` engaged-session rate
+  - `Today so far` action rate
 - AI owner summaries now also reference:
   - top search demand
   - no-result search friction
@@ -212,6 +245,7 @@ export async function trackAnalyticsEvent(
   if (isFinalConversionAction(updateData)) {
     await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, date, storeTimeZone);
   } else {
+    // Passive queue flushes after 15s or 20 queued events.
     enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, date, storeTimeZone);
   }
 }

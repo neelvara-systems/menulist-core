@@ -69,6 +69,13 @@ export interface WeeklyAISummary extends AISummary {
 export interface OwnerDashboardMetrics {
     menuVisits: number;
     itemClicks: number;
+    menuSessions?: number;
+    engagedSessions?: number;
+    intentSessions?: number;
+    actionSessions?: number;
+    engagedSessionRate?: number;
+    intentRate?: number;
+    actionRate?: number;
     smartPicksRendered: number;
     smartPicksClicks: number;
     searches?: number;
@@ -102,6 +109,52 @@ export interface TopItem {
     clicks: number;
 }
 
+export interface TopCategory {
+    categoryId: string;
+    name?: string;
+    views: number;
+    clicks: number;
+}
+
+export interface SourceQuality {
+    source: string;
+    label: string;
+    menuSessions: number;
+    actionSessions: number;
+    actionClicks: number;
+    actionRate: number;
+}
+
+export interface OwnerConfidence {
+    status: 'stable' | 'watch' | 'no_data';
+    label: string;
+    message: string;
+}
+
+export interface OwnerActionSuggestion {
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+    reason: string;
+    actionLabel: string;
+    metricLabel?: string;
+    priority: 'high' | 'medium' | 'low';
+}
+
+export interface OwnerActionPlan {
+    generatedBy?: 'rules' | 'ai';
+    actions: OwnerActionSuggestion[];
+    fingerprint?: string;
+}
+
+export interface AnalyticsAiEntitlement {
+    enabled: boolean;
+    activePlanType?: string | null;
+    requiredPlanType: 'pro';
+    reason: 'eligible' | 'feature_flag_disabled' | 'missing_plan' | 'plan_not_eligible';
+}
+
 // ================================================================
 // DAILY VIEW DATA
 // ================================================================
@@ -111,9 +164,12 @@ export interface DailyViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    topCategories?: TopCategory[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
+    sourceQuality?: SourceQuality[];
+    ownerConfidence?: OwnerConfidence;
     aiSummary?: AISummary;
     isLowActivity: boolean; // < 20 views
     isPartial?: boolean; // true for live "today so far" data
@@ -133,9 +189,12 @@ export interface WeeklyViewData {
     };
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    topCategories?: TopCategory[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
+    sourceQuality?: SourceQuality[];
+    ownerConfidence?: OwnerConfidence;
     aiSummary?: WeeklyAISummary;
 }
 
@@ -150,9 +209,12 @@ export interface MonthlyViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    topCategories?: TopCategory[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
+    sourceQuality?: SourceQuality[];
+    ownerConfidence?: OwnerConfidence;
     aiSummary?: AISummary;
 }
 
@@ -167,9 +229,12 @@ export interface WTDViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    topCategories?: TopCategory[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
+    sourceQuality?: SourceQuality[];
+    ownerConfidence?: OwnerConfidence;
 }
 
 // ================================================================
@@ -185,9 +250,12 @@ export interface MTDViewData {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    topCategories?: TopCategory[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
+    sourceQuality?: SourceQuality[];
+    ownerConfidence?: OwnerConfidence;
     avgDailyScans: number;
 }
 
@@ -215,6 +283,10 @@ export interface OverviewData {
     yesterday: DailyViewData | null;
     historicalWeeks: HistoricalWeek[];
     aiSummary?: WeeklyAISummary;
+    ownerActionPlan?: OwnerActionPlan;
+    ownerConfidence?: OwnerConfidence;
+    sourceQuality?: SourceQuality[];
+    analyticsAiEntitlement?: AnalyticsAiEntitlement;
 }
 
 // ================================================================
@@ -227,12 +299,22 @@ export interface OverallData {
         totalClicks: number;
         totalSmartPicksRendered: number;
         totalSmartPicksClicks: number;
+        menuSessions?: number;
+        engagedSessions?: number;
+        intentSessions?: number;
+        actionSessions?: number;
+        engagedSessionRate?: number;
+        intentRate?: number;
+        actionRate?: number;
         totalSearches?: number;
         totalZeroResultSearches?: number;
         totalUnavailableItemTaps?: number;
         totalMenuActionClicks?: number;
     };
+    topCategories?: TopCategory[];
     menuActions?: MenuActionBreakdown;
+    sourceQuality?: SourceQuality[];
+    ownerConfidence?: OwnerConfidence;
     firstDataDate?: string; // When tracking started
     lastUpdated?: Date;
 }
@@ -260,6 +342,12 @@ export interface OwnerDashboardData {
 
     // Lifetime footer
     overall: OverallData | null;
+
+    // Owner-facing action read model
+    ownerActionPlan?: OwnerActionPlan;
+    ownerConfidence?: OwnerConfidence;
+    sourceQuality?: SourceQuality[];
+    analyticsAiEntitlement?: AnalyticsAiEntitlement;
 
     // Meta
     projectId: string;

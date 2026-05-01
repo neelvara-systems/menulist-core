@@ -59,10 +59,10 @@ export default function PreparedForYouSection() {
                 </div>
 
                 <div>
-                  <h3 style={{ fontSize: '1.0625rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>
+                  <h3 className="ws-h3" style={{ fontSize: '1.0625rem' }}>
                     {cap.title}
                   </h3>
-                  <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--ws-brand-secondary)', marginTop: '2px' }}>
+                  <p className="ws-body-sm" style={{ fontWeight: 500, color: 'var(--ws-brand-secondary)', marginTop: '2px' }}>
                     {cap.subtitle}
                   </p>
                 </div>
@@ -71,8 +71,7 @@ export default function PreparedForYouSection() {
                   {cap.desc}
                 </p>
 
-                <p style={{
-                  fontSize: '0.8125rem',
+                <p className="ws-caption" style={{
                   fontWeight: 600,
                   color: 'var(--ws-text-primary)',
                   borderTop: '1px solid var(--ws-border-subtle)',

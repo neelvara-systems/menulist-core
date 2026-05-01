@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { getSubscriptionById, updateSubscription } from "@database/subscriptions";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -100,6 +101,7 @@ export const POST = withAuth(async (request, session) => {
 
         // If the subscription is already active (e.g., the webhook beat this call), we don't need to do anything.
         if (internalSub.status === 'active') {
+            await safeSyncStorePlanEntitlementFromSubscription(internalSub as FirestoreSubscriptionDoc, 'api:verify-subscription:already-active');
             logger.info('Subscription already active', {
                 subscriptionId: razorpay_subscription_id,
                 userId: userId
@@ -182,6 +184,14 @@ export const POST = withAuth(async (request, session) => {
 
         await writeLogEntry({ logFileName: LOG_FILE, userId: userId, logType: 'UPDATE_SUBSCRIPTION_VERIFY_SUBSCRIPTION', data: { updatePayload }, });
         await updateSubscription(razorpay_subscription_id, updatePayload);
+        await safeSyncStorePlanEntitlementFromSubscription(
+            {
+                ...internalSub,
+                ...updatePayload,
+                id: razorpay_subscription_id,
+            } as FirestoreSubscriptionDoc,
+            'api:verify-subscription',
+        );
 
         // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
         try {

@@ -148,12 +148,24 @@ const PlatformFeaturesList = {
             "id": "analytics_dashboard",
             "name": "Analytics Dashboard",
             "category": "Marketing & Growth",
-            "description": "Track views, clicks, and engagement to understand your audience.",
+            "description": "See menu sessions, engaged sessions, intent, action rate, top items, top categories, source quality, searches, and official-page actions.",
             "valueLabel": "{name} - {value}",
             "values": {
-                "starter": "Basic",
-                "pro": "Advanced",
-                "premium": "Advanced"
+                "starter": "Core metrics",
+                "pro": "Core + action summaries",
+                "premium": "Core + action summaries"
+            }
+        },
+        {
+            "id": "analytics_action_summaries",
+            "name": "Analytics Action Summaries",
+            "category": "Marketing & Growth",
+            "description": "Plain-language dashboard summaries and a short owner action list generated from settled menu and official-page analytics.",
+            "valueLabel": "{name}",
+            "values": {
+                "starter": false,
+                "pro": true,
+                "premium": true
             }
         },
         {

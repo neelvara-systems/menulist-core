@@ -64,10 +64,21 @@ function PDPModal({
             document.body.style.overflow = 'hidden';
 
             if (trackView) {
+                const file = projectData?.files?.find(f => (
+                    f.extractedData?.data?.items?.some((i: any) => i.id === item.id)
+                ));
+                const categoryId = typeof item.category === 'string' ? item.category : '';
+                const categoryRecord = file?.extractedData?.data?.categories?.find((cat: any) => cat.id === categoryId);
+                const categoryName = categoryRecord?.name?.[language]
+                    || categoryRecord?.name?.en
+                    || (typeof item.category === 'object' ? item.category?.[language] || item.category?.en : undefined);
+
                 trackMenuItemView({
                     itemId: item.id,
                     name: item.name?.[language] || 'Unknown Item',
-                    category: item.category?.[language] || undefined,
+                    category: categoryName,
+                    categoryId,
+                    categoryName,
                     price: typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price,
                     currency: 'USD',
                     attributes: item.attributes?.reduce((acc: Record<string, string>, attr: any) => {

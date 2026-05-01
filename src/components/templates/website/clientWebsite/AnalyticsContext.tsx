@@ -10,6 +10,8 @@ export interface MenuItemViewData {
   itemId: string;
   name: string; // Using 'name' to match existing code patterns
   category?: string;
+  categoryId?: string;
+  categoryName?: string;
   price?: number;
   currency?: string;
   attributes?: Record<string, string>;
@@ -27,6 +29,8 @@ interface UtmParams {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  entrySource?: string;
+  source?: string;
 }
 
 interface AnalyticsProviderProps {
@@ -45,7 +49,9 @@ const getUtmParams = () => {
   return {
     utm_source: urlParams.get('utm_source') || '',
     utm_medium: urlParams.get('utm_medium') || '',
-    utm_campaign: urlParams.get('utm_campaign') || ''
+    utm_campaign: urlParams.get('utm_campaign') || '',
+    entrySource: urlParams.get('entry_source') || '',
+    source: urlParams.get('source') || '',
   };
 };
 
@@ -138,7 +144,17 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
       const sessionId = getSessionId();
       const utmParams = getUtmParams();
 
-      trackItemView(data.itemId, data.name, data.category, data.price, data.currency, { sessionId, tenantId, storeId, projectId, storeTimeZone: storeDetails.timeZone, includeLocation, ...utmParams })
+      trackItemView(data.itemId, data.name, data.categoryName || data.category, data.price, data.currency, {
+        sessionId,
+        tenantId,
+        storeId,
+        projectId,
+        storeTimeZone: storeDetails.timeZone,
+        includeLocation,
+        categoryId: data.categoryId,
+        categoryName: data.categoryName || data.category,
+        ...utmParams,
+      })
         .catch(error => {
           console.error('Error tracking specific menu item view:', error);
         });

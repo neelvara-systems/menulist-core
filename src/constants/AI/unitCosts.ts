@@ -3,11 +3,11 @@ import { AI_ACTIONS_TYPES } from "@constant/common";
 // ═══════════════════════════════════════════════════════════════
 // USD → INR CONVERSION (update periodically)
 // ═══════════════════════════════════════════════════════════════
-export const USD_TO_INR = 84.5; // As of Feb 2026
+export const USD_TO_INR = 94.87; // As of May 2026, update periodically for internal margin tracking.
 
 // ═══════════════════════════════════════════════════════════════
 // REAL GOOGLE COST PER OPERATION (in USD)
-// Source: https://ai.google.dev/gemini-api/docs/pricing (Feb 2026)
+// Source: https://ai.google.dev/gemini-api/docs/pricing (May 2026)
 //
 // Gemini 2.5 Flash:  Input $0.30/1M tokens, Output $2.50/1M tokens
 // Gemini 2.0 Flash:  Input $0.30/1M tokens, Output $2.50/1M tokens (approx)

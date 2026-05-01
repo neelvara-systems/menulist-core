@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { completeCampaign as dbCompleteCampaign, getCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { updateStore } from '@database/stores';
+import { useOwnerActionPlan } from '@hook/useOwnerActionPlan';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
@@ -12,6 +13,8 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuAlertTriangle, LuCalendarOff, LuCheck, LuClock, LuMessageCircle, LuSkipForward, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Tag, Text, Title, Toast } from '../antd';
+import MobileOwnerActionPlanCard from './dashboardSections/MobileOwnerActionPlanCard';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 interface MobileTodayScreenProps {
     onBack?: () => void;
@@ -45,6 +48,8 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
     const t = useTranslations('MobileToday');
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { todayCampaigns, staffPrompt, isLoading, mutate } = useTodayCampaigns();
+    const { selectedProjectId } = useMobileProjects();
+    const ownerActionPlan = useOwnerActionPlan(selectedProjectId);
     const [isProcessing, setIsProcessing] = useState(false);
     const [postAction, setPostAction] = useState<'shared' | 'skipped' | null>(null);
     const [statusType, setStatusType] = useState<string>('closed_today');
@@ -295,6 +300,12 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                     <Text strong>{t('todaysStatus')}</Text>
                     {todayHoursCard}
                     {tempStatusCard}
+                    <MobileOwnerActionPlanCard
+                        actionPlan={ownerActionPlan.actionPlan}
+                        confidence={ownerActionPlan.confidence}
+                        sourceQuality={ownerActionPlan.sourceQuality}
+                        analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
+                    />
                     <Text strong>{t('suggestedForToday')}</Text>
                     <Card style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
                         <Flex align="center" gap={10}>
@@ -322,6 +333,12 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                 <Text strong>{t('todaysStatus')}</Text>
                 {todayHoursCard}
                 {tempStatusCard}
+                <MobileOwnerActionPlanCard
+                    actionPlan={ownerActionPlan.actionPlan}
+                    confidence={ownerActionPlan.confidence}
+                    sourceQuality={ownerActionPlan.sourceQuality}
+                    analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
+                />
 
                 {hasSuggestions ? <Text strong>{t('suggestedForToday')}</Text> : null}
                 {primary ? (

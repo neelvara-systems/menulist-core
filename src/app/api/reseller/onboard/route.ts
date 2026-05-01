@@ -5,6 +5,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { createResellerTransaction, getResellerProfile, incrementResellerOfflineCount, incrementResellerOnlineCount } from "@database/reseller";
 import { createInitialSubscription } from "@database/subscriptions";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
@@ -299,6 +300,10 @@ export const POST = withAuth(async (request, session) => {
             };
 
             await createInitialSubscription(subscriptionId, subscriptionPayload);
+            await safeSyncStorePlanEntitlementFromSubscription(
+                { ...subscriptionPayload, id: subscriptionId },
+                'api:reseller-onboard-offline',
+            );
             await incrementResellerOfflineCount(resellerId);
         }
 

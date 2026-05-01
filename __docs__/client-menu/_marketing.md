@@ -54,7 +54,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | Cost to update    | ₹2,000+         | ₹0            |
 | Sold-out handling | Staff announces | Auto-fades    |
 | Popular items     | Hidden in list  | Shown first   |
-| Analytics         | None            | Full tracking |
+| Analytics         | None            | Cost-safe owner signals |
 
 ### vs. Static QR Menus
 

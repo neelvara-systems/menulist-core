@@ -2,12 +2,11 @@ import '@styles/app.scss';
 import '@styles/mobile-theme.css';
 import 'antd/dist/reset.css';
 import { Metadata } from 'next';
-import { Suspense } from 'react';
+import { APP_THEME_COLOR } from 'src/constants/common';
 import { interFont } from 'src/fonts/inter';
 import DeploymentBuildBadge from '../components/common/DeploymentBuildBadge';
 import ServiceWorkerRegister from '../components/ServiceWorkerRegister';
 import AntdRegistry from '../lib/AntdRegistry';
-import ServerSidePageLoader from './loading';
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
 
@@ -62,7 +61,7 @@ export const viewport = {
     width: 'device-width',
     initialScale: 1,
     viewportFit: 'cover',
-    themeColor: '#386aff',
+    themeColor: APP_THEME_COLOR,
 };
 
 interface RootLayoutProps {
@@ -75,12 +74,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
     return (
         <html lang="en" className={`${interFont.variable}`} suppressHydrationWarning={true}>
             <head>
-                {/* PWA Meta Tags */}
-                <link rel="manifest" href="/manifest.json" />
-                <meta name="apple-mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-                <meta name="apple-mobile-web-app-title" content="MenuList" />
-                <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
                 {/* CSP Violation Monitor (Development Only) */}
                 {isDev && (
@@ -155,11 +148,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     }} />
                 )}
             </head>
-            <body className={`${interFont.className} antialiased font-sans`}>
+            <body
+                className={`${interFont.className} antialiased font-sans`}
+                style={{ backgroundColor: '#ffffff' }}
+            >
                 <AntdRegistry>
-                    <Suspense fallback={<ServerSidePageLoader page="App Layout" />}>
-                        {children}
-                    </Suspense>
+                    {children}
                     <DeploymentBuildBadge />
                     <ServiceWorkerRegister />
                 </AntdRegistry>

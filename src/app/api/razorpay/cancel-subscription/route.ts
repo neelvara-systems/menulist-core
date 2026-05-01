@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -111,6 +112,10 @@ export const POST = withAuth(async (request, session) => {
                     },
                 ],
             });
+            await safeSyncStorePlanEntitlementFromSubscription(
+                { ...internalSub, status: 'cancelled' },
+                'api:cancel-subscription',
+            );
             await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_SUCCESS', data: { internalSub }, });
             console.log(`Subscription ${internalSub.id} for user ${session.user.id} has been cancelled successfully.`);
             return NextResponse.json({ success: true, message: "Subscription cancelled successfully." });

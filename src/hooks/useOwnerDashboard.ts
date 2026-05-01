@@ -333,6 +333,10 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             mtd: settledData?.mtd || settledData?.overview?.mtd || null,
             historicalWeeks: settledData?.historicalWeeks || settledData?.overview?.historicalWeeks || [],
             overall: settledData?.overall || null,
+            ownerActionPlan: settledData?.ownerActionPlan || settledData?.overview?.ownerActionPlan,
+            ownerConfidence: settledData?.ownerConfidence || settledData?.overview?.ownerConfidence,
+            sourceQuality: settledData?.sourceQuality || settledData?.overview?.sourceQuality || [],
+            analyticsAiEntitlement: settledData?.analyticsAiEntitlement || settledData?.overview?.analyticsAiEntitlement,
             projectId: projectId || '',
             lastFetched: new Date(),
         };

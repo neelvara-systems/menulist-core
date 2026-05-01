@@ -70,11 +70,11 @@ const trustPillars = [
   {
     icon: LuUserCheck,
     title: 'Privacy-conscious analytics',
-    desc: 'MenuList keeps menu activity visible without turning customers into profiles. The system records menu behavior, not personal identity.',
+    desc: 'MenuList keeps menu and official-page activity visible without turning customers into profiles. The system records business signals, not personal identity.',
     points: [
-      'No customer names, emails, payment details, or exact GPS in this analytics flow',
-      'Searches, no-result searches, unavailable-item attention, and final menu actions remain visible',
-      'Owner-facing category controls show what is recorded by default',
+      'No customer names, emails, payment details, scroll heatmaps, hover tracking, or per-keystroke tracking',
+      'Menu sessions, category interest, searches, unavailable-item attention, source quality, and final actions remain visible',
+      'Approximate location is optional and never stored as exact GPS coordinates in this analytics flow',
     ],
   },
   {

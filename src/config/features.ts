@@ -803,6 +803,25 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_AI_ENHANCEMENTS: true,
 
+    /**
+     * Owner Analytics AI Summaries — paid Gemini wording for analytics.
+     *
+     * This mirrors the Cloud Functions env flag:
+     * `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true`.
+     *
+     * Cost-impacting server paths:
+     * - daily / weekly / monthly owner dashboard AI summaries
+     * - Today Action List wording polish
+     *
+     * When disabled:
+     * - deterministic analytics read models still write
+     * - rules-based Today Action List still appears
+     * - no Gemini call is made for analytics wording
+     *
+     * Production cost-safe default: false.
+     */
+    ENABLE_OWNER_ANALYTICS_AI_SUMMARIES: false,
+
     // ═══════════════════════════════════════════════════════════════
     // POS WEBHOOK SYNC (Menu Snapshot Broadcast)
     // ═══════════════════════════════════════════════════════════════

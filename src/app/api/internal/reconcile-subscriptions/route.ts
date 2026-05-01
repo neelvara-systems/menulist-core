@@ -1,5 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { getCollectionRef, updateSubscription } from "@database/subscriptions";
+import {
+    getActivePlanTypeForSubscription,
+    isSubscriptionEntitlementSynced,
+    safeSyncStorePlanEntitlementFromSubscription,
+} from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -148,6 +153,18 @@ export async function GET(request: Request) {
                         subId: sub.id,
                         updates: Object.keys(updates),
                     });
+                }
+
+                const finalStatus = updates.status || sub.status;
+                const desiredActivePlanType = getActivePlanTypeForSubscription({
+                    ...sub,
+                    status: finalStatus,
+                });
+                if (!isSubscriptionEntitlementSynced(sub, desiredActivePlanType) || finalStatus !== sub.status) {
+                    await safeSyncStorePlanEntitlementFromSubscription(
+                        { ...sub, status: finalStatus },
+                        'api:internal-reconcile-subscriptions',
+                    );
                 }
             } catch (subError) {
                 errors++;

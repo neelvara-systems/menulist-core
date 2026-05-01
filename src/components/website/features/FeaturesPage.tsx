@@ -142,37 +142,38 @@ export default function FeaturesPage() {
         <AnimateOnScroll>
           <SectionHeading
             title="Your menu, understood after it goes live"
-            subtitle="MenuList quietly records what customers notice on the public menu — what they search for, what has no clear result, what still attracts attention, and which next step they choose."
+            subtitle="MenuList records decision-ready customer signals from the public menu and official business page, then shows them as clear owner metrics."
           />
         </AnimateOnScroll>
 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
             gap: 'var(--ws-space-4)',
             marginTop: 'var(--ws-space-10)',
-            maxWidth: '1040px',
+            maxWidth: '960px',
             marginLeft: 'auto',
             marginRight: 'auto',
+            gridAutoRows: '1fr',
           }}
         >
           {[
             {
-              title: 'Searches stay visible',
-              desc: 'Searches and no-result searches remain visible after the menu is live.',
+              title: 'Session quality is measured',
+              desc: 'Menu sessions, engaged sessions, intent sessions, and action sessions are counted anonymously.',
             },
             {
-              title: 'Unavailable interest does not disappear',
-              desc: 'When customers still tap unavailable items, MenuList keeps that signal visible.',
+              title: 'Interest stays attached to items and categories',
+              desc: 'Item views, item taps, top categories, searches, no-result searches, and unavailable-item taps stay visible.',
             },
             {
-              title: 'Final actions are recorded',
-              desc: 'Calls, WhatsApp, directions, reservations, and order clicks stay attached to the menu they came from.',
+              title: 'Final actions show what worked',
+              desc: 'Calls, WhatsApp, directions, reservations, order clicks, shares, and official-page CTA taps feed Action Rate.',
             },
             {
-              title: 'Controls stay simple',
-              desc: 'What is recorded is grouped into clear categories instead of dozens of technical switches.',
+              title: 'Pro turns metrics into next actions',
+              desc: 'Eligible Pro plans can show a short action list and plain-language summaries from settled dashboard data.',
             },
           ].map((item, index) => (
             <AnimateStaggerChild key={item.title} index={index}>
@@ -195,7 +196,7 @@ export default function FeaturesPage() {
               marginRight: 'auto',
             }}
           >
-            No vanity analytics. No invasive tracking. MenuList focuses on decision-ready signals and privacy-conscious reporting: no customer names, no emails, no payment details, and no exact GPS in this analytics flow.
+            No vanity analytics. No invasive tracking. MenuList focuses on decision-ready signals and privacy-conscious reporting: no customer names, no emails, no payment details, no scroll heatmaps, no hover tracking, and no exact GPS coordinates in this analytics flow.
           </p>
         </AnimateOnScroll>
       </SectionWrapper>

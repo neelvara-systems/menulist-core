@@ -95,6 +95,20 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
+                        title="Engaged Sessions"
+                        value={`${metrics.engagedSessionRate || 0}%`}
+                        tooltip="Sessions where customers showed real menu interest"
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
+                        title="Action Rate"
+                        value={`${metrics.actionRate || 0}%`}
+                        tooltip="Sessions that led to a final customer action"
+                    />
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                    <MetricCard
                         title="Smart Picks Shown"
                         value={metrics.smartPicksRendered}
                         icon={<ThunderboltOutlined />}
@@ -137,6 +151,14 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
             <Row gutter={[16, 16]}>
                 <Col xs={24} lg={12}>
                     <TopItemsList items={topItems} title="Most Popular Items" />
+                    {data.topCategories?.length ? (
+                        <Card className={styles.detailCard} variant="borderless" style={{ marginTop: 16 }}>
+                            <Title level={5}>Top Category</Title>
+                            <Text type="secondary">
+                                {data.topCategories.slice(0, 3).map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}
+                            </Text>
+                        </Card>
+                    ) : null}
                 </Col>
                 <Col xs={24} lg={12}>
                     <Card className={styles.blockPerformanceCard} variant="borderless">

@@ -213,7 +213,48 @@
 
 ---
 
-### Section 8 — Final CTA
+### Section 8 — Analytics Signals
+
+**Section heading:**
+
+> Your menu, understood after it goes live
+
+**Supporting text:**
+
+> MenuList records the small set of customer signals that help an owner decide what to fix, promote, or share next — without heavy passive tracking.
+
+**Signal cards (4):**
+
+| Card | Title                              | Description                                                                                                     |
+| ---- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1    | Menu sessions and intent           | Counts anonymous menu sessions, engaged sessions, intent sessions, and action sessions without customer profiles |
+| 2    | Category and item interest         | Shows item views, item taps, category interest, searches, no-result searches, and unavailable-item taps          |
+| 3    | Actions that show real intent      | Records calls, WhatsApp, directions, reservations, order clicks, shares, and official-page CTA taps              |
+| 4    | Source quality, not vanity traffic | Shows which source creates action: QR, WhatsApp, Instagram, Google, official page, shortcut, or direct visits    |
+
+**Owner visibility card:**
+
+- Today so far, plus settled daily, weekly, monthly, and lifetime views
+- Engaged Sessions %, Intent Rate %, Action Rate %, and action rate by source
+- Top items, top categories, searches, no-result searches, and unavailable interest
+- Pro action summaries that turn the same metrics into a short owner action list
+
+**Transparency card:**
+
+- Cost-safe batching for passive events; final customer actions are recorded immediately
+- Clear owner settings explain what is recorded by default
+- No customer names, emails, payment details, scroll heatmaps, hover activity, or per-keystroke tracking
+- Approximate location is optional and never stored as exact GPS coordinates in this analytics flow
+
+**Notes:**
+
+- This is not positioned as a heavy analytics product. It is owner decision support.
+- Pro action summaries are plan-gated and only generated when the server feature flag is enabled.
+- Language must stay factual: "Action Rate", not "Conversion Rate", unless actual order/booking/payment completion is observable.
+
+---
+
+### Section 9 — Final CTA
 
 **Heading:**
 

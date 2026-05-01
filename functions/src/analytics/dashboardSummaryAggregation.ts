@@ -1,5 +1,8 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS, getAnalyticsDocId, getWeekDateRange } from '../constants/database';
+import { logger as appLogger } from '../lib/logger';
+import { generateOwnerActionPlan, OwnerActionCandidate } from '../services/gemini/ownerActionPlan';
+import { AnalyticsAiEntitlement } from './analyticsAiEntitlements';
 import {
     addDaysToAnalyticsDateKey,
     parseAnalyticsDateKey,
@@ -10,6 +13,33 @@ const MENU_DAILY_CACHE_DAYS = 45;
 const CUSTOMER_APP_DAILY_CACHE_DAYS = 45;
 const INTELLIGENCE_ITEM_LIMIT = 250;
 const DASHBOARD_ITEM_LIMIT = 75;
+
+export interface OwnerDashboardAISummaryPayload {
+    markdown: string;
+    bulletPoints: string[];
+    generatedAt: any;
+    promptVersion: string;
+    period?: {
+        start: string;
+        end: string;
+    };
+}
+
+export interface OwnerDashboardAIPayloads {
+    daily?: OwnerDashboardAISummaryPayload;
+    weekly?: OwnerDashboardAISummaryPayload;
+    weeklyMetricsChange?: {
+        menuVisitsChange: number;
+    };
+    monthly?: OwnerDashboardAISummaryPayload;
+}
+
+const DEFAULT_ANALYTICS_AI_ENTITLEMENT: AnalyticsAiEntitlement = {
+    enabled: false,
+    activePlanType: null,
+    requiredPlanType: 'pro',
+    reason: 'missing_plan',
+};
 
 function getDashboardSummaryDocId(tId: string, sId: string, projectId: string): string {
     return `${tId}_${sId}_${projectId}_dashboard_summary`;
@@ -72,6 +102,10 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         totalViews: 0,
         totalClicks: 0,
         totalSessions: 0,
+        menuSessions: 0,
+        engagedSessions: 0,
+        intentSessions: 0,
+        actionSessions: 0,
         totalSearches: 0,
         zeroResultSearches: 0,
         totalUnavailableItemTaps: 0,
@@ -82,22 +116,36 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         totalAppOpens: 0,
         uniqueInstallSessions: 0,
         viewsByItem: {},
+        viewsByEntrySource: {},
+        menuSessionsBySource: {},
+        actionSessionsBySource: {},
+        menuActionClicksBySource: {},
+        viewsByCategory: {},
+        clicksByCategory: {},
+        hourlyViews: {},
+        hourlyMenuActionClicks: {},
         clicksByItem: {},
         recommendationClicksByItem: {},
         hourlyClicksByItem: {},
         unavailableItemTapsByItem: {},
         searchTerms: {},
+        zeroResultSearchTerms: {},
         menuActionClicks: {},
         recommendationClicks: {},
         decisionBlocksRendered: {},
         shortcutClicks: {},
         itemNames: {},
+        categoryNames: {},
     };
 
     for (const doc of docs) {
         result.totalViews += doc.totalViews || 0;
         result.totalClicks += doc.totalClicks || 0;
         result.totalSessions += doc.totalSessions || 0;
+        result.menuSessions += doc.menuSessions || 0;
+        result.engagedSessions += doc.engagedSessions || 0;
+        result.intentSessions += doc.intentSessions || 0;
+        result.actionSessions += doc.actionSessions || 0;
         result.totalSearches += doc.totalSearches || 0;
         result.zeroResultSearches += doc.zeroResultSearches || 0;
         result.totalUnavailableItemTaps += doc.totalUnavailableItemTaps || 0;
@@ -108,17 +156,29 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         result.totalAppOpens += doc.totalAppOpens || 0;
         result.uniqueInstallSessions += doc.uniqueInstallSessions || 0;
         mergeMapField(result.viewsByItem, doc.viewsByItem);
+        mergeMapField(result.viewsByEntrySource, doc.viewsByEntrySource);
+        mergeMapField(result.menuSessionsBySource, doc.menuSessionsBySource);
+        mergeMapField(result.actionSessionsBySource, doc.actionSessionsBySource);
+        mergeMapField(result.menuActionClicksBySource, doc.menuActionClicksBySource);
+        mergeMapField(result.viewsByCategory, doc.viewsByCategory);
+        mergeMapField(result.clicksByCategory, doc.clicksByCategory);
+        mergeMapField(result.hourlyViews, doc.hourlyViews);
+        mergeMapField(result.hourlyMenuActionClicks, doc.hourlyMenuActionClicks);
         mergeMapField(result.clicksByItem, doc.clicksByItem);
         mergeMapField(result.recommendationClicksByItem, doc.recommendationClicksByItem);
         mergeNestedMapField(result.hourlyClicksByItem, doc.hourlyClicksByItem);
         mergeMapField(result.unavailableItemTapsByItem, doc.unavailableItemTapsByItem);
         mergeMapField(result.searchTerms, doc.searchTerms);
+        mergeMapField(result.zeroResultSearchTerms, doc.zeroResultSearchTerms);
         mergeMapField(result.menuActionClicks, doc.menuActionClicks);
         mergeMapField(result.recommendationClicks, doc.recommendationClicks);
         mergeMapField(result.decisionBlocksRendered, doc.decisionBlocksRendered);
         mergeMapField(result.shortcutClicks, doc.shortcutClicks);
         if (doc.itemNames) {
             Object.assign(result.itemNames, doc.itemNames);
+        }
+        if (doc.categoryNames) {
+            Object.assign(result.categoryNames, doc.categoryNames);
         }
     }
 
@@ -135,9 +195,21 @@ function mergeNestedMapField(target: Record<string, Record<string, number>>, sou
 }
 
 function getDashboardMetrics(data: Record<string, any> = {}) {
+    const menuSessions = data.menuSessions || data.totalSessions || 0;
+    const engagedSessions = data.engagedSessions || 0;
+    const intentSessions = data.intentSessions || 0;
+    const actionSessions = data.actionSessions || 0;
+
     return {
         menuVisits: data.totalViews || 0,
         itemClicks: data.totalClicks || 0,
+        menuSessions,
+        engagedSessions,
+        intentSessions,
+        actionSessions,
+        engagedSessionRate: menuSessions > 0 ? Math.round((engagedSessions / menuSessions) * 100) : 0,
+        intentRate: menuSessions > 0 ? Math.round((intentSessions / menuSessions) * 100) : 0,
+        actionRate: menuSessions > 0 ? Math.round((actionSessions / menuSessions) * 100) : 0,
         searches: data.totalSearches || 0,
         unavailableItemTaps: data.totalUnavailableItemTaps || 0,
         menuActionClicks: data.totalMenuActionClicks || 0,
@@ -190,6 +262,235 @@ function topSearchTerms(map?: Record<string, number>) {
         .slice(0, 5);
 }
 
+function topCategoryEntries(data: Record<string, any> = {}) {
+    const views = data.viewsByCategory || {};
+    const clicks = data.clicksByCategory || {};
+    const categoryIds = new Set<string>([
+        ...Object.keys(views),
+        ...Object.keys(clicks),
+    ]);
+
+    return Array.from(categoryIds)
+        .map((categoryId) => ({
+            categoryId,
+            name: data.categoryNames?.[categoryId],
+            views: views[categoryId] || 0,
+            clicks: clicks[categoryId] || 0,
+        }))
+        .filter((category) => category.views > 0 || category.clicks > 0)
+        .sort((a, b) => (b.views + b.clicks) - (a.views + a.clicks))
+        .slice(0, 5);
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+    qr: 'QR / table scan',
+    whatsapp: 'WhatsApp',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    google: 'Google',
+    obp: 'Official business page',
+    menu_kit: 'Menu kit',
+    shortcut: 'Customer app shortcut',
+    direct: 'Direct link',
+    other: 'Other source',
+};
+
+function sourceQualityEntries(data: Record<string, any> = {}) {
+    const sessions = data.menuSessionsBySource || {};
+    const actionSessions = data.actionSessionsBySource || {};
+    const actionClicks = data.menuActionClicksBySource || {};
+    const sourceIds = new Set<string>([
+        ...Object.keys(sessions),
+        ...Object.keys(actionSessions),
+        ...Object.keys(actionClicks),
+    ]);
+
+    return Array.from(sourceIds)
+        .map((source) => {
+            const menuSessions = sessions[source] || 0;
+            const actions = actionClicks[source] || 0;
+            const sourceActionSessions = actionSessions[source] || 0;
+            return {
+                source,
+                label: SOURCE_LABELS[source] || source,
+                menuSessions,
+                actionSessions: sourceActionSessions,
+                actionClicks: actions,
+                actionRate: menuSessions > 0 ? Math.round((sourceActionSessions / menuSessions) * 100) : 0,
+            };
+        })
+        .filter((entry) => entry.menuSessions > 0 || entry.actionClicks > 0)
+        .sort((a, b) => (b.actionSessions - a.actionSessions) || (b.menuSessions - a.menuSessions))
+        .slice(0, 6);
+}
+
+function topHourlyEntry(map?: Record<string, number>) {
+    const [hour, count] = Object.entries(map || {})
+        .filter(([, value]) => typeof value === 'number' && value > 0)
+        .sort((a, b) => b[1] - a[1])[0] || [];
+    if (!hour) return null;
+    return { hour, count };
+}
+
+function buildOwnerConfidence(data: Record<string, any> = {}) {
+    const metrics = getDashboardMetrics(data);
+    if (metrics.menuVisits === 0) {
+        return {
+            status: 'no_data',
+            label: 'Waiting for activity',
+            message: 'No customer activity is available for this period yet.',
+        };
+    }
+
+    if ((metrics.zeroResultSearches || 0) > 0 || (metrics.unavailableItemTaps || 0) > 0 || (metrics.actionRate || 0) < 10) {
+        return {
+            status: 'watch',
+            label: 'Watch',
+            message: 'Customers are showing interest, but one menu area needs attention.',
+        };
+    }
+
+    return {
+        status: 'stable',
+        label: 'Menu state is stable',
+        message: 'Customers are finding and using the menu normally.',
+    };
+}
+
+function buildOwnerActionCandidates(data: Record<string, any> = {}): OwnerActionCandidate[] {
+    const metrics = getDashboardMetrics(data);
+    const candidates: OwnerActionCandidate[] = [];
+    const topSearch = topSearchTerms(data.searchTerms)[0];
+    const topZeroSearch = topSearchTerms(data.zeroResultSearchTerms)[0];
+    const topUnavailable = topMapEntries(data.unavailableItemTapsByItem, data.itemNames)[0];
+    const topCategory = topCategoryEntries(data)[0];
+    const sourceQuality = sourceQualityEntries(data);
+    const bestSource = sourceQuality[0];
+    const peakHour = topHourlyEntry(data.hourlyViews);
+
+    if (topZeroSearch) {
+        candidates.push({
+            id: 'search-vocabulary',
+            type: 'search_vocabulary',
+            title: 'Add the words customers search for',
+            description: `Customers searched for "${topZeroSearch.term}" but did not get a match.`,
+            reason: `${topZeroSearch.count} no-result searches`,
+            actionLabel: 'Review menu wording',
+            metricLabel: `${topZeroSearch.count} misses`,
+            priority: 'high',
+        });
+    }
+
+    if (topUnavailable) {
+        candidates.push({
+            id: 'unavailable-demand',
+            type: 'demand_gap',
+            title: 'Check unavailable demand',
+            description: `${topUnavailable.name || topUnavailable.itemId} was tapped while unavailable.`,
+            reason: `${topUnavailable.clicks} unavailable taps`,
+            actionLabel: 'Restock or update availability',
+            metricLabel: `${topUnavailable.clicks} taps`,
+            priority: 'high',
+        });
+    }
+
+    if ((metrics.engagedSessions || 0) >= 5 && (metrics.actionRate || 0) < 20) {
+        candidates.push({
+            id: 'action-leakage',
+            type: 'action_leakage',
+            title: 'Make the next step clearer',
+            description: 'Customers are browsing, but fewer sessions are ending in call, WhatsApp, directions, reserve, or order.',
+            reason: `${metrics.engagedSessionRate || 0}% engaged sessions, ${metrics.actionRate || 0}% action rate`,
+            actionLabel: 'Check customer action buttons',
+            metricLabel: `${metrics.actionRate || 0}% action rate`,
+            priority: 'high',
+        });
+    }
+
+    if (topCategory && (topCategory.views + topCategory.clicks) >= 5) {
+        candidates.push({
+            id: 'menu-reorder',
+            type: 'menu_reorder',
+            title: 'Move the strongest category higher',
+            description: `${topCategory.name || topCategory.categoryId} is getting the most category interest.`,
+            reason: `${topCategory.views} views and ${topCategory.clicks} taps`,
+            actionLabel: 'Review menu order',
+            metricLabel: `${topCategory.views + topCategory.clicks} signals`,
+            priority: 'medium',
+        });
+    }
+
+    if (topSearch && !topZeroSearch && topSearch.count >= 3) {
+        candidates.push({
+            id: 'demand-focus',
+            type: 'demand_gap',
+            title: 'Use current customer demand',
+            description: `"${topSearch.term}" is the most searched term in this period.`,
+            reason: `${topSearch.count} searches`,
+            actionLabel: 'Feature matching items',
+            metricLabel: `${topSearch.count} searches`,
+            priority: 'medium',
+        });
+    }
+
+    if (peakHour && peakHour.count >= 5) {
+        candidates.push({
+            id: 'daypart-focus',
+            type: 'daypart',
+            title: 'Use the busiest browsing hour',
+            description: `Customer menu activity is strongest around ${peakHour.hour}:00.`,
+            reason: `${peakHour.count} menu views in that hour`,
+            actionLabel: 'Time today’s share',
+            metricLabel: `${peakHour.hour}:00 peak`,
+            priority: 'low',
+        });
+    }
+
+    if (bestSource && bestSource.menuSessions >= 3) {
+        candidates.push({
+            id: 'source-quality',
+            type: 'source_quality',
+            title: 'Use the source that brings action',
+            description: `${bestSource.label} is producing the strongest customer action signal.`,
+            reason: `${bestSource.actionRate}% action rate from ${bestSource.menuSessions} sessions`,
+            actionLabel: 'Share there again',
+            metricLabel: `${bestSource.actionRate}%`,
+            priority: 'medium',
+        });
+    }
+
+    if (metrics.menuVisits > 0 && candidates.length === 0) {
+        candidates.push({
+            id: 'confidence',
+            type: 'confidence',
+            title: 'Menu state is stable',
+            description: 'Customers are viewing the menu and no urgent demand gap was detected.',
+            reason: `${metrics.menuVisits} menu scans`,
+            actionLabel: 'No action needed',
+            metricLabel: `${metrics.menuVisits} scans`,
+            priority: 'low',
+        });
+    }
+
+    return candidates
+        .sort((a, b) => {
+            const weight = { high: 3, medium: 2, low: 1 };
+            return weight[b.priority] - weight[a.priority];
+        })
+        .slice(0, 4);
+}
+
+function buildActionPlanFingerprint(candidates: OwnerActionCandidate[]): string {
+    return candidates
+        .map((candidate) => [
+            candidate.id,
+            candidate.priority,
+            candidate.metricLabel || '',
+            candidate.reason,
+        ].join(':'))
+        .join('|');
+}
+
 function topMap(map?: Record<string, number>, limit = 20): Record<string, number> {
     return Object.fromEntries(
         Object.entries(map || {})
@@ -226,6 +527,10 @@ function pickNestedHourlyMap(
     return result;
 }
 
+function isAnalyticsRow(row: Record<string, any> | undefined): row is Record<string, any> {
+    return Boolean(row);
+}
+
 function buildIntelligence7dSnapshot(
     tId: string,
     sId: string,
@@ -235,7 +540,7 @@ function buildIntelligence7dSnapshot(
 ) {
     const startDate = addDaysToAnalyticsDateKey(settlementDate, -6);
     const dates = getDateRange(startDate, settlementDate);
-    const docs = dates.map((date) => dailyMap.get(date)).filter(Boolean);
+    const docs = dates.map((date) => dailyMap.get(date)).filter(isAnalyticsRow);
     const aggregated = aggregateDailyDocs(docs);
     const keepItemIds = new Set<string>([
         ...Object.keys(topMap(aggregated.viewsByItem, INTELLIGENCE_ITEM_LIMIT)),
@@ -291,6 +596,10 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         totalViews: data.totalViews || 0,
         totalClicks: data.totalClicks || 0,
         totalSessions: data.totalSessions || 0,
+        menuSessions: data.menuSessions || 0,
+        engagedSessions: data.engagedSessions || 0,
+        intentSessions: data.intentSessions || 0,
+        actionSessions: data.actionSessions || 0,
         totalSearches: data.totalSearches || 0,
         zeroResultSearches: data.zeroResultSearches || 0,
         totalUnavailableItemTaps: data.totalUnavailableItemTaps || 0,
@@ -301,16 +610,26 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         clicksByDevice: data.clicksByDevice || {},
         viewsByLocation: data.viewsByLocation || {},
         clicksByLocation: data.clicksByLocation || {},
+        viewsByEntrySource: topMap(data.viewsByEntrySource, DASHBOARD_ITEM_LIMIT),
+        menuSessionsBySource: topMap(data.menuSessionsBySource, DASHBOARD_ITEM_LIMIT),
+        actionSessionsBySource: topMap(data.actionSessionsBySource, DASHBOARD_ITEM_LIMIT),
+        menuActionClicksBySource: topMap(data.menuActionClicksBySource, DASHBOARD_ITEM_LIMIT),
         viewsByItem: pickMap(data.viewsByItem, keepItemIds),
+        viewsByCategory: topMap(data.viewsByCategory, DASHBOARD_ITEM_LIMIT),
+        clicksByCategory: topMap(data.clicksByCategory, DASHBOARD_ITEM_LIMIT),
+        hourlyViews: topMap(data.hourlyViews, 24),
+        hourlyMenuActionClicks: topMap(data.hourlyMenuActionClicks, 24),
         clicksByItem: pickMap(data.clicksByItem, keepItemIds),
         recommendationClicksByItem: pickMap(data.recommendationClicksByItem, keepItemIds),
         hourlyClicksByItem: pickNestedHourlyMap(data.hourlyClicksByItem, keepItemIds),
         searchTerms: topMap(data.searchTerms, DASHBOARD_ITEM_LIMIT),
+        zeroResultSearchTerms: topMap(data.zeroResultSearchTerms, DASHBOARD_ITEM_LIMIT),
         unavailableItemTapsByItem: pickMap(data.unavailableItemTapsByItem, keepItemIds),
         menuActionClicks: data.menuActionClicks || {},
         recommendationClicks: data.recommendationClicks || {},
         decisionBlocksRendered: data.decisionBlocksRendered || {},
         itemNames,
+        categoryNames: data.categoryNames || {},
         lastUpdated: data.lastUpdated || data.modifiedOn || null,
     };
 }
@@ -383,9 +702,18 @@ async function buildIncrementalCustomerAppDailyMap(
         if (settledDailyData) {
             dailyMap.set(settlementDate, {
                 date: settlementDate,
+                totalPromptShown: settledDailyData.totalPromptShown || 0,
+                totalPromptDismissed: settledDailyData.totalPromptDismissed || 0,
+                totalInstallStarted: settledDailyData.totalInstallStarted || 0,
                 totalInstalled: settledDailyData.totalInstalled || 0,
+                uniqueInstallSessions: settledDailyData.uniqueInstallSessions || 0,
                 totalAppOpens: settledDailyData.totalAppOpens || 0,
                 shortcutClicks: settledDailyData.shortcutClicks || {},
+                installsByDevice: settledDailyData.installsByDevice || {},
+                installsByLocation: settledDailyData.installsByLocation || {},
+                installsByPlatform: settledDailyData.installsByPlatform || {},
+                installsBySource: settledDailyData.installsBySource || {},
+                appOpensByPlatform: settledDailyData.appOpensByPlatform || {},
             });
         }
         return { dailyMap, source: 'incremental' };
@@ -404,9 +732,12 @@ function buildDailyView(data: Record<string, any>, date: string) {
         metrics: getDashboardMetrics(data),
         blockPerformance: getBlockPerformance(data),
         topItems: topMapEntries(data.recommendationClicksByItem, data.itemNames),
+        topCategories: topCategoryEntries(data),
         menuActions: getMenuActions(data),
         topSearchTerms: topSearchTerms(data.searchTerms),
         unavailableItems: topMapEntries(data.unavailableItemTapsByItem, data.itemNames),
+        sourceQuality: sourceQualityEntries(data),
+        ownerConfidence: buildOwnerConfidence(data),
         isLowActivity: menuVisits < 20,
         isPartial: false,
         lastUpdated: data.lastUpdated || data.modifiedOn || null,
@@ -418,9 +749,12 @@ function buildPeriodView(aggregated: Record<string, any>) {
         metrics: getDashboardMetrics(aggregated),
         blockPerformance: getBlockPerformance(aggregated),
         topItems: topMapEntries(aggregated.recommendationClicksByItem, aggregated.itemNames),
+        topCategories: topCategoryEntries(aggregated),
         menuActions: getMenuActions(aggregated),
         topSearchTerms: topSearchTerms(aggregated.searchTerms),
         unavailableItems: topMapEntries(aggregated.unavailableItemTapsByItem, aggregated.itemNames),
+        sourceQuality: sourceQualityEntries(aggregated),
+        ownerConfidence: buildOwnerConfidence(aggregated),
     };
 }
 
@@ -467,6 +801,15 @@ async function writeCustomerAppDashboardSummary(
         existingDashboard,
         settledDailyData,
     );
+    if (source === 'rebuild') {
+        appLogger.warn('[AnalyticsSettlement] Customer App dashboard summary rebuilt from daily docs', {
+            tId,
+            sId,
+            projectId: 'customerApp',
+            settlementDate,
+            daysLoaded: dailyMap.size,
+        });
+    }
     const summary = summarySnap.exists ? summarySnap.data() || {} : {};
 
     if (!summarySnap.exists && dailyMap.size === 0) return;
@@ -475,9 +818,18 @@ async function writeCustomerAppDashboardSummary(
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, data]) => ({
             date,
+            totalPromptShown: data.totalPromptShown || 0,
+            totalPromptDismissed: data.totalPromptDismissed || 0,
+            totalInstallStarted: data.totalInstallStarted || 0,
             totalInstalled: data.totalInstalled || 0,
+            uniqueInstallSessions: data.uniqueInstallSessions || 0,
             totalAppOpens: data.totalAppOpens || 0,
             shortcutClicks: data.shortcutClicks || {},
+            installsByDevice: data.installsByDevice || {},
+            installsByLocation: data.installsByLocation || {},
+            installsByPlatform: data.installsByPlatform || {},
+            installsBySource: data.installsBySource || {},
+            appOpensByPlatform: data.appOpensByPlatform || {},
         }));
 
     await dashboardRef.set({
@@ -501,7 +853,10 @@ async function writeMenuDashboardSummary(
     projectId: string,
     settlementDate: string,
     settledDailyData?: Record<string, any> | null,
+    aiPayloads: OwnerDashboardAIPayloads = {},
+    analyticsAiEntitlement: AnalyticsAiEntitlement = DEFAULT_ANALYTICS_AI_ENTITLEMENT,
 ): Promise<void> {
+    const canUseAnalyticsAi = analyticsAiEntitlement.enabled;
     const dashboardRef = db.collection(ANALYTICS_COLLECTION).doc(getDashboardSummaryDocId(tId, sId, projectId));
     const [dashboardSnap, summarySnap] = await Promise.all([
         dashboardRef.get(),
@@ -521,17 +876,29 @@ async function writeMenuDashboardSummary(
         existingDashboard,
         settledDailyData,
     );
+    if (source === 'rebuild') {
+        appLogger.warn('[AnalyticsSettlement] Menu dashboard summary rebuilt from daily docs', {
+            tId,
+            sId,
+            projectId,
+            settlementDate,
+            daysLoaded: dailyMap.size,
+        });
+    }
     const summary = summarySnap.exists ? summarySnap.data() || {} : {};
 
     if (!summarySnap.exists && dailyMap.size === 0) return;
 
-    const aggregateForDates = (dates: string[]) => aggregateDailyDocs(dates.map((date) => dailyMap.get(date)).filter(Boolean));
-    const wtdDocs = wtdDates.map((date) => dailyMap.get(date)).filter(Boolean);
-    const mtdDocs = mtdDates.map((date) => dailyMap.get(date)).filter(Boolean);
+    const aggregateForDates = (dates: string[]) => aggregateDailyDocs(dates.map((date) => dailyMap.get(date)).filter(isAnalyticsRow));
+    const wtdDocs = wtdDates.map((date) => dailyMap.get(date)).filter(isAnalyticsRow);
+    const mtdDocs = mtdDates.map((date) => dailyMap.get(date)).filter(isAnalyticsRow);
     const wtdAggregated = aggregateForDates(wtdDates);
     const mtdAggregated = aggregateForDates(mtdDates);
     const yesterdayData = dailyMap.get(settlementDate);
-    const yesterday = yesterdayData ? buildDailyView(yesterdayData, settlementDate) : null;
+    const yesterday = yesterdayData ? {
+        ...buildDailyView(yesterdayData, settlementDate),
+        aiSummary: canUseAnalyticsAi ? (aiPayloads.daily || yesterdayData.aiSummary) : undefined,
+    } : null;
     const wtd = wtdDocs.length > 0 ? {
         startDate: wtdDates[0],
         endDate: settlementDate,
@@ -551,7 +918,7 @@ async function writeMenuDashboardSummary(
     } : null;
     const historicalWeeks = weekRanges.map((range) => {
         const dates = getDateRangeForDates(range.start, range.end);
-        const docs = dates.map((date) => dailyMap.get(date)).filter(Boolean);
+        const docs = dates.map((date) => dailyMap.get(date)).filter(isAnalyticsRow);
         if (docs.length === 0) return null;
         const aggregated = aggregateDailyDocs(docs);
         return {
@@ -566,23 +933,41 @@ async function writeMenuDashboardSummary(
         weekStart: wtd.startDate,
         weekEnd: wtd.endDate,
         ...buildPeriodView(wtdAggregated),
-        aiSummary: summary.ownerDashboardSummary ? {
+        aiSummary: canUseAnalyticsAi ? (aiPayloads.weekly || (summary.ownerDashboardSummary ? {
             markdown: summary.ownerDashboardSummary.markdown,
             bulletPoints: summary.ownerDashboardSummary.bulletPoints || [],
             generatedAt: summary.ownerDashboardSummary.generatedAt || null,
             promptVersion: summary.ownerDashboardSummary.promptVersion || 'v1',
             period: summary.ownerDashboardSummary.period,
-        } : undefined,
-        metricsChange: summary.ownerDashboardSummaryMetrics?.menuVisitsChange !== undefined ? {
+        } : undefined)) : undefined,
+        metricsChange: aiPayloads.weeklyMetricsChange || (summary.ownerDashboardSummaryMetrics?.menuVisitsChange !== undefined ? {
             menuVisitsChange: summary.ownerDashboardSummaryMetrics.menuVisitsChange,
-        } : undefined,
+        } : undefined),
     } : null;
     const monthly = mtd ? {
         monthStart: mtd.startDate,
         monthEnd: mtd.endDate,
         daysWithData: mtd.daysWithData,
         ...buildPeriodView(mtdAggregated),
+        aiSummary: canUseAnalyticsAi ? aiPayloads.monthly : undefined,
     } : null;
+    const actionPlanInput = wtdDocs.length > 0 ? wtdAggregated : mtdDocs.length > 0 ? mtdAggregated : (yesterdayData || {});
+    const actionPlanCandidates = buildOwnerActionCandidates(actionPlanInput);
+    const actionPlanFingerprint = buildActionPlanFingerprint(actionPlanCandidates);
+    const reusableActionPlan = existingDashboard?.ownerActionPlan?.fingerprint === actionPlanFingerprint
+        ? existingDashboard.ownerActionPlan
+        : null;
+    const shouldGenerateActionPlan = canUseAnalyticsAi
+        && actionPlanCandidates.length > 0
+        && ((actionPlanInput.menuSessions || 0) >= 3 || (actionPlanInput.totalViews || 0) >= 3);
+    const ownerActionPlan = canUseAnalyticsAi ? (reusableActionPlan || {
+        ...(shouldGenerateActionPlan
+            ? await generateOwnerActionPlan(actionPlanCandidates)
+            : { generatedBy: 'rules' as const, actions: actionPlanCandidates }),
+        fingerprint: actionPlanFingerprint,
+    }) : undefined;
+    const ownerConfidence = buildOwnerConfidence(actionPlanInput);
+    const sourceQuality = sourceQualityEntries(actionPlanInput);
 
     let status: 'working' | 'low_activity' | 'no_data' = 'no_data';
     let statusMessage = 'No data yet. Your menu analytics will appear once customers start scanning.';
@@ -599,18 +984,32 @@ async function writeMenuDashboardSummary(
         statusMessage = 'Activity detected yesterday. Building your weekly summary.';
     }
 
+    const lifetimeMenuSessions = summary.lifetimeMenuSessions || summary.lifetime?.menuSessions || 0;
+    const lifetimeEngagedSessions = summary.lifetimeEngagedSessions || summary.lifetime?.engagedSessions || 0;
+    const lifetimeIntentSessions = summary.lifetimeIntentSessions || summary.lifetime?.intentSessions || 0;
+    const lifetimeActionSessions = summary.lifetimeActionSessions || summary.lifetime?.actionSessions || 0;
     const overall = summarySnap.exists ? {
         lifetimeMetrics: {
             totalViews: summary.lifetimeTotalViews || summary.lifetime?.totalViews || 0,
             totalClicks: summary.lifetimeTotalClicks || summary.lifetime?.totalClicks || 0,
             totalSmartPicksRendered: summary.lifetimeTotalDecisionBlocksRendered || summary.lifetime?.totalDecisionBlocksRendered || 0,
             totalSmartPicksClicks: summary.lifetimeTotalRecommendationClicks || summary.lifetime?.totalRecommendationClicks || 0,
+            menuSessions: lifetimeMenuSessions,
+            engagedSessions: lifetimeEngagedSessions,
+            intentSessions: lifetimeIntentSessions,
+            actionSessions: lifetimeActionSessions,
+            engagedSessionRate: lifetimeMenuSessions > 0 ? Math.round((lifetimeEngagedSessions / lifetimeMenuSessions) * 100) : 0,
+            intentRate: lifetimeMenuSessions > 0 ? Math.round((lifetimeIntentSessions / lifetimeMenuSessions) * 100) : 0,
+            actionRate: lifetimeMenuSessions > 0 ? Math.round((lifetimeActionSessions / lifetimeMenuSessions) * 100) : 0,
             totalSearches: summary.lifetimeTotalSearches || 0,
             totalZeroResultSearches: summary.lifetimeZeroResultSearches || 0,
             totalUnavailableItemTaps: summary.lifetimeTotalUnavailableItemTaps || 0,
             totalMenuActionClicks: summary.lifetimeTotalMenuActionClicks || 0,
         },
+        topCategories: topCategoryEntries(summary),
         menuActions: getMenuActions(summary),
+        sourceQuality: sourceQualityEntries(summary),
+        ownerConfidence: buildOwnerConfidence(summary),
         firstDataDate: summary.firstDataDate,
         lastUpdated: summary.modifiedOn || summary.lastUpdated || null,
     } : null;
@@ -631,6 +1030,10 @@ async function writeMenuDashboardSummary(
             yesterday,
             historicalWeeks,
             aiSummary: weekly?.aiSummary,
+            ownerActionPlan,
+            ownerConfidence,
+            sourceQuality,
+            analyticsAiEntitlement,
         },
         daily: yesterday,
         weekly,
@@ -639,6 +1042,10 @@ async function writeMenuDashboardSummary(
         mtd,
         historicalWeeks,
         overall,
+        ownerActionPlan,
+        ownerConfidence,
+        sourceQuality,
+        analyticsAiEntitlement,
         analyticsSummary: summary,
         daily30d: Array.from(dailyMap.entries())
             .filter(([date]) => date >= addDaysToAnalyticsDateKey(settlementDate, -(MENU_DAILY_CACHE_DAYS - 1)) && date <= settlementDate)
@@ -660,11 +1067,13 @@ export async function writeDashboardSummaryDocument(
     projectId: string,
     settlementDate: string,
     settledDailyData?: Record<string, any> | null,
+    aiPayloads: OwnerDashboardAIPayloads = {},
+    analyticsAiEntitlement: AnalyticsAiEntitlement = DEFAULT_ANALYTICS_AI_ENTITLEMENT,
 ): Promise<void> {
     if (projectId === 'customerApp') {
         await writeCustomerAppDashboardSummary(db, tId, sId, settlementDate, settledDailyData);
         return;
     }
 
-    await writeMenuDashboardSummary(db, tId, sId, projectId, settlementDate, settledDailyData);
+    await writeMenuDashboardSummary(db, tId, sId, projectId, settlementDate, settledDailyData, aiPayloads, analyticsAiEntitlement);
 }

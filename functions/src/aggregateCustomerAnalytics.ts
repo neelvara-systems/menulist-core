@@ -2,8 +2,13 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { DB_COLLECTIONS, getAnalyticsDocId, getMonthDateRange, getWeekDateRange, TTL_CONFIG } from './constants/database';
 import { firestoreAdmin } from './firebaseAdmin';
+import { logger as appLogger } from './lib/logger';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateKey, getAnalyticsWeekday, parseAnalyticsDateKey } from './utils/analyticsDate';
-import { writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
+import { OwnerDashboardAIPayloads, writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
+import {
+    AnalyticsAiEntitlement,
+    resolveAnalyticsAiEntitlement,
+} from './analytics/analyticsAiEntitlements';
 import {
     DailyDashboardMetrics,
     generateDailyAISummary,
@@ -50,6 +55,7 @@ import {
 const ANALYTICS_COLLECTION = DB_COLLECTIONS.ANALYTICS;
 const TTL_DAYS = TTL_CONFIG.ANALYTICS_DAILY_DAYS;
 // Document ID patterns now use getAnalyticsDocId helpers
+const LATE_EVENT_CORRECTION_DAYS = 1;
 
 // Daily metrics structure (used for type reference in dailyData parameter)
 interface DailyMetrics {
@@ -57,6 +63,10 @@ interface DailyMetrics {
     totalViews?: number;
     totalClicks?: number;
     totalSessions?: number;
+    menuSessions?: number;
+    engagedSessions?: number;
+    intentSessions?: number;
+    actionSessions?: number;
     totalSearches?: number;
     zeroResultSearches?: number;
     totalUnavailableItemTaps?: number;
@@ -68,13 +78,23 @@ interface DailyMetrics {
     viewsByDevice?: Record<string, number>;
     viewsByLocation?: Record<string, number>;
     viewsBySource?: Record<string, number>;
+    viewsByEntrySource?: Record<string, number>;
+    menuSessionsBySource?: Record<string, number>;
+    actionSessionsBySource?: Record<string, number>;
+    menuActionClicksBySource?: Record<string, number>;
+    viewsByCategory?: Record<string, number>;
+    clicksByCategory?: Record<string, number>;
+    hourlyViews?: Record<string, number>;
+    hourlyMenuActionClicks?: Record<string, number>;
     clicksByItem?: Record<string, number>;
     recommendationClicks?: Record<string, number>;
     recommendationClicksByItem?: Record<string, number>;
     searchTerms?: Record<string, number>;
+    zeroResultSearchTerms?: Record<string, number>;
     menuActionClicks?: Record<string, number>;
     unavailableItemTapsByItem?: Record<string, number>;
     itemNames?: Record<string, string>;
+    categoryNames?: Record<string, string>;
 
     // ── Customer App (installable PWA surface) fields — additive-only, projectId='customerApp' ──
     // All optional so existing menu analytics projects (obp, menu slugs) are unaffected.
@@ -107,6 +127,21 @@ interface AggregationResults {
 }
 
 const OBP_PROJECT_ID = 'obp';
+
+function getDashboardSummaryDocId(tId: string, sId: string, projectId: string): string {
+    return `${tId}_${sId}_${projectId}_dashboard_summary`;
+}
+
+function toDateKey(date: Date): string {
+    return date.toISOString().split('T')[0];
+}
+
+function normalizeDailyRow(date: string, data: Record<string, any>): Record<string, any> {
+    return {
+        date,
+        ...data,
+    };
+}
 
 function buildAggregationContext(now: Date = new Date(), timeZone?: string) {
     const localTodayStr = getAnalyticsDateKey(now, timeZone);
@@ -171,9 +206,10 @@ export async function aggregateCustomerAnalyticsForStore(
     now: Date = new Date(),
     timeZone?: string,
     knownProjectIds: string[] = [],
+    analyticsAiEntitlement?: AnalyticsAiEntitlement,
 ): Promise<AggregationResults> {
     const settlementDate = addDaysToAnalyticsDateKey(getAnalyticsDateKey(now, timeZone), -1);
-    return aggregateCustomerAnalyticsForStoreDate(db, tId, sId, settlementDate, knownProjectIds);
+    return aggregateCustomerAnalyticsForStoreDate(db, tId, sId, settlementDate, knownProjectIds, analyticsAiEntitlement);
 }
 
 export async function aggregateCustomerAnalyticsForStoreDate(
@@ -182,6 +218,7 @@ export async function aggregateCustomerAnalyticsForStoreDate(
     sId: string,
     settlementDate: string,
     knownProjectIds: string[] = [],
+    analyticsAiEntitlement: AnalyticsAiEntitlement = resolveAnalyticsAiEntitlement(null),
 ): Promise<AggregationResults> {
     const results: AggregationResults = {
         totalProjects: 0,
@@ -205,18 +242,35 @@ export async function aggregateCustomerAnalyticsForStoreDate(
 
         try {
             const yesterdayDoc = yesterdayDocs.get(projectId);
+            const aiPayloads: OwnerDashboardAIPayloads = {};
+            const aiSummaryTasks: Promise<void>[] = [];
+            for (let offset = LATE_EVENT_CORRECTION_DAYS; offset >= 1; offset--) {
+                await applyLateDailyCorrection(
+                    db,
+                    tId,
+                    sId,
+                    projectId,
+                    addDaysToAnalyticsDateKey(yesterdayStr, -offset),
+                );
+            }
+
             if (yesterdayDoc) {
                 const updated = await updateSummaryDocument(db, tId, sId, projectId, yesterdayDoc.data);
                 if (updated) results.summaryUpdates++;
             }
 
             if (isMonday) {
-                const weeklyAggregated = await createWeeklyRollup(db, tId, sId, projectId, yesterday);
+                const weeklyAggregated = await createWeeklyRollup(db, tId, sId, projectId, yesterday, yesterdayDoc?.data || null);
                 if (weeklyAggregated.daysWithData > 0) results.weeklyRollups++;
 
-                if (weeklyAggregated.daysWithData > 0 && isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(weeklyAggregated.aggregated)) {
-                    try {
-                        await generateAndSaveWeeklyAISummary(
+                if (
+                    analyticsAiEntitlement.enabled
+                    && weeklyAggregated.daysWithData > 0
+                    && isMenuAnalyticsProject(projectId)
+                    && hasMenuAnalyticsActivity(weeklyAggregated.aggregated)
+                ) {
+                    aiSummaryTasks.push((async () => {
+                        const payload = await generateWeeklyAISummaryPayload(
                             db,
                             tId,
                             sId,
@@ -225,52 +279,101 @@ export async function aggregateCustomerAnalyticsForStoreDate(
                             weeklyAggregated.weekStart,
                             weeklyAggregated.weekEnd,
                         );
+                        aiPayloads.weekly = payload.summary;
+                        aiPayloads.weeklyMetricsChange = payload.metricsChange;
                         results.weeklyAiSummaries++;
-                    } catch (aiError) {
-                        console.error(`  ⚠ Weekly AI summary failed for ${projectKey}:`, aiError);
-                    }
+                    })().catch((aiError) => {
+                        appLogger.warn('[AnalyticsSettlement] Weekly AI summary failed', {
+                            tId,
+                            sId,
+                            projectId,
+                            settlementDate: yesterdayStr,
+                            projectKey,
+                            error: aiError instanceof Error ? aiError.message : String(aiError),
+                        });
+                    }));
                 }
             }
 
             if (isFirstOfMonth) {
-                const monthlyAggregated = await createMonthlyRollup(db, tId, sId, projectId, yesterday);
+                const monthlyAggregated = await createMonthlyRollup(db, tId, sId, projectId, yesterday, yesterdayDoc?.data || null);
                 if (monthlyAggregated.daysWithData > 0) results.monthlyRollups++;
 
-                if (monthlyAggregated.daysWithData > 0 && isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(monthlyAggregated.aggregated)) {
-                    try {
-                        await generateAndSaveMonthlyAISummary(
-                            db,
-                            tId,
-                            sId,
-                            projectId,
+                if (
+                    analyticsAiEntitlement.enabled
+                    && monthlyAggregated.daysWithData > 0
+                    && isMenuAnalyticsProject(projectId)
+                    && hasMenuAnalyticsActivity(monthlyAggregated.aggregated)
+                ) {
+                    aiSummaryTasks.push((async () => {
+                        aiPayloads.monthly = await generateMonthlyAISummaryPayload(
                             monthlyAggregated.aggregated,
                             monthlyAggregated.monthStart,
                             monthlyAggregated.monthEnd,
                             monthlyAggregated.daysWithData,
                         );
                         results.monthlyAiSummaries++;
-                    } catch (aiError) {
-                        console.error(`  ⚠ Monthly AI summary failed for ${projectKey}:`, aiError);
-                    }
+                    })().catch((aiError) => {
+                        appLogger.warn('[AnalyticsSettlement] Monthly AI summary failed', {
+                            tId,
+                            sId,
+                            projectId,
+                            settlementDate: yesterdayStr,
+                            projectKey,
+                            error: aiError instanceof Error ? aiError.message : String(aiError),
+                        });
+                    }));
                 }
             }
 
-            if (isMenuAnalyticsProject(projectId) && yesterdayDoc && hasMenuAnalyticsActivity(yesterdayDoc.data)) {
-                try {
-                    await generateAndSaveDailyAISummary(db, tId, sId, projectId, yesterdayDoc.data, yesterdayStr);
+            if (
+                analyticsAiEntitlement.enabled
+                && isMenuAnalyticsProject(projectId)
+                && yesterdayDoc
+                && hasMenuAnalyticsActivity(yesterdayDoc.data)
+            ) {
+                aiSummaryTasks.push((async () => {
+                    aiPayloads.daily = await generateDailyAISummaryPayload(yesterdayDoc.data, yesterdayStr);
                     results.dailyAiSummaries++;
-                } catch (aiError) {
-                    console.error(`  ⚠ Daily AI summary failed for ${projectKey}:`, aiError);
-                }
+                })().catch((aiError) => {
+                    appLogger.warn('[AnalyticsSettlement] Daily AI summary failed', {
+                        tId,
+                        sId,
+                        projectId,
+                        settlementDate: yesterdayStr,
+                        projectKey,
+                        error: aiError instanceof Error ? aiError.message : String(aiError),
+                    });
+                }));
             }
 
-            await writeDashboardSummaryDocument(db, tId, sId, projectId, yesterdayStr, yesterdayDoc?.data || null);
+            if (aiSummaryTasks.length > 0) {
+                await Promise.all(aiSummaryTasks);
+            }
+
+            await writeDashboardSummaryDocument(
+                db,
+                tId,
+                sId,
+                projectId,
+                yesterdayStr,
+                yesterdayDoc?.data || null,
+                aiPayloads,
+                analyticsAiEntitlement,
+            );
 
             if (isFirstOfMonth) {
                 const deletedCount = await cleanupOldDocuments(db, tId, sId, projectId);
                 results.documentsDeleted += deletedCount;
             }
         } catch (error: any) {
+            appLogger.error('[AnalyticsSettlement] Project aggregation failed', error, {
+                tId,
+                sId,
+                projectId,
+                settlementDate: yesterdayStr,
+                projectKey,
+            });
             results.errors.push({ projectKey, error: error.message });
         }
     }
@@ -327,6 +430,10 @@ async function updateSummaryDocument(
     if (dailyData.totalViews) updates.lifetimeTotalViews = FieldValue.increment(dailyData.totalViews);
     if (dailyData.totalClicks) updates.lifetimeTotalClicks = FieldValue.increment(dailyData.totalClicks);
     if (dailyData.totalSessions) updates.lifetimeTotalSessions = FieldValue.increment(dailyData.totalSessions);
+    if (dailyData.menuSessions) updates.lifetimeMenuSessions = FieldValue.increment(dailyData.menuSessions);
+    if (dailyData.engagedSessions) updates.lifetimeEngagedSessions = FieldValue.increment(dailyData.engagedSessions);
+    if (dailyData.intentSessions) updates.lifetimeIntentSessions = FieldValue.increment(dailyData.intentSessions);
+    if (dailyData.actionSessions) updates.lifetimeActionSessions = FieldValue.increment(dailyData.actionSessions);
     if (dailyData.totalSearches) updates.lifetimeTotalSearches = FieldValue.increment(dailyData.totalSearches);
     if (dailyData.zeroResultSearches) updates.lifetimeZeroResultSearches = FieldValue.increment(dailyData.zeroResultSearches);
     if (dailyData.totalUnavailableItemTaps) {
@@ -360,6 +467,32 @@ async function updateSummaryDocument(
         for (const [key, value] of Object.entries(dailyData.viewsBySource)) {
             if (typeof value === 'number') {
                 updates[`viewsBySource.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+
+    for (const field of ['viewsByEntrySource', 'menuSessionsBySource', 'actionSessionsBySource', 'menuActionClicksBySource'] as const) {
+        const map = dailyData[field];
+        if (!map) continue;
+        for (const [key, value] of Object.entries(map)) {
+            if (typeof value === 'number') {
+                updates[`${field}.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+
+    if (dailyData.viewsByCategory) {
+        for (const [key, value] of Object.entries(dailyData.viewsByCategory)) {
+            if (typeof value === 'number') {
+                updates[`viewsByCategory.${key}`] = FieldValue.increment(value);
+            }
+        }
+    }
+
+    if (dailyData.clicksByCategory) {
+        for (const [key, value] of Object.entries(dailyData.clicksByCategory)) {
+            if (typeof value === 'number') {
+                updates[`clicksByCategory.${key}`] = FieldValue.increment(value);
             }
         }
     }
@@ -424,6 +557,14 @@ async function updateSummaryDocument(
         }
     }
 
+    if (dailyData.zeroResultSearchTerms) {
+        for (const [term, count] of Object.entries(dailyData.zeroResultSearchTerms)) {
+            if (typeof count === 'number') {
+                updates[`zeroResultSearchTerms.${term}`] = FieldValue.increment(count);
+            }
+        }
+    }
+
     if (dailyData.unavailableItemTapsByItem) {
         for (const [itemId, taps] of Object.entries(dailyData.unavailableItemTapsByItem)) {
             if (typeof taps === 'number') {
@@ -432,6 +573,12 @@ async function updateSummaryDocument(
             if (dailyData.itemNames?.[itemId]) {
                 updates[`itemNames.${itemId}`] = dailyData.itemNames[itemId];
             }
+        }
+    }
+
+    if (dailyData.categoryNames) {
+        for (const [categoryId, name] of Object.entries(dailyData.categoryNames)) {
+            updates[`categoryNames.${categoryId}`] = name;
         }
     }
 
@@ -515,6 +662,148 @@ async function updateSummaryDocument(
     });
 }
 
+async function applyLateDailyCorrection(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    correctionDate: string,
+): Promise<boolean> {
+    const dashboardRef = db.collection(ANALYTICS_COLLECTION).doc(getDashboardSummaryDocId(tId, sId, projectId));
+    const dashboardSnap = await dashboardRef.get();
+    if (!dashboardSnap.exists) return false;
+
+    const dashboardData = dashboardSnap.data() || {};
+    const dailyRows = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
+    const previousRow = dailyRows.find((row: any) => String(row?.date || '') === correctionDate);
+    if (!previousRow) return false;
+
+    const dailyRef = db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.daily(tId, sId, projectId, correctionDate));
+    const dailySnap = await dailyRef.get();
+    if (!dailySnap.exists) return false;
+
+    const currentDaily = normalizeDailyRow(correctionDate, dailySnap.data() || {});
+    const { updates, hasDelta } = buildLateCorrectionSummaryUpdates(currentDaily, previousRow, correctionDate);
+    if (!hasDelta) return false;
+
+    const updatedRows = dailyRows.map((row: any) => (
+        String(row?.date || '') === correctionDate ? currentDaily : row
+    ));
+
+    await Promise.all([
+        db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.summary(tId, sId, projectId)).set(updates, { merge: true }),
+        dashboardRef.set({
+            daily30d: updatedRows,
+            lateCorrection: {
+                lastCorrectedLocalDate: correctionDate,
+                correctedAt: FieldValue.serverTimestamp(),
+            },
+            modifiedOn: FieldValue.serverTimestamp(),
+        }, { merge: true }),
+    ]);
+
+    appLogger.warn('[AnalyticsSettlement] Late daily correction applied', {
+        tId,
+        sId,
+        projectId,
+        correctionDate,
+    });
+
+    return true;
+}
+
+function buildLateCorrectionSummaryUpdates(
+    currentDaily: Record<string, any>,
+    previousDaily: Record<string, any>,
+    correctionDate: string,
+): { updates: Record<string, any>; hasDelta: boolean } {
+    const updates: Record<string, any> = {
+        lastCorrectionDate: correctionDate,
+        lastCorrectedAt: FieldValue.serverTimestamp(),
+    };
+    let hasDelta = false;
+
+    const addNumericDelta = (sourceField: string, targetField: string) => {
+        const delta = Math.max(0, (currentDaily[sourceField] || 0) - (previousDaily[sourceField] || 0));
+        if (delta > 0) {
+            updates[targetField] = FieldValue.increment(delta);
+            hasDelta = true;
+        }
+    };
+
+    const addMapDelta = (sourceField: string, targetField: string) => {
+        const currentMap = currentDaily[sourceField] || {};
+        const previousMap = previousDaily[sourceField] || {};
+        for (const [key, value] of Object.entries(currentMap)) {
+            if (typeof value !== 'number') continue;
+            const delta = Math.max(0, value - (previousMap[key] || 0));
+            if (delta > 0) {
+                updates[`${targetField}.${key}`] = FieldValue.increment(delta);
+                hasDelta = true;
+            }
+        }
+    };
+
+    addNumericDelta('totalViews', 'lifetimeTotalViews');
+    addNumericDelta('totalClicks', 'lifetimeTotalClicks');
+    addNumericDelta('totalSessions', 'lifetimeTotalSessions');
+    addNumericDelta('menuSessions', 'lifetimeMenuSessions');
+    addNumericDelta('engagedSessions', 'lifetimeEngagedSessions');
+    addNumericDelta('intentSessions', 'lifetimeIntentSessions');
+    addNumericDelta('actionSessions', 'lifetimeActionSessions');
+    addNumericDelta('totalSearches', 'lifetimeTotalSearches');
+    addNumericDelta('zeroResultSearches', 'lifetimeZeroResultSearches');
+    addNumericDelta('totalUnavailableItemTaps', 'lifetimeTotalUnavailableItemTaps');
+    addNumericDelta('totalMenuActionClicks', 'lifetimeTotalMenuActionClicks');
+    addNumericDelta('totalRecommendationClicks', 'lifetimeTotalRecommendationClicks');
+    addNumericDelta('totalDecisionBlocksRendered', 'lifetimeTotalDecisionBlocksRendered');
+    addNumericDelta('totalPromptShown', 'lifetimeTotalPromptShown');
+    addNumericDelta('totalPromptDismissed', 'lifetimeTotalPromptDismissed');
+    addNumericDelta('totalInstallStarted', 'lifetimeTotalInstallStarted');
+    addNumericDelta('totalInstalled', 'lifetimeTotalInstalled');
+    addNumericDelta('uniqueInstallSessions', 'lifetimeUniqueInstalls');
+    addNumericDelta('totalAppOpens', 'lifetimeTotalAppOpens');
+
+    addMapDelta('viewsByDevice', 'viewsByDevice');
+    addMapDelta('viewsByLocation', 'viewsByLocation');
+    addMapDelta('viewsBySource', 'viewsBySource');
+    addMapDelta('viewsByEntrySource', 'viewsByEntrySource');
+    addMapDelta('menuSessionsBySource', 'menuSessionsBySource');
+    addMapDelta('actionSessionsBySource', 'actionSessionsBySource');
+    addMapDelta('menuActionClicksBySource', 'menuActionClicksBySource');
+    addMapDelta('viewsByCategory', 'viewsByCategory');
+    addMapDelta('clicksByCategory', 'clicksByCategory');
+    addMapDelta('hourlyViews', 'hourlyViews');
+    addMapDelta('hourlyMenuActionClicks', 'hourlyMenuActionClicks');
+    addMapDelta('clicksByItem', 'clicksByItem');
+    addMapDelta('decisionBlocksRendered', 'decisionBlocksRendered');
+    addMapDelta('recommendationClicks', 'recommendationClicks');
+    addMapDelta('recommendationClicksByItem', 'recommendationClicksByItem');
+    addMapDelta('menuActionClicks', 'menuActionClicks');
+    addMapDelta('searchTerms', 'searchTerms');
+    addMapDelta('zeroResultSearchTerms', 'zeroResultSearchTerms');
+    addMapDelta('unavailableItemTapsByItem', 'unavailableItemTapsByItem');
+    addMapDelta('shortcutClicks', 'shortcutClicks');
+    addMapDelta('installsByDevice', 'installsByDevice');
+    addMapDelta('installsByLocation', 'installsByLocation');
+    addMapDelta('installsByPlatform', 'installsByPlatform');
+    addMapDelta('installsBySource', 'installsBySource');
+    addMapDelta('appOpensByPlatform', 'appOpensByPlatform');
+
+    if (currentDaily.itemNames) {
+        Object.entries(currentDaily.itemNames).forEach(([itemId, name]) => {
+            updates[`itemNames.${itemId}`] = name;
+        });
+    }
+    if (currentDaily.categoryNames) {
+        Object.entries(currentDaily.categoryNames).forEach(([categoryId, name]) => {
+            updates[`categoryNames.${categoryId}`] = name;
+        });
+    }
+
+    return { updates, hasDelta };
+}
+
 /**
  * Create weekly rollup document
  * Aggregates last 7 days of data into a single document
@@ -525,14 +814,23 @@ async function createWeeklyRollup(
     tId: string,
     sId: string,
     projectId: string,
-    referenceDate: Date
-): Promise<{ aggregated: any; weekStart: string; weekEnd: string; daysWithData: number }> {
+    referenceDate: Date,
+    settledDailyData?: Record<string, any> | null,
+): Promise<{ aggregated: any; weekStart: string; weekEnd: string; daysWithData: number; source: string }> {
     // Get week date range from utility
     const { weekStart, weekEnd } = getWeekDateRange(referenceDate);
     const weeklyDocId = getAnalyticsDocId.weekly(tId, sId, projectId, referenceDate);
     const weeklyRef = db.collection(ANALYTICS_COLLECTION).doc(weeklyDocId);
 
-    const dailyDocs = await getDailyDocsInRange(db, tId, sId, projectId, weekStart, weekEnd);
+    const { docs: dailyDocs, source } = await getDailyDocsForRollup(
+        db,
+        tId,
+        sId,
+        projectId,
+        weekStart,
+        weekEnd,
+        settledDailyData,
+    );
 
     // Aggregate all daily data
     const aggregated = aggregateDailyDocs(dailyDocs);
@@ -543,6 +841,7 @@ async function createWeeklyRollup(
             weekStart: weekStart.toISOString().split('T')[0],
             weekEnd: weekEnd.toISOString().split('T')[0],
             daysWithData: 0,
+            source,
         };
     }
 
@@ -554,6 +853,7 @@ async function createWeeklyRollup(
         weekStart: weekStart.toISOString().split('T')[0],
         weekEnd: weekEnd.toISOString().split('T')[0],
         daysWithData: dailyDocs.length,
+        buildSource: source,
         ...aggregated,
         createdOn: FieldValue.serverTimestamp(),
         modifiedOn: FieldValue.serverTimestamp(),
@@ -565,6 +865,7 @@ async function createWeeklyRollup(
         weekStart: weekStart.toISOString().split('T')[0],
         weekEnd: weekEnd.toISOString().split('T')[0],
         daysWithData: dailyDocs.length,
+        source,
     };
 }
 
@@ -578,14 +879,23 @@ async function createMonthlyRollup(
     tId: string,
     sId: string,
     projectId: string,
-    referenceDate: Date
-): Promise<{ aggregated: any; monthStart: string; monthEnd: string; daysWithData: number }> {
+    referenceDate: Date,
+    settledDailyData?: Record<string, any> | null,
+): Promise<{ aggregated: any; monthStart: string; monthEnd: string; daysWithData: number; source: string }> {
     // Get month date range from utility
     const { firstDay, lastDay } = getMonthDateRange(referenceDate);
     const monthlyDocId = getAnalyticsDocId.monthly(tId, sId, projectId, referenceDate);
     const monthlyRef = db.collection(ANALYTICS_COLLECTION).doc(monthlyDocId);
 
-    const dailyDocs = await getDailyDocsInRange(db, tId, sId, projectId, firstDay, lastDay);
+    const { docs: dailyDocs, source } = await getDailyDocsForRollup(
+        db,
+        tId,
+        sId,
+        projectId,
+        firstDay,
+        lastDay,
+        settledDailyData,
+    );
 
     // Aggregate all daily data
     const aggregated = aggregateDailyDocs(dailyDocs);
@@ -596,6 +906,7 @@ async function createMonthlyRollup(
             monthStart: firstDay.toISOString().split('T')[0],
             monthEnd: lastDay.toISOString().split('T')[0],
             daysWithData: 0,
+            source,
         };
     }
 
@@ -607,6 +918,7 @@ async function createMonthlyRollup(
         monthStart: firstDay.toISOString().split('T')[0],
         monthEnd: lastDay.toISOString().split('T')[0],
         daysWithData: dailyDocs.length,
+        buildSource: source,
         ...aggregated,
         createdOn: FieldValue.serverTimestamp(),
         modifiedOn: FieldValue.serverTimestamp(),
@@ -618,6 +930,73 @@ async function createMonthlyRollup(
         monthStart: firstDay.toISOString().split('T')[0],
         monthEnd: lastDay.toISOString().split('T')[0],
         daysWithData: dailyDocs.length,
+        source,
+    };
+}
+
+async function getDailyDocsForRollup(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    startDate: Date,
+    endDate: Date,
+    settledDailyData?: Record<string, any> | null,
+): Promise<{ docs: any[]; source: 'dashboard_summary_cache' | 'daily_range_rebuild' }> {
+    const startStr = toDateKey(startDate);
+    const endStr = toDateKey(endDate);
+    const previousSettledDate = addDaysToAnalyticsDateKey(endStr, -1);
+    const dashboardSnap = await db.collection(ANALYTICS_COLLECTION)
+        .doc(getDashboardSummaryDocId(tId, sId, projectId))
+        .get();
+
+    if (dashboardSnap.exists) {
+        const dashboardData = dashboardSnap.data() || {};
+        const dailyRows = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
+        const firstCachedDate = dailyRows
+            .map((row: any) => String(row?.date || ''))
+            .filter(Boolean)
+            .sort()[0] || '';
+        const lastSettledLocalDate = String(dashboardData.lastSettledLocalDate || '');
+        const canUseCache = dailyRows.length > 0
+            && firstCachedDate <= startStr
+            && lastSettledLocalDate >= previousSettledDate;
+
+        if (canUseCache) {
+            const byDate = new Map<string, Record<string, any>>();
+            dailyRows.forEach((row: any) => {
+                const date = String(row?.date || '');
+                if (date >= startStr && date <= endStr) {
+                    byDate.set(date, row);
+                }
+            });
+
+            if (settledDailyData) {
+                byDate.set(endStr, normalizeDailyRow(endStr, settledDailyData));
+            }
+
+            return {
+                docs: Array.from(byDate.entries())
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([, row]) => row),
+                source: 'dashboard_summary_cache',
+            };
+        }
+    }
+
+    const rebuiltDocs = await getDailyDocsInRange(db, tId, sId, projectId, startDate, endDate);
+    appLogger.warn('[AnalyticsSettlement] Rollup cache miss; rebuilt from daily docs', {
+        tId,
+        sId,
+        projectId,
+        startDate: startStr,
+        endDate: endStr,
+        docsRead: rebuiltDocs.length,
+    });
+
+    return {
+        docs: rebuiltDocs,
+        source: 'daily_range_rebuild',
     };
 }
 
@@ -654,6 +1033,10 @@ function aggregateDailyDocs(docs: any[]): any {
         totalViews: 0,
         totalClicks: 0,
         totalSessions: 0,
+        menuSessions: 0,
+        engagedSessions: 0,
+        intentSessions: 0,
+        actionSessions: 0,
         totalSearches: 0,
         zeroResultSearches: 0,
         totalUnavailableItemTaps: 0,
@@ -664,14 +1047,24 @@ function aggregateDailyDocs(docs: any[]): any {
         viewsByDevice: {},
         viewsByLocation: {},
         viewsBySource: {},
+        viewsByEntrySource: {},
+        menuSessionsBySource: {},
+        actionSessionsBySource: {},
+        menuActionClicksBySource: {},
+        viewsByCategory: {},
+        clicksByCategory: {},
+        hourlyViews: {},
+        hourlyMenuActionClicks: {},
         clicksByItem: {},
         searchTerms: {},
+        zeroResultSearchTerms: {},
         unavailableItemTapsByItem: {},
         menuActionClicks: {},
         recommendationClicks: {},
         decisionBlocksRendered: {},
         recommendationClicksByItem: {},
         itemNames: {},
+        categoryNames: {},
         // ── Customer App (projectId='customerApp') fields ──
         // Stay zero for all other projects; summed only when daily docs contain these keys.
         totalPromptShown: 0,
@@ -693,6 +1086,10 @@ function aggregateDailyDocs(docs: any[]): any {
         if (doc.totalViews) result.totalViews += doc.totalViews;
         if (doc.totalClicks) result.totalClicks += doc.totalClicks;
         if (doc.totalSessions) result.totalSessions += doc.totalSessions;
+        if (doc.menuSessions) result.menuSessions += doc.menuSessions;
+        if (doc.engagedSessions) result.engagedSessions += doc.engagedSessions;
+        if (doc.intentSessions) result.intentSessions += doc.intentSessions;
+        if (doc.actionSessions) result.actionSessions += doc.actionSessions;
         if (doc.totalSearches) result.totalSearches += doc.totalSearches;
         if (doc.zeroResultSearches) result.zeroResultSearches += doc.zeroResultSearches;
         if (doc.totalUnavailableItemTaps) result.totalUnavailableItemTaps += doc.totalUnavailableItemTaps;
@@ -713,8 +1110,17 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.viewsByDevice, doc.viewsByDevice);
         mergeMapField(result.viewsByLocation, doc.viewsByLocation);
         mergeMapField(result.viewsBySource, doc.viewsBySource);
+        mergeMapField(result.viewsByEntrySource, doc.viewsByEntrySource);
+        mergeMapField(result.menuSessionsBySource, doc.menuSessionsBySource);
+        mergeMapField(result.actionSessionsBySource, doc.actionSessionsBySource);
+        mergeMapField(result.menuActionClicksBySource, doc.menuActionClicksBySource);
+        mergeMapField(result.viewsByCategory, doc.viewsByCategory);
+        mergeMapField(result.clicksByCategory, doc.clicksByCategory);
+        mergeMapField(result.hourlyViews, doc.hourlyViews);
+        mergeMapField(result.hourlyMenuActionClicks, doc.hourlyMenuActionClicks);
         mergeMapField(result.clicksByItem, doc.clicksByItem);
         mergeMapField(result.searchTerms, doc.searchTerms);
+        mergeMapField(result.zeroResultSearchTerms, doc.zeroResultSearchTerms);
         mergeMapField(result.unavailableItemTapsByItem, doc.unavailableItemTapsByItem);
         mergeMapField(result.menuActionClicks, doc.menuActionClicks);
         mergeMapField(result.recommendationClicks, doc.recommendationClicks);
@@ -723,6 +1129,9 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.recommendationClicksByItem, doc.recommendationClicksByItem);
         if (doc.itemNames) {
             Object.assign(result.itemNames, doc.itemNames);
+        }
+        if (doc.categoryNames) {
+            Object.assign(result.categoryNames, doc.categoryNames);
         }
         // Customer App map fields (additive merge — keys summed, never replaced)
         mergeMapField(result.shortcutClicks, doc.shortcutClicks);
@@ -808,10 +1217,10 @@ async function cleanupOldDocuments(
 }
 
 /**
- * Generate Weekly AI summary and save to summary document
+ * Generate Weekly AI summary payload for the dashboard read model
  * Uses Gemini to create a simple, actionable summary for SMB owners
  */
-async function generateAndSaveWeeklyAISummary(
+async function generateWeeklyAISummaryPayload(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
@@ -819,7 +1228,10 @@ async function generateAndSaveWeeklyAISummary(
     aggregated: any,
     weekStart: string,
     weekEnd: string
-): Promise<void> {
+): Promise<{
+    summary: NonNullable<OwnerDashboardAIPayloads['weekly']>;
+    metricsChange: NonNullable<OwnerDashboardAIPayloads['weeklyMetricsChange']>;
+}> {
     // Get previous week data for comparison
     const prevWeekStart = new Date(weekStart);
     prevWeekStart.setDate(prevWeekStart.getDate() - 7);
@@ -890,39 +1302,28 @@ async function generateAndSaveWeeklyAISummary(
     // Generate AI summary
     const aiSummary = await generateOwnerDashboardSummary(metrics);
 
-    // Save to summary document
-    const summaryDocId = getAnalyticsDocId.summary(tId, sId, projectId);
-    const summaryRef = db.collection(ANALYTICS_COLLECTION).doc(summaryDocId);
-
-    await summaryRef.set({
-        ownerDashboardSummary: {
+    return {
+        summary: {
             markdown: aiSummary.markdown,
             bulletPoints: aiSummary.bulletPoints,
             period: { start: weekStart, end: weekEnd },
             generatedAt: Timestamp.now(),
             promptVersion: 'v1',
         },
-        ownerDashboardSummaryMetrics: {
+        metricsChange: {
             menuVisitsChange,
         },
-        lastOwnerSummaryGenerated: FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    console.log(`[Weekly AI Summary] Saved to ${summaryDocId}`);
+    };
 }
 
 /**
- * Generate Daily AI summary and save to daily document
+ * Generate Daily AI summary payload for the dashboard read model
  * Descriptive only, no conclusions - max 2 bullets
  */
-async function generateAndSaveDailyAISummary(
-    db: FirebaseFirestore.Firestore,
-    tId: string,
-    sId: string,
-    projectId: string,
+async function generateDailyAISummaryPayload(
     dailyData: DailyMetrics,
     date: string
-): Promise<void> {
+): Promise<NonNullable<OwnerDashboardAIPayloads['daily']>> {
     // Build top items from recommendationClicksByItem
     const topItems: Array<{ itemId: string; clicks: number }> = [];
     if (dailyData.recommendationClicksByItem) {
@@ -977,36 +1378,24 @@ async function generateAndSaveDailyAISummary(
     // Generate AI summary
     const aiSummary = await generateDailyAISummary(metrics);
 
-    // Save to daily document
-    const dailyDocId = getAnalyticsDocId.daily(tId, sId, projectId, date);
-    const dailyRef = db.collection(ANALYTICS_COLLECTION).doc(dailyDocId);
-
-    await dailyRef.set({
-        aiSummary: {
-            markdown: aiSummary.markdown,
-            bulletPoints: aiSummary.bulletPoints,
-            generatedAt: Timestamp.now(),
-            promptVersion: 'v1',
-        },
-    }, { merge: true });
-
-    console.log(`[Daily AI Summary] Saved to ${dailyDocId}`);
+    return {
+        markdown: aiSummary.markdown,
+        bulletPoints: aiSummary.bulletPoints,
+        generatedAt: Timestamp.now(),
+        promptVersion: 'v1',
+    };
 }
 
 /**
- * Generate Monthly AI summary and save to monthly document
+ * Generate Monthly AI summary payload for the dashboard read model
  * Calm, reassuring tone - max 3 bullets
  */
-async function generateAndSaveMonthlyAISummary(
-    db: FirebaseFirestore.Firestore,
-    tId: string,
-    sId: string,
-    projectId: string,
+async function generateMonthlyAISummaryPayload(
     aggregated: any,
     monthStart: string,
     monthEnd: string,
     daysWithData: number
-): Promise<void> {
+): Promise<NonNullable<OwnerDashboardAIPayloads['monthly']>> {
     // Build top items from recommendationClicksByItem
     const topItems: Array<{ itemId: string; clicks: number }> = [];
     if (aggregated.recommendationClicksByItem) {
@@ -1063,20 +1452,12 @@ async function generateAndSaveMonthlyAISummary(
     // Generate AI summary
     const aiSummary = await generateMonthlyAISummary(metrics);
 
-    // Save to monthly document
-    const monthlyDocId = getAnalyticsDocId.monthly(tId, sId, projectId, new Date(monthStart));
-    const monthlyRef = db.collection(ANALYTICS_COLLECTION).doc(monthlyDocId);
-
-    await monthlyRef.set({
-        aiSummary: {
-            markdown: aiSummary.markdown,
-            bulletPoints: aiSummary.bulletPoints,
-            generatedAt: Timestamp.now(),
-            promptVersion: 'v1',
-        },
-    }, { merge: true });
-
-    console.log(`[Monthly AI Summary] Saved to ${monthlyDocId}`);
+    return {
+        markdown: aiSummary.markdown,
+        bulletPoints: aiSummary.bulletPoints,
+        generatedAt: Timestamp.now(),
+        promptVersion: 'v1',
+    };
 }
 
 // Note: getISOWeek moved to constants/database.ts

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { getSubscriptionById, updateSubscription } from "@database/subscriptions";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
@@ -74,6 +75,10 @@ export const POST = withAuth(async (request, session) => {
                 },
             ],
         });
+        await safeSyncStorePlanEntitlementFromSubscription(
+            { ...subscription, id: subscriptionId, status: 'active' },
+            'api:reseller-confirm-payment',
+        );
 
         return NextResponse.json({
             success: true,

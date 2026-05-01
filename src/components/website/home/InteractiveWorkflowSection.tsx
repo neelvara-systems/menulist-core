@@ -201,18 +201,10 @@ export default function InteractiveWorkflowSection() {
                 >
                   <step.Icon size={18} color="var(--ws-brand-primary)" />
                 </div>
-                <h3
-                  style={{
-                    fontSize: '0.9375rem',
-                    fontWeight: 700,
-                    color: 'var(--ws-text-primary)',
-                    marginBottom: 'var(--ws-space-2)',
-                    lineHeight: 1.3,
-                  }}
-                >
+                <h3 className="ws-h3" style={{ fontSize: '0.9375rem', marginBottom: 'var(--ws-space-2)' }}>
                   {step.title}
                 </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)', lineHeight: 1.6 }}>
+                <p className="ws-caption" style={{ lineHeight: 1.6 }}>
                   {step.desc}
                 </p>
               </div>

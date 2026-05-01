@@ -133,6 +133,12 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                     <Statistic title="Searches" value={data.metrics.searches || 0} />
                 </Col>
                 <Col xs={12} sm={6}>
+                    <Statistic title="Engaged Sessions" suffix="%" value={data.metrics.engagedSessionRate || 0} />
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic title="Action Rate" suffix="%" value={data.metrics.actionRate || 0} />
+                </Col>
+                <Col xs={12} sm={6}>
                     <Statistic title="Customer Actions" value={data.metrics.menuActionClicks || 0} />
                 </Col>
                 <Col xs={12} sm={6}>

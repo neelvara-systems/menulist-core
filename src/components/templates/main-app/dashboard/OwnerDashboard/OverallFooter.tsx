@@ -78,6 +78,22 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
+                        title="Engaged Sessions"
+                        suffix="%"
+                        value={lifetimeMetrics.engagedSessionRate || 0}
+                        className={styles.overallStat}
+                    />
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic
+                        title="Action Rate"
+                        suffix="%"
+                        value={lifetimeMetrics.actionRate || 0}
+                        className={styles.overallStat}
+                    />
+                </Col>
+                <Col xs={12} sm={6}>
+                    <Statistic
                         title="Searches"
                         value={lifetimeMetrics.totalSearches || 0}
                         className={styles.overallStat}
@@ -111,6 +127,12 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                     {`Actions: Call ${data.menuActions.call}, WhatsApp ${data.menuActions.whatsapp}, Directions ${data.menuActions.directions}, Reserve ${data.menuActions.reserve}, Order ${data.menuActions.order}`}
                 </Text>
             )}
+
+            {data.topCategories?.length ? (
+                <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
+                    {`Top category: ${data.topCategories.slice(0, 3).map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}`}
+                </Text>
+            ) : null}
 
             {lastUpdated && (
                 <Text type="secondary" className={styles.lastUpdated}>

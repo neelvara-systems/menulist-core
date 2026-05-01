@@ -3,6 +3,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { calculateOfflineAmount, getResellerTierById, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { createResellerTransaction, getResellerProfile } from "@database/reseller";
 import { updateSubscription } from "@database/subscriptions";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
@@ -131,6 +132,16 @@ export const POST = withAuth(async (request, session) => {
                 },
             ],
         });
+        await safeSyncStorePlanEntitlementFromSubscription(
+            {
+                id: existingSub.id,
+                tenantId,
+                storeId,
+                planId: existingSubData.planId,
+                status: 'active',
+            },
+            'api:reseller-renew',
+        );
 
         // Create new transaction record (append, never mutate old)
         const transactionId = await createResellerTransaction({

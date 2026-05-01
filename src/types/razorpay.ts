@@ -63,6 +63,12 @@ export interface FirestoreSubscriptionDoc {
   planName: string;                 // NEW: User-friendly name, e.g., "Pro Plan (Yearly)"
   planId: string;                   // NEW: The internal plan identifier, e.g., "pro"
   planType: PlanInterval;
+  analyticsEntitlement?: {
+    activePlanType: string | null;
+    status: string | null;
+    syncedAt?: Timestamp;
+    source?: string;
+  };
   amount: number;
   currency: Currency;
 

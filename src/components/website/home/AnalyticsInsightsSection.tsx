@@ -1,45 +1,45 @@
 'use client';
 
-import { LuCircleOff, LuMapPin, LuPhoneCall, LuSearch, LuShieldCheck } from 'react-icons/lu';
+import { LuBarChart3, LuMousePointerClick, LuPhoneCall, LuShieldCheck, LuTags } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
 const analyticsSignals = [
   {
-    icon: LuSearch,
-    title: 'Searches and no-result searches',
-    desc: 'MenuList records what customers search for and when the menu has no clear answer.',
+    icon: LuMousePointerClick,
+    title: 'Menu sessions and intent',
+    desc: 'MenuList counts anonymous sessions, engaged sessions, intent sessions, and action sessions without creating customer profiles.',
   },
   {
-    icon: LuCircleOff,
-    title: 'Unavailable items still drawing attention',
-    desc: 'When customers still tap an unavailable item, that interest stays visible instead of disappearing.',
+    icon: LuTags,
+    title: 'Category and item interest',
+    desc: 'Item views, item taps, category interest, searches, no-result searches, and unavailable-item taps stay visible to the owner.',
   },
   {
     icon: LuPhoneCall,
-    title: 'Final actions from the menu',
-    desc: 'Calls, WhatsApp, directions, reservations, and order clicks are recorded as the menu is used.',
+    title: 'Actions that show real intent',
+    desc: 'Calls, WhatsApp, directions, reservations, order clicks, shares, and official-page CTA taps are recorded as final customer actions.',
   },
   {
-    icon: LuMapPin,
-    title: 'Approximate location and timing',
-    desc: 'MenuList can add coarse location and time patterns without relying on exact GPS or noisy passive tracking.',
+    icon: LuBarChart3,
+    title: 'Source quality, not vanity traffic',
+    desc: 'The dashboard can show which source creates action: QR, WhatsApp, Instagram, Google, official page, shortcut, or direct visits.',
   },
 ];
 
 const ownerVisibility = [
-  'Which dishes attract direct searches',
-  'Which missing items customers keep looking for',
-  'Which unavailable dishes still pull attention',
-  'Which next step customers choose most often',
+  'Today so far, plus settled daily, weekly, monthly, and lifetime views',
+  'Engaged Sessions %, Intent Rate %, Action Rate %, and action rate by source',
+  'Top items, top categories, searches, no-result searches, and unavailable interest',
+  'Pro action summaries that turn the same metrics into a short owner action list',
 ];
 
 const transparencyPoints = [
-  'Category-based owner controls instead of event-by-event switches',
-  'Clear disclosure of what is recorded by default',
-  'No customer names, emails, payment details, or exact GPS in this analytics flow',
-  'Cost-safe signal capture instead of heavy passive tracking',
+  'Cost-safe batching for passive events; final customer actions are recorded immediately',
+  'Clear owner settings explain what is recorded by default',
+  'No customer names, emails, payment details, scroll heatmaps, hover activity, or per-keystroke tracking',
+  'Approximate location is optional and never stored as exact GPS coordinates in this analytics flow',
 ];
 
 export default function AnalyticsInsightsSection() {
@@ -47,18 +47,18 @@ export default function AnalyticsInsightsSection() {
     <SectionWrapper variant="subtle">
       <AnimateOnScroll>
         <SectionHeading
-          title="Your menu, understood by MenuList"
-          subtitle="MenuList does not just publish your menu. It quietly records how customers move through it — what they search for, what they cannot find, what still draws attention, and which next step they choose."
+          title="Your menu, understood after it goes live"
+          subtitle="MenuList records the small set of customer signals that help an owner decide what to fix, promote, or share next — without heavy passive tracking."
         />
       </AnimateOnScroll>
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 'var(--ws-space-4)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 'var(--ws-space-6)',
           marginTop: 'var(--ws-space-12)',
-          maxWidth: '1080px',
+          maxWidth: '960px',
           marginLeft: 'auto',
           marginRight: 'auto',
         }}
@@ -78,8 +78,8 @@ export default function AnalyticsInsightsSection() {
               >
                 <div
                   style={{
-                    width: '46px',
-                    height: '46px',
+                    width: '48px',
+                    height: '48px',
                     borderRadius: 'var(--ws-radius-md)',
                     backgroundColor: 'var(--ws-bg-accent)',
                     display: 'flex',
@@ -90,7 +90,7 @@ export default function AnalyticsInsightsSection() {
                   <Icon size={22} color="var(--ws-brand-secondary)" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{signal.title}</h3>
+                  <h3 className="ws-h3" style={{ fontSize: '1.0625rem' }}>{signal.title}</h3>
                   <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{signal.desc}</p>
                 </div>
               </div>
@@ -102,9 +102,9 @@ export default function AnalyticsInsightsSection() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 'var(--ws-space-5)',
-          marginTop: 'var(--ws-space-10)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 'var(--ws-space-6)',
+          marginTop: 'var(--ws-space-12)',
           maxWidth: '960px',
           marginLeft: 'auto',
           marginRight: 'auto',
@@ -112,12 +112,12 @@ export default function AnalyticsInsightsSection() {
       >
         <AnimateStaggerChild index={analyticsSignals.length}>
           <div className="ws-card" style={{ height: '100%' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>What becomes visible</h3>
+            <h3 className="ws-h3" style={{ fontSize: '1rem' }}>What the owner sees</h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--ws-space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
               {ownerVisibility.map((item) => (
                 <li key={item} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--ws-brand-secondary)', marginTop: 7, flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.9rem', color: 'var(--ws-text-secondary)' }}>{item}</span>
+                  <span className="ws-body-sm" style={{ fontSize: '0.9375rem' }}>{item}</span>
                 </li>
               ))}
             </ul>
@@ -141,11 +141,11 @@ export default function AnalyticsInsightsSection() {
               >
                 <LuShieldCheck size={20} color="var(--ws-brand-secondary)" />
               </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>Quiet and limited by default</h3>
+              <h3 className="ws-h3" style={{ fontSize: '1rem', margin: 0 }}>Private and cost-safe by default</h3>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--ws-space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
               {transparencyPoints.map((point) => (
-                <li key={point} style={{ fontSize: '0.9rem', color: 'var(--ws-text-secondary)' }}>
+                <li key={point} className="ws-body-sm" style={{ fontSize: '0.9375rem' }}>
                   {point}
                 </li>
               ))}
@@ -159,13 +159,13 @@ export default function AnalyticsInsightsSection() {
           className="ws-caption"
           style={{
             textAlign: 'center',
-            marginTop: 'var(--ws-space-8)',
+            marginTop: 'var(--ws-space-10)',
             maxWidth: 'var(--ws-max-w-text)',
             marginLeft: 'auto',
             marginRight: 'auto',
           }}
         >
-          The menu stays simple for customers, while the owner sees what the public menu is quietly revealing over time.
+          The customer menu stays simple. The owner dashboard shows what customers noticed, what they wanted, and which source brought real action.
         </p>
       </AnimateOnScroll>
     </SectionWrapper>

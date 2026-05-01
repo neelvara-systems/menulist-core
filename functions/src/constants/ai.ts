@@ -16,6 +16,7 @@ import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 // ═══════════════════════════════════════════════════════════════
 
 export const AI_MODEL = "gemini-2.5-flash";
+export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
 
 /**
  * Extraction prompt version — increment when parallelProcessingPrompt.ts changes

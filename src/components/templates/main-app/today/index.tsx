@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getCampaign } from "@database/campaigns";
 import { getProjectsListWithoutLoader } from "@database/projects";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
+import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
@@ -16,6 +17,7 @@ import { LuCalendarOff, LuInfo } from "react-icons/lu";
 import useSWR from "swr";
 import OBPLinkCard from "../businessSettings/OBPLinkCard";
 import TempStatusCard from "../businessSettings/TempStatusCard";
+import OwnerActionPlanCard from "../dashboard/OwnerDashboard/OwnerActionPlanCard";
 import EmptyState from "./components/EmptyState";
 import OperationalSection from "./components/OperationalSection";
 import PostActionState from "./components/PostActionState";
@@ -88,6 +90,7 @@ const TodayScreen = () => {
         () => projects.find((project) => project.projectId === selectedProjectId) || null,
         [projects, selectedProjectId]
     );
+    const ownerActionPlan = useOwnerActionPlan(selectedProjectId);
 
     // Check if feature is enabled
     const isEnabled = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED;
@@ -286,6 +289,12 @@ const TodayScreen = () => {
         return (
             <div className={styles.todayContainer}>
                 {renderHeader()}
+                <OwnerActionPlanCard
+                    actionPlan={ownerActionPlan.actionPlan}
+                    confidence={ownerActionPlan.confidence}
+                    sourceQuality={ownerActionPlan.sourceQuality}
+                    analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
+                />
                 <EmptyState
                     canGenerate={Boolean(selectedProjectId)}
                     isGenerating={isGeneratingTodayActions}
@@ -315,6 +324,13 @@ const TodayScreen = () => {
     return (
         <div className={styles.todayContainer}>
             {renderHeader()}
+
+            <OwnerActionPlanCard
+                actionPlan={ownerActionPlan.actionPlan}
+                confidence={ownerActionPlan.confidence}
+                sourceQuality={ownerActionPlan.sourceQuality}
+                analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
+            />
 
             {/* Primary Campaign */}
             {todayCampaigns.primary && (

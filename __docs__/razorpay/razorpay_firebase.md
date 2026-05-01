@@ -93,9 +93,9 @@
 
 | Trigger | Reads/night | Writes/night | Notes |
 |---------|-------------|-------------|-------|
-| Nightly reconciliation | N+1 | 0-2 typical | N = active stores |
-| Webhooks | ~3 per store/month | ~3 per store/month | Charged, renewed events |
-| User actions | 1-2 per action | 1 per action | Cancel, pause, resume, upgrade |
+| Nightly reconciliation | N+1 | 0-2 typical after entitlement backfill | N = active subscriptions. One-time entitlement repair may add store + storesSummary + subscription marker writes for stale records. |
+| Webhooks | ~3 per store/month | ~3 per store/month plus entitlement mirror on status change | Charged, renewed, failed, paused, resumed, cancelled, completed events. |
+| User actions | 1-2 per action | 1 subscription write plus entitlement mirror when status changes | Cancel, pause, resume, upgrade |
 | Page loads | 1 per session | 0 (usually) | Cached after first load |
 
 **For 100 stores:** ~101 reads/night from reconciliation, ~300 webhook reads/month, ~100 writes/month total.

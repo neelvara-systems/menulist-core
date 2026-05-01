@@ -51,6 +51,8 @@ This document should be checked line-by-line before go-live.
 | Customer App install identity remains store-level, not project-level, across project switching | ✅ Done | `src/app/manifest.webmanifest/route.ts`, `src/lib/pwa/manifestGenerator.ts`, `src/app/client/[[...slug]]/page.tsx` |
 | Mobile Share tab now exposes the Customer App install link using the same link-card pattern as OBP/menu links | ✅ Done | `src/components/mobile/screens/MobileShareScreen.tsx` |
 | Desktop Use MenuList screen now exposes the Customer App install link using the same share-card pattern as OBP/menu links | ✅ Done | `src/components/templates/main-app/useMenuList/index.tsx`, `src/components/templates/main-app/useMenuList/types.ts` |
+| iPhone launch path no longer mixes owner/customer manifests or conflicting Apple PWA meta tags | ✅ Done | `src/app/layout.tsx`, `src/app/client/layout.tsx` |
+| Initial server loader now paints an explicit white surface instead of inheriting an unset background | ✅ Done | `src/app/page.module.css`, `src/app/layout.tsx` |
 
 ### Icon Upload Regression Note (Resolved)
 
@@ -149,6 +151,16 @@ This document should be checked line-by-line before go-live.
 **Why:** desktop Use MenuList is the owner output center for shareable links and printed/distribution assets. The install link belongs beside the OBP and direct menu links, not hidden only inside settings.
 
 **Expected behavior now:** desktop owners can copy, open, share by WhatsApp, copy a message, and view sharing guidance for the Customer App install link using the same link-card pattern as the existing OBP/menu links.
+
+### iPhone Launch Surface Note (Resolved)
+
+**Issue observed during device QA:** on installed iPhone PWAs, the app could show a blank black screen for several seconds before the menu UI appeared.
+
+**Root cause:** the launch path had conflicting PWA head configuration. The global root layout was injecting the owner-dashboard manifest plus `apple-mobile-web-app-status-bar-style=black-translucent` for every route, while the customer menu route also emitted its own customer-app manifest and Apple metadata. The initial fallback loader also had `background: unset`, which left iOS free to show a dark surface during the handoff.
+
+**Fix applied:** Customer App now uses a single metadata/viewport path on the client-menu route, the global root layout no longer injects cross-route PWA manifest or Apple meta tags, the shared fallback theme color uses `APP_THEME_COLOR`, the first server-rendered loader/body paint an explicit white background, and the broad root `Suspense` wrapper was removed so the customer route can stream its own `MenuSkeleton` immediately instead of being held behind the global logo loader.
+
+**Expected behavior now:** installed iPhone launches should transition directly into a painted surface instead of a black launch gap, with Customer App metadata isolated from the owner-dashboard PWA metadata and the menu skeleton able to appear sooner while route data resolves.
 
 ---
 

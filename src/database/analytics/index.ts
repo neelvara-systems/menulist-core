@@ -1,7 +1,8 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { getAnalyticsDateKey } from "@lib/analytics/dateKey";
+import { addDaysToAnalyticsDateKey, getAnalyticsDateKey } from "@lib/analytics/dateKey";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { logger } from "@lib/monitoring/logger";
 import { collection, doc, DocumentData, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "firebase/firestore";
 
 // Base collection path
@@ -34,8 +35,9 @@ const getAnalyticsDashboardSummaryDocRef = (tId: string | number, sId: string | 
   return doc(firebaseClient, COLLECTION, docId);
 };
 
-const ANALYTICS_FLUSH_DELAY_MS = 3000;
-const ANALYTICS_FLUSH_MAX_EVENTS = 8;
+const ANALYTICS_FLUSH_DELAY_MS = 15000;
+const ANALYTICS_FLUSH_MAX_EVENTS = 20;
+const ANALYTICS_QUEUE_STORAGE_KEY = 'menulist_pending_analytics_queue_v1';
 const IMMEDIATE_ANALYTICS_FIELDS = new Set([
   'totalMenuActionClicks',
   'totalOBPActionClicks',
@@ -58,6 +60,35 @@ type QueuedAnalyticsWrite = {
 };
 
 const analyticsWriteQueue = new Map<string, QueuedAnalyticsWrite>();
+const flushingAnalyticsKeys = new Set<string>();
+const reportedAnalyticsQueueFailures = new Set<string>();
+
+const persistAnalyticsQueue = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const serializable = Array.from(analyticsWriteQueue.entries()).map(([queueKey, queued]) => [
+      queueKey,
+      {
+        tenantId: queued.tenantId,
+        storeId: queued.storeId,
+        projectId: queued.projectId,
+        dateString: queued.dateString,
+        storeTimeZone: queued.storeTimeZone,
+        updateData: queued.updateData,
+        eventCount: queued.eventCount,
+      },
+    ]);
+
+    if (serializable.length === 0) {
+      window.localStorage.removeItem(ANALYTICS_QUEUE_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(ANALYTICS_QUEUE_STORAGE_KEY, JSON.stringify(serializable));
+  } catch {
+    // Analytics must never break the public menu.
+  }
+};
 
 const getAnalyticsQueueKey = (
   tenantId: string | number,
@@ -65,6 +96,26 @@ const getAnalyticsQueueKey = (
   projectId: string,
   dateString: string
 ) => `${tenantId}_${storeId}_${projectId}_${dateString}`;
+
+const reportAnalyticsQueueFlushError = (
+  queueKey: string,
+  error: unknown,
+  phase: 'flush' | 'retry' | 'persisted'
+) => {
+  if (reportedAnalyticsQueueFailures.has(queueKey)) return;
+  reportedAnalyticsQueueFailures.add(queueKey);
+
+  const queued = analyticsWriteQueue.get(queueKey);
+  logger.error('[AnalyticsQueue] Queued analytics flush failed', error, {
+    phase,
+    queueKey,
+    tenantId: queued?.tenantId,
+    storeId: queued?.storeId,
+    projectId: queued?.projectId,
+    dateString: queued?.dateString,
+    eventCount: queued?.eventCount,
+  });
+};
 
 const shouldWriteImmediately = (updateData: Record<string, any>): boolean => {
   return Object.keys(updateData).some((key) => (
@@ -127,24 +178,41 @@ const writeAnalyticsEventNow = async (
 const flushAnalyticsQueueKey = async (queueKey: string) => {
   const queued = analyticsWriteQueue.get(queueKey);
   if (!queued) return;
+  if (flushingAnalyticsKeys.has(queueKey)) return;
 
-  analyticsWriteQueue.delete(queueKey);
+  flushingAnalyticsKeys.add(queueKey);
   if (queued.flushTimer) clearTimeout(queued.flushTimer);
 
-  await writeAnalyticsEventNow(
-    queued.updateData,
-    queued.tenantId,
-    queued.storeId,
-    queued.projectId,
-    queued.dateString,
-    queued.storeTimeZone,
-  );
+  try {
+    await writeAnalyticsEventNow(
+      queued.updateData,
+      queued.tenantId,
+      queued.storeId,
+      queued.projectId,
+      queued.dateString,
+      queued.storeTimeZone,
+    );
+    analyticsWriteQueue.delete(queueKey);
+    reportedAnalyticsQueueFailures.delete(queueKey);
+    persistAnalyticsQueue();
+  } catch (error) {
+    queued.flushTimer = setTimeout(() => {
+      void flushAnalyticsQueueKey(queueKey).catch((retryError) => {
+        reportAnalyticsQueueFlushError(queueKey, retryError, 'retry');
+      });
+    }, ANALYTICS_FLUSH_DELAY_MS);
+    analyticsWriteQueue.set(queueKey, queued);
+    persistAnalyticsQueue();
+    throw error;
+  } finally {
+    flushingAnalyticsKeys.delete(queueKey);
+  }
 };
 
 const flushAllAnalyticsQueue = () => {
   analyticsWriteQueue.forEach((_, queueKey) => {
     void flushAnalyticsQueueKey(queueKey).catch((error) => {
-      console.error('Error flushing queued analytics event:', error);
+      reportAnalyticsQueueFlushError(queueKey, error, 'flush');
     });
   });
 };
@@ -166,9 +234,10 @@ const enqueueAnalyticsWrite = (
 
     if (existing.eventCount >= ANALYTICS_FLUSH_MAX_EVENTS) {
       void flushAnalyticsQueueKey(queueKey).catch((error) => {
-        console.error('Error flushing queued analytics event:', error);
+        reportAnalyticsQueueFlushError(queueKey, error, 'flush');
       });
     }
+    persistAnalyticsQueue();
     return;
   }
 
@@ -184,14 +253,46 @@ const enqueueAnalyticsWrite = (
 
   queued.flushTimer = setTimeout(() => {
     void flushAnalyticsQueueKey(queueKey).catch((error) => {
-      console.error('Error flushing queued analytics event:', error);
+      reportAnalyticsQueueFlushError(queueKey, error, 'flush');
     });
   }, ANALYTICS_FLUSH_DELAY_MS);
 
   analyticsWriteQueue.set(queueKey, queued);
+  persistAnalyticsQueue();
 };
 
 if (typeof window !== 'undefined') {
+  try {
+    const persisted = window.localStorage.getItem(ANALYTICS_QUEUE_STORAGE_KEY);
+    const entries = persisted ? JSON.parse(persisted) : [];
+    if (Array.isArray(entries)) {
+      entries.forEach(([queueKey, queued]) => {
+        if (!queueKey || !queued?.updateData) return;
+        const currentLocalDate = getAnalyticsDateKey(new Date(), queued.storeTimeZone);
+        const oldestRecoverableDate = addDaysToAnalyticsDateKey(currentLocalDate, -1);
+        if (String(queued.dateString || '') < oldestRecoverableDate) return;
+        analyticsWriteQueue.set(queueKey, {
+          tenantId: String(queued.tenantId),
+          storeId: String(queued.storeId),
+          projectId: String(queued.projectId),
+          dateString: String(queued.dateString),
+          storeTimeZone: queued.storeTimeZone,
+          updateData: queued.updateData,
+          eventCount: queued.eventCount || 1,
+        });
+        void flushAnalyticsQueueKey(queueKey).catch((error) => {
+          reportAnalyticsQueueFlushError(queueKey, error, 'persisted');
+        });
+      });
+      persistAnalyticsQueue();
+    }
+  } catch (error) {
+    logger.warn('[AnalyticsQueue] Dropped invalid persisted analytics queue', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    window.localStorage.removeItem(ANALYTICS_QUEUE_STORAGE_KEY);
+  }
+
   window.addEventListener('pagehide', flushAllAnalyticsQueue);
   window.addEventListener('beforeunload', flushAllAnalyticsQueue);
   document.addEventListener('visibilitychange', () => {
@@ -395,7 +496,7 @@ export const trackAnalyticsEvent = async (
       // Update Firestore document with merge to avoid overwriting existing data
       // COST OPTIMIZATION: Only write to daily document
       // Summary document is updated by nightly Cloud Function (aggregateCustomerAnalytics)
-      // This reduces writes by 50% (1 write per event instead of 2)
+      // This keeps writes to one daily doc flush/action instead of fan-out writes.
       // COST OPTIMIZATION: passive/engagement events are coalesced for a short
       // window, so a menu view + item tap + search burst can become one write.
       // Final conversion actions stay immediate because losing those events is

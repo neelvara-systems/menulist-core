@@ -9,12 +9,18 @@ interface QRCodeViewProps {
     shareUrl: string;
 }
 
+function withQrEntrySource(url: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}utm_source=qr&entry_source=qr`;
+}
+
 function QRCodeView({ shareUrl }: QRCodeViewProps) {
     // QR code customization states
     const [qrSize, setQrSize] = useState<number>(200);
     const [qrColor, setQrColor] = useState<string>('#000000');
     const [qrBgColor, setQrBgColor] = useState<string>('#ffffff');
     const [showLogo, setShowLogo] = useState<boolean>(true);
+    const qrShareUrl = withQrEntrySource(shareUrl);
 
     const handleDownloadQRCode = () => {
         const canvas = document.getElementById('menu-qrcode')?.querySelector<HTMLCanvasElement>('canvas');
@@ -39,7 +45,7 @@ function QRCodeView({ shareUrl }: QRCodeViewProps) {
             </Text>
             <div id="menu-qrcode" style={{ background: qrBgColor }}>
                 <QRCode
-                    value={shareUrl}
+                    value={qrShareUrl}
                     size={qrSize}
                     errorLevel={"H"}
                     color={qrColor}

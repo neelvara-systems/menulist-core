@@ -23,6 +23,7 @@ import {
     getWeekDateRange,
 } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
+import { logger as appLogger } from '../lib/logger';
 import {
     addDaysToAnalyticsDateKey,
     getAnalyticsDateKey,
@@ -220,6 +221,85 @@ async function buildIncrementalOBPDailyMap(
     };
 }
 
+async function applyLateOBPCorrection(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    correctionDate: string,
+    existingDashboard: Record<string, any> | null,
+): Promise<boolean> {
+    const dailyRows = Array.isArray(existingDashboard?.daily30d) ? existingDashboard.daily30d : [];
+    const previousRow = dailyRows.find((row: any) => String(row?.date || '') === correctionDate);
+    if (!previousRow) return false;
+
+    const dailyRef = db.collection(DB_COLLECTIONS.ANALYTICS)
+        .doc(getAnalyticsDocId.daily(tId, sId, OBP_PROJECT_ID, correctionDate));
+    const dailySnap = await dailyRef.get();
+    if (!dailySnap.exists) return false;
+
+    const currentDaily = compactOBPAnalyticsDay(correctionDate, dailySnap.data() as OBPDailyData);
+    const updates: Record<string, any> = {
+        lastCorrectionDate: correctionDate,
+        lastCorrectedAt: FieldValue.serverTimestamp(),
+    };
+    let hasDelta = false;
+
+    const addNumericDelta = (field: string, target: string) => {
+        const delta = Math.max(0, ((currentDaily as any)[field] || 0) - (previousRow[field] || 0));
+        if (delta > 0) {
+            updates[target] = FieldValue.increment(delta);
+            hasDelta = true;
+        }
+    };
+    const addMapDelta = (field: string, target: string) => {
+        const currentMap = (currentDaily as any)[field] || {};
+        const previousMap = previousRow[field] || {};
+        for (const [key, value] of Object.entries(currentMap)) {
+            if (typeof value !== 'number') continue;
+            const delta = Math.max(0, value - (previousMap[key] || 0));
+            if (delta > 0) {
+                updates[`${target}.${key}`] = FieldValue.increment(delta);
+                hasDelta = true;
+            }
+        }
+    };
+
+    addNumericDelta('totalOBPViews', 'lifetime.totalOBPViews');
+    addNumericDelta('totalOBPActionClicks', 'lifetime.totalOBPActionClicks');
+    addNumericDelta('totalOBPMenuClicks', 'lifetime.totalOBPMenuClicks');
+    addNumericDelta('totalOBPLinkClicks', 'lifetime.totalOBPLinkClicks');
+    addNumericDelta('totalOBPShares', 'lifetime.totalOBPShares');
+    addMapDelta('obpActionClicks', 'lifetime.obpActionClicks');
+    addMapDelta('obpLinkClicks', 'lifetime.obpLinkClicks');
+    addMapDelta('obpShares', 'lifetime.obpShares');
+
+    if (!hasDelta) return false;
+
+    const updatedRows = dailyRows.map((row: any) => (
+        String(row?.date || '') === correctionDate ? currentDaily : row
+    ));
+
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANALYTICS).doc(getAnalyticsDocId.summary(tId, sId, OBP_PROJECT_ID)).set(updates, { merge: true }),
+        db.collection(DB_COLLECTIONS.ANALYTICS).doc(getOBPDashboardSummaryDocId(tId, sId)).set({
+            daily30d: updatedRows,
+            lateCorrection: {
+                lastCorrectedLocalDate: correctionDate,
+                correctedAt: FieldValue.serverTimestamp(),
+            },
+            modifiedOn: FieldValue.serverTimestamp(),
+        }, { merge: true }),
+    ]);
+
+    appLogger.warn('[OBPAnalyticsSettlement] Late daily correction applied', {
+        tId,
+        sId,
+        correctionDate,
+    });
+
+    return true;
+}
+
 /**
  * Read OBP daily docs for a date range and aggregate
  */
@@ -333,11 +413,20 @@ export async function aggregateOBPAnalyticsForStoreDate(
     const summaryDocId = getAnalyticsDocId.summary(tId, sId, OBP_PROJECT_ID);
     const summaryRef = db.collection(DB_COLLECTIONS.ANALYTICS).doc(summaryDocId);
     const dashboardRef = db.collection(DB_COLLECTIONS.ANALYTICS).doc(getOBPDashboardSummaryDocId(tId, sId));
-    const [existingSummary, existingDashboardSnap] = await Promise.all([
+    let [existingSummary, existingDashboardSnap] = await Promise.all([
         summaryRef.get(),
         dashboardRef.get(),
     ]);
-    const existingDashboard = existingDashboardSnap.exists ? existingDashboardSnap.data() || {} : null;
+    let existingDashboard = existingDashboardSnap.exists ? existingDashboardSnap.data() || {} : null;
+    const correctionDate = addDaysToAnalyticsDateKey(yesterdayStr, -1);
+    const correctionApplied = await applyLateOBPCorrection(db, tId, sId, correctionDate, existingDashboard);
+    if (correctionApplied) {
+        [existingSummary, existingDashboardSnap] = await Promise.all([
+            summaryRef.get(),
+            dashboardRef.get(),
+        ]);
+        existingDashboard = existingDashboardSnap.exists ? existingDashboardSnap.data() || {} : null;
+    }
 
     // COST OPTIMIZATION: steady-state OBP aggregation reads the existing compact
     // dashboard cache plus yesterday's doc. The wider daily range query is only
@@ -350,6 +439,14 @@ export async function aggregateOBPAnalyticsForStoreDate(
         existingDashboard,
         requiredDates,
     );
+    if (source === 'rebuild') {
+        appLogger.warn('[OBPAnalyticsSettlement] Dashboard summary rebuilt from daily docs', {
+            tId,
+            sId,
+            settlementDate: yesterdayStr,
+            daysLoaded: dailyDocsByDate.size,
+        });
+    }
     const currentWeekMetrics = aggregateOBPDailyDocsFromMap(dailyDocsByDate, weekDates);
     const prevWeekMetrics = aggregateOBPDailyDocsFromMap(dailyDocsByDate, prevWeekDates);
     const currentMonthMetrics = aggregateOBPDailyDocsFromMap(dailyDocsByDate, monthDates);
@@ -564,12 +661,16 @@ export async function aggregateOBPAnalyticsForAllStores(): Promise<{
                 const hadData = await aggregateOBPAnalyticsForStore(db, tId, sId, new Date(), storeInfo?.timeZone);
                 if (hadData) result.storesWithData++;
             } catch (e: any) {
-                logger.error(`[OBP Aggregation] Store ${sId}: ${e.message}`);
+                appLogger.error('[OBPAnalyticsSettlement] Store aggregation failed', e, {
+                    tId,
+                    sId,
+                    timeZone: storeInfo?.timeZone || 'UTC',
+                });
                 result.errors++;
             }
         }
     } catch (e: any) {
-        logger.error(`[OBP Aggregation] Fatal: ${e.message}`);
+        appLogger.error('[OBPAnalyticsSettlement] All-store aggregation failed', e);
     }
 
     return result;

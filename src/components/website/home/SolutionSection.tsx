@@ -108,7 +108,7 @@ export default function SolutionSection() {
               }}
             />
             <div>
-              <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--ws-text-primary)' }}>{point.title}</p>
+              <p className="ws-body-sm" style={{ fontWeight: 600 }}>{point.title}</p>
               <p className="ws-caption" style={{ marginTop: '2px' }}>{point.desc}</p>
             </div>
           </div>
@@ -118,12 +118,11 @@ export default function SolutionSection() {
       <AnimateOnScroll delay={0.2}>
         {/* Relief anchor — visually emphasized */}
         <p
+          className="ws-body"
           style={{
             textAlign: 'center',
-            fontSize: '1.0625rem',
             fontWeight: 600,
-            color: 'var(--ws-text-primary)',
-            marginTop: 'var(--ws-space-8)',
+            fontSize: '1.0625rem',
           }}
         >
           {t('Solution.reliefAnchor')}

@@ -73,7 +73,7 @@ Acquire lock for store + local date
 
 If OBP aggregation fails for that store/date, menu/customer-app aggregation does not run for that same settlement date.
 
-Dashboard and intelligence read models are incremental in the steady state. The scheduler reuses the existing compact daily cache, adds the settled day when a daily doc exists, and only rebuilds from daily docs when the cache is missing, stale, or does not cover the required WTD/MTD/history window. Decision Blocks and Menu Intelligence consume `analytics/{tId}_{sId}_{projectId}_intelligence_7d`; missing or stale intelligence snapshots settle as empty for that run instead of opening a hidden daily-doc range query.
+Dashboard, weekly/monthly rollups, and intelligence read models are incremental in the steady state. The scheduler reuses the existing compact daily cache, adds the settled day when a daily doc exists, and only rebuilds from daily docs when the cache is missing, stale, or does not cover the required WTD/MTD/history window. The next nightly pass also checks the previously settled local date and applies positive deltas for delayed passive writes. Decision Blocks and Menu Intelligence consume `analytics/{tId}_{sId}_{projectId}_intelligence_7d`; missing or stale intelligence snapshots settle as empty for that run instead of opening a hidden daily-doc range query, and the scheduler run log exposes `intelligenceSnapshotMissing`.
 
 The completed `nightlyState` doc includes a compact `analyticsIndex` with active project ids, customer analytics project ids, enabled surfaces, dashboard summary doc ids, and the last settled local date. This keeps future owner/ops guard flows pointed at one store-level state document without introducing a second store analytics index write.
 
@@ -343,6 +343,19 @@ Every run sends a Dead Man's Switch telegram alert:
 - Intelligence results
 - Duration
 - If this alert doesn't arrive → scheduler didn't complete
+
+### Sentry / Firebase Logs
+
+Analytics settlement uses targeted logs only. The scheduler records Sentry-backed warnings/errors for:
+
+- Store/date settlement failure with `tId`, `sId`, `settlementDate`, and phase
+- Project aggregation failure with `projectId`
+- OBP and menu dashboard-summary rebuilds from daily docs
+- Weekly/monthly rollup cache misses that fall back to daily-doc reads
+- Late-event correction applied for menu, Customer App, or OBP daily rows
+- Missing/stale `intelligence_7d` snapshots
+
+Successful per-event customer tracking is not logged. Successful nightly loops are visible through `schedulerRunLogs` and Telegram, not Sentry issue spam.
 
 ### Manual Trigger
 

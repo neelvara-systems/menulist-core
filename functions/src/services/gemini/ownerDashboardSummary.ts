@@ -15,7 +15,7 @@
  * Called from: aggregateCustomerAnalytics.ts
  */
 
-import { AI_MODEL } from '../../constants/ai';
+import { OWNER_ANALYTICS_AI_MODEL } from '../../constants/ai';
 import { genAIClient } from '../../genAiClient';
 
 // ================================================================
@@ -229,7 +229,7 @@ export async function generateOwnerDashboardSummary(
 
         // Call Gemini (using shared genAIClient — SDK standardization P0)
         const geminiResult = await genAIClient.models.generateContent({
-            model: AI_MODEL,
+            model: OWNER_ANALYTICS_AI_MODEL,
             contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + prompt }] }],
             config: {
                 temperature: 0.3,
@@ -458,7 +458,7 @@ export async function generateDailyAISummary(
 
         // Call Gemini (using shared genAIClient — SDK standardization P0)
         const geminiResult = await genAIClient.models.generateContent({
-            model: AI_MODEL,
+            model: OWNER_ANALYTICS_AI_MODEL,
             contents: [{ role: 'user', parts: [{ text: DAILY_SYSTEM_PROMPT + '\n\n' + prompt }] }],
             config: {
                 temperature: 0.2,
@@ -607,7 +607,7 @@ export async function generateMonthlyAISummary(
 
         // Call Gemini (using shared genAIClient — SDK standardization P0)
         const geminiResult = await genAIClient.models.generateContent({
-            model: AI_MODEL,
+            model: OWNER_ANALYTICS_AI_MODEL,
             contents: [{ role: 'user', parts: [{ text: MONTHLY_SYSTEM_PROMPT + '\n\n' + prompt }] }],
             config: {
                 temperature: 0.3,

@@ -28,6 +28,10 @@ const MobileOBPMetricsCard = dynamic(
     () => import('./dashboardSections/MobileOBPMetricsCard'),
     { ssr: false },
 );
+const MobileOwnerActionPlanCard = dynamic(
+    () => import('./dashboardSections/MobileOwnerActionPlanCard'),
+    { ssr: false },
+);
 
 interface MobileDashboardScreenProps {
     onBack: () => void;
@@ -217,6 +221,8 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         <Flex gap={12} wrap>
             {renderMetricTile(labels.scansLabel, (metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={14} />)}
             {renderMetricTile(t('itemTaps'), (metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={14} />)}
+            {renderMetricTile('Engaged Sessions', `${metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
+            {renderMetricTile('Action Rate', `${metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
             {renderMetricTile('Customer Actions', (metrics?.menuActionClicks || 0).toLocaleString(), <LuHeart color={token.colorSuccess} size={14} />)}
             {renderMetricTile('Searches', (metrics?.searches || 0).toLocaleString(), <LuBarChart3 color={token.colorInfo} size={14} />)}
             {renderMetricTile('No-result Searches', (metrics?.zeroResultSearches || 0).toLocaleString(), <LuTrendingDown color={token.colorWarning} size={14} />)}
@@ -232,11 +238,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
     const renderDemandAndActions = (data?: any) => {
         const hasActions = Object.values(data?.menuActions || {}).some((value) => Number(value) > 0);
+        const hasTopCategories = Boolean(data?.topCategories?.length);
         const hasSearchTerms = Boolean(data?.topSearchTerms?.length);
         const hasUnavailable = Boolean(data?.unavailableItems?.length);
         const hasZeroResultSearches = Number(data?.metrics?.zeroResultSearches || 0) > 0;
 
-        if (!hasActions && !hasSearchTerms && !hasUnavailable && !hasZeroResultSearches) return null;
+        if (!hasActions && !hasTopCategories && !hasSearchTerms && !hasUnavailable && !hasZeroResultSearches) return null;
 
         return (
             <Card size="small" title={<Text strong>Customer Intent</Text>}>
@@ -247,6 +254,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     {hasActions ? (
                         <Text type="secondary">
                             {`Actions: Call ${data.menuActions?.call || 0}, WhatsApp ${data.menuActions?.whatsapp || 0}, Directions ${data.menuActions?.directions || 0}, Reserve ${data.menuActions?.reserve || 0}, Order ${data.menuActions?.order || 0}`}
+                        </Text>
+                    ) : null}
+                    {hasTopCategories ? (
+                        <Text type="secondary">
+                            {`Top category: ${data.topCategories.slice(0, 3).map((category: any) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}`}
                         </Text>
                     ) : null}
                     {hasSearchTerms ? (
@@ -520,6 +532,8 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 <Flex gap={12} wrap>
                                     {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile('Engaged Sessions', `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
+                                    {renderMetricTile('Action Rate', `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
                                     {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
@@ -551,6 +565,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 {renderMetricsCards(wtd.metrics)}
                             </Card>
                         ) : null}
+                        <MobileOwnerActionPlanCard
+                            actionPlan={data?.ownerActionPlan || overview?.ownerActionPlan}
+                            confidence={data?.ownerConfidence || overview?.ownerConfidence}
+                            sourceQuality={data?.sourceQuality || overview?.sourceQuality || []}
+                            analyticsAiEntitlement={data?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
+                        />
                         {renderDemandAndActions(wtd)}
 
                         <MobileOBPMetricsCard
@@ -620,6 +640,8 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 <Flex gap={12} wrap>
                                     {renderMetricTile(labels.scansLabel, (mtd.metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={12} />, 4)}
                                     {renderMetricTile(t('itemTaps'), (mtd.metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={12} />, 4)}
+                                    {renderMetricTile('Engaged Sessions', `${mtd.metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
+                                    {renderMetricTile('Action Rate', `${mtd.metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
                                 </Flex>
                                 {mtd.daysWithData > 0 ? (
                                     <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
@@ -690,6 +712,8 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 <Flex gap={12} wrap>
                                     {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
+                                    {renderMetricTile('Engaged Sessions', `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
+                                    {renderMetricTile('Action Rate', `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
                                     {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
                                     {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}

@@ -10,6 +10,8 @@ import { SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getDecisionBlocksDocId, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
 import { firestoreAdmin } from './firebaseAdmin';
+import { logger as appLogger } from './lib/logger';
+import { flush as flushSentry, initSentry } from './lib/sentry';
 import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunContext } from './intelligence/menuIntelligence';
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
@@ -729,8 +731,10 @@ export const computeDecisionBlocksScores = onSchedule({
         SECRETS.GEMINI_AI_KEY_4,
         SECRETS.RAZORPAY_KEY_ID,
         SECRETS.RAZORPAY_KEY_SECRET,
+        SECRETS.SENTRY_DSN,
     ],
 }, async (event) => {
+    initSentry();
     const logger = functions.logger;
     const currentUTCHour = new Date().getUTCHours();
     logger.info(`=== Nightly Scheduler (Hour ${currentUTCHour} UTC) ===`);
@@ -825,9 +829,11 @@ export const computeDecisionBlocksScores = onSchedule({
             menuProjects: 0,
             menuErrors: 0,
             obpStoresWithData: 0,
+            intelligenceSnapshotMissing: 0,
         };
         const { aggregateCustomerAnalyticsForStoreDate } = await import('./aggregateCustomerAnalytics');
         const { aggregateOBPAnalyticsForStoreDate } = await import('./analytics/obpAnalyticsAggregation');
+        const { resolveAnalyticsAiEntitlement } = await import('./analytics/analyticsAiEntitlements');
 
         // Infrastructure Compounding 10.3: Collect enrichment data during loop,
         // write once at end (replaces per-store writes — saves N-1 writes)
@@ -895,6 +901,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                 sId,
                                 settlementDate,
                                 knownAnalyticsProjectIds,
+                                resolveAnalyticsAiEntitlement(storeInfo),
                             );
 
                             analyticsResults.menuProjects += customerAggregation.totalProjects;
@@ -927,6 +934,12 @@ export const computeDecisionBlocksScores = onSchedule({
                             await completeNightlyDateLock(lockRef, 'completed');
                         } catch (settlementError: any) {
                             const message = settlementError?.message || String(settlementError);
+                            appLogger.error('[NightlyAnalytics] Store settlement failed', settlementError, {
+                                tId,
+                                sId,
+                                settlementDate,
+                                phase: 'analytics_settlement',
+                            });
                             await updateNightlyState(db, tId, sId, settlementDate, 'failed', 'failed', message);
                             await completeNightlyDateLock(lockRef, 'failed', message);
                             throw settlementError;
@@ -944,9 +957,19 @@ export const computeDecisionBlocksScores = onSchedule({
                     try {
                         // OPTIMIZATION: Fetch the scheduler-written 7-day
                         // intelligence snapshot once, reuse for both DI + CMI.
-                        // Falls back to daily docs only when the snapshot is
-                        // missing, e.g. first deploy/backfill edge cases.
+                        // Missing/stale snapshots are visible in ops and score
+                        // as empty for the run instead of opening daily reads.
                         const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone);
+                        if (analytics.source === 'missing_or_stale') {
+                            analyticsResults.intelligenceSnapshotMissing++;
+                            appLogger.warn('[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
+                                tId,
+                                sId,
+                                projectId,
+                                expectedLocalDate: addDaysToAnalyticsDateKey(getAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone), -1),
+                                lastSettledLocalDate: analytics.lastSettledLocalDate || null,
+                            });
+                        }
 
                         const blocks = await computeForProject(
                             db,
@@ -1081,6 +1104,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 menuProjects: analyticsResults.menuProjects,
                 menuErrors: analyticsResults.menuErrors,
                 obpStoresWithData: analyticsResults.obpStoresWithData,
+                intelligenceSnapshotMissing: analyticsResults.intelligenceSnapshotMissing,
             },
         });
 
@@ -1640,6 +1664,8 @@ export const computeDecisionBlocksScores = onSchedule({
     } catch (error: any) {
         logger.error('Fatal error in decision blocks scoring:', error);
         throw error;
+    } finally {
+        await flushSentry();
     }
 });
 
@@ -1661,8 +1687,10 @@ export const triggerDecisionBlocksScoring = onCall({
         SECRETS.GEMINI_AI_KEY_4,
         SECRETS.RAZORPAY_KEY_ID,
         SECRETS.RAZORPAY_KEY_SECRET,
+        SECRETS.SENTRY_DSN,
     ],
 }, async (request) => {
+    initSentry();
     const logger = functions.logger;
 
     // Optional: restrict to admin users

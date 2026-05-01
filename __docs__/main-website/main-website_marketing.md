@@ -323,7 +323,7 @@ MenuList
 **The competitive moat:**
 
 - QR menu tools give you: QR code
-- MenuList gives you: QR + OBP + Google sync + digital screens + PDF + launch kit + images + descriptions + translations + analytics + multi-location + trust signals + quality nudges + presence tracking + customer message templates
+- MenuList gives you: QR + OBP + Google sync + digital screens + PDF + launch kit + images + descriptions + translations + cost-safe owner analytics + Pro action summaries + multi-location + trust signals + quality nudges + presence tracking + customer message templates
 
 No competitor offers all of this from one menu upload. That IS the hype.
 

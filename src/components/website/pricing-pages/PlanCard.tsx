@@ -22,6 +22,7 @@ const getPlanBullets = (planId: string, monthlyCreditAllowance: string | number)
                 'Your menu looks professional everywhere your customers see it',
                 'AI descriptions and images',
                 'Multi-language menu',
+                'Pro analytics action summaries',
                 'Branding and presentation control',
                 'Update once, changes reflect everywhere instantly'
             ];
@@ -30,6 +31,7 @@ const getPlanBullets = (planId: string, monthlyCreditAllowance: string | number)
                 'Run your entire brand from one place',
                 'Control all your outlets from one place',
                 'Keep menus consistent across every location',
+                'Pro analytics action summaries',
                 'Central menu with outlet-level overrides',
                 'Priority support'
             ];

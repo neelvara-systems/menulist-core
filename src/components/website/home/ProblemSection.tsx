@@ -81,7 +81,7 @@ export default function ProblemSection() {
               >
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--ws-error)' }} />
               </div>
-              <h3 className="ws-h3" style={{ fontSize: '1rem', marginBottom: 'var(--ws-space-2)' }}>
+              <h3 className="ws-h3" style={{ fontSize: '1rem' }}>
                 {tile.label}
               </h3>
               <p className="ws-caption">{tile.description}</p>

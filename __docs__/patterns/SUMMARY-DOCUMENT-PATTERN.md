@@ -75,8 +75,10 @@ for (const [storeId, storeInfo] of Object.entries(stores)) {
     "store123": {
       tId: 1,                    // tenantId
       businessType: "restaurant",
+      businessCategory: "food",
       active: true,
-      name: "My Restaurant"      // Optional: for display
+      name: "My Restaurant",     // Optional: for display
+      activePlanType: "pro"      // Optional: denormalized billing plan for scheduler entitlements
     },
     "store456": {
       tId: 2,

@@ -32,6 +32,7 @@ export interface StoreSummaryData {
     name: string;
     timeZone?: string;         // IANA timezone (e.g., 'Asia/Kolkata') — used for DST-safe runtime scheduling
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
+    activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
 }
 
 export interface StoresSummary {
@@ -160,23 +161,26 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
         async () => {
             const ref = getStoresSummaryDocRef();
             const summaryEntry: Record<string, any> = {
-                tId: data.tId,
-                businessType: data.businessType || 'unknown',
-                businessCategory: data.businessCategory || 'specialty',
-                active: data.active ?? true,
-                name: data.name || '',
+                [`stores.${storeId}.tId`]: data.tId,
+                [`stores.${storeId}.businessType`]: data.businessType || 'unknown',
+                [`stores.${storeId}.businessCategory`]: data.businessCategory || 'specialty',
+                [`stores.${storeId}.active`]: data.active ?? true,
+                [`stores.${storeId}.name`]: data.name || '',
             };
             // Include timeZone for DST-safe runtime scheduling in CF
             if (data.timeZone) {
-                summaryEntry.timeZone = data.timeZone;
+                summaryEntry[`stores.${storeId}.timeZone`] = data.timeZone;
             }
             // schedulerHour is FALLBACK only (for stores without timeZone)
             if (data.schedulerHour !== undefined) {
-                summaryEntry.schedulerHour = data.schedulerHour;
+                summaryEntry[`stores.${storeId}.schedulerHour`] = data.schedulerHour;
+            }
+            if (data.activePlanType !== undefined) {
+                summaryEntry[`stores.${storeId}.activePlanType`] = data.activePlanType;
             }
             await setDoc(ref, {
                 lastUpdated: serverTimestamp(),
-                [`stores.${storeId}`]: summaryEntry
+                ...summaryEntry
             }, { merge: true });
             return true;
         },

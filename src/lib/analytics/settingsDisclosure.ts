@@ -18,11 +18,14 @@ export const ANALYTICS_TRACKING_CATEGORY_DISCLOSURES: AnalyticsTrackingCategoryD
     details: [
       'Menu opens',
       'Item detail opens',
+      'Anonymous session milestones for engaged, intent, and final-action sessions',
+      'Category interest from item views and taps',
       'De-duplicated search queries',
       'No-result searches',
       'Unavailable-item taps',
       'Final menu CTA clicks such as call, WhatsApp, directions, reserve, and order',
-      'Entry source and session totals',
+      'Entry source and action-rate-by-source reporting',
+      'Session totals',
     ],
     note:
       'These signals stay grouped because they all describe customer activity inside the menu and are used together in reporting.',

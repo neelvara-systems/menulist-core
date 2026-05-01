@@ -72,7 +72,7 @@ export default function SurfacesSection() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>
+                    <h3 className="ws-h3" style={{ fontSize: '1rem' }}>
                       {surface.title}
                     </h3>
                     {surface.comingSoon && (
@@ -81,7 +81,7 @@ export default function SurfacesSection() {
                       </span>
                     )}
                   </div>
-                  <p style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', marginTop: '2px' }}>
+                  <p className="ws-body-sm" style={{ marginTop: '2px' }}>
                     {surface.subtitle}
                   </p>
                   <p className="ws-caption" style={{ marginTop: '4px' }}>

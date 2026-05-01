@@ -96,6 +96,20 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
+                        title="Engaged Sessions"
+                        value={`${metrics.engagedSessionRate || 0}%`}
+                        subtitle="menu interest"
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <MetricCard
+                        title="Action Rate"
+                        value={`${metrics.actionRate || 0}%`}
+                        subtitle="final actions"
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <MetricCard
                         title="Smart Picks Shown"
                         value={metrics.smartPicksRendered}
                         subtitle="times displayed"
@@ -171,9 +185,14 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 </Row>
             </Card>
 
-            {(data.menuActions || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
+            {(data.menuActions || data.topCategories?.length || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
                 <Card className={styles.detailCard} variant="borderless">
                     <Title level={5}>What customers tried to do</Title>
+                    {data.topCategories?.length ? (
+                        <Text style={{ display: 'block', marginBottom: 8 }}>
+                            Top category: {data.topCategories.slice(0, 3).map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}
+                        </Text>
+                    ) : null}
                     <Text type="secondary">
                         Actions: Call {data.menuActions?.call || 0}, WhatsApp {data.menuActions?.whatsapp || 0}, Directions {data.menuActions?.directions || 0}, Reserve {data.menuActions?.reserve || 0}, Order {data.menuActions?.order || 0}
                     </Text>

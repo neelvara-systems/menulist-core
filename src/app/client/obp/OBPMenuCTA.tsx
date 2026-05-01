@@ -49,6 +49,20 @@ interface OBPMenuCTAProps {
     storeTimeZone?: string;
 }
 
+function withOBPEntrySource(url: string): string {
+    if (!url) return url;
+    try {
+        const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://menulist.ai');
+        parsed.searchParams.set('utm_source', 'obp');
+        parsed.searchParams.set('utm_medium', 'official_business_page');
+        parsed.searchParams.set('entry_source', 'obp');
+        return url.startsWith('/') ? `${parsed.pathname}${parsed.search}${parsed.hash}` : parsed.toString();
+    } catch {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}utm_source=obp&utm_medium=official_business_page&entry_source=obp`;
+    }
+}
+
 export default function OBPMenuCTA({
     menuUrl,
     accentColor,
@@ -95,7 +109,7 @@ export default function OBPMenuCTA({
     if (projects.length === 0) {
         return (
             <a
-                href={menuUrl}
+                href={withOBPEntrySource(menuUrl)}
                 className={styles.menuButton}
                 style={{ background: accentColor }}
                 onClick={trackPrimary}
@@ -110,7 +124,7 @@ export default function OBPMenuCTA({
     return (
         <>
             <a
-                href={primary.url}
+                href={withOBPEntrySource(primary.url)}
                 className={styles.menuButton}
                 style={{ background: accentColor }}
                 onClick={trackPrimary}
@@ -129,7 +143,7 @@ export default function OBPMenuCTA({
                     {secondary.map((p) => (
                         <a
                             key={p.slug}
-                            href={p.url}
+                            href={withOBPEntrySource(p.url)}
                             className={styles.secondaryProjectCard}
                             onClick={() => trackSecondary(p)}
                         >

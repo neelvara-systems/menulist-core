@@ -33,6 +33,7 @@ import {
 import { Card, Col, Collapse, Empty, Progress, Row, Statistic, Tag, Typography } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
+import OwnerActionPlanCard from './OwnerActionPlanCard';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -57,7 +58,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
         );
     }
 
-    const { status, statusMessage, wtd, mtd, historicalWeeks, aiSummary } = data;
+    const { status, statusMessage, wtd, mtd, historicalWeeks, aiSummary, ownerActionPlan, ownerConfidence, sourceQuality, analyticsAiEntitlement } = data;
 
     const getStatusIcon = () => {
         switch (status) {
@@ -211,6 +212,20 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
+                            title="Engaged Sessions"
+                            value={wtd.metrics.engagedSessionRate || 0}
+                            suffix="%"
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Action Rate"
+                            value={wtd.metrics.actionRate || 0}
+                            suffix="%"
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
                             title="Suggestions Shown"
                             value={wtd.metrics.smartPicksRendered}
                             prefix={<ThunderboltOutlined />}
@@ -256,6 +271,20 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                                 {wtd.topItems.slice(0, OVERVIEW_GUARDRAILS.SHOW_TOP_ITEMS).map((item, idx) => (
                                     <Tag key={item.itemId} style={{ marginBottom: 4 }}>
                                         {idx + 1}. {item.name || item.itemId} ({item.clicks})
+                                    </Tag>
+                                ))}
+                            </div>
+                        </Col>
+                    )}
+                    {wtd.topCategories && wtd.topCategories.length > 0 && (
+                        <Col span={24}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Top Category:
+                            </Text>
+                            <div style={{ marginTop: 4 }}>
+                                {wtd.topCategories.slice(0, 3).map((category) => (
+                                    <Tag key={category.categoryId} style={{ marginBottom: 4 }}>
+                                        {category.name || category.categoryId} ({category.views} views, {category.clicks} taps)
                                     </Tag>
                                 ))}
                             </div>
@@ -313,6 +342,20 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
+                            title="Engaged Sessions"
+                            value={mtd.metrics.engagedSessionRate || 0}
+                            suffix="%"
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
+                            title="Action Rate"
+                            value={mtd.metrics.actionRate || 0}
+                            suffix="%"
+                        />
+                    </Col>
+                    <Col xs={12} sm={6}>
+                        <Statistic
                             title="Searches"
                             value={mtd.metrics.searches || 0}
                         />
@@ -336,6 +379,18 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                         />
                     </Col>
                     {renderActionSummary(mtd.menuActions)}
+                    {mtd.topCategories && mtd.topCategories.length > 0 && (
+                        <Col span={24}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Top Category:</Text>
+                            <div style={{ marginTop: 4 }}>
+                                {mtd.topCategories.slice(0, 3).map((category) => (
+                                    <Tag key={category.categoryId} style={{ marginBottom: 4 }}>
+                                        {category.name || category.categoryId} ({category.views} views, {category.clicks} taps)
+                                    </Tag>
+                                ))}
+                            </div>
+                        </Col>
+                    )}
                     {renderDemandSummary(mtd.topSearchTerms, mtd.unavailableItems)}
                 </Row>
             ) : (
@@ -385,7 +440,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                 {/* Quick Stats Row */}
                 {wtd && (
                     <Row gutter={16} className={styles.quickStats}>
-                        <Col xs={8}>
+                        <Col xs={6}>
                             <div className={styles.quickStat}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>This Week</Text>
                                 <Title level={4} style={{ margin: 0 }}>
@@ -394,7 +449,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                                 <Text type="secondary" style={{ fontSize: 11 }}>scans</Text>
                             </div>
                         </Col>
-                        <Col xs={8}>
+                        <Col xs={6}>
                             <div className={styles.quickStat}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>This Month</Text>
                                 <Title level={4} style={{ margin: 0 }}>
@@ -403,7 +458,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                                 <Text type="secondary" style={{ fontSize: 11 }}>scans</Text>
                             </div>
                         </Col>
-                        <Col xs={8}>
+                        <Col xs={6}>
                             <div className={styles.quickStat}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>Top Item</Text>
                                 <Title level={5} style={{ margin: 0, fontSize: 14 }}>
@@ -414,9 +469,27 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                                 </Text>
                             </div>
                         </Col>
+                        <Col xs={6}>
+                            <div className={styles.quickStat}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Top Category</Text>
+                                <Title level={5} style={{ margin: 0, fontSize: 14 }}>
+                                    {wtd.topCategories?.[0]?.name || '—'}
+                                </Title>
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    {wtd.topCategories?.[0] ? `${wtd.topCategories[0].views} views` : ''}
+                                </Text>
+                            </div>
+                        </Col>
                     </Row>
                 )}
             </Card>
+
+            <OwnerActionPlanCard
+                actionPlan={ownerActionPlan}
+                confidence={ownerConfidence}
+                sourceQuality={sourceQuality}
+                analyticsAiEntitlement={analyticsAiEntitlement}
+            />
 
             {/* AI Summary (if available) */}
             {aiSummary && aiSummary.bulletPoints && aiSummary.bulletPoints.length > 0 && (

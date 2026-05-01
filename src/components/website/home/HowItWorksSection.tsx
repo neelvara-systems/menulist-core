@@ -1,36 +1,23 @@
+import { useTranslations } from 'next-intl';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 
-const steps = [
-  {
-    number: '1',
-    title: 'Create your menu',
-    desc: 'Upload a photo, PDF, or type it in. Takes a few minutes — the system reads and structures everything for you.',
-  },
-  {
-    number: '2',
-    title: 'We prepare everything for you',
-    desc: 'Images, descriptions, and structure — done. No design work, no writing, no formatting.',
-  },
-  {
-    number: '3',
-    title: 'Publish and launch',
-    desc: 'One click. Your menu goes live across all surfaces. You get a ready-to-use launch kit — table tent, entrance poster, counter sticker, and social posts.',
-  },
-  {
-    number: '4',
-    title: 'It stays updated everywhere',
-    desc: 'Change a price, add an item, mark something sold out — every surface reflects it.',
-  },
-];
+const STEP_COUNT = 4;
 
 export default function HowItWorksSection() {
+  const t = useTranslations('Website');
+  const steps = Array.from({ length: STEP_COUNT }, (_, i) => ({
+    number: String(i + 1),
+    title: t(`HowItWorks.step${i}Title`),
+    desc: t(`HowItWorks.step${i}Desc`),
+  }));
+
   return (
     <SectionWrapper>
       <AnimateOnScroll>
-        <SectionHeading title="How it works" />
+        <SectionHeading title={t('HowItWorks.title')} />
       </AnimateOnScroll>
 
       <div
@@ -94,12 +81,12 @@ export default function HowItWorksSection() {
 
       <AnimateOnScroll delay={0.15}>
         <p className="ws-caption" style={{ textAlign: 'center', marginTop: 'var(--ws-space-8)' }}>
-          No technical knowledge required.
+          {t('HowItWorks.noTechnicalKnowledge')}
         </p>
 
         <div style={{ textAlign: 'center', marginTop: 'var(--ws-space-6)' }}>
           <WebsiteButton href="/get-started">
-            Create your MenuList →
+            {t('HowItWorks.cta')}
           </WebsiteButton>
         </div>
       </AnimateOnScroll>

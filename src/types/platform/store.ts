@@ -89,6 +89,7 @@ export type StoreDataType = {
     businessType: string;
     businessCategory: string;
     businessIndustry?: string; // Plan type: 'B2C' | 'B2B'. Future scope for B2B features.
+    activePlanType?: string; // Denormalized plan id for scheduler entitlements. Billing subscription remains the source of truth.
 
     contactPersonName: string;
     contactPersonEmail: string;

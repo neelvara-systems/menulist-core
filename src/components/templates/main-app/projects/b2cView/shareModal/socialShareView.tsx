@@ -17,6 +17,12 @@ interface SocialPlatform {
     shareUrl: (url: string) => string;
 }
 
+function withEntrySource(url: string, source: string): string {
+    const normalizedSource = source.toLowerCase();
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}utm_source=${normalizedSource}&entry_source=${normalizedSource}`;
+}
+
 function SocialShareView({ shareUrl }: SocialShareViewProps) {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
@@ -82,7 +88,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
 
     const handleCopyPlatformLink = async (platform: string) => {
         try {
-            const urlWithUTM = `${shareUrl}${shareUrl.includes('?') ? '&' : '?'}utm_source=${platform.toLowerCase()}`;
+            const urlWithUTM = withEntrySource(shareUrl, platform);
             await navigator.clipboard.writeText(urlWithUTM);
             message.success(`Link with ${platform} tracking copied!`);
         } catch (err) {
@@ -91,7 +97,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
     };
 
     const handleShareOnPlatform = (platform: SocialPlatform) => {
-        const urlWithUTM = `${shareUrl}${shareUrl.includes('?') ? '&' : '?'}utm_source=${platform.name.toLowerCase()}`;
+        const urlWithUTM = withEntrySource(shareUrl, platform.name);
         window.open(platform.shareUrl(urlWithUTM), '_blank');
     };
 

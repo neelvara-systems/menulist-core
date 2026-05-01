@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { getSubscriptionById, updateSubscription } from "@database/subscriptions";
 import { createPaymentTransaction } from "@database/subscriptions/paymentTransactions"; // Assumes this function exists for auditing
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -162,6 +163,10 @@ export async function POST(request: Request) {
                                 },
                             ],
                         });
+                        await safeSyncStorePlanEntitlementFromSubscription(
+                            { ...internalSub, status: 'past_due' },
+                            `webhook:${event.event}`,
+                        );
                     }
                 } else if (event.event === 'subscription.pending' || event.event === 'subscription.halted') {
                     const subscriptionEntity = event.payload?.subscription?.entity;
@@ -185,6 +190,10 @@ export async function POST(request: Request) {
                                     },
                                 ],
                             });
+                            await safeSyncStorePlanEntitlementFromSubscription(
+                                { ...internalSub, status: 'past_due' },
+                                `webhook:${event.event}`,
+                            );
                         }
                     }
                 }
@@ -250,6 +259,15 @@ export async function POST(request: Request) {
                         ],
                     };
                     await updateSubscription(internalSub.id, updatePayload);
+                    await safeSyncStorePlanEntitlementFromSubscription(
+                        {
+                            ...internalSub,
+                            ...updatePayload,
+                            status: 'active',
+                            planId: planDetails.planId || internalSub.planId,
+                        } as FirestoreSubscriptionDoc,
+                        `webhook:${event.event}`,
+                    );
 
                     // 📧 LIFECYCLE MESSAGE: Payment success confirmation to store owner
                     try {
@@ -318,21 +336,40 @@ export async function POST(request: Request) {
                         ],
                         subscriptionEndDate: subscriptionEntity.ended_at ? Timestamp.fromMillis(subscriptionEntity.ended_at * 1000) : Timestamp.now(),
                     });
+                    await safeSyncStorePlanEntitlementFromSubscription(
+                        { ...internalSub, status: 'completed' },
+                        'webhook:subscription.completed',
+                    );
                 }
                 break;
             }
 
             case 'subscription.cancelled': {
-                //Database handling for this event is already done in src/app/api/razorpay/cancel-subscription/route.ts
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_CANCELLED', data: eventPayloadToUpload });
-                // Update lastWebhook for audit trail even though cancel-subscription route handles the DB update
                 const cancelledSubEntity = event.payload?.subscription?.entity;
                 if (cancelledSubEntity?.id) {
                     const cancelledInternalSub = await getSubscriptionById(cancelledSubEntity.id);
                     if (cancelledInternalSub) {
+                        validateTransition(cancelledInternalSub.status, 'cancelled', 'webhook:subscription.cancelled');
                         await updateSubscription(cancelledInternalSub.id, {
+                            status: 'cancelled',
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                            subscriptionEndDate: cancelledSubEntity.ended_at ? Timestamp.fromMillis(cancelledSubEntity.ended_at * 1000) : (cancelledInternalSub.cycleEndDate || Timestamp.now()),
+                            statuses: [
+                                ...cancelledInternalSub.statuses,
+                                {
+                                    status: "cancelled",
+                                    timestamp: Timestamp.now(),
+                                    amount: cancelledInternalSub.amount,
+                                    currency: cancelledInternalSub.currency,
+                                    remark: "Subscription cancelled by Razorpay webhook",
+                                },
+                            ],
                         });
+                        await safeSyncStorePlanEntitlementFromSubscription(
+                            { ...cancelledInternalSub, status: 'cancelled' },
+                            'webhook:subscription.cancelled',
+                        );
                     }
                 }
                 break;
@@ -359,6 +396,10 @@ export async function POST(request: Request) {
                             },
                         ],
                     });
+                    await safeSyncStorePlanEntitlementFromSubscription(
+                        { ...pausedInternalSub, status: 'paused' },
+                        'webhook:subscription.paused',
+                    );
                 }
                 break;
             }
@@ -399,6 +440,10 @@ export async function POST(request: Request) {
                             },
                         ],
                     });
+                    await safeSyncStorePlanEntitlementFromSubscription(
+                        { ...resumedInternalSub, status: 'active' },
+                        'webhook:subscription.resumed',
+                    );
                 }
                 break;
             }

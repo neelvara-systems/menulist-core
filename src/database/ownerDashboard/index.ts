@@ -44,9 +44,13 @@ import {
     OverallData,
     OVERVIEW_GUARDRAILS,
     OverviewData,
+    OwnerActionPlan,
+    OwnerConfidence,
     OwnerDashboardData,
     OwnerDashboardMetrics,
     SearchTerm,
+    SourceQuality,
+    TopCategory,
     TopItem,
     WeeklyViewData,
     WTDViewData,
@@ -250,6 +254,115 @@ function transformUnavailableItems(data: any): TopItem[] {
         .slice(0, 5);
 }
 
+function transformTopCategories(data: any): TopCategory[] {
+    const views = data?.viewsByCategory || {};
+    const clicks = data?.clicksByCategory || {};
+    const categoryIds = new Set<string>([
+        ...Object.keys(views),
+        ...Object.keys(clicks),
+    ]);
+
+    return Array.from(categoryIds)
+        .map((categoryId) => ({
+            categoryId,
+            name: data?.categoryNames?.[categoryId],
+            views: views[categoryId] || 0,
+            clicks: clicks[categoryId] || 0,
+        }))
+        .filter((category) => category.views > 0 || category.clicks > 0)
+        .sort((a, b) => (b.views + b.clicks) - (a.views + a.clicks))
+        .slice(0, 5);
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+    qr: 'QR / table scan',
+    whatsapp: 'WhatsApp',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    google: 'Google',
+    obp: 'Official business page',
+    menu_kit: 'Menu kit',
+    shortcut: 'Customer app shortcut',
+    direct: 'Direct link',
+    other: 'Other source',
+};
+
+function transformSourceQuality(data: any): SourceQuality[] {
+    const sessions = data?.menuSessionsBySource || {};
+    const actionSessions = data?.actionSessionsBySource || {};
+    const actionClicks = data?.menuActionClicksBySource || {};
+    const sourceIds = new Set<string>([
+        ...Object.keys(sessions),
+        ...Object.keys(actionSessions),
+        ...Object.keys(actionClicks),
+    ]);
+
+    return Array.from(sourceIds)
+        .map((source) => {
+            const menuSessions = sessions[source] || 0;
+            const sourceActionSessions = actionSessions[source] || 0;
+            return {
+                source,
+                label: SOURCE_LABELS[source] || source,
+                menuSessions,
+                actionSessions: sourceActionSessions,
+                actionClicks: actionClicks[source] || 0,
+                actionRate: menuSessions > 0 ? Math.round((sourceActionSessions / menuSessions) * 100) : 0,
+            };
+        })
+        .filter((entry) => entry.menuSessions > 0 || entry.actionClicks > 0)
+        .sort((a, b) => (b.actionSessions - a.actionSessions) || (b.menuSessions - a.menuSessions))
+        .slice(0, 6);
+}
+
+function transformOwnerConfidence(data: any): OwnerConfidence {
+    const metrics = transformMetrics(data);
+    if ((metrics.menuVisits || 0) === 0) {
+        return {
+            status: 'no_data',
+            label: 'Waiting for activity',
+            message: 'No customer activity is available for this period yet.',
+        };
+    }
+    if ((metrics.zeroResultSearches || 0) > 0 || (metrics.unavailableItemTaps || 0) > 0 || (metrics.actionRate || 0) < 10) {
+        return {
+            status: 'watch',
+            label: 'Watch',
+            message: 'Customers are showing interest, but one menu area needs attention.',
+        };
+    }
+    return {
+        status: 'stable',
+        label: 'Menu state is stable',
+        message: 'Customers are finding and using the menu normally.',
+    };
+}
+
+function transformMetrics(data: any): OwnerDashboardMetrics {
+    const menuSessions = data?.menuSessions || data?.totalSessions || 0;
+    const engagedSessions = data?.engagedSessions || 0;
+    const intentSessions = data?.intentSessions || 0;
+    const actionSessions = data?.actionSessions || 0;
+
+    return {
+        menuVisits: data?.totalViews || 0,
+        itemClicks: data?.totalClicks || 0,
+        menuSessions,
+        engagedSessions,
+        intentSessions,
+        actionSessions,
+        engagedSessionRate: menuSessions > 0 ? Math.round((engagedSessions / menuSessions) * 100) : 0,
+        intentRate: menuSessions > 0 ? Math.round((intentSessions / menuSessions) * 100) : 0,
+        actionRate: menuSessions > 0 ? Math.round((actionSessions / menuSessions) * 100) : 0,
+        searches: data?.totalSearches || 0,
+        unavailableItemTaps: data?.totalUnavailableItemTaps || 0,
+        menuActionClicks: data?.totalMenuActionClicks || 0,
+        zeroResultSearches: data?.zeroResultSearches || 0,
+        smartPicksRendered: data?.totalDecisionBlocksRendered || 0,
+        smartPicksClicks: data?.totalRecommendationClicks || 0,
+    };
+}
+
 // ================================================================
 // AGGREGATION HELPERS
 // ================================================================
@@ -258,6 +371,10 @@ interface DailyDocData {
     date: string;
     totalViews: number;
     totalClicks: number;
+    menuSessions: number;
+    engagedSessions: number;
+    intentSessions: number;
+    actionSessions: number;
     totalSearches: number;
     zeroResultSearches: number;
     totalUnavailableItemTaps: number;
@@ -275,10 +392,20 @@ interface DailyDocData {
         bestValue?: number;
     };
     recommendationClicksByItem?: Record<string, number>;
+    viewsByCategory?: Record<string, number>;
+    clicksByCategory?: Record<string, number>;
+    viewsByEntrySource?: Record<string, number>;
+    menuSessionsBySource?: Record<string, number>;
+    actionSessionsBySource?: Record<string, number>;
+    menuActionClicksBySource?: Record<string, number>;
+    hourlyViews?: Record<string, number>;
+    hourlyMenuActionClicks?: Record<string, number>;
     menuActionClicks?: Partial<MenuActionBreakdown>;
     searchTerms?: Record<string, number>;
+    zeroResultSearchTerms?: Record<string, number>;
     unavailableItemTapsByItem?: Record<string, number>;
     itemNames?: Record<string, string>;
+    categoryNames?: Record<string, string>;
 }
 
 async function fetchDailyDocs(
@@ -304,6 +431,10 @@ async function fetchDailyDocs(
                     date,
                     totalViews: data.totalViews || 0,
                     totalClicks: data.totalClicks || 0,
+                    menuSessions: data.menuSessions || 0,
+                    engagedSessions: data.engagedSessions || 0,
+                    intentSessions: data.intentSessions || 0,
+                    actionSessions: data.actionSessions || 0,
                     totalSearches: data.totalSearches || 0,
                     zeroResultSearches: data.zeroResultSearches || 0,
                     totalUnavailableItemTaps: data.totalUnavailableItemTaps || 0,
@@ -313,10 +444,20 @@ async function fetchDailyDocs(
                     decisionBlocksRendered: data.decisionBlocksRendered,
                     recommendationClicks: data.recommendationClicks,
                     recommendationClicksByItem: data.recommendationClicksByItem,
+                    viewsByCategory: data.viewsByCategory,
+                    clicksByCategory: data.clicksByCategory,
+                    viewsByEntrySource: data.viewsByEntrySource,
+                    menuSessionsBySource: data.menuSessionsBySource,
+                    actionSessionsBySource: data.actionSessionsBySource,
+                    menuActionClicksBySource: data.menuActionClicksBySource,
+                    hourlyViews: data.hourlyViews,
+                    hourlyMenuActionClicks: data.hourlyMenuActionClicks,
                     menuActionClicks: data.menuActionClicks,
                     searchTerms: data.searchTerms,
+                    zeroResultSearchTerms: data.zeroResultSearchTerms,
                     unavailableItemTapsByItem: data.unavailableItemTapsByItem,
                     itemNames: data.itemNames,
+                    categoryNames: data.categoryNames,
                 } as DailyDocData;
             }
             return null;
@@ -333,13 +474,23 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     metrics: OwnerDashboardMetrics;
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
+    topCategories: TopCategory[];
     menuActions: MenuActionBreakdown;
     topSearchTerms: SearchTerm[];
     unavailableItems: TopItem[];
+    sourceQuality: SourceQuality[];
+    ownerConfidence: OwnerConfidence;
 } {
     const metrics: OwnerDashboardMetrics = {
         menuVisits: 0,
         itemClicks: 0,
+        menuSessions: 0,
+        engagedSessions: 0,
+        intentSessions: 0,
+        actionSessions: 0,
+        engagedSessionRate: 0,
+        intentRate: 0,
+        actionRate: 0,
         smartPicksRendered: 0,
         smartPicksClicks: 0,
         searches: 0,
@@ -355,13 +506,23 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     };
 
     const itemClicksMap: Record<string, { clicks: number; name?: string }> = {};
+    const categoryMap: Record<string, { views: number; clicks: number; name?: string }> = {};
     const searchTermMap: Record<string, number> = {};
     const unavailableItemsMap: Record<string, { clicks: number; name?: string }> = {};
+    const sourceData = {
+        menuSessionsBySource: {} as Record<string, number>,
+        actionSessionsBySource: {} as Record<string, number>,
+        menuActionClicksBySource: {} as Record<string, number>,
+    };
     const menuActions: MenuActionBreakdown = { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 };
 
     for (const doc of docs) {
         metrics.menuVisits += doc.totalViews;
         metrics.itemClicks += doc.totalClicks;
+        metrics.menuSessions = (metrics.menuSessions || 0) + doc.menuSessions;
+        metrics.engagedSessions = (metrics.engagedSessions || 0) + doc.engagedSessions;
+        metrics.intentSessions = (metrics.intentSessions || 0) + doc.intentSessions;
+        metrics.actionSessions = (metrics.actionSessions || 0) + doc.actionSessions;
         metrics.searches = (metrics.searches || 0) + doc.totalSearches;
         metrics.zeroResultSearches = (metrics.zeroResultSearches || 0) + doc.zeroResultSearches;
         metrics.unavailableItemTaps = (metrics.unavailableItemTaps || 0) + doc.totalUnavailableItemTaps;
@@ -390,9 +551,39 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             }
         }
 
+        if (doc.viewsByCategory) {
+            for (const [categoryId, views] of Object.entries(doc.viewsByCategory)) {
+                if (!categoryMap[categoryId]) {
+                    categoryMap[categoryId] = { views: 0, clicks: 0, name: doc.categoryNames?.[categoryId] };
+                }
+                categoryMap[categoryId].views += views;
+            }
+        }
+
+        if (doc.clicksByCategory) {
+            for (const [categoryId, clicks] of Object.entries(doc.clicksByCategory)) {
+                if (!categoryMap[categoryId]) {
+                    categoryMap[categoryId] = { views: 0, clicks: 0, name: doc.categoryNames?.[categoryId] };
+                }
+                categoryMap[categoryId].clicks += clicks;
+            }
+        }
+
         if (doc.searchTerms) {
             for (const [term, count] of Object.entries(doc.searchTerms)) {
                 searchTermMap[term] = (searchTermMap[term] || 0) + count;
+            }
+        }
+
+        for (const [field, target] of [
+            ['menuSessionsBySource', sourceData.menuSessionsBySource],
+            ['actionSessionsBySource', sourceData.actionSessionsBySource],
+            ['menuActionClicksBySource', sourceData.menuActionClicksBySource],
+        ] as const) {
+            const map = doc[field];
+            if (!map) continue;
+            for (const [key, count] of Object.entries(map)) {
+                target[key] = (target[key] || 0) + count;
             }
         }
 
@@ -414,6 +605,11 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         }
     }
 
+    const menuSessions = metrics.menuSessions || 0;
+    metrics.engagedSessionRate = menuSessions > 0 ? Math.round(((metrics.engagedSessions || 0) / menuSessions) * 100) : 0;
+    metrics.intentRate = menuSessions > 0 ? Math.round(((metrics.intentSessions || 0) / menuSessions) * 100) : 0;
+    metrics.actionRate = menuSessions > 0 ? Math.round(((metrics.actionSessions || 0) / menuSessions) * 100) : 0;
+
     const topItems: TopItem[] = Object.entries(itemClicksMap)
         .map(([itemId, data]) => ({
             itemId,
@@ -428,6 +624,16 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+    const topCategories: TopCategory[] = Object.entries(categoryMap)
+        .map(([categoryId, data]) => ({
+            categoryId,
+            views: data.views,
+            clicks: data.clicks,
+            name: data.name,
+        }))
+        .sort((a, b) => (b.views + b.clicks) - (a.views + a.clicks))
+        .slice(0, 5);
+
     const unavailableItems: TopItem[] = Object.entries(unavailableItemsMap)
         .map(([itemId, data]) => ({
             itemId,
@@ -437,7 +643,24 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 5);
 
-    return { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems };
+    return {
+        metrics,
+        blockPerformance,
+        topItems,
+        topCategories,
+        menuActions,
+        topSearchTerms,
+        unavailableItems,
+        sourceQuality: transformSourceQuality(sourceData),
+        ownerConfidence: transformOwnerConfidence({
+            totalViews: metrics.menuVisits,
+            menuSessions: metrics.menuSessions,
+            engagedSessions: metrics.engagedSessions,
+            actionSessions: metrics.actionSessions,
+            zeroResultSearches: metrics.zeroResultSearches,
+            totalUnavailableItemTaps: metrics.unavailableItemTaps,
+        }),
+    };
 }
 
 function buildDailyViewData(
@@ -452,21 +675,15 @@ function buildDailyViewData(
 
     return {
         date,
-        metrics: {
-            menuVisits,
-            itemClicks: data.totalClicks || 0,
-            searches: data.totalSearches || 0,
-            unavailableItemTaps: data.totalUnavailableItemTaps || 0,
-            menuActionClicks: data.totalMenuActionClicks || 0,
-            zeroResultSearches: data.zeroResultSearches || 0,
-            smartPicksRendered: data.totalDecisionBlocksRendered || 0,
-            smartPicksClicks: data.totalRecommendationClicks || 0,
-        },
+        metrics: transformMetrics(data),
         blockPerformance: transformBlockPerformance(data),
         topItems: transformToTopItems(data),
+        topCategories: transformTopCategories(data),
         menuActions: transformMenuActions(data),
         topSearchTerms: transformTopSearchTerms(data),
         unavailableItems: transformUnavailableItems(data),
+        sourceQuality: data.sourceQuality || transformSourceQuality(data),
+        ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
         aiSummary: options?.includeAiSummary && data.aiSummary ? {
             markdown: data.aiSummary.markdown,
             bulletPoints: data.aiSummary.bulletPoints || [],
@@ -491,6 +708,8 @@ function normalizeDailyViewData(data: any): DailyViewData | null {
     if (!data) return null;
     return {
         ...data,
+        sourceQuality: data.sourceQuality || transformSourceQuality(data),
+        ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
         lastUpdated: parseDateValue(data.lastUpdated),
         aiSummary: data.aiSummary ? {
             ...data.aiSummary,
@@ -504,6 +723,10 @@ function normalizeOverviewData(data: any): OverviewData | null {
     return {
         ...data,
         yesterday: normalizeDailyViewData(data.yesterday),
+        ownerActionPlan: normalizeOwnerActionPlan(data.ownerActionPlan),
+        ownerConfidence: data.ownerConfidence,
+        sourceQuality: data.sourceQuality || [],
+        analyticsAiEntitlement: data.analyticsAiEntitlement,
         aiSummary: data.aiSummary ? {
             ...data.aiSummary,
             generatedAt: parseDateValue(data.aiSummary.generatedAt) || new Date(),
@@ -511,9 +734,19 @@ function normalizeOverviewData(data: any): OverviewData | null {
     } as OverviewData;
 }
 
+function normalizeOwnerActionPlan(data: any): OwnerActionPlan | undefined {
+    if (!data || !Array.isArray(data.actions)) return undefined;
+    return {
+        generatedBy: data.generatedBy || 'rules',
+        actions: data.actions,
+        fingerprint: data.fingerprint,
+    };
+}
+
 function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboardData {
     const overview = normalizeOverviewData(data.overview);
     const daily = normalizeDailyViewData(data.daily || data.overview?.yesterday);
+    const ownerActionPlan = normalizeOwnerActionPlan(data.ownerActionPlan || overview?.ownerActionPlan);
 
     return {
         overview,
@@ -526,8 +759,14 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
         historicalWeeks: data.historicalWeeks || overview?.historicalWeeks || [],
         overall: data.overall ? {
             ...data.overall,
+            sourceQuality: data.overall.sourceQuality || [],
+            ownerConfidence: data.overall.ownerConfidence,
             lastUpdated: parseDateValue(data.overall.lastUpdated),
         } as OverallData : null,
+        ownerActionPlan,
+        ownerConfidence: data.ownerConfidence || overview?.ownerConfidence,
+        sourceQuality: data.sourceQuality || overview?.sourceQuality || [],
+        analyticsAiEntitlement: data.analyticsAiEntitlement || overview?.analyticsAiEntitlement,
         projectId,
         lastFetched: new Date(),
     };
@@ -597,7 +836,7 @@ export async function getOwnerDashboardDaily(
             }
 
             return buildDailyViewData(docSnap.data(), yesterdayDate, {
-                includeAiSummary: true,
+                includeAiSummary: false,
                 isPartial: false,
             });
         },
@@ -639,37 +878,19 @@ export async function getOwnerDashboardWeekly(
 
             const weeklyData = lastWeekSnap.data();
 
-            // Get AI summary from ownerDashboardSummary
-            const aiSummaryData = summaryData.ownerDashboardSummary;
-
             return {
-                weekStart: weeklyData.weekStart || aiSummaryData?.period?.start || '',
-                weekEnd: weeklyData.weekEnd || aiSummaryData?.period?.end || '',
-                metrics: {
-                    menuVisits: weeklyData.totalViews || 0,
-                    itemClicks: weeklyData.totalClicks || 0,
-                    searches: weeklyData.totalSearches || 0,
-                    unavailableItemTaps: weeklyData.totalUnavailableItemTaps || 0,
-                    menuActionClicks: weeklyData.totalMenuActionClicks || 0,
-                    zeroResultSearches: weeklyData.zeroResultSearches || 0,
-                    smartPicksRendered: weeklyData.totalDecisionBlocksRendered || 0,
-                    smartPicksClicks: weeklyData.totalRecommendationClicks || 0,
-                },
+                weekStart: weeklyData.weekStart || '',
+                weekEnd: weeklyData.weekEnd || '',
+                metrics: transformMetrics(weeklyData),
                 metricsChange: summaryData.ownerDashboardSummaryMetrics?.menuVisitsChange !== undefined ? {
                     menuVisitsChange: summaryData.ownerDashboardSummaryMetrics.menuVisitsChange,
                 } : undefined,
                 blockPerformance: transformBlockPerformance(weeklyData),
                 topItems: transformToTopItems(weeklyData),
+                topCategories: transformTopCategories(weeklyData),
                 menuActions: transformMenuActions(weeklyData),
                 topSearchTerms: transformTopSearchTerms(weeklyData),
                 unavailableItems: transformUnavailableItems(weeklyData),
-                aiSummary: aiSummaryData ? {
-                    markdown: aiSummaryData.markdown,
-                    bulletPoints: aiSummaryData.bulletPoints || [],
-                    generatedAt: aiSummaryData.generatedAt?.toDate?.() || new Date(),
-                    promptVersion: aiSummaryData.promptVersion || 'v1',
-                    period: aiSummaryData.period,
-                } : undefined,
             } as WeeklyViewData;
         },
         "getOwnerDashboardWeekly"
@@ -704,27 +925,13 @@ export async function getOwnerDashboardMonthly(
                 monthStart: data.monthStart || '',
                 monthEnd: data.monthEnd || '',
                 daysWithData: data.daysWithData || 0,
-                metrics: {
-                    menuVisits: data.totalViews || 0,
-                    itemClicks: data.totalClicks || 0,
-                    searches: data.totalSearches || 0,
-                    unavailableItemTaps: data.totalUnavailableItemTaps || 0,
-                    menuActionClicks: data.totalMenuActionClicks || 0,
-                    zeroResultSearches: data.zeroResultSearches || 0,
-                    smartPicksRendered: data.totalDecisionBlocksRendered || 0,
-                    smartPicksClicks: data.totalRecommendationClicks || 0,
-                },
+                metrics: transformMetrics(data),
                 blockPerformance: transformBlockPerformance(data),
                 topItems: transformToTopItems(data),
+                topCategories: transformTopCategories(data),
                 menuActions: transformMenuActions(data),
                 topSearchTerms: transformTopSearchTerms(data),
                 unavailableItems: transformUnavailableItems(data),
-                aiSummary: data.aiSummary ? {
-                    markdown: data.aiSummary.markdown,
-                    bulletPoints: data.aiSummary.bulletPoints || [],
-                    generatedAt: data.aiSummary.generatedAt?.toDate?.() || new Date(),
-                    promptVersion: data.aiSummary.promptVersion || 'v1',
-                } : undefined,
             } as MonthlyViewData;
         },
         "getOwnerDashboardMonthly"
@@ -750,7 +957,7 @@ export async function getOwnerDashboardWTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             return {
                 startDate: dates[0],
@@ -759,9 +966,12 @@ export async function getOwnerDashboardWTD(
                 metrics,
                 blockPerformance,
                 topItems,
+                topCategories,
                 menuActions,
                 topSearchTerms,
                 unavailableItems,
+                sourceQuality,
+                ownerConfidence,
             } as WTDViewData;
         },
         "getOwnerDashboardWTD"
@@ -792,7 +1002,7 @@ export async function getOwnerDashboardMTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             // Get month name
             const firstDate = parseAnalyticsDateKey(dates[0]);
@@ -814,9 +1024,12 @@ export async function getOwnerDashboardMTD(
                 metrics,
                 blockPerformance,
                 topItems,
+                topCategories,
                 menuActions,
                 topSearchTerms,
                 unavailableItems,
+                sourceQuality,
+                ownerConfidence,
                 avgDailyScans: docs.length > 0
                     ? Math.round(metrics.menuVisits / docs.length)
                     : 0,
@@ -926,7 +1139,7 @@ export async function getOwnerDashboardOverview(
 
             let wtd: WTDViewData | null = null;
             if (wtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems } = aggregateDailyDocs(wtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
                 wtd = {
                     startDate: wtdDates[0],
                     endDate: wtdDates[wtdDates.length - 1],
@@ -934,9 +1147,12 @@ export async function getOwnerDashboardOverview(
                     metrics,
                     blockPerformance,
                     topItems,
+                    topCategories,
                     menuActions,
                     topSearchTerms,
                     unavailableItems,
+                    sourceQuality,
+                    ownerConfidence,
                 };
             }
 
@@ -947,7 +1163,7 @@ export async function getOwnerDashboardOverview(
 
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems } = aggregateDailyDocs(mtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
                 const firstDate = parseAnalyticsDateKey(mtdDates[0]);
                 const monthName = formatMonthLabel(mtdDates[0]);
                 const daysInMonth = new Date(Date.UTC(
@@ -965,9 +1181,12 @@ export async function getOwnerDashboardOverview(
                     metrics,
                     blockPerformance,
                     topItems,
+                    topCategories,
                     menuActions,
                     topSearchTerms,
                     unavailableItems,
+                    sourceQuality,
+                    ownerConfidence,
                     avgDailyScans: Math.round(metrics.menuVisits / mtdDocs.length),
                 };
             }
@@ -1058,6 +1277,10 @@ export async function getOwnerDashboardOverall(
 
             const data = docSnap.data();
             const lifetime = data.lifetime || {};
+            const menuSessions = data.lifetimeMenuSessions || lifetime.menuSessions || 0;
+            const engagedSessions = data.lifetimeEngagedSessions || lifetime.engagedSessions || 0;
+            const intentSessions = data.lifetimeIntentSessions || lifetime.intentSessions || 0;
+            const actionSessions = data.lifetimeActionSessions || lifetime.actionSessions || 0;
 
             return {
                 lifetimeMetrics: {
@@ -1065,12 +1288,29 @@ export async function getOwnerDashboardOverall(
                     totalClicks: data.lifetimeTotalClicks || lifetime.totalClicks || 0,
                     totalSmartPicksRendered: data.lifetimeTotalDecisionBlocksRendered || lifetime.totalDecisionBlocksRendered || 0,
                     totalSmartPicksClicks: data.lifetimeTotalRecommendationClicks || lifetime.totalRecommendationClicks || 0,
+                    menuSessions,
+                    engagedSessions,
+                    intentSessions,
+                    actionSessions,
+                    engagedSessionRate: menuSessions > 0 ? Math.round((engagedSessions / menuSessions) * 100) : 0,
+                    intentRate: menuSessions > 0 ? Math.round((intentSessions / menuSessions) * 100) : 0,
+                    actionRate: menuSessions > 0 ? Math.round((actionSessions / menuSessions) * 100) : 0,
                     totalSearches: data.lifetimeTotalSearches || 0,
                     totalZeroResultSearches: data.lifetimeZeroResultSearches || 0,
                     totalUnavailableItemTaps: data.lifetimeTotalUnavailableItemTaps || 0,
                     totalMenuActionClicks: data.lifetimeTotalMenuActionClicks || 0,
                 },
+                topCategories: transformTopCategories(data),
                 menuActions: transformMenuActions(data),
+                sourceQuality: transformSourceQuality(data),
+                ownerConfidence: transformOwnerConfidence({
+                    totalViews: data.lifetimeTotalViews || lifetime.totalViews || 0,
+                    menuSessions,
+                    engagedSessions,
+                    actionSessions,
+                    zeroResultSearches: data.lifetimeTotalZeroResultSearches || 0,
+                    totalUnavailableItemTaps: data.lifetimeTotalUnavailableItemTaps || 0,
+                }),
                 firstDataDate: data.firstDataDate,
                 lastUpdated: data.modifiedOn?.toDate?.() || data.lastUpdated?.toDate?.(),
             } as OverallData;
@@ -1128,6 +1368,7 @@ export async function getOwnerDashboardData(
                 overview,
 
                 // Period views - extracted from overview for convenience
+                today: null,
                 daily: overview?.yesterday || null,
                 weekly: null, // Lazy loaded when needed
                 monthly: null, // Lazy loaded when needed

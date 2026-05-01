@@ -44,7 +44,7 @@ export default function BusinessSection() {
                 flexShrink: 0,
               }}
             />
-            <p style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', lineHeight: 1.6 }}>
+            <p className="ws-body-sm" style={{ lineHeight: 1.6 }}>
               <strong style={{ fontWeight: 600, color: 'var(--ws-text-primary)' }}>{point.title}.</strong>{' '}
               {point.desc}
             </p>

@@ -37,6 +37,48 @@ const RAZORPAY_STATUS_MAP: Record<string, PaymentStatus> = {
     expired: 'expired',
 };
 
+function normalizePlanId(planId: unknown): string | null {
+    const normalized = String(planId || '').trim().toLowerCase();
+    return normalized || null;
+}
+
+function getActivePlanTypeForSubscription(sub: Record<string, any>, status: PaymentStatus): string | null {
+    if (status !== 'active') return null;
+    return normalizePlanId(sub.planId);
+}
+
+async function syncStorePlanEntitlement(
+    db: FirebaseFirestore.Firestore,
+    sub: Record<string, any>,
+    activePlanType: string | null,
+    source: string,
+): Promise<void> {
+    const storeId = String(sub.storeId || '').trim();
+    if (!storeId) return;
+
+    const entitlementValue = activePlanType || FieldValue.delete();
+    const syncedAt = FieldValue.serverTimestamp();
+
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.STORES).doc(storeId).set({
+            activePlanType: entitlementValue,
+            analyticsEntitlementUpdatedAt: syncedAt,
+        }, { merge: true }),
+        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
+            lastUpdated: syncedAt,
+            [`stores.${storeId}.activePlanType`]: entitlementValue,
+        }, { merge: true }),
+        db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(sub.id).set({
+            analyticsEntitlement: {
+                activePlanType,
+                status: sub.status || null,
+                syncedAt,
+                source,
+            },
+        }, { merge: true }),
+    ]);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STATE MACHINE (mirrors src/lib/billing/subscriptionStateMachine.ts)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,6 +239,12 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                 }
             }
 
+            const finalStatus = (updates.status || sub.status) as PaymentStatus;
+            const desiredActivePlanType = getActivePlanTypeForSubscription(sub, finalStatus);
+            const syncedActivePlanType = sub.analyticsEntitlement?.activePlanType ?? null;
+            const shouldSyncEntitlement = syncedActivePlanType !== desiredActivePlanType
+                || (updates.status && updates.status !== sub.status);
+
             // 3. Apply updates if any mismatch found
             if (Object.keys(updates).length > 0) {
                 updates.lastWebhook = {
@@ -209,6 +257,22 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                 logger.info('[Reconciliation] Subscription synced', {
                     subId: sub.id,
                     updates: Object.keys(updates),
+                });
+            }
+
+            if (shouldSyncEntitlement) {
+                await syncStorePlanEntitlement(
+                    db,
+                    { ...sub, status: finalStatus },
+                    desiredActivePlanType,
+                    'reconciliation:subscription-entitlement',
+                );
+                synced++;
+                syncDetails.push({
+                    subId: sub.id,
+                    field: 'analyticsEntitlement',
+                    local: String(syncedActivePlanType),
+                    remote: String(desiredActivePlanType),
                 });
             }
         } catch (subError: any) {

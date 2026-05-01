@@ -90,6 +90,20 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                         size="small"
                     />
                 </Col>
+                <Col xs={24} sm={12}>
+                    <MetricCard
+                        title="Engaged Sessions"
+                        value={`${metrics.engagedSessionRate || 0}%`}
+                        size="small"
+                    />
+                </Col>
+                <Col xs={24} sm={12}>
+                    <MetricCard
+                        title="Action Rate"
+                        value={`${metrics.actionRate || 0}%`}
+                        size="small"
+                    />
+                </Col>
                 {metrics.smartPicksRendered > 0 && (
                     <>
                         <Col xs={24} sm={12}>
@@ -138,8 +152,13 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 </Col>
             </Row>
 
-            {(data.menuActions || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
+            {(data.menuActions || data.topCategories?.length || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
                 <Card className={styles.detailCard} variant="borderless">
+                    {data.topCategories?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            Top category: {data.topCategories.map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}
+                        </Text>
+                    ) : null}
                     {data.menuActions ? (
                         <Text type="secondary">
                             Customer actions: Call {data.menuActions.call}, WhatsApp {data.menuActions.whatsapp}, Directions {data.menuActions.directions}, Reserve {data.menuActions.reserve}, Order {data.menuActions.order}

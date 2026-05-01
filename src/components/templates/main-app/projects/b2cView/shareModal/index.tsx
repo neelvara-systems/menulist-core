@@ -55,6 +55,11 @@ function getContrastRatio(hex1: string, hex2: string): number {
 // Minimum contrast for QR readability
 const MIN_QR_CONTRAST = 4.5;
 
+function withEntrySource(url: string, source: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}utm_source=${source}&entry_source=${source}`;
+}
+
 function ShareModal({
     open,
     onClose,
@@ -110,6 +115,7 @@ function ShareModal({
         return `${typeof window !== 'undefined' ? window.location.origin : ''}/menu/${slug}`;
     };
     const shareUrl = getShareUrl();
+    const qrShareUrl = withEntrySource(shareUrl, 'qr');
 
     const [copied, setCopied] = useState(false);
 
@@ -153,7 +159,7 @@ function ShareModal({
     };
 
     const handleShare = (platform: 'whatsapp' | 'facebook' | 'instagram') => {
-        const urlWithUTM = `${shareUrl}?utm_source=${platform}`;
+        const urlWithUTM = withEntrySource(shareUrl, platform);
         const urls = {
             whatsapp: `https://wa.me/?text=${encodeURIComponent(
                 FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES
@@ -300,7 +306,7 @@ function ShareModal({
                         <Flex gap={16} align="flex-start">
                             <div id="share-qrcode" style={{ background: qrBgColor, borderRadius: 8, padding: 8 }}>
                                 <QRCode
-                                    value={shareUrl}
+                                    value={qrShareUrl}
                                     size={100}
                                     errorLevel="H"
                                     color={qrColor}

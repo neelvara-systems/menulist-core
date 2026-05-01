@@ -251,6 +251,7 @@ export const backfillStoresSummary = onCall({
                 businessCategory,
                 active: data.active ?? true,
                 name: data.name || '',
+                activePlanType: data.activePlanType || null,
             };
         }
 

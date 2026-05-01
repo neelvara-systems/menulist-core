@@ -46,7 +46,7 @@ export default function SmartFeaturesSection() {
                 }}
               />
               <div>
-                <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--ws-text-primary)' }}>
+                <p className="ws-body-sm" style={{ fontWeight: 600 }}>
                   {outcome.title}
                 </p>
                 <p className="ws-caption" style={{ marginTop: '2px' }}>

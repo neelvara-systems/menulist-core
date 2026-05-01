@@ -392,6 +392,16 @@ FRONTEND (continued):
 21. Show SubscriptionPayementSuccessModal with confetti
 ```
 
+### Analytics Assistant Entitlement Sync
+
+When a subscription becomes `active`, payment verification and Razorpay webhooks sync the active plan id to:
+
+- `stores/{storeId}.activePlanType`
+- `platformSummary/storesSummary.stores.{storeId}.activePlanType`
+- `subscriptions/{subscriptionId}.analyticsEntitlement`
+
+Only `active` subscriptions carry an active plan type. `past_due`, `paused`, `cancelled`, `expired`, and `completed` remove the store-level plan mirror so paid analytics AI summaries and action-list wording fail closed. The nightly reconciliation job repairs stale or missing entitlement mirrors without scanning stores.
+
 ### Key Security
 
 - `withAuth()` middleware on the route

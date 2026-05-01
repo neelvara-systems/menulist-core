@@ -22,9 +22,11 @@ export interface AggregatedAnalytics {
     hourlyClicksByItem: Record<string, Record<string, number>>;
     itemNames: Record<string, string>;
     daysWithData: number;
+    source?: 'intelligence_7d' | 'missing_or_stale';
+    lastSettledLocalDate?: string;
 }
 
-function emptyAggregatedAnalytics(): AggregatedAnalytics {
+function emptyAggregatedAnalytics(source: AggregatedAnalytics['source'] = 'missing_or_stale'): AggregatedAnalytics {
     return {
         totalViews: 0,
         totalClicks: 0,
@@ -35,6 +37,7 @@ function emptyAggregatedAnalytics(): AggregatedAnalytics {
         hourlyClicksByItem: {},
         itemNames: {},
         daysWithData: 0,
+        source,
     };
 }
 
@@ -54,6 +57,8 @@ function normalizeSnapshot(data: FirebaseFirestore.DocumentData | undefined): Ag
         hourlyClicksByItem: data.hourlyClicksByItem || {},
         itemNames: data.itemNames || {},
         daysWithData: data.daysWithData || 0,
+        source: 'intelligence_7d',
+        lastSettledLocalDate: data.lastSettledLocalDate || undefined,
     };
 }
 
@@ -88,5 +93,5 @@ export async function fetch7DayAnalytics(
     // Cost rule: Decision Blocks and Menu Intelligence consume only the
     // scheduler-written compact input doc. Missing/stale snapshots settle as
     // empty for this run instead of opening a hidden daily-doc range query.
-    return emptyAggregatedAnalytics();
+    return emptyAggregatedAnalytics('missing_or_stale');
 }

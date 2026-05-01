@@ -32,6 +32,28 @@ const RATE_LIMIT = {
 const recentEvents: Map<string, number[]> = new Map();
 const lastEventTime: Map<string, number> = new Map();
 const menuViewTracker: Map<string, number> = new Map();
+const SESSION_MILESTONE_STORAGE_PREFIX = 'menulist_analytics_session_milestones_v1';
+const SESSION_SOURCE_STORAGE_PREFIX = 'menulist_analytics_session_source_v1';
+
+type SessionMilestoneState = {
+  menuSession?: boolean;
+  engaged?: boolean;
+  intent?: boolean;
+  action?: boolean;
+  itemIds?: string[];
+};
+
+type EntrySource =
+  | 'qr'
+  | 'whatsapp'
+  | 'instagram'
+  | 'facebook'
+  | 'google'
+  | 'obp'
+  | 'menu_kit'
+  | 'shortcut'
+  | 'direct'
+  | 'other';
 
 /**
  * Check if event should be rate limited
@@ -95,6 +117,163 @@ const shouldBlockMenuView = (projectId?: string): boolean => {
 
   menuViewTracker.set(projectId, now);
   return false;
+};
+
+const getSessionMilestoneKey = (data: TrackingData, localDate: string, sessionId: string): string | null => {
+  if (!data.tenantId || !data.storeId || !data.projectId || !sessionId) return null;
+  return [
+    SESSION_MILESTONE_STORAGE_PREFIX,
+    String(data.tenantId),
+    String(data.storeId),
+    String(data.projectId),
+    localDate,
+    sessionId,
+  ].join('|');
+};
+
+const getSessionSourceKey = (data: TrackingData, localDate: string, sessionId: string): string | null => {
+  if (!data.tenantId || !data.storeId || !data.projectId || !sessionId) return null;
+  return [
+    SESSION_SOURCE_STORAGE_PREFIX,
+    String(data.tenantId),
+    String(data.storeId),
+    String(data.projectId),
+    localDate,
+    sessionId,
+  ].join('|');
+};
+
+const readSessionMilestoneState = (key: string | null): SessionMilestoneState | null => {
+  if (!key || typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return null;
+  }
+};
+
+const writeSessionMilestoneState = (key: string | null, state: SessionMilestoneState | null): void => {
+  if (!key || !state || typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify({
+      ...state,
+      itemIds: Array.from(new Set(state.itemIds || [])).slice(-10),
+    }));
+  } catch {
+    // Session milestones are additive analytics only; never block customer UX.
+  }
+};
+
+const readSessionEntrySource = (key: string | null): EntrySource | null => {
+  if (!key || typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw)?.entrySource || null : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeSessionEntrySource = (key: string | null, entrySource: EntrySource | null): void => {
+  if (!key || !entrySource || typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify({ entrySource }));
+  } catch {
+    // Source quality is additive analytics only; never block customer UX.
+  }
+};
+
+const normalizeEntrySource = (value?: string | null): EntrySource | null => {
+  const source = String(value || '').trim().toLowerCase();
+  if (!source) return null;
+  if (source.includes('qr') || source.includes('table_tent') || source.includes('tent')) return 'qr';
+  if (source.includes('whatsapp') || source === 'wa') return 'whatsapp';
+  if (source.includes('instagram') || source === 'ig') return 'instagram';
+  if (source.includes('facebook') || source === 'fb') return 'facebook';
+  if (source.includes('google') || source === 'gmb') return 'google';
+  if (source.includes('obp') || source.includes('official_business_page')) return 'obp';
+  if (source.includes('menu_kit')) return 'menu_kit';
+  if (source.includes('shortcut')) return 'shortcut';
+  if (source === 'direct') return 'direct';
+  return 'other';
+};
+
+const inferEntrySource = (data: TrackingData): EntrySource => {
+  const explicit = normalizeEntrySource(data.entrySource || data.utm_source || data.utm_medium || data.source);
+  if (explicit) return explicit;
+
+  if (typeof window === 'undefined') return 'direct';
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = normalizeEntrySource(
+      params.get('entry_source') ||
+      params.get('utm_source') ||
+      params.get('utm_medium') ||
+      params.get('source')
+    );
+    if (fromQuery) return fromQuery;
+
+    const referrer = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : '';
+    if (referrer.includes('google.')) return 'google';
+    if (referrer.includes('instagram.')) return 'instagram';
+    if (referrer.includes('facebook.') || referrer.includes('fb.')) return 'facebook';
+    if (referrer.includes('whatsapp.')) return 'whatsapp';
+  } catch {
+    return 'direct';
+  }
+
+  return 'direct';
+};
+
+const markSessionMilestone = (
+  updateData: Record<string, any>,
+  state: SessionMilestoneState | null,
+  milestone: 'menuSession' | 'engaged' | 'intent' | 'action'
+) => {
+  if (!state || state[milestone]) return;
+  state[milestone] = true;
+  if (milestone === 'menuSession') updateData.menuSessions = 1;
+  if (milestone === 'engaged') updateData.engagedSessions = 1;
+  if (milestone === 'intent') updateData.intentSessions = 1;
+  if (milestone === 'action') updateData.actionSessions = 1;
+};
+
+const trackSessionItemView = (
+  updateData: Record<string, any>,
+  state: SessionMilestoneState | null,
+  itemId?: string,
+) => {
+  if (!state || !itemId) return;
+  const itemIds = new Set(state.itemIds || []);
+  itemIds.add(itemId);
+  state.itemIds = Array.from(itemIds).slice(-10);
+
+  if (state.itemIds.length >= 2) {
+    markSessionMilestone(updateData, state, 'engaged');
+    markSessionMilestone(updateData, state, 'intent');
+  }
+};
+
+const markEngagedIntentSession = (updateData: Record<string, any>, state: SessionMilestoneState | null) => {
+  markSessionMilestone(updateData, state, 'engaged');
+  markSessionMilestone(updateData, state, 'intent');
+};
+
+const addCategoryInterestCounters = (
+  updateData: Record<string, any>,
+  data: TrackingData,
+  counterPrefix: 'viewsByCategory' | 'clicksByCategory',
+) => {
+  const categoryId = String(data.categoryId || data.itemCategoryId || '').trim();
+  if (!categoryId) return;
+
+  updateData[`${counterPrefix}.${categoryId}`] = 1;
+  const categoryName = String(data.categoryName || data.itemCategory || '').trim();
+  if (categoryName) {
+    updateData[`categoryNames.${categoryId}`] = categoryName;
+  }
 };
 
 /**
@@ -179,6 +358,9 @@ export interface TrackingData {
   itemId?: string;            // ID of the specific item
   itemName?: string;          // Name of the item
   itemCategory?: string;      // Category of the item
+  categoryId?: string;        // Stable category ID for dashboard grouping
+  categoryName?: string;      // Owner-readable category label
+  itemCategoryId?: string;    // Backward-compatible alias for categoryId
   price?: number;             // Price of the item
   currency?: string;          // Currency code (e.g., "USD")
   quantity?: number;          // Quantity of the item
@@ -225,6 +407,8 @@ export interface TrackingData {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  entrySource?: EntrySource | string;
+  source?: string;
 
   /**
    * Customer App (PWA) platform tag — 'ios' | 'android' | 'desktop' | 'other'.
@@ -357,10 +541,15 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
     // Ensure we have a session ID
     const sessionId = data.sessionId || getSessionId();
+    const localDate = getAnalyticsDateKey(now, data.storeTimeZone);
+    const sessionMilestoneKey = getSessionMilestoneKey(data, localDate, sessionId);
+    const sessionSourceKey = getSessionSourceKey(data, localDate, sessionId);
+    const sessionMilestones = readSessionMilestoneState(sessionMilestoneKey);
+    const entrySource = readSessionEntrySource(sessionSourceKey) || inferEntrySource(data);
 
     // Prepare update data
     const updateData: any = {
-      date: getAnalyticsDateKey(now, data.storeTimeZone),
+      date: localDate,
       // Add session ID to all events for unique visitor tracking
       sessionId: sessionId
     };
@@ -378,6 +567,12 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // Unique session deduplication handled by nightly Cloud Function
         updateData.totalSessions = 1;
         if (eventName === TrackingEvent.MENU_VIEW) {
+          const hadMenuSession = Boolean(sessionMilestones?.menuSession);
+          markSessionMilestone(updateData, sessionMilestones, 'menuSession');
+          if (!hadMenuSession && updateData.menuSessions) {
+            updateData[`menuSessionsBySource.${entrySource}`] = 1;
+          }
+          updateData[`viewsByEntrySource.${entrySource}`] = 1;
           if (data.utm_source) {
             updateData[`viewsBySource.${data.utm_source}`] = 1;
           } else {
@@ -404,6 +599,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalItemViews = 1;
         updateData[`viewsByItem.${data.itemId}`] = 1;  // Per-item impressions
         updateData[`hourlyItemViews.${hour}`] = 1;
+        addCategoryInterestCounters(updateData, data, 'viewsByCategory');
+        trackSessionItemView(updateData, sessionMilestones, data.itemId);
 
         // Store item name if provided
         if (data.itemName) {
@@ -425,6 +622,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`hourlyClicks.${hour}`] = 1;
         // NEW: Track which items are clicked at which hours (for time eligibility)
         updateData[`hourlyClicksByItem.${data.itemId}.${hour}`] = 1;
+        addCategoryInterestCounters(updateData, data, 'clicksByCategory');
+        markEngagedIntentSession(updateData, sessionMilestones);
 
         // Store item name if provided
         if (data.itemName) {
@@ -443,6 +642,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.SEARCH:
         updateData.totalSearches = 1;
         updateData[`hourlySearches.${hour}`] = 1;
+        markEngagedIntentSession(updateData, sessionMilestones);
         if (data.searchTerm) {
           updateData[`searchTerms.${data.searchTerm.toLowerCase()}`] = 1;
           if ((data.searchResults || 0) === 0) {
@@ -460,6 +660,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalUnavailableItemTaps = 1;
         updateData[`unavailableItemTapsByItem.${data.itemId}`] = 1;
         updateData[`hourlyUnavailableItemTaps.${hour}`] = 1;
+        markEngagedIntentSession(updateData, sessionMilestones);
         if (data.itemName) {
           updateData[`itemNames.${data.itemId}`] = data.itemName;
         }
@@ -473,6 +674,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalMenuActionClicks = 1;
         updateData[`menuActionClicks.${data.menuAction}`] = 1;
         updateData[`hourlyMenuActionClicks.${hour}`] = 1;
+        markEngagedIntentSession(updateData, sessionMilestones);
+        const hadActionSession = Boolean(sessionMilestones?.action);
+        markSessionMilestone(updateData, sessionMilestones, 'action');
+        updateData[`menuActionClicksBySource.${entrySource}`] = 1;
+        if (!hadActionSession && updateData.actionSessions) {
+          updateData[`actionSessionsBySource.${entrySource}`] = 1;
+        }
         break;
 
       case TrackingEvent.DECISION_BLOCK_CLICK:
@@ -484,6 +692,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`recommendationClicks.${data.blockType}`] = 1;
         updateData[`recommendationClicksByItem.${data.itemId}`] = 1;
         updateData[`hourlyRecommendationClicks.${hour}`] = 1;
+        markEngagedIntentSession(updateData, sessionMilestones);
         break;
 
       case TrackingEvent.OBP_VIEW:
@@ -688,6 +897,10 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     // Use the database function to track the event
     // Pass projectId and tenantId for project-wise analytics storage
     await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId, data.storeTimeZone);
+    writeSessionMilestoneState(sessionMilestoneKey, sessionMilestones);
+    if (eventName === TrackingEvent.MENU_VIEW) {
+      writeSessionEntrySource(sessionSourceKey, entrySource);
+    }
   } catch (error) {
     console.error('Error tracking Firebase event:', error);
     throw error;
