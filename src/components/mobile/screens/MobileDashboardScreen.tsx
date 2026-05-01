@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { OwnerDashboardViewMode } from '@template/main-app/projects/types';
@@ -71,6 +72,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         projectId: selectedProjectId,
         loadHistorical: showHistorical,
     } : undefined);
+    const obpDashboard = useOBPDashboard();
 
     useEffect(() => {
         if (!loadingToday && !showHistorical && !data?.today) {
@@ -144,6 +146,15 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const wtd = overview?.wtd;
     const mtd = overview?.mtd;
     const historicalWeeks = overview?.historicalWeeks || data?.historicalWeeks || [];
+    const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
+    const isOBPSettledPending = obpDashboard.loading && !obpDashboard.data;
+    const hasOBPCurrentViewData = viewMode === 'overview'
+        ? hasOBPSettledData
+        : viewMode === 'daily'
+            ? Boolean(obpDashboard.data?.overview?.yesterday || obpDashboard.data?.overall)
+            : viewMode === 'weekly'
+                ? Boolean(obpDashboard.data?.overview?.wtd || obpDashboard.data?.overall)
+                : Boolean(obpDashboard.data?.overview?.mtd || obpDashboard.data?.overall);
     const isLoading = viewMode === 'overview'
         ? loading && !data
         : loading && !currentViewData;
@@ -455,6 +466,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 />
 
                 {renderTodaySoFar()}
+                <MobileOBPMetricsCard
+                    data={obpDashboard.data}
+                    loading={obpDashboard.loading}
+                    loadingToday={obpDashboard.loadingToday}
+                    mode="today"
+                />
 
                 {showHistorical ? (
                     <div style={stickyHistoricalHeaderStyle}>
@@ -491,6 +508,13 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     <>
                         {renderPeriodView()}
 
+                        <MobileOBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode={viewMode}
+                        />
+
                         {overall?.lifetimeMetrics ? (
                             <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
                                 <Flex gap={12} wrap>
@@ -509,7 +533,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             </Card>
                         ) : null}
 
-                        {!currentViewData ? (
+                        {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
                                     <LuBarChart3 color={token.colorTextQuaternary} size={36} />
@@ -529,14 +553,14 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         ) : null}
                         {renderDemandAndActions(wtd)}
 
-                        {/* Customer App (installable PWA) — store-scoped analytics.
-                            Sits alongside menu analytics on purpose: owners see both in one place. */}
-                        <MobileCustomerAppMetrics />
+                        <MobileOBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="overview"
+                        />
 
-                        {/* Official Business Page analytics — separate from menu analytics,
-                            but shown in the same dashboard so owners can compare discovery
-                            on OBP vs engagement inside the menu. */}
-                        <MobileOBPMetricsCard />
+                        <MobileCustomerAppMetrics />
 
                         {overview?.aiSummary?.bulletPoints?.length ? (
                             <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
@@ -684,7 +708,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             </Card>
                         ) : null}
 
-                        {!overview && !overall ? (
+                        {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
                                     <LuBarChart3 color={token.colorTextQuaternary} size={36} />

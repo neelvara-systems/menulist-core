@@ -22,7 +22,6 @@ export const ANALYTICS_TRACKING_CATEGORY_DISCLOSURES: AnalyticsTrackingCategoryD
       'No-result searches',
       'Unavailable-item taps',
       'Final menu CTA clicks such as call, WhatsApp, directions, reserve, and order',
-      'Project switches',
       'Entry source and session totals',
     ],
     note:

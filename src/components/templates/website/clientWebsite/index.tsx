@@ -227,6 +227,7 @@ function ClientMenuRenderer({
                     storeId={storeId}
                     tenantId={storeDetails.tenantId}
                     storeName={storeDisplayName}
+                    storeTimeZone={storeDetails.timeZone}
                     promoteInstallation={
                         (storeDetails as any)?.pwaSettings?.promoteInstallation !== false
                     }

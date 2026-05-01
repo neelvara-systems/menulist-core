@@ -180,14 +180,14 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         label={(
                             <Space>
                                 <span>Menu activity</span>
-                                <Tooltip title="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu.">
+                                <Tooltip title="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu.">
                                     <QuestionCircleOutlined />
                                 </Tooltip>
                             </Space>
                         )}
                         name={["analytics", "trackMenuViews"]}
                         valuePropName="checked"
-                        extra={<Text type="secondary">Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu.</Text>}
+                        extra={<Text type="secondary">Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu.</Text>}
                     >
                         <Switch />
                     </Form.Item>
@@ -212,14 +212,14 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         label={(
                             <Space>
                                 <span>Official business page activity</span>
-                                <Tooltip title="Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches.">
+                                <Tooltip title="Tracks official business page views, CTA taps, menu CTA clicks, social/review link clicks, and owner share actions.">
                                     <QuestionCircleOutlined />
                                 </Tooltip>
                             </Space>
                         )}
                         name={["analytics", "trackOfficialBusinessPage"]}
                         valuePropName="checked"
-                        extra={<Text type="secondary">Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches.</Text>}
+                        extra={<Text type="secondary">Tracks official business page views, CTA taps, menu CTA clicks, social/review link clicks, and owner share actions.</Text>}
                     >
                         <Switch />
                     </Form.Item>

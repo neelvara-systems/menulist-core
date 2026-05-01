@@ -178,7 +178,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                     <div>
                                         <Text strong={true}>Track Menu Activity</Text>
                                         <br />
-                                        <Text type="secondary">Track menu opens, item detail opens, search demand, unavailable-item demand, final menu CTA clicks, and project switches</Text>
+                                        <Text type="secondary">Track menu opens, item detail opens, search demand, unavailable-item demand, final menu CTA clicks, and entry source</Text>
                                     </div>
                                     <Switch
                                         checked={form.getFieldValue(['analytics', 'trackMenuViews'])}
@@ -202,7 +202,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                     <div>
                                         <Text strong={true}>Track Official Business Page</Text>
                                         <br />
-                                        <Text type="secondary">See OBP views, CTA taps, and menu conversion</Text>
+                                        <Text type="secondary">See OBP views, CTA taps, social/review link clicks, owner shares, and menu conversion</Text>
                                     </div>
                                     <Switch
                                         checked={form.getFieldValue(['analytics', 'trackOfficialBusinessPage'])}

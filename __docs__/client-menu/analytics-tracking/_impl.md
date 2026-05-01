@@ -3,7 +3,7 @@
 **Sub-Feature of:** Client Menu  
 **Document Type:** Technical Implementation  
 **Status:** ✅ Implemented  
-**Last Updated:** April 29, 2026
+**Last Updated:** May 1, 2026
 
 ---
 
@@ -28,7 +28,9 @@ src/components/templates/website/clientWebsite/
 └── GoogleSearchConsole.tsx           # Site verification
 
 functions/src/
-└── aggregateCustomerAnalytics.ts     # Nightly aggregation
+├── aggregateCustomerAnalytics.ts     # Menu + Customer App nightly settlement
+├── analytics/obpAnalyticsAggregation.ts # OBP nightly settlement
+└── decisionBlocksScoring.ts          # Unified timezone-aware scheduler
 ```
 
 ---
@@ -52,7 +54,8 @@ trackFirebaseEvent()
     ↓
 database/analytics → trackAnalyticsEvent()
     ↓
-Firestore: analytics/{tId}_{sId}_{projectId}_daily_{date}
+Firestore: analytics/{tId}_{sId}_{projectId}_daily_{storeLocalDate}
+    └── Includes query metadata: tId, sId, projectId, grain, surface, localDate, storeTimeZone
 ```
 
 ---
@@ -148,18 +151,33 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 - Reuses existing `publicPresence` action URLs and visibility toggles
 - Avoids tracking hover, scroll, and intermediate UI states
 - The same tracking path is reused in the footer, zero-result recovery state, and unavailable-item PDP recovery actions
+- Writes immediately instead of waiting for the passive-event queue, because these are owner-facing conversion signals.
 
 ### Dashboard Surfacing
 
-- Owner dashboard reads these metrics from the same analytics documents.
-- `aggregateCustomerAnalytics.ts` now rolls search demand, unavailable-item demand, and menu CTA clicks into summary / weekly / monthly rollups.
+- Owner dashboard reads settled metrics from nightly dashboard read-model docs, not by rebuilding every card from daily docs on each visit.
+- `aggregateCustomerAnalytics.ts` rolls search demand, unavailable-item demand, menu CTA clicks, and Customer App metrics into summary / weekly / monthly rollups, then writes `{tId}_{sId}_{projectId}_dashboard_summary`.
+- `analytics/dashboardSummaryAggregation.ts` writes menu and Customer App owner-dashboard read models. `analytics/obpAnalyticsAggregation.ts` writes the OBP dashboard read model.
+- The menu, OBP, and Customer App dashboard read models update incrementally in steady state: existing compact daily rows are reused, the settled day is added when present, and wide daily-range rebuilds happen only for first deploy/cache gaps.
+- The menu dashboard read model includes compact rolling daily rows for the deeper analytics screen. This keeps recent trend, device, location, and customer-intent cards to one read-model read instead of a daily-range query.
+- The same nightly writer stores `{tId}_{sId}_{projectId}_intelligence_7d` for Decision Blocks and Menu Intelligence. The scheduler reads this compact input doc instead of rebuilding the same 7-day analytics window from daily docs; missing/stale snapshots settle as empty for that run.
+- Nightly settlement is driven by `computeDecisionBlocksScores`, which runs at each store's local 2:30 AM window.
+- The scheduler uses `platformSummary/projects_{sId}` as the active project index, then fetches full project docs only for active projects that need Decision Blocks / Menu Intelligence.
+- OBP analytics settle first for the store/date. If OBP settlement fails, menu/customer-app settlement for that same store/date does not run.
+- Store/date analytics settlement runs before Decision Blocks / Menu Intelligence. If settlement fails, the intelligence pass for that store does not continue on stale analytics.
+- `platformSummary/nightlyState_{tId}_{sId}` stores the last settled local date and the current phase. `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}` prevents duplicate processing.
+- The completed nightly state also stores a compact store-level analytics index with active project ids, customer analytics project ids, enabled surfaces, and dashboard summary doc ids. This keeps future guard/discovery flows pointed at one store-level state doc instead of rediscovering analytics surfaces.
+- If a night is missed, the next local nightly run catches up pending store-local dates in order, capped per run for Firebase cost safety.
+- Summary lifetime counters are idempotent: a date already recorded as aggregated is skipped instead of incremented again.
 - Settled owner dashboard views still end on yesterday. They are intentionally not mixed with the current partial day.
 - A separate `Today so far` card reads the current day daily doc directly through the owner-dashboard DAL.
 - The live card uses SWR plus local cache with a short TTL only for that slice, so Firebase cost stays bounded.
-- The existing overview / daily / weekly / monthly historical flow is now owner-triggered on demand, instead of being fetched by default.
-- The deep analytics dashboard caches `summary` and `daily range` separately via SWR/local cache:
-  - `summary` stays day-cached because it is scheduler-backed
-  - `daily range` uses day-cache for settled ranges and short TTL only when the selected range includes today
+- Settled dashboard SWR/localStorage cache uses the store-local scheduler cycle key. It survives midnight and invalidates after the next expected local scheduler completion window.
+- The existing overview / daily / weekly / monthly historical flow is served from the read-model doc. Legacy daily-doc rebuilds are not used on the owner display path.
+- The deep analytics dashboard uses the same read-model doc via SWR/local cache:
+  - recent settled ranges are served from `{tId}_{sId}_{projectId}_dashboard_summary`
+  - ranges including today read the same dashboard summary plus today's daily doc with a 10-minute TTL
+  - older/custom ranges outside the compact rolling daily cache are not rebuilt from daily docs on the client; owners see available precomputed ranges only
 - Desktop and mobile owner dashboards surface:
   - total searches
   - no-result searches
@@ -187,20 +205,15 @@ export async function trackAnalyticsEvent(
   updateData: Record<string, any>,
   tenantId: number,
   storeId: number,
-  projectId: string
+  projectId: string,
+  storeTimeZone?: string
 ) {
-  const date = new Date().toISOString().split("T")[0];
-  const docId = `${tenantId}_${storeId}_${projectId}_daily_${date}`;
-  const docRef = doc(firebaseClient, DB_COLLECTIONS.ANALYTICS, docId);
-
-  await setDoc(
-    docRef,
-    {
-      ...updateData,
-      lastUpdated: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const date = getAnalyticsDateKey(new Date(), storeTimeZone);
+  if (isFinalConversionAction(updateData)) {
+    await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, date, storeTimeZone);
+  } else {
+    enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, date, storeTimeZone);
+  }
 }
 ```
 
@@ -212,6 +225,9 @@ const dailyDocId = `${tId}_${sId}_${projectId}_daily_${date}`;
 
 // Summary: {tId}_{sId}_{projectId}_overall_summary
 const summaryDocId = `${tId}_${sId}_${projectId}_overall_summary`;
+
+// Owner dashboard read model: {tId}_{sId}_{projectId}_dashboard_summary
+const dashboardSummaryDocId = `${tId}_${sId}_${projectId}_dashboard_summary`;
 
 // Weekly: {tId}_{sId}_{projectId}_weekly_{YYYY-Www}
 const weeklyDocId = `${tId}_${sId}_${projectId}_weekly_${weekStr}`;
@@ -299,29 +315,53 @@ export default function FacebookPixel({ storeDetails }: Props) {
 
 ## Cloud Function: Nightly Aggregation
 
-**Schedule:** `0 3 * * *` (3:00 AM UTC daily)  
-**File:** `functions/src/aggregateCustomerAnalytics.ts`
+**Trigger:** `functions/src/decisionBlocksScoring.ts`
+**Schedule Model:** hourly scheduler with per-store timezone filtering
+**Aggregation Helpers:** `functions/src/aggregateCustomerAnalytics.ts` and `functions/src/analytics/obpAnalyticsAggregation.ts`
 
 ### Nightly Flow
 
 ```
-STEP 1: Update Overall Summary (ALWAYS)
-  └── Reads yesterday's daily → Increments lifetime totals
+STEP 1: Pick stores whose local time has reached the nightly analytics hour
+  └── Shared nightly scheduler filters by store timezone / schedulerHour
+  └── Reads platformSummary/projects_{sId} for active project IDs
 
-STEP 2: Weekly Rollup (IF MONDAY)
+STEP 2: Acquire store/date settlement lock
+  └── Uses platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}
+  └── Reads platformSummary/nightlyState_{tId}_{sId} for catch-up
+
+STEP 3: Run OBP aggregation first for the store-local date
+  └── Creates / updates OBP weekly, monthly, and summary docs
+  └── If this fails, the store's menu analytics step is treated as failed too
+
+STEP 4: Update Menu / Customer App Overall Summary
+  └── Queries daily docs by tId + sId + grain + localDate
+  └── Increments lifetime totals only if this date has not already been aggregated
+
+STEP 5: Weekly Rollup (IF MONDAY)
   └── Reads last 7 daily docs → Creates weekly_{YYYY-Www}
   └── Generates Weekly AI Summary (5 bullets, confident tone)
 
-STEP 3: Monthly Rollup (IF 1st OF MONTH)
+STEP 6: Monthly Rollup (IF 1st OF MONTH)
   └── Reads all daily docs from previous month → Creates monthly_{YYYY-MM}
   └── Generates Monthly AI Summary (3 bullets, calm tone)
 
-STEP 4: Daily AI Summary (ALWAYS)
+STEP 7: Daily AI Summary
   └── Generates Daily AI Summary (2 bullets, descriptive only)
 
-STEP 5: TTL Cleanup (ALWAYS)
+STEP 8: TTL Cleanup (MONTHLY)
   └── Deletes daily docs older than 90 days
+
+STEP 9: Mark settlement completed
+  └── Updates lastSettledLocalDate and releases the lock
 ```
+
+### Store-Local Day Buckets
+
+- Event writes now resolve the analytics document date from the **store timezone**.
+- Hourly maps such as `hourlyViews`, `hourlySearches`, `hourlyMenuActionClicks`, and `hourlyClicksByItem` also use the **store-local hour**.
+- Dashboard reads (`Today so far`, `Yesterday`, WTD, MTD, historical weeks) now resolve dates in the same store-local calendar instead of UTC.
+- Decision Blocks and Menu Intelligence read their 7-day analytics window from the same store-local day keys, so recommendation scoring and owner reporting use the same day boundaries.
 
 ### Additive Fields Only
 
@@ -338,7 +378,7 @@ This means:
 
 - no new collection
 - no extra fan-out write
-- no new scheduler
+- no new standalone scheduler
 - no change to document key patterns
 
 ### AI Summary Tones
@@ -352,45 +392,33 @@ This means:
 ### Implementation
 
 ```typescript
-// functions/src/aggregateCustomerAnalytics.ts
+// functions/src/decisionBlocksScoring.ts
 
-export const aggregateCustomerAnalytics = functions.pubsub
-  .schedule("0 3 * * *") // 3:00 AM UTC daily
-  .timeZone("UTC")
-  .onRun(async (context) => {
-    // 1. Get all active stores
-    const stores = await getActiveStores();
+const analyticsRunAt = new Date();
 
-    for (const store of stores) {
-      const projects = await getActiveProjects(store.tenantId, store.storeId);
+for (const store of storesForThisHour) {
+  const activeProjectIds = await loadActiveProjectsFromProjectsSummary(store.sId);
+  const settlementDates = await getPendingSettlementDates(store.tId, store.sId, analyticsRunAt, store.timeZone);
 
-      for (const project of projects) {
-        // 2. Update summary from yesterday's data
-        await updateSummary(store.tenantId, store.storeId, project.projectId);
+  for (const settlementDate of settlementDates) {
+    const lock = await acquireNightlyDateLock(store.tId, store.sId, settlementDate);
+    if (!lock) continue;
 
-        // 3. Weekly rollup (Mondays only)
-        if (isMonday()) {
-          await createWeeklyRollup(
-            store.tenantId,
-            store.storeId,
-            project.projectId
-          );
-        }
+    await aggregateOBPAnalyticsForStoreDate(db, store.tId, store.sId, settlementDate);
 
-        // 4. Monthly rollup (1st of month only)
-        if (isFirstOfMonth()) {
-          await createMonthlyRollup(
-            store.tenantId,
-            store.storeId,
-            project.projectId
-          );
-        }
+    const result = await aggregateCustomerAnalyticsForStoreDate(
+      db,
+      store.tId,
+      store.sId,
+      settlementDate,
+      [...activeProjectIds, "customerApp"]
+    );
 
-        // 5. TTL cleanup (delete docs > 90 days)
-        await cleanupOldDocs(store.tenantId, store.storeId, project.projectId);
-      }
+    if (result.errors.length > 0) {
+      throw new Error("Customer analytics aggregation had project errors");
     }
-  });
+  }
+}
 ```
 
 ---
@@ -407,7 +435,7 @@ export const aggregateCustomerAnalytics = functions.pubsub
 | Summary updated nightly (not real-time)  | ✅     |
 | Weekly rollup on Mondays                 | ✅     |
 | Monthly rollup on 1st                    | ✅     |
-| TTL cleanup (90 days)                    | ✅     |
+| Monthly TTL cleanup (90 days)            | ✅     |
 | GA4 integration                          | ✅     |
 | Facebook Pixel integration               | ✅     |
 
@@ -434,11 +462,11 @@ export const aggregateCustomerAnalytics = functions.pubsub
 
 ```bash
 # Check function logs
-firebase functions:log --only aggregateCustomerAnalytics
+firebase functions:log --only computeDecisionBlocksScores
 
 # Manual trigger
 firebase functions:shell
-> aggregateCustomerAnalytics()
+> computeDecisionBlocksScores()
 ```
 
 ---
@@ -450,7 +478,7 @@ firebase functions:shell
 | No analytics in Firestore | projectId missing     | Check prop chain                 |
 | Events not tracking       | Rate limited          | Wait 1 minute                    |
 | GA4 not working           | Missing ID            | Add `googleAnalyticsId` to store |
-| Summary not updating      | Cloud function failed | Check function logs              |
+| Summary not updating      | Nightly scheduler failed | Check `computeDecisionBlocksScores` logs |
 | Old docs not deleted      | TTL cleanup failed    | Manual cleanup                   |
 
 ---

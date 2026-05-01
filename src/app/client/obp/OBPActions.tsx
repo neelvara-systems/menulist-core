@@ -16,6 +16,7 @@ interface OBPActionsProps {
     storeId: number;
     trackingEnabled?: boolean;
     includeLocation?: boolean;
+    storeTimeZone?: string;
     phoneNumber?: string;
     whatsappNumber?: string;
     directionsUrl?: string;
@@ -33,6 +34,7 @@ export default function OBPActions({
     storeId,
     trackingEnabled = true,
     includeLocation = true,
+    storeTimeZone,
     phoneNumber,
     whatsappNumber,
     directionsUrl,
@@ -52,6 +54,7 @@ export default function OBPActions({
         trackOBPAction(storeId, action, {
             tenantId,
             sessionId: getSessionId(),
+            storeTimeZone,
             includeLocation,
         }).catch(() => { });
     };

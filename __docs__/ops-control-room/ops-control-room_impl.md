@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED — Superadmin access at /ops  
 **Created:** February 20, 2026  
-**Last Updated:** February 20, 2026  
+**Last Updated:** May 1, 2026
 **Audience:** Developers
 
 ---
@@ -182,7 +182,7 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 
 ### Route: `/ops/scheduler`
 
-A dedicated page for monitoring the nightly scheduler that runs 8 tasks at 2:30 AM UTC daily.
+A dedicated page for monitoring the unified timezone-aware scheduler. The scheduler runs hourly at `:30`, but each store settles at its local 2:30 AM window.
 
 ### File Structure
 
@@ -201,10 +201,11 @@ src/
 | -------------------- | ------------------------------------------------------------------ |
 | **Health Badge**     | Green/orange/red/grey based on recent run outcomes                 |
 | **Last Run Summary** | Timestamp, duration, stores/projects counts                        |
-| **Task Breakdown**   | Per-task status for all 8 sub-tasks with timing                    |
+| **Task Breakdown**   | Per-task status for scheduler sub-tasks with timing                 |
+| **Analytics Settlement State** | Reads `platformSummary/nightlyState_*` to show store-local settlement health |
 | **Error Details**    | Expandable error list with tId/sId/projectId                       |
 | **Run History**      | Filterable table by status and trigger type                        |
-| **Manual Trigger**   | "Run Scheduler Now" button calls `triggerDecisionBlocksScoring` CF |
+| **Manual Recovery**  | "Recompute DI Now" calls `triggerDecisionBlocksScoring` CF for Decision Blocks only |
 | **Quick Reference**  | Schedule, timeout, tasks list, TTL info                            |
 
 ### Navigation
@@ -218,7 +219,12 @@ src/
 getSchedulerHealthSummary(); // ~1 read (last 10 runs)
 getSchedulerRunHistory(filter); // ~1 read (last 20 runs, filterable)
 getSchedulerRunDetails(runId); // ~1 read (single run)
+getSchedulerSettlementSummary(); // ~1 read (nightlyState_* docs, limit 50)
 ```
+
+### Manual Trigger Boundary
+
+`triggerDecisionBlocksScoring` is a recovery tool for Decision Blocks recomputation. It does **not** run the full scheduled flow, analytics settlement, billing reconciliation, or global maintenance tasks. The scheduler monitor copy must preserve this boundary so ops does not mistake a manual DI recovery run for a complete nightly settlement.
 
 ---
 
@@ -250,7 +256,8 @@ getSchedulerRunDetails(runId); // ~1 read (single run)
 | -------------------------- | -------------- |
 | schedulerRunLogs (health)  | 1 (limit 10)   |
 | schedulerRunLogs (history) | 1 (limit 20)   |
-| **Total**                  | **~2-3 reads** |
+| platformSummary/nightlyState_* | 1 (limit 50) |
+| **Total**                  | **~3-4 reads** |
 
 Negligible cost. Admin-only pages, loaded manually.
 

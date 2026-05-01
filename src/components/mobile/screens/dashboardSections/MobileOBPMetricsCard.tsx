@@ -1,14 +1,24 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import {
-    type OBPActionBreakdown,
-    type OBPLinkBreakdown,
-    type OBPShareBreakdown,
+import type {
+    OBPActionBreakdown,
+    OBPLinkBreakdown,
+    OBPPeriodMetrics,
+    OBPShareBreakdown,
 } from '@database/ownerDashboard';
-import { useOBPDashboard } from '@hook/useOBPDashboard';
+import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import { LuExternalLink, LuGlobe, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
 import { Card, DotLoading, Flex, Tag, Text, Title } from '../../antd';
+
+type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly';
+
+interface MobileOBPMetricsCardProps {
+    data: OBPDashboardViewData | null;
+    loading?: boolean;
+    loadingToday?: boolean;
+    mode: OBPCardMode;
+}
 
 function renderActionRows(actions: OBPActionBreakdown) {
     const rows = [
@@ -100,33 +110,109 @@ function renderLinkRows(links: OBPLinkBreakdown) {
     );
 }
 
-export default function MobileOBPMetricsCard() {
-    const { data, loading, loadingToday } = useOBPDashboard();
+function renderMetricCards(metrics: OBPPeriodMetrics) {
+    return (
+        <>
+            <Flex gap={12} wrap>
+                <Card size="small" style={{ flex: '1 1 45%' }}>
+                    <Flex align="center" gap={8}>
+                        <LuGlobe color="#1d4ed8" size={14} />
+                        <Text type="secondary">Page Views</Text>
+                    </Flex>
+                    <Title level={3} style={{ margin: 0 }}>{metrics.views.toLocaleString()}</Title>
+                </Card>
+                <Card size="small" style={{ flex: '1 1 45%' }}>
+                    <Flex align="center" gap={8}>
+                        <LuExternalLink color="#0ea5e9" size={14} />
+                        <Text type="secondary">View Menu Clicks</Text>
+                    </Flex>
+                    <Title level={3} style={{ margin: 0 }}>{metrics.menuClicks.toLocaleString()}</Title>
+                </Card>
+                <Card size="small" style={{ flex: '1 1 45%' }}>
+                    <Flex align="center" gap={8}>
+                        <LuTrendingUp color="#16a34a" size={14} />
+                        <Text type="secondary">Actions</Text>
+                    </Flex>
+                    <Title level={3} style={{ margin: 0 }}>{metrics.actionClicks.toLocaleString()}</Title>
+                </Card>
+                <Card size="small" style={{ flex: '1 1 45%' }}>
+                    <Text type="secondary">Shares</Text>
+                    <Title level={3} style={{ margin: 0 }}>{metrics.shares.toLocaleString()}</Title>
+                </Card>
+                <Card size="small" style={{ flex: '1 1 45%' }}>
+                    <Flex align="center" gap={8}>
+                        <LuExternalLink color="#0f766e" size={14} />
+                        <Text type="secondary">Link Taps</Text>
+                    </Flex>
+                    <Title level={3} style={{ margin: 0 }}>{metrics.linkClicks.toLocaleString()}</Title>
+                </Card>
+            </Flex>
 
+            {renderActionRows(metrics.actions)}
+            {renderLinkRows(metrics.links)}
+            {renderShareRows(metrics.shareMethods)}
+        </>
+    );
+}
+
+export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode }: MobileOBPMetricsCardProps) {
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
-    if (loading && !data) {
+    const today = data?.today || null;
+    const overview = data?.overview || null;
+    const overall = data?.overall || null;
+
+    if (mode === 'today') {
+        if (loadingToday && !today) {
+            return (
+                <Card size="small" title={<Text strong>Official Business Page · Today so far</Text>}>
+                    <Flex align="center" gap={8}>
+                        <DotLoading color="primary" />
+                        <Text type="secondary">Loading current OBP activity</Text>
+                    </Flex>
+                </Card>
+            );
+        }
+
         return (
-            <Card size="small" title={<Text strong>Official Business Page</Text>}>
-                <Flex align="center" justify="center" style={{ padding: 16 }}>
-                    <DotLoading color="primary" />
-                </Flex>
+            <Card size="small" title={<Text strong>Official Business Page · Today so far</Text>}>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
+                    Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+                </Text>
+                {today ? renderMetricCards(today) : (
+                    <Text type="secondary">No OBP activity yet today.</Text>
+                )}
             </Card>
         );
     }
 
-    const today = data?.today;
-    const overview = data?.overview;
-    const overall = data?.overall;
+    if ((loading && !data) || (!overview && !overall)) return null;
 
-    if (!overview && !overall) return null;
-    if (overview?.status === 'no_data' && !overall) return null;
+    const title =
+        mode === 'daily'
+            ? 'Official Business Page · Yesterday'
+            : mode === 'weekly'
+                ? 'Official Business Page · Last 7 Days'
+                : mode === 'monthly'
+                    ? 'Official Business Page · This Month'
+                    : 'Official Business Page';
 
-    const statusTag = overview?.status === 'working'
-        ? <Tag color="success">Active</Tag>
-        : overview?.status === 'low_activity'
-            ? <Tag color="warning">Low activity</Tag>
-            : <Tag>No data</Tag>;
+    const selectedMetrics =
+        mode === 'daily'
+            ? overview?.yesterday || null
+            : mode === 'weekly'
+                ? overview?.wtd || null
+                : mode === 'monthly'
+                    ? overview?.mtd || null
+                    : null;
+
+    const statusTag = mode === 'overview'
+        ? overview?.status === 'working'
+            ? <Tag color="success">Active</Tag>
+            : overview?.status === 'low_activity'
+                ? <Tag color="warning">Low activity</Tag>
+                : <Tag>No data</Tag>
+        : null;
 
     return (
         <Card
@@ -135,127 +221,43 @@ export default function MobileOBPMetricsCard() {
                 <Flex align="center" justify="space-between">
                     <Flex align="center" gap={8}>
                         <LuGlobe color="#1d4ed8" size={16} />
-                        <Text strong>Official Business Page</Text>
+                        <Text strong>{title}</Text>
                     </Flex>
                     {statusTag}
                 </Flex>
             )}
         >
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. They show customer intent, not completed calls or orders.
-            </Text>
-            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                Shares come from the official business link card. Link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+                Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
             </Text>
 
-            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                Today so far
-            </Text>
-            {loadingToday && !today ? (
-                <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                    <DotLoading color="primary" />
-                    <Text type="secondary">Loading current OBP activity</Text>
-                </Flex>
-            ) : today ? (
+            {mode === 'overview' ? (
                 <>
-                    <Flex gap={12} wrap>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuGlobe color="#1d4ed8" size={14} />
-                                <Text type="secondary">Page Views</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{today.views.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuExternalLink color="#0ea5e9" size={14} />
-                                <Text type="secondary">View Menu Clicks</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{today.menuClicks.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuTrendingUp color="#16a34a" size={14} />
-                                <Text type="secondary">Actions</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{today.actionClicks.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Text type="secondary">Shares</Text>
-                            <Title level={3} style={{ margin: 0 }}>{today.shares.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuExternalLink color="#0f766e" size={14} />
-                                <Text type="secondary">Link Taps</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{today.linkClicks.toLocaleString()}</Title>
-                        </Card>
-                    </Flex>
+                    {overview?.wtd ? (
+                        <>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
+                                Last 7 Days
+                            </Text>
+                            {renderMetricCards(overview.wtd)}
+                        </>
+                    ) : (
+                        <Text type="secondary">No settled OBP activity yet.</Text>
+                    )}
 
-                    {renderActionRows(today.actions)}
-                    {renderLinkRows(today.links)}
-                    {renderShareRows(today.shareMethods)}
+                    {overview?.mtd ? (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                                {overview.mtd.monthName}
+                            </Text>
+                            {renderMetricCards(overview.mtd)}
+                        </div>
+                    ) : null}
                 </>
+            ) : selectedMetrics ? (
+                renderMetricCards(selectedMetrics)
             ) : (
-                <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                    No OBP activity yet today. Settled OBP analytics appear below.
-                </Text>
+                <Text type="secondary">No settled OBP activity yet for this period.</Text>
             )}
-
-            {overview?.wtd ? (
-                <>
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }} />
-                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                        This week
-                    </Text>
-                    <Flex gap={12} wrap>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuGlobe color="#1d4ed8" size={14} />
-                                <Text type="secondary">Page Views</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{overview.wtd.views.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuExternalLink color="#0ea5e9" size={14} />
-                                <Text type="secondary">View Menu Clicks</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{overview.wtd.menuClicks.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuTrendingUp color="#16a34a" size={14} />
-                                <Text type="secondary">Actions</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{overview.wtd.actionClicks.toLocaleString()}</Title>
-                        </Card>
-                        <Card size="small" style={{ flex: '1 1 45%' }}>
-                            <Flex align="center" gap={8}>
-                                <LuExternalLink color="#0f766e" size={14} />
-                                <Text type="secondary">Link Taps</Text>
-                            </Flex>
-                            <Title level={3} style={{ margin: 0 }}>{overview.wtd.linkClicks.toLocaleString()}</Title>
-                        </Card>
-                    </Flex>
-
-                    {renderActionRows(overview.wtd.actions)}
-                    {renderLinkRows(overview.wtd.links)}
-                    {renderShareRows(overview.wtd.shareMethods)}
-                </>
-            ) : null}
-
-            {overview?.mtd ? (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                        {overview.mtd.monthName}
-                    </Text>
-                    <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                        {`${overview.mtd.views.toLocaleString()} views, ${overview.mtd.menuClicks.toLocaleString()} View Menu clicks, ${overview.mtd.actionClicks.toLocaleString()} actions, ${overview.mtd.linkClicks.toLocaleString()} link taps, ${overview.mtd.shares.toLocaleString()} shares`}
-                    </Text>
-                </div>
-            ) : null}
 
             {overall ? (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>

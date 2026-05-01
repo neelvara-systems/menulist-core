@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Firebase Cost Tracking
 
-**Date:** February 15, 2026  
+**Date:** May 1, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -9,7 +9,7 @@
 
 - **Collections Used:** `stores` (existing), `analytics` (existing — OBP uses virtual `projectId='obp'`)
 - **Storage Buckets:** None (logo already in storage, referenced by URL)
-- **Cloud Functions:** None
+- **Cloud Functions:** Shared nightly scheduler `computeDecisionBlocksScores` runs the OBP rollup helper
 - **Estimated Monthly Cost:** Negligible (~₹2-5/month per 1000 active stores including analytics)
 
 ---
@@ -23,7 +23,7 @@
 | Load OBP page                 | `stores`                        | Customer visits OBP URL      | Per visit (cached 60s) | 1         | Yes      | Uses `where("subdomain", "==", ...)` — same as menu page           |
 | Check published menu exists   | `projects/{tId}/{sId}/metadata` | OBP render                   | Per visit (cached 60s) | 1         | Yes      | `where("deleted","==",false), where("active","==",true), limit(1)` |
 | Load OBP settings (dashboard) | `stores`                        | Owner opens Business Profile | On demand              | 0         | —        | Already loaded as part of store data in Redux                      |
-| Load OBP metrics (dashboard)  | `analytics`                     | Owner opens Dashboard        | On demand (SWR cached) | 7         | No       | Reads 7 daily docs `{tId}_{sId}_obp_daily_{date}` for last 7 days  |
+| Load OBP metrics (dashboard)  | `analytics`                     | Owner opens Dashboard        | On demand (scheduler-window cached) | 1 dashboard summary + 1 today doc | Yes | Settled views read `{tId}_{sId}_obp_dashboard_summary`. `Today so far` reads the current store-local daily doc with 10 min TTL. |
 
 **Key optimization:** Both reads are wrapped in `unstable_cache` with 60s TTL and per-store tags. At 60s cache, 1000 page views/hour = ~60 actual Firestore reads/hour (not 1000).
 
@@ -32,7 +32,7 @@
 | Operation              | Collection  | Trigger                                  | Frequency                   | Docs Written | Fields       | Notes                                                                                                                         |
 | ---------------------- | ----------- | ---------------------------------------- | --------------------------- | ------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
 | Save OBP settings      | `stores`    | Owner updates Business Profile           | Rare (once then occasional) | 1            | merge update | Uses existing `updateStore()` DAL — `requestBodyComposer` adds timestamps                                                     |
-| Track OBP page view    | `analytics` | Customer visits OBP URL                  | Per visit (rate-limited)    | 1            | merge update | Daily doc: `{tId}_{sId}_obp_daily_{date}`. Uses `increment()` for atomic counters. Rate-limited: 30s cooldown, 30 events/min. |
+| Track OBP page view    | `analytics` | Customer visits OBP URL                  | Per visit (rate-limited)    | 1            | merge update | Daily doc: `{tId}_{sId}_obp_daily_{date}`. Uses `increment()` for atomic counters and includes `tId`, `sId`, `projectId`, `grain`, `surface`, `localDate`, `storeTimeZone` metadata in the same write. Rate-limited: 30s cooldown, 30 events/min. |
 | Track OBP action click | `analytics` | Customer clicks Call/WhatsApp/Directions/Reserve/Order | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `obpActionClicks.{call,whatsapp,directions,reserve,order}`. 1s debounce. |
 | Track OBP menu click | `analytics` | Customer clicks View Menu from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPMenuClicks` and `obpMenuClicksBySurface.{brand|outlet}`. |
 | Track OBP link click | `analytics` | Customer clicks Google review, Instagram, Facebook, or website from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPLinkClicks` and `obpLinkClicks.{google_review,instagram,facebook,website}`. |
@@ -60,7 +60,11 @@
 
 | Function                            | Trigger                         | Reads                                                                      | Writes                                       | Notes                                                                                                                                                                                                                                           |
 | ----------------------------------- | ------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aggregateOBPAnalyticsForAllStores` | Nightly scheduler (2:30 AM UTC) | ~21 daily docs per store (current week + prev week + MTD) + 1 summary read | 3 docs per store: weekly + monthly + summary | Full parity with menu analytics. Writes `_obp_weekly_{week}`, `_obp_monthly_{month}`, `_obp_overall_summary` (with `lifetime`, `weekly`, `monthly`, `previousWeek` namespaces). Includes week-over-week % change. Flag: `ENABLE_OBP_ANALYTICS`. |
+| `aggregateOBPAnalyticsForStoreDate` (via `computeDecisionBlocksScores`) | Shared timezone-aware nightly store flow | One OBP daily-doc range query covering previous week + current week + MTD, plus 1 summary read | Weekly/monthly/summary/dashboard-summary docs only when data exists | OBP is settled first for the store-local date. Menu/customer-app analytics run only after OBP succeeds for that same date. The same daily-doc result set is reused for weekly, previous-week, MTD, yesterday, and dashboard-summary calculations. Writes `_obp_weekly_{week}`, `_obp_monthly_{month}`, `_obp_overall_summary`, and `_obp_dashboard_summary`. Flag: `ENABLE_OBP_ANALYTICS`. |
+
+**Settlement state:** The shared scheduler stores per-store status in `platformSummary/nightlyState_{tId}_{sId}` and a per-date lock in `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}`. This prevents duplicate runs and allows missed store-local dates to be caught up safely.
+
+**Date semantics:** OBP daily analytics docs now use the **store's local calendar date** and local hour buckets. The owner dashboard `Today so far`, `Yesterday`, WTD, and MTD views read the same store-local day keys.
 
 ### Brand Propagation (Client-Side)
 
@@ -86,8 +90,11 @@
 - **`unstable_cache` with 60s TTL:** Reduces actual Firestore reads by ~98% under load
 - **Per-store cache tags:** `store-{storeId}` enables instant invalidation only for changed stores
 - **No new collections:** Zero additional Firestore index costs
-- **No new writes on page view:** OBP is read-only, no analytics writes
+- **One write per tracked event:** OBP analytics use the same daily analytics doc as menu analytics with atomic increments. No separate summary write happens on the customer request path.
+- **One owner read-model read:** Settled OBP dashboard data is precomputed nightly into `_obp_dashboard_summary`, avoiding 7-30 daily reads per owner dashboard visit.
+- **One OBP nightly daily-range read:** OBP settlement fetches the required daily window once and reuses it in memory for weekly, monthly, lifetime, and dashboard-summary outputs.
 - **Server component:** No client-side Firestore SDK loaded
+- **Idempotent nightly summary:** Lifetime summary counters only advance when the settlement date is newer than `lastProcessedDate`.
 
 ### Potential Future Optimizations
 
@@ -147,4 +154,4 @@ Assumptions:
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** February 15, 2026
+**Last Updated:** May 1, 2026

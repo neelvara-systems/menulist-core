@@ -46,6 +46,7 @@ interface OBPMenuCTAProps {
     obpSurface?: 'brand' | 'outlet';
     trackingEnabled?: boolean;
     includeLocation?: boolean;
+    storeTimeZone?: string;
 }
 
 export default function OBPMenuCTA({
@@ -57,12 +58,14 @@ export default function OBPMenuCTA({
     obpSurface = 'brand',
     trackingEnabled = true,
     includeLocation = true,
+    storeTimeZone,
 }: OBPMenuCTAProps) {
     const trackPrimary = () => {
         if (!trackingEnabled) return;
         trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
+            storeTimeZone,
             includeLocation,
         }).catch(() => { });
     };
@@ -73,6 +76,7 @@ export default function OBPMenuCTA({
         trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
+            storeTimeZone,
             includeLocation,
         }).catch(() => { });
         // G-10: also tag this as a customer-side project switch so the
@@ -83,7 +87,7 @@ export default function OBPMenuCTA({
             project.slug,
             null, // OBP is a fresh entry point; there is no "from" project.
             'obp_secondary_card',
-            { tenantId, sessionId: getSessionId(), includeLocation },
+            { tenantId, sessionId: getSessionId(), storeTimeZone, includeLocation },
         ).catch(() => { });
     };
 

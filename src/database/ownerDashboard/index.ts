@@ -24,6 +24,14 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import {
+    addDaysToAnalyticsDateKey,
+    getAnalyticsDateKey,
+    getAnalyticsDateRange,
+    getAnalyticsISOWeek,
+    formatAnalyticsDateKey,
+    parseAnalyticsDateKey,
+} from "@lib/analytics/dateKey";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     BlockPerformance,
@@ -61,88 +69,88 @@ const getDocId = {
         `${tId}_${sId}_${projectId}_monthly_${month}`,
     summary: (tId: string, sId: string, projectId: string) =>
         `${tId}_${sId}_${projectId}_overall_summary`,
+    dashboardSummary: (tId: string, sId: string, projectId: string) =>
+        `${tId}_${sId}_${projectId}_dashboard_summary`,
 };
 
 // ================================================================
 // DATE HELPERS
 // ================================================================
 
-function getYesterdayDate(): string {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
+function getYesterdayDate(timeZone?: string): string {
+    const todayKey = getAnalyticsDateKey(new Date(), timeZone);
+    return addDaysToAnalyticsDateKey(todayKey, -1);
 }
 
-function getTodayDate(): string {
-    return new Date().toISOString().split('T')[0];
+function getTodayDate(timeZone?: string): string {
+    return getAnalyticsDateKey(new Date(), timeZone);
 }
 
-function getCurrentWeekId(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const weekNum = getISOWeek(now);
+function getCurrentWeekId(timeZone?: string): string {
+    const todayKey = getTodayDate(timeZone);
+    const today = parseAnalyticsDateKey(todayKey);
+    const year = today.getUTCFullYear();
+    const weekNum = getAnalyticsISOWeek(todayKey);
     return `${year}-W${weekNum.toString().padStart(2, '0')}`;
 }
 
-function getLastWeekId(): string {
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    const year = lastWeek.getFullYear();
-    const weekNum = getISOWeek(lastWeek);
+function getLastWeekId(timeZone?: string): string {
+    const lastWeekKey = addDaysToAnalyticsDateKey(getTodayDate(timeZone), -7);
+    const lastWeek = parseAnalyticsDateKey(lastWeekKey);
+    const year = lastWeek.getUTCFullYear();
+    const weekNum = getAnalyticsISOWeek(lastWeekKey);
     return `${year}-W${weekNum.toString().padStart(2, '0')}`;
 }
 
-function getCurrentMonthId(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+function getCurrentMonthId(timeZone?: string): string {
+    const todayKey = getTodayDate(timeZone);
+    return todayKey.slice(0, 7);
 }
 
-function getLastMonthId(): string {
-    const now = new Date();
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return `${lastMonth.getFullYear()}-${(lastMonth.getMonth() + 1).toString().padStart(2, '0')}`;
+function getLastMonthId(timeZone?: string): string {
+    const today = parseAnalyticsDateKey(getTodayDate(timeZone));
+    const lastMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+    const year = lastMonth.getUTCFullYear();
+    const month = String(lastMonth.getUTCMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
 }
 
 function getDateRange(startDate: Date, endDate: Date): string[] {
-    const dates: string[] = [];
-    const current = new Date(startDate);
-    while (current <= endDate) {
-        dates.push(current.toISOString().split('T')[0]);
-        current.setDate(current.getDate() + 1);
-    }
-    return dates;
+    return getAnalyticsDateRange(
+        getAnalyticsDateKey(startDate),
+        getAnalyticsDateKey(endDate),
+    );
 }
 
-function getLast7Days(): string[] {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return getDateRange(sevenDaysAgo, yesterday);
+function getLast7Days(timeZone?: string): string[] {
+    const yesterdayKey = getYesterdayDate(timeZone);
+    const sevenDaysAgoKey = addDaysToAnalyticsDateKey(getTodayDate(timeZone), -7);
+    return getAnalyticsDateRange(sevenDaysAgoKey, yesterdayKey);
 }
 
-function getMonthToDateDates(): string[] {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const firstOfMonth = new Date(yesterday.getFullYear(), yesterday.getMonth(), 1);
-    return getDateRange(firstOfMonth, yesterday);
+function getMonthToDateDates(timeZone?: string): string[] {
+    const yesterdayKey = getYesterdayDate(timeZone);
+    const firstOfMonthKey = `${yesterdayKey.slice(0, 7)}-01`;
+    return getAnalyticsDateRange(firstOfMonthKey, yesterdayKey);
 }
 
 function getWeekStartEnd(date: Date): { start: Date; end: Date } {
     const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
-    const start = new Date(d.setDate(diff));
+    const day = d.getUTCDay();
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1); // Monday start
+    const start = new Date(d);
+    start.setUTCDate(diff);
     const end = new Date(start);
-    end.setDate(start.getDate() + 6);
+    end.setUTCDate(start.getUTCDate() + 6);
     return { start, end };
 }
 
 function formatWeekLabel(start: Date, end: Date): string {
-    const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
-    const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
-    const startDay = start.getDate();
-    const endDay = end.getDate();
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const startMonth = monthLabels[start.getUTCMonth()];
+    const endMonth = monthLabels[end.getUTCMonth()];
+    const startDay = start.getUTCDate();
+    const endDay = end.getUTCDate();
 
     if (startMonth === endMonth) {
         return `${startMonth} ${startDay}-${endDay}`;
@@ -150,16 +158,22 @@ function formatWeekLabel(start: Date, end: Date): string {
     return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
 }
 
-function getLast4WeeksRanges(): Array<{ start: Date; end: Date; weekId: string }> {
+function formatMonthLabel(dateKey: string): string {
+    const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const date = parseAnalyticsDateKey(dateKey);
+    return `${monthLabels[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
+function getLast4WeeksRanges(timeZone?: string): Array<{ start: Date; end: Date; weekId: string }> {
     const weeks: Array<{ start: Date; end: Date; weekId: string }> = [];
-    const now = new Date();
+    const now = parseAnalyticsDateKey(getTodayDate(timeZone));
 
     for (let i = 0; i < 4; i++) {
         const targetDate = new Date(now);
-        targetDate.setDate(targetDate.getDate() - (i * 7));
+        targetDate.setUTCDate(targetDate.getUTCDate() - (i * 7));
         const { start, end } = getWeekStartEnd(targetDate);
-        const year = start.getFullYear();
-        const weekNum = getISOWeek(start);
+        const year = start.getUTCFullYear();
+        const weekNum = getAnalyticsISOWeek(getAnalyticsDateKey(start));
         weeks.push({
             start,
             end,
@@ -167,15 +181,7 @@ function getLast4WeeksRanges(): Array<{ start: Date; end: Date; weekId: string }
         });
     }
 
-    return weeks.reverse(); // Oldest first
-}
-
-function getISOWeek(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return weeks.reverse();
 }
 
 // ================================================================
@@ -473,6 +479,76 @@ function buildDailyViewData(
     } as DailyViewData;
 }
 
+function parseDateValue(value: any): Date | undefined {
+    if (!value) return undefined;
+    if (value instanceof Date) return value;
+    if (typeof value?.toDate === 'function') return value.toDate();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function normalizeDailyViewData(data: any): DailyViewData | null {
+    if (!data) return null;
+    return {
+        ...data,
+        lastUpdated: parseDateValue(data.lastUpdated),
+        aiSummary: data.aiSummary ? {
+            ...data.aiSummary,
+            generatedAt: parseDateValue(data.aiSummary.generatedAt) || new Date(),
+        } : undefined,
+    } as DailyViewData;
+}
+
+function normalizeOverviewData(data: any): OverviewData | null {
+    if (!data) return null;
+    return {
+        ...data,
+        yesterday: normalizeDailyViewData(data.yesterday),
+        aiSummary: data.aiSummary ? {
+            ...data.aiSummary,
+            generatedAt: parseDateValue(data.aiSummary.generatedAt) || new Date(),
+        } : undefined,
+    } as OverviewData;
+}
+
+function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboardData {
+    const overview = normalizeOverviewData(data.overview);
+    const daily = normalizeDailyViewData(data.daily || data.overview?.yesterday);
+
+    return {
+        overview,
+        today: null,
+        daily,
+        weekly: data.weekly || null,
+        monthly: data.monthly || null,
+        wtd: data.wtd || overview?.wtd || null,
+        mtd: data.mtd || overview?.mtd || null,
+        historicalWeeks: data.historicalWeeks || overview?.historicalWeeks || [],
+        overall: data.overall ? {
+            ...data.overall,
+            lastUpdated: parseDateValue(data.overall.lastUpdated),
+        } as OverallData : null,
+        projectId,
+        lastFetched: new Date(),
+    };
+}
+
+function emptyOwnerDashboardData(projectId: string): OwnerDashboardData {
+    return {
+        overview: null,
+        today: null,
+        daily: null,
+        weekly: null,
+        monthly: null,
+        wtd: null,
+        mtd: null,
+        historicalWeeks: [],
+        overall: null,
+        projectId,
+        lastFetched: new Date(),
+    };
+}
+
 // ================================================================
 // FETCH DAILY DATA
 // ================================================================
@@ -480,11 +556,12 @@ function buildDailyViewData(
 export async function getOwnerDashboardToday(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<DailyViewData | null> {
     return await apiCallComposer(
         async () => {
-            const todayDate = getTodayDate();
+            const todayDate = getTodayDate(timeZone);
             const docId = getDocId.daily(tId, sId, projectId, todayDate);
             const docRef = doc(firebaseClient, COLLECTION, docId);
             const docSnap = await getDoc(docRef);
@@ -505,11 +582,12 @@ export async function getOwnerDashboardToday(
 export async function getOwnerDashboardDaily(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<DailyViewData | null> {
     return await apiCallComposer(
         async () => {
-            const yesterdayDate = getYesterdayDate();
+            const yesterdayDate = getYesterdayDate(timeZone);
             const docId = getDocId.daily(tId, sId, projectId, yesterdayDate);
             const docRef = doc(firebaseClient, COLLECTION, docId);
             const docSnap = await getDoc(docRef);
@@ -534,7 +612,8 @@ export async function getOwnerDashboardDaily(
 export async function getOwnerDashboardWeekly(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<WeeklyViewData | null> {
     return await apiCallComposer(
         async () => {
@@ -547,8 +626,8 @@ export async function getOwnerDashboardWeekly(
             }
 
             const summaryData = summarySnap.data();
-            const currentWeekDocId = getDocId.weekly(tId, sId, projectId, getCurrentWeekId());
-            const lastWeekDocId = getDocId.weekly(tId, sId, projectId, getLastWeekId());
+            const currentWeekDocId = getDocId.weekly(tId, sId, projectId, getCurrentWeekId(timeZone));
+            const lastWeekDocId = getDocId.weekly(tId, sId, projectId, getLastWeekId(timeZone));
             const currentWeekSnap = await getDoc(doc(firebaseClient, COLLECTION, currentWeekDocId));
             const lastWeekSnap = currentWeekSnap.exists()
                 ? currentWeekSnap
@@ -604,12 +683,13 @@ export async function getOwnerDashboardWeekly(
 export async function getOwnerDashboardMonthly(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<MonthlyViewData | null> {
     return await apiCallComposer(
         async () => {
             // Try last month first (since current month is incomplete)
-            const lastMonthId = getLastMonthId();
+            const lastMonthId = getLastMonthId(timeZone);
             const docId = getDocId.monthly(tId, sId, projectId, lastMonthId);
             const docRef = doc(firebaseClient, COLLECTION, docId);
             const docSnap = await getDoc(docRef);
@@ -658,11 +738,12 @@ export async function getOwnerDashboardMonthly(
 export async function getOwnerDashboardWTD(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<WTDViewData | null> {
     return await apiCallComposer(
         async () => {
-            const dates = getLast7Days();
+            const dates = getLast7Days(timeZone);
             const docs = await fetchDailyDocs(tId, sId, projectId, dates);
 
             if (docs.length === 0) {
@@ -694,11 +775,12 @@ export async function getOwnerDashboardWTD(
 export async function getOwnerDashboardMTD(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<MTDViewData | null> {
     return await apiCallComposer(
         async () => {
-            const dates = getMonthToDateDates();
+            const dates = getMonthToDateDates(timeZone);
 
             if (dates.length === 0) {
                 return null;
@@ -713,18 +795,15 @@ export async function getOwnerDashboardMTD(
             const { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems } = aggregateDailyDocs(docs);
 
             // Get month name
-            const firstDate = new Date(dates[0]);
-            const monthName = firstDate.toLocaleDateString('en-US', {
-                month: 'long',
-                year: 'numeric'
-            });
+            const firstDate = parseAnalyticsDateKey(dates[0]);
+            const monthName = formatMonthLabel(dates[0]);
 
             // Get days in month
-            const daysInMonth = new Date(
-                firstDate.getFullYear(),
-                firstDate.getMonth() + 1,
+            const daysInMonth = new Date(Date.UTC(
+                firstDate.getUTCFullYear(),
+                firstDate.getUTCMonth() + 1,
                 0
-            ).getDate();
+            )).getUTCDate();
 
             return {
                 monthName,
@@ -754,12 +833,13 @@ export async function getOwnerDashboardMTD(
 export async function getOwnerDashboardHistoricalWeeks(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<HistoricalWeek[]> {
     return await apiCallComposer(
         async () => {
-            const weekRanges = getLast4WeeksRanges();
-            const currentWeekId = getCurrentWeekId();
+            const weekRanges = getLast4WeeksRanges(timeZone);
+            const currentWeekId = getCurrentWeekId(timeZone);
 
             // Fetch all weeks in parallel for better performance
             const weekPromises = weekRanges.map(async (week) => {
@@ -769,8 +849,8 @@ export async function getOwnerDashboardHistoricalWeeks(
                 if (docs.length > 0) {
                     const { metrics } = aggregateDailyDocs(docs);
                     return {
-                        weekStart: week.start.toISOString().split('T')[0],
-                        weekEnd: week.end.toISOString().split('T')[0],
+                        weekStart: formatAnalyticsDateKey(week.start),
+                        weekEnd: formatAnalyticsDateKey(week.end),
                         weekLabel: formatWeekLabel(week.start, week.end),
                         metrics,
                         isCurrentWeek: week.weekId === currentWeekId,
@@ -804,16 +884,17 @@ export async function getOwnerDashboardHistoricalWeeks(
 export async function getOwnerDashboardOverview(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<OverviewData | null> {
     return await apiCallComposer(
         async () => {
             // Step 1: Calculate all date ranges
-            const yesterdayDate = getYesterdayDate();
-            const wtdDates = getLast7Days();
-            const mtdDates = getMonthToDateDates();
-            const weekRanges = getLast4WeeksRanges();
-            const currentWeekId = getCurrentWeekId();
+            const yesterdayDate = getYesterdayDate(timeZone);
+            const wtdDates = getLast7Days(timeZone);
+            const mtdDates = getMonthToDateDates(timeZone);
+            const weekRanges = getLast4WeeksRanges(timeZone);
+            const currentWeekId = getCurrentWeekId(timeZone);
 
             // Step 2: Collect ALL unique dates needed
             const allDatesSet = new Set<string>();
@@ -867,16 +948,13 @@ export async function getOwnerDashboardOverview(
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
                 const { metrics, blockPerformance, topItems, menuActions, topSearchTerms, unavailableItems } = aggregateDailyDocs(mtdDocs);
-                const firstDate = new Date(mtdDates[0]);
-                const monthName = firstDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric'
-                });
-                const daysInMonth = new Date(
-                    firstDate.getFullYear(),
-                    firstDate.getMonth() + 1,
+                const firstDate = parseAnalyticsDateKey(mtdDates[0]);
+                const monthName = formatMonthLabel(mtdDates[0]);
+                const daysInMonth = new Date(Date.UTC(
+                    firstDate.getUTCFullYear(),
+                    firstDate.getUTCMonth() + 1,
                     0
-                ).getDate();
+                )).getUTCDate();
 
                 mtd = {
                     monthName,
@@ -915,8 +993,8 @@ export async function getOwnerDashboardOverview(
                 if (weekDocs.length > 0) {
                     const { metrics } = aggregateDailyDocs(weekDocs);
                     historicalWeeks.push({
-                        weekStart: week.start.toISOString().split('T')[0],
-                        weekEnd: week.end.toISOString().split('T')[0],
+                        weekStart: formatAnalyticsDateKey(week.start),
+                        weekEnd: formatAnalyticsDateKey(week.end),
                         weekLabel: formatWeekLabel(week.start, week.end),
                         metrics,
                         isCurrentWeek: week.weekId === currentWeekId,
@@ -925,7 +1003,7 @@ export async function getOwnerDashboardOverview(
             }
 
             // Step 8: Fetch summary doc for AI summary (1 extra read)
-            const weekly = await getOwnerDashboardWeekly(tId, sId, projectId);
+            const weekly = await getOwnerDashboardWeekly(tId, sId, projectId, timeZone);
 
             // Step 9: Determine status
             let status: 'working' | 'low_activity' | 'no_data' = 'no_data';
@@ -965,7 +1043,8 @@ export async function getOwnerDashboardOverview(
 export async function getOwnerDashboardOverall(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<OverallData | null> {
     return await apiCallComposer(
         async () => {
@@ -1001,20 +1080,47 @@ export async function getOwnerDashboardOverall(
 }
 
 // ================================================================
-// FETCH ALL DASHBOARD DATA
+// FETCH SETTLED DASHBOARD READ MODEL
+// ================================================================
+
+export async function getOwnerDashboardSettled(
+    tId: string,
+    sId: string,
+    projectId: string,
+    timeZone?: string,
+): Promise<OwnerDashboardData> {
+    return await apiCallComposer(
+        async () => {
+            const summaryDocId = getDocId.dashboardSummary(tId, sId, projectId);
+            const summaryRef = doc(firebaseClient, COLLECTION, summaryDocId);
+            const summarySnap = await getDoc(summaryRef);
+
+            if (summarySnap.exists()) {
+                return normalizeOwnerDashboardData(summarySnap.data(), projectId);
+            }
+
+            return emptyOwnerDashboardData(projectId);
+        },
+        "getOwnerDashboardSettled"
+    );
+}
+
+// ================================================================
+// FETCH ALL DASHBOARD DATA (legacy fallback when read model is missing)
 // ================================================================
 
 export async function getOwnerDashboardData(
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<OwnerDashboardData> {
     return await apiCallComposer(
         async () => {
             // Fetch overview (includes wtd, mtd, yesterday, historical weeks) and overall in parallel
             const [overview, overall] = await Promise.all([
-                getOwnerDashboardOverview(tId, sId, projectId),
-                getOwnerDashboardOverall(tId, sId, projectId),
+                getOwnerDashboardOverview(tId, sId, projectId, timeZone),
+                getOwnerDashboardOverall(tId, sId, projectId, timeZone),
             ]);
 
             return {
@@ -1042,6 +1148,45 @@ export async function getOwnerDashboardData(
             };
         },
         "getOwnerDashboardData"
+    );
+}
+
+// ================================================================
+// CUSTOMER APP DASHBOARD READ MODEL
+// ================================================================
+
+export interface CustomerAppDashboardSummary {
+    summary: Record<string, any> | null;
+    daily30d: Array<Record<string, any>>;
+    generatedForLocalDate?: string;
+    lastSettledLocalDate?: string;
+    lastFetched: Date;
+}
+
+export async function getCustomerAppDashboardSummary(
+    tId: string,
+    sId: string,
+): Promise<CustomerAppDashboardSummary | null> {
+    return await apiCallComposer(
+        async () => {
+            const summaryDocId = getDocId.dashboardSummary(tId, sId, 'customerApp');
+            const summaryRef = doc(firebaseClient, COLLECTION, summaryDocId);
+            const summarySnap = await getDoc(summaryRef);
+
+            if (!summarySnap.exists()) {
+                return null;
+            }
+
+            const data = summarySnap.data();
+            return {
+                summary: data.summary || null,
+                daily30d: Array.isArray(data.daily30d) ? data.daily30d : [],
+                generatedForLocalDate: data.generatedForLocalDate,
+                lastSettledLocalDate: data.lastSettledLocalDate,
+                lastFetched: new Date(),
+            };
+        },
+        "getCustomerAppDashboardSummary"
     );
 }
 
@@ -1277,15 +1422,16 @@ const OBP_LOW_ACTIVITY_THRESHOLD = 3; // views per week
 export async function getOBPDashboardOverview(
     tId: string,
     sId: string,
+    timeZone?: string,
 ): Promise<OBPOverviewData | null> {
     return await apiCallComposer(
         async () => {
             // Step 1: Calculate all date ranges (same strategy as menu overview)
-            const yesterdayDate = getYesterdayDate();
-            const wtdDates = getLast7Days();
-            const mtdDates = getMonthToDateDates();
-            const weekRanges = getLast4WeeksRanges();
-            const currentWeekId = getCurrentWeekId();
+            const yesterdayDate = getYesterdayDate(timeZone);
+            const wtdDates = getLast7Days(timeZone);
+            const mtdDates = getMonthToDateDates(timeZone);
+            const weekRanges = getLast4WeeksRanges(timeZone);
+            const currentWeekId = getCurrentWeekId(timeZone);
 
             // Step 2: Collect all unique dates
             const allDatesSet = new Set<string>();
@@ -1329,11 +1475,7 @@ export async function getOBPDashboardOverview(
                 .filter((d): d is OBPDailyDoc => d !== undefined);
             let mtd: (OBPPeriodMetrics & { monthName: string }) | null = null;
             if (mtdDocs.length > 0) {
-                const firstDate = new Date(mtdDates[0]);
-                const monthName = firstDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric',
-                });
+                const monthName = formatMonthLabel(mtdDates[0]);
                 mtd = { ...aggregateOBPDocs(mtdDocs), monthName };
             }
 
@@ -1348,8 +1490,8 @@ export async function getOBPDashboardOverview(
                 if (weekDocs.length > 0) {
                     const agg = aggregateOBPDocs(weekDocs);
                     historicalWeeks.push({
-                        weekStart: week.start.toISOString().split('T')[0],
-                        weekEnd: week.end.toISOString().split('T')[0],
+                        weekStart: formatAnalyticsDateKey(week.start),
+                        weekEnd: formatAnalyticsDateKey(week.end),
                         weekLabel: formatWeekLabel(week.start, week.end),
                         views: agg.views,
                         actionClicks: agg.actionClicks,
@@ -1405,10 +1547,11 @@ export async function getOBPDashboardOverview(
 export async function getOBPDashboardToday(
     tId: string,
     sId: string,
+    timeZone?: string,
 ): Promise<OBPTodayData | null> {
     return await apiCallComposer(
         async () => {
-            const todayDate = getTodayDate();
+            const todayDate = getTodayDate(timeZone);
             const docId = getDocId.daily(tId, sId, OBP_PROJECT_ID, todayDate);
             const docRef = doc(firebaseClient, COLLECTION, docId);
             const docSnap = await getDoc(docRef);
@@ -1428,6 +1571,7 @@ export async function getOBPDashboardToday(
 export async function getOBPDashboardOverall(
     tId: string,
     sId: string,
+    timeZone?: string,
 ): Promise<OBPOverallData | null> {
     return await apiCallComposer(
         async () => {
@@ -1479,17 +1623,29 @@ export async function getOBPDashboardOverall(
 export async function getOBPDashboardData(
     tId: string,
     sId: string,
+    timeZone?: string,
 ): Promise<OBPDashboardData> {
     return await apiCallComposer(
         async () => {
-            const [overview, overall] = await Promise.all([
-                getOBPDashboardOverview(tId, sId),
-                getOBPDashboardOverall(tId, sId),
-            ]);
+            const summaryDocId = getDocId.dashboardSummary(tId, sId, OBP_PROJECT_ID);
+            const summaryRef = doc(firebaseClient, COLLECTION, summaryDocId);
+            const summarySnap = await getDoc(summaryRef);
+
+            if (summarySnap.exists()) {
+                const data = summarySnap.data();
+                return {
+                    overview: data.overview || null,
+                    overall: data.overall ? {
+                        ...data.overall,
+                        lastUpdated: parseDateValue(data.overall.lastUpdated),
+                    } : null,
+                    lastFetched: new Date(),
+                };
+            }
 
             return {
-                overview,
-                overall,
+                overview: null,
+                overall: null,
                 lastFetched: new Date(),
             };
         },

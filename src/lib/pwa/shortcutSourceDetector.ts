@@ -51,6 +51,7 @@ export function parseShortcutSource(search: string): ShortcutSource | null {
 
 export interface ShortcutDetectorOptions {
   tenantId?: string | number;
+  storeTimeZone?: string;
   /** Owner opt-out flag; explicit `false` suppresses all events. */
   trackingEnabled?: boolean;
   includeLocation?: boolean;
@@ -70,7 +71,7 @@ export async function detectAndTrackShortcutLaunch(
   if (typeof window === 'undefined') return null;
   if (!detectInstalled()) return null;
 
-  const { tenantId, includeLocation = true } = options;
+  const { tenantId, storeTimeZone, includeLocation = true } = options;
 
   const source = parseShortcutSource(window.location.search);
   if (!source) return null;
@@ -80,6 +81,7 @@ export async function detectAndTrackShortcutLaunch(
       storeId: String(storeId),
       tenantId,
       sessionId: getSessionId(),
+      storeTimeZone,
       includeLocation,
     });
     return source;

@@ -14,6 +14,7 @@ import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunConte
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
 import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './intelligence/shared/scoreNormalizer';
+import { addDaysToAnalyticsDateKey, getAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 
 /**
  * UNIFIED NIGHTLY SCHEDULER (Timezone-Aware)
@@ -75,6 +76,10 @@ const CANDIDATES_PER_BLOCK = 3;
 
 // TTL for decision blocks (48 hours - gives buffer if scheduler fails one night)
 const DECISION_BLOCKS_TTL_HOURS = 48;
+const NIGHTLY_STATE_PREFIX = 'nightlyState';
+const NIGHTLY_LOCK_PREFIX = 'nightlyLock';
+const NIGHTLY_LOCK_LEASE_MS = 8 * 60 * 1000;
+const MAX_CATCH_UP_DAYS_PER_RUN = 7;
 
 interface DecisionBlocksDocument {
     tId: string;
@@ -99,6 +104,202 @@ interface DecisionBlocksDocument {
         priceCoverage: number;     // 0-1, itemsWithPrice / totalItems
         daysWithData: number;      // Analytics days available (max 7)
     };
+}
+
+interface ActiveProjectEntry {
+    projectId: string;
+    data: FirebaseFirestore.DocumentData;
+}
+
+function parseSummaryProjects(data: any): Record<string, any> {
+    if (!data || typeof data !== 'object') return {};
+
+    const result: Record<string, any> = {};
+    if (data.projects && typeof data.projects === 'object' && !Array.isArray(data.projects)) {
+        Object.assign(result, data.projects);
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+        if (!key.startsWith('projects.')) continue;
+        const rest = key.slice('projects.'.length);
+        const [projectId, ...fieldPath] = rest.split('.');
+        if (!projectId) continue;
+
+        if (!result[projectId]) result[projectId] = {};
+        if (fieldPath.length === 0) {
+            if (value && typeof value === 'object') {
+                result[projectId] = { ...result[projectId], ...(value as Record<string, any>) };
+            }
+            continue;
+        }
+
+        let target = result[projectId] as Record<string, any>;
+        for (let i = 0; i < fieldPath.length - 1; i++) {
+            const segment = fieldPath[i];
+            if (!target[segment] || typeof target[segment] !== 'object') {
+                target[segment] = {};
+            }
+            target = target[segment];
+        }
+        target[fieldPath[fieldPath.length - 1]] = value;
+    }
+
+    return result;
+}
+
+async function loadActiveProjectsForScheduler(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+): Promise<{ projectEntries: ActiveProjectEntry[]; activeProjectIds: string[]; source: 'summary' | 'query' }> {
+    const summarySnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${sId}`).get();
+    const summaryProjects = summarySnap.exists ? parseSummaryProjects(summarySnap.data()) : {};
+    const activeProjectIds = Object.entries(summaryProjects)
+        .filter(([, project]) => {
+            const projectData = project as Record<string, any>;
+            return projectData?.active !== false && projectData?.deleted !== true;
+        })
+        .map(([projectId]) => projectId);
+
+    if (activeProjectIds.length > 0) {
+        const refs = activeProjectIds.map((projectId) => db.collection(DB_COLLECTIONS.PROJECTS).doc(projectId));
+        const projectSnaps = await db.getAll(...refs);
+        const projectEntries = projectSnaps
+            .filter((snap) => snap.exists)
+            .map((snap) => {
+                const data = snap.data() || {};
+                return {
+                    projectId: String(data.projectId || snap.id),
+                    data,
+                };
+            })
+            .filter(({ data }) => data.deleted !== true && data.active !== false);
+
+        return { projectEntries, activeProjectIds, source: 'summary' };
+    }
+
+    const projectsQuery = await db.collection(DB_COLLECTIONS.PROJECTS)
+        .where('tId', '==', parseInt(tId))
+        .where('sId', '==', parseInt(sId))
+        .get();
+
+    const projectEntries = projectsQuery.docs
+        .map((doc) => {
+            const data = doc.data();
+            return {
+                projectId: String(data.projectId || doc.id),
+                data,
+            };
+        })
+        .filter(({ data }) => data.deleted !== true && data.active !== false);
+
+    return {
+        projectEntries,
+        activeProjectIds: projectEntries.map((entry) => entry.projectId),
+        source: 'query',
+    };
+}
+
+function getNightlyStateRef(db: FirebaseFirestore.Firestore, tId: string, sId: string) {
+    return db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`${NIGHTLY_STATE_PREFIX}_${tId}_${sId}`);
+}
+
+function getNightlyLockRef(db: FirebaseFirestore.Firestore, tId: string, sId: string, settlementDate: string) {
+    return db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`${NIGHTLY_LOCK_PREFIX}_${tId}_${sId}_${settlementDate}`);
+}
+
+async function getPendingSettlementDates(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    now: Date,
+    timeZone?: string,
+): Promise<string[]> {
+    const targetDate = addDaysToAnalyticsDateKey(getAnalyticsDateKey(now, timeZone), -1);
+    const stateSnap = await getNightlyStateRef(db, tId, sId).get();
+    const lastSettledLocalDate = stateSnap.exists
+        ? String(stateSnap.data()?.lastSettledLocalDate || '')
+        : '';
+    const firstDate = lastSettledLocalDate
+        ? addDaysToAnalyticsDateKey(lastSettledLocalDate, 1)
+        : targetDate;
+
+    if (firstDate > targetDate) return [];
+    return getAnalyticsDateRange(firstDate, targetDate).slice(0, MAX_CATCH_UP_DAYS_PER_RUN);
+}
+
+async function updateNightlyState(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    settlementDate: string,
+    status: 'running' | 'completed' | 'failed' | 'skipped',
+    phase: string,
+    error?: string,
+    extra?: Record<string, any>,
+): Promise<void> {
+    const payload: Record<string, any> = {
+        status,
+        phase,
+        lastAttemptedLocalDate: settlementDate,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(extra || {}),
+    };
+
+    if (status === 'completed') {
+        payload.lastSettledLocalDate = settlementDate;
+        payload.lastCompletedAt = FieldValue.serverTimestamp();
+        payload.error = FieldValue.delete();
+    } else if (error) {
+        payload.error = error;
+    }
+
+    await getNightlyStateRef(db, tId, sId).set(payload, { merge: true });
+}
+
+async function acquireNightlyDateLock(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    settlementDate: string,
+): Promise<FirebaseFirestore.DocumentReference | null> {
+    const lockRef = getNightlyLockRef(db, tId, sId, settlementDate);
+    const nowMs = Date.now();
+
+    return await db.runTransaction(async (transaction) => {
+        const lockSnap = await transaction.get(lockRef);
+        if (lockSnap.exists) {
+            const data = lockSnap.data() || {};
+            const leaseExpiresAtMs = data.leaseExpiresAt?.toMillis?.() || 0;
+            if (data.status === 'completed') return null;
+            if (data.status === 'running' && leaseExpiresAtMs > nowMs) return null;
+        }
+
+        transaction.set(lockRef, {
+            tId,
+            sId,
+            settlementDate,
+            status: 'running',
+            attempts: FieldValue.increment(1),
+            leaseExpiresAt: Timestamp.fromMillis(nowMs + NIGHTLY_LOCK_LEASE_MS),
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        return lockRef;
+    });
+}
+
+async function completeNightlyDateLock(
+    lockRef: FirebaseFirestore.DocumentReference,
+    status: 'completed' | 'failed',
+    error?: string,
+): Promise<void> {
+    await lockRef.set({
+        status,
+        error: error || FieldValue.delete(),
+        leaseExpiresAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
 }
 
 // Scoring weights, duration thresholds, and normalize() imported from
@@ -263,7 +464,8 @@ async function computeForProject(
     projectId: string,
     projectData: FirebaseFirestore.DocumentData,
     businessCategory: string = 'specialty',
-    prefetchedAnalytics?: AggregatedAnalytics  // OPTIMIZATION: Reuse analytics if already fetched
+    prefetchedAnalytics?: AggregatedAnalytics,  // OPTIMIZATION: Reuse analytics if already fetched
+    timeZone?: string,
 ): Promise<DecisionBlocksDocument | null> {
     const logger = functions.logger;
 
@@ -308,9 +510,7 @@ async function computeForProject(
         }
     } else {
         // Standalone mode (manual triggers): Query analytics directly
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const dateStr = sevenDaysAgo.toISOString().split('T')[0];
+        const dateStr = addDaysToAnalyticsDateKey(getAnalyticsDateKey(new Date(), timeZone), -7);
 
         const analyticsQuery = await db.collection(DB_COLLECTIONS.ANALYTICS)
             .where('__name__', '>=', `${tId}_${sId}_${projectId}_daily_${dateStr}`)
@@ -616,6 +816,19 @@ export const computeDecisionBlocksScores = onSchedule({
 
         logger.info(`Processing ${storeIds.length} of ${allStoreIds.length} stores (currentUTCHour=${currentUTCHour}, targetLocalHour=${TARGET_LOCAL_HOUR})`);
 
+        const analyticsTaskStart = Date.now();
+        const analyticsRunAt = new Date(analyticsTaskStart);
+        const analyticsResults = {
+            storesAttempted: 0,
+            storesSucceeded: 0,
+            storesFailed: 0,
+            menuProjects: 0,
+            menuErrors: 0,
+            obpStoresWithData: 0,
+        };
+        const { aggregateCustomerAnalyticsForStoreDate } = await import('./aggregateCustomerAnalytics');
+        const { aggregateOBPAnalyticsForStoreDate } = await import('./analytics/obpAnalyticsAggregation');
+
         // Infrastructure Compounding 10.3: Collect enrichment data during loop,
         // write once at end (replaces per-store writes — saves N-1 writes)
         const storeEnrichment: Record<string, { lastPublishedAt: any; projectCount: number }> = {};
@@ -642,37 +855,98 @@ export const computeDecisionBlocksScores = onSchedule({
             try {
                 logger.info(`Processing store ${sId} (tenant ${tId})...`);
 
-                // Fetch ALL active projects for this store
-                // Note: Projects use tId/sId field names, not tenantId/storeId
-                const projectsQuery = await db.collection(DB_COLLECTIONS.PROJECTS)
-                    .where('tId', '==', parseInt(tId))
-                    .where('sId', '==', parseInt(sId))
-                    .get();
+                const { projectEntries, activeProjectIds, source } = await loadActiveProjectsForScheduler(db, tId, sId);
 
-                if (projectsQuery.empty) {
-                    logger.info(`  - Store ${sId}: No projects found`);
+                if (projectEntries.length === 0) {
+                    logger.info(`  - Store ${sId}: No active projects found (${source}); analytics settlement still runs`);
                     results.skippedCount++;
-                    continue;
+                } else {
+                    logger.info(`  Found ${projectEntries.length} active projects for store ${sId} (${source})`);
                 }
 
-                logger.info(`  Found ${projectsQuery.size} projects for store ${sId}`);
-                results.totalProjects += projectsQuery.size;
+                results.totalProjects += projectEntries.length;
 
-                // Process EACH project
-                for (const projectDoc of projectsQuery.docs) {
-                    const projectData = projectDoc.data();
-                    const projectId = projectData.projectId || projectDoc.id;
+                analyticsResults.storesAttempted++;
+                try {
+                    const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, storeInfo.timeZone);
+                    const knownAnalyticsProjectIds = Array.from(new Set([...activeProjectIds, 'customerApp']));
 
-                    // Skip inactive or deleted projects
-                    if (projectData.deleted === true || projectData.active === false) {
-                        logger.info(`    - Project ${projectId}: Inactive/deleted, skipping`);
-                        continue;
+                    if (settlementDates.length === 0) {
+                        logger.info(`  - Store ${sId}: Analytics already settled`);
                     }
 
+                    for (const settlementDate of settlementDates) {
+                        const lockRef = await acquireNightlyDateLock(db, tId, sId, settlementDate);
+                        if (!lockRef) {
+                            logger.info(`  - Store ${sId}: Settlement ${settlementDate} already locked or completed`);
+                            continue;
+                        }
+
+                        try {
+                            await updateNightlyState(db, tId, sId, settlementDate, 'running', 'obp_analytics');
+                            const obpHadData = FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS
+                                ? await aggregateOBPAnalyticsForStoreDate(db, tId, sId, settlementDate)
+                                : false;
+
+                            await updateNightlyState(db, tId, sId, settlementDate, 'running', 'customer_analytics');
+                            const customerAggregation = await aggregateCustomerAnalyticsForStoreDate(
+                                db,
+                                tId,
+                                sId,
+                                settlementDate,
+                                knownAnalyticsProjectIds,
+                            );
+
+                            analyticsResults.menuProjects += customerAggregation.totalProjects;
+                            analyticsResults.menuErrors += customerAggregation.errors.length;
+                            if (obpHadData) analyticsResults.obpStoresWithData++;
+
+                            if (customerAggregation.errors.length > 0) {
+                                logger.error(`  ✗ Store ${sId} analytics (${settlementDate}): ${customerAggregation.errors.length} project aggregation errors`);
+                                throw new Error(`Customer analytics aggregation had ${customerAggregation.errors.length} project errors`);
+                            }
+
+                            await updateNightlyState(db, tId, sId, settlementDate, 'completed', 'completed', undefined, {
+                                analyticsIndex: {
+                                    activeProjectIds,
+                                    customerAnalyticsProjectIds: knownAnalyticsProjectIds,
+                                    menuProjectCount: activeProjectIds.length,
+                                    surfaces: {
+                                        menu: activeProjectIds.length > 0,
+                                        obp: FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS,
+                                        customerApp: true,
+                                    },
+                                    summaryDocIds: [
+                                        ...activeProjectIds.map((projectId) => `${tId}_${sId}_${projectId}_dashboard_summary`),
+                                        `${tId}_${sId}_customerApp_dashboard_summary`,
+                                        ...(FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS ? [`${tId}_${sId}_obp_dashboard_summary`] : []),
+                                    ],
+                                    lastSettledLocalDate: settlementDate,
+                                },
+                            });
+                            await completeNightlyDateLock(lockRef, 'completed');
+                        } catch (settlementError: any) {
+                            const message = settlementError?.message || String(settlementError);
+                            await updateNightlyState(db, tId, sId, settlementDate, 'failed', 'failed', message);
+                            await completeNightlyDateLock(lockRef, 'failed', message);
+                            throw settlementError;
+                        }
+                    }
+
+                    analyticsResults.storesSucceeded++;
+                } catch (analyticsError: any) {
+                    analyticsResults.storesFailed++;
+                    throw new Error(`Nightly analytics failed: ${analyticsError.message}`);
+                }
+
+                // Process EACH project
+                for (const { projectId, data: projectData } of projectEntries) {
                     try {
-                        // OPTIMIZATION: Fetch analytics ONCE, reuse for both DI + CMI
-                        // Eliminates duplicate Firestore reads (~7 reads saved per project per night)
-                        const analytics = await fetch7DayAnalytics(db, tId, sId, projectId);
+                        // OPTIMIZATION: Fetch the scheduler-written 7-day
+                        // intelligence snapshot once, reuse for both DI + CMI.
+                        // Falls back to daily docs only when the snapshot is
+                        // missing, e.g. first deploy/backfill edge cases.
+                        const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone);
 
                         const blocks = await computeForProject(
                             db,
@@ -681,7 +955,8 @@ export const computeDecisionBlocksScores = onSchedule({
                             projectId,
                             projectData,
                             businessCategory,
-                            analytics
+                            analytics,
+                            storeInfo.timeZone,
                         );
 
                         if (blocks) {
@@ -736,12 +1011,8 @@ export const computeDecisionBlocksScores = onSchedule({
                 if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE) {
                     try {
                         let latestModifiedOn: any = null;
-                        let activeProjectCount = 0;
 
-                        for (const pDoc of projectsQuery.docs) {
-                            const pData = pDoc.data();
-                            if (pData.deleted === true || pData.active === false) continue;
-                            activeProjectCount++;
+                        for (const { data: pData } of projectEntries) {
                             const modOn = pData.modifiedOn || pData.updatedAt;
                             if (modOn && (!latestModifiedOn || modOn > latestModifiedOn)) {
                                 latestModifiedOn = modOn;
@@ -750,7 +1021,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
                         storeEnrichment[sId] = {
                             lastPublishedAt: latestModifiedOn || null,
-                            projectCount: activeProjectCount,
+                            projectCount: projectEntries.length,
                         };
                     } catch {
                         // Non-blocking — enrichment failure should never block scoring
@@ -798,6 +1069,19 @@ export const computeDecisionBlocksScores = onSchedule({
             name: 'menu_intelligence',
             status: results.intelligenceFailed > 0 ? (results.intelligenceSuccess > 0 ? 'success' : 'failed') : 'success',
             details: { success: results.intelligenceSuccess, failed: results.intelligenceFailed },
+        });
+        taskResults.push({
+            name: 'customer_obp_analytics',
+            status: analyticsResults.storesFailed > 0 ? (analyticsResults.storesSucceeded > 0 ? 'success' : 'failed') : 'success',
+            durationMs: Date.now() - analyticsTaskStart,
+            details: {
+                storesAttempted: analyticsResults.storesAttempted,
+                storesSucceeded: analyticsResults.storesSucceeded,
+                storesFailed: analyticsResults.storesFailed,
+                menuProjects: analyticsResults.menuProjects,
+                menuErrors: analyticsResults.menuErrors,
+                obpStoresWithData: analyticsResults.obpStoresWithData,
+            },
         });
 
         // Authority Maturation Analysis (Item 3: Expand Nightly Job Coverage)
@@ -876,26 +1160,6 @@ export const computeDecisionBlocksScores = onSchedule({
             }
         } else {
             taskResults.push({ name: 'subscription_reconciliation', status: 'skipped' });
-        }
-
-        // OBP Analytics Aggregation (Official Business Page)
-        // Aggregates OBP daily docs into weekly summary per store
-        // @see __docs__/official-business-page/official-business-page_firebase.md
-        if (FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS) {
-            try {
-                const taskStart = Date.now();
-                logger.info('=== Starting OBP Analytics Aggregation ===');
-                const { aggregateOBPAnalyticsForAllStores } = await import('./analytics/obpAnalyticsAggregation');
-                const obpResult = await aggregateOBPAnalyticsForAllStores();
-                logger.info(`OBP Analytics: ${obpResult.storesProcessed} stores checked, ${obpResult.storesWithData} with data, ${obpResult.errors} errors`);
-                taskResults.push({ name: 'obp_analytics', status: 'success', durationMs: Date.now() - taskStart, details: { storesProcessed: obpResult.storesProcessed, storesWithData: obpResult.storesWithData, errors: obpResult.errors } });
-            } catch (obpError: any) {
-                // Non-blocking - log but continue
-                logger.error('OBP Analytics aggregation failed:', obpError.message);
-                taskResults.push({ name: 'obp_analytics', status: 'failed', error: obpError.message });
-            }
-        } else {
-            taskResults.push({ name: 'obp_analytics', status: 'skipped' });
         }
 
         // Lifecycle Messaging — Renewal Reminders + Suspension Warnings
@@ -1432,7 +1696,9 @@ export const triggerDecisionBlocksScoring = onCall({
             sId,
             projectId,
             projectData,
-            storeData?.businessType
+            storeData?.businessType,
+            undefined,
+            storeData?.timeZone,
         );
 
         if (blocks) {
@@ -1484,7 +1750,9 @@ export const triggerDecisionBlocksScoring = onCall({
                     sId,
                     pId,
                     projectData,
-                    storeData?.businessType
+                    storeData?.businessType,
+                    undefined,
+                    storeData?.timeZone,
                 );
 
                 if (blocks) {
@@ -1539,7 +1807,9 @@ export const triggerDecisionBlocksScoring = onCall({
                     storeSId,
                     pId,
                     projectData,
-                    storeData.businessType
+                    storeData.businessType,
+                    undefined,
+                    storeData.timeZone,
                 );
 
                 if (blocks) {

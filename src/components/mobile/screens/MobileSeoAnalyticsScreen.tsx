@@ -309,7 +309,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         />
                         <FeatureToggleCard
                             checked={trackMenuViews}
-                            description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu."
+                            description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu."
                             label="Menu activity"
                             onChange={setTrackMenuViews}
                         />
@@ -321,7 +321,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         />
                         <FeatureToggleCard
                             checked={trackOfficialBusinessPage}
-                            description="Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches."
+                            description="Tracks official business page views, CTA taps, menu CTA clicks, social/review link clicks, and owner share actions."
                             label="Official business page activity"
                             onChange={setTrackOfficialBusinessPage}
                         />
@@ -707,7 +707,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 />
                                 <ToggleRow
                                     checked={trackMenuViews}
-                                    description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, project switches, entry source, and session totals across the client menu."
+                                    description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu."
                                     label="Menu activity"
                                     onChange={setTrackMenuViews}
                                 />
@@ -719,7 +719,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 />
                                 <ToggleRow
                                     checked={trackOfficialBusinessPage}
-                                    description="Tracks official business page views, CTA taps, menu CTA clicks, and OBP project switches."
+                                    description="Tracks official business page views, CTA taps, menu CTA clicks, social/review link clicks, and owner share actions."
                                     label="Official business page activity"
                                     onChange={setTrackOfficialBusinessPage}
                                 />

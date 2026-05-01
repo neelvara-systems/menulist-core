@@ -83,9 +83,10 @@ const schedulerModule = require('./schedulers/masterScheduler');
 exports.triggerSchedulerManually = schedulerModule.triggerSchedulerManually;
 exports.triggerWeeklyNarrativeManually = schedulerModule.triggerWeeklyNarrativeManually;
 
-// Customer analytics aggregation (3 AM UTC)
+// Customer analytics manual trigger only.
+// Scheduled customer analytics now runs inside the unified timezone-aware nightly scheduler
+// alongside OBP analytics, so both settle in one store-scoped flow.
 const customerAnalyticsModule = require('./aggregateCustomerAnalytics');
-exports.aggregateCustomerAnalytics = customerAnalyticsModule.aggregateCustomerAnalytics;
 exports.triggerCustomerAnalyticsManually = customerAnalyticsModule.triggerCustomerAnalyticsManually;
 
 // Unified nightly scheduler (hourly at :30, timezone-aware — filters by store's schedulerHour)

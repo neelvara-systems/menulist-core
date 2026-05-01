@@ -13,9 +13,8 @@
  */
 
 import { AppstoreOutlined, DownloadOutlined, EyeOutlined, RocketOutlined, StarOutlined } from '@ant-design/icons';
-import useAnalyticsData from '@hook/useAnalyticsData';
+import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
 import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography } from 'antd';
-import dayjs from 'dayjs';
 import React from 'react';
 
 const { Title, Text } = Typography;
@@ -47,22 +46,6 @@ interface CustomerAppDailyShape {
     totalInstalled?: number;
     totalAppOpens?: number;
     shortcutClicks?: Record<string, number>;
-}
-
-function sumLastNDays<K extends keyof CustomerAppDailyShape>(
-    daily: CustomerAppDailyShape[],
-    field: K,
-    days: number,
-): number {
-    const cutoff = dayjs().subtract(days, 'day').startOf('day');
-    let total = 0;
-    for (const d of daily) {
-        if (!d?.date) continue;
-        if (dayjs(d.date).isBefore(cutoff)) continue;
-        const v = d[field];
-        if (typeof v === 'number') total += v;
-    }
-    return total;
 }
 
 function topShortcut(clicks?: Record<string, number>): { key: string; count: number } {
@@ -110,7 +93,8 @@ interface Props {
 }
 
 const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
-    const { data, loading, error } = useAnalyticsData(dateRange, 'customerApp');
+    const { data, loading, error } = useCustomerAppDashboard();
+    void dateRange;
 
     if (loading) {
         return (
@@ -137,8 +121,8 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
         );
     }
 
-    const summary = (data?.summary ?? null) as unknown as CustomerAppSummaryShape | null;
-    const daily = (data?.daily ?? []) as unknown as CustomerAppDailyShape[];
+    const summary = (data?.summary ?? null) as CustomerAppSummaryShape | null;
+    const daily = (data?.daily30d ?? []) as CustomerAppDailyShape[];
 
     const hasAnyData =
         (summary?.lifetimeTotalInstalled ?? 0) > 0 ||
@@ -178,8 +162,8 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     );
 
     // 30-day rollup from daily docs (works even if summary is stale)
-    const appOpens30d = sumLastNDays(daily, 'totalAppOpens', 30);
-    const installs30d = sumLastNDays(daily, 'totalInstalled', 30);
+    const appOpens30d = daily.reduce((sum, day) => sum + (day.totalAppOpens || 0), 0);
+    const installs30d = daily.reduce((sum, day) => sum + (day.totalInstalled || 0), 0);
 
     // Install conversion — how many of the customers who saw the prompt installed
     const conversionPct =

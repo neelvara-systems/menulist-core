@@ -17,11 +17,12 @@ import { useEffect } from 'react';
 interface OBPAnalyticsProps {
     tenantId: number;
     storeId: number;
+    storeTimeZone?: string;
     trackViews?: boolean;
     includeLocation?: boolean;
 }
 
-export default function OBPAnalytics({ tenantId, storeId, trackViews = true, includeLocation = true }: OBPAnalyticsProps) {
+export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, trackViews = true, includeLocation = true }: OBPAnalyticsProps) {
     useEffect(() => {
         if (!trackViews || !tenantId || !storeId) return;
 
@@ -36,6 +37,7 @@ export default function OBPAnalytics({ tenantId, storeId, trackViews = true, inc
             trackOBPView(storeId, {
                 tenantId,
                 sessionId,
+                storeTimeZone,
                 includeLocation,
                 utm_source,
                 utm_medium,
@@ -46,7 +48,7 @@ export default function OBPAnalytics({ tenantId, storeId, trackViews = true, inc
         } catch (error) {
             console.error('OBP analytics setup failed:', error);
         }
-    }, [tenantId, storeId, trackViews]);
+    }, [tenantId, storeId, storeTimeZone, trackViews]);
 
     return null;
 }

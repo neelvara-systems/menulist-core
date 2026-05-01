@@ -26,7 +26,7 @@ Lean numeric internal dashboard at `/ops` that gives the founder system-wide vis
 
 ```
 Route: /ops (superadmin only, not in sidebar)
-Layout: Single page, 6 sections, numeric blocks only
+Layout: Single page, numeric blocks only
 
 ┌─ Section 1: System State ──────────────────────────┐
 │ Menu Health: ✅ OK | Publish Success: 100% | Errors: 0 │
@@ -51,6 +51,18 @@ Layout: Single page, 6 sections, numeric blocks only
 
 **Design:** Lean v1. No charts. Numbers only. Manual refresh. Fetch-on-open.
 
+## Scheduler Monitor
+
+`/ops/scheduler` is the related internal monitor for the unified nightly scheduler. It shows:
+
+- Run-log health from `schedulerRunLogs`
+- Per-task breakdown including OBP + menu analytics settlement
+- Store-local settlement state from `platformSummary/nightlyState_*`
+- Failed/stale settlement counts for catch-up monitoring
+- Manual Decision Blocks recovery via `triggerDecisionBlocksScoring`
+
+The manual recovery button does **not** run the full scheduler. It recomputes Decision Blocks only; analytics settlement remains controlled by the timezone-aware scheduled flow.
+
 ## Key Decision: What ChatGPT Got Wrong
 
 ChatGPT proposed 7 sections including cost tracking (ops_daily_cost) and baseline comparisons. **Rejected** because:
@@ -70,4 +82,5 @@ No feature flag needed. Access control via route-level superadmin check.
 
 | Version | Date              | Changes                                   |
 | ------- | ----------------- | ----------------------------------------- |
+| 1.1     | May 1, 2026       | Added scheduler settlement monitoring boundary |
 | 1.0     | February 20, 2026 | Initial documentation from ChatGPT review |

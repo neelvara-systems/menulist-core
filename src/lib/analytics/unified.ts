@@ -8,6 +8,7 @@
  * - Session-based deduplication for menu views
  */
 import { trackAnalyticsEvent } from '@database/analytics';
+import { getAnalyticsDateKey, getAnalyticsHourKey } from '@lib/analytics/dateKey';
 import { logger } from '@lib/monitoring/logger';
 import { getDeviceInfo } from './device';
 import { getLocationInfo } from './geo';
@@ -136,8 +137,8 @@ export enum TrackingEvent {
   // G-10 (§11 + D-04 PUBLIC-ROUTING-DOCTRINE): customer-side project switch.
   // Fires when the customer switches between projects via the in-menu
   // project switcher (D-04) or the OBP secondary-project card (G-06).
-  // Measures how often customers explore beyond the default project — key
-  // signal for deciding when to promote a "Browse all menus" affordance.
+  // GA4-only operational signal. Firestore dashboards already capture the
+  // owner-facing outcome through OBP menu clicks and destination menu views.
   PROJECT_SWITCH = 'project_switch',
 
   // T5-N-02 / §11 PUBLIC-ROUTING-DOCTRINE: G-08 subdomain immutability guard.
@@ -207,6 +208,7 @@ export interface TrackingData {
   region?: string;            // User's region/state
   country?: string;           // User's country
   timezone?: string;          // User's timezone
+  storeTimeZone?: string;     // Store timezone used for local analytics day/hour bucketing
   includeLocation?: boolean;  // Whether approximate location data may be collected
 
   // Search properties
@@ -327,9 +329,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     // Get device info
     const deviceInfo = getDeviceInfo();
 
-    // Get current hour (UTC)
     const now = new Date();
-    const hour = now.getUTCHours().toString().padStart(2, '0');
+    const hour = getAnalyticsHourKey(now, data.storeTimeZone);
 
     // Create device key
     const deviceKey = deviceInfo.type || 'unknown';
@@ -339,7 +340,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       TrackingEvent.PAGE_VIEW,
       TrackingEvent.MENU_VIEW,
       TrackingEvent.ITEM_CLICK,
-      TrackingEvent.PURCHASE,
       TrackingEvent.OBP_VIEW,
       TrackingEvent.CUSTOMER_APP_INSTALLED,
       TrackingEvent.CUSTOMER_APP_OPENED,
@@ -360,6 +360,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
     // Prepare update data
     const updateData: any = {
+      date: getAnalyticsDateKey(now, data.storeTimeZone),
       // Add session ID to all events for unique visitor tracking
       sessionId: sessionId
     };
@@ -431,13 +432,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         }
         break;
 
+      case TrackingEvent.ADD_TO_CART:
+      case TrackingEvent.CHECKOUT_START:
       case TrackingEvent.PURCHASE:
-        updateData.totalOrders = 1;
-        updateData.totalRevenue = data.revenue || 0;
-        updateData[`ordersByDevice.${deviceKey}`] = 1;
-        if (locationKey) updateData[`ordersByLocation.${locationKey}`] = 1;
-        updateData[`hourlyOrders.${hour}`] = 1;
-        break;
+        // GA4 only until MenuList has an owner-visible ordering dashboard.
+        // Hidden Firestore ecommerce counters add daily writes/rollups without
+        // a current SMB decision surface.
+        return;
 
       case TrackingEvent.SEARCH:
         updateData.totalSearches = 1;
@@ -565,6 +566,23 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // GA4 tracking happens separately below, so just return early
         return;
 
+      case TrackingEvent.PROJECT_SWITCH:
+        // GA4 only for now. Firestore owner dashboards already capture the
+        // business outcome through OBP menu clicks and the destination menu
+        // view; storing a second Firestore write here adds cost without a
+        // separate owner-facing KPI.
+        return;
+
+      case TrackingEvent.LOGIN:
+      case TrackingEvent.SIGN_UP:
+      case TrackingEvent.SHARE:
+      case TrackingEvent.USER_LOCATION:
+      case TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED:
+      case TrackingEvent.MANIFEST_START_URL_DEGRADED:
+        // Operational or generic analytics event. Keep in GA4 only unless a
+        // real owner-facing dashboard/report needs the Firestore counter.
+        return;
+
       // ── Customer App (installable PWA surface) — always stored under projectId='customerApp' ──
       case TrackingEvent.CUSTOMER_APP_PROMPT_SHOWN:
         updateData.totalPromptShown = 1;
@@ -646,8 +664,9 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         break;
 
       default:
-        // For other events, just track the occurrence
-        updateData[`events.${eventName}`] = 1;
+        // Default is GA4 only. Firestore writes are reserved for owner-visible
+        // customer analytics that feed scheduler read models.
+        return;
     }
 
     // Customer App events always write under the reserved 'customerApp' project segment,
@@ -668,7 +687,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
     // Use the database function to track the event
     // Pass projectId and tenantId for project-wise analytics storage
-    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId);
+    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId, data.storeTimeZone);
   } catch (error) {
     console.error('Error tracking Firebase event:', error);
     throw error;

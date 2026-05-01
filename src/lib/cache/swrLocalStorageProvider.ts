@@ -35,9 +35,9 @@ function getTodayDate(): string {
  * For scheduler data: valid if same day
  * For other data: use TTL
  */
-function isCacheValid(entry: CacheEntry<unknown>, maxAgeMs?: number): boolean {
+function isCacheValid(entry: CacheEntry<unknown>, maxAgeMs?: number, dayKey?: string): boolean {
     const now = Date.now();
-    const today = getTodayDate();
+    const today = dayKey || getTodayDate();
 
     // If entry is from a different day, it's stale (scheduler has new data)
     if (entry.date !== today) {
@@ -99,7 +99,7 @@ function createCacheKey(key: string): string {
 /**
  * Get cached data from localStorage
  */
-export function getCachedData<T>(key: string, maxAgeMs?: number): T | undefined {
+export function getCachedData<T>(key: string, maxAgeMs?: number, dayKey?: string): T | undefined {
     try {
         const cacheKey = createCacheKey(key);
         const raw = localStorage.getItem(cacheKey);
@@ -108,7 +108,7 @@ export function getCachedData<T>(key: string, maxAgeMs?: number): T | undefined 
 
         const entry: CacheEntry<T> = JSON.parse(raw);
 
-        if (!isCacheValid(entry, maxAgeMs)) {
+        if (!isCacheValid(entry, maxAgeMs, dayKey)) {
             localStorage.removeItem(cacheKey);
             return undefined;
         }
@@ -123,13 +123,13 @@ export function getCachedData<T>(key: string, maxAgeMs?: number): T | undefined 
 /**
  * Set cached data in localStorage
  */
-export function setCachedData<T>(key: string, data: T): void {
+export function setCachedData<T>(key: string, data: T, dayKey?: string): void {
     try {
         const cacheKey = createCacheKey(key);
         const entry: CacheEntry<T> = {
             data,
             timestamp: Date.now(),
-            date: getTodayDate(),
+            date: dayKey || getTodayDate(),
         };
 
         localStorage.setItem(cacheKey, JSON.stringify(entry));
@@ -148,7 +148,7 @@ export function setCachedData<T>(key: string, data: T): void {
                 const entry: CacheEntry<T> = {
                     data,
                     timestamp: Date.now(),
-                    date: getTodayDate(),
+                    date: dayKey || getTodayDate(),
                 };
                 localStorage.setItem(cacheKey, JSON.stringify(entry));
             } catch {
@@ -192,7 +192,7 @@ export function clearAllCache(): void {
  * Check if we need to revalidate based on date change
  * Returns true if data is from a previous day (scheduler has run)
  */
-export function shouldRevalidate(key: string): boolean {
+export function shouldRevalidate(key: string, dayKey?: string): boolean {
     try {
         const cacheKey = createCacheKey(key);
         const raw = localStorage.getItem(cacheKey);
@@ -200,7 +200,7 @@ export function shouldRevalidate(key: string): boolean {
         if (!raw) return true; // No cache, need to fetch
 
         const entry: CacheEntry<unknown> = JSON.parse(raw);
-        const today = getTodayDate();
+        const today = dayKey || getTodayDate();
 
         return entry.date !== today;
     } catch {

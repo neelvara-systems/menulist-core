@@ -3,7 +3,7 @@
 **Sub-Feature of:** Client Menu  
 **Document Type:** Product Specification  
 **Status:** ✅ Implemented  
-**Last Updated:** April 29, 2026
+**Last Updated:** May 1, 2026
 
 ---
 
@@ -16,6 +16,7 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 - **Passive behavior tracking** on customer-facing menus
 - **Project-wise data collection** for per-menu intelligence
 - **Cost-optimized writes** with rate limiting and debouncing
+- **Store-local daily settlement** with idempotent nightly rollups
 - **Third-party integrations** (GA4, Facebook Pixel)
 
 ### What It Is NOT
@@ -48,12 +49,15 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 | `UNAVAILABLE_ITEM_ATTEMPT` | Tap on unavailable item | Track missed demand / stock friction |
 | `MENU_ACTION_CLICK`        | Final CTA click from menu footer or recovery UI | Track action intent without passive telemetry cost |
 
+Passive/engagement events may be coalesced on the client for a short flush window before writing to Firestore. Final action/conversion events are not delayed.
+
 ### Explicitly Not Tracked
 
 - ❌ Scroll depth
 - ❌ Per-keystroke search input
 - ❌ Hover / passive exposure metrics
 - ❌ High-frequency continuous behavior that would create write-heavy noise
+- ❌ Generic ecommerce/auth/share/location/ops counters in Firestore unless they become owner-visible dashboard metrics
 
 ---
 
@@ -66,6 +70,13 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 ```typescript
 {
   // Core metrics
+  tId: string;
+  sId: string;
+  projectId: string;
+  grain: "daily";
+  surface: "menu" | "obp" | "customerApp";
+  localDate: string; // Store-local YYYY-MM-DD
+  storeTimeZone: string;
   totalViews: number;
   totalClicks: number;
   totalSessions: number;
@@ -81,7 +92,7 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
   viewsByItem: { "item_id": n };
   hourlyClicksByItem: { "item_id": { "12": 5, "13": 8 } };
 
-  // Hourly (UTC)
+  // Hourly (store-local)
   hourlyViews: { "00": n, ... "23": n };
   hourlyClicks: { ... };
 
@@ -184,8 +195,8 @@ Total: ~₹183/month
 
 ## Nightly Aggregation
 
-**Cloud Function:** `aggregateCustomerAnalytics`  
-**Schedule:** Daily at 3:00 AM UTC
+**Cloud Function Path:** `computeDecisionBlocksScores` triggers the shared nightly store flow, which runs customer menu analytics and OBP analytics together.
+**Schedule Model:** Timezone-aware per store. The scheduler runs hourly and settles analytics when a store reaches its configured nightly local hour.
 
 ### Tasks
 
@@ -194,7 +205,17 @@ Total: ~₹183/month
 | Summary Update | Daily        | Update `overall_summary` from daily data |
 | Weekly Rollup  | Mondays      | Create `weekly_{YYYY-Www}` document      |
 | Monthly Rollup | 1st of month | Create `monthly_{YYYY-MM}` document      |
-| TTL Cleanup    | Daily        | Delete daily docs older than 90 days     |
+| TTL Cleanup    | Monthly      | Delete daily docs older than 90 days     |
+| Settlement Lock | Daily per store-local date | Prevent duplicate processing of the same store/date |
+
+### Date Semantics
+
+- Daily analytics documents now use the **store's local calendar date**, not the server's UTC date.
+- Hourly analytics buckets also use the **store's local hour**.
+- This applies to menu analytics, OBP analytics, and Customer App analytics so all owner-facing reporting settles against the same business day.
+- If a store is in `Asia/Kolkata`, an event at local `12:15 AM` is written to that new local day immediately, even if UTC is still on the previous date.
+- Nightly aggregation records `lastSettledLocalDate` per store and catches up missed dates in order on the next local nightly run.
+- Lifetime summary counters are idempotent. If a date is already aggregated, reruns skip the lifetime increment instead of double-counting.
 
 ### Owner Dashboard Reporting
 
@@ -205,7 +226,8 @@ Total: ~₹183/month
 - That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.
 - Search demand, unavailable-item demand, and final menu CTA clicks are visible in dashboard views after nightly aggregation.
 - AI summaries also surface the top search term, strongest final action, and unavailable-demand signals from the same rolled-up documents.
-- No separate analytics collection or scheduler path is introduced for these metrics.
+- No separate analytics collection or standalone scheduler path is introduced for these metrics.
+- Menu analytics and OBP analytics now settle in the same store-scoped nightly pass. If the OBP step fails for a store, that store's menu analytics rollup is treated as failed for the same run.
 
 ### Customer Recovery UX
 

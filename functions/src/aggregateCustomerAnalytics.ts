@@ -1,8 +1,9 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { DB_COLLECTIONS, getAnalyticsDocId, getMonthDateRange, getWeekDateRange, TTL_CONFIG } from './constants/database';
 import { firestoreAdmin } from './firebaseAdmin';
+import { addDaysToAnalyticsDateKey, getAnalyticsDateKey, getAnalyticsWeekday, parseAnalyticsDateKey } from './utils/analyticsDate';
+import { writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
 import {
     DailyDashboardMetrics,
     generateDailyAISummary,
@@ -16,7 +17,9 @@ import {
  * CUSTOMER-FACING ANALYTICS AGGREGATION
  * ══════════════════════════════════════════════════════════════════════════════
  * 
- * Runs daily at 3:00 AM UTC to aggregate customer analytics (menu views, clicks, etc.)
+ * Shared aggregation helpers for customer-facing analytics (menu views, clicks, etc.)
+ * The active nightly trigger now lives in `decisionBlocksScoring.ts`, where menu
+ * analytics and OBP analytics run together in one timezone-aware per-store flow.
  * 
  * ARCHITECTURE:
  * - 1 Tenant → Multiple Stores
@@ -40,7 +43,7 @@ import {
  * - Weekly/monthly rollups reduce dashboard query costs
  * 
  * Deployment:
- * firebase deploy --only functions:aggregateCustomerAnalytics
+ * firebase deploy --only functions:computeDecisionBlocksScores
  */
 
 // Use centralized constants from ./constants/database.ts
@@ -54,8 +57,6 @@ interface DailyMetrics {
     totalViews?: number;
     totalClicks?: number;
     totalSessions?: number;
-    totalOrders?: number;
-    totalRevenue?: number;
     totalSearches?: number;
     zeroResultSearches?: number;
     totalUnavailableItemTaps?: number;
@@ -105,6 +106,178 @@ interface AggregationResults {
     errors: Array<{ projectKey: string; error: string }>;
 }
 
+const OBP_PROJECT_ID = 'obp';
+
+function buildAggregationContext(now: Date = new Date(), timeZone?: string) {
+    const localTodayStr = getAnalyticsDateKey(now, timeZone);
+    const yesterdayStr = addDaysToAnalyticsDateKey(localTodayStr, -1);
+    return buildAggregationContextForDate(yesterdayStr);
+}
+
+function buildAggregationContextForDate(settlementDate: string) {
+    const localTodayStr = addDaysToAnalyticsDateKey(settlementDate, 1);
+    const yesterdayStr = settlementDate;
+    const yesterday = parseAnalyticsDateKey(yesterdayStr);
+    const isMonday = getAnalyticsWeekday(localTodayStr) === 1;
+    const isFirstOfMonth = localTodayStr.endsWith('-01');
+
+    return {
+        localTodayStr,
+        yesterday,
+        yesterdayStr,
+        isMonday,
+        isFirstOfMonth,
+    };
+}
+
+async function collectStoreAnalyticsProjects(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    yesterdayStr: string,
+    knownProjectIds: string[] = [],
+): Promise<{ projectIds: Set<string>; yesterdayDocs: Map<string, any> }> {
+    const projectIds = new Set<string>(
+        knownProjectIds
+            .map((projectId) => String(projectId || '').trim())
+            .filter(Boolean)
+    );
+    const yesterdayDocs = new Map<string, any>();
+
+    const analyticsDocsQuery = await db.collection(ANALYTICS_COLLECTION)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('grain', '==', 'daily')
+        .where('localDate', '==', yesterdayStr)
+        .get();
+
+    analyticsDocsQuery.docs.forEach((doc) => {
+        const data = doc.data();
+        const projectId = String(data.projectId || '').trim();
+        if (!projectId) return;
+        if (projectId === OBP_PROJECT_ID) return;
+
+        projectIds.add(projectId);
+        yesterdayDocs.set(projectId, { id: doc.id, data });
+    });
+
+    return { projectIds, yesterdayDocs };
+}
+
+export async function aggregateCustomerAnalyticsForStore(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    now: Date = new Date(),
+    timeZone?: string,
+    knownProjectIds: string[] = [],
+): Promise<AggregationResults> {
+    const settlementDate = addDaysToAnalyticsDateKey(getAnalyticsDateKey(now, timeZone), -1);
+    return aggregateCustomerAnalyticsForStoreDate(db, tId, sId, settlementDate, knownProjectIds);
+}
+
+export async function aggregateCustomerAnalyticsForStoreDate(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    settlementDate: string,
+    knownProjectIds: string[] = [],
+): Promise<AggregationResults> {
+    const results: AggregationResults = {
+        totalProjects: 0,
+        summaryUpdates: 0,
+        weeklyRollups: 0,
+        monthlyRollups: 0,
+        dailyAiSummaries: 0,
+        weeklyAiSummaries: 0,
+        monthlyAiSummaries: 0,
+        documentsDeleted: 0,
+        errors: [],
+    };
+
+    const { yesterday, yesterdayStr, isMonday, isFirstOfMonth } = buildAggregationContextForDate(settlementDate);
+    const { projectIds, yesterdayDocs } = await collectStoreAnalyticsProjects(db, tId, sId, yesterdayStr, knownProjectIds);
+
+    results.totalProjects = projectIds.size;
+
+    for (const projectId of projectIds) {
+        const projectKey = `${tId}_${sId}_${projectId}`;
+
+        try {
+            const yesterdayDoc = yesterdayDocs.get(projectId);
+            if (yesterdayDoc) {
+                const updated = await updateSummaryDocument(db, tId, sId, projectId, yesterdayDoc.data);
+                if (updated) results.summaryUpdates++;
+            }
+
+            if (isMonday) {
+                const weeklyAggregated = await createWeeklyRollup(db, tId, sId, projectId, yesterday);
+                if (weeklyAggregated.daysWithData > 0) results.weeklyRollups++;
+
+                if (weeklyAggregated.daysWithData > 0 && isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(weeklyAggregated.aggregated)) {
+                    try {
+                        await generateAndSaveWeeklyAISummary(
+                            db,
+                            tId,
+                            sId,
+                            projectId,
+                            weeklyAggregated.aggregated,
+                            weeklyAggregated.weekStart,
+                            weeklyAggregated.weekEnd,
+                        );
+                        results.weeklyAiSummaries++;
+                    } catch (aiError) {
+                        console.error(`  ⚠ Weekly AI summary failed for ${projectKey}:`, aiError);
+                    }
+                }
+            }
+
+            if (isFirstOfMonth) {
+                const monthlyAggregated = await createMonthlyRollup(db, tId, sId, projectId, yesterday);
+                if (monthlyAggregated.daysWithData > 0) results.monthlyRollups++;
+
+                if (monthlyAggregated.daysWithData > 0 && isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(monthlyAggregated.aggregated)) {
+                    try {
+                        await generateAndSaveMonthlyAISummary(
+                            db,
+                            tId,
+                            sId,
+                            projectId,
+                            monthlyAggregated.aggregated,
+                            monthlyAggregated.monthStart,
+                            monthlyAggregated.monthEnd,
+                            monthlyAggregated.daysWithData,
+                        );
+                        results.monthlyAiSummaries++;
+                    } catch (aiError) {
+                        console.error(`  ⚠ Monthly AI summary failed for ${projectKey}:`, aiError);
+                    }
+                }
+            }
+
+            if (isMenuAnalyticsProject(projectId) && yesterdayDoc && hasMenuAnalyticsActivity(yesterdayDoc.data)) {
+                try {
+                    await generateAndSaveDailyAISummary(db, tId, sId, projectId, yesterdayDoc.data, yesterdayStr);
+                    results.dailyAiSummaries++;
+                } catch (aiError) {
+                    console.error(`  ⚠ Daily AI summary failed for ${projectKey}:`, aiError);
+                }
+            }
+
+            await writeDashboardSummaryDocument(db, tId, sId, projectId, yesterdayStr, yesterdayDoc?.data || null);
+
+            if (isFirstOfMonth) {
+                const deletedCount = await cleanupOldDocuments(db, tId, sId, projectId);
+                results.documentsDeleted += deletedCount;
+            }
+        } catch (error: any) {
+            results.errors.push({ projectKey, error: error.message });
+        }
+    }
+
+    return results;
+}
+
 /**
  * Customer App (`projectId='customerApp'`) reuses the shared analytics
  * collection and rollup pipeline, but the Gemini owner-dashboard summaries
@@ -122,8 +295,6 @@ function hasMenuAnalyticsActivity(data: DailyMetrics | Record<string, any> | nul
         (typeof data.totalViews === 'number' && data.totalViews > 0)
         || (typeof data.totalClicks === 'number' && data.totalClicks > 0)
         || (typeof data.totalSessions === 'number' && data.totalSessions > 0)
-        || (typeof data.totalOrders === 'number' && data.totalOrders > 0)
-        || (typeof data.totalRevenue === 'number' && data.totalRevenue > 0)
         || (typeof data.totalSearches === 'number' && data.totalSearches > 0)
         || (typeof data.totalUnavailableItemTaps === 'number' && data.totalUnavailableItemTaps > 0)
         || (typeof data.totalMenuActionClicks === 'number' && data.totalMenuActionClicks > 0)
@@ -131,183 +302,6 @@ function hasMenuAnalyticsActivity(data: DailyMetrics | Record<string, any> | nul
         || (typeof data.totalDecisionBlocksRendered === 'number' && data.totalDecisionBlocksRendered > 0)
     );
 }
-
-/**
- * Main scheduled function - runs daily at 3:00 AM UTC
- */
-export const aggregateCustomerAnalytics = onSchedule({
-    schedule: '0 3 * * *',  // Daily at 3:00 AM UTC
-    timeZone: 'UTC',
-    region: 'us-central1',
-    timeoutSeconds: 540,
-    memory: '512MiB',
-}, async () => {
-    console.log('=== Customer Analytics Aggregation Started ===');
-    console.log('Triggered at:', new Date().toISOString());
-
-    const db = firestoreAdmin;
-    const results: AggregationResults = {
-        totalProjects: 0,
-        summaryUpdates: 0,
-        weeklyRollups: 0,
-        monthlyRollups: 0,
-        dailyAiSummaries: 0,
-        weeklyAiSummaries: 0,
-        monthlyAiSummaries: 0,
-        documentsDeleted: 0,
-        errors: []
-    };
-
-    try {
-        // Get yesterday's date (we aggregate yesterday's data)
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-        // Check if today is Monday (for weekly rollup)
-        const today = new Date();
-        const isMonday = today.getDay() === 1;
-
-        // Check if today is 1st of month (for monthly rollup)
-        const isFirstOfMonth = today.getDate() === 1;
-
-        // Get all unique project keys from daily documents
-        // Query pattern: Find all documents with _daily_ in the name from yesterday
-        const dailyDocsQuery = await db.collection(ANALYTICS_COLLECTION)
-            .where('__name__', '>=', `0_0_`)  // Start from beginning
-            .where('__name__', '<=', `~`)     // End at the end
-            .get();
-
-        // Extract unique project keys from document IDs
-        const projectKeys = new Set<string>();
-        const yesterdayDocs = new Map<string, any>();
-
-        dailyDocsQuery.docs.forEach(doc => {
-            const docId = doc.id;
-            // Parse: {tId}_{sId}_{projectId}_daily_{date}
-            const match = docId.match(/^(\d+)_(\d+)_([^_]+)_daily_(\d{4}-\d{2}-\d{2})$/);
-            if (match) {
-                const [, tId, sId, projectId, date] = match;
-                const projectKey = `${tId}_${sId}_${projectId}`;
-                projectKeys.add(projectKey);
-
-                // Store yesterday's doc for aggregation
-                if (date === yesterdayStr) {
-                    yesterdayDocs.set(projectKey, { id: doc.id, data: doc.data() });
-                }
-            }
-        });
-
-        results.totalProjects = projectKeys.size;
-        console.log(`Found ${results.totalProjects} unique projects to process`);
-
-        // Process each project
-        for (const projectKey of projectKeys) {
-            const [tId, sId, projectId] = projectKey.split('_');
-
-            try {
-                // 1. Update summary from yesterday's data
-                const yesterdayDoc = yesterdayDocs.get(projectKey);
-                if (yesterdayDoc) {
-                    await updateSummaryDocument(db, tId, sId, projectId, yesterdayDoc.data);
-                    results.summaryUpdates++;
-                    console.log(`  ✓ Summary updated for ${projectKey}`);
-                }
-
-                // 2. Weekly rollup (on Mondays)
-                if (isMonday) {
-                    const weeklyAggregated = await createWeeklyRollup(db, tId, sId, projectId, yesterday);
-                    results.weeklyRollups++;
-                    console.log(`  ✓ Weekly rollup created for ${projectKey}`);
-
-                    // 2b. Generate Weekly AI summary (menu analytics only).
-                    if (isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(weeklyAggregated.aggregated)) {
-                        try {
-                            await generateAndSaveWeeklyAISummary(
-                                db, tId, sId, projectId,
-                                weeklyAggregated.aggregated,
-                                weeklyAggregated.weekStart,
-                                weeklyAggregated.weekEnd
-                            );
-                            results.weeklyAiSummaries++;
-                            console.log(`  ✓ Weekly AI summary generated for ${projectKey}`);
-                        } catch (aiError) {
-                            // Don't fail the whole process if AI summary fails
-                            console.error(`  ⚠ Weekly AI summary failed for ${projectKey}:`, aiError);
-                        }
-                    }
-                }
-
-                // 3. Monthly rollup (on 1st of month)
-                if (isFirstOfMonth) {
-                    const monthlyAggregated = await createMonthlyRollup(db, tId, sId, projectId, yesterday);
-                    results.monthlyRollups++;
-                    console.log(`  ✓ Monthly rollup created for ${projectKey}`);
-
-                    // 3b. Generate Monthly AI summary (menu analytics only).
-                    if (isMenuAnalyticsProject(projectId) && hasMenuAnalyticsActivity(monthlyAggregated.aggregated)) {
-                        try {
-                            await generateAndSaveMonthlyAISummary(
-                                db, tId, sId, projectId,
-                                monthlyAggregated.aggregated,
-                                monthlyAggregated.monthStart,
-                                monthlyAggregated.monthEnd,
-                                monthlyAggregated.daysWithData
-                            );
-                            results.monthlyAiSummaries++;
-                            console.log(`  ✓ Monthly AI summary generated for ${projectKey}`);
-                        } catch (aiError) {
-                            console.error(`  ⚠ Monthly AI summary failed for ${projectKey}:`, aiError);
-                        }
-                    }
-                }
-
-                // 4. Generate Daily AI summary (menu analytics only).
-                if (isMenuAnalyticsProject(projectId) && yesterdayDoc && hasMenuAnalyticsActivity(yesterdayDoc.data)) {
-                    try {
-                        await generateAndSaveDailyAISummary(db, tId, sId, projectId, yesterdayDoc.data, yesterdayStr);
-                        results.dailyAiSummaries++;
-                        console.log(`  ✓ Daily AI summary generated for ${projectKey}`);
-                    } catch (aiError) {
-                        console.error(`  ⚠ Daily AI summary failed for ${projectKey}:`, aiError);
-                    }
-                }
-
-                // 4. TTL cleanup - delete documents older than 90 days
-                const deletedCount = await cleanupOldDocuments(db, tId, sId, projectId);
-                results.documentsDeleted += deletedCount;
-                if (deletedCount > 0) {
-                    console.log(`  ✓ Deleted ${deletedCount} old documents for ${projectKey}`);
-                }
-
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                console.error(`  ✗ Error processing ${projectKey}:`, errorMessage);
-                results.errors.push({ projectKey, error: errorMessage });
-            }
-        }
-
-        // Log final summary
-        console.log('=== Customer Analytics Aggregation Complete ===');
-        console.log(`Total Projects: ${results.totalProjects}`);
-        console.log(`Summary Updates: ${results.summaryUpdates}`);
-        console.log(`Weekly Rollups: ${results.weeklyRollups}`);
-        console.log(`Monthly Rollups: ${results.monthlyRollups}`);
-        console.log(`Daily AI Summaries: ${results.dailyAiSummaries}`);
-        console.log(`Weekly AI Summaries: ${results.weeklyAiSummaries}`);
-        console.log(`Monthly AI Summaries: ${results.monthlyAiSummaries}`);
-        console.log(`Documents Deleted: ${results.documentsDeleted}`);
-        console.log(`Errors: ${results.errors.length}`);
-
-        if (results.errors.length > 0) {
-            console.error('Errors:', JSON.stringify(results.errors, null, 2));
-        }
-
-    } catch (error) {
-        console.error('Critical error in aggregation function:', error);
-        throw error;
-    }
-});
 
 /**
  * Update the overall_summary document with data from a daily document
@@ -318,22 +312,21 @@ async function updateSummaryDocument(
     sId: string,
     projectId: string,
     dailyData: DailyMetrics
-): Promise<void> {
+): Promise<boolean> {
     const summaryDocId = getAnalyticsDocId.summary(tId, sId, projectId);
     const summaryRef = db.collection(ANALYTICS_COLLECTION).doc(summaryDocId);
+    const aggregateDate = dailyData.date || new Date().toISOString().split('T')[0];
 
     // Prepare incremental updates
     const updates: any = {
         lastUpdated: FieldValue.serverTimestamp(),
-        lastAggregatedDate: dailyData.date || new Date().toISOString().split('T')[0],
+        lastAggregatedDate: aggregateDate,
     };
 
     // Aggregate numeric totals
     if (dailyData.totalViews) updates.lifetimeTotalViews = FieldValue.increment(dailyData.totalViews);
     if (dailyData.totalClicks) updates.lifetimeTotalClicks = FieldValue.increment(dailyData.totalClicks);
     if (dailyData.totalSessions) updates.lifetimeTotalSessions = FieldValue.increment(dailyData.totalSessions);
-    if (dailyData.totalOrders) updates.lifetimeTotalOrders = FieldValue.increment(dailyData.totalOrders);
-    if (dailyData.totalRevenue) updates.lifetimeTotalRevenue = FieldValue.increment(dailyData.totalRevenue);
     if (dailyData.totalSearches) updates.lifetimeTotalSearches = FieldValue.increment(dailyData.totalSearches);
     if (dailyData.zeroResultSearches) updates.lifetimeZeroResultSearches = FieldValue.increment(dailyData.zeroResultSearches);
     if (dailyData.totalUnavailableItemTaps) {
@@ -507,7 +500,19 @@ async function updateSummaryDocument(
         }
     }
 
-    await summaryRef.set(updates, { merge: true });
+    return await db.runTransaction(async (transaction) => {
+        const existingSummary = await transaction.get(summaryRef);
+        const lastAggregatedDate = existingSummary.exists
+            ? String(existingSummary.data()?.lastAggregatedDate || '')
+            : '';
+
+        if (lastAggregatedDate >= aggregateDate) {
+            return false;
+        }
+
+        transaction.set(summaryRef, updates, { merge: true });
+        return true;
+    });
 }
 
 /**
@@ -521,7 +526,7 @@ async function createWeeklyRollup(
     sId: string,
     projectId: string,
     referenceDate: Date
-): Promise<{ aggregated: any; weekStart: string; weekEnd: string }> {
+): Promise<{ aggregated: any; weekStart: string; weekEnd: string; daysWithData: number }> {
     // Get week date range from utility
     const { weekStart, weekEnd } = getWeekDateRange(referenceDate);
     const weeklyDocId = getAnalyticsDocId.weekly(tId, sId, projectId, referenceDate);
@@ -532,6 +537,15 @@ async function createWeeklyRollup(
     // Aggregate all daily data
     const aggregated = aggregateDailyDocs(dailyDocs);
 
+    if (dailyDocs.length === 0) {
+        return {
+            aggregated,
+            weekStart: weekStart.toISOString().split('T')[0],
+            weekEnd: weekEnd.toISOString().split('T')[0],
+            daysWithData: 0,
+        };
+    }
+
     // Save weekly rollup
     await weeklyRef.set({
         tId,
@@ -539,6 +553,7 @@ async function createWeeklyRollup(
         projectId,
         weekStart: weekStart.toISOString().split('T')[0],
         weekEnd: weekEnd.toISOString().split('T')[0],
+        daysWithData: dailyDocs.length,
         ...aggregated,
         createdOn: FieldValue.serverTimestamp(),
         modifiedOn: FieldValue.serverTimestamp(),
@@ -549,6 +564,7 @@ async function createWeeklyRollup(
         aggregated,
         weekStart: weekStart.toISOString().split('T')[0],
         weekEnd: weekEnd.toISOString().split('T')[0],
+        daysWithData: dailyDocs.length,
     };
 }
 
@@ -573,6 +589,15 @@ async function createMonthlyRollup(
 
     // Aggregate all daily data
     const aggregated = aggregateDailyDocs(dailyDocs);
+
+    if (dailyDocs.length === 0) {
+        return {
+            aggregated,
+            monthStart: firstDay.toISOString().split('T')[0],
+            monthEnd: lastDay.toISOString().split('T')[0],
+            daysWithData: 0,
+        };
+    }
 
     // Save monthly rollup
     await monthlyRef.set({
@@ -629,8 +654,6 @@ function aggregateDailyDocs(docs: any[]): any {
         totalViews: 0,
         totalClicks: 0,
         totalSessions: 0,
-        totalOrders: 0,
-        totalRevenue: 0,
         totalSearches: 0,
         zeroResultSearches: 0,
         totalUnavailableItemTaps: 0,
@@ -670,8 +693,6 @@ function aggregateDailyDocs(docs: any[]): any {
         if (doc.totalViews) result.totalViews += doc.totalViews;
         if (doc.totalClicks) result.totalClicks += doc.totalClicks;
         if (doc.totalSessions) result.totalSessions += doc.totalSessions;
-        if (doc.totalOrders) result.totalOrders += doc.totalOrders;
-        if (doc.totalRevenue) result.totalRevenue += doc.totalRevenue;
         if (doc.totalSearches) result.totalSearches += doc.totalSearches;
         if (doc.zeroResultSearches) result.zeroResultSearches += doc.zeroResultSearches;
         if (doc.totalUnavailableItemTaps) result.totalUnavailableItemTaps += doc.totalUnavailableItemTaps;
@@ -1081,14 +1102,15 @@ export const triggerCustomerAnalyticsManually = onCall({
     console.log(`[Manual Trigger] User: ${request.auth.uid}, Project: ${tId}_${sId}_${projectId}`);
 
     const db = firestoreAdmin;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
     try {
         // If specific project provided, only process that one
         if (tId && sId && projectId) {
+            const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
+            const storeSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[String(sId)] : null;
+            const timeZone = storeSummary?.timeZone;
+            const { yesterday, yesterdayStr } = buildAggregationContext(new Date(), timeZone);
             // Get yesterday's daily doc
-            const dailyDocId = getAnalyticsDocId.daily(tId, sId, projectId, yesterday.toISOString().split('T')[0]);
+            const dailyDocId = getAnalyticsDocId.daily(tId, sId, projectId, yesterdayStr);
             const dailyDoc = await db.collection(ANALYTICS_COLLECTION).doc(dailyDocId).get();
 
             if (dailyDoc.exists) {

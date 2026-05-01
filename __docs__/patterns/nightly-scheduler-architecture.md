@@ -1,7 +1,7 @@
 # Nightly Scheduler Architecture
 
 > **Status:** PRODUCTION
-> **Last Updated:** 2026-03-03
+> **Last Updated:** 2026-05-01
 > **Entry Point:** `functions/src/decisionBlocksScoring.ts`
 > **Schedule:** Every hour at :30 (timezone-aware, filters by store's `schedulerHour`)
 
@@ -21,8 +21,13 @@ Cloud Scheduler (every hour at :30)
       ├── Skip if 0 stores match (early exit — saves compute)
       │
       ├── PER-STORE TASKS (iterate matching stores):
-      │   ├── Decision Blocks scoring (per-project)
-      │   ├── Menu Intelligence (per-project)
+      │   ├── Read platformSummary/projects_{sId} active-project index
+      │   ├── Decision Blocks scoring (active menu projects only)
+      │   ├── Menu Intelligence (active menu projects only)
+      │   ├── Store-local analytics settlement state / lock
+      │   ├── OBP Analytics settlement
+      │   ├── Menu + Customer App Analytics settlement
+      │   ├── Owner dashboard read-model writes
       │   └── Infrastructure enrichment (piggybacked)
       │
       ├── PLATFORM TASKS (once per run):
@@ -30,7 +35,6 @@ Cloud Scheduler (every hour at :30)
       │   ├── Menu Drift Metrics (MOL v0)
       │   ├── Guest Feedback Retention
       │   ├── Subscription Reconciliation
-      │   ├── OBP Analytics
       │   ├── Lifecycle Messaging
       │   ├── Special Menu Switching
       │   ├── Infrastructure Compounding (3 sub-tasks)
@@ -51,6 +55,27 @@ Cloud Scheduler (every hour at :30)
 | **1 telegram alert**          | Solo founder knows if ANYTHING failed              |
 | **Shared store iteration**    | Stores read once, all tasks reuse                  |
 | **Consistent error handling** | All tasks use same try/catch + taskResults pattern |
+
+### Analytics Settlement Contract
+
+Owner-facing analytics are settled per store-local calendar date. The scheduler records settlement state in `platformSummary/nightlyState_{tId}_{sId}` and uses a per-date lock document `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}`. If a run is retried, the lock and idempotency guards prevent double-counting. If a night is missed, the next eligible local 2:30 AM run catches up from `lastSettledLocalDate + 1`, capped to 7 dates per run.
+
+OBP analytics and menu/customer-app analytics run in the same locked store/date phase:
+
+```
+Acquire lock for store + local date
+  ├── Set state: obp_analytics
+  ├── Aggregate OBP analytics + write OBP dashboard_summary
+  ├── Set state: customer_analytics
+  ├── Aggregate menu + customer app analytics + write dashboard_summary docs
+  └── Mark date completed + update store analytics index on nightlyState
+```
+
+If OBP aggregation fails for that store/date, menu/customer-app aggregation does not run for that same settlement date.
+
+Dashboard and intelligence read models are incremental in the steady state. The scheduler reuses the existing compact daily cache, adds the settled day when a daily doc exists, and only rebuilds from daily docs when the cache is missing, stale, or does not cover the required WTD/MTD/history window. Decision Blocks and Menu Intelligence consume `analytics/{tId}_{sId}_{projectId}_intelligence_7d`; missing or stale intelligence snapshots settle as empty for that run instead of opening a hidden daily-doc range query.
+
+The completed `nightlyState` doc includes a compact `analyticsIndex` with active project ids, customer analytics project ids, enabled surfaces, dashboard summary doc ids, and the last settled local date. This keeps future owner/ops guard flows pointed at one store-level state document without introducing a second store analytics index write.
 
 ---
 
@@ -139,8 +164,12 @@ When creating an outlet store:
 
 | Task                    | Feature Flag                    | Cost/Store         | Description                                |
 | ----------------------- | ------------------------------- | ------------------ | ------------------------------------------ |
-| Decision Blocks scoring | Always                          | ~7 reads + 1 write | Precompute DI block candidates per project |
-| Menu Intelligence       | Always                          | ~3 reads + 1 write | Compute intelligence state per project     |
+| Project index read      | Always                          | 1 read             | Reads `platformSummary/projects_{sId}` to avoid querying every project |
+| Decision Blocks scoring | Always                          | Active projects only | Precompute DI block candidates per project |
+| Menu Intelligence       | Always                          | Active projects only | Compute intelligence state per project     |
+| OBP Analytics           | `ENABLE_OBP_ANALYTICS`          | Store/date scoped  | Settled before menu analytics in same lock |
+| Menu + Customer App Analytics | Always                    | Store/date scoped  | Uses daily docs queried by `tId`, `sId`, `grain`, `localDate` |
+| Dashboard read models  | Always                          | 1 write per settled surface/project with data | Writes `{tId}_{sId}_{projectId}_dashboard_summary` for low-read owner dashboards |
 | Store enrichment        | `ENABLE_STORE_TRUTH_CONFIDENCE` | 0 extra reads      | Piggybacked on project reads               |
 
 ### Platform Tasks (run once per CF invocation)
@@ -151,7 +180,6 @@ When creating an outlet store:
 | Menu Drift Metrics          | Always                               | ~50 reads         | 30-day rolling drift counters                                    |
 | Guest Feedback Retention    | `ENABLE_GUEST_FEEDBACK_RETENTION`    | Variable          | Delete expired feedback (90-day TTL)                             |
 | Subscription Reconciliation | `ENABLE_SUBSCRIPTION_RECONCILIATION` | ~50 reads         | Razorpay ↔ Firestore sync                                        |
-| OBP Analytics               | `ENABLE_OBP_ANALYTICS`               | ~50 reads         | Weekly OBP summary aggregation                                   |
 | Lifecycle Messaging         | Always                               | ~20 reads         | Renewal reminders + suspension warnings                          |
 | Special Menu Switching      | `ENABLE_SPECIAL_MENU_SWITCHING`      | ~10 reads/store   | Activate/deactivate scheduled menus                              |
 | Extraction Learning         | `ENABLE_EXTRACTION_LEARNING`         | ~30 reads         | Owner correction aggregation                                     |
@@ -194,6 +222,15 @@ When creating an outlet store:
 5. **Batch writes** — Store enrichment collected in loop, written once at end
 6. **Dynamic imports** — Feature-flagged tasks use `await import()` to avoid cold start bloat
 7. **DST-safe** — No stored UTC hour to drift; runtime computation via `Intl.DateTimeFormat`
+8. **Project summary index** — Active project IDs come from `platformSummary/projects_{sId}`; full project docs are fetched only for active schedulable projects
+9. **Store/date analytics query** — Daily analytics docs include `tId`, `sId`, `grain`, and `localDate`, so settlement reads only the docs for that store/date instead of scanning all store analytics history
+10. **Analytics-first store flow** — OBP/menu/customer-app settlement completes before Decision Blocks and Menu Intelligence, so intelligence never runs on stale settlement state
+11. **Dashboard read-model docs** — Owner dashboards read one settled summary doc per surface/project instead of rebuilding WTD/MTD/4-week views from daily docs on every visit
+12. **Compact deep analytics rows** — Menu dashboard summary stores capped `daily30d` rows for recent trend/device/location/intent cards; older owner-selected ranges are not rebuilt from daily docs on the owner client
+13. **Intelligence input read model** — Menu settlement writes `{tId}_{sId}_{projectId}_intelligence_7d`; Decision Blocks and Menu Intelligence read that one doc instead of querying 7 daily docs per project
+14. **Scheduler-cycle local cache** — Owner-side settled analytics cache invalidates after the next expected store-local scheduler completion window, not at midnight
+15. **Idempotent lifetime rollups** — Summary docs are checked before lifetime increments, preventing duplicate scheduled/manual runs from inflating totals
+16. **Monthly TTL cleanup** — Daily analytics cleanup runs during monthly settlement instead of every night for every project
 
 ---
 
@@ -204,8 +241,12 @@ When creating an outlet store:
 | File                                     | Purpose                                        |
 | ---------------------------------------- | ---------------------------------------------- |
 | `functions/src/decisionBlocksScoring.ts` | Single entry point — unified nightly scheduler |
+| `functions/src/aggregateCustomerAnalytics.ts` | Menu + Customer App analytics settlement helpers |
+| `functions/src/analytics/dashboardSummaryAggregation.ts` | Menu and Customer App owner-dashboard read-model writer |
+| `functions/src/analytics/obpAnalyticsAggregation.ts` | OBP analytics settlement helper |
 | `functions/src/constants/features.ts`    | All `FUNCTION_FLAGS` for task gating           |
 | `src/database/platformSummary/index.ts`  | `StoreSummaryData` type + sync functions       |
+| `src/database/analytics/index.ts`        | Daily analytics write metadata used by scheduler queries |
 | `src/lib/utils/schedulerHour.ts`         | `computeSchedulerHour()` — client-side         |
 | `functions/src/utils/schedulerHour.ts`   | `computeSchedulerHour()` — server-side         |
 

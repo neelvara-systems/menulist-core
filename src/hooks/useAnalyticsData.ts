@@ -1,4 +1,5 @@
-import { getAnalyticsSummary, getDailyAnalyticsRange } from '@database/analytics';
+import { getOptimizedAnalyticsData } from '@database/analytics';
+import { getAnalyticsDateKey, getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import {
   getCachedData,
   setCachedData,
@@ -29,10 +30,11 @@ function createCacheKey(type: string, ...parts: Array<string | number | undefine
 
 async function cachedFetcher<T>(
   cacheKey: string,
-  fetcher: () => Promise<T | null>
+  fetcher: () => Promise<T | null>,
+  dayKey?: string,
 ): Promise<T | null> {
-  if (!shouldRevalidate(cacheKey)) {
-    const cached = getCachedData<T>(cacheKey);
+  if (!shouldRevalidate(cacheKey, dayKey)) {
+    const cached = getCachedData<T>(cacheKey, undefined, dayKey);
     if (cached !== undefined) {
       return cached;
     }
@@ -41,7 +43,7 @@ async function cachedFetcher<T>(
   const data = await fetcher();
 
   if (data !== null) {
-    setCachedData(cacheKey, data);
+    setCachedData(cacheKey, data, dayKey);
   }
 
   return data;
@@ -50,9 +52,10 @@ async function cachedFetcher<T>(
 async function cachedFetcherWithTTL<T>(
   cacheKey: string,
   fetcher: () => Promise<T | null>,
-  maxAgeMs: number
+  maxAgeMs: number,
+  dayKey?: string,
 ): Promise<T | null> {
-  const cached = getCachedData<T>(cacheKey, maxAgeMs);
+  const cached = getCachedData<T>(cacheKey, maxAgeMs, dayKey);
   if (cached !== undefined) {
     return cached;
   }
@@ -60,25 +63,32 @@ async function cachedFetcherWithTTL<T>(
   const data = await fetcher();
 
   if (data !== null) {
-    setCachedData(cacheKey, data);
+    setCachedData(cacheKey, data, dayKey);
   }
 
   return data;
 }
 
-function getDefaultDateRange(): { startDate: string; endDate: string } {
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 7);
+function addDays(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, (month || 1) - 1, day || 1));
+  date.setUTCDate(date.getUTCDate() + days);
+  const outYear = date.getUTCFullYear();
+  const outMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const outDay = String(date.getUTCDate()).padStart(2, '0');
+  return `${outYear}-${outMonth}-${outDay}`;
+}
 
+function getDefaultDateRange(timeZone?: string): { startDate: string; endDate: string } {
+  const today = getAnalyticsDateKey(new Date(), timeZone);
   return {
-    startDate: sevenDaysAgo.toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0],
+    startDate: addDays(today, -7),
+    endDate: today,
   };
 }
 
-function isTodayRange(endDate: string): boolean {
-  const today = new Date().toISOString().split('T')[0];
+function isTodayRange(endDate: string, timeZone?: string): boolean {
+  const today = getAnalyticsDateKey(new Date(), timeZone);
   return endDate >= today;
 }
 
@@ -86,12 +96,21 @@ function isTodayRange(endDate: string): boolean {
  * Custom hook for fetching analytics data
  *
  * Cost model:
- * - Summary is cached separately because it only changes after nightly aggregation.
- * - Daily range is cached separately because ranges including today are live/partial.
- * - This avoids refetching both documents on every dashboard visit.
+ * - Uses the nightly dashboard read model for ranges covered by the compact
+ *   `daily30d` cache.
+ * - Ranges including today read the read model plus today's daily doc only.
+ * - True custom/older ranges fall back to daily range reads.
  */
 export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: string) => {
   const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+  const analyticsDayKey = useMemo(
+    () => getAnalyticsDateKey(new Date(), storeDetails?.timeZone),
+    [storeDetails?.timeZone]
+  );
+  const schedulerCacheKey = useMemo(
+    () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
+    [storeDetails?.timeZone]
+  );
 
   const effectiveRange = useMemo(() => {
     if (dateRange?.startDate && dateRange?.endDate) {
@@ -101,12 +120,12 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
       };
     }
 
-    return getDefaultDateRange();
-  }, [dateRange?.endDate, dateRange?.startDate]);
+    return getDefaultDateRange(storeDetails?.timeZone);
+  }, [dateRange?.endDate, dateRange?.startDate, storeDetails?.timeZone]);
 
   const isLiveRange = useMemo(
-    () => isTodayRange(effectiveRange.endDate),
-    [effectiveRange.endDate]
+    () => isTodayRange(effectiveRange.endDate, storeDetails?.timeZone),
+    [effectiveRange.endDate, storeDetails?.timeZone]
   );
 
   const tId = storeDetails?.tenantId;
@@ -114,29 +133,15 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
   const canFetch = Boolean(tId && sId && projectId);
 
   const {
-    data: summary,
-    error: summaryError,
-    isLoading: summaryLoading,
-    mutate: mutateSummary,
+    data,
+    error,
+    isLoading,
+    mutate,
   } = useSWR(
-    canFetch ? ['analytics', 'summary', tId, sId, projectId] : null,
-    () => cachedFetcher(
-      createCacheKey('summary', tId, sId, projectId),
-      () => getAnalyticsSummary(tId!, sId!, projectId!)
-    ),
-    SWR_CONFIG_SETTLED
-  );
-
-  const {
-    data: daily,
-    error: dailyError,
-    isLoading: dailyLoading,
-    mutate: mutateDaily,
-  } = useSWR(
-    canFetch ? ['analytics', 'daily', tId, sId, projectId, effectiveRange.startDate, effectiveRange.endDate] : null,
+    canFetch ? ['analytics', 'optimized', tId, sId, projectId, effectiveRange.startDate, effectiveRange.endDate] : null,
     () => {
       const cacheKey = createCacheKey(
-        'daily',
+        'optimized',
         tId,
         sId,
         projectId,
@@ -147,40 +152,40 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
       if (isLiveRange) {
         return cachedFetcherWithTTL(
           cacheKey,
-          () => getDailyAnalyticsRange(tId!, sId!, projectId!, effectiveRange.startDate, effectiveRange.endDate),
-          600000
+          () => getOptimizedAnalyticsData(
+            tId!,
+            sId!,
+            projectId!,
+            effectiveRange.startDate,
+            effectiveRange.endDate,
+            storeDetails?.timeZone,
+          ),
+          600000,
+          analyticsDayKey
         );
       }
 
       return cachedFetcher(
         cacheKey,
-        () => getDailyAnalyticsRange(tId!, sId!, projectId!, effectiveRange.startDate, effectiveRange.endDate)
+        () => getOptimizedAnalyticsData(
+          tId!,
+          sId!,
+          projectId!,
+          effectiveRange.startDate,
+          effectiveRange.endDate,
+          storeDetails?.timeZone,
+        ),
+        schedulerCacheKey
       );
     },
     isLiveRange ? SWR_CONFIG_LIVE : SWR_CONFIG_SETTLED
   );
 
-  const data = useMemo<AnalyticsData | null>(() => {
-    if (!summary && !daily) {
-      return null;
-    }
-
-    return {
-      summary: summary || null,
-      daily: daily || [],
-    };
-  }, [daily, summary]);
-
-  const loading = canFetch && ((summaryLoading && !summary) || (dailyLoading && !daily));
-  const error = summaryError || dailyError || null;
-
   return {
-    data,
-    loading,
-    error,
-    mutate: async () => {
-      await Promise.all([mutateSummary(), mutateDaily()]);
-    },
+    data: (data || null) as AnalyticsData | null,
+    loading: canFetch && isLoading && !data,
+    error: error || null,
+    mutate,
   };
 };
 

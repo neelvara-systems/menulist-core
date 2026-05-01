@@ -10,6 +10,7 @@
  */
 
 import { DB_COLLECTIONS } from '../../constants/database';
+import { addDaysToAnalyticsDateKey, getAnalyticsDateKey } from '../../utils/analyticsDate';
 
 export interface AggregatedAnalytics {
     totalViews: number;
@@ -21,6 +22,39 @@ export interface AggregatedAnalytics {
     hourlyClicksByItem: Record<string, Record<string, number>>;
     itemNames: Record<string, string>;
     daysWithData: number;
+}
+
+function emptyAggregatedAnalytics(): AggregatedAnalytics {
+    return {
+        totalViews: 0,
+        totalClicks: 0,
+        totalSessions: 0,
+        clicksByItem: {},
+        viewsByItem: {},
+        recommendationClicksByItem: {},
+        hourlyClicksByItem: {},
+        itemNames: {},
+        daysWithData: 0,
+    };
+}
+
+function getIntelligenceSnapshotDocId(tId: string, sId: string, projectId: string): string {
+    return `${tId}_${sId}_${projectId}_intelligence_7d`;
+}
+
+function normalizeSnapshot(data: FirebaseFirestore.DocumentData | undefined): AggregatedAnalytics | null {
+    if (!data) return null;
+    return {
+        totalViews: data.totalViews || 0,
+        totalClicks: data.totalClicks || 0,
+        totalSessions: data.totalSessions || 0,
+        clicksByItem: data.clicksByItem || {},
+        viewsByItem: data.viewsByItem || {},
+        recommendationClicksByItem: data.recommendationClicksByItem || {},
+        hourlyClicksByItem: data.hourlyClicksByItem || {},
+        itemNames: data.itemNames || {},
+        daysWithData: data.daysWithData || 0,
+    };
 }
 
 /**
@@ -36,82 +70,23 @@ export async function fetch7DayAnalytics(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
-    projectId: string
+    projectId: string,
+    timeZone?: string,
 ): Promise<AggregatedAnalytics> {
-    // Calculate date range (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const dateStr = sevenDaysAgo.toISOString().split('T')[0];
-
-    // Query daily analytics for this project
-    // Document key: {tId}_{sId}_{projectId}_daily_{date}
-    const analyticsQuery = await db.collection(DB_COLLECTIONS.ANALYTICS)
-        .where('__name__', '>=', `${tId}_${sId}_${projectId}_daily_${dateStr}`)
-        .where('__name__', '<=', `${tId}_${sId}_${projectId}_daily_9999`)
+    const todayKey = getAnalyticsDateKey(new Date(), timeZone);
+    const lastSettledKey = addDaysToAnalyticsDateKey(todayKey, -1);
+    const snapshotDoc = await db.collection(DB_COLLECTIONS.ANALYTICS)
+        .doc(getIntelligenceSnapshotDocId(tId, sId, projectId))
         .get();
-
-    // Initialize aggregated data
-    const result: AggregatedAnalytics = {
-        totalViews: 0,
-        totalClicks: 0,
-        totalSessions: 0,
-        clicksByItem: {},
-        viewsByItem: {},
-        recommendationClicksByItem: {},
-        hourlyClicksByItem: {},
-        itemNames: {},
-        daysWithData: analyticsQuery.size
-    };
-
-    // Aggregate across all daily documents
-    for (const doc of analyticsQuery.docs) {
-        const data = doc.data();
-
-        // Aggregate totals
-        result.totalViews += data.totalViews || 0;
-        result.totalClicks += data.totalClicks || 0;
-        result.totalSessions += data.totalSessions || 0;
-
-        // Aggregate viewsByItem (per-item impressions)
-        if (data.viewsByItem) {
-            for (const [itemId, views] of Object.entries(data.viewsByItem)) {
-                result.viewsByItem[itemId] = (result.viewsByItem[itemId] || 0) + (views as number);
-            }
-        }
-
-        // Aggregate clicksByItem
-        if (data.clicksByItem) {
-            for (const [itemId, clicks] of Object.entries(data.clicksByItem)) {
-                result.clicksByItem[itemId] = (result.clicksByItem[itemId] || 0) + (clicks as number);
-            }
-        }
-
-        // Aggregate recommendationClicksByItem
-        if (data.recommendationClicksByItem) {
-            for (const [itemId, clicks] of Object.entries(data.recommendationClicksByItem)) {
-                result.recommendationClicksByItem[itemId] =
-                    (result.recommendationClicksByItem[itemId] || 0) + (clicks as number);
-            }
-        }
-
-        // Aggregate hourlyClicksByItem (for time eligibility)
-        if (data.hourlyClicksByItem) {
-            for (const [itemId, hourData] of Object.entries(data.hourlyClicksByItem)) {
-                if (!result.hourlyClicksByItem[itemId]) {
-                    result.hourlyClicksByItem[itemId] = {};
-                }
-                for (const [hour, clicks] of Object.entries(hourData as Record<string, number>)) {
-                    result.hourlyClicksByItem[itemId][hour] =
-                        (result.hourlyClicksByItem[itemId][hour] || 0) + clicks;
-                }
-            }
-        }
-
-        // Collect item names (last seen wins)
-        if (data.itemNames) {
-            Object.assign(result.itemNames, data.itemNames);
+    if (snapshotDoc.exists) {
+        const snapshotData = snapshotDoc.data();
+        if (String(snapshotData?.lastSettledLocalDate || '') >= lastSettledKey) {
+            return normalizeSnapshot(snapshotData) || emptyAggregatedAnalytics();
         }
     }
 
-    return result;
+    // Cost rule: Decision Blocks and Menu Intelligence consume only the
+    // scheduler-written compact input doc. Missing/stale snapshots settle as
+    // empty for this run instead of opening a hidden daily-doc range query.
+    return emptyAggregatedAnalytics();
 }

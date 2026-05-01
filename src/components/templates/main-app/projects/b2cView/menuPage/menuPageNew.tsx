@@ -214,6 +214,7 @@ function MenuPageNew({
                 tenantId: storeDetails.tenantId,
                 storeId: String(storeDetails.storeId),
                 projectId: projectData.projectId,
+                storeTimeZone: storeDetails.timeZone,
             }
             : null;
         const trackRecoveryAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
@@ -489,6 +490,7 @@ function MenuPageNew({
                 tenantId: storeDetails.tenantId,
                 storeId: String(storeDetails.storeId),
                 projectId: projectData.projectId,
+                storeTimeZone: storeDetails.timeZone,
                 includeLocation: analyticsPreferences.trackLocation,
             });
         }, 900);
@@ -523,6 +525,7 @@ function MenuPageNew({
                     tenantId: storeDetails.tenantId,
                     storeId: String(storeDetails.storeId),
                     projectId: projectData.projectId,
+                    storeTimeZone: storeDetails.timeZone,
                     includeLocation: analyticsPreferences.trackLocation,
                 });
             }
@@ -764,6 +767,7 @@ function MenuPageNew({
                                 tenantId: storeDetails?.tenantId,
                                 storeId: String(storeDetails?.storeId || ''),
                                 projectId: projectData?.projectId,
+                                storeTimeZone: storeDetails?.timeZone,
                             }}
                             trackingEnabled={isDecisionBlockAnalyticsEnabled(storeDetails?.analytics)}
                         />
@@ -1192,6 +1196,7 @@ function MenuPageNew({
                             tenantId: storeDetails?.tenantId,
                             storeId: String(storeDetails?.storeId || ''),
                             projectId: projectData?.projectId,
+                            storeTimeZone: storeDetails?.timeZone,
                         }}
                         trackingEnabled={analyticsPreferences.trackMenuViews}
                     />

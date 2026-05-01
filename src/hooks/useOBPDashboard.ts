@@ -9,6 +9,7 @@ import {
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
+import { getAnalyticsDateKey, getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useContext, useMemo } from 'react';
 import useSWR from 'swr';
@@ -37,9 +38,10 @@ function createCacheKey(type: string, tId: string, sId: string): string {
 async function cachedFetcher<T>(
     cacheKey: string,
     fetcher: () => Promise<T | null>,
+    dayKey?: string,
 ): Promise<T | null> {
-    if (!shouldRevalidate(cacheKey)) {
-        const cached = getCachedData<T>(cacheKey);
+    if (!shouldRevalidate(cacheKey, dayKey)) {
+        const cached = getCachedData<T>(cacheKey, undefined, dayKey);
         if (cached !== undefined) {
             return cached;
         }
@@ -47,7 +49,7 @@ async function cachedFetcher<T>(
 
     const data = await fetcher();
     if (data !== null) {
-        setCachedData(cacheKey, data);
+        setCachedData(cacheKey, data, dayKey);
     }
     return data;
 }
@@ -56,25 +58,26 @@ async function cachedFetcherWithTTL<T>(
     cacheKey: string,
     fetcher: () => Promise<T | null>,
     maxAgeMs: number,
+    dayKey?: string,
 ): Promise<T | null> {
-    const cached = getCachedData<T>(cacheKey, maxAgeMs);
+    const cached = getCachedData<T>(cacheKey, maxAgeMs, dayKey);
     if (cached !== undefined) {
         return cached;
     }
 
     const data = await fetcher();
     if (data !== null) {
-        setCachedData(cacheKey, data);
+        setCachedData(cacheKey, data, dayKey);
     }
     return data;
 }
 
-function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number): T | undefined {
+function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, dayKey?: string): T | undefined {
     if (typeof window === 'undefined' || !cacheKey) {
         return undefined;
     }
 
-    return getCachedData<T>(cacheKey, maxAgeMs);
+    return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
 }
 
 export function useOBPDashboard() {
@@ -82,11 +85,19 @@ export function useOBPDashboard() {
 
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
+    const analyticsDayKey = useMemo(
+        () => getAnalyticsDateKey(new Date(), storeDetails?.timeZone),
+        [storeDetails?.timeZone],
+    );
+    const schedulerCacheKey = useMemo(
+        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
+        [storeDetails?.timeZone],
+    );
     const canFetch = Boolean(tId && sId);
     const settledCacheKey = canFetch ? createCacheKey('settled', tId!, sId!) : null;
     const todayCacheKey = canFetch ? createCacheKey('today', tId!, sId!) : null;
-    const settledFallbackData = useMemo(() => getInitialCachedValue<OBPDashboardData>(settledCacheKey), [settledCacheKey]);
-    const todayFallbackData = useMemo(() => getInitialCachedValue<OBPTodayData>(todayCacheKey, 600000), [todayCacheKey]);
+    const settledFallbackData = useMemo(() => getInitialCachedValue<OBPDashboardData>(settledCacheKey, undefined, schedulerCacheKey), [schedulerCacheKey, settledCacheKey]);
+    const todayFallbackData = useMemo(() => getInitialCachedValue<OBPTodayData>(todayCacheKey, 600000, analyticsDayKey), [analyticsDayKey, todayCacheKey]);
 
     const {
         data: settledData,
@@ -95,7 +106,8 @@ export function useOBPDashboard() {
         canFetch ? ['obpDashboard', 'settled', tId, sId] : null,
         () => cachedFetcher(
             settledCacheKey!,
-            () => getOBPDashboardData(tId!, sId!),
+            () => getOBPDashboardData(tId!, sId!, storeDetails?.timeZone),
+            schedulerCacheKey,
         ),
         {
             ...SETTLED_SWR_CONFIG,
@@ -111,8 +123,9 @@ export function useOBPDashboard() {
         canFetch ? ['obpDashboard', 'today', tId, sId] : null,
         () => cachedFetcherWithTTL(
             todayCacheKey!,
-            () => getOBPDashboardToday(tId!, sId!),
+            () => getOBPDashboardToday(tId!, sId!, storeDetails?.timeZone),
             600000,
+            analyticsDayKey,
         ),
         {
             ...TODAY_SWR_CONFIG,

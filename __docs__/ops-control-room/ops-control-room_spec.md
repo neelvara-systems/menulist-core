@@ -1,7 +1,8 @@
 # Ops Control Room — Product Specification
 
-**Status:** 📝 DOCUMENTED  
+**Status:** ✅ IMPLEMENTED
 **Created:** February 20, 2026  
+**Last Updated:** May 1, 2026
 **Audience:** CEO, PM, Non-developers
 
 ---
@@ -64,6 +65,13 @@ This takes 5-10 minutes and requires context-switching between 4 tools. The ops 
 ### Section 5: Emergency Controls
 - Enable/Disable SAFE_MODE (with confirmation dialog)
 - Mute Alerts for 20 minutes (deploy window)
+
+### Related Internal Page: Scheduler Monitor
+- URL: `/ops/scheduler`
+- Shows scheduler run health from `schedulerRunLogs`
+- Shows store-local analytics settlement state from `platformSummary/nightlyState_*`
+- Highlights failed or stale settlements after the timezone-aware nightly flow
+- Manual recovery is limited to Decision Blocks recomputation; it is not a full scheduler run
 
 ---
 

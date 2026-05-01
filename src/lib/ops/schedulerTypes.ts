@@ -14,6 +14,7 @@
 export type SchedulerTaskName =
   | 'decision_blocks'
   | 'menu_intelligence'
+  | 'customer_obp_analytics'
   | 'authority_maturation'
   | 'menu_drift'
   | 'guest_feedback_retention'
@@ -107,3 +108,25 @@ export type SchedulerRunFilter = {
   trigger?: SchedulerTrigger;
   limit?: number;
 };
+
+export interface SchedulerSettlementState {
+  id: string;
+  tId?: string;
+  sId?: string;
+  status?: 'running' | 'completed' | 'failed' | 'skipped' | string;
+  phase?: string;
+  lastAttemptedLocalDate?: string;
+  lastSettledLocalDate?: string;
+  lastCompletedAt?: any;
+  updatedAt?: any;
+  error?: string;
+}
+
+export interface SchedulerSettlementSummary {
+  states: SchedulerSettlementState[];
+  totalTrackedStores: number;
+  runningCount: number;
+  failedCount: number;
+  staleCount: number;
+  latestSettledDate: string | null;
+}

@@ -13,9 +13,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import useAnalyticsData from '@hook/useAnalyticsData';
-import dayjs from 'dayjs';
-import { useMemo } from 'react';
+import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
 import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
 import { Card, DotLoading, Flex, Text, Title } from '../../antd';
 
@@ -59,18 +57,6 @@ function platformLabel(key: string): string {
     }
 }
 
-function sumLastNDays(daily: DailyShape[], field: keyof DailyShape, days: number): number {
-    const cutoff = dayjs().subtract(days, 'day').startOf('day');
-    let total = 0;
-    for (const d of daily) {
-        if (!d?.date) continue;
-        if (dayjs(d.date).isBefore(cutoff)) continue;
-        const v = d[field];
-        if (typeof v === 'number') total += v;
-    }
-    return total;
-}
-
 function topShortcutLabel(clicks?: Record<string, number>): { key: string; count: number } {
     if (!clicks) return { key: '—', count: 0 };
     let bestKey = '';
@@ -86,20 +72,16 @@ function topShortcutLabel(clicks?: Record<string, number>): { key: string; count
 }
 
 export default function MobileCustomerAppMetrics() {
-    const dateRange = useMemo(() => ({
-        startDate: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
-        endDate: dayjs().format('YYYY-MM-DD'),
-    }), []);
-    const { data, loading } = useAnalyticsData(dateRange, 'customerApp');
+    const { data, loading } = useCustomerAppDashboard();
 
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return null;
 
-    const summary = (data?.summary ?? null) as unknown as SummaryShape | null;
-    const daily = (data?.daily ?? []) as unknown as DailyShape[];
+    const summary = (data?.summary ?? null) as SummaryShape | null;
+    const daily = (data?.daily30d ?? []) as DailyShape[];
 
     const installedCustomers = summary?.lifetimeUniqueInstalls ?? summary?.lifetimeTotalInstalled ?? 0;
-    const appOpens30d = sumLastNDays(daily, 'totalAppOpens', 30);
-    const installs30d = sumLastNDays(daily, 'totalInstalled', 30);
+    const appOpens30d = daily.reduce((sum, day) => sum + (day.totalAppOpens || 0), 0);
+    const installs30d = daily.reduce((sum, day) => sum + (day.totalInstalled || 0), 0);
     const iosManualInstalls =
         (summary?.installsBySource?.['ios-inferred'] ?? 0) +
         (summary?.installsBySource?.['ios-standalone'] ?? 0);

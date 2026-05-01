@@ -42,6 +42,7 @@ interface Props {
     storeId: string | number;
     tenantId: string | number;
     storeName: string;
+    storeTimeZone?: string;
     /** From store.pwaSettings.promoteInstallation — default true. */
     promoteInstallation?: boolean;
     /** From store.analytics.trackMenuViews !== false (default true). */
@@ -53,6 +54,7 @@ export default function CustomerAppController({
     storeId,
     tenantId,
     storeName,
+    storeTimeZone,
     promoteInstallation = true,
     trackingEnabled = true,
     locationTrackingEnabled = true,
@@ -73,10 +75,10 @@ export default function CustomerAppController({
         incrementVisitCount(storeId);
 
         // 2. Fire OPENED event if this is a standalone-mode launch.
-        void detectAndTrackAppOpen(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
+        void detectAndTrackAppOpen(storeId, { tenantId, storeTimeZone, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // 3. Fire SHORTCUT_* event if launched from a manifest shortcut.
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, storeTimeZone, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // 4. Compute prompt eligibility AFTER incrementing visits.
         //    Direct-install intent (?pwa=install on the URL) bypasses the visit
@@ -111,11 +113,11 @@ export default function CustomerAppController({
 
         const handler = () => {
             setInstalledInThisSession(true);
-            void fireInstalledEventOnce(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
+            void fireInstalledEventOnce(storeId, { tenantId, storeTimeZone, trackingEnabled, includeLocation: locationTrackingEnabled });
         };
         window.addEventListener('appinstalled', handler);
         return () => window.removeEventListener('appinstalled', handler);
-    }, [featureOn, storeId, tenantId, trackingEnabled, locationTrackingEnabled]);
+    }, [featureOn, storeId, tenantId, storeTimeZone, trackingEnabled, locationTrackingEnabled]);
 
     if (!featureOn) return null;
     if (installedInThisSession) return null;
@@ -126,6 +128,7 @@ export default function CustomerAppController({
             storeId={storeId}
             tenantId={tenantId}
             storeName={storeName}
+            storeTimeZone={storeTimeZone}
             deferredPrompt={deferredPrompt}
             trackingEnabled={trackingEnabled}
             locationTrackingEnabled={locationTrackingEnabled}

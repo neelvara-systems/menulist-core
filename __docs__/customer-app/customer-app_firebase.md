@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Firebase Cost Tracking  
 **Status:** 📋 Ready for Implementation  
-**Last Updated:** April 18, 2026  
+**Last Updated:** May 1, 2026
 **Audience:** Engineering, Founder, Cost Auditors
 
 ---
@@ -12,7 +12,7 @@
 
 - **Collections Used:** `stores` (adds fields), `analytics` (existing — reuses via `projectId='customerApp'`). **No new collections.**
 - **Storage Buckets:** `pwa-icons/{storeId}/{size}.png`
-- **Cloud Functions:** None new. Existing `aggregateCustomerAnalytics` automatically rolls up `customerApp` daily docs.
+- **Cloud Functions:** None new. Shared timezone-aware scheduler `computeDecisionBlocksScores` rolls up `customerApp` daily docs through `aggregateCustomerAnalyticsForStoreDate`.
 - **Estimated Monthly Cost:** Low (~$0.05 per 1000 active installs, dominated by icon egress; analytics events share existing menu-analytics cost envelope)
 - **Analytics policy:** Customer App is a surface — surfaces get lifecycle analytics. Uses existing `trackEvent()` infrastructure, existing debounce/rate-limit, existing session system. Install events are deduped per-device via `localStorage` before firing (see `fireInstalledEventOnce` in `customer-app_impl.md`).
 
@@ -27,7 +27,7 @@
 | Manifest generation      | stores     | Page load             | Per visit   | 1                 | Yes      | `unstable_cache` 60s TTL (shared with existing menu lookups) |
 | Icon existence check     | —          | Icon request          | Per install | 0                 | N/A      | CDN/Storage check, no Firestore                              |
 | Settings fetch           | stores     | Owner opens settings  | Rare        | 1                 | Yes      | Part of store doc                                            |
-| Analytics dashboard read | analytics  | Owner opens dashboard | Rare        | 1-90 (date range) | Yes      | Doc ID pattern `{tId}_{sId}_customerApp_*`                   |
+| Analytics dashboard read | analytics  | Owner opens dashboard | Rare        | 1                 | Yes      | Reads `{tId}_{sId}_customerApp_dashboard_summary`, cached by scheduler cycle. |
 
 **Total reads per customer visit:** 0 net-new (manifest reuses the same cached store lookup used by the menu page)
 
@@ -44,7 +44,7 @@
 | `CUSTOMER_APP_INSTALLED`        | analytics  | `appinstalled` event      | Once per device per store | 1 (increment)                  | `totalInstalled`, `uniqueInstallSessions`, device/location breakdowns | Deduped via `localStorage`                       |
 | `CUSTOMER_APP_OPENED`           | analytics  | Standalone-mode page load | Per open (debounced)      | 1 (increment)                  | `totalAppOpens`, hourly, device, location                             | Fires only in `display-mode: standalone`         |
 | `CUSTOMER_APP_SHORTCUT_*`       | analytics  | Shortcut launch           | Per launch                | 1 (increment)                  | `shortcutClicks.{menu,call,directions}`                               | Detected via `?source=shortcut-*` URL param      |
-| Nightly aggregation             | analytics  | Cloud Function            | 1/day/store               | 1-3 (summary, weekly, monthly) | All metric fields                                                     | Reuses existing `aggregateCustomerAnalytics`     |
+| Nightly aggregation             | analytics  | Cloud Function            | 1/day/store-local date    | 1-4 (summary, weekly, monthly, dashboard summary) | All metric fields                                                     | Reuses shared locked analytics settlement        |
 
 **Per-visit writes (installed user):** 1-2 (app open + optional shortcut event, both debounced).
 **Per-install writes (first-time):** 3-4 (prompt shown, install started, installed, first open).
@@ -54,7 +54,7 @@
 | Operation             | Collection | Trigger                | Frequency | Docs Deleted     | Soft/Hard | Notes                                             |
 | --------------------- | ---------- | ---------------------- | --------- | ---------------- | --------- | ------------------------------------------------- |
 | Icon override removal | stores     | Owner clears           | Rare      | 0 (field update) | N/A       | Sets `pwaIconOverrideUrl: null`                   |
-| Daily analytics TTL   | analytics  | Nightly Cloud Function | Daily     | Varies           | Hard      | 90-day retention inherited from existing function |
+| Daily analytics TTL   | analytics  | Nightly Cloud Function | Monthly   | Varies           | Hard      | 90-day retention inherited from existing analytics settlement |
 
 ---
 
@@ -91,25 +91,25 @@
 
 **None.** Icon generation is handled via API route (`/api/app-icons/generate`).
 
-### Existing Cloud Function — Code Changes Required
+### Existing Cloud Function Contract
 
-| Function                     | Change Type | File                                          | Why                                                                                                                                                                                 |
-| ---------------------------- | ----------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aggregateCustomerAnalytics` | **Modify**  | `functions/src/aggregateCustomerAnalytics.ts` | `DailyMetrics` interface, `aggregateDailyDocs()`, and `updateSummaryDocument()` only know menu fields. Customer App fields are silently dropped from all rollups without additions. |
+`customerApp` is included as a reserved analytics project ID in the shared store/date settlement pass. Daily docs are queried by `tId`, `sId`, `grain='daily'`, and `localDate`, so the scheduler no longer scans all analytics docs for a store to discover Customer App activity.
 
-The function already **discovers** `customerApp` daily docs (regex `/^(\d+)_(\d+)_([^_]+)_daily_/` matches `customerApp` automatically). The gap is in **field aggregation**:
+`DailyMetrics`, `aggregateDailyDocs()`, and `updateSummaryDocument()` include Customer App numeric totals and map rollups. Lifetime summary increments are idempotent and skipped when the date is already aggregated.
 
-| Function                   | Current Behavior                                     | Required Change                                                                                                                      |
-| -------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `DailyMetrics` (interface) | Only menu fields (`totalViews`, `totalClicks`, etc.) | Add 10 optional Customer App fields (`totalPromptShown`, `totalInstalled`, `totalAppOpens`, `shortcutClicks`, etc.)                  |
-| `aggregateDailyDocs()`     | Sums menu fields only; map merge for menu breakdowns | Add Customer App numeric sums + `mergeMapField` calls for `shortcutClicks`, `installsByDevice`, `installsByLocation`                 |
-| `updateSummaryDocument()`  | Increments lifetime menu totals only                 | Add `lifetimeTotalInstalled`, `lifetimeUniqueInstalls`, `lifetimeTotalAppOpens`, `shortcutClicks.*`, `installsByDevice.*` increments |
+The owner dashboard does not read a 30-day daily range directly. The nightly settlement writes `{tId}_{sId}_customerApp_dashboard_summary` with:
 
-**Effect of missing these changes:** Daily docs write correctly (client-side). Weekly rollup (`_weekly_*`) and monthly rollup (`_monthly_*`) documents will be **missing all Customer App fields** — owner dashboard card would show zeros for 7-day and 30-day views. Lifetime summary also incomplete.
+- `summary`: lifetime install/open/shortcut counters from the overall summary doc
+- `daily30d`: compact 30-day rows required for App Opens (30d) and Installs (30d)
+- `lastSettledLocalDate`: the settled store-local date
 
-**Schedule:** Nightly 3:00 AM UTC. Customer App projects processed in the same scheduler run as all other projects — no separate schedule needed.
+Owner-side SWR/localStorage cache uses the store-local scheduler cycle key, so this settled read model is reused until the next expected nightly completion window.
 
-**Deployment:** `firebase deploy --only functions:aggregateCustomerAnalytics`
+**Schedule:** Shared timezone-aware nightly scheduler. Customer App projects are processed in the same store-scoped scheduler pass as menu analytics and OBP — no separate schedule needed.
+
+**Deployment:** `firebase deploy --only functions:computeDecisionBlocksScores`
+
+**Date semantics:** Customer App daily docs use the **store-local date key** and store-local hourly buckets, matching menu analytics and OBP.
 
 **Zero impact on existing projects:** All new fields are optional. Menu analytics projects (`obp`, menu slugs) are unaffected.
 
@@ -244,7 +244,7 @@ match /pwa-icons/{storeId}/{size} {
 | `getStoreBySubdomain`    | `src/lib/firestore/clientStoreLookup.ts` | Existing, cached 60s                                        | Read (1 doc)      |
 | `getStoreByCustomDomain` | `src/lib/firestore/clientStoreLookup.ts` | Existing, cached 60s                                        | Read (1 doc)      |
 | `trackAnalyticsEvent`    | `src/database/analytics.ts`              | Existing, used via `trackEvent()`                           | Write (increment) |
-| `getAnalyticsData`       | `src/database/analytics.ts`              | Existing, used for dashboard with `projectId='customerApp'` | Read (N docs)     |
+| `getCustomerAppDashboardSummary` | `src/database/ownerDashboard/index.ts` | Reads `{tId}_{sId}_customerApp_dashboard_summary` for dashboard cards | Read (1 doc) |
 | `updatePWASettings`      | `src/database/pwa/index.ts`              | NEW                                                         | Write (merge)     |
 | `updatePWAIconOverride`  | `src/database/pwa/index.ts`              | NEW                                                         | Write (merge)     |
 

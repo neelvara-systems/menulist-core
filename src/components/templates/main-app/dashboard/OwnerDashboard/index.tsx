@@ -21,6 +21,7 @@
  */
 
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
+import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
@@ -100,12 +101,17 @@ const OwnerDashboard: React.FC = () => {
         projectId: activeProjectId || undefined,
         loadHistorical: showHistorical,
     });
+    const obpDashboard = useOBPDashboard();
 
     useEffect(() => {
         if (!loadingToday && !showHistorical && !data?.today) {
             setShowHistorical(true);
         }
     }, [loadingToday, showHistorical, data?.today]);
+
+    const hasMenuData = Boolean(data?.today || data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall);
+    const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
+    const hasOBPData = Boolean(obpDashboard.data?.today || hasOBPSettledData);
 
     // Show loading while storeDetails hasn't loaded yet OR data is still fetching
     if (!storeDetails?.storeId || loading) {
@@ -125,9 +131,11 @@ const OwnerDashboard: React.FC = () => {
         );
     }
 
-    const hasAnyData = data?.today || data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall;
+    if (!hasMenuData && !hasOBPData && (obpDashboard.loading || obpDashboard.loadingToday)) {
+        return <LoadingState />;
+    }
 
-    if (!hasAnyData) {
+    if (!hasMenuData && !hasOBPData) {
         return (
             <EmptyState
                 title={EMPTY_STATE_MESSAGES.noData.title}
@@ -139,17 +147,22 @@ const OwnerDashboard: React.FC = () => {
     const renderCurrentView = () => {
         switch (viewMode) {
             case 'overview':
+                if (!data?.overview && hasOBPSettledData) return null;
                 return <OverviewView data={data?.overview || null} />;
             case 'daily':
                 if (loadingDaily) return <LoadingState />;
+                if (!data?.daily && hasOBPSettledData) return null;
                 return <DailyView data={data?.daily || null} />;
             case 'weekly':
                 if (loadingWeekly) return <LoadingState />;
+                if (!data?.weekly && hasOBPSettledData) return null;
                 return <WeeklyView data={data?.weekly || null} />;
             case 'monthly':
                 if (loadingMonthly) return <LoadingState />;
+                if (!data?.monthly && hasOBPSettledData) return null;
                 return <MonthlyView data={data?.monthly || null} />;
             default:
+                if (!data?.overview && hasOBPSettledData) return null;
                 return <OverviewView data={data?.overview || null} />;
         }
     };
@@ -172,6 +185,13 @@ const OwnerDashboard: React.FC = () => {
                     showHistorical={showHistorical}
                     onShowHistorical={() => setShowHistorical(true)}
                     fetchedAt={data?.lastFetched}
+                />
+
+                <OBPMetricsCard
+                    data={obpDashboard.data}
+                    loading={obpDashboard.loading}
+                    loadingToday={obpDashboard.loadingToday}
+                    mode="today"
                 />
 
                 {showHistorical ? (
@@ -207,6 +227,13 @@ const OwnerDashboard: React.FC = () => {
                                 {renderCurrentView()}
                             </motion.div>
                         </AnimatePresence>
+
+                        <OBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode={viewMode}
+                        />
                     </>
                 ) : null}
 
@@ -216,7 +243,7 @@ const OwnerDashboard: React.FC = () => {
                 <HoursFreshnessNudge />
 
                 {/* Menu Quality Signals - Actionable quality nudges */}
-                <MenuQualitySignals projectId={selectedProjectId} />
+                <MenuQualitySignals projectId={activeProjectId} />
 
                 {/* Behavior Nudge Card - First-time reinforcement for official link adoption */}
                 <BehaviorNudgeCard />
@@ -229,9 +256,6 @@ const OwnerDashboard: React.FC = () => {
 
                 {/* OBP Link Card - Persistent visibility for link sharing habit */}
                 {storeDetails && <OBPLinkCard storeDetails={storeDetails} />}
-
-                {/* OBP Analytics Card - Shows when ENABLE_OBP is true */}
-                <OBPMetricsCard />
 
                 {/* Health Signal Cards - Pillars 4-6 (visible only when data exists) */}
                 {storeDetails?.healthSignals && (

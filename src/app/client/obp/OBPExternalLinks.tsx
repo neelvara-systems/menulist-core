@@ -9,6 +9,7 @@ interface OBPExternalLinksProps {
     storeId: number;
     trackingEnabled?: boolean;
     includeLocation?: boolean;
+    storeTimeZone?: string;
     googleReviewLabel?: string;
     googleReviewUrl?: string;
     instagram?: string | null;
@@ -25,6 +26,7 @@ export default function OBPExternalLinks({
     storeId,
     trackingEnabled = true,
     includeLocation = true,
+    storeTimeZone,
     googleReviewLabel,
     googleReviewUrl,
     instagram,
@@ -41,6 +43,7 @@ export default function OBPExternalLinks({
         trackOBPLinkClick(storeId, obpLink, {
             tenantId,
             sessionId: getSessionId(),
+            storeTimeZone,
             includeLocation,
         }).catch(() => { });
     };

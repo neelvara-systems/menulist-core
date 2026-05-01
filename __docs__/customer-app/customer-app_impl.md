@@ -165,10 +165,12 @@ interface StorePWASettings {
 | Summary doc ID           | `{tId}_{sId}_customerApp_overall_summary`                                                                                                                                                                                                           |
 | Weekly rollup            | `{tId}_{sId}_customerApp_weekly_{YYYY-Www}`                                                                                                                                                                                                         |
 | Monthly rollup           | `{tId}_{sId}_customerApp_monthly_{YYYY-MM}`                                                                                                                                                                                                         |
-| Aggregation — discovery  | `aggregateCustomerAnalytics.ts` regex `/^(\d+)_(\d+)_([^_]+)_daily_(\d{4}-\d{2}-\d{2})$/` matches `customerApp` daily docs automatically — **no change needed for doc discovery**                                                                   |
-| Aggregation — field gaps | `DailyMetrics` interface and `aggregateDailyDocs()` in `aggregateCustomerAnalytics.ts` only know about menu fields. **Customer App fields must be added** (see "Cloud Function Changes Required" section below) or weekly/monthly rollups are empty |
-| Schedule                 | Nightly 3:00 AM UTC (existing) — Customer App docs processed in same run as menu analytics docs                                                                                                                                                     |
+| Aggregation — discovery  | Scheduler includes reserved `projectId='customerApp'` in the store/date settlement pass and queries daily docs by `tId`, `sId`, `grain='daily'`, and `localDate`                                                                                   |
+| Aggregation — fields     | `DailyMetrics`, `aggregateDailyDocs()`, and `updateSummaryDocument()` include Customer App numeric totals and map rollups                                                                                                                            |
+| Schedule                 | Shared timezone-aware nightly scheduler — Customer App docs processed in the same store-scoped run as menu analytics and OBP                                                                                                                                         |
 | 90-day TTL               | Inherited from existing Cloud Function — Customer App daily docs auto-deleted after 90 days                                                                                                                                                         |
+
+**Date semantics:** the `YYYY-MM-DD` segment is now the **store-local calendar day**, not UTC. Install / open / shortcut events also write hourly buckets in the store's local hour.
 
 #### New TrackingEvent Enum Values
 
@@ -378,9 +380,9 @@ const topShortcut = pickTopShortcut(data?.summary?.shortcutClicks);
 
 Card is added to `AnalyticsDashboard/index.tsx` alongside existing `OverallMetrics`.
 
-#### Cloud Function Changes Required (`functions/src/aggregateCustomerAnalytics.ts`)
+#### Cloud Function Contract (`functions/src/aggregateCustomerAnalytics.ts`)
 
-The nightly scheduler discovers `customerApp` docs automatically (regex matches). However, the **`DailyMetrics` interface**, **`aggregateDailyDocs()`**, and **`updateSummaryDocument()`** only know about menu fields. Without these additions, Customer App fields are silently dropped from weekly/monthly rollups and the lifetime summary document.
+The nightly scheduler includes `customerApp` as a reserved analytics project ID for each store/date settlement. Discovery no longer depends on scanning analytics doc IDs with a regex; daily docs are queried by `tId`, `sId`, `grain='daily'`, and `localDate`. Lifetime summary updates are idempotent and skip dates that were already aggregated.
 
 **Change 1 — Extend `DailyMetrics` interface** (line ~52):
 
@@ -1272,7 +1274,7 @@ open https://localhost:3000/api/app-icons/123/192
 | [ ] Analytics: all 8 events fire correctly under debounce/rate-limit                                                       | ⏳     |
 | [ ] Analytics: `CUSTOMER_APP_OPENED` fires only in standalone mode                                                         | ⏳     |
 | [ ] Analytics: `fireInstalledEventOnce` prevents double-count on reinstall                                                 | ⏳     |
-| [ ] Analytics: daily doc ID pattern matches existing aggregation regex                                                     | ⏳     |
+| [ ] Analytics: daily doc includes scheduler metadata (`tId`, `sId`, `projectId`, `grain`, `localDate`)                     | ⏳     |
 | [ ] Analytics: weekly rollup doc contains `totalInstalled`, `totalAppOpens`, `shortcutClicks`                              | ⏳     |
 | [ ] Analytics: monthly rollup doc contains same Customer App fields                                                        | ⏳     |
 | [ ] Analytics: `overall_summary` doc has `lifetimeTotalInstalled`, `lifetimeUniqueInstalls`                                | ⏳     |
@@ -1332,7 +1334,7 @@ open https://localhost:3000/api/app-icons/123/192
 | Analytics events      | analytics        | PROMPT/INSTALL/OPEN/SHORTCUT | Per event (debounced) | 1 write/event | Shared with menu analytics |
 | Analytics aggregation | analytics        | Nightly Cloud Function       | 1x/day/store          | 1-3 writes    | Shared with menu analytics |
 
-**Day-one note:** Analytics reuses the existing `analytics` collection. No new Cloud Function — but `aggregateCustomerAnalytics.ts` requires code additions to `DailyMetrics`, `aggregateDailyDocs()`, and `updateSummaryDocument()` so Customer App fields appear in weekly/monthly rollups and the lifetime summary (see "Cloud Function Changes Required" section above). Install events are deduped per-device via `localStorage` before firing.
+**Day-one note:** Analytics reuses the existing `analytics` collection. No new Cloud Function. `aggregateCustomerAnalytics.ts` includes Customer App fields in daily, weekly, monthly, and lifetime rollups, and the shared scheduler settles them in the same store/date pass as menu analytics. Install events are deduped per-device via `localStorage` before firing.
 
 ### Cost Optimization
 

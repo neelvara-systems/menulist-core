@@ -1,7 +1,7 @@
 'use client'
 
-import { getSchedulerHealthSummary, getSchedulerRunHistory } from '@database/ops/scheduler';
-import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
+import { getSchedulerHealthSummary, getSchedulerRunHistory, getSchedulerSettlementSummary } from '@database/ops/scheduler';
+import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
 import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
@@ -15,9 +15,10 @@ const { Title, Text } = Typography;
  * Features:
  * - Health badge (healthy/warning/critical/unknown)
  * - Last run summary with per-task breakdown
+ * - Store-local analytics settlement state
  * - Run history table with status/trigger filters
  * - Error details (expandable rows)
- * - Manual trigger button (calls triggerDecisionBlocksScoring CF)
+ * - Manual Decision Blocks recovery trigger (calls triggerDecisionBlocksScoring CF)
  * 
  * Access: platformRole === 'PLATFORM' only (superadmin).
  * Route: /ops/scheduler (not in sidebar — direct URL access).
@@ -34,6 +35,7 @@ const { Title, Text } = Typography;
 const TASK_LABELS: Record<string, string> = {
     decision_blocks: 'Decision Blocks Scoring',
     menu_intelligence: 'Menu Intelligence (CMI)',
+    customer_obp_analytics: 'OBP + Menu Analytics Settlement',
     authority_maturation: 'Authority Maturation',
     menu_drift: 'Menu Drift Metrics',
     guest_feedback_retention: 'Guest Feedback Retention',
@@ -112,6 +114,7 @@ function SchedulerMonitor() {
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<SchedulerHealthSummary | null>(null);
     const [runHistory, setRunHistory] = useState<SchedulerRunLog[]>([]);
+    const [settlement, setSettlement] = useState<SchedulerSettlementSummary | null>(null);
     const [triggerLoading, setTriggerLoading] = useState(false);
     const [filterStatus, setFilterStatus] = useState<SchedulerRunStatus | undefined>(undefined);
     const [filterTrigger, setFilterTrigger] = useState<SchedulerTrigger | undefined>(undefined);
@@ -128,12 +131,14 @@ function SchedulerMonitor() {
             if (filterStatus) filter.status = filterStatus;
             if (filterTrigger) filter.trigger = filterTrigger;
 
-            const [healthData, historyData] = await Promise.all([
+            const [healthData, historyData, settlementData] = await Promise.all([
                 getSchedulerHealthSummary(),
                 getSchedulerRunHistory(filter),
+                getSchedulerSettlementSummary(50),
             ]);
             setHealth(healthData);
             setRunHistory(historyData);
+            setSettlement(settlementData);
         } catch (error) {
             console.error('[SchedulerMonitor] Failed to load data:', error);
             message.error('Failed to load scheduler data');
@@ -146,17 +151,18 @@ function SchedulerMonitor() {
         loadData();
     }, [loadData]);
 
-    // Manual trigger
+    // Manual Decision Blocks recovery trigger. This does not run global nightly tasks.
     const handleManualTrigger = async () => {
         Modal.confirm({
-            title: 'Trigger Nightly Scheduler Manually',
+            title: 'Recompute Decision Blocks Manually',
             content: (
                 <div>
-                    <p>This will run the full nightly scheduler immediately — all 8 tasks including Decision Blocks, Menu Intelligence, Authority Maturation, etc.</p>
+                    <p>This recomputes Decision Blocks for all stores/projects using the recovery callable.</p>
+                    <p>It does not run the full timezone-aware nightly scheduler, analytics settlement, billing reconciliation, or global maintenance tasks.</p>
                     <p><strong>This may take up to 9 minutes.</strong> The page will refresh when complete.</p>
                 </div>
             ),
-            okText: 'Run Scheduler Now',
+            okText: 'Recompute Now',
             okButtonProps: { type: 'primary' },
             onOk: async () => {
                 setTriggerLoading(true);
@@ -167,7 +173,7 @@ function SchedulerMonitor() {
                     const result: any = await triggerFn({});
                     const data = result.data;
                     message.success(
-                        `Scheduler complete: ${data.successCount || 0} success, ${data.failedCount || 0} failed`
+                        `Decision Blocks recomputed: ${data.successCount || 0} success, ${data.failedCount || 0} failed`
                     );
                     await loadData();
                 } catch (error: any) {
@@ -204,7 +210,7 @@ function SchedulerMonitor() {
                         onClick={handleManualTrigger}
                         loading={triggerLoading}
                     >
-                        Run Scheduler Now
+                        Recompute DI Now
                     </Button>
                 </div>
             </div>
@@ -323,7 +329,61 @@ function SchedulerMonitor() {
                 </Card>
             )}
 
-            {/* Section 3: Last Run Errors (if any) */}
+            {/* Section 3: Analytics Settlement State */}
+            <Card title="Analytics Settlement State" size="small" style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <div>
+                        <Text type="secondary">Tracked Stores</Text><br />
+                        <Text strong style={{ fontSize: 20 }}>{settlement?.totalTrackedStores ?? 0}</Text>
+                    </div>
+                    <div>
+                        <Text type="secondary">Latest Settled Date</Text><br />
+                        <Text strong>{settlement?.latestSettledDate || '-'}</Text>
+                    </div>
+                    <div>
+                        <Text type="secondary">Running</Text><br />
+                        <Text strong>{settlement?.runningCount ?? 0}</Text>
+                    </div>
+                    <div>
+                        <Text type="secondary">Failed</Text><br />
+                        <Text strong style={{ color: (settlement?.failedCount ?? 0) > 0 ? '#ff4d4f' : undefined }}>
+                            {settlement?.failedCount ?? 0}
+                        </Text>
+                    </div>
+                    <div>
+                        <Text type="secondary">Stale &gt;2d</Text><br />
+                        <Text strong style={{ color: (settlement?.staleCount ?? 0) > 0 ? '#faad14' : undefined }}>
+                            {settlement?.staleCount ?? 0}
+                        </Text>
+                    </div>
+                </div>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    Tracks `platformSummary/nightlyState_*`. OBP settles first; menu and Customer App analytics settle only after OBP succeeds for the same store-local date.
+                </Text>
+                {(settlement?.failedCount || 0) > 0 && (
+                    <Collapse
+                        size="small"
+                        items={[{
+                            key: 'failed-settlements',
+                            label: `Failed settlements (${settlement?.failedCount})`,
+                            children: (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {settlement?.states
+                                        .filter((state) => state.status === 'failed')
+                                        .slice(0, 10)
+                                        .map((state) => (
+                                            <div key={state.id} style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                                                {state.id}: {state.lastAttemptedLocalDate || '-'} / {state.phase || '-'} — {state.error || 'failed'}
+                                            </div>
+                                        ))}
+                                </div>
+                            ),
+                        }]}
+                    />
+                )}
+            </Card>
+
+            {/* Section 4: Last Run Errors (if any) */}
             {health?.lastRun?.errors && health.lastRun.errors.length > 0 && (
                 <Card
                     title={<span style={{ color: '#ff4d4f' }}>Last Run Errors ({health.lastRun.errors.length})</span>}
@@ -356,7 +416,7 @@ function SchedulerMonitor() {
 
             <Divider />
 
-            {/* Section 4: Run History with Filters */}
+            {/* Section 5: Run History with Filters */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                 <Title level={5} style={{ margin: 0 }}>Run History</Title>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -519,10 +579,11 @@ function SchedulerMonitor() {
                     <Text><strong>Schedule:</strong> Every hour at :30 UTC (timezone-aware — each store runs at 2:30 AM local)</Text>
                     <Text><strong>DST-Safe:</strong> Uses runtime <code>Intl.DateTimeFormat</code> — no static UTC hour drift</Text>
                     <Text><strong>Timeout:</strong> 540 seconds (9 minutes)</Text>
-                    <Text><strong>Tasks:</strong> 16+ sub-tasks (DI, CMI, Authority, Drift, Feedback Retention, Billing Reconciliation, OBP, Messaging, Special Menus, Infra Compounding ×3, Reseller, AI Insights ×4, Canonica)</Text>
+                    <Text><strong>Analytics Settlement:</strong> Store-local date state lives in <code>platformSummary/nightlyState_*</code>; per-date locks live in <code>platformSummary/nightlyLock_*</code></Text>
+                    <Text><strong>Tasks:</strong> DI, CMI, OBP + menu analytics settlement, Authority, Drift, Feedback Retention, Billing Reconciliation, Messaging, Special Menus, Infra Compounding, Reseller, AI Insights</Text>
                     <Text><strong>Dead Man Switch:</strong> Telegram alert fires on completion — if no alert, scheduler did not finish</Text>
                     <Text><strong>Mismatch Alert:</strong> Warns if expected store count ≠ processed count</Text>
-                    <Text><strong>Manual Trigger:</strong> Uses <code>triggerDecisionBlocksScoring</code> callable CF — processes all stores/projects</Text>
+                    <Text><strong>Manual Recovery:</strong> Uses <code>triggerDecisionBlocksScoring</code> callable CF — recomputes Decision Blocks only, not full scheduler settlement</Text>
                     <Text><strong>TTL:</strong> Decision Blocks have 48h TTL — if scheduler fails 2 nights, client falls back to pinned-only mode</Text>
                 </div>
             </Card>

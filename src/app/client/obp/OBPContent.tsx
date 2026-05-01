@@ -520,6 +520,7 @@ export default async function OBPContent({
             <OBPAnalytics
                 tenantId={store?.tenantId}
                 storeId={store?.storeId}
+                storeTimeZone={store?.timeZone}
                 trackViews={trackingEnabled}
                 includeLocation={includeLocation}
             />
@@ -607,6 +608,7 @@ export default async function OBPContent({
                             tenantId={store?.tenantId}
                             storeId={store?.storeId}
                             trackingEnabled={trackingEnabled}
+                            storeTimeZone={store?.timeZone}
                             includeLocation={includeLocation}
                             googleReviewUrl={googleReviewUrl}
                             googleReviewLabel={
@@ -638,6 +640,7 @@ export default async function OBPContent({
                             accentColor={accentColor}
                             tenantId={store?.tenantId}
                             storeId={store?.storeId}
+                            storeTimeZone={store?.timeZone}
                             projects={ctaProjects}
                             // T2-N-02 / A-07: when OBPContent renders for an
                             // outlet URL, storeOverride is set (see G-01).
@@ -691,6 +694,7 @@ export default async function OBPContent({
                     tenantId={store?.tenantId}
                     storeId={store?.storeId}
                     trackingEnabled={trackingEnabled}
+                    storeTimeZone={store?.timeZone}
                     includeLocation={includeLocation}
                     phoneNumber={store?.phoneNumber}
                     whatsappNumber={whatsappNumber}
@@ -778,6 +782,7 @@ export default async function OBPContent({
                         tenantId={store?.tenantId}
                         storeId={store?.storeId}
                         trackingEnabled={trackingEnabled}
+                        storeTimeZone={store?.timeZone}
                         includeLocation={includeLocation}
                         instagram={instagram}
                         facebook={facebook}
@@ -824,6 +829,7 @@ export default async function OBPContent({
                     storeId={store.storeId}
                     tenantId={store.tenantId}
                     storeName={storeName || 'Menu'}
+                    storeTimeZone={store.timeZone}
                     promoteInstallation={
                         (store as any)?.pwaSettings?.promoteInstallation !== false
                     }

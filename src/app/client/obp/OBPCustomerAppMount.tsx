@@ -31,6 +31,7 @@ interface Props {
     storeId: string | number;
     tenantId: string | number;
     storeName: string;
+    storeTimeZone?: string;
     promoteInstallation: boolean;
     trackingEnabled: boolean;
 }

@@ -16,9 +16,12 @@ import type {
   SchedulerHealthSummary,
   SchedulerRunFilter,
   SchedulerRunLog,
+  SchedulerSettlementState,
+  SchedulerSettlementSummary,
 } from '@lib/ops/schedulerTypes';
 import {
   collection,
+  documentId,
   getDocs,
   limit,
   orderBy,
@@ -165,4 +168,61 @@ export async function getSchedulerRunDetails(runId: string): Promise<SchedulerRu
     console.error('[SchedulerDAL] Failed to get run details:', error);
     return null;
   }
+}
+
+// ================================================================
+// GET ANALYTICS SETTLEMENT STATE
+// ================================================================
+
+/**
+ * Get recent per-store analytics settlement state.
+ * Firestore reads: 1 query over platformSummary/nightlyState_* docs.
+ */
+export async function getSchedulerSettlementSummary(maxResults: number = 50): Promise<SchedulerSettlementSummary> {
+  const summary: SchedulerSettlementSummary = {
+    states: [],
+    totalTrackedStores: 0,
+    runningCount: 0,
+    failedCount: 0,
+    staleCount: 0,
+    latestSettledDate: null,
+  };
+
+  try {
+    const summaryRef = collection(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY);
+    const statesQuery = query(
+      summaryRef,
+      where(documentId(), '>=', 'nightlyState_'),
+      where(documentId(), '<=', 'nightlyState_~'),
+      orderBy(documentId()),
+      limit(maxResults),
+    );
+    const snap = await getDocs(statesQuery);
+
+    const today = new Date();
+    const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const staleCutoff = twoDaysAgo.toISOString().split('T')[0];
+
+    summary.states = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as SchedulerSettlementState[];
+
+    summary.totalTrackedStores = summary.states.length;
+    summary.runningCount = summary.states.filter((state) => state.status === 'running').length;
+    summary.failedCount = summary.states.filter((state) => state.status === 'failed').length;
+    summary.staleCount = summary.states.filter((state) => {
+      if (!state.lastSettledLocalDate) return false;
+      return state.lastSettledLocalDate < staleCutoff;
+    }).length;
+    summary.latestSettledDate = summary.states
+      .map((state) => state.lastSettledLocalDate)
+      .filter(Boolean)
+      .sort()
+      .pop() || null;
+  } catch (error) {
+    console.error('[SchedulerDAL] Failed to get settlement summary:', error);
+  }
+
+  return summary;
 }

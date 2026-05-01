@@ -31,6 +31,7 @@ interface Props {
     storeId: string | number;
     tenantId: string | number;
     storeName: string;
+    storeTimeZone?: string;
     /** Deferred Chromium install prompt event captured by the controller. Null on iOS. */
     deferredPrompt: BeforeInstallPromptEvent | null;
     trackingEnabled: boolean;
@@ -43,6 +44,7 @@ export default function InstallPrompt({
     storeId,
     tenantId,
     storeName,
+    storeTimeZone,
     deferredPrompt,
     trackingEnabled,
     locationTrackingEnabled = true,
@@ -64,10 +66,11 @@ export default function InstallPrompt({
             storeId: String(storeId),
             tenantId,
             sessionId: getSessionId(),
+            storeTimeZone,
             includeLocation: locationTrackingEnabled,
         });
         recordPromptShown(storeId);
-    }, [storeId, tenantId, trackingEnabled, locationTrackingEnabled]);
+    }, [storeId, tenantId, storeTimeZone, trackingEnabled, locationTrackingEnabled]);
 
     const handleDismiss = useCallback(() => {
         if (trackingEnabled) {
@@ -75,11 +78,12 @@ export default function InstallPrompt({
                 storeId: String(storeId),
                 tenantId,
                 sessionId: getSessionId(),
+                storeTimeZone,
                 includeLocation: locationTrackingEnabled,
             });
         }
         onDismiss();
-    }, [storeId, tenantId, trackingEnabled, locationTrackingEnabled, onDismiss]);
+    }, [storeId, tenantId, storeTimeZone, trackingEnabled, locationTrackingEnabled, onDismiss]);
 
     const handleInstall = useCallback(async () => {
         if (busy) return;
@@ -90,6 +94,7 @@ export default function InstallPrompt({
                 storeId: String(storeId),
                 tenantId,
                 sessionId: getSessionId(),
+                storeTimeZone,
                 includeLocation: locationTrackingEnabled,
             });
         }
@@ -120,7 +125,7 @@ export default function InstallPrompt({
         // Fallback (desktop Firefox, etc.) — just show instructions hint
         setShowIosInstructions(true);
         setBusy(false);
-    }, [busy, deferredPrompt, platform.platform, storeId, tenantId, trackingEnabled, locationTrackingEnabled, onInstallAccepted]);
+    }, [busy, deferredPrompt, platform.platform, storeId, tenantId, storeTimeZone, trackingEnabled, locationTrackingEnabled, onInstallAccepted]);
 
     return (
         <>
