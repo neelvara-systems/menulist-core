@@ -9,8 +9,9 @@
  *   Requested project ─► `/menu` alias (Layer 2) ─► Outlet OBP ─► Brand OBP
  *
  * Each rung serves content (not a 404), so QR operational value survives any
- * single project deletion. The ladder is doctrine-locked: see §A-12 and
- * §D-10 rule 4 of PUBLIC-ROUTING-DOCTRINE.
+ * single project deletion. The ladder is doctrine-locked for public rendering;
+ * Customer App manifest identity remains store-level and does not participate
+ * in this fallback.
  *
  * ─── Rendering behavior ──────────────────────────────────────────
  *  • Browser tabs (display-mode: browser): show the notice with visible
@@ -20,10 +21,8 @@
  *    2-second countdown, then auto-redirect up the ladder. This prevents
  *    the "dead app icon" effect when a project is deleted.
  *
- * Offline PWA launches hit THIS render branch first (the manifest-side
- * fallback in `resolveStartUrlWithFallback` can only help on next online
- * launch). This component is therefore the single source of truth for
- * degradation UX.
+ * This component is the single source of truth for deleted-project fallback
+ * UX. Manifest `start_url` stays `/menu` or `/` at the store level.
  */
 
 import { useEffect, useMemo, useState } from 'react';

@@ -193,17 +193,17 @@ New customers see updated branding
 | name             | Store name                     | "Joe's Pizza"                                           |
 | short_name       | pwaShortName or truncated name | "Joe's Pizza"                                           |
 | icons            | Generated app icon URLs        | `/api/app-icons/{storeId}/192`                          |
-| start_url        | Store's default menu URL       | `https://joespizza.menulist.ai/`                        |
+| start_url        | Store-level customer entry     | `/menu` when a customer menu exists, otherwise `/`      |
 | display          | Fixed value                    | "standalone"                                            |
 | theme_color      | Brand accent or default        | "#ffffff"                                               |
 | background_color | Fixed value                    | "#ffffff"                                               |
-| id               | Stable store identifier        | `store-{storeId}`                                       |
-| scope            | Store's origin                 | `https://joespizza.menulist.ai/`                        |
+| id               | Stable store identifier        | `/?store={storeId}`                                     |
+| scope            | Store origin root              | `/`                                                     |
 | display_override | Fixed array                    | `["standalone", "minimal-ui"]`                          |
 | shortcuts        | Dynamic based on store data    | See Feature 4                                           |
 | description      | Auto-generated                 | "Official menu, contact and directions for {storeName}" |
 
-**Routing Model (Canonical):** Each store is served from its own subdomain (`{subdomain}.menulist.ai`) or verified custom domain (`joespizza.com`). The manifest is served from the tenant origin root: `https://joespizza.menulist.ai/manifest.webmanifest`. Path-based manifests (e.g., `menulist.ai/{slug}/manifest.webmanifest`) are NOT used — they would split scope across tenants and weaken install identity. See `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts` for the existing domain resolution layer.
+**Routing Model (Canonical):** Each store is served from its own subdomain (`{subdomain}.menulist.ai`) or verified custom domain (`joespizza.com`). The manifest is served from the tenant origin root: `https://joespizza.menulist.ai/manifest.webmanifest`. Path-based manifests (e.g., `menulist.ai/{slug}/manifest.webmanifest`) are NOT used — they would split scope across tenants and weaken install identity. The manifest ignores route-level `?start=` identity and always represents one store-level Customer App. See `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts` for the existing domain resolution layer.
 
 ### 2. App Icon System
 

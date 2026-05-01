@@ -22,7 +22,7 @@ import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, 
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import type { UserUploadedFileType } from '@type/common';
-import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Typography, message } from 'antd';
+import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Tag, Typography, message } from 'antd';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCopy, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 
@@ -258,6 +258,32 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         const clean = base.replace(/\/$/, '');
         return `${clean}/?pwa=install`;
     }, [storeDetails]);
+    const readinessItems = useMemo(() => ([
+        {
+            color: enableInstallableApp ? 'success' : 'default',
+            detail: enableInstallableApp ? 'Manifest and install link are active for this store.' : 'Customers cannot install while this is off.',
+            label: 'Installable',
+            status: enableInstallableApp ? 'Active' : 'Off',
+        },
+        {
+            color: installLink ? 'success' : 'warning',
+            detail: installLink ? 'Tenant origin is available for app installation.' : 'Set a subdomain or custom domain before sharing the app.',
+            label: 'Install link',
+            status: installLink ? 'Ready' : 'Missing',
+        },
+        {
+            color: currentIconUrl ? 'success' : 'default',
+            detail: currentIconUrl ? 'Using a custom app icon override.' : 'Using store logo or generated letter icon automatically.',
+            label: 'App icon',
+            status: currentIconUrl ? 'Custom' : 'Automatic',
+        },
+        {
+            color: enableInstallableApp && promoteInstallation ? 'success' : 'default',
+            detail: enableInstallableApp && promoteInstallation ? 'Customers can see the install prompt after the visit threshold.' : 'The app can still be installed manually from the browser/share link.',
+            label: 'Install prompt',
+            status: enableInstallableApp && promoteInstallation ? 'Active' : 'Manual only',
+        },
+    ]), [currentIconUrl, enableInstallableApp, installLink, promoteInstallation]);
 
     const handleCopyInstallLink = async () => {
         if (!installLink) return;
@@ -338,6 +364,36 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     Let customers install your menu as an app on their phone home screen.
                     One tap to reopen. No app store required.
                 </Paragraph>
+
+                <Card
+                    size="small"
+                    style={{ background: '#f8fafc', borderColor: '#e2e8f0', marginBottom: 24 }}
+                    title="Customer App status"
+                >
+                    <Flex gap={12} wrap="wrap">
+                        {readinessItems.map((item) => (
+                            <div
+                                key={item.label}
+                                style={{
+                                    background: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 12,
+                                    minWidth: 190,
+                                    padding: 12,
+                                    flex: '1 1 190px',
+                                }}
+                            >
+                                <Flex align="center" justify="space-between" gap={8}>
+                                    <Text strong>{item.label}</Text>
+                                    <Tag color={item.color as any}>{item.status}</Tag>
+                                </Flex>
+                                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 6 }}>
+                                    {item.detail}
+                                </Text>
+                            </div>
+                        ))}
+                    </Flex>
+                </Card>
 
                 {managedLanguages.length > 1 ? (
                     <div style={{ marginBottom: 20, maxWidth: 360 }}>

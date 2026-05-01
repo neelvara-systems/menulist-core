@@ -15,6 +15,7 @@
 - **Cloud Functions:** None new. Shared timezone-aware scheduler `computeDecisionBlocksScores` rolls up `customerApp` daily docs through `aggregateCustomerAnalyticsForStoreDate`.
 - **Estimated Monthly Cost:** Low (~$0.05 per 1000 active installs, dominated by icon egress; analytics events share existing menu-analytics cost envelope)
 - **Analytics policy:** Customer App is a surface — surfaces get lifecycle analytics. Uses existing `trackEvent()` infrastructure, existing debounce/rate-limit, existing session system. Install events are deduped per-device via `localStorage` before firing (see `fireInstalledEventOnce` in `customer-app_impl.md`).
+- **Identity policy:** Customer App analytics are store-level. Route/source fields such as `pwaInstallSurface`, `installsBySurface`, and `appOpensBySurface` are attribution context only; they do not mean separate installed apps per OBP/menu/project surface.
 
 ---
 

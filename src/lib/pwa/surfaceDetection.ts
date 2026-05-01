@@ -1,11 +1,10 @@
 /**
- * PWA Install Surface Detection
+ * PWA Entry Source Detection
  *
- * T2-N-03 / §6 rule 4 PUBLIC-ROUTING-DOCTRINE: every install / open /
- * shortcut event must carry an `installSurface` tag so the owner dashboard
- * can measure installs/opens per surface. With G-03 wiring per-surface
- * manifests, the surface at install time maps directly to the surface at
- * launch time (install_surface == launch_surface invariant).
+ * Customer App is one store-level installed app per tenant origin. This helper
+ * only classifies the public route that initiated an install/open/shortcut
+ * event so analytics can attribute entry context. It must never be used to
+ * derive manifest identity.
  *
  * Classification (client-side, heuristic — the resolver owns the truth):
  *   - `/`             → 'obp'           (brand OBP root)

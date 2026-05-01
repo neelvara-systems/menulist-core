@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Release Test Plan / Go-Live Checklist  
 **Status:** 🚧 Pre-Production Validation Required  
-**Last Updated:** April 18, 2026  
+**Last Updated:** May 2, 2026
 **Audience:** Engineering, QA, Founder
 
 ---
@@ -127,12 +127,12 @@ This document should be checked line-by-line before go-live.
 
 **Why this is correct:** the client-menu system is store-first and project slugs are internal menu surfaces under the same tenant origin. Creating a separate installed identity per project would break the original client-menu routing model, fragment install KPIs, and confuse customers with multiple apps for one restaurant.
 
-**Confirmed implementation:** the manifest is generated per store at the tenant origin root, `start_url` remains `/`, `scope` remains `/`, and the install link is store-root based rather than slug-based.
+**Confirmed implementation:** the manifest is generated per store at the tenant origin root, `id` remains store-level, `scope` remains `/`, and `start_url` uses the store-level customer entry (`/menu` when a customer menu exists, otherwise `/`) rather than the page where installation started.
 
 **Expected behavior now:**
 
 - Installing from `/` or from any project slug still creates the same store app
-- Opening the installed app returns to the store-level default menu entry
+- Opening the installed app returns to the store-level customer entry
 - Project switching happens inside the installed app via normal client-menu navigation
 - Special menu replace/overlay logic still applies because it resolves within the same store/project resolver
 
@@ -166,18 +166,68 @@ This document should be checked line-by-line before go-live.
 
 ## Local Verification Log
 
-These checks were executed in the current workspace on **April 18, 2026**.
+These checks were executed in the current workspace on **May 2, 2026**.
 
 | Check | Command | Result | Notes |
 | --- | --- | --- | --- |
 | Type safety | `npx tsc --noEmit` | ✅ PASS | No type errors |
 | ESLint | `npm run lint` | ✅ PASS | No warnings or errors |
-| Production build | `npm run build` | ✅ PASS | Next.js production build completed successfully |
+| Customer App PWA static preflight | `npm run verify:customer-app-pwa` | ✅ PASS | Manifest identity, manifest link, SW no-cache policy, next-pwa scoping, analytics coverage, and freshness hook guard |
+| Manifest identity guard | `npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register src/__tests__/manifestStoreIdentity.ts` | ✅ PASS | Same store identity across OBP, `/menu`, project, and outlet/project paths |
+| Production build | `npm run build` | ⬜ Not run in this pass | Run before deployment signoff |
 
 ### Build Notes
 
-- Production build completed successfully after allowing network access for external Google Fonts fetches during build.
+- Production build was not repeated in the May 2 documentation/static preflight pass. Run `npm run build` before deployment signoff.
+- The previous production build completed successfully after allowing network access for external Google Fonts fetches during build.
 - The earlier Next.js warning on `/offline` was fixed by moving `themeColor` from `metadata` to `viewport`.
+
+### Static PWA Preflight
+
+Run this before real-device testing:
+
+```bash
+npm run verify:customer-app-pwa
+```
+
+This script verifies:
+
+- store-level manifest identity is stable across OBP, `/menu`, project, and outlet/project paths
+- client metadata links to `/manifest.webmanifest` without `?start=`
+- manifest generation no longer uses deleted project paths as installed-app identity
+- `sw-customer.js` only caches the offline fallback and does not cache menu content
+- `next-pwa` is manually registered and not configured with customer-facing runtime cache patterns
+- Customer App analytics events are present and routed under `projectId='customerApp'`
+- menu freshness uses `router.refresh()` and not polling/listeners
+
+### Real-Device Execution Order
+
+After the static preflight passes, test in this order. Do not start with all checklist rows at once.
+
+1. **Android Chrome:** install from `/`, remove, install from `/menu`, remove, install from one project slug. Confirm each install shows the same app name/icon and launches to the store-level customer entry.
+2. **iPhone Safari:** repeat the same `/`, `/menu`, project-slug install sequence through Share -> Add to Home Screen. Confirm no black launch gap, same app identity, and first standalone open records the iOS install KPI.
+3. **Samsung Internet:** verify install prompt/fallback behavior and installed launch. Treat browser-specific prompt differences as acceptable if the final installed app identity is correct.
+4. **Offline check:** while installed, enable airplane mode and launch. Confirm the offline page appears and no stale menu is shown.
+5. **Freshness check:** open the installed app, background it for 60+ seconds, change an item availability from owner side, return to the app, and confirm the item availability refreshes without a full reload.
+6. **Analytics check:** verify daily doc, dashboard summary, and dashboard card match for install, app open, and at least one shortcut event.
+
+### Real-Device Evidence Log Format
+
+Record one row per device/browser after every PWA-affecting change.
+
+| Date | Build | Store/Origin | Device | Browser | Install From | Result | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+|  |  |  | iPhone | Safari | `/` / `/menu` / project slug | Pass/Fail | App name, icon, launch URL, black-screen observation |
+|  |  |  | Android | Chrome | `/` / `/menu` / project slug | Pass/Fail | Prompt behavior, app identity, shortcuts |
+|  |  |  | Android | Samsung Internet | `/` / `/menu` / project slug | Pass/Fail | Prompt/fallback behavior, app identity |
+
+Evidence to capture:
+
+- Screenshot of the install prompt or iOS Add to Home Screen screen.
+- Screenshot of the installed home-screen icon and label.
+- Screenshot of first launch after install.
+- DevTools/Application screenshot for customer origin showing only `sw-customer.js` and no menu cache.
+- Dashboard screenshot showing install/open analytics after the test action.
 
 ---
 
@@ -415,8 +465,9 @@ Perform these checks on a real tenant origin such as `https://demo.menulist.ai/`
 - [ ] Manifest is store-specific, not platform-generic
 - [ ] `name` matches the restaurant identity
 - [ ] `short_name` uses override when configured
-- [ ] `start_url` points to tenant origin
-- [ ] `scope` is tenant origin
+- [ ] `id` is stable per store and does not include the current route
+- [ ] `start_url` is `/menu` when a customer menu exists, otherwise `/`
+- [ ] `scope` is `/`
 - [ ] `display` is standalone
 - [ ] `display_override` is correct
 - [ ] Icon URLs load correctly

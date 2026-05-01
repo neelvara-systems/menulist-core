@@ -571,16 +571,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         storeName;
     const themeColor = storeData.publicPresence?.accentColor || APP_THEME_COLOR;
 
-    // G-03 (§11 + D-10 PUBLIC-ROUTING-DOCTRINE): per-surface manifest URL.
-    // The manifest route reads `?start=<path>` and emits a manifest whose
-    // start_url + id reflect the install surface, so installs from OBP (/),
-    // outlet OBP (/{outletSlug}), and project menu (/{projectSlug} or
-    // /{outletSlug}/{projectSlug}) each yield a distinct installed PWA. This
-    // preserves "install surface = launch surface" per D-10.
     const currentPath = params?.slug && params.slug.length > 0
         ? `/${params.slug.join('/')}`
         : '/';
-    const manifestUrl = `/manifest.webmanifest?start=${encodeURIComponent(currentPath)}`;
+    const manifestUrl = '/manifest.webmanifest';
     const currentUrl = `${canonicalBase}${currentPath === '/' ? '' : currentPath}`;
 
     let metadataStore = storeData;

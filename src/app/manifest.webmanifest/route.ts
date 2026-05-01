@@ -14,120 +14,44 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import { TrackingEvent, trackEvent } from '@lib/analytics/unified';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { getStoreByCustomDomain, getStoreByOutletSlug, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
+import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
+import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
 import { doc, getDoc } from 'firebase/firestore';
 import { headers } from 'next/headers';
 
 /**
- * G-11 (§11 + A-12 PUBLIC-ROUTING-DOCTRINE): validate a start_url path against
- * the current store state. Returns the ORIGINAL path if the target is still
- * resolvable, or a degraded path per the A-12 fallback ladder:
+ * Customer App store-level launch target.
  *
- *   project → /menu alias (if isDefault still exists on that store)
- *           → store OBP ('/{outletSlug}' for outlets, '/' for master)
- *           → brand OBP ('/')
- *
- * Called only inside the manifest route — all Firestore reads go through
- * already-cached helpers (getStoreByOutletSlug, platformSummary/projects_*),
- * so this does not add per-manifest cost on cache hits.
+ * The installed app identity belongs to the tenant store, not to the page where
+ * installation started. `/menu` is preferred when the store has any active
+ * customer menu because that alias follows the current default menu without
+ * tying app identity to a rename-prone project slug.
  */
-async function resolveStartUrlWithFallback(
-    masterStore: any,
-    rawStart: string,
-): Promise<string> {
-    // Normalize: strip query/hash, collapse trailing slash.
-    const cleaned = rawStart.split(/[?#]/)[0].replace(/\/+$/, '') || '/';
-    if (cleaned === '/' || cleaned === '') return '/';
-
-    const segments = cleaned.split('/').filter(Boolean);
-
-    // Helper: does this storeId have any active, non-special-menu projects
-    // with the given slug? /menu Layer 2 alias is considered "present" when an
-    // isDefault project exists, since the alias will still render.
-    const checkStore = async (storeId: number, projectSlug?: string) => {
-        try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
-                `projects_${storeId}`,
-            );
-            const snap = await getDoc(summaryRef);
-            if (!snap.exists()) return { hasProject: false, hasDefault: false };
-            const projects = parseSummaryProjects(snap.data());
-            const active = Object.values(projects).filter(
-                (p: any) => p.active !== false && !p.isSpecialMenu,
-            );
-            const hasDefault = active.some((p: any) => p.isDefault === true);
-            if (!projectSlug) return { hasProject: false, hasDefault };
-            const target = projectSlug.toLowerCase();
-            const hasProject = active.some((p: any) => {
-                const cur = (p.slug || '').toLowerCase();
-                const previous: string[] = Array.isArray(p.previousSlugs) ? p.previousSlugs : [];
-                return cur === target || previous.map((s) => s.toLowerCase()).includes(target);
-            });
-            return { hasProject, hasDefault };
-        } catch {
-            // On read failure, be permissive — don't degrade the owner's
-            // existing install silently due to a transient Firestore blip.
-            return { hasProject: true, hasDefault: true };
-        }
-    };
-
-    // Case 1: '/{seg}' — could be a project on master OR an outlet slug.
-    if (segments.length === 1) {
-        const seg = segments[0].toLowerCase();
-        if (seg === 'menu') {
-            // Layer 2 alias — valid iff master has an isDefault project.
-            const { hasDefault } = await checkStore(masterStore.storeId);
-            return hasDefault ? '/menu' : '/';
-        }
-        // Try project-on-master first.
-        const masterRes = await checkStore(masterStore.storeId, seg);
-        if (masterRes.hasProject) return cleaned;
-        // Try outlet.
-        if (masterStore.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
-            const outlet = await getStoreByOutletSlug(masterStore.tenantId, seg).catch(() => null);
-            if (outlet?.storeId) return cleaned; // outlet OBP still valid
-        }
-        // Degrade: project gone → try /menu alias, else brand OBP.
-        return masterRes.hasDefault ? '/menu' : '/';
+async function getStoreLevelStartUrl(store: any): Promise<string> {
+    if (!store?.storeId) return '/';
+    try {
+        const summaryRef = doc(
+            firebaseClient,
+            DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+            `projects_${store.storeId}`,
+        );
+        const snap = await getDoc(summaryRef);
+        if (!snap.exists()) return '/';
+        const projects = parseSummaryProjects(snap.data());
+        const hasCustomerMenu = Object.values(projects).some(
+            (p: any) => p.active !== false && !p.isSpecialMenu,
+        );
+        return getStoreManifestStartUrl(hasCustomerMenu);
+    } catch {
+        // A transient summary read failure should not make the manifest invalid.
+        // Root OBP is always a safe tenant-scoped launch target.
+        return '/';
     }
-
-    // Case 2: '/{outletSlug}/{projectSlug}' or '/{outletSlug}/menu'.
-    if (segments.length === 2) {
-        const outletSlug = segments[0].toLowerCase();
-        const second = segments[1].toLowerCase();
-
-        if (!masterStore.isMaster || !FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
-            // Multi-outlet not in play — treat as single-segment resolution.
-            return '/';
-        }
-
-        const outlet = await getStoreByOutletSlug(masterStore.tenantId, outletSlug).catch(() => null);
-        if (!outlet?.storeId) {
-            // Outlet gone → straight to brand OBP.
-            return '/';
-        }
-
-        if (second === 'menu') {
-            const { hasDefault } = await checkStore(outlet.storeId);
-            return hasDefault ? `/${outletSlug}/menu` : `/${outletSlug}`;
-        }
-
-        const { hasProject, hasDefault } = await checkStore(outlet.storeId, second);
-        if (hasProject) return cleaned;
-        // Project gone → outlet-level /menu alias, else outlet OBP.
-        return hasDefault ? `/${outletSlug}/menu` : `/${outletSlug}`;
-    }
-
-    // Any deeper path is not a canonical surface — collapse to brand OBP.
-    return '/';
 }
 
 export const dynamic = 'force-dynamic';
@@ -140,7 +64,7 @@ function emptyManifest() {
     });
 }
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         // Global kill switch — owner-level opt-out lives on the store doc below.
         if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return emptyManifest();
@@ -155,21 +79,6 @@ export async function GET(request: Request) {
             return emptyManifest();
         }
 
-        // G-03 (§11 + D-10 PUBLIC-ROUTING-DOCTRINE): per-surface start_url.
-        // Each client page emits `<link rel="manifest" href="/manifest.webmanifest?start=/{path}">`
-        // so installs from different surfaces (OBP, outlet OBP, project menu)
-        // yield distinct PWAs whose start_url matches the install surface.
-        // Validate the `start` param: must be a same-origin path (starts with
-        // `/`, no scheme, no `..` traversal). Anything else falls back to '/'.
-        const requestUrl = new URL(request.url);
-        const rawStart = requestUrl.searchParams.get('start') || '/';
-        const isSafePath =
-            rawStart.startsWith('/') &&
-            !rawStart.startsWith('//') &&
-            !rawStart.includes('..') &&
-            !/^\/[a-z]+:/.test(rawStart); // defeats `/https://evil.com` smuggling
-        const startUrl = isSafePath ? rawStart : '/';
-
         let store = null;
         if (domain.subdomain) {
             store = await getStoreBySubdomain(domain.subdomain);
@@ -183,29 +92,7 @@ export async function GET(request: Request) {
         const pwaEnabled = store.pwaSettings?.enableInstallableApp !== false;
         if (!pwaEnabled) return emptyManifest();
 
-        // G-11 (§11 + A-12 PUBLIC-ROUTING-DOCTRINE): validate the start_url
-        // target and degrade up the fallback ladder when it no longer exists.
-        // For PWA relaunches the browser refetches the manifest — so the next
-        // time the installed PWA starts online it will pick up the degraded
-        // path and the customer never sees a terminal 404 from a deleted
-        // project / deactivated outlet.
-        const resolvedStartUrl = await resolveStartUrlWithFallback(store, startUrl);
-
-        // T5-N-03: Emit analytics event if start_url was degraded.
-        // Measures how often the A-12 ladder actually saves installs.
-        if (resolvedStartUrl !== startUrl && store.storeId) {
-            // Calculate degradation steps (distance between paths)
-            const originalDepth = startUrl.split('/').filter(Boolean).length;
-            const resolvedDepth = resolvedStartUrl.split('/').filter(Boolean).length;
-            const steps = Math.max(0, originalDepth - resolvedDepth);
-            trackEvent(TrackingEvent.MANIFEST_START_URL_DEGRADED, {
-                storeId: store.storeId,
-                tenantId: store.tenantId,
-                originalPath: startUrl,
-                degradedTo: resolvedStartUrl,
-                degradationSteps: steps,
-            }).catch(() => { /* silent — analytics failure shouldn't break manifest */ });
-        }
+        const startUrl = await getStoreLevelStartUrl(store);
 
         const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
         const displayName: string = getLocalizedText(
@@ -266,19 +153,11 @@ export async function GET(request: Request) {
             shortName,
             themeColor,
             description,
-            // G-03 (§11 + D-10): start_url = the surface the customer installed
-            // from. Browsers will launch the installed PWA directly into this
-            // path, honouring install-context = launch-context.
-            // G-11: if the original install target is gone, resolvedStartUrl
-            // has been degraded up the A-12 ladder already.
-            startUrl: resolvedStartUrl,
+            // Customer App is one store-level app per tenant origin. Install
+            // page is source attribution only; it never changes app identity.
+            startUrl,
             shortcutInfo: {
-                // Menu shortcut points at the same install surface. For OBP
-                // installs (startUrl='/'), the shortcut also lands on '/'
-                // which is OBP → customer uses the "View Menu" CTA to reach
-                // the default project. For menu-surface installs, the
-                // shortcut lands directly on the menu.
-                menuPath: resolvedStartUrl,
+                menuPath: startUrl,
                 phone: showCall ? phoneForTel || null : null,
                 mapsUrl: showDirections ? store.publicPresence?.googleMapsUrl || null : null,
                 whatsappNumber: showWhatsApp ? store.publicPresence?.whatsappNumber || null : null,

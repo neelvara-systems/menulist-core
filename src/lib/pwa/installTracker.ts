@@ -65,9 +65,8 @@ export async function fireInstalledEventOnce(
 
   const { tenantId, storeTimeZone, source = 'native', includeLocation = true } = options;
   const { platform } = detectPlatform();
-  // T2-N-03 / §6 rule 4 PUBLIC-ROUTING-DOCTRINE: classify the surface the
-  // customer was on when the install fired. Paired with G-03's per-surface
-  // manifest, this lets the dashboard compute install conversion by surface.
+  // Entry/source context only. Customer App identity is store-level, so this
+  // does not create or imply separate installed apps per public route.
   const installSurface = detectInstallSurface();
 
   // Storage unavailable → still fire (privacy / SSR fallback), no dedup possible.

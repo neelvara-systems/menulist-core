@@ -24,6 +24,7 @@ import {
     LuMessageCircle,
     LuPalette,
     LuReceipt,
+    LuRefreshCw,
     LuSearch,
     LuSettings,
     LuShield,
@@ -328,6 +329,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         });
     };
 
+    const handleRefreshApp = () => {
+        Toast.show({ content: 'Refreshing app...', duration: 800 });
+        window.setTimeout(() => {
+            window.location.reload();
+        }, 120);
+    };
+
     const clearLogoutLongPressTimer = () => {
         if (!logoutLongPressTimerRef.current) return;
         clearTimeout(logoutLongPressTimerRef.current);
@@ -460,6 +468,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                         onClick={() => setIsAppSettingsOpen(true)}
                         prefix={<LuSettings color="#64748b" size={20} />}
                         title={<Text strong>{t('appSettings')}</Text>}
+                    />
+                    <List.Item
+                        description={<Text type="secondary">Load the latest MenuList version on this device.</Text>}
+                        onClick={handleRefreshApp}
+                        prefix={<LuRefreshCw color="#0054D0" size={20} />}
+                        title={<Text strong>Refresh app</Text>}
                     />
                     <div
                         onMouseDown={startLogoutLongPress}

@@ -8,10 +8,12 @@
  *   - 192, 512, 180 (apple touch) icon sizes
  *   - Standalone display mode
  *   - Per-store name / short_name / theme_color
+ *   - Store-level app identity; install source paths remain analytics context
  *   - Shortcuts built via shortcutsBuilder.ts (Menu shortcut on day one)
  */
 
 import { APP_THEME_COLOR } from '@constant/common';
+import { buildStoreManifestId } from './manifestIdentity';
 import { buildShortcuts, type ShortcutStoreInfo } from './shortcutsBuilder';
 
 export interface ManifestStoreInput {
@@ -27,7 +29,7 @@ export interface ManifestStoreInput {
     /** Origin of this tenant, e.g., "https://joespizza.menulist.ai". Currently unused
      *  by buildManifest() — kept for forward-compat with absolute-URL shortcuts. */
     origin?: string;
-    /** Start URL path, defaults to '/'. */
+    /** Store-level launch URL path, defaults to '/'. */
     startUrl?: string;
     /** Shortcut info (phone / mapsUrl) — omit to render only the Menu shortcut. */
     shortcutInfo?: ShortcutStoreInfo;
@@ -109,15 +111,10 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const themeColor = input.themeColor || APP_THEME_COLOR;
     const backgroundColor = input.backgroundColor || '#ffffff';
 
-    // G-03 (§11 + D-10 PUBLIC-ROUTING-DOCTRINE): the PWA `id` must be unique
-    // per install surface so the install-context = launch-context invariant
-    // (D-10) produces a distinct installed app for each surface the customer
-    // installed from. Two manifests that share `id` are treated as the same
-    // app by the browser — installing the menu would replace an earlier OBP
-    // install, which breaks the doctrine. Encoding start_url in `id` gives
-    // every surface its own identity while `scope: '/'` still permits the
-    // installed app to navigate freely within the tenant.
-    const manifestId = `/?store=${input.id}&s=${encodeURIComponent(startUrl)}`;
+    // Customer App identity is store-level: installing from OBP, `/menu`, or
+    // a project URL must resolve to the same restaurant app. Source path stays
+    // analytics context only; it never enters manifest identity.
+    const manifestId = buildStoreManifestId(input.id);
 
     // Icon endpoint — same-origin, so subdomain/custom-domain routing works.
     const iconBase = `/api/app-icons/${input.id}`;

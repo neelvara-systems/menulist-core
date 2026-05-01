@@ -71,9 +71,8 @@ export async function detectAndTrackAppOpen(
   }
 
   const { platform } = detectPlatform();
-  // T2-N-03 / §6 rule 4: tag the launch surface. For installed PWAs this is
-  // the pathname the manifest's start_url resolved to — lets the dashboard
-  // verify the install_context == launch_context invariant (D-10).
+  // Entry/source context only. Store-level Customer App identity stays the
+  // same whether the app opens at root, `/menu`, or a project path.
   const launchSurface = detectInstallSurface();
 
   try {

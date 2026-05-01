@@ -36,6 +36,7 @@ import {
     NavBar,
     Popup,
     Switch,
+    Tag,
     Text,
     Title,
     Toast,
@@ -275,6 +276,32 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
         if (!base) return null;
         return `${base.replace(/\/$/, '')}/?pwa=install`;
     }, [storeDetails]);
+    const readinessItems = useMemo(() => ([
+        {
+            color: enableInstallableApp ? 'success' as const : 'default' as const,
+            detail: enableInstallableApp ? 'Customers can install this store app.' : 'Customer installs are currently off.',
+            label: 'Installable',
+            status: enableInstallableApp ? 'Active' : 'Off',
+        },
+        {
+            color: installLink ? 'success' as const : 'warning' as const,
+            detail: installLink ? 'Share link is ready.' : 'Set a subdomain or custom domain first.',
+            label: 'Install link',
+            status: installLink ? 'Ready' : 'Missing',
+        },
+        {
+            color: currentIconUrl ? 'success' as const : 'default' as const,
+            detail: currentIconUrl ? 'Custom icon selected.' : 'Using logo or generated icon.',
+            label: 'App icon',
+            status: currentIconUrl ? 'Custom' : 'Automatic',
+        },
+        {
+            color: enableInstallableApp && promoteInstallation ? 'success' as const : 'default' as const,
+            detail: enableInstallableApp && promoteInstallation ? 'Prompt can show after visit threshold.' : 'Manual install only.',
+            label: 'Prompt',
+            status: enableInstallableApp && promoteInstallation ? 'Active' : 'Manual',
+        },
+    ]), [currentIconUrl, enableInstallableApp, installLink, promoteInstallation]);
 
     const handleCopyInstallLink = async () => {
         if (!installLink) return;
@@ -334,6 +361,32 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                         Install stats live in the Dashboard screen.
                     </Text>
+                </Card>
+
+                <Card>
+                    <Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>Customer App status</Title>
+                    <Flex gap={8} wrap="wrap">
+                        {readinessItems.map((item) => (
+                            <div
+                                key={item.label}
+                                style={{
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 12,
+                                    flex: '1 1 calc(50% - 8px)',
+                                    minWidth: 130,
+                                    padding: 10,
+                                }}
+                            >
+                                <Flex align="center" justify="space-between" gap={6}>
+                                    <Text style={{ fontSize: 12 }} type="secondary">{item.label}</Text>
+                                    <Tag color={item.color}>{item.status}</Tag>
+                                </Flex>
+                                <Text style={{ display: 'block', fontSize: 12, marginTop: 6 }}>
+                                    {item.detail}
+                                </Text>
+                            </div>
+                        ))}
+                    </Flex>
                 </Card>
 
                 {/* Direct install link — bypasses 3-visit threshold */}

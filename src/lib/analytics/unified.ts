@@ -326,13 +326,6 @@ export enum TrackingEvent {
   // attempts may indicate confusion or attempted circumvention.
   SUBDOMAIN_MUTATION_BLOCKED = 'subdomain_mutation_blocked',
 
-  // T5-N-03 / §11 PUBLIC-ROUTING-DOCTRINE: G-11 manifest degradation via A-12
-  // fallback ladder. Fires when the original install target (project URL,
-  // outlet-scoped menu, etc.) is gone and the manifest degrades start_url to
-  // a working fallback. Measures how often the A-12 ladder actually saves
-  // customer installs from becoming 404s.
-  MANIFEST_START_URL_DEGRADED = 'manifest_start_url_degraded',
-
   // Owner-side events (lightweight, GA4-only — no Firestore writes)
   MENU_KIT_DOWNLOAD = 'menu_kit_download',  // Owner downloaded Menu Kit ZIP or shared individual asset
 
@@ -427,12 +420,10 @@ export interface TrackingData {
   pwaInstallSource?: 'native' | 'ios-inferred' | 'ios-standalone' | 'unknown';
 
   /**
-   * T2-N-03 / §6 rule 4 PUBLIC-ROUTING-DOCTRINE: which surface the customer
-   * was on when the install fired (or launched into, for OPENED events).
-   * 'obp' = tenant root, 'menu-alias' = Layer 2 `/menu`, 'project' =
-   * canonical `/{slug}` or `/{outletSlug}/{slug}`, 'unknown' = unclassifiable.
-   * Paired with G-03's per-surface manifest to verify install_context ==
-   * launch_context (D-10).
+   * Entry/source context for Customer App events. This is attribution only:
+   * Customer App identity is store-level, so OBP, `/menu`, and project paths
+   * remain one installed app and this field only explains where the event
+   * originated.
    */
   pwaInstallSurface?: 'obp' | 'menu-alias' | 'project' | 'unknown';
 
@@ -445,11 +436,6 @@ export interface TrackingData {
    *   - Whether Layer 2 is cannibalizing SEO vs serving as graceful fallback.
    */
   menuResolutionLayer?: 'layer1' | 'layer2';
-
-  // T5-N-03: G-11 manifest degradation via A-12 fallback ladder.
-  originalPath?: string;      // Original start_url before degradation
-  degradedTo?: string;        // Final resolved start_url after degradation
-  degradationSteps?: number;  // How many rungs down the ladder we went
 
   // T5-N-04: G-10 project switch source extension.
   // 'menu_alias_layer2' = customer typed /menu and got served default project.
@@ -787,7 +773,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.SHARE:
       case TrackingEvent.USER_LOCATION:
       case TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED:
-      case TrackingEvent.MANIFEST_START_URL_DEGRADED:
         // Operational or generic analytics event. Keep in GA4 only unless a
         // real owner-facing dashboard/report needs the Firestore counter.
         return;
@@ -822,8 +807,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         if (data.pwaInstallSource) {
           updateData[`installsBySource.${data.pwaInstallSource}`] = 1;
         }
-        // T2-N-03 / §6 rule 4: per-surface install breakdown so multi-outlet
-        // tenants can measure OBP vs outlet vs project install mix.
+        // Entry/source breakdown only. All entries map to the same store-level
+        // installed Customer App identity.
         if (data.pwaInstallSurface) {
           updateData[`installsBySurface.${data.pwaInstallSurface}`] = 1;
         }
@@ -840,9 +825,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         if (data.pwaPlatform) {
           updateData[`appOpensByPlatform.${data.pwaPlatform}`] = 1;
         }
-        // T2-N-03 / §6 rule 4: per-surface app-open breakdown. Comparing
-        // installsBySurface vs appOpensBySurface over time tells us whether
-        // install_surface matches launch_surface (D-10 invariant).
+        // Entry/source breakdown only. A project path launch does not imply a
+        // separate installed app.
         if (data.pwaInstallSurface) {
           updateData[`appOpensBySurface.${data.pwaInstallSurface}`] = 1;
         }
