@@ -64,6 +64,7 @@ export interface MenuImageProcessingJob {
         name: string;
     }[];
     action?: string;
+    businessType?: string;
 
     // ─────────────────────────────────────────────────────────────
     // OUTPUT (Populated on completion)
@@ -75,6 +76,7 @@ export interface MenuImageProcessingJob {
                 sourceFileIndex: number;
                 name: Record<string, string>;
                 active?: boolean;
+                icon?: string;
             }>;
             items: Array<{
                 id: string | number;

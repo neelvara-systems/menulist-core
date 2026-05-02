@@ -29,6 +29,7 @@ export interface ProcessMenuImagesRequest {
     projectId?: string;
     fileId?: string;
     action?: string;
+    businessType?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -67,6 +68,7 @@ export interface MenuCategory {
     id: string;
     name: Record<string, string>;
     description?: Record<string, string>;
+    icon?: string;
 }
 
 export interface ExtractedMenuData {

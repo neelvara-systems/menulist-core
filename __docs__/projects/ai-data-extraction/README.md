@@ -3,13 +3,13 @@
 **Sub-feature of:** Projects (Menu Digitization)  
 **Status:** ✅ Production Ready  
 **Model:** `gemini-2.5-flash` via `@google/genai` SDK  
-**Last Updated:** March 12, 2026
+**Last Updated:** May 2, 2026
 
 ---
 
 ## Overview
 
-AI Data Extraction uses Google Gemini to read menu images and extract structured data (categories, items, prices, descriptions). It's powered by a Job Queue architecture with batch processing, parallel file upload, circuit breaker protection, per-item confidence scoring, and re-extraction workflow.
+AI Data Extraction uses Google Gemini to read menu images and extract structured data (categories, items, prices, descriptions). It's powered by a Job Queue architecture with batch processing, parallel file upload, circuit breaker protection, per-item confidence scoring, deterministic category icon defaults, and re-extraction workflow.
 
 ---
 
@@ -39,6 +39,7 @@ AI Data Extraction uses Google Gemini to read menu images and extract structured
 - **Batch Processing:** Max 10 images per Gemini call, sequential between batches
 - **File Upload:** Parallel via `Promise.all` to Gemini File API
 - **Category Continuation:** Cross-batch category/item ID continuation
+- **Category Icon Defaults:** Post-extraction deterministic icon assignment from shared category-name and item-context rules
 - **Re-extraction:** `preview_ready` status with client-side comparison engine
 
 ### Key Files (Actual Codebase)
@@ -52,6 +53,8 @@ src/
 │   └── useMenuProcessingJob.ts           # Real-time job status listener
 └── lib/firebase/
     └── menuProcessing.ts                 # Job creation, cancellation, active check
+src/data/shared/
+└── categoryIconSuggestions.ts            # Shared deterministic category icon resolver
 
 functions/src/
 ├── triggers/production.ts                # processMenuImagesJob (onCreate)
@@ -70,6 +73,8 @@ functions/src/
 └── types/
     ├── menuProcessingJob.types.ts       # Job document interface
     └── menuExtraction.types.ts          # Extracted data types, confidence, quality
+functions/src/sharedData/
+└── categoryIconSuggestions.ts           # Backend mirror of shared category icon resolver
 ```
 
 ### Security & Protection

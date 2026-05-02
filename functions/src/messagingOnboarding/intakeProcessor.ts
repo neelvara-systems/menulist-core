@@ -533,6 +533,7 @@ async function triggerExtraction(
     })),
     targetLanguages: [{ code: "en", name: "English" }],
     action: "IMAGE_PROCESSING",
+    businessType: session.detectedBusinessType || "Restaurant",
     status: "pending",
     progress: 0,
     currentStep: "Queued",

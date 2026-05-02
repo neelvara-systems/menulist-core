@@ -2,7 +2,7 @@
 
 **Feature:** OCR & Menu Extraction with Gemini AI  
 **Status:** ✅ Production Ready  
-**Last Updated:** March 13, 2026  
+**Last Updated:** May 2, 2026
 **Priority:** HIGH — Every new project triggers this. Direct cost per user action.
 
 ---
@@ -13,6 +13,7 @@
 - **Storage Buckets:** `MenuListAi/project/files/{timestamp}-{uid}` (uploaded menu images)
 - **Cloud Functions:** `processMenuImagesJob` (onCreate trigger), `dev_triggerProcessMenuImages` (dev callable)
 - **Estimated Monthly Cost:** **Medium** — Scales with number of new projects + re-extractions
+- **Category Icon Defaults:** No extra Firebase operations. Icon defaults are applied in-memory during extraction finalization and saved with the existing project/job writes.
 
 ---
 
@@ -30,12 +31,12 @@
 
 | Operation                      | Collection                         | Trigger                         | Frequency              | Docs Written | Fields                                   | Notes                                                                                                                                                                |
 | ------------------------------ | ---------------------------------- | ------------------------------- | ---------------------- | ------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Create processing job          | `menuImageProcessingJobs`          | User clicks "Upload & Continue" | Per extraction request | 1            | Full job doc                             | `createMenuProcessingJob()`. Contains file URLs, projectId, status. File: `src/lib/firebase/menuProcessing.ts`                                                       |
+| Create processing job          | `menuImageProcessingJobs`          | User clicks "Upload & Continue" | Per extraction request | 1            | Full job doc                             | `createMenuProcessingJob()`. Contains file URLs, projectId, status, and optional `businessType` for deterministic category icon defaults. File: `src/lib/firebase/menuProcessing.ts`                                                       |
 | Update job status → processing | `menuImageProcessingJobs/{jobId}`  | Cloud Function start            | Per extraction         | 1            | status, startedAt, timeoutAt             | Cloud Function updates status via transaction. File: `functions/src/logic/processMenuImagesJob.ts`                                                                   |
 | Update progress (50%)          | `menuImageProcessingJobs/{jobId}`  | After AI processing             | Per extraction         | 1            | progress, currentStep                    | Single progress update after AI completes (optimized from 3 separate writes).                                                                                        |
 | Update job status → completed  | `menuImageProcessingJobs/{jobId}`  | Cloud Function end              | Per extraction         | 1            | status, completedAt, results, provenance | Final status + extracted data + `rawBatchResponses[]` + `promptVersion` + `model` + `confidenceSummary`. Provenance piggybacked on existing write (zero extra cost). |
 | Record AI operation            | `MENULIST_AI_OPERATIONS`           | After extraction                | Per extraction         | 1            | Full transaction object                  | Cost tracking, token usage. Written by CF `addAiOperation()`. File: `functions/src/logic/processMenuImages.ts`                                                       |
-| Save extracted data to project | `projects/{tId}/{sId}/{projectId}` | After extraction                | Per extraction         | 1            | files[].extractedData                    | Merge update with extracted categories, items, prices, languages. Heavy write (~50KB).                                                                               |
+| Save extracted data to project | `projects/{tId}/{sId}/{projectId}` | After extraction                | Per extraction         | 1            | files[].extractedData                    | Merge update with extracted categories, item data, category icon defaults, prices, languages. Heavy write (~50KB).                                                   |
 
 ### Deletes
 
@@ -80,6 +81,7 @@
 - **Client-side PDF conversion**: PDF → images happens in browser (no Cloud Function cost for conversion)
 - **Sequential processing**: Files processed one at a time (prevents Gemini rate limits)
 - **Quality scoring**: Low-quality extractions flagged for manual review (prevents re-extraction loops)
+- **Category icon defaults**: Deterministic in-memory enrichment; no extra reads, writes, or AI calls.
 
 ### Potential Optimizations
 

@@ -18,6 +18,7 @@ export interface ExtractedDataCategory {
     id: string;
     name: Record<string, string>;
     description?: Record<string, string>;
+    icon?: string;
     active?: boolean;
     timeWindows?: string[];
 }

@@ -3,7 +3,7 @@
 **Feature:** OCR & Menu Extraction with Gemini AI  
 **Status:** ✅ Production Ready  
 **Architecture:** Job Queue (Firebase Cloud Functions)  
-**Last Updated:** March 13, 2026
+**Last Updated:** May 2, 2026
 
 ---
 
@@ -49,8 +49,9 @@
 │       │     • Sanitize with DOMPurify                           │
 │       │     • Calculate quality score                           │
 │       │  3. Combine results                                     │
-│       │  4. Save to project                                     │
-│       │  5. Update status → "completed"                         │
+│       │  4. Apply deterministic category icon defaults           │
+│       │  5. Save to project                                     │
+│       │  6. Update status → "completed"                         │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -70,6 +71,9 @@ src/
 │
 └── lib/firebase/
     └── menuProcessing.ts            # Job creation & management
+
+src/data/shared/
+└── categoryIconSuggestions.ts        # Shared category icon registry + resolver
 ```
 
 ### Cloud Functions
@@ -91,10 +95,23 @@ functions/src/
 │   └── rateLimit.ts                      # Upstash rate limiting (5/min expensive)
 ├── constants/
 │   └── ai.ts                             # Model config, batch settings, safety settings
+├── sharedData/
+│   └── categoryIconSuggestions.ts         # Backend mirror of shared icon resolver
 └── types/
     ├── menuProcessingJob.types.ts        # Job document interface
     └── menuExtraction.types.ts           # Extracted data types, confidence, quality
 ```
+
+### Category Icon Enrichment
+
+Category icons are not requested from Gemini during OCR extraction. The extraction prompt remains limited to visible menu facts. After extraction hardening and before first-save or re-extraction preview, `processMenuImagesJob.ts` calls the shared deterministic resolver from `categoryIconSuggestions.ts`.
+
+The resolver:
+
+- Uses the store `businessType` carried on the job document.
+- Matches category names first, then item names inside that category as supporting context.
+- Writes an icon only for clear matches; unclear categories remain empty and are handled by the editor/Menu Quality flow.
+- Runs in-memory and piggybacks on existing project/job writes.
 
 ---
 

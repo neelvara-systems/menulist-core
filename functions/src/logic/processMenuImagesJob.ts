@@ -18,6 +18,8 @@
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { firestoreAdmin } from "../firebaseAdmin";
+import { getBusinessCategory } from "../sharedData/businessTypes";
+import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
 import { hardenExtractedData } from "./extractionHardening";
 import { processMenuImagesLogic } from "./processMenuImages";
@@ -30,6 +32,14 @@ import { getProject, saveFilesToProject } from "./saveFilesToProject";
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CONFIDENCE_SCORE_MAP: Record<string, number> = { high: 1, medium: 0.6, low: 0.2 };
+const BUSINESS_CATEGORY_VALUES = new Set(['food', 'service', 'retail', 'health', 'creative', 'professional', 'specialty']);
+
+function resolveBusinessCategory(value?: string): string | undefined {
+    const normalized = String(value || '').trim();
+    if (!normalized) return undefined;
+    const lowered = normalized.toLowerCase();
+    return BUSINESS_CATEGORY_VALUES.has(lowered) ? lowered : getBusinessCategory(normalized);
+}
 
 function computeConfidenceSummary(items: MenuItem[]): ConfidenceSummary | undefined {
     if (!items || items.length === 0) return undefined;
@@ -206,6 +216,7 @@ export async function processMenuImagesJobLogic(
             targetLanguages: job.targetLanguages,
             projectId: job.projectId,
             action: job.action || "IMAGE_PROCESSING",
+            businessType: job.businessType,
         };
 
         // Call existing AI processing logic
@@ -317,6 +328,24 @@ export async function processMenuImagesJobLogic(
         const existingCategories = existingProject?.files
             ? buildExistingCategoriesMap(existingProject.files, primaryLang)
             : undefined;
+        const businessCategory = resolveBusinessCategory(job.businessType || existingProject?.businessType || existingProject?.businessCategory);
+        const categoriesBeforeIconDefaults = result.data.data?.categories?.length || 0;
+        result.data.data = {
+            ...result.data.data,
+            categories: applyCategoryIconDefaults(
+                result.data.data?.categories || [],
+                result.data.data?.items || [],
+                businessCategory,
+            ),
+        };
+        const categoriesWithIconDefaults = (result.data.data?.categories || []).filter((category: any) => typeof category?.icon === 'string' && category.icon.length > 0).length;
+
+        logger.info(`[processMenuImagesJob] Category icon defaults applied`, {
+            jobId,
+            businessCategory: businessCategory || null,
+            categoriesCount: categoriesBeforeIconDefaults,
+            categoriesWithIcons: categoriesWithIconDefaults,
+        });
 
         // Detect first extraction vs re-extraction
         // First extraction = no existing menu items

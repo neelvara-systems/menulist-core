@@ -47,6 +47,7 @@ export interface CreateJobParams {
     files: MenuFileToProcess[];
     targetLanguages: TargetLanguage[];
     action?: string;
+    businessType?: string;
     /** Job mode for tracking extraction type */
     jobMode?: ExtractionJobMode;
     /** ID of the original failed job this retry was created from */
@@ -117,6 +118,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         files,
         targetLanguages,
         action = "IMAGE_PROCESSING",
+        businessType,
         jobMode = "SINGLE_STORE",
         retriedFromJobId,
         retryCount,
@@ -145,6 +147,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             name: l.name,
         })),
         action,
+        ...(businessType ? { businessType } : {}),
         jobMode,
         status: 'pending',
         progress: 0,

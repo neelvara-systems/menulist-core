@@ -30,6 +30,7 @@ export interface ExtractedDataCategory {
     id: string;
     name: Record<string, string>;
     description?: Record<string, string>;
+    icon?: string;
     active?: boolean;
     timeWindows?: string[]; // Feature #3: ["06:00-11:00", "18:00-22:00"]
 }

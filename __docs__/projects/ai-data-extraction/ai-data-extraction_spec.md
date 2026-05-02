@@ -3,7 +3,7 @@
 **Feature:** OCR & Menu Extraction with Gemini AI  
 **Parent Feature:** Projects (Menu Digitization)  
 **Status:** ✅ Production Ready  
-**Last Updated:** March 13, 2026
+**Last Updated:** May 2, 2026
 
 ---
 
@@ -15,6 +15,7 @@ AI Data Extraction is the core intelligence that transforms menu images into str
 
 - **OCR Processing** → Reads text from menu images using Gemini 2.5 Flash
 - **Structured Extraction** → Outputs categories, items, prices, descriptions
+- **Category Icon Defaults** → Adds clear matching category icons after extraction without asking Gemini to invent them
 - **Multi-Language Detection** → Identifies languages present in the menu
 - **Quality Scoring** → Rates extraction quality (0-100 score)
 - **Job Queue Processing** → Reliable async processing via Firebase Cloud Functions
@@ -52,8 +53,9 @@ AI Data Extraction is the core intelligence that transforms menu images into str
 │      c. Sanitize output (XSS protection)                        │
 │      d. Calculate quality score                                 │
 │   3. Combine all file results                                   │
-│   4. Save to project document                                   │
-│   5. Update status → "completed"                                │
+│   4. Apply deterministic category icon defaults                 │
+│   5. Save to project document                                   │
+│   6. Update status → "completed"                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -122,7 +124,8 @@ AI Data Extraction is the core intelligence that transforms menu images into str
 │      • items[] - Individual menu items                          │
 │   3. Response validated with Zod schema                         │
 │   4. All text sanitized for XSS                                 │
-│   5. Quality score calculated (0-100)                           │
+│   5. Deterministic category icons applied for clear matches     │
+│   6. Quality score calculated (0-100)                           │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
@@ -150,6 +153,7 @@ AI Data Extraction is the core intelligence that transforms menu images into str
 | FR-06 | Show processing progress             | P1       | ✅     |
 | FR-07 | Calculate and display quality score  | P1       | ✅     |
 | FR-08 | Handle failed extractions gracefully | P1       | ✅     |
+| FR-09 | Assign category icons after extraction when there is a clear deterministic match | P2 | ✅ |
 
 ### Non-Functional Requirements
 

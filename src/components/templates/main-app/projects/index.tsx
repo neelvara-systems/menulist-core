@@ -1022,6 +1022,7 @@ function ProjectsPage() {
             files: successfulUploads,
             targetLanguages,
             projectId: projectDataCopy.projectId,
+            businessType: storeDetails?.businessType,
         });
 
         console.log(`[JobQueue] Job created: ${jobId} - createProcessingJob should have already triggered it`);

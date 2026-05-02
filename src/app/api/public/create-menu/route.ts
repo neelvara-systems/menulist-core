@@ -14,6 +14,8 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getBusinessCategory } from '@data/shared/businessTypes';
+import { applyCategoryIconDefaults } from '@data/shared/categoryIconSuggestions';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
@@ -339,12 +341,18 @@ Rules:
         }
 
         const parsed = JSON.parse(jsonStr);
+        const businessCategory = getBusinessCategory(parsed.businessType) || parsed.businessType;
+        const categoriesWithIcons = applyCategoryIconDefaults(
+            parsed.categories || [],
+            parsed.items || [],
+            businessCategory,
+        );
 
         // Update draft with extraction results
         await draftRef.update({
             extractionStatus: 'completed',
             extractedData: {
-                categories: parsed.categories || [],
+                categories: categoriesWithIcons,
                 items: parsed.items || [],
                 languages: normalizeDraftExtractionLanguages(parsed.languages),
             },
