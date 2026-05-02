@@ -34,6 +34,7 @@ import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, P
 import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
 
 interface BulkActionsSheetProps {
+    businessType?: string;
     visible: boolean;
     onClose: () => void;
     onApply: (updatedProject: Project, context?: { previousProject?: Project; successMessage?: string; updatedCount?: number }) => void;
@@ -72,6 +73,7 @@ function hasMissingDescriptionInLanguages(item: any, languageCodes: string[]): b
 }
 
 export default function BulkActionsSheet({
+    businessType,
     visible,
     onApply,
     onClose,
@@ -408,8 +410,8 @@ export default function BulkActionsSheet({
                     setApplyDetail(t('repairMenuAiDescriptionsStep'));
                     updated = await runDescriptionGeneration({
                         action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
-                        contentLength: getProjectDescriptionContentLength(updated),
-                        tone: getProjectDescriptionTone(updated),
+                        contentLength: getProjectDescriptionContentLength(updated, businessType),
+                        tone: getProjectDescriptionTone(updated, businessType),
                         projectData: updated,
                     });
                 }
@@ -664,18 +666,18 @@ export default function BulkActionsSheet({
 
         return (
             <Popup
-                bodyStyle={{ minHeight: '64vh', maxHeight: '90vh', overflowX: 'hidden', padding: 0 }}
+                bodyStyle={{ maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={applying ? undefined : onClose}
                 position="bottom"
                 visible={visible}
             >
-                <Flex style={{ height: '100%' }} vertical>
+                <Flex style={{ maxHeight: '90vh' }} vertical>
                     <NavBar onBack={applying ? undefined : onClose}>
                         {actionTitle}
                     </NavBar>
 
-                    <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                         <Card size="small" style={{ borderColor: token.colorPrimaryBorder }}>
                             <Flex gap={10} vertical>
                                 <Flex align="center" gap={8}>
@@ -776,7 +778,7 @@ export default function BulkActionsSheet({
                             backgroundColor: token.colorBgContainer,
                             borderTop: `1px solid ${token.colorBorderSecondary}`,
                             flexShrink: 0,
-                            padding: '12px 16px',
+                            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
                         }}
                     >
                         <Button
@@ -877,20 +879,20 @@ export default function BulkActionsSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '68vh', maxHeight: '90vh', overflowX: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ maxHeight: '90vh' }} vertical>
                 <NavBar
                     onBack={onClose}
                 >
                     {actionTitle}
                 </NavBar>
 
-                <Flex gap={10} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 10px' }} vertical>
+                <Flex gap={10} style={{ flexShrink: 0, padding: '12px 12px 10px' }} vertical>
                     {action === 'pricing' ? (
                         <Card size="small" style={{ borderColor: token.colorBorderSecondary }}>
                             <Flex gap={10} vertical>
@@ -1104,7 +1106,7 @@ export default function BulkActionsSheet({
                     ) : null}
                 </Flex>
 
-                <Flex style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }} vertical>
+                <Flex style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px 12px' }} vertical>
                     {!workingProject ? (
                         <Card>
                             <Text type="secondary">{t('loadingItems')}</Text>
@@ -1192,11 +1194,8 @@ export default function BulkActionsSheet({
                             backdropFilter: 'blur(10px)',
                             backgroundColor: token.colorBgContainer,
                             borderTop: `1px solid ${token.colorBorderSecondary}`,
-                            bottom: 0,
                             flexShrink: 0,
-                            marginBottom: -16,
-                            padding: '12px 16px',
-                            position: 'sticky',
+                            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
                             zIndex: 5,
                         }}
                     >

@@ -617,7 +617,23 @@ export function Tag({ children, className, color, onClick, style }: { children?:
     return <AntTag bordered className={className} color={color === 'primary' ? 'processing' : color} onClick={onClick} style={sanitizeStyle(style)}>{children}</AntTag>;
 }
 
-export function NavBar({ backIcon, children, className, onBack, right, style }: { backIcon?: ReactNode; children?: ReactNode; className?: string; onBack?: () => void; right?: ReactNode; style?: AnyStyle }) {
+export function NavBar({
+    backIcon,
+    children,
+    className,
+    onBack,
+    right,
+    style,
+    titleAlign = 'center',
+}: {
+    backIcon?: ReactNode;
+    children?: ReactNode;
+    className?: string;
+    onBack?: () => void;
+    right?: ReactNode;
+    style?: AnyStyle;
+    titleAlign?: 'center' | 'left';
+}) {
     const { token } = theme.useToken();
     const isInsideSheet = useContext(MobileSheetContext);
     const [isPwa, setIsPwa] = useState(false);
@@ -659,11 +675,11 @@ export function NavBar({ backIcon, children, className, onBack, right, style }: 
             ) : (
                 <div style={{ minHeight: 40, minWidth: 40 }} />
             )}
-            <Flex align="center" justify="center" style={{ flex: 1, minWidth: 0 }}>
+            <Flex align="center" justify={titleAlign === 'left' ? 'flex-start' : 'center'} style={{ flex: 1, minWidth: 0 }}>
                 {hasTitle ? (
                     <Title
                         level={5}
-                        style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}
+                        style={{ lineHeight: 1.2, margin: 0, textAlign: titleAlign }}
                     >
                         {children}
                     </Title>

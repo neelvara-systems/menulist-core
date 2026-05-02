@@ -1,7 +1,7 @@
 import AIButtonIcon from '@atoms/aiButtonIcon';
 import CategoryIcon from '@atoms/CategoryIcon';
 import IconPicker from '@atoms/IconPicker';
-import { getSuggestedCategoryIcons } from '@lib/categoryIcons';
+import { getSuggestedCategoryIcons, normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { FEATURE_FLAGS } from '@config/features';
@@ -36,6 +36,19 @@ interface EditCategoryModalProps {
     // Multi-outlet governance props
     inheritanceState?: InheritanceState;
     isMasterLinked?: boolean;
+}
+
+function normalizeCategoryIconForSave(category: ExtractedDataCategory): ExtractedDataCategory {
+    const normalizedIcon = normalizeCategoryIconValue(category.icon);
+    const nextCategory = { ...category };
+
+    if (normalizedIcon) {
+        nextCategory.icon = normalizedIcon;
+    } else {
+        delete nextCategory.icon;
+    }
+
+    return nextCategory;
 }
 
 const EditCategoryModal = ({
@@ -78,7 +91,7 @@ const EditCategoryModal = ({
 
     useEffect(() => {
         if (modalData.active && modalData.category) {
-            setCategoryData(modalData.category);
+            setCategoryData(normalizeCategoryIconForSave(modalData.category));
         } else {
             setCategoryData(null);
         }
@@ -216,6 +229,7 @@ const EditCategoryModal = ({
                 finalCategory = { ...categoryData, name: clearedName };
             }
         }
+        finalCategory = normalizeCategoryIconForSave(finalCategory);
 
         if (modalData.status === 'add') {
             // Add new category immutably
@@ -427,7 +441,13 @@ const EditCategoryModal = ({
                                         buttonSize="large"
                                         buttonStyle={{ height: 56, minWidth: 56 }}
                                         iconSize={26}
-                                        onChange={(value) => setCategoryData({ ...categoryData, icon: value })}
+                                        onChange={(value) => {
+                                            const normalizedIcon = normalizeCategoryIconValue(value);
+                                            setCategoryData(normalizedIcon
+                                                ? { ...categoryData, icon: normalizedIcon }
+                                                : normalizeCategoryIconForSave({ ...categoryData, icon: undefined })
+                                            );
+                                        }}
                                         suggestedIcons={suggestedIcons}
                                         value={categoryData.icon}
                                     />

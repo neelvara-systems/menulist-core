@@ -2,7 +2,7 @@
 
 import { TimeSlotPreset } from '@type/platform/store';
 import { Badge, Button, Divider, Flex, InputNumber, Popover, Select, Typography } from 'antd';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LuFilter, LuX } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -20,6 +20,7 @@ interface EditorFiltersPopoverProps {
     activeLanguage: string;
     filters: EditorFilters;
     onFiltersChange: (filters: EditorFilters) => void;
+    showItemPrices?: boolean;
     timeSlotPresets?: TimeSlotPreset[]; // Store-level time slot presets
 }
 
@@ -43,32 +44,59 @@ export default function EditorFiltersPopover({
     activeLanguage,
     filters,
     onFiltersChange,
+    showItemPrices = true,
     timeSlotPresets = []
 }: EditorFiltersPopoverProps) {
     const [open, setOpen] = useState(false);
     const [localFilters, setLocalFilters] = useState<EditorFilters>(filters);
+    const effectiveFilters = useMemo<EditorFilters>(() => (
+        showItemPrices
+            ? filters
+            : { ...filters, priceRange: { min: null, max: null } }
+    ), [filters, showItemPrices]);
+    const effectiveLocalFilters = showItemPrices
+        ? localFilters
+        : { ...localFilters, priceRange: { min: null, max: null } };
+
+    useEffect(() => {
+        if (
+            showItemPrices ||
+            (filters.priceRange.min === null && filters.priceRange.max === null)
+        ) {
+            return;
+        }
+
+        onFiltersChange({
+            ...filters,
+            priceRange: { min: null, max: null },
+        });
+        setLocalFilters((prev) => ({
+            ...prev,
+            priceRange: { min: null, max: null },
+        }));
+    }, [filters, onFiltersChange, showItemPrices]);
 
     // Count applied filters (from props, not local state)
     // Badge should only show count of filters that are actually applied
     const appliedFilterCount = [
-        filters.category !== null,
-        filters.priceRange.min !== null || filters.priceRange.max !== null,
-        filters.hasImage !== null,
-        filters.activeStatus !== null,
-        filters.timeSlotPreset !== null,
+        effectiveFilters.category !== null,
+        showItemPrices && (effectiveFilters.priceRange.min !== null || effectiveFilters.priceRange.max !== null),
+        effectiveFilters.hasImage !== null,
+        effectiveFilters.activeStatus !== null,
+        effectiveFilters.timeSlotPreset !== null,
     ].filter(Boolean).length;
 
     // Count pending filters in local state (for Apply button)
     const pendingFilterCount = [
-        localFilters.category !== null,
-        localFilters.priceRange.min !== null || localFilters.priceRange.max !== null,
-        localFilters.hasImage !== null,
-        localFilters.activeStatus !== null,
-        localFilters.timeSlotPreset !== null,
+        effectiveLocalFilters.category !== null,
+        showItemPrices && (effectiveLocalFilters.priceRange.min !== null || effectiveLocalFilters.priceRange.max !== null),
+        effectiveLocalFilters.hasImage !== null,
+        effectiveLocalFilters.activeStatus !== null,
+        effectiveLocalFilters.timeSlotPreset !== null,
     ].filter(Boolean).length;
 
     const handleApply = () => {
-        onFiltersChange(localFilters);
+        onFiltersChange(effectiveLocalFilters);
         setOpen(false);
     };
 
@@ -114,36 +142,40 @@ export default function EditorFiltersPopover({
             <Divider style={{ margin: 0 }} />
 
             {/* Price Range Filter */}
-            <Flex vertical gap={8}>
-                <Text strong style={{ fontSize: 13 }}>Price Range</Text>
-                <Flex gap={8} align="center">
-                    <InputNumber
-                        placeholder="Min"
-                        min={0}
-                        value={localFilters.priceRange.min}
-                        onChange={(value) => setLocalFilters({
-                            ...localFilters,
-                            priceRange: { ...localFilters.priceRange, min: value }
-                        })}
-                        style={{ width: '100%' }}
-                        prefix="$"
-                    />
-                    <Text type="secondary">to</Text>
-                    <InputNumber
-                        placeholder="Max"
-                        min={0}
-                        value={localFilters.priceRange.max}
-                        onChange={(value) => setLocalFilters({
-                            ...localFilters,
-                            priceRange: { ...localFilters.priceRange, max: value }
-                        })}
-                        style={{ width: '100%' }}
-                        prefix="$"
-                    />
-                </Flex>
-            </Flex>
+            {showItemPrices ? (
+                <>
+                    <Flex vertical gap={8}>
+                        <Text strong style={{ fontSize: 13 }}>Price Range</Text>
+                        <Flex gap={8} align="center">
+                            <InputNumber
+                                placeholder="Min"
+                                min={0}
+                                value={localFilters.priceRange.min}
+                                onChange={(value) => setLocalFilters({
+                                    ...localFilters,
+                                    priceRange: { ...localFilters.priceRange, min: value }
+                                })}
+                                style={{ width: '100%' }}
+                                prefix="$"
+                            />
+                            <Text type="secondary">to</Text>
+                            <InputNumber
+                                placeholder="Max"
+                                min={0}
+                                value={localFilters.priceRange.max}
+                                onChange={(value) => setLocalFilters({
+                                    ...localFilters,
+                                    priceRange: { ...localFilters.priceRange, max: value }
+                                })}
+                                style={{ width: '100%' }}
+                                prefix="$"
+                            />
+                        </Flex>
+                    </Flex>
 
-            <Divider style={{ margin: 0 }} />
+                    <Divider style={{ margin: 0 }} />
+                </>
+            ) : null}
 
             {/* Has Image Filter */}
             <Flex vertical gap={8}>

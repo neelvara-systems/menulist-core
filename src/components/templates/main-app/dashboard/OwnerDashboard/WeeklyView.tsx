@@ -232,6 +232,12 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                                 <Text>No-result Searches</Text>
                                 <Text type="secondary">{metrics.zeroResultSearches || 0}</Text>
                             </div>
+                            {data.topZeroResultSearchTerms?.slice(0, 3).map((term) => (
+                                <div className={styles.blockItem} key={`zero-${term.term}`}>
+                                    <Text>No-result: {term.term}</Text>
+                                    <Text type="secondary">{term.count}</Text>
+                                </div>
+                            ))}
                             {data.topSearchTerms?.slice(0, 3).map((term) => (
                                 <div className={styles.blockItem} key={term.term}>
                                     <Text>{term.term}</Text>

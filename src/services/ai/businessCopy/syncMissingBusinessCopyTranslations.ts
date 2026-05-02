@@ -31,6 +31,9 @@ export default async function syncMissingBusinessCopyTranslations({
     const sourceLanguageDef = resolveLanguage(referenceLanguage);
 
     if (!sourceLanguageDef) {
+        if (coverage.repairableGapCount > 0) {
+            throw new Error('Business copy translation repair failed: source language is unavailable.');
+        }
         return null;
     }
 
@@ -51,6 +54,9 @@ export default async function syncMissingBusinessCopyTranslations({
     ) as Record<BusinessCopyLocalizedFieldKey, string>;
 
     if (Object.keys(payload).length === 0) {
+        if (coverage.repairableGapCount > 0) {
+            throw new Error('Business copy translation repair failed: source copy is unavailable.');
+        }
         logger.info('Business copy translation repair no-op', {
             projectId,
             reason: 'no-source-payload',
@@ -66,6 +72,9 @@ export default async function syncMissingBusinessCopyTranslations({
         .filter(Boolean) as LanguageType[];
 
     if (!targetLanguages.length) {
+        if (coverage.repairableGapCount > 0) {
+            throw new Error('Business copy translation repair failed: target languages could not be resolved.');
+        }
         logger.info('Business copy translation repair no-op', {
             missingFieldCount: coverage.missingFieldCount,
             projectId,
@@ -108,7 +117,7 @@ export default async function syncMissingBusinessCopyTranslations({
             storeId: storeDetails?.storeId,
             targetLanguages: targetLanguages.map((language) => language.code),
         });
-        return null;
+        throw new Error('Business copy translation repair failed.');
     }
 
     const localized: LocalizedBusinessCopyFields = {};

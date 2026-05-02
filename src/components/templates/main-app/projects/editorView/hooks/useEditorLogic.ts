@@ -37,6 +37,7 @@ interface UseEditorLogicProps {
     selectedLanguages: string[];
     searchTerm?: string;
     filters?: EditorFilters;
+    showItemPrices?: boolean;
     masterProjectId?: string; // For linked stores, use L_I_/L_C_ prefix
 }
 
@@ -46,6 +47,7 @@ export const useEditorLogic = ({
     selectedLanguages,
     searchTerm = "",
     filters,
+    showItemPrices = true,
     masterProjectId,
 }: UseEditorLogicProps) => {
     const [activeInput, setActiveInput] = useState<string | null>(null);
@@ -116,7 +118,7 @@ export const useEditorLogic = ({
             }
 
             // 3. Price Range Filter
-            if (filters?.priceRange) {
+            if (showItemPrices && filters?.priceRange) {
                 const { min, max } = filters.priceRange;
                 filtered = filtered.filter((item) => {
                     const price = parseFloat(
@@ -157,7 +159,7 @@ export const useEditorLogic = ({
 
             return filtered;
         },
-        [searchTerm, filters, selectedLanguages],
+        [searchTerm, filters, selectedLanguages, showItemPrices],
     );
 
     /**

@@ -46,6 +46,7 @@ interface DecisionBlocksProps {
     menuSettings?: MenuSettings;
     /** Precomputed Decision Blocks from Cloud Function (optional) */
     precomputedBlocks?: PrecomputedDecisionBlocks | null;
+    showItemPrices?: boolean;
     /** Required for project-wise analytics storage */
     analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     /** Controls whether decision-block analytics should fire. */
@@ -270,7 +271,8 @@ function computeFromPrecomputed(
     items: ExtractedDataItem[],
     categories: ExtractedDataCategory[],
     businessType?: string,
-    ownerControls?: OwnerControls
+    ownerControls?: OwnerControls,
+    showItemPrices = true
 ): ComputedBlock[] {
     const stats = precomputed.statsUsed;
     const lifecycle = getLifecycleState(stats);
@@ -295,6 +297,7 @@ function computeFromPrecomputed(
 
     // 💰 Best Value: needs price data coverage
     const isBestValueEligible =
+        showItemPrices &&
         (stats.priceCoverage ?? 0) >= LIFECYCLE_THRESHOLDS.BEST_VALUE_PRICE_COV &&
         (stats.itemsWithPrice ?? 0) >= LIFECYCLE_THRESHOLDS.BEST_VALUE_MIN_ITEMS;
 
@@ -381,7 +384,8 @@ function computeBlocksFallback(
     items: ExtractedDataItem[],
     categories: ExtractedDataCategory[],
     businessType?: string,
-    ownerControls?: OwnerControls
+    ownerControls?: OwnerControls,
+    showItemPrices = true
 ): ComputedBlock[] {
     const enabledBlocks = getEnabledBlocks(businessType);
     const blocks: ComputedBlock[] = [];
@@ -433,7 +437,7 @@ function computeBlocksFallback(
     }
 
     // 💰 Best Value - only if owner pinned
-    const isBestValueEnabled = ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue');
+    const isBestValueEnabled = showItemPrices && ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue');
     if (isBestValueEnabled && ownerControls?.pinnedBestValue && isAvailable(ownerControls.pinnedBestValue)) {
         const item = itemMap.get(ownerControls.pinnedBestValue)!;
         usedItemIds.add(item.id);
@@ -459,6 +463,7 @@ export default function DecisionBlocks({
     currency = '$',
     menuSettings,
     precomputedBlocks,
+    showItemPrices = true,
     analyticsIds,
     trackingEnabled = true,
 }: DecisionBlocksProps) {
@@ -529,14 +534,15 @@ export default function DecisionBlocks({
                 items,
                 categories,
                 businessType,
-                ownerControls
+                ownerControls,
+                showItemPrices
             );
         }
 
         // Fallback: Only show owner-pinned items (client never ranks)
         // This ensures single source of truth - scheduler ranks, client filters
-        return computeBlocksFallback(items, categories, businessType, ownerControls);
-    }, [items, categories, businessType, ownerControls, precomputedBlocks]);
+        return computeBlocksFallback(items, categories, businessType, ownerControls, showItemPrices);
+    }, [items, categories, businessType, ownerControls, precomputedBlocks, showItemPrices]);
 
     // Handle block click
     const handleClick = useCallback((rec: ComputedBlock) => {
@@ -684,12 +690,14 @@ export default function DecisionBlocks({
                                     >
                                         {translateReason(rec.reason, rec.reasonParams)}
                                     </span>
-                                    <span
-                                        className="text-xs font-semibold flex-shrink-0"
-                                        style={{ color: moodConfig.priceColor }}
-                                    >
-                                        {itemPrice}
-                                    </span>
+                                    {showItemPrices && itemPrice ? (
+                                        <span
+                                            className="text-xs font-semibold flex-shrink-0"
+                                            style={{ color: moodConfig.priceColor }}
+                                        >
+                                            {itemPrice}
+                                        </span>
+                                    ) : null}
                                 </div>
                             </div>
                         </button>

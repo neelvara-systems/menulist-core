@@ -102,6 +102,26 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         const slots = Array.from({ length: 3 }, (_, index) => formData.photos[index] || '');
         return slots;
     }, [formData.photos]);
+    const officialPageInfoContent = useMemo(() => (
+        <Flex gap={8} style={{ maxWidth: 280 }} vertical>
+            <Flex gap={2} vertical>
+                <Text strong>{t('officialPage')}</Text>
+                <Text type="secondary">{t('officialPageSubtitle')}</Text>
+            </Flex>
+            <Flex gap={2} vertical>
+                <Text strong>What you manage here</Text>
+                <Text type="secondary">
+                    Public name, short descriptor, known for, customer action links, accent color, ratings, and page photos.
+                </Text>
+            </Flex>
+            <Flex gap={2} vertical>
+                <Text strong>Language rule</Text>
+                <Text type="secondary">
+                    Display name, short descriptor, and known for can be edited per language. Links, toggles, ratings, and photos stay shared across languages.
+                </Text>
+            </Flex>
+        </Flex>
+    ), [t]);
 
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
         if (!storeDetails?.storeId) return;
@@ -258,6 +278,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
                 description={t('officialPageSubtitle')}
+                infoContent={officialPageInfoContent}
                 onBack={onBack}
                 title={t('officialPage')}
             />

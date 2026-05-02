@@ -528,6 +528,7 @@ export function EditorContent({
     isMasterLinked,
 }: EditorContentProps) {
     const { token } = theme.useToken();
+    const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
 
     // Use shared editor logic hook
     const editorLogic = useEditorLogic({
@@ -536,6 +537,7 @@ export function EditorContent({
         selectedLanguages,
         searchTerm,
         filters,
+        showItemPrices,
         masterProjectId: projectData.masterProjectId,
     });
 
@@ -579,8 +581,8 @@ export function EditorContent({
                         {/* Item Count Display */}
                         {(searchTerm ||
                             filters?.category ||
-                            filters?.priceRange?.min ||
-                            filters?.priceRange?.max ||
+                            (showItemPrices && filters?.priceRange?.min) ||
+                            (showItemPrices && filters?.priceRange?.max) ||
                             filters?.hasImage !== null ||
                             filters?.activeStatus !== null) && (
                                 <Alert

@@ -1,6 +1,6 @@
 'use client'
 
-import { getResolvedProjectAIPreferences, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
+import { getRecommendedProjectAIPreferences, getResolvedProjectAIPreferences, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
@@ -58,7 +58,8 @@ export default function AIDefaultsSheet({
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
     } as const;
-    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData), [projectData]);
+    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData, businessType), [businessType, projectData]);
+    const recommendedPreferences = useMemo(() => getRecommendedProjectAIPreferences(businessType), [businessType]);
     const imageDefaults = useMemo(() => getImageDefaults(businessType), [businessType]);
     const [descriptionLength, setDescriptionLength] = useState<DescriptionContentLength>(resolvedPreferences.description.contentLength);
     const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(resolvedPreferences.description.tone);
@@ -67,11 +68,11 @@ export default function AIDefaultsSheet({
 
     useEffect(() => {
         if (!visible) return;
-        const nextResolved = getResolvedProjectAIPreferences(projectData);
+        const nextResolved = getResolvedProjectAIPreferences(projectData, businessType);
         setDescriptionLength(nextResolved.description.contentLength);
         setDescriptionTone(nextResolved.description.tone);
         setImagePreferences(nextResolved.image);
-    }, [projectData, visible]);
+    }, [businessType, projectData, visible]);
 
     const hasChanges = useMemo(() => {
         const currentState = JSON.stringify({
@@ -94,8 +95,67 @@ export default function AIDefaultsSheet({
         setImagePreferences(resolvedPreferences.image);
     };
 
+    const resetToRecommended = () => {
+        setDescriptionLength(recommendedPreferences.description.contentLength);
+        setDescriptionTone(recommendedPreferences.description.tone);
+        setImagePreferences(recommendedPreferences.image);
+    };
+
     const selectedBackgroundColor = imagePreferences.backgroundColor || '#ffffff';
     const selectedForegroundColor = imagePreferences.foregroundColor || '#111111';
+    const selectedStyleChipStyle = {
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 8,
+        color: token.colorText,
+        padding: '2px 8px',
+    } as const;
+    const renderColorSwatchInput = ({
+        disabled = false,
+        onChange,
+        value,
+    }: {
+        disabled?: boolean;
+        onChange: (value: string) => void;
+        value: string;
+    }) => (
+        <div
+            style={{
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: '999px',
+                boxShadow: token.boxShadowTertiary,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                height: 40,
+                opacity: disabled ? 0.45 : 1,
+                overflow: 'hidden',
+                position: 'relative',
+                width: 40,
+            }}
+        >
+            <div
+                style={{
+                    background: value,
+                    borderRadius: '999px',
+                    height: '100%',
+                    width: '100%',
+                }}
+            />
+            <input
+                disabled={disabled}
+                onChange={(event) => onChange(event.target.value)}
+                style={{
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    height: '140%',
+                    inset: '-20%',
+                    opacity: 0,
+                    position: 'absolute',
+                    width: '140%',
+                }}
+                type="color"
+                value={value}
+            />
+        </div>
+    );
 
     const handleSave = () => {
         const updatedProject = mergeProjectAIPreferences(projectData, {
@@ -117,19 +177,34 @@ export default function AIDefaultsSheet({
     return (
         <>
             <Popup
-                bodyStyle={{ minHeight: '72vh', maxHeight: '94vh', overflowX: 'hidden', padding: 0 }}
+                bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={onClose}
                 visible={visible}
             >
-                <Flex style={{ height: '100%' }} vertical>
+                <Flex style={{ maxHeight: '94vh' }} vertical>
                     <NavBar onBack={onClose}>Generation defaults</NavBar>
 
-                    <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                         <Card size="small" style={sectionCardStyle}>
-                            <Text type="secondary">
-                                Set the default writing and photo style for this menu. Future description generation, menu repair, and generated photos will start with these choices.
-                            </Text>
+                            <Flex gap={10} vertical>
+                                <Text type="secondary">
+                                    Set the default writing and photo style for this menu. Future description generation, menu repair, and generated photos will start with these choices.
+                                </Text>
+                                <Flex align="center" gap={10} justify="space-between">
+                                    <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                                        <Text strong>Recommended defaults</Text>
+                                        <Text type="secondary">
+                                            {businessType
+                                                ? `Use settings picked for ${businessType}.`
+                                                : 'Use the safest settings for this business.'}
+                                        </Text>
+                                    </Flex>
+                                    <Button fill="outline" onClick={resetToRecommended} size="small">
+                                        Use recommended
+                                    </Button>
+                                </Flex>
+                            </Flex>
                         </Card>
 
                         <Card size="small" style={sectionCardStyle}>
@@ -258,17 +333,17 @@ export default function AIDefaultsSheet({
                                             </Flex>
                                             {imagePreferences.styles?.length ? (
                                                 <Flex gap={6} wrap="wrap">
-                                                    <Text type="secondary">{imagePreferences.stylesCategory}</Text>
-                                                    {imagePreferences.styles.slice(0, 3).map((style) => (
-                                                        <Text key={style} style={{ background: token.colorFillAlter, borderRadius: 8, padding: '2px 8px' }}>
-                                                            {style}
-                                                        </Text>
-                                                    ))}
-                                                    {imagePreferences.styles.length > 3 ? (
-                                                        <Text style={{ background: token.colorFillAlter, borderRadius: 8, padding: '2px 8px' }}>
-                                                            +{imagePreferences.styles.length - 3} more
-                                                        </Text>
-                                                    ) : null}
+	                                                    <Text type="secondary">{imagePreferences.stylesCategory}</Text>
+	                                                    {imagePreferences.styles.slice(0, 3).map((style) => (
+	                                                        <Text key={style} style={selectedStyleChipStyle}>
+	                                                            {style}
+	                                                        </Text>
+	                                                    ))}
+	                                                    {imagePreferences.styles.length > 3 ? (
+	                                                        <Text style={selectedStyleChipStyle}>
+	                                                            +{imagePreferences.styles.length - 3} more
+	                                                        </Text>
+	                                                    ) : null}
                                                 </Flex>
                                             ) : null}
                                         </Flex>
@@ -363,13 +438,11 @@ export default function AIDefaultsSheet({
                                             </Text>
                                         </Flex>
                                         <Flex align="center" gap={8}>
-                                            <input
-                                                disabled={Boolean(imagePreferences.transparentBg)}
-                                                onChange={(event) => setImagePreferences((current) => ({ ...current, backgroundColor: event.target.value }))}
-                                                style={{ height: 36, width: 44 }}
-                                                type="color"
-                                                value={selectedBackgroundColor}
-                                            />
+	                                            {renderColorSwatchInput({
+	                                                disabled: Boolean(imagePreferences.transparentBg),
+	                                                onChange: (backgroundColor) => setImagePreferences((current) => ({ ...current, backgroundColor })),
+	                                                value: selectedBackgroundColor,
+	                                            })}
                                             <Button
                                                 disabled={Boolean(imagePreferences.transparentBg) || !imagePreferences.backgroundColor}
                                                 fill="outline"
@@ -399,12 +472,10 @@ export default function AIDefaultsSheet({
                                             </Text>
                                         </Flex>
                                         <Flex align="center" gap={8}>
-                                            <input
-                                                onChange={(event) => setImagePreferences((current) => ({ ...current, foregroundColor: event.target.value }))}
-                                                style={{ height: 36, width: 44 }}
-                                                type="color"
-                                                value={selectedForegroundColor}
-                                            />
+                                            {renderColorSwatchInput({
+                                                onChange: (foregroundColor) => setImagePreferences((current) => ({ ...current, foregroundColor })),
+                                                value: selectedForegroundColor,
+                                            })}
                                             <Button
                                                 disabled={!imagePreferences.foregroundColor}
                                                 fill="outline"

@@ -54,7 +54,7 @@ export default function MobileOwnerActionPlanCard({
                         <Flex gap={2} vertical>
                             <Text strong>Available on Pro</Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Pro adds menu intelligence, a daily action list, and plain-language summaries from your menu activity.
+                                Pro adds menu intelligence, owner action lists, and plain-language summaries from your menu activity.
                             </Text>
                         </Flex>
                     </Flex>
@@ -71,7 +71,7 @@ export default function MobileOwnerActionPlanCard({
 
                 {!isPlanLocked && bestSource ? (
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {`Best source right now: ${bestSource.label} · ${bestSource.actionRate}% action rate`}
+                        {`Best source right now: ${bestSource.label} · ${bestSource.menuSessions} visits · ${bestSource.actionRate}% action rate`}
                     </Text>
                 ) : null}
 
@@ -96,6 +96,16 @@ export default function MobileOwnerActionPlanCard({
                     <Flex align="center" gap={8}>
                         <LuCheckCircle color="#16a34a" size={18} />
                         <Text type="secondary">No action needed. Menu state is stable.</Text>
+                    </Flex>
+                ) : null}
+
+                {!isPlanLocked && sourceQuality.length > 1 ? (
+                    <Flex gap={6} wrap>
+                        {sourceQuality.slice(0, 4).map((source) => (
+                            <Tag key={source.source} color="default">
+                                {`${source.label}: ${source.menuSessions} visits · ${source.actionRate}%`}
+                            </Tag>
+                        ))}
                     </Flex>
                 ) : null}
             </Flex>

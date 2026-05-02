@@ -145,8 +145,8 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
         );
     };
 
-    const renderDemandSummary = (terms?: any[], unavailableItems?: any[]) => {
-        if ((!terms || terms.length === 0) && (!unavailableItems || unavailableItems.length === 0)) {
+    const renderDemandSummary = (terms?: any[], unavailableItems?: any[], zeroResultTerms?: any[]) => {
+        if ((!terms || terms.length === 0) && (!unavailableItems || unavailableItems.length === 0) && (!zeroResultTerms || zeroResultTerms.length === 0)) {
             return null;
         }
 
@@ -157,6 +157,18 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                         <Text type="secondary" style={{ fontSize: 12 }}>Top Searches:</Text>
                         <div style={{ marginTop: 4, marginBottom: 8 }}>
                             {terms.map((term) => (
+                                <Tag key={term.term} style={{ marginBottom: 4 }}>
+                                    {term.term} ({term.count})
+                                </Tag>
+                            ))}
+                        </div>
+                    </>
+                ) : null}
+                {zeroResultTerms?.length ? (
+                    <>
+                        <Text type="secondary" style={{ fontSize: 12 }}>No-result Terms:</Text>
+                        <div style={{ marginTop: 4, marginBottom: 8 }}>
+                            {zeroResultTerms.map((term) => (
                                 <Tag key={term.term} style={{ marginBottom: 4 }}>
                                     {term.term} ({term.count})
                                 </Tag>
@@ -305,7 +317,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                         </Col>
                     )}
                     {renderActionSummary(wtd.menuActions)}
-                    {renderDemandSummary(wtd.topSearchTerms, wtd.unavailableItems)}
+                    {renderDemandSummary(wtd.topSearchTerms, wtd.unavailableItems, wtd.topZeroResultSearchTerms)}
                 </Row>
             ) : (
                 <Text type="secondary">No data for the last 7 days</Text>
@@ -405,7 +417,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                             </div>
                         </Col>
                     )}
-                    {renderDemandSummary(mtd.topSearchTerms, mtd.unavailableItems)}
+                    {renderDemandSummary(mtd.topSearchTerms, mtd.unavailableItems, mtd.topZeroResultSearchTerms)}
                 </Row>
             ) : (
                 <Text type="secondary">Month data will appear as days pass</Text>
@@ -503,6 +515,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                 confidence={ownerConfidence}
                 sourceQuality={sourceQuality}
                 analyticsAiEntitlement={analyticsAiEntitlement}
+                title="Menu Intelligence Action Plan"
             />
 
             {/* AI Summary (if available) */}

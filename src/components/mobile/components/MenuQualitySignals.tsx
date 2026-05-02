@@ -24,18 +24,19 @@ interface MobileMenuQualitySignalsProps {
     files: ProjectFileType[] | undefined;
     projectLanguages?: string[];
     showCategoryIcons?: boolean;
+    showItemPrices?: boolean;
     onExpandedChange?: (expanded: boolean) => void;
     onOpenRepairMenu?: () => void;
     onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, showCategoryIcons = true, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, showCategoryIcons = true, showItemPrices = true, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
     const tMenu = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const allSignals = useMemo(
-        () => computeQualitySignals(files, projectLanguages, { showCategoryIcons }),
-        [files, projectLanguages, showCategoryIcons]
+        () => computeQualitySignals(files, projectLanguages, { showCategoryIcons, showItemPrices }),
+        [files, projectLanguages, showCategoryIcons, showItemPrices]
     );
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);

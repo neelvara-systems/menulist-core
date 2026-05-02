@@ -5,6 +5,7 @@ import { Button, Flex, NavBar, Popover, Text } from '../antd';
 
 interface MobileSettingsScreenHeaderProps {
     description: string;
+    infoContent?: React.ReactNode;
     onBack: () => void;
     right?: React.ReactNode;
     title: string;
@@ -12,6 +13,7 @@ interface MobileSettingsScreenHeaderProps {
 
 export default function MobileSettingsScreenHeader({
     description,
+    infoContent,
     onBack,
     right,
     title,
@@ -19,11 +21,12 @@ export default function MobileSettingsScreenHeader({
     return (
         <NavBar
             onBack={onBack}
+            titleAlign="left"
             right={(
                 <Flex align="center" gap={4}>
                     {right}
                     <Popover
-                        content={(
+                        content={infoContent || (
                             <Flex gap={4} style={{ maxWidth: 240 }} vertical>
                                 <Text strong>{title}</Text>
                                 <Text type="secondary">{description}</Text>

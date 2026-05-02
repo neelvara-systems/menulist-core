@@ -12,6 +12,21 @@ function resolveBusinessCategory(businessType?: string): string | undefined {
     return getBusinessCategory(businessType) || businessType;
 }
 
+export function normalizeCategoryIconValue(icon: unknown): string {
+    if (typeof icon === 'string') return icon.trim();
+
+    if (icon && typeof icon === 'object') {
+        for (const key of ['icon', 'value', 'name']) {
+            const candidate = (icon as Record<string, unknown>)[key];
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.trim();
+            }
+        }
+    }
+
+    return '';
+}
+
 export function getSuggestedCategoryIcons(categoryName?: string, businessType?: string, limit = 8): string[] {
     return getCategoryIconSuggestions(categoryName, resolveBusinessCategory(businessType), limit);
 }

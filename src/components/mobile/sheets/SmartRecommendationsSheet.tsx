@@ -245,15 +245,15 @@ export default function SmartRecommendationsSheet({
     return (
         <>
             <Popup
-                bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
+                bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={onClose}
                 position="bottom"
                 visible={visible}
             >
-                <Flex style={{ height: '100%' }} vertical>
+                <Flex style={{ maxHeight: '92vh' }} vertical>
                     <NavBar onBack={onClose}>{t('smartRecommendationsTitle')}</NavBar>
-                    <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                         <Card style={sectionCardStyle}>
                             <Flex gap={4} vertical>
                                 <Title level={5} style={{ margin: 0 }}>{t('smartRecommendationsHeading')}</Title>
@@ -285,30 +285,27 @@ export default function SmartRecommendationsSheet({
                             />
                         ) : null}
 
-                        <div
-                            style={{
-                                backdropFilter: 'blur(10px)',
-                                backgroundColor: token.colorBgContainer,
-                                borderTop: `1px solid ${token.colorBorderSecondary}`,
-                                bottom: 0,
-                                marginInline: -12,
-                                marginBottom: -16,
-                                marginTop: 'auto',
-                                padding: '12px 16px',
-                                position: 'sticky',
-                                zIndex: 5,
-                            }}
-                        >
-                            <Flex gap={8}>
-                                <Button block fill="outline" onClick={onClose}>
-                                    {t('cancel')}
-                                </Button>
-                                <Button block disabled={!hasChanges} loading={isSaving} onClick={() => void handleSave()}>
-                                    {t('save')}
-                                </Button>
-                            </Flex>
-                        </div>
                     </Flex>
+
+                    <div
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            flexShrink: 0,
+                            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                            zIndex: 5,
+                        }}
+                    >
+                        <Flex gap={8}>
+                            <Button block fill="outline" onClick={onClose} size="large">
+                                {t('cancel')}
+                            </Button>
+                            <Button block disabled={!hasChanges} loading={isSaving} onClick={() => void handleSave()} size="large">
+                                {t('save')}
+                            </Button>
+                        </Flex>
+                    </div>
                 </Flex>
             </Popup>
         </>

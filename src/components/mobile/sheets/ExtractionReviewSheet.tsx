@@ -17,7 +17,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, Dialog, Divider, Empty, Flex, Popup, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Popup, Tag, Text, Title, Toast } from '../antd';
 
 interface ExtractionReviewSheetProps {
     comparisonResult: ComparisonEngineOutput;
@@ -237,11 +237,11 @@ export default function ExtractionReviewSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: '68vh', maxHeight: '88vh', overflowY: 'auto' }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '88vh', overflow: 'hidden', padding: 0 }}
             visible={visible}
         >
-            <Flex gap={16} vertical>
-                <Flex gap={4} vertical>
+            <Flex style={{ maxHeight: '88vh' }} vertical>
+                <Flex gap={4} style={{ borderBottom: `1px solid var(--adm-color-border)`, flexShrink: 0, padding: 16 }} vertical>
                     <Title level={4} style={{ margin: 0 }}>
                         {t('reviewExtractedChanges')}
                     </Title>
@@ -253,14 +253,15 @@ export default function ExtractionReviewSheet({
                     </Text>
                 </Flex>
 
-                {!hasAnyChanges ? (
-                    <Card>
-                        <Empty description={t('noChangesDetected')}>
-                            <Button onClick={onDiscard}>{t('close')}</Button>
-                        </Empty>
-                    </Card>
-                ) : (
-                    <>
+                <Flex gap={16} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16 }} vertical>
+                    {!hasAnyChanges ? (
+                        <Card>
+                            <Empty description={t('noChangesDetected')}>
+                                <Button onClick={onDiscard}>{t('close')}</Button>
+                            </Empty>
+                        </Card>
+                    ) : (
+                        <>
                         <Flex gap={8}>
                             <Button block fill="outline" onClick={approveSafeOnly}>
                                 {t('approveSafeOnly')}
@@ -386,10 +387,23 @@ export default function ExtractionReviewSheet({
                             </Card>
                         ) : null}
 
-                        <Divider />
+                        </>
+                    )}
+                </Flex>
 
+                {hasAnyChanges ? (
+                    <div
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: 'var(--adm-color-background)',
+                            borderTop: `1px solid var(--adm-color-border)`,
+                            flexShrink: 0,
+                            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                            zIndex: 5,
+                        }}
+                    >
                         <Flex gap={8}>
-                            <Button block disabled={isSaving} fill="outline" loading={isDiscarding} onClick={handleDiscard}>
+                            <Button block disabled={isSaving} fill="outline" loading={isDiscarding} onClick={handleDiscard} size="large">
                                 {t('discardAll')}
                             </Button>
                             <Button
@@ -398,6 +412,7 @@ export default function ExtractionReviewSheet({
                                 disabled={isDiscarding || totalChanges === 0}
                                 loading={isSaving}
                                 onClick={handleSave}
+                                size="large"
                             >
                                 <Flex align="center" gap={6} justify="center">
                                     <LuCheck size={16} />
@@ -405,8 +420,8 @@ export default function ExtractionReviewSheet({
                                 </Flex>
                             </Button>
                         </Flex>
-                    </>
-                )}
+                    </div>
+                ) : null}
             </Flex>
         </Popup>
     );

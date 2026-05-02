@@ -462,8 +462,8 @@ export default function ItemEditSheet({
                 projectId: projectData.projectId,
                 sourceLang: sourceLanguage,
                 targetLang: targetLanguages as any,
-                contentLength: getProjectDescriptionContentLength(projectData),
-                tone: getProjectDescriptionTone(projectData),
+                contentLength: getProjectDescriptionContentLength(projectData, storeDetails?.businessType),
+                tone: getProjectDescriptionTone(projectData, storeDetails?.businessType),
             };
 
             const result = await getNewItemMetadataViaAPI(payload);
@@ -713,7 +713,7 @@ export default function ItemEditSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', padding: 0 }}
+            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={() => {
                 if (!isSaving) onClose();
@@ -721,14 +721,14 @@ export default function ItemEditSheet({
             position="bottom"
             visible
         >
-            <Flex style={{ maxHeight: '85vh', overflowX: 'hidden', overflowY: 'auto' }} vertical>
+            <Flex style={{ height: '85vh', maxHeight: '85vh', overflow: 'hidden' }} vertical>
                 <NavBar onBack={() => {
                     if (!isSaving) onClose();
                 }}>
                     {isAddMode ? t('addItemTitle') : t('editItemTitle')}
                 </NavBar>
 
-                <Flex gap={16} style={{ padding: '12px 12px 12px' }} vertical>
+                <Flex gap={16} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={16} vertical>
                             {categories.length > 0 ? (
@@ -898,63 +898,59 @@ export default function ItemEditSheet({
                             <Text type="secondary">{contentActionCopy.helper}</Text>
                         </Flex>
                     ) : null}
+                </Flex>
 
-                    <div
-                        style={{
-                            backdropFilter: 'blur(10px)',
-                            backgroundColor: token.colorBgContainer,
-                            borderTop: `1px solid ${token.colorBorderSecondary}`,
-                            bottom: 0,
-                            marginInline: -16,
-                            marginBottom: -16,
-                            marginTop: 'auto',
-                            padding: '12px 16px',
-                            position: 'sticky',
-                            zIndex: 5,
-                        }}
-                    >
-                        <Flex gap={12} vertical>
-                            <Flex gap={12}>
-                                {!isAddMode && onDelete && item?.id ? (
-                                    <Button
-                                        color="danger"
-                                        disabled={isSaving}
-                                        fill="outline"
-                                        onClick={() => {
-                                            if (isSaving) return;
-                                            Dialog.confirm({
-                                                title: t('deleteItemTitle'),
-                                                content: t('deleteItemConfirm', { item: item.name }),
-                                                confirmText: t('delete'),
-                                                cancelText: t('cancel'),
-                                                onConfirm: () => onDelete(item.id),
-                                            });
-                                        }}
-                                        size="large"
-                                        style={{ minWidth: 52, paddingInline: 0 }}
-                                    >
-                                        <LuTrash2 size={18} />
-                                    </Button>
-                                ) : null}
-                                <Button block disabled={!hasChanges || isSaving} fill="outline" onClick={resetDraft} size="large">
-                                    Reset
-                                </Button>
+                <div
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        flexShrink: 0,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                        zIndex: 5,
+                    }}
+                >
+                    <Flex gap={12} vertical>
+                        <Flex gap={12}>
+                            {!isAddMode && onDelete && item?.id ? (
                                 <Button
-                                    block
-                                    color="primary"
-                                    disabled={!hasChanges || !getLocalizedValue(draftItem.name, primaryLanguage).trim() || isSaving}
-                                    loading={isSaving}
+                                    color="danger"
+                                    disabled={isSaving}
+                                    fill="outline"
                                     onClick={() => {
-                                        void handleSave();
+                                        if (isSaving) return;
+                                        Dialog.confirm({
+                                            title: t('deleteItemTitle'),
+                                            content: t('deleteItemConfirm', { item: item.name }),
+                                            confirmText: t('delete'),
+                                            cancelText: t('cancel'),
+                                            onConfirm: () => onDelete(item.id),
+                                        });
                                     }}
                                     size="large"
+                                    style={{ minWidth: 52, paddingInline: 0 }}
                                 >
-                                    {isAddMode ? t('addItem') : t('save')}
+                                    <LuTrash2 size={18} />
                                 </Button>
-                            </Flex>
+                            ) : null}
+                            <Button block disabled={!hasChanges || isSaving} fill="outline" onClick={resetDraft} size="large">
+                                Reset
+                            </Button>
+                            <Button
+                                block
+                                color="primary"
+                                disabled={!hasChanges || !getLocalizedValue(draftItem.name, primaryLanguage).trim() || isSaving}
+                                loading={isSaving}
+                                onClick={() => {
+                                    void handleSave();
+                                }}
+                                size="large"
+                            >
+                                {isAddMode ? t('addItem') : t('save')}
+                            </Button>
                         </Flex>
-                    </div>
-                </Flex>
+                    </Flex>
+                </div>
             </Flex>
         </Popup>
     );

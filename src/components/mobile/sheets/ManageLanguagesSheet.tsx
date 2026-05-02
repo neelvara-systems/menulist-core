@@ -263,12 +263,12 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
             visible={visible}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ maxHeight: '92vh' }} vertical>
                 <NavBar
                     onBack={isSaving ? undefined : onClose}
                     right={isSaving ? <Text type="secondary">{t('updating')}</Text> : undefined}
@@ -276,7 +276,7 @@ export default function ManageLanguagesSheet({
                     {t('manageLanguages')}
                 </NavBar>
 
-                <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     {isSaving ? (
                         <AiActionProgressPanel
                             detail={pendingLanguageCode

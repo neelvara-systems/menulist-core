@@ -119,6 +119,26 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         : mode === 'feedback'
             ? 'Control guest feedback collection for this store.'
             : 'Manage store-level guest feedback defaults and collection rules.';
+    const infoContent = useMemo(() => {
+        if (mode === 'social') {
+            return (
+                <Flex gap={8} style={{ maxWidth: 280 }} vertical>
+                    <Flex gap={2} vertical>
+                        <Text strong>{pageTitle}</Text>
+                        <Text type="secondary">{pageSubtitle}</Text>
+                    </Flex>
+                    <Text type="secondary">
+                        WhatsApp is managed from your official page phone number, so only public social profile links appear here.
+                    </Text>
+                    <Text type="secondary">
+                        Add the links customers should use to find and trust your business.
+                    </Text>
+                </Flex>
+            );
+        }
+
+        return undefined;
+    }, [mode, pageSubtitle, pageTitle]);
 
     const SOCIAL_PLATFORMS = [
         { key: 'facebook', label: 'Facebook', placeholder: 'Facebook profile URL', icon: TbBrandFacebook },
@@ -416,6 +436,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         <Flex style={{ height: '100%' }} vertical>
             <MobileSettingsScreenHeader
                 description={pageSubtitle}
+                infoContent={infoContent}
                 onBack={onBack}
                 right={isSaving ? <Tag color="processing">Saving</Tag> : null}
                 title={pageTitle}
@@ -424,12 +445,6 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
                 {showSocial ? (
                     <Flex gap={12} vertical>
-                        <Card size="small">
-                            <Text type="secondary">
-                                WhatsApp is managed from your official page phone number, so only public social profile links appear here.
-                            </Text>
-                        </Card>
-
                         {linkedSocialPlatforms.length > 0 ? (
                             <Flex gap={12} vertical>
                                 {linkedSocialPlatforms.map((platform) => (
@@ -585,11 +600,24 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                         position: 'sticky',
                         zIndex: 20,
                     }}
+                    wrap="nowrap"
                 >
-                    <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} fill="outline" onClick={handleReset} size="large">
+                    <Button
+                        disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving}
+                        fill="outline"
+                        onClick={handleReset}
+                        size="large"
+                        style={{ flex: 1, minWidth: 0 }}
+                    >
                         {tMobile('reset')}
                     </Button>
-                    <Button block disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving} loading={isSaving} onClick={() => void handleSave()} size="large">
+                    <Button
+                        disabled={(!isSocialDirty && !isFeedbackDirty) || isSaving}
+                        loading={isSaving}
+                        onClick={() => void handleSave()}
+                        size="large"
+                        style={{ flex: 1, minWidth: 0 }}
+                    >
                         {tMobile('saveChanges')}
                     </Button>
                 </Flex>

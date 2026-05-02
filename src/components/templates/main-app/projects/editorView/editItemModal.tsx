@@ -430,8 +430,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 sourceLang: sourceLanguage as any,
                 projectId: projectData.projectId,
                 fileId: fileData.uid,
-                contentLength: getProjectDescriptionContentLength(projectData),
-                tone: getProjectDescriptionTone(projectData),
+                contentLength: getProjectDescriptionContentLength(projectData, storeDetails.businessType),
+                tone: getProjectDescriptionTone(projectData, storeDetails.businessType),
                 businessType: storeDetails.businessType
             }
             const result = await getNewItemMetadataViaAPI(payload)

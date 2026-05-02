@@ -810,6 +810,7 @@ function MenuPageNew({
                             currency={storeDetails?.currencySymbol || '$'}
                             menuSettings={projectData?.menuSettings}
                             precomputedBlocks={precomputedBlocks}
+                            showItemPrices={showItemPrices}
                             analyticsIds={{
                                 tenantId: storeDetails?.tenantId,
                                 storeId: String(storeDetails?.storeId || ''),

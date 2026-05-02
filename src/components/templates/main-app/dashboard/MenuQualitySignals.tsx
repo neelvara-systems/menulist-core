@@ -59,6 +59,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                 if (!cancelled && project?.files) {
                     const computed = computeQualitySignals(project.files, project.languages, {
                         showCategoryIcons: project?.config?.design?.menu?.showCategoryIcons ?? true,
+                        showItemPrices: project?.config?.design?.menu?.showItemPrices ?? true,
                     });
                     setSignals(getVisibleSignals(computed));
                 }

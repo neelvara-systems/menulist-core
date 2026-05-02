@@ -139,7 +139,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             ? loadImageGenPreferences(storeDetails.tenantId, storeDetails.storeId)
             : null;
         const configWithPrefs: ImageGenerationConfigType = projectData?.aiPreferences?.image
-            ? applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData)
+            ? applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType)
             : savedPrefs
                 ? {
                     ...DefaultGenerationConfig,
@@ -157,14 +157,14 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     transparentBg: savedPrefs.transparentBg || false,
                     isMultiMode: savedPrefs.isMultiMode,
                 }
-                : DefaultGenerationConfig;
+                : applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType);
         configWithPrefs.referanceImages = normalizeReferenceImages(configWithPrefs.referanceImages);
         setGenerationConfig(configWithPrefs);
         setBatchGenerationConfig(configWithPrefs);
         setActiveTab(preferredInitialTab);
         setSelectedImages([]);
         setSelectedItemsForBatch([]);
-    }, [preferredInitialTab, projectData, storeDetails?.tenantId, storeDetails?.storeId]);
+    }, [preferredInitialTab, projectData, storeDetails?.businessType, storeDetails?.tenantId, storeDetails?.storeId]);
 
     const closeModal = useCallback(() => {
         if (generationConfig.loading) return;

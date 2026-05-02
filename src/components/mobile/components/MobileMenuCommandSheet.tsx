@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
 type CommandAction = {
@@ -131,7 +131,7 @@ export default function MobileMenuCommandSheet({
         },
         {
             key: 'description',
-            icon: <LuSparkles style={{ fontSize: 20 }} />,
+            icon: <LuFileText style={{ fontSize: 20 }} />,
             title: t('addMissingDescriptions'),
             description: t('addMissingDescriptionsDesc'),
             onClick: onGenerateDescriptions,
@@ -229,11 +229,11 @@ export default function MobileMenuCommandSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', overflowY: 'auto', padding: 0 }}
+            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
             onMaskClick={onClose}
             visible={visible}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ maxHeight: '92vh' }} vertical>
                 <NavBar
                     right={(
                         <Text
@@ -246,7 +246,7 @@ export default function MobileMenuCommandSheet({
                 >
                     {t('manageAndControl', { offering: labels.offeringTitle })}
                 </NavBar>
-                <Flex gap={16} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                <Flex gap={16} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }} vertical>
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('bulkActions')}</Text>
                         {renderActionList(bulkActions)}

@@ -111,16 +111,16 @@ export default function TextCaseSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '58vh', maxHeight: '88vh', overflowX: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ maxHeight: '88vh' }} vertical>
                 <NavBar onBack={onClose}>{t('fixTextCase')}</NavBar>
 
-                <Flex gap={12} style={{ overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Text type="secondary">
                             {t('textCaseIntro', { offering: labels.offeringPhrase })}
@@ -192,6 +192,18 @@ export default function TextCaseSheet({
                         </Flex>
                     </Card>
 
+                </Flex>
+
+                <div
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        flexShrink: 0,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                        zIndex: 5,
+                    }}
+                >
                     <Flex gap={8}>
                         <Button block fill="outline" onClick={onClose} size="large">
                             Cancel
@@ -206,7 +218,7 @@ export default function TextCaseSheet({
                             {t('applyTextCaseChanges')}
                         </Button>
                     </Flex>
-                </Flex>
+                </div>
             </Flex>
         </Popup>
     );

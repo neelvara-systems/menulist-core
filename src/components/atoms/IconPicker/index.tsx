@@ -1,7 +1,9 @@
+import useDeviceType from '@hook/useDeviceType';
 import { Button, Flex, Grid, Input, Popover, theme } from 'antd';
 import { useState } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
 import CategoryIcon from '../CategoryIcon';
+import { NavBar, Popup } from '../../mobile/antd';
 import EmojiGrid from './EmojiGrid';
 import LucideIconGrid from './LucideIconGrid';
 import './iconPicker.scss';
@@ -31,6 +33,7 @@ const IconPicker = ({
 }: IconPickerProps) => {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
+    const { isMobile } = useDeviceType();
     const showEmojiPreview = Boolean(screens.md);
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +147,54 @@ const IconPicker = ({
         </Flex>
     );
 
+    const trigger = (
+        <div className="icon-picker-trigger">
+            <Button
+                icon={<CategoryIcon icon={value || ''} defaultIcon="LuImagePlus" size={resolvedIconSize} />}
+                onClick={() => setOpen(true)}
+                size={buttonSize}
+                style={buttonStyle}
+            />
+            {allowClear && value ? (
+                <Button
+                    aria-label="Remove selected icon"
+                    className="icon-picker-trigger__clear"
+                    icon={<LuX size={12} />}
+                    onClick={handleClear}
+                    onMouseDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }}
+                    size="small"
+                    type="default"
+                />
+            ) : null}
+        </div>
+    );
+
+    if (isMobile) {
+        return (
+            <>
+                {trigger}
+                <Popup
+                    bodyStyle={{ minHeight: '78vh', maxHeight: '94vh', overflowX: 'hidden', padding: 0 }}
+                    destroyOnClose
+                    onMaskClick={() => setOpen(false)}
+                    visible={open}
+                >
+                    <Flex style={{ height: '100%' }} vertical>
+                        <NavBar onBack={() => setOpen(false)}>
+                            Pick category icon
+                        </NavBar>
+                        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 16px' }}>
+                            {content}
+                        </div>
+                    </Flex>
+                </Popup>
+            </>
+        );
+    }
+
     return (
         <Popover
             content={content}
@@ -152,27 +203,7 @@ const IconPicker = ({
             onOpenChange={setOpen}
             placement="bottomLeft"
         >
-            <div className="icon-picker-trigger">
-                <Button
-                    icon={<CategoryIcon icon={value || ''} defaultIcon="LuImagePlus" size={resolvedIconSize} />}
-                    size={buttonSize}
-                    style={buttonStyle}
-                />
-                {allowClear && value ? (
-                    <Button
-                        aria-label="Remove selected icon"
-                        className="icon-picker-trigger__clear"
-                        icon={<LuX size={12} />}
-                        onClick={handleClear}
-                        onMouseDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }}
-                        size="small"
-                        type="default"
-                    />
-                ) : null}
-            </div>
+            {trigger}
         </Popover>
     );
 };

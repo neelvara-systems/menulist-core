@@ -18,6 +18,7 @@ import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQual
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { generateProjectUrl } from '@lib/utils/slugify';
+import { normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { removeObjRef } from '@util/utils';
@@ -192,18 +193,7 @@ function hasLocalizedValue(value: unknown, languageCode: string): boolean {
 }
 
 function hasCategoryIconValue(icon: unknown): boolean {
-    if (typeof icon === 'string') {
-        return icon.trim().length > 0;
-    }
-
-    if (icon && typeof icon === 'object') {
-        return ['icon', 'value', 'name'].some((key) => {
-            const candidate = (icon as Record<string, unknown>)[key];
-            return typeof candidate === 'string' && candidate.trim().length > 0;
-        });
-    }
-
-    return false;
+    return normalizeCategoryIconValue(icon).length > 0;
 }
 
 function hasMissingTranslations(item: Partial<ExtractedDataItem> | null | undefined, languages: string[]): boolean {
@@ -1042,11 +1032,39 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     );
     const activeProjectLanguages = useMemo(() => menuData?.languages || ['en'], [menuData?.languages]);
     const showCategoryIcons = menuData?.config?.design?.menu?.showCategoryIcons ?? true;
+    const showItemPrices = menuData?.config?.design?.menu?.showItemPrices ?? true;
     const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);
 
     useEffect(() => {
         setDisplayLanguage(primaryLang);
     }, [primaryLang, menuData?.projectId]);
+
+    useEffect(() => {
+        if (showItemPrices) return;
+
+        const stripPriceFilters = (prev: MobileMenuFilters): MobileMenuFilters => {
+            if (
+                prev.minPrice === null &&
+                prev.maxPrice === null &&
+                prev.hasPrice === null &&
+                prev.qualityIssue !== 'priceOutliers'
+            ) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                minPrice: null,
+                maxPrice: null,
+                hasPrice: null,
+                qualityIssue: prev.qualityIssue === 'priceOutliers' ? null : prev.qualityIssue,
+            };
+        };
+
+        setFilters(stripPriceFilters);
+        setDraftFilters(stripPriceFilters);
+    }, [showItemPrices]);
+
 
     const languageStats = useMemo(() => {
         return activeProjectLanguages.map((lang) => {
@@ -1246,6 +1264,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     }, [activeProjectLanguages]);
 
     const priceOutlierItemIds = useMemo(() => {
+        if (!showItemPrices) return new Set<string>();
+
         const LOW_FACTOR = 0.35;
         const HIGH_FACTOR = 3;
         const MIN_ITEMS = 4;
@@ -1279,7 +1299,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         });
 
         return outliers;
-    }, [isItemEffectivelyActive, menuItems]);
+    }, [isItemEffectivelyActive, menuItems, showItemPrices]);
 
     const categorySummary = useMemo(() => {
         if (!menuData?.files) return [];
@@ -1344,12 +1364,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
             if (item.descriptionMissing) summary.missingDescriptions += 1;
             if (!item.image) summary.missingImages += 1;
-            if (!(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
+            if (showItemPrices && !(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
             if (!isItemEffectivelyActive(item)) summary.hidden += 1;
         });
 
         return map;
-    }, [isItemEffectivelyActive, menuItems]);
+    }, [isItemEffectivelyActive, menuItems, showItemPrices]);
 
     const filteredItems = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
@@ -1368,7 +1388,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 const hasDescription = !item.descriptionMissing;
                 if (hasDescription !== filters.hasDescription) return false;
             }
-            if (filters.hasPrice !== null) {
+            if (showItemPrices && filters.hasPrice !== null) {
                 const hasPrice = item.price > 0;
                 if (hasPrice !== filters.hasPrice) return false;
             }
@@ -1378,7 +1398,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             if (filters.activeStatus !== null && isItemEffectivelyActive(item) !== filters.activeStatus) {
                 return false;
             }
-            if (filters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
+            if (showItemPrices && filters.qualityIssue === 'priceOutliers' && !priceOutlierItemIds.has(item.id)) {
                 return false;
             }
             if (filters.qualityIssue === 'translationMissing' && !hasAnyMissingTranslationsForMenuItem(item)) {
@@ -1389,19 +1409,19 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             }
             return true;
         });
-    }, [filters, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, missingCategoryIconCategoryIds, priceOutlierItemIds, searchQuery]);
+    }, [filters, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, missingCategoryIconCategoryIds, priceOutlierItemIds, searchQuery, showItemPrices]);
 
     const appliedFilterCount = useMemo(() => {
         return [
             filters.categoryIds.length > 0,
             filters.hasImage !== null,
             filters.hasDescription !== null,
-            filters.hasPrice !== null,
+            showItemPrices && filters.hasPrice !== null,
             filters.availability !== null,
             filters.activeStatus !== null,
-            filters.qualityIssue !== null,
+            filters.qualityIssue !== null && (showItemPrices || filters.qualityIssue !== 'priceOutliers'),
         ].filter(Boolean).length;
-    }, [filters]);
+    }, [filters, showItemPrices]);
 
     const menuIssueCounts = useMemo(() => {
         const scopedItems = draftFilters.categoryIds.length > 0
@@ -1413,8 +1433,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             hidden: scopedItems.filter((item) => !isItemEffectivelyActive(item)).length,
             missingPhoto: reviewableItems.filter((item) => !item.image).length,
             missingDescription: reviewableItems.filter((item) => item.descriptionMissing).length,
-            missingPrice: reviewableItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
-            priceOutliers: reviewableItems.filter((item) => priceOutlierItemIds.has(item.id)).length,
+            missingPrice: showItemPrices ? reviewableItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length : 0,
+            priceOutliers: showItemPrices ? reviewableItems.filter((item) => priceOutlierItemIds.has(item.id)).length : 0,
             missingTranslation: reviewableItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
             missingCategoryIcon: showCategoryIcons
                 ? categorySummary.filter((category) => {
@@ -1427,7 +1447,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             shown: scopedItems.filter((item) => isItemEffectivelyActive(item)).length,
             unavailable: scopedItems.filter((item) => !item.available).length,
         };
-    }, [categorySummary, draftFilters.categoryIds, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds, showCategoryIcons]);
+    }, [categorySummary, draftFilters.categoryIds, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds, showCategoryIcons, showItemPrices]);
     const listingStatusLegend = useMemo(() => {
         const entries: { color: string; key: string; label: string }[] = [];
         if (menuIssueCounts.hidden > 0) {
@@ -1500,7 +1520,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             });
         }
 
-        if (filters.hasPrice !== null) {
+        if (showItemPrices && filters.hasPrice !== null) {
             chips.push({
                 key: 'price-presence',
                 label: filters.hasPrice ? t('hasPrice') : t('missingPrice'),
@@ -1524,7 +1544,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             });
         }
 
-        if (filters.qualityIssue === 'priceOutliers') {
+        if (showItemPrices && filters.qualityIssue === 'priceOutliers') {
             chips.push({
                 key: 'quality-price-outliers',
                 label: t('unusualPrices'),
@@ -1549,7 +1569,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         }
 
         return chips;
-    }, [availabilityLabels.available, availabilityLabels.unavailable, categoryOptions, filters, t]);
+    }, [availabilityLabels.available, availabilityLabels.unavailable, categoryOptions, filters, showItemPrices, t]);
 
     const handleReviewQualitySignal = useCallback((signal: { id: string }) => {
         setSearchQuery('');
@@ -1561,10 +1581,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 case 'images':
                     return { ...DEFAULT_FILTERS, hasImage: false };
                 case 'prices':
+                    if (!showItemPrices) return DEFAULT_FILTERS;
                     return { ...DEFAULT_FILTERS, hasPrice: false };
                 case 'hidden':
                     return { ...DEFAULT_FILTERS, activeStatus: false };
                 case 'priceOutliers':
+                    if (!showItemPrices) return DEFAULT_FILTERS;
                     return { ...DEFAULT_FILTERS, qualityIssue: 'priceOutliers' };
                 case 'translations':
                     if (firstLanguageWithMissingTranslations) {
@@ -1580,7 +1602,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         requestAnimationFrame(() => {
             menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-    }, [firstLanguageWithMissingTranslations]);
+    }, [firstLanguageWithMissingTranslations, showItemPrices]);
 
     useEffect(() => {
         if (searchQuery || appliedFilterCount > 0) {
@@ -1804,7 +1826,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             ...nextCategory.name,
             ...names,
         };
-        nextCategory.icon = icon;
+        const normalizedIcon = normalizeCategoryIconValue(icon);
+        if (normalizedIcon) {
+            nextCategory.icon = normalizedIcon;
+        } else {
+            delete nextCategory.icon;
+        }
         nextCategory.timeSlots = presetIds.length
             ? presetIds
                 .map((presetId) => presets.find((preset: any) => preset.id === presetId))
@@ -1833,7 +1860,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         activeProjectLanguages
                     );
                     category.name = nextName;
-                    category.icon = icon;
+                    const normalizedIcon = normalizeCategoryIconValue(icon);
+                    if (normalizedIcon) {
+                        category.icon = normalizedIcon;
+                    } else {
+                        delete category.icon;
+                    }
                     category.active = active;
                     category.timeSlots = presetIds.length
                         ? presetIds
@@ -2152,6 +2184,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             }}
                             projectLanguages={menuData.languages}
                             showCategoryIcons={showCategoryIcons}
+                            showItemPrices={showItemPrices}
                             onExpandedChange={setIsMenuQualityExpanded}
                             onReviewSignal={handleReviewQualitySignal}
                         />
@@ -2296,7 +2329,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     {t('clearAll')}
                                 </Button>
                             </Flex>
-                            {filters.qualityIssue === 'priceOutliers' ? (
+                            {showItemPrices && filters.qualityIssue === 'priceOutliers' ? (
                                 <Card size="small" style={{ backgroundColor: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
                                     <Flex gap={4} vertical>
                                         <Text strong>Why this shows</Text>
@@ -2857,7 +2890,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             </Popup>
 
             <Popup
-                bodyStyle={{ maxHeight: '72vh', overflowX: 'hidden', padding: 0 }}
+                bodyStyle={{ maxHeight: '72vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsStatusLegendSheetOpen(false)}
                 visible={isStatusLegendSheetOpen}
             >
@@ -2888,7 +2921,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         </Button>
                     </Flex>
 
-                    <Flex gap={10} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                    <Flex gap={10} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }} vertical>
                         <Card size="small" style={{ backgroundColor: token.colorBgContainer, margin: 0 }}>
                             <Flex gap={8} vertical>
                                 <Text strong>Visibility status</Text>
@@ -2955,11 +2988,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             </Popup>
 
             <Popup
-                bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
+                bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsFilterSheetOpen(false)}
                 visible={isFilterSheetOpen}
             >
-                <Flex style={{ height: '100%' }} vertical>
+                <Flex style={{ maxHeight: '92vh' }} vertical>
                     <Flex
                         align="center"
                         justify="space-between"
@@ -2980,7 +3013,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         </Button>
                     </Flex>
 
-                    <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
 
                         <Card>
                             <Flex gap={12} vertical>
@@ -3062,12 +3095,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         draftFilters.hasDescription === false,
                                         () => setDraftFilters((prev) => ({ ...prev, hasDescription: prev.hasDescription === false ? null : false }))
                                     ) : null}
-                                    {(menuIssueCounts.missingPrice > 0 || draftFilters.hasPrice === false) ? renderIssueToggle(
+                                    {showItemPrices && (menuIssueCounts.missingPrice > 0 || draftFilters.hasPrice === false) ? renderIssueToggle(
                                         `${t('missingPrice')} (${menuIssueCounts.missingPrice})`,
                                         draftFilters.hasPrice === false,
                                         () => setDraftFilters((prev) => ({ ...prev, hasPrice: prev.hasPrice === false ? null : false }))
                                     ) : null}
-                                    {(menuIssueCounts.priceOutliers > 0 || draftFilters.qualityIssue === 'priceOutliers') ? renderIssueToggle(
+                                    {showItemPrices && (menuIssueCounts.priceOutliers > 0 || draftFilters.qualityIssue === 'priceOutliers') ? renderIssueToggle(
                                         `${t('unusualPrices')} (${menuIssueCounts.priceOutliers})`,
                                         draftFilters.qualityIssue === 'priceOutliers',
                                         () => setDraftFilters((prev) => ({
@@ -3152,9 +3185,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
                         flexShrink: 0,
-                        padding: '12px 16px',
-                        position: 'sticky',
-                        bottom: 0,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
                         zIndex: 5,
                     }}>
                         <Flex gap={8}>
@@ -3285,6 +3316,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
             {menuData ? (
                 <GenerateDescriptionsSheet
+                    businessType={storeDetails?.businessType}
                     onClose={() => handleCommandActionBack(() => setIsGenerateDescriptionsOpen(false))}
                     onSaved={(updatedProject) => {
                         setMenuData(updatedProject);
@@ -3621,6 +3653,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             ) : null}
 
             <BulkActionsSheet
+                businessType={storeDetails?.businessType}
                 initialAction={bulkActionType}
                 initialSelectedIds={bulkActionInitialSelectedIds}
                 onApply={(updatedProject, context) => {

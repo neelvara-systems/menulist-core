@@ -29,6 +29,8 @@ Menu Quality Signals shows you simple suggestions to improve your menu — like 
 | Items missing prices | Some items don't show a price. | Open the editor and add prices |
 | Category has many items | One category has a lot of items. Splitting it may help customers browse. | Open the editor to reorganize |
 
+If prices are turned off in menu design, price-related checks are hidden. No action needed.
+
 ## Tips
 
 - Start with descriptions — they make the biggest difference for customers

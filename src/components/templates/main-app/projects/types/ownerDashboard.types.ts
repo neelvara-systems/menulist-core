@@ -179,6 +179,7 @@ export interface DailyViewData {
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
+    topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
     ownerConfidence?: OwnerConfidence;
@@ -205,6 +206,7 @@ export interface WeeklyViewData {
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
+    topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
     ownerConfidence?: OwnerConfidence;
@@ -226,6 +228,7 @@ export interface MonthlyViewData {
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
+    topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
     ownerConfidence?: OwnerConfidence;
@@ -247,6 +250,7 @@ export interface WTDViewData {
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
+    topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
     ownerConfidence?: OwnerConfidence;
@@ -269,6 +273,7 @@ export interface MTDViewData {
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
+    topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
     ownerConfidence?: OwnerConfidence;

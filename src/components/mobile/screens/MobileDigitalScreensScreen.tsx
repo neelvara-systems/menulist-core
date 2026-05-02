@@ -11,7 +11,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Flex, NavBar, Switch, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileDigitalScreensScreenProps {
@@ -56,6 +56,26 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }),
         [pinnedSlides]
     );
+    const infoContent = useMemo(() => (
+        <Flex gap={8} style={{ maxWidth: 280 }} vertical>
+            <Flex gap={2} vertical>
+                <Text strong>{t('title')}</Text>
+                <Text type="secondary">{t('setupTip')}</Text>
+            </Flex>
+            <Flex gap={2} vertical>
+                <Text strong>How content works</Text>
+                <Text type="secondary">
+                    Menu Board follows your active store menu automatically. Highlights follows the same menu and rotates promoted items plus any custom slides you upload here.
+                </Text>
+            </Flex>
+            <Flex gap={2} vertical>
+                <Text strong>How to manage each screen</Text>
+                <Text type="secondary">
+                    Update your menu to change Menu Board. Upload or remove custom slides here to change Highlights.
+                </Text>
+            </Flex>
+        </Flex>
+    ), [t]);
 
     const fetchState = async () => {
         try {
@@ -149,25 +169,11 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
                 description={t('setupTip')}
+                infoContent={infoContent}
                 onBack={onBack}
                 title={t('title')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex gap={10} vertical>
-                        <Text strong>How content works</Text>
-                        <Text type="secondary">
-                            Menu Board follows your active store menu automatically. Highlights follows the same menu and rotates promoted items plus any custom slides you upload here.
-                        </Text>
-                        <Card size="small" style={{ background: token.colorFillAlter }}>
-                            <Flex gap={6} vertical>
-                                <Text strong>How to manage each screen</Text>
-                                <Text type="secondary">Update your menu to change Menu Board. Upload or remove custom slides below to change Highlights.</Text>
-                            </Flex>
-                        </Card>
-                    </Flex>
-                </Card>
-
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">

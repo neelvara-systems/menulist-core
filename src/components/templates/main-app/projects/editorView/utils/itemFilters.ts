@@ -17,6 +17,7 @@ export interface FilterItemsOptions {
     filters?: EditorFilters;
     activeLanguage?: string;
     hideInactiveItems?: boolean;
+    showItemPrices?: boolean;
     categoryActiveById?: Record<string, boolean>;
     /** If provided, only include items from this category */
     categoryId?: string;
@@ -34,7 +35,7 @@ export function itemMatchesFilters(
     item: ExtractedDataItem,
     options: FilterItemsOptions
 ): boolean {
-    const { searchTerm, filters, activeLanguage = 'en', hideInactiveItems, categoryActiveById, categoryId } = options;
+    const { searchTerm, filters, activeLanguage = 'en', hideInactiveItems, showItemPrices = true, categoryActiveById, categoryId } = options;
     const categoryActive = item.category ? (categoryActiveById?.[item.category] !== false) : true;
     const effectiveActive = item.active !== false && categoryActive;
 
@@ -54,7 +55,7 @@ export function itemMatchesFilters(
     }
 
     // Price range filter
-    if (filters?.priceRange) {
+    if (showItemPrices && filters?.priceRange) {
         const { min, max } = filters.priceRange;
         const price = parseFloat(String(item.price || '0').replace(/[^0-9.-]+/g, ''));
         if (min !== null && price < min) return false;
@@ -120,8 +121,8 @@ export function hasActiveFilters(options: FilterItemsOptions): boolean {
     return Boolean(
         hideInactiveItems ||
         (searchTerm && searchTerm.trim()) ||
-        (filters?.priceRange?.min !== null && filters?.priceRange?.min !== undefined) ||
-        (filters?.priceRange?.max !== null && filters?.priceRange?.max !== undefined) ||
+        (options.showItemPrices !== false && filters?.priceRange?.min !== null && filters?.priceRange?.min !== undefined) ||
+        (options.showItemPrices !== false && filters?.priceRange?.max !== null && filters?.priceRange?.max !== undefined) ||
         filters?.hasImage !== null ||
         filters?.activeStatus !== null
     );

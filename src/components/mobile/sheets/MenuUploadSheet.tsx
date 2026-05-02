@@ -315,14 +315,14 @@ export default function MenuUploadSheet({
         >
             <Flex
                 gap={16}
-                style={{ maxHeight: 'calc(82vh - 16px)', overflowY: 'auto' }}
+                style={{ maxHeight: '82vh', overflow: 'hidden' }}
                 vertical
             >
                 {(step === 'select' || step === 'review') ? (
                     <NavBar onBack={onClose}>{t('uploadAndProcess')}</NavBar>
                 ) : null}
 
-                <Flex gap={16} style={{ padding: '0 12px 12px' }} vertical>
+                <Flex gap={16} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px 12px' }} vertical>
                     {step === 'select' ? (
                         <Card
                             style={{
@@ -484,36 +484,6 @@ export default function MenuUploadSheet({
                                 ))}
                             </Flex>
 
-                            <Flex gap={10}>
-                                <Upload {...uploadProps}>
-                                    <Button
-                                        block
-                                        fill="outline"
-                                        icon={<LuUpload size={16} />}
-                                        size="large"
-                                        style={{ borderRadius: 16, minHeight: 52, width: '100%' }}
-                                    >
-                                        {t('addMoreFiles')}
-                                    </Button>
-                                </Upload>
-
-                                <Button
-                                    block
-                                    color="primary"
-                                    icon={<LuUpload size={16} />}
-                                    onClick={handleUploadAndProcess}
-                                    size="large"
-                                    style={{ borderRadius: 16, minHeight: 52 }}
-                                >
-                                    {t('uploadAndProcess')}
-                                </Button>
-                            </Flex>
-
-                            {hasSelectedFiles ? (
-                                <Button block fill="none" onClick={handleReset} size="small">
-                                    {t('clearAll')}
-                                </Button>
-                            ) : null}
                         </>
                     ) : null}
 
@@ -551,6 +521,52 @@ export default function MenuUploadSheet({
                         />
                     ) : null}
                 </Flex>
+
+                {step === 'review' ? (
+                    <div
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            flexShrink: 0,
+                            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                            zIndex: 5,
+                        }}
+                    >
+                        <Flex gap={10} vertical>
+                            <Flex gap={10}>
+                                <Upload {...uploadProps}>
+                                    <Button
+                                        block
+                                        fill="outline"
+                                        icon={<LuUpload size={16} />}
+                                        size="large"
+                                        style={{ borderRadius: 16, minHeight: 52, width: '100%' }}
+                                    >
+                                        {t('addMoreFiles')}
+                                    </Button>
+                                </Upload>
+
+                                <Button
+                                    block
+                                    color="primary"
+                                    icon={<LuUpload size={16} />}
+                                    onClick={handleUploadAndProcess}
+                                    size="large"
+                                    style={{ borderRadius: 16, minHeight: 52 }}
+                                >
+                                    {t('uploadAndProcess')}
+                                </Button>
+                            </Flex>
+
+                            {hasSelectedFiles ? (
+                                <Button block fill="none" onClick={handleReset} size="small">
+                                    {t('clearAll')}
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    </div>
+                ) : null}
             </Flex>
         </Popup>
     );

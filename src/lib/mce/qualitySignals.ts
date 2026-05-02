@@ -55,6 +55,7 @@ const SIGNAL_PRIORITY: Record<string, number> = {
 
 interface ComputeQualitySignalsOptions {
     showCategoryIcons?: boolean;
+    showItemPrices?: boolean;
 }
 
 /**
@@ -275,6 +276,7 @@ export function computeQualitySignals(
     const allLanguages = getAllLanguageCodes(files, projectLanguages);
     const activeItems = allItems.filter(item => item.active !== false);
     const activeCategories = allCategories.filter((category) => category.active !== false);
+    const showItemPrices = options?.showItemPrices !== false;
     const signals: QualitySignal[] = [];
 
     // Signal 1: Description coverage
@@ -320,19 +322,22 @@ export function computeQualitySignals(
         });
     }
 
-    // Signal 3: Pricing gaps
-    const missingPrices = activeItems.filter(item => isPriceMissing(item)).length;
-    signals.push({
-        id: 'prices',
-        label: missingPrices > 0
-            ? `${missingPrices} item${missingPrices !== 1 ? 's' : ''} missing prices`
-            : 'All items have prices',
-        helpText: missingPrices > 0 ? 'Customers compare prices before deciding' : undefined,
-        count: missingPrices,
-        status: missingPrices > 0 ? 'warning' : 'ok',
-        actionLabel: missingPrices > 0 ? 'Review' : undefined,
-        actionRoute: missingPrices > 0 ? 'editor' : undefined,
-    });
+    // Signal 3: Pricing gaps. If public prices are intentionally hidden by
+    // design, price quality warnings become noise and should not surface.
+    if (showItemPrices) {
+        const missingPrices = activeItems.filter(item => isPriceMissing(item)).length;
+        signals.push({
+            id: 'prices',
+            label: missingPrices > 0
+                ? `${missingPrices} item${missingPrices !== 1 ? 's' : ''} missing prices`
+                : 'All items have prices',
+            helpText: missingPrices > 0 ? 'Customers compare prices before deciding' : undefined,
+            count: missingPrices,
+            status: missingPrices > 0 ? 'warning' : 'ok',
+            actionLabel: missingPrices > 0 ? 'Review' : undefined,
+            actionRoute: missingPrices > 0 ? 'editor' : undefined,
+        });
+    }
 
     // Signal 4: Hidden/inactive items (active: false means customers can't see them)
     const hiddenItems = allItems.filter(item => item.active === false);
@@ -348,7 +353,7 @@ export function computeQualitySignals(
         });
     }
 
-    const outlierCount = countPriceOutliers(activeItems);
+    const outlierCount = showItemPrices ? countPriceOutliers(activeItems) : 0;
     if (outlierCount > 0) {
         signals.push({
             id: 'priceOutliers',

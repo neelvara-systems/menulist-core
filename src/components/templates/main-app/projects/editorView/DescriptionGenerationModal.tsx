@@ -14,14 +14,17 @@ import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
 import { Project } from '../types';
 import {
     DESCRIPTION_LENGTH_OPTIONS,
+    DESCRIPTION_TONE_OPTIONS,
     getDescriptionGenerationStats,
     runDescriptionGeneration,
     type DescriptionContentLength,
+    type DescriptionTone,
 } from './descriptionGeneration.shared';
 
 const { Text } = Typography;
 
 interface DescriptionGenerationModalProps {
+    businessType?: string;
     modalData: any;
     onClose: () => void;
     setFileProcessingId: (id: string | null) => void;
@@ -35,6 +38,7 @@ interface DescriptionGenerationModalProps {
 }
 
 const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
+    businessType,
     modalData,
     onClose,
     setFileProcessingId,
@@ -53,7 +57,8 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const labels = useOfferingLabels();
-    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData));
+    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData, businessType));
+    const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(getProjectDescriptionTone(projectData, businessType));
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
@@ -64,10 +69,11 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     );
 
     useEffect(() => {
-        setContentLength(getProjectDescriptionContentLength(projectData));
-    }, [projectData]);
+        setContentLength(getProjectDescriptionContentLength(projectData, businessType));
+        setDescriptionTone(getProjectDescriptionTone(projectData, businessType));
+    }, [businessType, projectData]);
 
-    const handleDescriptionRequest = async (action: string, nextContentLength: DescriptionContentLength) => {
+    const handleDescriptionRequest = async (action: string, nextContentLength: DescriptionContentLength, nextDescriptionTone: DescriptionTone) => {
         setIsProcessing(true);
         setProcessedCount(0);
         dispatch(startLoader("adding description"));
@@ -76,7 +82,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
             const projectWithPreferences = mergeProjectAIPreferences(projectData, {
                 description: {
                     contentLength: nextContentLength,
-                    tone: getProjectDescriptionTone(projectData),
+                    tone: nextDescriptionTone,
                 },
             });
             setTotalFiles(projectData.files?.filter((file) =>
@@ -95,7 +101,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                 onProjectUpdate: setActiveProject,
                 projectData: projectWithPreferences,
                 sourceFile: modalData.sourceFile,
-                tone: getProjectDescriptionTone(projectData),
+                tone: nextDescriptionTone,
             });
 
             dispatch(stopLoader("adding description"));
@@ -119,12 +125,12 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     };
 
     const handleGenerateEmptyClick = () => {
-        handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION, contentLength);
+        handleDescriptionRequest(AI_ACTIONS_TYPES.ADD_DESCRIPTION, contentLength, descriptionTone);
     };
 
     // P1.2: Rewrite now called "Refresh" and is handled via Popconfirm
     const handleRefreshConfirmed = () => {
-        handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION, contentLength);
+        handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION, contentLength, descriptionTone);
     };
 
     const canGenerateEmpty = itemsWithoutDescriptions > 0;
@@ -204,7 +210,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                         </Text>
                     </div>
 
-                    {/* P1.1: Simplified Settings - Only length (2 options), tone hidden */}
+                    {/* P1.1: Simplified Settings - Keep only owner-facing generation choices */}
                     <Flex vertical gap={20}>
                         {/* Description Length - Authority UX: No word counts, no numbers */}
                         <div>
@@ -227,6 +233,35 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                         }}
                                     >
                                         <Text strong style={{ color: contentLength === option.value ? token.colorPrimary : token.colorText, display: 'block' }}>
+                                            {option.label}
+                                        </Text>
+                                        <Text type="secondary" style={{ fontSize: 11 }}>
+                                            {option.description}
+                                        </Text>
+                                    </div>
+                                ))}
+                            </Flex>
+                        </div>
+                        <div>
+                            <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 14 }}>Writing style</Text>
+                            <Flex gap={8}>
+                                {DESCRIPTION_TONE_OPTIONS.map((option) => (
+                                    <div
+                                        key={option.value}
+                                        onClick={() => !isProcessing && setDescriptionTone(option.value)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px 14px',
+                                            borderRadius: 8,
+                                            border: `1.5px solid ${descriptionTone === option.value ? token.colorPrimary : token.colorBorder}`,
+                                            background: descriptionTone === option.value ? token.colorPrimaryBg : 'transparent',
+                                            cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                            opacity: isProcessing ? 0.6 : 1,
+                                            transition: 'all 0.2s ease',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        <Text strong style={{ color: descriptionTone === option.value ? token.colorPrimary : token.colorText, display: 'block' }}>
                                             {option.label}
                                         </Text>
                                         <Text type="secondary" style={{ fontSize: 11 }}>

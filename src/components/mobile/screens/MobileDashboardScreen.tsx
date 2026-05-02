@@ -249,10 +249,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         const hasTopCategories = Boolean(data?.topCategories?.length);
         const hasTopFilters = Boolean(data?.topAttributeFilters?.length);
         const hasSearchTerms = Boolean(data?.topSearchTerms?.length);
+        const hasZeroResultTerms = Boolean(data?.topZeroResultSearchTerms?.length);
         const hasUnavailable = Boolean(data?.unavailableItems?.length);
         const hasZeroResultSearches = Number(data?.metrics?.zeroResultSearches || 0) > 0;
 
-        if (!hasActions && !hasTopCategories && !hasTopFilters && !hasSearchTerms && !hasUnavailable && !hasZeroResultSearches) return null;
+        if (!hasActions && !hasTopCategories && !hasTopFilters && !hasSearchTerms && !hasZeroResultTerms && !hasUnavailable && !hasZeroResultSearches) return null;
 
         return (
             <Card size="small" title={<Text strong>Customer Intent</Text>}>
@@ -283,6 +284,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     <Text type="secondary">
                         {`No-result searches: ${data?.metrics?.zeroResultSearches || 0}`}
                     </Text>
+                    {hasZeroResultTerms ? (
+                        <Text type="secondary">
+                            {`No-result terms: ${data.topZeroResultSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ')}`}
+                        </Text>
+                    ) : null}
                     {hasUnavailable ? (
                         <Text type="secondary">
                             {`Unavailable interest: ${data.unavailableItems.map((item: any) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}`}
@@ -351,6 +357,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 <Text style={{ display: 'block', marginTop: 8 }}>
                     {`No-result searches so far: ${today.metrics.zeroResultSearches || 0}`}
                 </Text>
+                {today.topZeroResultSearchTerms?.length ? (
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        {`No-result terms so far: ${today.topZeroResultSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ')}`}
+                    </Text>
+                ) : null}
                 {topUnavailable ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
                         {`Most tapped unavailable item: ${topUnavailable.name || topUnavailable.itemId} (${topUnavailable.clicks})`}
@@ -587,6 +598,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             confidence={data?.ownerConfidence || overview?.ownerConfidence}
                             sourceQuality={data?.sourceQuality || overview?.sourceQuality || []}
                             analyticsAiEntitlement={data?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
+                            title="Menu Intelligence Action Plan"
                         />
                         {renderDemandAndActions(wtd)}
 

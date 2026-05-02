@@ -136,6 +136,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
+    const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
 
     // Multi-outlet state (Feature #4)
     const [itemStates, setItemStates] = useState<
@@ -316,6 +317,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 const { computeQualitySignals, getActionableSignals } = await import("@lib/mce/qualitySignals");
                 const signals = computeQualitySignals(projectData.files, projectData.languages, {
                     showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
+                    showItemPrices,
                 });
                 const actionable = getActionableSignals(signals);
                 if (actionable.length > 0) {
@@ -860,6 +862,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                                 activeLanguage={getProjectDefaultLanguage(projectData, storeDetails)}
                                 filters={filters}
                                 onFiltersChange={setFilters}
+                                showItemPrices={showItemPrices}
                             />
                         </Flex>
                         <Flex gap={8}>
@@ -1060,6 +1063,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             </Flex>
 
             <DescriptionGenerationModal
+                businessType={tenantDetails?.businessType}
                 modalData={isDescModalOpen}
                 onClose={() => setIsDescModalOpen({ active: false })}
                 setFileProcessingId={setFileProcessingId}

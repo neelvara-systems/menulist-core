@@ -5,8 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import { useContext } from 'react';
 import { LuLink, LuMapPin } from 'react-icons/lu';
-import { SiGooglemybusiness } from 'react-icons/si';
-import { Card, Flex, NavBar, Tag, Text, Title } from '../antd';
+import { Card, Flex, Tag, Text } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileIntegrationsScreenProps {
@@ -17,6 +16,18 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
     const tBusiness = useTranslations('BusinessSettings');
     const t = useTranslations('MobileIntegrations');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const infoContent = (
+        <Flex gap={8} style={{ maxWidth: 280 }} vertical>
+            <Flex gap={2} vertical>
+                <Text strong>{tBusiness('integrations')}</Text>
+                <Text type="secondary">{t('subtitle')}</Text>
+            </Flex>
+            <Flex gap={2} vertical>
+                <Text strong>{t('googleBusinessProfile')}</Text>
+                <Text type="secondary">{t('googleBusinessProfileDesc')}</Text>
+            </Flex>
+        </Flex>
+    );
 
     if (!FEATURE_FLAGS.ENABLE_GBP_SYNC) {
         return null;
@@ -32,20 +43,11 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
                 description={t('subtitle')}
+                infoContent={infoContent}
                 onBack={onBack}
                 title={tBusiness('integrations')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex align="center" gap={10}>
-                        <SiGooglemybusiness color="#4285F4" size={22} />
-                        <Flex gap={2} vertical>
-                            <Title level={5} style={{ margin: 0 }}>{t('googleBusinessProfile')}</Title>
-                            <Text type="secondary">{t('googleBusinessProfileDesc')}</Text>
-                        </Flex>
-                    </Flex>
-                </Card>
-
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">

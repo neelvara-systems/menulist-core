@@ -8,8 +8,9 @@ import type {
     OBPShareBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
-import { LuExternalLink, LuGlobe, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
-import { Card, DotLoading, Flex, Tag, Text, Title } from '../../antd';
+import { theme } from 'antd';
+import { LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Popover, Tag, Text, Title } from '../../antd';
 
 type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly';
 
@@ -158,14 +159,49 @@ function renderMetricCards(metrics: OBPPeriodMetrics) {
 export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode }: MobileOBPMetricsCardProps) {
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
+    const { token } = theme.useToken();
     const today = data?.today || null;
     const overview = data?.overview || null;
     const overall = data?.overall || null;
+    const sharedInfoContent = (
+        <div style={{ maxWidth: 280 }}>
+            <Text type="secondary" style={{ display: 'block' }}>
+                This card shows how customers interact with your Official Business Page before or around opening the menu.
+            </Text>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                Actions count final clicks on Call, WhatsApp, Directions, Reserve, and Order.
+            </Text>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+            </Text>
+        </div>
+    );
 
     if (mode === 'today') {
+        const todayInfoContent = (
+            <div style={{ maxWidth: 280 }}>
+                {sharedInfoContent}
+                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                    Today so far is partial live activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals.
+                </Text>
+            </div>
+        );
+
         if (loadingToday && !today) {
             return (
-                <Card size="small" title={<Text strong>Official Business Page · Today so far</Text>}>
+                <Card
+                    size="small"
+                    title={(
+                        <Flex align="center" justify="space-between">
+                            <Text strong>Official Business Page · Today so far</Text>
+                            <Popover content={todayInfoContent} placement="bottom" trigger="click">
+                                <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
+                                    <LuInfo color={token.colorTextSecondary} size={16} />
+                                </Button>
+                            </Popover>
+                        </Flex>
+                    )}
+                >
                     <Flex align="center" gap={8}>
                         <DotLoading color="primary" />
                         <Text type="secondary">Loading current OBP activity</Text>
@@ -175,10 +211,19 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
         }
 
         return (
-            <Card size="small" title={<Text strong>Official Business Page · Today so far</Text>}>
-                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                    Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
-                </Text>
+            <Card
+                size="small"
+                title={(
+                    <Flex align="center" justify="space-between">
+                        <Text strong>Official Business Page · Today so far</Text>
+                        <Popover content={todayInfoContent} placement="bottom" trigger="click">
+                            <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
+                                <LuInfo color={token.colorTextSecondary} size={16} />
+                            </Button>
+                        </Popover>
+                    </Flex>
+                )}
+            >
                 {today ? renderMetricCards(today) : (
                     <Text type="secondary">No OBP activity yet today.</Text>
                 )}
@@ -223,14 +268,17 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                         <LuGlobe color="#1d4ed8" size={16} />
                         <Text strong>{title}</Text>
                     </Flex>
-                    {statusTag}
+                    <Flex align="center" gap={8}>
+                        <Popover content={sharedInfoContent} placement="bottom" trigger="click">
+                            <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
+                                <LuInfo color={token.colorTextSecondary} size={16} />
+                            </Button>
+                        </Popover>
+                        {statusTag}
+                    </Flex>
                 </Flex>
             )}
         >
-            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
-            </Text>
-
             {mode === 'overview' ? (
                 <>
                     {overview?.wtd ? (

@@ -67,7 +67,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                             <Space direction="vertical" size={4}>
                                 <Text strong>Available on Pro</Text>
                                 <Text type="secondary">
-                                    Pro adds menu intelligence, a daily action list, and plain-language summaries from your menu activity.
+                                    Pro adds menu intelligence, owner action lists, and plain-language summaries from your menu activity.
                                 </Text>
                             </Space>
                         )}
@@ -88,7 +88,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                         <Text type="secondary">Best source right now: </Text>
                         <Text strong>{bestSource.label}</Text>
                         <Text type="secondary">
-                            {` · ${bestSource.actionRate}% action rate from ${bestSource.menuSessions} sessions`}
+                            {` · ${bestSource.menuSessions} visits · ${bestSource.actionRate}% action rate`}
                         </Text>
                     </div>
                 ) : null}
@@ -136,7 +136,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                         <Space wrap>
                             {sourceQuality.slice(0, 4).map((source) => (
                                 <Tag key={source.source} icon={<FireOutlined />}>
-                                    {`${source.label}: ${source.actionRate}%`}
+                                    {`${source.label}: ${source.menuSessions} visits · ${source.actionSessions} action sessions · ${source.actionRate}%`}
                                 </Tag>
                             ))}
                         </Space>

@@ -232,10 +232,10 @@ function transformMenuActions(data: any): MenuActionBreakdown {
     };
 }
 
-function transformTopSearchTerms(data: any): SearchTerm[] {
-    if (!data?.searchTerms) return [];
+function transformTopSearchTerms(data: any, field: 'searchTerms' | 'zeroResultSearchTerms' = 'searchTerms'): SearchTerm[] {
+    if (!data?.[field]) return [];
 
-    return Object.entries(data.searchTerms)
+    return Object.entries(data[field])
         .map(([term, count]) => ({ term, count: count as number }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
@@ -524,6 +524,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     topAttributeFilters: AttributeFilterInterest[];
     menuActions: MenuActionBreakdown;
     topSearchTerms: SearchTerm[];
+    topZeroResultSearchTerms: SearchTerm[];
     unavailableItems: TopItem[];
     sourceQuality: SourceQuality[];
     ownerConfidence: OwnerConfidence;
@@ -555,6 +556,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     const itemClicksMap: Record<string, { clicks: number; name?: string }> = {};
     const categoryMap: Record<string, { views: number; clicks: number; name?: string }> = {};
     const searchTermMap: Record<string, number> = {};
+    const zeroResultSearchTermMap: Record<string, number> = {};
     const unavailableItemsMap: Record<string, { clicks: number; name?: string }> = {};
     const sourceData = {
         menuSessionsBySource: {} as Record<string, number>,
@@ -631,6 +633,12 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             }
         }
 
+        if (doc.zeroResultSearchTerms) {
+            for (const [term, count] of Object.entries(doc.zeroResultSearchTerms)) {
+                zeroResultSearchTermMap[term] = (zeroResultSearchTermMap[term] || 0) + count;
+            }
+        }
+
         for (const [field, target] of [
             ['menuSessionsBySource', sourceData.menuSessionsBySource],
             ['actionSessionsBySource', sourceData.actionSessionsBySource],
@@ -690,6 +698,11 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+    const topZeroResultSearchTerms: SearchTerm[] = Object.entries(zeroResultSearchTermMap)
+        .map(([term, count]) => ({ term, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
     const topCategories: TopCategory[] = Object.entries(categoryMap)
         .map(([categoryId, data]) => ({
             categoryId,
@@ -718,6 +731,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         topAttributeFilters,
         menuActions,
         topSearchTerms,
+        topZeroResultSearchTerms,
         unavailableItems,
         sourceQuality: transformSourceQuality(sourceData),
         ownerConfidence: transformOwnerConfidence({
@@ -750,6 +764,7 @@ function buildDailyViewData(
         topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
         menuActions: transformMenuActions(data),
         topSearchTerms: transformTopSearchTerms(data),
+        topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
         unavailableItems: transformUnavailableItems(data),
         sourceQuality: data.sourceQuality || transformSourceQuality(data),
         ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
@@ -967,7 +982,9 @@ export async function getOwnerDashboardWeekly(
                 topAttributeFilters: weeklyData.topAttributeFilters || transformTopAttributeFilters(weeklyData),
                 menuActions: transformMenuActions(weeklyData),
                 topSearchTerms: transformTopSearchTerms(weeklyData),
+                topZeroResultSearchTerms: weeklyData.topZeroResultSearchTerms || transformTopSearchTerms(weeklyData, 'zeroResultSearchTerms'),
                 unavailableItems: transformUnavailableItems(weeklyData),
+                sourceQuality: weeklyData.sourceQuality || transformSourceQuality(weeklyData),
             } as WeeklyViewData;
         },
         "getOwnerDashboardWeekly"
@@ -1010,7 +1027,9 @@ export async function getOwnerDashboardMonthly(
                 topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
                 menuActions: transformMenuActions(data),
                 topSearchTerms: transformTopSearchTerms(data),
+                topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
                 unavailableItems: transformUnavailableItems(data),
+                sourceQuality: data.sourceQuality || transformSourceQuality(data),
             } as MonthlyViewData;
         },
         "getOwnerDashboardMonthly"
@@ -1037,7 +1056,7 @@ export async function getOwnerDashboardWTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             return {
                 startDate: dates[0],
@@ -1050,6 +1069,7 @@ export async function getOwnerDashboardWTD(
                 topAttributeFilters,
                 menuActions,
                 topSearchTerms,
+                topZeroResultSearchTerms,
                 unavailableItems,
                 sourceQuality,
                 ownerConfidence,
@@ -1084,7 +1104,7 @@ export async function getOwnerDashboardMTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             // Get month name
             const firstDate = parseAnalyticsDateKey(dates[0]);
@@ -1110,6 +1130,7 @@ export async function getOwnerDashboardMTD(
                 topAttributeFilters,
                 menuActions,
                 topSearchTerms,
+                topZeroResultSearchTerms,
                 unavailableItems,
                 sourceQuality,
                 ownerConfidence,
@@ -1224,7 +1245,7 @@ export async function getOwnerDashboardOverview(
 
             let wtd: WTDViewData | null = null;
             if (wtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
                 wtd = {
                     startDate: wtdDates[0],
                     endDate: wtdDates[wtdDates.length - 1],
@@ -1236,6 +1257,7 @@ export async function getOwnerDashboardOverview(
                     topAttributeFilters,
                     menuActions,
                     topSearchTerms,
+                    topZeroResultSearchTerms,
                     unavailableItems,
                     sourceQuality,
                     ownerConfidence,
@@ -1249,7 +1271,7 @@ export async function getOwnerDashboardOverview(
 
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
                 const firstDate = parseAnalyticsDateKey(mtdDates[0]);
                 const monthName = formatMonthLabel(mtdDates[0]);
                 const daysInMonth = new Date(Date.UTC(
@@ -1271,6 +1293,7 @@ export async function getOwnerDashboardOverview(
                     topAttributeFilters,
                     menuActions,
                     topSearchTerms,
+                    topZeroResultSearchTerms,
                     unavailableItems,
                     sourceQuality,
                     ownerConfidence,

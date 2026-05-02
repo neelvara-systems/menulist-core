@@ -152,7 +152,7 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 </Col>
             </Row>
 
-            {(data.menuActions || data.topCategories?.length || data.topAttributeFilters?.length || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
+            {(data.menuActions || data.topCategories?.length || data.topAttributeFilters?.length || data.topSearchTerms?.length || data.topZeroResultSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
                 <Card className={styles.detailCard} variant="borderless">
                     {data.topCategories?.length ? (
                         <Text style={{ display: 'block', marginTop: 8 }}>
@@ -177,6 +177,11 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                     <Text style={{ display: 'block', marginTop: 8 }}>
                         No-result searches: {metrics.zeroResultSearches || 0}
                     </Text>
+                    {data.topZeroResultSearchTerms?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            No-result terms: {data.topZeroResultSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ')}
+                        </Text>
+                    ) : null}
                     {data.unavailableItems?.length ? (
                         <Text style={{ display: 'block', marginTop: 8 }}>
                             Unavailable interest: {data.unavailableItems.map((item) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}

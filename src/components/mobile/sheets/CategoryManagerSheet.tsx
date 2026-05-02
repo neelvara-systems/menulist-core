@@ -475,13 +475,13 @@ export default function CategoryManagerSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '64vh', maxHeight: '92vh', padding: 0 }}
+            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex gap={0} style={{ minHeight: '64vh' }} vertical>
+            <Flex gap={0} style={{ maxHeight: '92vh' }} vertical>
                 <NavBar
                     onBack={
                         isReorderMode
@@ -528,7 +528,7 @@ export default function CategoryManagerSheet({
                 </NavBar>
 
                 {isReorderMode ? (
-                    <Flex gap={12} style={{ flex: 1, minHeight: 0, padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }} vertical>
                         <Card style={sectionCardStyle}>
                             <Text type="secondary">{t('reorderCategoriesHelp')}</Text>
                         </Card>
@@ -607,7 +607,7 @@ export default function CategoryManagerSheet({
                         </Flex>
                     </Flex>
                 ) : isItemReorderMode ? (
-                    <Flex gap={12} style={{ flex: 1, minHeight: 0, padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }} vertical>
                         <Card style={sectionCardStyle}>
                             <Flex gap={6} vertical>
                                 {selectedReorderCategory ? (
@@ -736,7 +736,7 @@ export default function CategoryManagerSheet({
                         </Flex>
                     </Flex>
                 ) : isReorderHubMode ? (
-                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }} vertical>
                         <Card style={sectionCardStyle}>
                             <Flex gap={6} vertical>
                                 <Text strong>{t('reorderMenu')}</Text>
@@ -780,7 +780,7 @@ export default function CategoryManagerSheet({
                         </Card>
                     </Flex>
                 ) : categoryEditorMode !== 'edit' ? (
-                    <Flex gap={12} style={{ padding: '12px 12px 12px' }} vertical>
+                    <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }} vertical>
                         <Button block onClick={openAddCategoryEditor}>
                             <Flex align="center" gap={6}>
                                 <LuPlus size={14} />

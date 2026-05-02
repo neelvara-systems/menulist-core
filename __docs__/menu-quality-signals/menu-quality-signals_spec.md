@@ -68,6 +68,7 @@
 - **Display:** "X items missing prices"
 - **Action:** "Review in Editor" → opens editor with price column visible
 - **Resolution:** Signal disappears when all items have prices
+- **Design override:** If `project.config.design.menu.showItemPrices === false`, pricing-gap and price-outlier signals are hidden because prices are intentionally not public on the menu.
 - **Priority:** Medium (some items legitimately have no price, e.g., "Ask")
 
 ### Signal 4: Hidden Items

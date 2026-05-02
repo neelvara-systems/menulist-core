@@ -4,7 +4,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import IconPicker from '@atoms/IconPicker';
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
-import { getSuggestedCategoryIcons } from '@lib/categoryIcons';
+import { getSuggestedCategoryIcons, normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { LuLanguages } from 'react-icons/lu';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -42,7 +42,7 @@ interface MobileCategoryEditSheetProps {
 function createInitialCategoryDraft(category: MobileCategoryItem | null | undefined, selectedLanguages: string[]) {
     return {
         active: category?.active ?? true,
-        icon: category?.icon || '',
+        icon: normalizeCategoryIconValue(category?.icon),
         names: Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || ''])),
         presetIds: category?.timeSlotPresetIds || [],
     };
@@ -56,14 +56,14 @@ function normalizeCategoryDraft({
     selectedLanguages,
 }: {
     active: boolean;
-    icon: string;
+    icon: unknown;
     names: Record<string, string>;
     presetIds: string[];
     selectedLanguages: string[];
 }) {
     return {
         active,
-        icon: icon.trim(),
+        icon: normalizeCategoryIconValue(icon),
         names: Object.fromEntries(selectedLanguages.map((language) => [language, String(names[language] || '').trim()])),
         presetIds: [...presetIds].sort(),
     };
@@ -197,11 +197,12 @@ export default function MobileCategoryEditSheet({
         const hasName = selectedLanguages.some((language) => names[language]?.trim());
         if (isSaving || !hasName) return;
         setIsSaving(true);
+        const normalizedIcon = normalizeCategoryIconValue(icon);
         try {
             await onSave({
                 active,
                 id: category?.id,
-                icon: icon || undefined,
+                icon: normalizedIcon || undefined,
                 names: Object.fromEntries(
                     selectedLanguages.map((language) => [language, names[language]?.trim() || ''])
                 ),
@@ -219,7 +220,7 @@ export default function MobileCategoryEditSheet({
 
     return (
         <Popup
-            bodyStyle={{ minHeight: '72vh', maxHeight: '94vh', overflowX: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={() => {
                 if (!isSaving) onClose();
@@ -227,7 +228,7 @@ export default function MobileCategoryEditSheet({
             position="bottom"
             visible={visible}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ maxHeight: '94vh' }} vertical>
                 <NavBar onBack={() => {
                     if (!isSaving) onClose();
                 }}>
@@ -262,7 +263,7 @@ export default function MobileCategoryEditSheet({
                                                 buttonStyle={{ height: 56, minWidth: 56 }}
                                                 gridWidth={320}
                                                 iconSize={26}
-                                                onChange={setIcon}
+                                                onChange={(nextIcon) => setIcon(normalizeCategoryIconValue(nextIcon))}
                                                 popoverWidth={320}
                                                 suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
                                                 value={icon}
@@ -382,7 +383,7 @@ export default function MobileCategoryEditSheet({
                     </Card>
                 </Flex>
 
-                <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 'auto' }}>
+                <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0, marginTop: 'auto', paddingBottom: 'env(safe-area-inset-bottom)' }}>
                     <Flex gap={8} vertical>
                         {mode === 'edit' && category?.id && onAddItem ? (
                             <Button

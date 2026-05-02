@@ -97,6 +97,13 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
 
   const activeCategoryIndex = Math.max(IMAGE_GENERATION_STYLES.findIndex(cat => cat.category === localCategory), 0);
   const activeCategory = IMAGE_GENERATION_STYLES[activeCategoryIndex] || IMAGE_GENERATION_STYLES[0];
+  const mobileFooterButtonStyle = isMobile
+    ? {
+      flex: 1,
+      minHeight: 48,
+      minWidth: 0,
+    }
+    : undefined;
 
   const renderStyleCard = (style: StyleOption, isSelected: boolean, compact = false) => {
     const isRecommended = isRecommendedForBusiness(style.name);
@@ -271,7 +278,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
         type="default"
         icon={<LuX />}
         onClick={() => setShowStyleSelector(false)}
-        style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 96 }}
+        style={mobileFooterButtonStyle || { minWidth: 96 }}
       >
         Cancel
       </Button>
@@ -281,7 +288,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
         icon={<LuCheckCircle />}
         onClick={handleSubmit}
         disabled={localSelectedStyles.length === 0}
-        style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 120 }}
+        style={mobileFooterButtonStyle || { minWidth: 120 }}
       >
         {localSelectedStyles.length === 0 ? 'Select a style' : `Use ${localSelectedStyles.length} style${localSelectedStyles.length > 1 ? 's' : ''}`}
       </Button>

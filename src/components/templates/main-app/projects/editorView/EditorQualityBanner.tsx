@@ -26,9 +26,10 @@ const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, 
         if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || !projectData?.files) return [];
         const all = computeQualitySignals(projectData.files, projectData.languages, {
             showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
+            showItemPrices: projectData?.config?.design?.menu?.showItemPrices ?? true,
         });
         return getActionableSignals(all);
-    }, [projectData?.config?.design?.menu?.showCategoryIcons, projectData?.files, projectData?.languages]);
+    }, [projectData?.config?.design?.menu?.showCategoryIcons, projectData?.config?.design?.menu?.showItemPrices, projectData?.files, projectData?.languages]);
 
     if (actionableSignals.length === 0) return null;
 

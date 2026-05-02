@@ -41,6 +41,13 @@ const MultiSelectAttributeSelector: React.FC<MultiSelectAttributeSelectorProps> 
   }, [open, selected]);
 
   const helperText = FIELD_HELPERS[label] || `Choose ${label.toLowerCase()}.`;
+  const mobileFooterButtonStyle = isMobile
+    ? {
+      flex: 1,
+      minHeight: 48,
+      minWidth: 0,
+    }
+    : undefined;
 
   const selectionLabel = useMemo(() => {
     if (!selected.length) {
@@ -150,7 +157,7 @@ const MultiSelectAttributeSelector: React.FC<MultiSelectAttributeSelectorProps> 
     <Flex gap={8} justify="flex-end">
       <Button
         onClick={() => setOpen(false)}
-        style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 96 }}
+        style={mobileFooterButtonStyle || { minWidth: 96 }}
       >
         Cancel
       </Button>
@@ -160,7 +167,7 @@ const MultiSelectAttributeSelector: React.FC<MultiSelectAttributeSelectorProps> 
           onChange(draftSelected);
           setOpen(false);
         }}
-        style={{ flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : 96 }}
+        style={mobileFooterButtonStyle || { minWidth: 96 }}
         type="primary"
       >
         Done

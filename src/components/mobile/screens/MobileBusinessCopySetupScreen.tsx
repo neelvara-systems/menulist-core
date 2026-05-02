@@ -18,7 +18,8 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, List, NavBar, Tag, Text, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, List, Tag, Text, Toast } from '../antd';
+import AiActionProgressPanel from '../components/AiActionProgressPanel';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { getStoreLanguageLabel, getStoreManagedLanguages } from '../utils/localizedStoreContent';
 
@@ -28,6 +29,7 @@ interface MobileBusinessCopySetupScreenProps {
 
 export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusinessCopySetupScreenProps) {
     const t = useTranslations('BusinessSettings');
+    const tMenu = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -45,6 +47,29 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     const fullGenerationLabel = hasCoverageGaps ? t('generateBusinessCopy') : t('regenerateBusinessCopy');
     const businessCopyMeta = storeDetails?.businessCopyMeta;
     const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
+    const repairTargetLanguagesLabel = coverage.fields
+        .flatMap((field) => field.missingLanguages)
+        .filter((languageCode, index, list) => list.indexOf(languageCode) === index)
+        .map(getStoreLanguageLabel)
+        .join(', ');
+    const infoContent = useMemo(() => (
+        <Flex gap={8} style={{ maxWidth: 280 }} vertical>
+            <Flex gap={2} vertical>
+                <Text strong>{t('businessCopySetup')}</Text>
+                <Text type="secondary">{t('businessCopySetupDesc')}</Text>
+            </Flex>
+            <Text type="secondary">{t('businessCopySourceHint')}</Text>
+            <Text type="secondary">
+                {t('businessCopyCoverageManagedLanguagesHint', {
+                    languages: managedLanguages.map(getStoreLanguageLabel).join(', '),
+                })}
+            </Text>
+            <Text>1. {t('businessCopyUpdatesOfficialPage')}</Text>
+            <Text>2. {t('businessCopyUpdatesSeo')}</Text>
+            <Text>3. {t('businessCopyUpdatesCustomerApp')}</Text>
+            <Text type="secondary">{t('businessCopyApplyNote')}</Text>
+        </Flex>
+    ), [managedLanguages, t]);
     const currentPwaShortName = getLocalizedText(
         (storeDetails as any)?.pwaSettings?.pwaShortName,
         contentLanguage,
@@ -290,33 +315,29 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
                 description={t('businessCopySetupDesc')}
+                infoContent={infoContent}
                 onBack={onBack}
                 title={t('businessCopySetup')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Text>{t('businessCopySourceHint')}</Text>
-                        <Text type="secondary">
-                            {t('businessCopyCoverageManagedLanguagesHint', {
-                                languages: managedLanguages.map(getStoreLanguageLabel).join(', '),
-                            })}
-                        </Text>
-                        <List>
-                            <List.Item prefix="1.">{t('businessCopyUpdatesOfficialPage')}</List.Item>
-                            <List.Item prefix="2.">{t('businessCopyUpdatesSeo')}</List.Item>
-                            <List.Item prefix="3.">{t('businessCopyUpdatesCustomerApp')}</List.Item>
-                        </List>
-                        <Text type="secondary">{t('businessCopyApplyNote')}</Text>
-                    </Flex>
-                </Card>
-
                 <Card
                     style={{
                         backgroundColor: hasCoverageGaps ? token.colorFillAlter : token.colorSuccessBg,
                     }}
                 >
                     <Flex gap={12} vertical>
+                        {isGeneratingTranslations ? (
+                            <AiActionProgressPanel
+                                detail={repairTargetLanguagesLabel || undefined}
+                                helperText={tMenu('keepScreenOpen')}
+                                labels={[
+                                    tMenu('checkingLanguagesStep'),
+                                    tMenu('preparingTranslationStep'),
+                                    tMenu('applyingTranslationsStep'),
+                                ]}
+                                title={t('businessCopyCoverageGenerateMissing')}
+                            />
+                        ) : null}
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 <LuLanguages size={16} />

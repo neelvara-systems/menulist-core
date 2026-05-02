@@ -794,6 +794,7 @@ function generateSchemaOrgJsonLd(
     const sameAs = buildSameAs(storeData);
     const schemaType = getMenuSchemaType(storeData?.businessType);
     const publicDescription = getPublicBusinessDescription(storeData);
+    const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
 
     return {
         "@context": "https://schema.org",
@@ -848,7 +849,7 @@ function generateSchemaOrgJsonLd(
                             name: item.name?.en || item.name?.default || "Menu Item",
                             description:
                                 item.description?.en || item.description?.default || "",
-                            ...(item.price && {
+                            ...(showItemPrices && item.price && {
                                 offers: {
                                     "@type": "Offer",
                                     price: item.price.replace(/[^0-9.]/g, ""),

@@ -8,7 +8,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popover, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
@@ -136,6 +136,17 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const pageSubtitle = isSeoMode
         ? 'Manage how your business appears in search and shared links.'
         : 'Manage tracking IDs and customer activity measurement for your menu.';
+    const analyticsInfoContent = useMemo(() => (
+        <Flex gap={8} style={{ maxWidth: 280 }} vertical>
+            <Flex gap={2} vertical>
+                <Text strong>{pageTitle}</Text>
+                <Text type="secondary">{pageSubtitle}</Text>
+            </Flex>
+            <Text type="secondary">
+                MenuList does not use this analytics data for its own marketing. It is connected only so you can see how your menu is performing.
+            </Text>
+        </Flex>
+    ), [pageSubtitle, pageTitle]);
     const analyticsDraft: AnalyticsDraft = {
         enhancedEcommerce,
         facebookPixelId: fbPixelId,
@@ -476,6 +487,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
                 description={pageSubtitle}
+                infoContent={isSeoMode ? undefined : analyticsInfoContent}
                 onBack={onBack}
                 title={pageTitle}
             />
@@ -662,12 +674,6 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     </Button>
                                 </Flex>
                             </Flex>
-                        </Card>
-
-                        <Card size="small">
-                            <Text type="secondary">
-                                MenuList does not use this analytics data for its own marketing. It is connected only so you can see how your menu is performing.
-                            </Text>
                         </Card>
 
                         <Card title={tAnalytics('essentialTracking')}>

@@ -80,14 +80,18 @@ function PDPModal({
                     category: categoryName,
                     categoryId,
                     categoryName,
-                    price: typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price,
+                    price: showItemPrices
+                        ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
+                        : undefined,
                     currency: 'USD',
-                    attributes: item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
-                        if (attr.name?.[language]) {
-                            acc[attr.name[language]] = String(attr.price);
-                        }
-                        return acc;
-                    }, {})
+                    attributes: showItemPrices
+                        ? item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
+                            if (attr.name?.[language]) {
+                                acc[attr.name[language]] = String(attr.price);
+                            }
+                            return acc;
+                        }, {})
+                        : undefined
                 });
             }
 

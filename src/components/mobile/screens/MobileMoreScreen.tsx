@@ -9,7 +9,7 @@ import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBarChart3,
@@ -160,11 +160,11 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     }, [initialScreen]);
 
     useEffect(() => {
-        if (subScreen !== 'main') return;
         const shellScrollContainer = document.querySelector<HTMLElement>('[data-mobile-shell-scroll="true"]');
         if (!shellScrollContainer) return;
+
         requestAnimationFrame(() => {
-            shellScrollContainer.scrollTop = mainScrollTopRef.current;
+            shellScrollContainer.scrollTop = subScreen === 'main' ? mainScrollTopRef.current : 0;
         });
     }, [subScreen]);
 
@@ -280,39 +280,49 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             .filter((section) => section.items.length > 0);
     }, [itemSections, normalizedSearchQuery]);
 
-    if (subScreen === 'billing') return <MobileBillingScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'businessProfileHub') return <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
-    if (subScreen === 'searchDiscoveryHub') return <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
-    if (subScreen === 'basicSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
-    if (subScreen === 'locale') return <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
-    if (subScreen === 'hoursEdit') return <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'roles') return <MobileRolesScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'digitalScreens') return <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
-    if (subScreen === 'locations') return <MobileLocationsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'users') return <MobileUsersScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'dashboard') return <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
-    if (subScreen === 'feedback') return <MobileFeedbackScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'transactions') return <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'help') return <MobileHelpScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'advancedSettings') return <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'contactSettings') return <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'designEditor') return <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'businessAttributes') return <MobileBusinessAttributesScreen onBack={() => setSubScreen(getBackTarget('businessAttributes'))} />;
-    if (subScreen === 'feedbackSettings') return <MobileAdvancedSettingsScreen mode="feedback" onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'officialPage') return <MobileOfficialPageScreen onBack={() => setSubScreen(getBackTarget('officialPage'))} />;
-    if (subScreen === 'businessCopySetup') return <MobileBusinessCopySetupScreen onBack={() => setSubScreen(getBackTarget('businessCopySetup'))} />;
-    if (subScreen === 'seoSettings') return <MobileSeoAnalyticsScreen mode="seo" onBack={() => setSubScreen(getBackTarget('seoSettings'))} />;
-    if (subScreen === 'analyticsSettings') return <MobileSeoAnalyticsScreen mode="analytics" onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'socialSettings') return <MobileAdvancedSettingsScreen mode="social" onBack={() => setSubScreen(getBackTarget('socialSettings'))} />;
-    if (subScreen === 'timeSlots') return <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'tempStatus') return <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'specialMenus') return <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} onOpenMenuTab={onOpenMenuTab} />;
-    if (subScreen === 'domainSettings') return <MobileDomainSettingsScreen onBack={() => setSubScreen(getBackTarget('domainSettings'))} />;
-    if (subScreen === 'integrations') return <MobileIntegrationsScreen onBack={() => setSubScreen(getBackTarget('integrations'))} />;
-    if (subScreen === 'posSync') return <MobilePosSyncScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'todayHistory') return <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
-    if (subScreen === 'customerApp') return <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
-    if (subScreen === 'presenceMonitor') return <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
+    let subScreenContent: ReactNode = null;
+
+    if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
+    else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
+    else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
+    else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
+    else if (subScreen === 'hoursEdit') subScreenContent = <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'roles') subScreenContent = <MobileRolesScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'digitalScreens') subScreenContent = <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
+    else if (subScreen === 'locations') subScreenContent = <MobileLocationsScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'users') subScreenContent = <MobileUsersScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
+    else if (subScreen === 'feedback') subScreenContent = <MobileFeedbackScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'transactions') subScreenContent = <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'help') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'advancedSettings') subScreenContent = <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'contactSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'designEditor') subScreenContent = <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'businessAttributes') subScreenContent = <MobileBusinessAttributesScreen onBack={() => setSubScreen(getBackTarget('businessAttributes'))} />;
+    else if (subScreen === 'feedbackSettings') subScreenContent = <MobileAdvancedSettingsScreen mode="feedback" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'officialPage') subScreenContent = <MobileOfficialPageScreen onBack={() => setSubScreen(getBackTarget('officialPage'))} />;
+    else if (subScreen === 'businessCopySetup') subScreenContent = <MobileBusinessCopySetupScreen onBack={() => setSubScreen(getBackTarget('businessCopySetup'))} />;
+    else if (subScreen === 'seoSettings') subScreenContent = <MobileSeoAnalyticsScreen mode="seo" onBack={() => setSubScreen(getBackTarget('seoSettings'))} />;
+    else if (subScreen === 'analyticsSettings') subScreenContent = <MobileSeoAnalyticsScreen mode="analytics" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'socialSettings') subScreenContent = <MobileAdvancedSettingsScreen mode="social" onBack={() => setSubScreen(getBackTarget('socialSettings'))} />;
+    else if (subScreen === 'timeSlots') subScreenContent = <MobileTimeSlotsScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'tempStatus') subScreenContent = <MobileTempStatusScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'specialMenus') subScreenContent = <MobileSpecialMenuScreen onBack={() => setSubScreen('main')} onOpenMenuTab={onOpenMenuTab} />;
+    else if (subScreen === 'domainSettings') subScreenContent = <MobileDomainSettingsScreen onBack={() => setSubScreen(getBackTarget('domainSettings'))} />;
+    else if (subScreen === 'integrations') subScreenContent = <MobileIntegrationsScreen onBack={() => setSubScreen(getBackTarget('integrations'))} />;
+    else if (subScreen === 'posSync') subScreenContent = <MobilePosSyncScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'todayHistory') subScreenContent = <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
+    else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
+
+    if (subScreenContent) {
+        return (
+            <Flex key={subScreen} style={{ minHeight: '100%', minWidth: 0 }} vertical>
+                {subScreenContent}
+            </Flex>
+        );
+    }
 
     const handleLogout = () => {
         void Dialog.confirm({

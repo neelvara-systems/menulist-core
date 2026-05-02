@@ -1,6 +1,6 @@
 'use client'
 
-import { getResolvedProjectAIPreferences, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
+import { getRecommendedProjectAIPreferences, getResolvedProjectAIPreferences, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { Button, Card, Flex, Input, Modal, Switch, Typography, theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
@@ -55,7 +55,8 @@ export default function AIDefaultsModal({
     setProjectData,
 }: AIDefaultsModalProps) {
     const { token } = theme.useToken();
-    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData), [projectData]);
+    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData, businessType), [businessType, projectData]);
+    const recommendedPreferences = useMemo(() => getRecommendedProjectAIPreferences(businessType), [businessType]);
     const imageDefaults = useMemo(() => getImageDefaults(businessType), [businessType]);
     const [descriptionLength, setDescriptionLength] = useState<DescriptionContentLength>(resolvedPreferences.description.contentLength);
     const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(resolvedPreferences.description.tone);
@@ -64,11 +65,11 @@ export default function AIDefaultsModal({
 
     useEffect(() => {
         if (!open) return;
-        const nextResolved = getResolvedProjectAIPreferences(projectData);
+        const nextResolved = getResolvedProjectAIPreferences(projectData, businessType);
         setDescriptionLength(nextResolved.description.contentLength);
         setDescriptionTone(nextResolved.description.tone);
         setImagePreferences(nextResolved.image);
-    }, [open, projectData]);
+    }, [businessType, open, projectData]);
 
     const hasChanges = useMemo(() => {
         const currentState = JSON.stringify({
@@ -91,6 +92,12 @@ export default function AIDefaultsModal({
         setImagePreferences(resolvedPreferences.image);
     };
 
+    const resetToRecommended = () => {
+        setDescriptionLength(recommendedPreferences.description.contentLength);
+        setDescriptionTone(recommendedPreferences.description.tone);
+        setImagePreferences(recommendedPreferences.image);
+    };
+
     const handleSave = () => {
         setProjectData(mergeProjectAIPreferences(projectData, {
             description: {
@@ -106,6 +113,59 @@ export default function AIDefaultsModal({
 
     const selectedBackgroundColor = imagePreferences.backgroundColor || '#ffffff';
     const selectedForegroundColor = imagePreferences.foregroundColor || '#111111';
+    const selectedStyleChipStyle = {
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 8,
+        color: token.colorText,
+        padding: '2px 8px',
+    } as const;
+    const renderColorSwatchInput = ({
+        disabled = false,
+        onChange,
+        value,
+    }: {
+        disabled?: boolean;
+        onChange: (value: string) => void;
+        value: string;
+    }) => (
+        <div
+            style={{
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: '999px',
+                boxShadow: token.boxShadowTertiary,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                height: 40,
+                opacity: disabled ? 0.45 : 1,
+                overflow: 'hidden',
+                position: 'relative',
+                width: 40,
+            }}
+        >
+            <div
+                style={{
+                    background: value,
+                    borderRadius: '999px',
+                    height: '100%',
+                    width: '100%',
+                }}
+            />
+            <input
+                disabled={disabled}
+                onChange={(event) => onChange(event.target.value)}
+                style={{
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    height: '140%',
+                    inset: '-20%',
+                    opacity: 0,
+                    position: 'absolute',
+                    width: '140%',
+                }}
+                type="color"
+                value={value}
+            />
+        </div>
+    );
 
     return (
         <>
@@ -135,9 +195,22 @@ export default function AIDefaultsModal({
             >
                 <Flex gap={16} vertical>
                     <Card size="small">
-                        <Text type="secondary">
-                            Set the default writing and photo style for this menu. Future description generation, menu repair, and generated photos will start with these choices.
-                        </Text>
+                        <Flex align="center" gap={12} justify="space-between">
+                            <Flex gap={4} style={{ minWidth: 0 }} vertical>
+                                <Text type="secondary">
+                                    Set the default writing and photo style for this menu. Future description generation, menu repair, and generated photos will start with these choices.
+                                </Text>
+                                <Text strong>Recommended defaults</Text>
+                                <Text type="secondary">
+                                    {businessType
+                                        ? `Use settings picked for ${businessType}.`
+                                        : 'Use the safest settings for this business.'}
+                                </Text>
+                            </Flex>
+                            <Button onClick={resetToRecommended}>
+                                Use recommended
+                            </Button>
+                        </Flex>
                     </Card>
 
                     <Card size="small">
@@ -219,12 +292,12 @@ export default function AIDefaultsModal({
                                     </Flex>
                                     {imagePreferences.styles?.length ? (
                                         <Flex gap={6} wrap="wrap">
-                                            <Text type="secondary">{imagePreferences.stylesCategory}</Text>
-                                            {imagePreferences.styles.slice(0, 3).map((style) => (
-                                                <Text key={style} style={{ background: token.colorFillAlter, borderRadius: 8, padding: '2px 8px' }}>
-                                                    {style}
-                                                </Text>
-                                            ))}
+	                                            <Text type="secondary">{imagePreferences.stylesCategory}</Text>
+	                                            {imagePreferences.styles.slice(0, 3).map((style) => (
+	                                                <Text key={style} style={selectedStyleChipStyle}>
+	                                                    {style}
+	                                                </Text>
+	                                            ))}
                                         </Flex>
                                     ) : null}
                                 </Flex>
@@ -256,12 +329,16 @@ export default function AIDefaultsModal({
                                     <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                                         <Text strong>Background color</Text>
                                         <Text type="secondary">{imagePreferences.transparentBg ? 'Disabled while transparent background is on.' : imagePreferences.backgroundColor || 'No background color selected.'}</Text>
-                                    </Flex>
-                                    <Flex align="center" gap={8}>
-                                        <input disabled={Boolean(imagePreferences.transparentBg)} onChange={(event) => setImagePreferences((current) => ({ ...current, backgroundColor: event.target.value }))} style={{ height: 36, width: 44 }} type="color" value={selectedBackgroundColor} />
-                                        <Button disabled={Boolean(imagePreferences.transparentBg) || !imagePreferences.backgroundColor} onClick={() => setImagePreferences((current) => ({ ...current, backgroundColor: null }))} size="small">
-                                            Clear
-                                        </Button>
+	                                    </Flex>
+	                                    <Flex align="center" gap={8}>
+	                                        {renderColorSwatchInput({
+	                                            disabled: Boolean(imagePreferences.transparentBg),
+	                                            onChange: (backgroundColor) => setImagePreferences((current) => ({ ...current, backgroundColor })),
+	                                            value: selectedBackgroundColor,
+	                                        })}
+	                                        <Button disabled={Boolean(imagePreferences.transparentBg) || !imagePreferences.backgroundColor} onClick={() => setImagePreferences((current) => ({ ...current, backgroundColor: null }))} size="small">
+	                                            Clear
+	                                        </Button>
                                     </Flex>
                                 </Flex>
 
@@ -269,12 +346,15 @@ export default function AIDefaultsModal({
                                     <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                                         <Text strong>Foreground color</Text>
                                         <Text type="secondary">{imagePreferences.foregroundColor || 'No foreground color selected.'}</Text>
-                                    </Flex>
-                                    <Flex align="center" gap={8}>
-                                        <input onChange={(event) => setImagePreferences((current) => ({ ...current, foregroundColor: event.target.value }))} style={{ height: 36, width: 44 }} type="color" value={selectedForegroundColor} />
-                                        <Button disabled={!imagePreferences.foregroundColor} onClick={() => setImagePreferences((current) => ({ ...current, foregroundColor: null }))} size="small">
-                                            Clear
-                                        </Button>
+	                                    </Flex>
+	                                    <Flex align="center" gap={8}>
+	                                        {renderColorSwatchInput({
+	                                            onChange: (foregroundColor) => setImagePreferences((current) => ({ ...current, foregroundColor })),
+	                                            value: selectedForegroundColor,
+	                                        })}
+	                                        <Button disabled={!imagePreferences.foregroundColor} onClick={() => setImagePreferences((current) => ({ ...current, foregroundColor: null }))} size="small">
+	                                            Clear
+	                                        </Button>
                                     </Flex>
                                 </Flex>
 
