@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from '../sheets/menuSheetLayout';
 
 type CommandAction = {
     key: string;
@@ -229,11 +230,11 @@ export default function MobileMenuCommandSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             onMaskClick={onClose}
             visible={visible}
         >
-            <Flex style={{ maxHeight: '92vh' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar
                     right={(
                         <Text

@@ -1,5 +1,6 @@
 import useDeviceType from '@hook/useDeviceType';
 import { Button, Flex, Grid, Input, Popover, theme } from 'antd';
+import type { TooltipPlacement } from 'antd/es/tooltip';
 import { useState } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
 import CategoryIcon from '../CategoryIcon';
@@ -18,6 +19,7 @@ interface IconPickerProps {
     allowClear?: boolean;
     popoverWidth?: number | string;
     gridWidth?: number;
+    placement?: TooltipPlacement;
 }
 
 const IconPicker = ({
@@ -30,6 +32,7 @@ const IconPicker = ({
     allowClear = false,
     popoverWidth = 400,
     gridWidth = 400,
+    placement = 'bottomLeft',
 }: IconPickerProps) => {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
@@ -52,7 +55,15 @@ const IconPicker = ({
     };
 
     const content = (
-        <Flex gap={12} style={{ width: popoverWidth }} vertical>
+        <Flex
+            className="icon-picker-content"
+            gap={12}
+            style={{
+                maxWidth: '100%',
+                width: isMobile ? '100%' : popoverWidth,
+            }}
+            vertical
+        >
             <Flex align="center" gap={12} justify="space-between" wrap={false}>
                 <Flex
                     align="center"
@@ -133,7 +144,7 @@ const IconPicker = ({
                         searchQuery={searchQuery}
                         selectedIcon={value}
                         suggestedIcons={suggestedIcons}
-                        width={gridWidth}
+                        width={isMobile ? undefined : gridWidth}
                     />
                 ) : (
                     <EmojiGrid
@@ -177,12 +188,12 @@ const IconPicker = ({
             <>
                 {trigger}
                 <Popup
-                    bodyStyle={{ minHeight: '78vh', maxHeight: '94vh', overflowX: 'hidden', padding: 0 }}
+                    bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
                     destroyOnClose
                     onMaskClick={() => setOpen(false)}
                     visible={open}
                 >
-                    <Flex style={{ height: '100%' }} vertical>
+                    <Flex style={{ maxHeight: '94vh' }} vertical>
                         <NavBar onBack={() => setOpen(false)}>
                             Pick category icon
                         </NavBar>
@@ -201,7 +212,7 @@ const IconPicker = ({
             trigger="click"
             open={open}
             onOpenChange={setOpen}
-            placement="bottomLeft"
+            placement={placement}
         >
             {trigger}
         </Popover>

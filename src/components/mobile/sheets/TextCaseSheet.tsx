@@ -7,6 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { Button, Card, Flex, NavBar, Popup, Switch, Text } from '../antd';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 type CaseMode = 'lower' | 'upper' | 'sentence' | 'title';
 
@@ -111,13 +112,13 @@ export default function TextCaseSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex style={{ maxHeight: '88vh' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={onClose}>{t('fixTextCase')}</NavBar>
 
                 <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>

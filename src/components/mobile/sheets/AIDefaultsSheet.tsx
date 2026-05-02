@@ -11,6 +11,7 @@ import StyleSelector from '../../templates/main-app/projects/editorView/AiImageG
 import { IMAGE_VIEW_TYPES } from '../../templates/main-app/projects/editorView/AiImageGenerator/imageViewType';
 import { DESCRIPTION_TONE_OPTIONS, type DescriptionTone } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import { Button, Card, Flex, NavBar, Popup, Switch, Text, TextArea } from '../antd';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 type DescriptionContentLength = 'Standard' | 'Detailed';
 
@@ -177,12 +178,12 @@ export default function AIDefaultsSheet({
     return (
         <>
             <Popup
-                bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
+                bodyStyle={MENU_SHEET_BODY_STYLE}
                 destroyOnClose
                 onMaskClick={onClose}
                 visible={visible}
             >
-                <Flex style={{ maxHeight: '94vh' }} vertical>
+                <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                     <NavBar onBack={onClose}>Generation defaults</NavBar>
 
                     <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>

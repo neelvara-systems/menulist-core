@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuFileText, LuTrash2, LuUpload } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 interface MenuUploadSheetProps {
     currentProjectId?: string | null;
@@ -307,7 +308,7 @@ export default function MenuUploadSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '82vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={step === 'select' || step === 'review' || step === 'error' ? onClose : undefined}
             position="bottom"
@@ -315,7 +316,7 @@ export default function MenuUploadSheet({
         >
             <Flex
                 gap={16}
-                style={{ maxHeight: '82vh', overflow: 'hidden' }}
+                style={MENU_SHEET_CONTAINER_STYLE}
                 vertical
             >
                 {(step === 'select' || step === 'review') ? (

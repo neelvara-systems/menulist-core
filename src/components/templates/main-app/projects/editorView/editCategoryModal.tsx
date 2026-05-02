@@ -51,6 +51,33 @@ function normalizeCategoryIconForSave(category: ExtractedDataCategory): Extracte
     return nextCategory;
 }
 
+function normalizeCategoryTimeSlots(timeSlots: unknown): CategoryTimeSlot[] | undefined {
+    if (timeSlots === undefined) return undefined;
+    if (Array.isArray(timeSlots)) {
+        return timeSlots.filter((slot): slot is CategoryTimeSlot => Boolean(slot && typeof slot === 'object'));
+    }
+
+    if (timeSlots && typeof timeSlots === 'object') {
+        return Object.values(timeSlots as Record<string, unknown>)
+            .filter((slot): slot is CategoryTimeSlot => Boolean(slot && typeof slot === 'object'));
+    }
+
+    return [];
+}
+
+function normalizeCategoryDraft(category: ExtractedDataCategory): ExtractedDataCategory {
+    const nextCategory = normalizeCategoryIconForSave(category);
+    const normalizedTimeSlots = normalizeCategoryTimeSlots(nextCategory.timeSlots);
+
+    if (normalizedTimeSlots === undefined) {
+        delete nextCategory.timeSlots;
+    } else {
+        nextCategory.timeSlots = normalizedTimeSlots;
+    }
+
+    return nextCategory;
+}
+
 const EditCategoryModal = ({
     modalData,
     onClose,
@@ -91,7 +118,7 @@ const EditCategoryModal = ({
 
     useEffect(() => {
         if (modalData.active && modalData.category) {
-            setCategoryData(normalizeCategoryIconForSave(modalData.category));
+            setCategoryData(normalizeCategoryDraft(modalData.category));
         } else {
             setCategoryData(null);
         }
@@ -117,7 +144,7 @@ const EditCategoryModal = ({
     const handleTogglePreset = useCallback((preset: TimeSlotPreset) => {
         setCategoryData(prev => {
             if (!prev) return null;
-            const current = prev.timeSlots || [];
+            const current = normalizeCategoryTimeSlots(prev.timeSlots) || [];
             const existingIndex = current.findIndex(s => s.presetId === preset.id);
 
             if (existingIndex >= 0) {
@@ -185,7 +212,7 @@ const EditCategoryModal = ({
 
     // Check if a preset is assigned
     const isPresetAssigned = useCallback((presetId: string) => {
-        return categoryData?.timeSlots?.some(s => s.presetId === presetId) || false;
+        return normalizeCategoryTimeSlots(categoryData?.timeSlots)?.some(s => s.presetId === presetId) || false;
     }, [categoryData?.timeSlots]);
 
 
@@ -206,8 +233,9 @@ const EditCategoryModal = ({
         }
 
         // Validate time slots if any exist
-        if (categoryData.timeSlots?.length) {
-            const validation = validateTimeSlots(categoryData.timeSlots);
+        const normalizedTimeSlots = normalizeCategoryTimeSlots(categoryData.timeSlots);
+        if (normalizedTimeSlots?.length) {
+            const validation = validateTimeSlots(normalizedTimeSlots);
             if (!validation.valid) {
                 antdMessage.error(validation.error || 'Invalid time slot');
                 return;
@@ -229,7 +257,7 @@ const EditCategoryModal = ({
                 finalCategory = { ...categoryData, name: clearedName };
             }
         }
-        finalCategory = normalizeCategoryIconForSave(finalCategory);
+        finalCategory = normalizeCategoryDraft(finalCategory);
 
         if (modalData.status === 'add') {
             // Add new category immutably
@@ -448,6 +476,7 @@ const EditCategoryModal = ({
                                                 : normalizeCategoryIconForSave({ ...categoryData, icon: undefined })
                                             );
                                         }}
+                                        placement="leftTop"
                                         suggestedIcons={suggestedIcons}
                                         value={categoryData.icon}
                                     />

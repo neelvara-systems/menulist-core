@@ -10,6 +10,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackOBPAction } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
+import { trackBeforeNavigate } from './trackBeforeNavigate';
 
 interface OBPActionsProps {
     tenantId: number;
@@ -52,23 +53,30 @@ export default function OBPActions({
     if (!hasAnyAction) return null;
 
     const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
-        if (!trackingEnabled) return;
-        trackOBPAction(storeId, action, {
+        if (!trackingEnabled) return Promise.resolve();
+        return trackOBPAction(storeId, action, {
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
             includeLocation,
-        }).catch(() => { });
+        });
     };
+
+    const callHref = phoneNumber ? `tel:${phoneNumber}` : '';
+    const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : '';
 
     return (
         <div className={styles.actions}>
             {showCall && phoneNumber && (
                 <a
-                    href={`tel:${phoneNumber}`}
+                    href={callHref}
                     className={styles.actionButton}
-                    onClick={() => handleAction('call')}
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: callHref,
+                        track: () => handleAction('call'),
+                    })}
                 >
                     <span className={styles.actionIcon}>📞</span>
                     Call
@@ -76,11 +84,16 @@ export default function OBPActions({
             )}
             {showWhatsApp && whatsappNumber && (
                 <a
-                    href={`https://wa.me/${whatsappNumber.replace('+', '')}`}
+                    href={whatsappHref}
                     className={styles.actionButton}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleAction('whatsapp')}
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: whatsappHref,
+                        target: '_blank',
+                        track: () => handleAction('whatsapp'),
+                    })}
                 >
                     <span className={styles.actionIcon}>💬</span>
                     WhatsApp
@@ -92,7 +105,12 @@ export default function OBPActions({
                     className={styles.actionButton}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleAction('directions')}
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: directionsUrl,
+                        target: '_blank',
+                        track: () => handleAction('directions'),
+                    })}
                 >
                     <span className={styles.actionIcon}>📍</span>
                     Directions
@@ -104,7 +122,12 @@ export default function OBPActions({
                     className={styles.actionButton}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleAction('reserve')}
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: reservationUrl,
+                        target: '_blank',
+                        track: () => handleAction('reserve'),
+                    })}
                 >
                     <span className={styles.actionIcon}>📅</span>
                     Reserve
@@ -116,7 +139,12 @@ export default function OBPActions({
                     className={styles.actionButton}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleAction('order')}
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: orderUrl,
+                        target: '_blank',
+                        track: () => handleAction('order'),
+                    })}
                 >
                     <span className={styles.actionIcon}>🛒</span>
                     Order

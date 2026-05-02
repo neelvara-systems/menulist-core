@@ -18,6 +18,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Popup, Tag, Text, Title, Toast } from '../antd';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_ROUNDED_BODY_STYLE } from './menuSheetLayout';
 
 interface ExtractionReviewSheetProps {
     comparisonResult: ComparisonEngineOutput;
@@ -237,10 +238,10 @@ export default function ExtractionReviewSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '88vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_ROUNDED_BODY_STYLE}
             visible={visible}
         >
-            <Flex style={{ maxHeight: '88vh' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <Flex gap={4} style={{ borderBottom: `1px solid var(--adm-color-border)`, flexShrink: 0, padding: 16 }} vertical>
                     <Title level={4} style={{ margin: 0 }}>
                         {t('reviewExtractedChanges')}

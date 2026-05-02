@@ -31,6 +31,8 @@ import UploadedImagesList from './uploadedImagesList';
 
 const { Text } = Typography;
 
+const EMPTY_INITIAL_BATCH_ITEM_IDS: string[] = [];
+
 interface ImageUploadModalProps {
     open: boolean;
     onClose: () => void;
@@ -104,7 +106,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     onImageUpload,
     from,
     preferredInitialTab = 'upload',
-    initialBatchItemIds = [],
+    initialBatchItemIds: initialBatchItemIdsProp,
     itemStates,
     isMasterLinked = false
 }) => {
@@ -123,6 +125,9 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [batchGenerationConfig, setBatchGenerationConfig] = useState<GenerateImageViaApiPayloadGenerationConfiType>(DefaultGenerationConfig);
     const dispatch = useAppDispatch()
+    const initialBatchItemIds = initialBatchItemIdsProp ?? EMPTY_INITIAL_BATCH_ITEM_IDS;
+    const initialBatchItemIdsKey = useMemo(() => initialBatchItemIds.join('|'), [initialBatchItemIds]);
+    const initialBatchItemIdSet = useMemo(() => new Set(initialBatchItemIds), [initialBatchItemIdsKey]);
 
     const persistProjectImagePreferences = useCallback(async (config: Partial<ImageGenerationConfigType>) => {
         const updatedProject = mergeProjectAIPreferences(projectData, {
@@ -235,13 +240,17 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             } else {
                 if (itemToUpdate) {
                     setModalView('singleItemSetup');
-                } else if (initialBatchItemIds.length > 0) {
+                } else if (initialBatchItemIdSet.size > 0) {
                     setModalView('batchAIConfig');
-                    setSelectedItemsForBatch(
-                        items
-                            .filter((item) => initialBatchItemIds.includes(item.id))
-                            .map((item) => item.id)
-                    );
+                    const nextSelectedItems = items
+                        .filter((item) => initialBatchItemIdSet.has(item.id))
+                        .map((item) => item.id);
+                    setSelectedItemsForBatch((previous) => (
+                        previous.length === nextSelectedItems.length &&
+                        previous.every((id, index) => id === nextSelectedItems[index])
+                            ? previous
+                            : nextSelectedItems
+                    ));
                 } else {
                     setModalView('initialChoice');
                     setSelectedItem(null);
@@ -252,7 +261,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             setSelectedItem(null);
             setSelectedItemsForBatch([]);
         }
-    }, [activeBatchImageJob, initialBatchItemIds, itemToUpdate, items, open, resetGenerateState]);
+    }, [activeBatchImageJob, initialBatchItemIdSet, itemToUpdate, items, open, resetGenerateState]);
 
     useEffect(() => {
         if (activeProject && selectedItem) {

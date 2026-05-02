@@ -3575,7 +3575,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         }
                     }}
                     selectedLanguages={activeProjectLanguages}
-                    sourceFile={findFileForCategory(menuData, categoryOptions[0]?.id)}
+                    sourceFile={findFileForCategory(menuData, addSheetInitialCategoryId || categoryOptions[0]?.id)}
                 />
             ) : null}
 

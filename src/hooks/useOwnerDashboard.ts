@@ -144,6 +144,13 @@ function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, da
     return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
 }
 
+function logOwnerDashboardDalResponse(label: string, payload: unknown, meta: Record<string, unknown>) {
+    console.log(`[MobileDashboard][DAL] ${label} response`, {
+        ...meta,
+        response: payload,
+    });
+}
+
 export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerDashboardReturn {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const projectId = options?.projectId;
@@ -183,7 +190,17 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical ? ['ownerDashboard', 'settled', tId, sId, projectId] : null,
         () => cachedFetcher(
             settledCacheKey!,
-            () => getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logOwnerDashboardDalResponse('getOwnerDashboardSettled', response, {
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    projectId,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             schedulerCacheKey,
         ),
         {
@@ -202,7 +219,18 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch ? ['ownerDashboard', 'today', tId, sId, projectId] : null,
         () => cachedFetcherWithTTL(
             todayCacheKey!,
-            () => getOwnerDashboardToday(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOwnerDashboardToday(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logOwnerDashboardDalResponse('getOwnerDashboardToday', response, {
+                    analyticsDayKey,
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    projectId,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             600000,
             analyticsDayKey,
         ),
@@ -224,7 +252,18 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical && viewMode === 'daily' && !settledData?.daily ? ['ownerDashboard', 'daily', tId, sId, projectId] : null,
         () => cachedFetcher(
             dailyCacheKey!,
-            () => getOwnerDashboardDaily(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOwnerDashboardDaily(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logOwnerDashboardDalResponse('getOwnerDashboardDaily', response, {
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    projectId,
+                    schedulerCacheKey,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             schedulerCacheKey,
         ),
         {
@@ -244,7 +283,18 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical && viewMode === 'weekly' && !settledData?.weekly ? ['ownerDashboard', 'weekly', tId, sId, projectId] : null,
         () => cachedFetcher(
             weeklyCacheKey!,
-            () => getOwnerDashboardWeekly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOwnerDashboardWeekly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logOwnerDashboardDalResponse('getOwnerDashboardWeekly', response, {
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    projectId,
+                    schedulerCacheKey,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             schedulerCacheKey,
         ),
         {
@@ -264,7 +314,18 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical && viewMode === 'monthly' && !settledData?.monthly ? ['ownerDashboard', 'monthly', tId, sId, projectId] : null,
         () => cachedFetcher(
             monthlyCacheKey!,
-            () => getOwnerDashboardMonthly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOwnerDashboardMonthly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logOwnerDashboardDalResponse('getOwnerDashboardMonthly', response, {
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    projectId,
+                    schedulerCacheKey,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             schedulerCacheKey,
         ),
         {

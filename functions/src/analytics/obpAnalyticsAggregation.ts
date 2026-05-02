@@ -125,46 +125,73 @@ function toDashboardMetrics(metrics: OBPAggregatedMetrics) {
     };
 }
 
-function toDashboardDailyMetrics(data: OBPDailyData) {
+function readOBPCounter(data: Record<string, any>, mapName: string, key: string): number {
+    return Number(data?.[mapName]?.[key] || data?.[`${mapName}.${key}`] || 0);
+}
+
+function normalizeOBPActionClicks(data: Record<string, any> = {}) {
     return {
-        views: data.totalOBPViews || 0,
-        actionClicks: data.totalOBPActionClicks || 0,
-        menuClicks: data.totalOBPMenuClicks || 0,
-        linkClicks: data.totalOBPLinkClicks || 0,
-        shares: data.totalOBPShares || 0,
-        actions: {
-            call: data.obpActionClicks?.call || 0,
-            whatsapp: data.obpActionClicks?.whatsapp || 0,
-            directions: data.obpActionClicks?.directions || 0,
-            reserve: data.obpActionClicks?.reserve || 0,
-            order: data.obpActionClicks?.order || 0,
-        },
-        shareMethods: {
-            whatsapp: data.obpShares?.whatsapp || 0,
-            copy_link: data.obpShares?.copy_link || 0,
-            copy_message: data.obpShares?.copy_message || 0,
-        },
-        links: {
-            google_review: data.obpLinkClicks?.google_review || 0,
-            instagram: data.obpLinkClicks?.instagram || 0,
-            facebook: data.obpLinkClicks?.facebook || 0,
-            website: data.obpLinkClicks?.website || 0,
-        },
+        call: readOBPCounter(data, 'obpActionClicks', 'call'),
+        whatsapp: readOBPCounter(data, 'obpActionClicks', 'whatsapp'),
+        directions: readOBPCounter(data, 'obpActionClicks', 'directions'),
+        reserve: readOBPCounter(data, 'obpActionClicks', 'reserve'),
+        order: readOBPCounter(data, 'obpActionClicks', 'order'),
+    };
+}
+
+function normalizeOBPLinkClicks(data: Record<string, any> = {}) {
+    return {
+        google_review: readOBPCounter(data, 'obpLinkClicks', 'google_review'),
+        instagram: readOBPCounter(data, 'obpLinkClicks', 'instagram'),
+        facebook: readOBPCounter(data, 'obpLinkClicks', 'facebook'),
+        website: readOBPCounter(data, 'obpLinkClicks', 'website'),
+    };
+}
+
+function normalizeOBPShares(data: Record<string, any> = {}) {
+    return {
+        whatsapp: readOBPCounter(data, 'obpShares', 'whatsapp'),
+        copy_link: readOBPCounter(data, 'obpShares', 'copy_link'),
+        copy_message: readOBPCounter(data, 'obpShares', 'copy_message'),
+    };
+}
+
+function normalizeOBPDailyData(data: OBPDailyData): OBPDailyData {
+    return {
+        ...data,
+        obpActionClicks: normalizeOBPActionClicks(data as Record<string, any>),
+        obpLinkClicks: normalizeOBPLinkClicks(data as Record<string, any>),
+        obpShares: normalizeOBPShares(data as Record<string, any>),
+    };
+}
+
+function toDashboardDailyMetrics(data: OBPDailyData) {
+    const normalized = normalizeOBPDailyData(data);
+    return {
+        views: normalized.totalOBPViews || 0,
+        actionClicks: normalized.totalOBPActionClicks || 0,
+        menuClicks: normalized.totalOBPMenuClicks || 0,
+        linkClicks: normalized.totalOBPLinkClicks || 0,
+        shares: normalized.totalOBPShares || 0,
+        actions: normalized.obpActionClicks || emptyMetrics().obpActionClicks,
+        shareMethods: normalized.obpShares || emptyMetrics().obpShares,
+        links: normalized.obpLinkClicks || emptyMetrics().obpLinkClicks,
         daysWithData: 1,
     };
 }
 
 function compactOBPAnalyticsDay(date: string, data: OBPDailyData) {
+    const normalized = normalizeOBPDailyData(data);
     return {
         date,
-        totalOBPViews: data.totalOBPViews || 0,
-        totalOBPActionClicks: data.totalOBPActionClicks || 0,
-        totalOBPMenuClicks: data.totalOBPMenuClicks || 0,
-        totalOBPLinkClicks: data.totalOBPLinkClicks || 0,
-        totalOBPShares: data.totalOBPShares || 0,
-        obpActionClicks: data.obpActionClicks || {},
-        obpLinkClicks: data.obpLinkClicks || {},
-        obpShares: data.obpShares || {},
+        totalOBPViews: normalized.totalOBPViews || 0,
+        totalOBPActionClicks: normalized.totalOBPActionClicks || 0,
+        totalOBPMenuClicks: normalized.totalOBPMenuClicks || 0,
+        totalOBPLinkClicks: normalized.totalOBPLinkClicks || 0,
+        totalOBPShares: normalized.totalOBPShares || 0,
+        obpActionClicks: normalized.obpActionClicks || {},
+        obpLinkClicks: normalized.obpLinkClicks || {},
+        obpShares: normalized.obpShares || {},
     };
 }
 
@@ -345,8 +372,9 @@ function aggregateOBPDailyDocsFromMap(
     const metrics = emptyMetrics();
 
     for (const date of dates) {
-        const data = docsByDate.get(date);
-        if (!data) continue;
+        const rawData = docsByDate.get(date);
+        if (!rawData) continue;
+        const data = normalizeOBPDailyData(rawData);
 
         metrics.totalOBPViews += data.totalOBPViews || 0;
         metrics.totalOBPActionClicks += data.totalOBPActionClicks || 0;

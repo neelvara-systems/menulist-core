@@ -89,6 +89,12 @@ export default function MobileProjectsProvider({ children }: { children: React.R
 
         const request = getProjectDataWithoutLoader(nextProjectId)
             .then((project) => {
+                console.log('[MobileDashboard][DAL] getProjectDataWithoutLoader response', {
+                    projectId: nextProjectId,
+                    response: project,
+                    storeId: sessionStoreId,
+                    tenantId: sessionTenantId,
+                });
                 const sanitizedProject = removeObjRef(project);
                 setProjectsById((prev) => ({
                     ...prev,
@@ -140,6 +146,13 @@ export default function MobileProjectsProvider({ children }: { children: React.R
             }
 
             const result = await getProjectsListWithoutLoader(true);
+            console.log('[MobileDashboard][DAL] getProjectsListWithoutLoader response', {
+                force: shouldForce,
+                preferredProjectId: options?.preferredProjectId || null,
+                response: result,
+                storeId,
+                tenantId: sessionTenantId,
+            });
             const summaries = (result?.projects || []) as ProjectSummary[];
             const resolvedProject = resolveMobileSelectedProject(
                 summaries,

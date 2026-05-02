@@ -12,6 +12,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { LuFolderTree, LuGripVertical, LuPlus, LuTags } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, List, NavBar, Popup, Tag, Text, Toast } from '../antd';
 import MobileCategoryEditSheet from './MobileCategoryEditSheet';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 export type MobileCategoryItem = {
     id: string;
@@ -475,13 +476,13 @@ export default function CategoryManagerSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex gap={0} style={{ maxHeight: '92vh' }} vertical>
+            <Flex gap={0} style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar
                     onBack={
                         isReorderMode

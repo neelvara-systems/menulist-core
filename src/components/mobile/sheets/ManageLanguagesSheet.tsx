@@ -17,6 +17,7 @@ import { translateFile } from '../../templates/main-app/projects/utils/translati
 import { Button, Card, Dialog, Flex, NavBar, Popup, Select, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
 import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 const DISTINCT_SCRIPT_LANGUAGE_CODES = new Set(['ar', 'bn', 'hi', 'mr', 'ta', 'te', 'zh']);
 
@@ -263,12 +264,12 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
             visible={visible}
         >
-            <Flex style={{ maxHeight: '92vh' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar
                     onBack={isSaving ? undefined : onClose}
                     right={isSaving ? <Text type="secondary">{t('updating')}</Text> : undefined}

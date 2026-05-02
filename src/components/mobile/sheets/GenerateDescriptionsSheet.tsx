@@ -18,6 +18,7 @@ import {
 } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import { Button, Card, Flex, NavBar, Popup, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 interface GenerateDescriptionsSheetProps {
     businessType?: string;
@@ -101,12 +102,12 @@ export default function GenerateDescriptionsSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={isProcessing ? undefined : onClose}
             visible={visible}
         >
-            <Flex style={{ maxHeight: '92vh' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={isProcessing ? undefined : onClose}>{t('menuDescriptions')}</NavBar>
                 <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 12px' }} vertical>
                     <Card size="small" style={sectionCardStyle}>

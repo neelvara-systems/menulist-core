@@ -3,6 +3,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
+import { trackBeforeNavigate } from './trackBeforeNavigate';
 
 interface OBPExternalLinksProps {
     tenantId: number;
@@ -41,15 +42,19 @@ export default function OBPExternalLinks({
     if (!hasSocials && !hasReview) return null;
 
     const handleClick = (obpLink: 'google_review' | 'instagram' | 'facebook' | 'website') => {
-        if (!trackingEnabled) return;
-        trackOBPLinkClick(storeId, obpLink, {
+        if (!trackingEnabled) return Promise.resolve();
+        return trackOBPLinkClick(storeId, obpLink, {
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
             includeLocation,
-        }).catch(() => { });
+        });
     };
+
+    const instagramUrl = instagram ? normalizeUrl(instagram, 'https://instagram.com/') : '';
+    const facebookUrl = facebook ? normalizeUrl(facebook, 'https://facebook.com/') : '';
+    const websiteUrl = website ? normalizeUrl(website, 'https://') : '';
 
     return (
         <>
@@ -59,7 +64,12 @@ export default function OBPExternalLinks({
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ textDecoration: 'none', color: '#666', fontSize: 13 }}
-                    onClick={() => handleClick('google_review')}
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: googleReviewUrl,
+                        target: '_blank',
+                        track: () => handleClick('google_review'),
+                    })}
                 >
                     {googleReviewLabel}
                 </a>
@@ -69,36 +79,51 @@ export default function OBPExternalLinks({
                 <div className={styles.socials}>
                     {instagram ? (
                         <a
-                            href={normalizeUrl(instagram, 'https://instagram.com/')}
+                            href={instagramUrl}
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="Instagram"
-                            onClick={() => handleClick('instagram')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: instagramUrl,
+                                target: '_blank',
+                                track: () => handleClick('instagram'),
+                            })}
                         >
                             IG
                         </a>
                     ) : null}
                     {facebook ? (
                         <a
-                            href={normalizeUrl(facebook, 'https://facebook.com/')}
+                            href={facebookUrl}
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="Facebook"
-                            onClick={() => handleClick('facebook')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: facebookUrl,
+                                target: '_blank',
+                                track: () => handleClick('facebook'),
+                            })}
                         >
                             FB
                         </a>
                     ) : null}
                     {website ? (
                         <a
-                            href={normalizeUrl(website, 'https://')}
+                            href={websiteUrl}
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="Website"
-                            onClick={() => handleClick('website')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: websiteUrl,
+                                target: '_blank',
+                                track: () => handleClick('website'),
+                            })}
                         >
                             🌐
                         </a>

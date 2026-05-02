@@ -1655,6 +1655,37 @@ interface OBPDailyDoc {
 
 // ── OBP Aggregation Helpers ──
 
+function readOBPCounter(data: Record<string, any>, mapName: string, key: string): number {
+    return Number(data?.[mapName]?.[key] || data?.[`${mapName}.${key}`] || 0);
+}
+
+function readOBPActionBreakdown(data: Record<string, any>): OBPActionBreakdown {
+    return {
+        call: readOBPCounter(data, 'obpActionClicks', 'call'),
+        whatsapp: readOBPCounter(data, 'obpActionClicks', 'whatsapp'),
+        directions: readOBPCounter(data, 'obpActionClicks', 'directions'),
+        reserve: readOBPCounter(data, 'obpActionClicks', 'reserve'),
+        order: readOBPCounter(data, 'obpActionClicks', 'order'),
+    };
+}
+
+function readOBPShareBreakdown(data: Record<string, any>): OBPShareBreakdown {
+    return {
+        whatsapp: readOBPCounter(data, 'obpShares', 'whatsapp'),
+        copy_link: readOBPCounter(data, 'obpShares', 'copy_link'),
+        copy_message: readOBPCounter(data, 'obpShares', 'copy_message'),
+    };
+}
+
+function readOBPLinkBreakdown(data: Record<string, any>): OBPLinkBreakdown {
+    return {
+        google_review: readOBPCounter(data, 'obpLinkClicks', 'google_review'),
+        instagram: readOBPCounter(data, 'obpLinkClicks', 'instagram'),
+        facebook: readOBPCounter(data, 'obpLinkClicks', 'facebook'),
+        website: readOBPCounter(data, 'obpLinkClicks', 'website'),
+    };
+}
+
 async function fetchOBPDailyDocs(
     tId: string,
     sId: string,
@@ -1676,24 +1707,9 @@ async function fetchOBPDailyDocs(
                 totalOBPMenuClicks: data.totalOBPMenuClicks || 0,
                 totalOBPLinkClicks: data.totalOBPLinkClicks || 0,
                 totalOBPShares: data.totalOBPShares || 0,
-                obpActionClicks: {
-                    call: data.obpActionClicks?.call || 0,
-                    whatsapp: data.obpActionClicks?.whatsapp || 0,
-                    directions: data.obpActionClicks?.directions || 0,
-                    reserve: data.obpActionClicks?.reserve || 0,
-                    order: data.obpActionClicks?.order || 0,
-                },
-                obpShares: {
-                    whatsapp: data.obpShares?.whatsapp || 0,
-                    copy_link: data.obpShares?.copy_link || 0,
-                    copy_message: data.obpShares?.copy_message || 0,
-                },
-                obpLinkClicks: {
-                    google_review: data.obpLinkClicks?.google_review || 0,
-                    instagram: data.obpLinkClicks?.instagram || 0,
-                    facebook: data.obpLinkClicks?.facebook || 0,
-                    website: data.obpLinkClicks?.website || 0,
-                },
+                obpActionClicks: readOBPActionBreakdown(data),
+                obpShares: readOBPShareBreakdown(data),
+                obpLinkClicks: readOBPLinkBreakdown(data),
             });
         }
     }
@@ -1745,24 +1761,9 @@ function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayDat
         menuClicks: data.totalOBPMenuClicks || 0,
         linkClicks: data.totalOBPLinkClicks || 0,
         shares: data.totalOBPShares || 0,
-        actions: {
-            call: data.obpActionClicks?.call || 0,
-            whatsapp: data.obpActionClicks?.whatsapp || 0,
-            directions: data.obpActionClicks?.directions || 0,
-            reserve: data.obpActionClicks?.reserve || 0,
-            order: data.obpActionClicks?.order || 0,
-        },
-        shareMethods: {
-            whatsapp: data.obpShares?.whatsapp || 0,
-            copy_link: data.obpShares?.copy_link || 0,
-            copy_message: data.obpShares?.copy_message || 0,
-        },
-        links: {
-            google_review: data.obpLinkClicks?.google_review || 0,
-            instagram: data.obpLinkClicks?.instagram || 0,
-            facebook: data.obpLinkClicks?.facebook || 0,
-            website: data.obpLinkClicks?.website || 0,
-        },
+        actions: readOBPActionBreakdown(data),
+        shareMethods: readOBPShareBreakdown(data),
+        links: readOBPLinkBreakdown(data),
         daysWithData: 1,
         isPartial: true,
         lastUpdated: data.lastUpdated?.toDate?.() || undefined,

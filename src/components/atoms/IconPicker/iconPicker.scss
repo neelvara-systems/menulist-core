@@ -3,6 +3,10 @@
     display: inline-flex;
 }
 
+.icon-picker-content {
+    min-width: 0;
+}
+
 .icon-picker-trigger__clear.ant-btn {
     align-items: center;
     border-radius: 999px;
@@ -101,8 +105,9 @@
     }
 
     &__browser {
+        align-items: stretch;
         display: flex;
-        justify-content: center;
+        justify-content: stretch;
     }
 
     &__results {
@@ -125,9 +130,10 @@
 
     em-emoji-picker {
         border-radius: 18px;
+        flex: 1 1 auto;
         max-width: 100%;
         min-width: 0;
-        width: auto !important;
+        width: 100% !important;
     }
 }
 

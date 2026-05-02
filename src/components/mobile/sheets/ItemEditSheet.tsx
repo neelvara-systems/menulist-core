@@ -20,6 +20,7 @@ import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParam
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
 import type { MobileMenuItemType } from '../types';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_ROUNDED_BODY_STYLE } from './menuSheetLayout';
 
 type LocalizedAttribute = ExtractedDataAttribute & {
     price: string;
@@ -713,15 +714,16 @@ export default function ItemEditSheet({
 
     return (
         <Popup
-            bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_ROUNDED_BODY_STYLE}
             destroyOnClose
             onMaskClick={() => {
                 if (!isSaving) onClose();
             }}
             position="bottom"
             visible
+            zIndex={1300}
         >
-            <Flex style={{ height: '85vh', maxHeight: '85vh', overflow: 'hidden' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={() => {
                     if (!isSaving) onClose();
                 }}>

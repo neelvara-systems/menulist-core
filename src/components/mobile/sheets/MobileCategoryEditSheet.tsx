@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuClock, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Checkbox, Collapse, Flex, Input, NavBar, Popup, Switch, Tag, Text } from '../antd';
 import type { MobileCategoryItem } from './CategoryManagerSheet';
+import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 type SavePayload = {
     active: boolean;
@@ -220,7 +221,7 @@ export default function MobileCategoryEditSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={() => {
                 if (!isSaving) onClose();
@@ -228,7 +229,7 @@ export default function MobileCategoryEditSheet({
             position="bottom"
             visible={visible}
         >
-            <Flex style={{ maxHeight: '94vh' }} vertical>
+            <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={() => {
                     if (!isSaving) onClose();
                 }}>
@@ -261,10 +262,8 @@ export default function MobileCategoryEditSheet({
                                                 allowClear
                                                 buttonSize="large"
                                                 buttonStyle={{ height: 56, minWidth: 56 }}
-                                                gridWidth={320}
                                                 iconSize={26}
                                                 onChange={(nextIcon) => setIcon(normalizeCategoryIconValue(nextIcon))}
-                                                popoverWidth={320}
                                                 suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
                                                 value={icon}
                                             />

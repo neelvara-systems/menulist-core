@@ -340,6 +340,7 @@ type PopupProps = {
     onMaskClick?: (() => void) | undefined;
     position?: string;
     visible?: boolean;
+    zIndex?: number;
 };
 
 function containsElementType(node: ReactNode, targetType: unknown): boolean {
@@ -350,7 +351,7 @@ function containsElementType(node: ReactNode, targetType: unknown): boolean {
     });
 }
 
-export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visible }: PopupProps) {
+export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visible, zIndex }: PopupProps) {
     const [isPwa, setIsPwa] = useState(false);
     const drawerStyle = sanitizeStyle(bodyStyle);
     const hasNavBar = containsElementType(children, NavBar);
@@ -441,6 +442,7 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
             onClose={onMaskClick}
             open={visible}
             placement="bottom"
+            zIndex={zIndex}
             styles={{
                 body: popupBodyStyle,
                 content: popupContentStyle,

@@ -141,6 +141,28 @@ const mergeQueuedAnalyticsData = (target: Record<string, any>, source: Record<st
   });
 };
 
+const assignProcessedAnalyticsField = (
+  target: Record<string, any>,
+  key: string,
+  value: any
+) => {
+  const parts = key.split('.');
+  if (parts.length === 1) {
+    target[key] = value;
+    return;
+  }
+
+  let cursor = target;
+  parts.slice(0, -1).forEach((part) => {
+    if (!cursor[part] || typeof cursor[part] !== 'object' || Array.isArray(cursor[part])) {
+      cursor[part] = {};
+    }
+    cursor = cursor[part];
+  });
+
+  cursor[parts[parts.length - 1]] = value;
+};
+
 const writeAnalyticsEventNow = async (
   updateData: Record<string, any>,
   tenantId: string | number,
@@ -154,11 +176,11 @@ const writeAnalyticsEventNow = async (
   const processedData: any = {};
 
   Object.keys(updateData).forEach(key => {
-    if (typeof updateData[key] === 'number') {
-      processedData[key] = increment(updateData[key]);
-    } else {
-      processedData[key] = updateData[key];
-    }
+    const value = typeof updateData[key] === 'number'
+      ? increment(updateData[key])
+      : updateData[key];
+
+    assignProcessedAnalyticsField(processedData, key, value);
   });
 
   await setDoc(dailyDocRef, {

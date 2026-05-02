@@ -81,6 +81,13 @@ function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, da
     return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
 }
 
+function logObpDashboardDalResponse(label: string, payload: unknown, meta: Record<string, unknown>) {
+    console.log(`[MobileDashboard][OBP][DAL] ${label} response`, {
+        ...meta,
+        response: payload,
+    });
+}
+
 export function useOBPDashboard() {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
@@ -107,7 +114,17 @@ export function useOBPDashboard() {
         canFetch ? ['obpDashboard', 'settled', tId, sId] : null,
         () => cachedFetcher(
             settledCacheKey!,
-            () => getOBPDashboardData(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOBPDashboardData(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logObpDashboardDalResponse('getOBPDashboardData', response, {
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    schedulerCacheKey,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             schedulerCacheKey,
         ),
         {
@@ -124,7 +141,17 @@ export function useOBPDashboard() {
         canFetch ? ['obpDashboard', 'today', tId, sId] : null,
         () => cachedFetcherWithTTL(
             todayCacheKey!,
-            () => getOBPDashboardToday(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+            async () => {
+                const response = await getOBPDashboardToday(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+                logObpDashboardDalResponse('getOBPDashboardToday', response, {
+                    analyticsDayKey,
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                    storeId: sId,
+                    tenantId: tId,
+                    timeZone: storeDetails?.timeZone,
+                });
+                return response;
+            },
             600000,
             analyticsDayKey,
         ),

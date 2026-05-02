@@ -61,7 +61,14 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
-    const { isLoading: loadingProjects, projectsList, selectedProjectId, selectedProjectSummary, selectProject } = useMobileProjects();
+    const {
+        isLoading: loadingProjects,
+        projectsList,
+        selectedProject,
+        selectedProjectId,
+        selectedProjectSummary,
+        selectProject,
+    } = useMobileProjects();
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [showHistorical, setShowHistorical] = useState(false);
 
@@ -83,6 +90,46 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             setShowHistorical(true);
         }
     }, [loadingToday, showHistorical, data?.today]);
+
+    useEffect(() => {
+        console.log('[MobileDashboard][Screen] project context', {
+            loadingProjects,
+            projectsList,
+            selectedProject,
+            selectedProjectId,
+            selectedProjectSummary,
+            storeId: storeDetails?.storeId || null,
+            tenantId: storeDetails?.tenantId || null,
+        });
+    }, [
+        loadingProjects,
+        projectsList,
+        selectedProject,
+        selectedProjectId,
+        selectedProjectSummary,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+    ]);
+
+    useEffect(() => {
+        console.log('[MobileDashboard][Screen] owner dashboard data', {
+            currentViewMode: viewMode,
+            data,
+            loading,
+            loadingToday,
+            selectedProjectId,
+            showHistorical,
+        });
+    }, [data, loading, loadingToday, selectedProjectId, showHistorical, viewMode]);
+
+    useEffect(() => {
+        console.log('[MobileDashboard][Screen] obp dashboard data', {
+            data: obpDashboard.data,
+            loading: obpDashboard.loading,
+            loadingToday: obpDashboard.loadingToday,
+            storeId: storeDetails?.storeId || null,
+        });
+    }, [obpDashboard.data, obpDashboard.loading, obpDashboard.loadingToday, storeDetails?.storeId]);
 
     const viewModeLabel = viewMode === 'overview'
         ? t('overview')

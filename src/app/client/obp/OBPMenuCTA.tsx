@@ -20,6 +20,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
+import { trackBeforeNavigate } from './trackBeforeNavigate';
 
 export interface OBPMenuCTAProjectEntry {
     slug: string;
@@ -77,36 +78,38 @@ export default function OBPMenuCTA({
     businessDayEndTime,
 }: OBPMenuCTAProps) {
     const trackPrimary = () => {
-        if (!trackingEnabled) return;
-        trackOBPMenuClick(storeId, obpSurface, {
+        if (!trackingEnabled) return Promise.resolve();
+        return trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
             includeLocation,
-        }).catch(() => { });
+        });
     };
 
     const trackSecondary = (project: OBPMenuCTAProjectEntry) => {
-        if (!trackingEnabled) return;
+        if (!trackingEnabled) return Promise.resolve();
         // Primary OBP→menu conversion metric.
-        trackOBPMenuClick(storeId, obpSurface, {
+        const menuClick = trackOBPMenuClick(storeId, obpSurface, {
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
             includeLocation,
-        }).catch(() => { });
+        });
         // G-10: also tag this as a customer-side project switch so the
         // dashboard can tell cross-project exploration apart from straight
         // default-project opens.
-        trackProjectSwitch(
+        const projectSwitch = trackProjectSwitch(
             storeId,
             project.slug,
             null, // OBP is a fresh entry point; there is no "from" project.
             'obp_secondary_card',
             { tenantId, sessionId: getSessionId(), storeTimeZone, businessDayEndTime, includeLocation },
-        ).catch(() => { });
+        );
+
+        return Promise.allSettled([menuClick, projectSwitch]).then(() => undefined);
     };
 
     // Safety rail: no projects list → render classic "View Menu" button.
@@ -116,7 +119,11 @@ export default function OBPMenuCTA({
                 href={withOBPEntrySource(menuUrl)}
                 className={styles.menuButton}
                 style={{ background: accentColor }}
-                onClick={trackPrimary}
+                onClick={(event) => trackBeforeNavigate({
+                    event,
+                    href: withOBPEntrySource(menuUrl),
+                    track: trackPrimary,
+                })}
             >
                 View Menu
             </a>
@@ -131,7 +138,11 @@ export default function OBPMenuCTA({
                 href={withOBPEntrySource(primary.url)}
                 className={styles.menuButton}
                 style={{ background: accentColor }}
-                onClick={trackPrimary}
+                onClick={(event) => trackBeforeNavigate({
+                    event,
+                    href: withOBPEntrySource(primary.url),
+                    track: trackPrimary,
+                })}
             >
                 <span className={styles.menuButtonContent}>
                     {primary.projectImage ? (
@@ -149,7 +160,11 @@ export default function OBPMenuCTA({
                             key={p.slug}
                             href={withOBPEntrySource(p.url)}
                             className={styles.secondaryProjectCard}
-                            onClick={() => trackSecondary(p)}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: withOBPEntrySource(p.url),
+                                track: () => trackSecondary(p),
+                            })}
                         >
                             {p.projectImage ? (
                                 <span className={styles.secondaryProjectThumb}>

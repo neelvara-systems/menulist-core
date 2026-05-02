@@ -142,6 +142,7 @@ interface EmojiGridProps {
 }
 
 const SMB_EMOJI_CATEGORIES = ['frequent', 'people', 'foods', 'nature', 'objects', 'symbols'];
+const EMOJI_BROWSER_COLUMNS = 7;
 
 const EMOJI_MART_LOCALES = new Set([
     'en', 'ar', 'be', 'cs', 'de', 'es', 'fa', 'fi', 'fr', 'hi', 'it',
@@ -302,7 +303,7 @@ export default function EmojiGrid({
                         emojiButtonSize={52}
                         emojiSize={28}
                         maxFrequentRows={1}
-                        perLine={6}
+                        perLine={EMOJI_BROWSER_COLUMNS}
                         autoFocus={false}
                         noResultsEmoji={normalizedSelected || 'thinking_face'}
                         onEmojiSelect={(emoji: { native?: string }) => {
