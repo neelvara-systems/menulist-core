@@ -459,29 +459,18 @@ async function updateSummaryDocument(
     }
 
     // Aggregate map fields (device, location, source breakdowns)
-    if (dailyData.viewsByDevice) {
-        for (const [key, value] of Object.entries(dailyData.viewsByDevice)) {
+    const addMapUpdates = (field: string) => {
+        const map = readAnalyticsMap(dailyData as any, field);
+        for (const [key, value] of Object.entries(map)) {
             if (typeof value === 'number') {
-                updates[`viewsByDevice.${key}`] = FieldValue.increment(value);
+                assignNestedMapUpdate(updates, field, key, FieldValue.increment(value));
             }
         }
-    }
+    };
 
-    if (dailyData.viewsByLocation) {
-        for (const [key, value] of Object.entries(dailyData.viewsByLocation)) {
-            if (typeof value === 'number') {
-                updates[`viewsByLocation.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-
-    if (dailyData.viewsBySource) {
-        for (const [key, value] of Object.entries(dailyData.viewsBySource)) {
-            if (typeof value === 'number') {
-                updates[`viewsBySource.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
+    addMapUpdates('viewsByDevice');
+    addMapUpdates('viewsByLocation');
+    addMapUpdates('viewsBySource');
 
     for (const field of [
         'viewsByEntrySource',
@@ -495,39 +484,14 @@ async function updateSummaryDocument(
         'attributeFilterUnavailableTaps',
         'attributeFilterActionClicks',
     ] as const) {
-        const map = dailyData[field];
-        if (!map) continue;
-        for (const [key, value] of Object.entries(map)) {
-            if (typeof value === 'number') {
-                updates[`${field}.${key}`] = FieldValue.increment(value);
-            }
-        }
+        addMapUpdates(field);
     }
 
-    if (dailyData.viewsByCategory) {
-        for (const [key, value] of Object.entries(dailyData.viewsByCategory)) {
-            if (typeof value === 'number') {
-                updates[`viewsByCategory.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-
-    if (dailyData.clicksByCategory) {
-        for (const [key, value] of Object.entries(dailyData.clicksByCategory)) {
-            if (typeof value === 'number') {
-                updates[`clicksByCategory.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
+    addMapUpdates('viewsByCategory');
+    addMapUpdates('clicksByCategory');
 
     // Aggregate top items (clicksByItem)
-    if (dailyData.clicksByItem) {
-        for (const [itemId, clicks] of Object.entries(dailyData.clicksByItem)) {
-            if (typeof clicks === 'number') {
-                updates[`clicksByItem.${itemId}`] = FieldValue.increment(clicks);
-            }
-        }
-    }
+    addMapUpdates('clicksByItem');
 
     // Aggregate Decision Blocks rendered - CRITICAL for owner dashboard
     // Enables calculation of:
@@ -538,77 +502,35 @@ async function updateSummaryDocument(
     }
 
     // Aggregate per-block-type renders (popular, quickPick, bestValue)
-    if (dailyData.decisionBlocksRendered) {
-        for (const [blockType, count] of Object.entries(dailyData.decisionBlocksRendered)) {
-            if (typeof count === 'number') {
-                updates[`decisionBlocksRendered.${blockType}`] = FieldValue.increment(count);
-            }
-        }
-    }
+    addMapUpdates('decisionBlocksRendered');
 
     // Aggregate recommendation clicks by block type
-    if (dailyData.recommendationClicks) {
-        for (const [blockType, clicks] of Object.entries(dailyData.recommendationClicks)) {
-            if (typeof clicks === 'number') {
-                updates[`recommendationClicks.${blockType}`] = FieldValue.increment(clicks);
-            }
-        }
-    }
+    addMapUpdates('recommendationClicks');
 
     // Aggregate recommendation clicks by item
-    if (dailyData.recommendationClicksByItem) {
-        for (const [itemId, clicks] of Object.entries(dailyData.recommendationClicksByItem)) {
-            if (typeof clicks === 'number') {
-                updates[`recommendationClicksByItem.${itemId}`] = FieldValue.increment(clicks);
-            }
+    addMapUpdates('recommendationClicksByItem');
+
+    addMapUpdates('menuActionClicks');
+
+    addMapUpdates('searchTerms');
+
+    addMapUpdates('zeroResultSearchTerms');
+
+    const unavailableItemTapsByItem = readAnalyticsMap(dailyData as any, 'unavailableItemTapsByItem');
+    const itemNames = readAnalyticsMap(dailyData as any, 'itemNames');
+    for (const [itemId, taps] of Object.entries(unavailableItemTapsByItem)) {
+        if (typeof taps === 'number') {
+            assignNestedMapUpdate(updates, 'unavailableItemTapsByItem', itemId, FieldValue.increment(taps));
         }
+        if (itemNames[itemId]) assignNestedMapUpdate(updates, 'itemNames', itemId, itemNames[itemId]);
     }
 
-    if (dailyData.menuActionClicks) {
-        for (const [action, clicks] of Object.entries(dailyData.menuActionClicks)) {
-            if (typeof clicks === 'number') {
-                updates[`menuActionClicks.${action}`] = FieldValue.increment(clicks);
-            }
-        }
+    for (const [categoryId, name] of Object.entries(readAnalyticsMap(dailyData as any, 'categoryNames'))) {
+        assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
     }
 
-    if (dailyData.searchTerms) {
-        for (const [term, count] of Object.entries(dailyData.searchTerms)) {
-            if (typeof count === 'number') {
-                updates[`searchTerms.${term}`] = FieldValue.increment(count);
-            }
-        }
-    }
-
-    if (dailyData.zeroResultSearchTerms) {
-        for (const [term, count] of Object.entries(dailyData.zeroResultSearchTerms)) {
-            if (typeof count === 'number') {
-                updates[`zeroResultSearchTerms.${term}`] = FieldValue.increment(count);
-            }
-        }
-    }
-
-    if (dailyData.unavailableItemTapsByItem) {
-        for (const [itemId, taps] of Object.entries(dailyData.unavailableItemTapsByItem)) {
-            if (typeof taps === 'number') {
-                updates[`unavailableItemTapsByItem.${itemId}`] = FieldValue.increment(taps);
-            }
-            if (dailyData.itemNames?.[itemId]) {
-                updates[`itemNames.${itemId}`] = dailyData.itemNames[itemId];
-            }
-        }
-    }
-
-    if (dailyData.categoryNames) {
-        for (const [categoryId, name] of Object.entries(dailyData.categoryNames)) {
-            updates[`categoryNames.${categoryId}`] = name;
-        }
-    }
-
-    if (dailyData.attributeFilterNames) {
-        for (const [filterId, name] of Object.entries(dailyData.attributeFilterNames)) {
-            updates[`attributeFilterNames.${filterId}`] = name;
-        }
+    for (const [filterId, name] of Object.entries(readAnalyticsMap(dailyData as any, 'attributeFilterNames'))) {
+        assignNestedMapUpdate(updates, 'attributeFilterNames', filterId, name);
     }
 
     // ── Customer App (projectId='customerApp') lifetime totals ──
@@ -633,48 +555,12 @@ async function updateSummaryDocument(
     }
 
     // Customer App map rollups (additive merge via FieldValue.increment on each key)
-    if (dailyData.shortcutClicks) {
-        for (const [key, value] of Object.entries(dailyData.shortcutClicks)) {
-            if (typeof value === 'number') {
-                updates[`shortcutClicks.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-    if (dailyData.installsByDevice) {
-        for (const [key, value] of Object.entries(dailyData.installsByDevice)) {
-            if (typeof value === 'number') {
-                updates[`installsByDevice.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-    if (dailyData.installsByLocation) {
-        for (const [key, value] of Object.entries(dailyData.installsByLocation)) {
-            if (typeof value === 'number') {
-                updates[`installsByLocation.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-    if (dailyData.installsByPlatform) {
-        for (const [key, value] of Object.entries(dailyData.installsByPlatform)) {
-            if (typeof value === 'number') {
-                updates[`installsByPlatform.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-    if (dailyData.installsBySource) {
-        for (const [key, value] of Object.entries(dailyData.installsBySource)) {
-            if (typeof value === 'number') {
-                updates[`installsBySource.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
-    if (dailyData.appOpensByPlatform) {
-        for (const [key, value] of Object.entries(dailyData.appOpensByPlatform)) {
-            if (typeof value === 'number') {
-                updates[`appOpensByPlatform.${key}`] = FieldValue.increment(value);
-            }
-        }
-    }
+    addMapUpdates('shortcutClicks');
+    addMapUpdates('installsByDevice');
+    addMapUpdates('installsByLocation');
+    addMapUpdates('installsByPlatform');
+    addMapUpdates('installsBySource');
+    addMapUpdates('appOpensByPlatform');
 
     return await db.runTransaction(async (transaction) => {
         const existingSummary = await transaction.get(summaryRef);
@@ -761,13 +647,13 @@ function buildLateCorrectionSummaryUpdates(
     };
 
     const addMapDelta = (sourceField: string, targetField: string) => {
-        const currentMap = currentDaily[sourceField] || {};
-        const previousMap = previousDaily[sourceField] || {};
+        const currentMap = readAnalyticsMap(currentDaily, sourceField);
+        const previousMap = readAnalyticsMap(previousDaily, sourceField);
         for (const [key, value] of Object.entries(currentMap)) {
             if (typeof value !== 'number') continue;
             const delta = Math.max(0, value - (previousMap[key] || 0));
             if (delta > 0) {
-                updates[`${targetField}.${key}`] = FieldValue.increment(delta);
+                assignNestedMapUpdate(updates, targetField, key, FieldValue.increment(delta));
                 hasDelta = true;
             }
         }
@@ -825,21 +711,15 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('installsBySource', 'installsBySource');
     addMapDelta('appOpensByPlatform', 'appOpensByPlatform');
 
-    if (currentDaily.itemNames) {
-        Object.entries(currentDaily.itemNames).forEach(([itemId, name]) => {
-            updates[`itemNames.${itemId}`] = name;
-        });
-    }
-    if (currentDaily.categoryNames) {
-        Object.entries(currentDaily.categoryNames).forEach(([categoryId, name]) => {
-            updates[`categoryNames.${categoryId}`] = name;
-        });
-    }
-    if (currentDaily.attributeFilterNames) {
-        Object.entries(currentDaily.attributeFilterNames).forEach(([filterId, name]) => {
-            updates[`attributeFilterNames.${filterId}`] = name;
-        });
-    }
+    Object.entries(readAnalyticsMap(currentDaily, 'itemNames')).forEach(([itemId, name]) => {
+        assignNestedMapUpdate(updates, 'itemNames', itemId, name);
+    });
+    Object.entries(readAnalyticsMap(currentDaily, 'categoryNames')).forEach(([categoryId, name]) => {
+        assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
+    });
+    Object.entries(readAnalyticsMap(currentDaily, 'attributeFilterNames')).forEach(([filterId, name]) => {
+        assignNestedMapUpdate(updates, 'attributeFilterNames', filterId, name);
+    });
 
     return { updates, hasDelta };
 }
@@ -1154,48 +1034,42 @@ function aggregateDailyDocs(docs: any[]): any {
         if (doc.totalAppOpens) result.totalAppOpens += doc.totalAppOpens;
 
         // Merge map fields
-        mergeMapField(result.viewsByDevice, doc.viewsByDevice);
-        mergeMapField(result.viewsByLocation, doc.viewsByLocation);
-        mergeMapField(result.viewsBySource, doc.viewsBySource);
-        mergeMapField(result.viewsByEntrySource, doc.viewsByEntrySource);
-        mergeMapField(result.menuSessionsBySource, doc.menuSessionsBySource);
-        mergeMapField(result.actionSessionsBySource, doc.actionSessionsBySource);
-        mergeMapField(result.menuActionClicksBySource, doc.menuActionClicksBySource);
-        mergeMapField(result.attributeFilterInteractions, doc.attributeFilterInteractions);
-        mergeMapField(result.attributeFilterItemViews, doc.attributeFilterItemViews);
-        mergeMapField(result.attributeFilterItemTaps, doc.attributeFilterItemTaps);
-        mergeMapField(result.attributeFilterSearches, doc.attributeFilterSearches);
-        mergeMapField(result.attributeFilterUnavailableTaps, doc.attributeFilterUnavailableTaps);
-        mergeMapField(result.attributeFilterActionClicks, doc.attributeFilterActionClicks);
-        mergeMapField(result.viewsByCategory, doc.viewsByCategory);
-        mergeMapField(result.clicksByCategory, doc.clicksByCategory);
-        mergeMapField(result.hourlyViews, doc.hourlyViews);
-        mergeMapField(result.hourlyMenuActionClicks, doc.hourlyMenuActionClicks);
-        mergeMapField(result.clicksByItem, doc.clicksByItem);
-        mergeMapField(result.searchTerms, doc.searchTerms);
-        mergeMapField(result.zeroResultSearchTerms, doc.zeroResultSearchTerms);
-        mergeMapField(result.unavailableItemTapsByItem, doc.unavailableItemTapsByItem);
-        mergeMapField(result.menuActionClicks, doc.menuActionClicks);
-        mergeMapField(result.recommendationClicks, doc.recommendationClicks);
+        mergeMapField(result.viewsByDevice, readAnalyticsMap(doc, 'viewsByDevice'));
+        mergeMapField(result.viewsByLocation, readAnalyticsMap(doc, 'viewsByLocation'));
+        mergeMapField(result.viewsBySource, readAnalyticsMap(doc, 'viewsBySource'));
+        mergeMapField(result.viewsByEntrySource, readAnalyticsMap(doc, 'viewsByEntrySource'));
+        mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
+        mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
+        mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
+        mergeMapField(result.attributeFilterInteractions, readAnalyticsMap(doc, 'attributeFilterInteractions'));
+        mergeMapField(result.attributeFilterItemViews, readAnalyticsMap(doc, 'attributeFilterItemViews'));
+        mergeMapField(result.attributeFilterItemTaps, readAnalyticsMap(doc, 'attributeFilterItemTaps'));
+        mergeMapField(result.attributeFilterSearches, readAnalyticsMap(doc, 'attributeFilterSearches'));
+        mergeMapField(result.attributeFilterUnavailableTaps, readAnalyticsMap(doc, 'attributeFilterUnavailableTaps'));
+        mergeMapField(result.attributeFilterActionClicks, readAnalyticsMap(doc, 'attributeFilterActionClicks'));
+        mergeMapField(result.viewsByCategory, readAnalyticsMap(doc, 'viewsByCategory'));
+        mergeMapField(result.clicksByCategory, readAnalyticsMap(doc, 'clicksByCategory'));
+        mergeMapField(result.hourlyViews, readAnalyticsMap(doc, 'hourlyViews'));
+        mergeMapField(result.hourlyMenuActionClicks, readAnalyticsMap(doc, 'hourlyMenuActionClicks'));
+        mergeMapField(result.clicksByItem, readAnalyticsMap(doc, 'clicksByItem'));
+        mergeMapField(result.searchTerms, readAnalyticsMap(doc, 'searchTerms'));
+        mergeMapField(result.zeroResultSearchTerms, readAnalyticsMap(doc, 'zeroResultSearchTerms'));
+        mergeMapField(result.unavailableItemTapsByItem, readAnalyticsMap(doc, 'unavailableItemTapsByItem'));
+        mergeMapField(result.menuActionClicks, readAnalyticsMap(doc, 'menuActionClicks'));
+        mergeMapField(result.recommendationClicks, readAnalyticsMap(doc, 'recommendationClicks'));
         // Decision Blocks breakdown
-        mergeMapField(result.decisionBlocksRendered, doc.decisionBlocksRendered);
-        mergeMapField(result.recommendationClicksByItem, doc.recommendationClicksByItem);
-        if (doc.itemNames) {
-            Object.assign(result.itemNames, doc.itemNames);
-        }
-        if (doc.categoryNames) {
-            Object.assign(result.categoryNames, doc.categoryNames);
-        }
-        if (doc.attributeFilterNames) {
-            Object.assign(result.attributeFilterNames, doc.attributeFilterNames);
-        }
+        mergeMapField(result.decisionBlocksRendered, readAnalyticsMap(doc, 'decisionBlocksRendered'));
+        mergeMapField(result.recommendationClicksByItem, readAnalyticsMap(doc, 'recommendationClicksByItem'));
+        Object.assign(result.itemNames, readAnalyticsMap(doc, 'itemNames'));
+        Object.assign(result.categoryNames, readAnalyticsMap(doc, 'categoryNames'));
+        Object.assign(result.attributeFilterNames, readAnalyticsMap(doc, 'attributeFilterNames'));
         // Customer App map fields (additive merge — keys summed, never replaced)
-        mergeMapField(result.shortcutClicks, doc.shortcutClicks);
-        mergeMapField(result.installsByDevice, doc.installsByDevice);
-        mergeMapField(result.installsByLocation, doc.installsByLocation);
-        mergeMapField(result.installsByPlatform, doc.installsByPlatform);
-        mergeMapField(result.installsBySource, doc.installsBySource);
-        mergeMapField(result.appOpensByPlatform, doc.appOpensByPlatform);
+        mergeMapField(result.shortcutClicks, readAnalyticsMap(doc, 'shortcutClicks'));
+        mergeMapField(result.installsByDevice, readAnalyticsMap(doc, 'installsByDevice'));
+        mergeMapField(result.installsByLocation, readAnalyticsMap(doc, 'installsByLocation'));
+        mergeMapField(result.installsByPlatform, readAnalyticsMap(doc, 'installsByPlatform'));
+        mergeMapField(result.installsBySource, readAnalyticsMap(doc, 'installsBySource'));
+        mergeMapField(result.appOpensByPlatform, readAnalyticsMap(doc, 'appOpensByPlatform'));
     }
 
     return result;
@@ -1211,6 +1085,31 @@ function mergeMapField(target: Record<string, number>, source: Record<string, nu
             target[key] = (target[key] || 0) + value;
         }
     }
+}
+
+function readAnalyticsMap(data: Record<string, any>, field: string): Record<string, any> {
+    const result: Record<string, any> = { ...(data?.[field] || {}) };
+    const prefix = `${field}.`;
+    for (const [key, value] of Object.entries(data || {})) {
+        if (!key.startsWith(prefix)) continue;
+        Object.defineProperty(result, key.slice(prefix.length), {
+            value,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+        });
+    }
+    return result;
+}
+
+function assignNestedMapUpdate(target: Record<string, any>, field: string, key: string, value: any): void {
+    target[field] = target[field] || {};
+    Object.defineProperty(target[field], key, {
+        value,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+    });
 }
 
 function getTopMetricEntry(source?: Record<string, number>): { key: string; count: number } | undefined {

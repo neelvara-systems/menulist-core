@@ -2,7 +2,7 @@
 
 import type { MouseEvent } from 'react';
 
-const TRACK_BEFORE_NAVIGATE_TIMEOUT_MS = 450;
+const TRACK_BEFORE_NAVIGATE_TIMEOUT_MS = 800;
 
 const waitForTracking = async (track: () => Promise<void>) => {
     await Promise.race([
@@ -37,6 +37,10 @@ export function trackBeforeNavigate({
 
     event.preventDefault();
 
+    const reservedWindow = target === '_blank'
+        ? window.open('', '_blank', 'noopener,noreferrer')
+        : null;
+
     void (async () => {
         try {
             await waitForTracking(track);
@@ -44,6 +48,10 @@ export function trackBeforeNavigate({
             // Analytics must never block customer navigation.
         } finally {
             if (target === '_blank') {
+                if (reservedWindow) {
+                    reservedWindow.location.href = href;
+                    return;
+                }
                 const opened = window.open(href, '_blank', 'noopener,noreferrer');
                 if (!opened) window.location.assign(href);
                 return;

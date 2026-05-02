@@ -192,71 +192,97 @@ function getLast4WeeksRanges(timeZone?: string, businessDayEndTime?: string): Ar
 // TRANSFORM HELPERS
 // ================================================================
 
-function transformToTopItems(data: any): Array<{ itemId: string; name?: string; clicks: number }> {
-    if (!data?.recommendationClicksByItem) return [];
+function readAnalyticsMap(data: any, field: string): Record<string, any> {
+    const result: Record<string, any> = { ...(data?.[field] || {}) };
+    const prefix = `${field}.`;
 
-    return Object.entries(data.recommendationClicksByItem)
+    Object.entries(data || {}).forEach(([key, value]) => {
+        if (!key.startsWith(prefix)) return;
+        Object.defineProperty(result, key.slice(prefix.length), {
+            value,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+        });
+    });
+
+    return result;
+}
+
+function transformToTopItems(data: any): Array<{ itemId: string; name?: string; clicks: number }> {
+    const recommendationClicksByItem = readAnalyticsMap(data, 'recommendationClicksByItem');
+    const itemNames = readAnalyticsMap(data, 'itemNames');
+    if (!Object.keys(recommendationClicksByItem).length) return [];
+
+    return Object.entries(recommendationClicksByItem)
         .map(([itemId, clicks]) => ({
             itemId,
             clicks: clicks as number,
-            name: data.itemNames?.[itemId],
+            name: itemNames[itemId],
         }))
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 5);
 }
 
 function transformBlockPerformance(data: any): BlockPerformance {
+    const decisionBlocksRendered = readAnalyticsMap(data, 'decisionBlocksRendered');
+    const recommendationClicks = readAnalyticsMap(data, 'recommendationClicks');
     return {
         popular: {
-            rendered: data?.decisionBlocksRendered?.popular || 0,
-            clicks: data?.recommendationClicks?.popular || 0,
+            rendered: decisionBlocksRendered.popular || 0,
+            clicks: recommendationClicks.popular || 0,
         },
         quickPick: {
-            rendered: data?.decisionBlocksRendered?.quickPick || 0,
-            clicks: data?.recommendationClicks?.quickPick || 0,
+            rendered: decisionBlocksRendered.quickPick || 0,
+            clicks: recommendationClicks.quickPick || 0,
         },
         bestValue: {
-            rendered: data?.decisionBlocksRendered?.bestValue || 0,
-            clicks: data?.recommendationClicks?.bestValue || 0,
+            rendered: decisionBlocksRendered.bestValue || 0,
+            clicks: recommendationClicks.bestValue || 0,
         },
     };
 }
 
 function transformMenuActions(data: any): MenuActionBreakdown {
+    const menuActionClicks = readAnalyticsMap(data, 'menuActionClicks');
     return {
-        call: data?.menuActionClicks?.call || 0,
-        whatsapp: data?.menuActionClicks?.whatsapp || 0,
-        directions: data?.menuActionClicks?.directions || 0,
-        reserve: data?.menuActionClicks?.reserve || 0,
-        order: data?.menuActionClicks?.order || 0,
+        call: menuActionClicks.call || 0,
+        whatsapp: menuActionClicks.whatsapp || 0,
+        directions: menuActionClicks.directions || 0,
+        reserve: menuActionClicks.reserve || 0,
+        order: menuActionClicks.order || 0,
     };
 }
 
 function transformTopSearchTerms(data: any, field: 'searchTerms' | 'zeroResultSearchTerms' = 'searchTerms'): SearchTerm[] {
-    if (!data?.[field]) return [];
+    const terms = readAnalyticsMap(data, field);
+    if (!Object.keys(terms).length) return [];
 
-    return Object.entries(data[field])
+    return Object.entries(terms)
         .map(([term, count]) => ({ term, count: count as number }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 }
 
 function transformUnavailableItems(data: any): TopItem[] {
-    if (!data?.unavailableItemTapsByItem) return [];
+    const unavailableItemTapsByItem = readAnalyticsMap(data, 'unavailableItemTapsByItem');
+    const itemNames = readAnalyticsMap(data, 'itemNames');
+    if (!Object.keys(unavailableItemTapsByItem).length) return [];
 
-    return Object.entries(data.unavailableItemTapsByItem)
+    return Object.entries(unavailableItemTapsByItem)
         .map(([itemId, clicks]) => ({
             itemId,
             clicks: clicks as number,
-            name: data.itemNames?.[itemId],
+            name: itemNames[itemId],
         }))
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 5);
 }
 
 function transformTopCategories(data: any): TopCategory[] {
-    const views = data?.viewsByCategory || {};
-    const clicks = data?.clicksByCategory || {};
+    const views = readAnalyticsMap(data, 'viewsByCategory');
+    const clicks = readAnalyticsMap(data, 'clicksByCategory');
+    const categoryNames = readAnalyticsMap(data, 'categoryNames');
     const categoryIds = new Set<string>([
         ...Object.keys(views),
         ...Object.keys(clicks),
@@ -265,7 +291,7 @@ function transformTopCategories(data: any): TopCategory[] {
     return Array.from(categoryIds)
         .map((categoryId) => ({
             categoryId,
-            name: data?.categoryNames?.[categoryId],
+            name: categoryNames[categoryId],
             views: views[categoryId] || 0,
             clicks: clicks[categoryId] || 0,
         }))
@@ -275,12 +301,13 @@ function transformTopCategories(data: any): TopCategory[] {
 }
 
 function transformTopAttributeFilters(data: any): AttributeFilterInterest[] {
-    const interactions = data?.attributeFilterInteractions || {};
-    const actionClicks = data?.attributeFilterActionClicks || {};
-    const itemViews = data?.attributeFilterItemViews || {};
-    const itemTaps = data?.attributeFilterItemTaps || {};
-    const searches = data?.attributeFilterSearches || {};
-    const unavailableTaps = data?.attributeFilterUnavailableTaps || {};
+    const interactions = readAnalyticsMap(data, 'attributeFilterInteractions');
+    const actionClicks = readAnalyticsMap(data, 'attributeFilterActionClicks');
+    const itemViews = readAnalyticsMap(data, 'attributeFilterItemViews');
+    const itemTaps = readAnalyticsMap(data, 'attributeFilterItemTaps');
+    const searches = readAnalyticsMap(data, 'attributeFilterSearches');
+    const unavailableTaps = readAnalyticsMap(data, 'attributeFilterUnavailableTaps');
+    const attributeFilterNames = readAnalyticsMap(data, 'attributeFilterNames');
     const filterIds = new Set<string>([
         ...Object.keys(interactions),
         ...Object.keys(actionClicks),
@@ -293,7 +320,7 @@ function transformTopAttributeFilters(data: any): AttributeFilterInterest[] {
     return Array.from(filterIds)
         .map((filterId) => ({
             filterId,
-            label: data?.attributeFilterNames?.[filterId] || filterId,
+            label: attributeFilterNames[filterId] || filterId,
             interactions: interactions[filterId] || 0,
             itemViews: itemViews[filterId] || 0,
             itemTaps: itemTaps[filterId] || 0,
@@ -320,9 +347,9 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 function transformSourceQuality(data: any): SourceQuality[] {
-    const sessions = data?.menuSessionsBySource || {};
-    const actionSessions = data?.actionSessionsBySource || {};
-    const actionClicks = data?.menuActionClicksBySource || {};
+    const sessions = readAnalyticsMap(data, 'menuSessionsBySource');
+    const actionSessions = readAnalyticsMap(data, 'actionSessionsBySource');
+    const actionClicks = readAnalyticsMap(data, 'menuActionClicksBySource');
     const sourceIds = new Set<string>([
         ...Object.keys(sessions),
         ...Object.keys(actionSessions),
@@ -480,30 +507,30 @@ async function fetchDailyDocs(
                     totalMenuActionClicks: data.totalMenuActionClicks || 0,
                     totalDecisionBlocksRendered: data.totalDecisionBlocksRendered || 0,
                     totalRecommendationClicks: data.totalRecommendationClicks || 0,
-                    decisionBlocksRendered: data.decisionBlocksRendered,
-                    recommendationClicks: data.recommendationClicks,
-                    recommendationClicksByItem: data.recommendationClicksByItem,
-                    viewsByCategory: data.viewsByCategory,
-                    clicksByCategory: data.clicksByCategory,
-                    viewsByEntrySource: data.viewsByEntrySource,
-                    menuSessionsBySource: data.menuSessionsBySource,
-                    actionSessionsBySource: data.actionSessionsBySource,
-                    menuActionClicksBySource: data.menuActionClicksBySource,
-                    attributeFilterInteractions: data.attributeFilterInteractions,
-                    attributeFilterItemViews: data.attributeFilterItemViews,
-                    attributeFilterItemTaps: data.attributeFilterItemTaps,
-                    attributeFilterSearches: data.attributeFilterSearches,
-                    attributeFilterUnavailableTaps: data.attributeFilterUnavailableTaps,
-                    attributeFilterActionClicks: data.attributeFilterActionClicks,
-                    hourlyViews: data.hourlyViews,
-                    hourlyMenuActionClicks: data.hourlyMenuActionClicks,
-                    menuActionClicks: data.menuActionClicks,
-                    searchTerms: data.searchTerms,
-                    zeroResultSearchTerms: data.zeroResultSearchTerms,
-                    unavailableItemTapsByItem: data.unavailableItemTapsByItem,
-                    itemNames: data.itemNames,
-                    categoryNames: data.categoryNames,
-                    attributeFilterNames: data.attributeFilterNames,
+                    decisionBlocksRendered: readAnalyticsMap(data, 'decisionBlocksRendered'),
+                    recommendationClicks: readAnalyticsMap(data, 'recommendationClicks'),
+                    recommendationClicksByItem: readAnalyticsMap(data, 'recommendationClicksByItem'),
+                    viewsByCategory: readAnalyticsMap(data, 'viewsByCategory'),
+                    clicksByCategory: readAnalyticsMap(data, 'clicksByCategory'),
+                    viewsByEntrySource: readAnalyticsMap(data, 'viewsByEntrySource'),
+                    menuSessionsBySource: readAnalyticsMap(data, 'menuSessionsBySource'),
+                    actionSessionsBySource: readAnalyticsMap(data, 'actionSessionsBySource'),
+                    menuActionClicksBySource: readAnalyticsMap(data, 'menuActionClicksBySource'),
+                    attributeFilterInteractions: readAnalyticsMap(data, 'attributeFilterInteractions'),
+                    attributeFilterItemViews: readAnalyticsMap(data, 'attributeFilterItemViews'),
+                    attributeFilterItemTaps: readAnalyticsMap(data, 'attributeFilterItemTaps'),
+                    attributeFilterSearches: readAnalyticsMap(data, 'attributeFilterSearches'),
+                    attributeFilterUnavailableTaps: readAnalyticsMap(data, 'attributeFilterUnavailableTaps'),
+                    attributeFilterActionClicks: readAnalyticsMap(data, 'attributeFilterActionClicks'),
+                    hourlyViews: readAnalyticsMap(data, 'hourlyViews'),
+                    hourlyMenuActionClicks: readAnalyticsMap(data, 'hourlyMenuActionClicks'),
+                    menuActionClicks: readAnalyticsMap(data, 'menuActionClicks'),
+                    searchTerms: readAnalyticsMap(data, 'searchTerms'),
+                    zeroResultSearchTerms: readAnalyticsMap(data, 'zeroResultSearchTerms'),
+                    unavailableItemTapsByItem: readAnalyticsMap(data, 'unavailableItemTapsByItem'),
+                    itemNames: readAnalyticsMap(data, 'itemNames'),
+                    categoryNames: readAnalyticsMap(data, 'categoryNames'),
+                    attributeFilterNames: readAnalyticsMap(data, 'attributeFilterNames'),
                 } as DailyDocData;
             }
             return null;
@@ -1686,6 +1713,19 @@ function readOBPLinkBreakdown(data: Record<string, any>): OBPLinkBreakdown {
     };
 }
 
+function readOBPLifetimeCounter(data: Record<string, any>, lifetime: Record<string, any>, field: string): number {
+    return Number(lifetime?.[field] || data?.[`lifetime.${field}`] || 0);
+}
+
+function readOBPLifetimeMapCounter(
+    data: Record<string, any>,
+    lifetime: Record<string, any>,
+    mapName: string,
+    key: string,
+): number {
+    return Number(lifetime?.[mapName]?.[key] || data?.[`lifetime.${mapName}.${key}`] || 0);
+}
+
 async function fetchOBPDailyDocs(
     tId: string,
     sId: string,
@@ -1941,31 +1981,32 @@ export async function getOBPDashboardOverall(
             const data = docSnap.data();
             const lifetime = data.lifetime || {};
 
-            if (!lifetime.totalOBPViews && lifetime.totalOBPViews !== 0) return null;
+            const lifetimeViews = readOBPLifetimeCounter(data, lifetime, 'totalOBPViews');
+            if (!lifetimeViews && lifetimeViews !== 0) return null;
 
             return {
-                lifetimeViews: lifetime.totalOBPViews || 0,
-                lifetimeActionClicks: lifetime.totalOBPActionClicks || 0,
-                lifetimeMenuClicks: lifetime.totalOBPMenuClicks || 0,
-                lifetimeLinkClicks: lifetime.totalOBPLinkClicks || 0,
-                lifetimeShares: lifetime.totalOBPShares || 0,
+                lifetimeViews,
+                lifetimeActionClicks: readOBPLifetimeCounter(data, lifetime, 'totalOBPActionClicks'),
+                lifetimeMenuClicks: readOBPLifetimeCounter(data, lifetime, 'totalOBPMenuClicks'),
+                lifetimeLinkClicks: readOBPLifetimeCounter(data, lifetime, 'totalOBPLinkClicks'),
+                lifetimeShares: readOBPLifetimeCounter(data, lifetime, 'totalOBPShares'),
                 lifetimeActions: {
-                    call: lifetime.obpActionClicks?.call || 0,
-                    whatsapp: lifetime.obpActionClicks?.whatsapp || 0,
-                    directions: lifetime.obpActionClicks?.directions || 0,
-                    reserve: lifetime.obpActionClicks?.reserve || 0,
-                    order: lifetime.obpActionClicks?.order || 0,
+                    call: readOBPLifetimeMapCounter(data, lifetime, 'obpActionClicks', 'call'),
+                    whatsapp: readOBPLifetimeMapCounter(data, lifetime, 'obpActionClicks', 'whatsapp'),
+                    directions: readOBPLifetimeMapCounter(data, lifetime, 'obpActionClicks', 'directions'),
+                    reserve: readOBPLifetimeMapCounter(data, lifetime, 'obpActionClicks', 'reserve'),
+                    order: readOBPLifetimeMapCounter(data, lifetime, 'obpActionClicks', 'order'),
                 },
                 lifetimeShareMethods: {
-                    whatsapp: lifetime.obpShares?.whatsapp || 0,
-                    copy_link: lifetime.obpShares?.copy_link || 0,
-                    copy_message: lifetime.obpShares?.copy_message || 0,
+                    whatsapp: readOBPLifetimeMapCounter(data, lifetime, 'obpShares', 'whatsapp'),
+                    copy_link: readOBPLifetimeMapCounter(data, lifetime, 'obpShares', 'copy_link'),
+                    copy_message: readOBPLifetimeMapCounter(data, lifetime, 'obpShares', 'copy_message'),
                 },
                 lifetimeLinks: {
-                    google_review: lifetime.obpLinkClicks?.google_review || 0,
-                    instagram: lifetime.obpLinkClicks?.instagram || 0,
-                    facebook: lifetime.obpLinkClicks?.facebook || 0,
-                    website: lifetime.obpLinkClicks?.website || 0,
+                    google_review: readOBPLifetimeMapCounter(data, lifetime, 'obpLinkClicks', 'google_review'),
+                    instagram: readOBPLifetimeMapCounter(data, lifetime, 'obpLinkClicks', 'instagram'),
+                    facebook: readOBPLifetimeMapCounter(data, lifetime, 'obpLinkClicks', 'facebook'),
+                    website: readOBPLifetimeMapCounter(data, lifetime, 'obpLinkClicks', 'website'),
                 },
                 firstDataDate: data.firstDataDate,
                 lastUpdated: data.modifiedOn?.toDate?.() || undefined,

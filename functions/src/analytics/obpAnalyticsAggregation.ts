@@ -165,6 +165,50 @@ function normalizeOBPDailyData(data: OBPDailyData): OBPDailyData {
     };
 }
 
+function normalizeOBPLifetimeData(data: Record<string, any>): OBPDailyData {
+    const lifetime = data?.lifetime || {};
+    const readNumber = (field: string) => Number(lifetime[field] || data?.[`lifetime.${field}`] || 0);
+    const readMapNumber = (mapName: string, key: string) => (
+        Number(lifetime?.[mapName]?.[key] || data?.[`lifetime.${mapName}.${key}`] || 0)
+    );
+
+    return {
+        totalOBPViews: readNumber('totalOBPViews'),
+        totalOBPActionClicks: readNumber('totalOBPActionClicks'),
+        totalOBPMenuClicks: readNumber('totalOBPMenuClicks'),
+        totalOBPLinkClicks: readNumber('totalOBPLinkClicks'),
+        totalOBPShares: readNumber('totalOBPShares'),
+        obpActionClicks: {
+            call: readMapNumber('obpActionClicks', 'call'),
+            whatsapp: readMapNumber('obpActionClicks', 'whatsapp'),
+            directions: readMapNumber('obpActionClicks', 'directions'),
+            reserve: readMapNumber('obpActionClicks', 'reserve'),
+            order: readMapNumber('obpActionClicks', 'order'),
+        },
+        obpLinkClicks: {
+            google_review: readMapNumber('obpLinkClicks', 'google_review'),
+            instagram: readMapNumber('obpLinkClicks', 'instagram'),
+            facebook: readMapNumber('obpLinkClicks', 'facebook'),
+            website: readMapNumber('obpLinkClicks', 'website'),
+        },
+        obpShares: {
+            whatsapp: readMapNumber('obpShares', 'whatsapp'),
+            copy_link: readMapNumber('obpShares', 'copy_link'),
+            copy_message: readMapNumber('obpShares', 'copy_message'),
+        },
+    };
+}
+
+function assignNestedPathUpdate(target: Record<string, any>, path: string, value: any): void {
+    const parts = path.split('.');
+    let cursor = target;
+    parts.slice(0, -1).forEach((part) => {
+        cursor[part] = cursor[part] || {};
+        cursor = cursor[part];
+    });
+    cursor[parts[parts.length - 1]] = value;
+}
+
 function toDashboardDailyMetrics(data: OBPDailyData) {
     const normalized = normalizeOBPDailyData(data);
     return {
@@ -275,7 +319,7 @@ async function applyLateOBPCorrection(
     const addNumericDelta = (field: string, target: string) => {
         const delta = Math.max(0, ((currentDaily as any)[field] || 0) - (previousRow[field] || 0));
         if (delta > 0) {
-            updates[target] = FieldValue.increment(delta);
+            assignNestedPathUpdate(updates, target, FieldValue.increment(delta));
             hasDelta = true;
         }
     };
@@ -286,7 +330,7 @@ async function applyLateOBPCorrection(
             if (typeof value !== 'number') continue;
             const delta = Math.max(0, value - (previousMap[key] || 0));
             if (delta > 0) {
-                updates[`${target}.${key}`] = FieldValue.increment(delta);
+                assignNestedPathUpdate(updates, `${target}.${key}`, FieldValue.increment(delta));
                 hasDelta = true;
             }
         }
@@ -517,7 +561,7 @@ export async function aggregateOBPAnalyticsForStoreDate(
 
     // Lifetime: accumulate from existing + today's new data
     // We recalculate lifetime from all-time by reading existing lifetime and adding delta
-    const existingLifetime = existingData?.lifetime || {};
+    const existingLifetime = normalizeOBPLifetimeData(existingData || {});
 
     // For lifetime, we use a simple approach: store lifetime counters that get
     // updated by adding today's daily doc (yesterday's data) to existing lifetime

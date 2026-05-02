@@ -140,6 +140,37 @@ function mergeMapField(target: Record<string, number>, source?: Record<string, n
     }
 }
 
+function readAnalyticsMap(data: Record<string, any>, field: string): Record<string, any> {
+    const result: Record<string, any> = { ...(data?.[field] || {}) };
+    const prefix = `${field}.`;
+    for (const [key, value] of Object.entries(data || {})) {
+        if (!key.startsWith(prefix)) continue;
+        Object.defineProperty(result, key.slice(prefix.length), {
+            value,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+        });
+    }
+    return result;
+}
+
+function readNestedHourlyClicksByItem(data: Record<string, any>): Record<string, Record<string, number>> {
+    const result: Record<string, Record<string, number>> = { ...(data?.hourlyClicksByItem || {}) };
+    const prefix = 'hourlyClicksByItem.';
+    for (const [key, value] of Object.entries(data || {})) {
+        if (!key.startsWith(prefix) || typeof value !== 'number') continue;
+        const rest = key.slice(prefix.length);
+        const lastDotIndex = rest.lastIndexOf('.');
+        if (lastDotIndex === -1) continue;
+        const itemId = rest.slice(0, lastDotIndex);
+        const hour = rest.slice(lastDotIndex + 1);
+        result[itemId] = result[itemId] || {};
+        result[itemId][hour] = (result[itemId][hour] || 0) + value;
+    }
+    return result;
+}
+
 function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
     const result: Record<string, any> = {
         totalViews: 0,
@@ -205,40 +236,34 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         result.totalInstalled += doc.totalInstalled || 0;
         result.totalAppOpens += doc.totalAppOpens || 0;
         result.uniqueInstallSessions += doc.uniqueInstallSessions || 0;
-        mergeMapField(result.viewsByItem, doc.viewsByItem);
-        mergeMapField(result.viewsByEntrySource, doc.viewsByEntrySource);
-        mergeMapField(result.menuSessionsBySource, doc.menuSessionsBySource);
-        mergeMapField(result.actionSessionsBySource, doc.actionSessionsBySource);
-        mergeMapField(result.menuActionClicksBySource, doc.menuActionClicksBySource);
-        mergeMapField(result.attributeFilterInteractions, doc.attributeFilterInteractions);
-        mergeMapField(result.attributeFilterItemViews, doc.attributeFilterItemViews);
-        mergeMapField(result.attributeFilterItemTaps, doc.attributeFilterItemTaps);
-        mergeMapField(result.attributeFilterSearches, doc.attributeFilterSearches);
-        mergeMapField(result.attributeFilterUnavailableTaps, doc.attributeFilterUnavailableTaps);
-        mergeMapField(result.attributeFilterActionClicks, doc.attributeFilterActionClicks);
-        mergeMapField(result.viewsByCategory, doc.viewsByCategory);
-        mergeMapField(result.clicksByCategory, doc.clicksByCategory);
-        mergeMapField(result.hourlyViews, doc.hourlyViews);
-        mergeMapField(result.hourlyMenuActionClicks, doc.hourlyMenuActionClicks);
-        mergeMapField(result.clicksByItem, doc.clicksByItem);
-        mergeMapField(result.recommendationClicksByItem, doc.recommendationClicksByItem);
-        mergeNestedMapField(result.hourlyClicksByItem, doc.hourlyClicksByItem);
-        mergeMapField(result.unavailableItemTapsByItem, doc.unavailableItemTapsByItem);
-        mergeMapField(result.searchTerms, doc.searchTerms);
-        mergeMapField(result.zeroResultSearchTerms, doc.zeroResultSearchTerms);
-        mergeMapField(result.menuActionClicks, doc.menuActionClicks);
-        mergeMapField(result.recommendationClicks, doc.recommendationClicks);
-        mergeMapField(result.decisionBlocksRendered, doc.decisionBlocksRendered);
-        mergeMapField(result.shortcutClicks, doc.shortcutClicks);
-        if (doc.itemNames) {
-            Object.assign(result.itemNames, doc.itemNames);
-        }
-        if (doc.categoryNames) {
-            Object.assign(result.categoryNames, doc.categoryNames);
-        }
-        if (doc.attributeFilterNames) {
-            Object.assign(result.attributeFilterNames, doc.attributeFilterNames);
-        }
+        mergeMapField(result.viewsByItem, readAnalyticsMap(doc, 'viewsByItem'));
+        mergeMapField(result.viewsByEntrySource, readAnalyticsMap(doc, 'viewsByEntrySource'));
+        mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
+        mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
+        mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
+        mergeMapField(result.attributeFilterInteractions, readAnalyticsMap(doc, 'attributeFilterInteractions'));
+        mergeMapField(result.attributeFilterItemViews, readAnalyticsMap(doc, 'attributeFilterItemViews'));
+        mergeMapField(result.attributeFilterItemTaps, readAnalyticsMap(doc, 'attributeFilterItemTaps'));
+        mergeMapField(result.attributeFilterSearches, readAnalyticsMap(doc, 'attributeFilterSearches'));
+        mergeMapField(result.attributeFilterUnavailableTaps, readAnalyticsMap(doc, 'attributeFilterUnavailableTaps'));
+        mergeMapField(result.attributeFilterActionClicks, readAnalyticsMap(doc, 'attributeFilterActionClicks'));
+        mergeMapField(result.viewsByCategory, readAnalyticsMap(doc, 'viewsByCategory'));
+        mergeMapField(result.clicksByCategory, readAnalyticsMap(doc, 'clicksByCategory'));
+        mergeMapField(result.hourlyViews, readAnalyticsMap(doc, 'hourlyViews'));
+        mergeMapField(result.hourlyMenuActionClicks, readAnalyticsMap(doc, 'hourlyMenuActionClicks'));
+        mergeMapField(result.clicksByItem, readAnalyticsMap(doc, 'clicksByItem'));
+        mergeMapField(result.recommendationClicksByItem, readAnalyticsMap(doc, 'recommendationClicksByItem'));
+        mergeNestedMapField(result.hourlyClicksByItem, readNestedHourlyClicksByItem(doc));
+        mergeMapField(result.unavailableItemTapsByItem, readAnalyticsMap(doc, 'unavailableItemTapsByItem'));
+        mergeMapField(result.searchTerms, readAnalyticsMap(doc, 'searchTerms'));
+        mergeMapField(result.zeroResultSearchTerms, readAnalyticsMap(doc, 'zeroResultSearchTerms'));
+        mergeMapField(result.menuActionClicks, readAnalyticsMap(doc, 'menuActionClicks'));
+        mergeMapField(result.recommendationClicks, readAnalyticsMap(doc, 'recommendationClicks'));
+        mergeMapField(result.decisionBlocksRendered, readAnalyticsMap(doc, 'decisionBlocksRendered'));
+        mergeMapField(result.shortcutClicks, readAnalyticsMap(doc, 'shortcutClicks'));
+        Object.assign(result.itemNames, readAnalyticsMap(doc, 'itemNames'));
+        Object.assign(result.categoryNames, readAnalyticsMap(doc, 'categoryNames'));
+        Object.assign(result.attributeFilterNames, readAnalyticsMap(doc, 'attributeFilterNames'));
     }
 
     return result;
@@ -1053,17 +1078,23 @@ function buildIntelligence7dSnapshot(
 }
 
 function compactAnalyticsDay(date: string, data: Record<string, any>) {
+    const viewsByItem = readAnalyticsMap(data, 'viewsByItem');
+    const clicksByItem = readAnalyticsMap(data, 'clicksByItem');
+    const recommendationClicksByItem = readAnalyticsMap(data, 'recommendationClicksByItem');
+    const unavailableItemTapsByItem = readAnalyticsMap(data, 'unavailableItemTapsByItem');
+    const hourlyClicksByItem = readNestedHourlyClicksByItem(data);
+    const itemNameMap = readAnalyticsMap(data, 'itemNames');
     const itemNames: Record<string, string> = {};
     const keepItemIds = new Set<string>([
-        ...Object.keys(topMap(data.viewsByItem, DASHBOARD_ITEM_LIMIT)),
-        ...Object.keys(topMap(data.clicksByItem, DASHBOARD_ITEM_LIMIT)),
-        ...Object.keys(topMap(data.recommendationClicksByItem, DASHBOARD_ITEM_LIMIT)),
-        ...Object.keys(topMap(data.unavailableItemTapsByItem, DASHBOARD_ITEM_LIMIT)),
-        ...Object.keys(data.hourlyClicksByItem || {}),
+        ...Object.keys(topMap(viewsByItem, DASHBOARD_ITEM_LIMIT)),
+        ...Object.keys(topMap(clicksByItem, DASHBOARD_ITEM_LIMIT)),
+        ...Object.keys(topMap(recommendationClicksByItem, DASHBOARD_ITEM_LIMIT)),
+        ...Object.keys(topMap(unavailableItemTapsByItem, DASHBOARD_ITEM_LIMIT)),
+        ...Object.keys(hourlyClicksByItem),
     ]);
     keepItemIds.forEach((itemId) => {
-        if (data.itemNames?.[itemId]) {
-            itemNames[itemId] = data.itemNames[itemId];
+        if (itemNameMap[itemId]) {
+            itemNames[itemId] = itemNameMap[itemId];
         }
     });
 
@@ -1082,37 +1113,37 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         totalMenuActionClicks: data.totalMenuActionClicks || 0,
         totalRecommendationClicks: data.totalRecommendationClicks || 0,
         totalDecisionBlocksRendered: data.totalDecisionBlocksRendered || 0,
-        viewsByDevice: data.viewsByDevice || {},
-        clicksByDevice: data.clicksByDevice || {},
-        viewsByLocation: data.viewsByLocation || {},
-        clicksByLocation: data.clicksByLocation || {},
-        viewsByEntrySource: topMap(data.viewsByEntrySource, DASHBOARD_ITEM_LIMIT),
-        menuSessionsBySource: topMap(data.menuSessionsBySource, DASHBOARD_ITEM_LIMIT),
-        actionSessionsBySource: topMap(data.actionSessionsBySource, DASHBOARD_ITEM_LIMIT),
-        menuActionClicksBySource: topMap(data.menuActionClicksBySource, DASHBOARD_ITEM_LIMIT),
-        attributeFilterInteractions: topMap(data.attributeFilterInteractions, DASHBOARD_ITEM_LIMIT),
-        attributeFilterItemViews: topMap(data.attributeFilterItemViews, DASHBOARD_ITEM_LIMIT),
-        attributeFilterItemTaps: topMap(data.attributeFilterItemTaps, DASHBOARD_ITEM_LIMIT),
-        attributeFilterSearches: topMap(data.attributeFilterSearches, DASHBOARD_ITEM_LIMIT),
-        attributeFilterUnavailableTaps: topMap(data.attributeFilterUnavailableTaps, DASHBOARD_ITEM_LIMIT),
-        attributeFilterActionClicks: topMap(data.attributeFilterActionClicks, DASHBOARD_ITEM_LIMIT),
-        viewsByItem: pickMap(data.viewsByItem, keepItemIds),
-        viewsByCategory: topMap(data.viewsByCategory, DASHBOARD_ITEM_LIMIT),
-        clicksByCategory: topMap(data.clicksByCategory, DASHBOARD_ITEM_LIMIT),
-        hourlyViews: topMap(data.hourlyViews, 24),
-        hourlyMenuActionClicks: topMap(data.hourlyMenuActionClicks, 24),
-        clicksByItem: pickMap(data.clicksByItem, keepItemIds),
-        recommendationClicksByItem: pickMap(data.recommendationClicksByItem, keepItemIds),
-        hourlyClicksByItem: pickNestedHourlyMap(data.hourlyClicksByItem, keepItemIds),
-        searchTerms: topMap(data.searchTerms, DASHBOARD_ITEM_LIMIT),
-        zeroResultSearchTerms: topMap(data.zeroResultSearchTerms, DASHBOARD_ITEM_LIMIT),
-        unavailableItemTapsByItem: pickMap(data.unavailableItemTapsByItem, keepItemIds),
-        menuActionClicks: data.menuActionClicks || {},
-        recommendationClicks: data.recommendationClicks || {},
-        decisionBlocksRendered: data.decisionBlocksRendered || {},
+        viewsByDevice: readAnalyticsMap(data, 'viewsByDevice'),
+        clicksByDevice: readAnalyticsMap(data, 'clicksByDevice'),
+        viewsByLocation: readAnalyticsMap(data, 'viewsByLocation'),
+        clicksByLocation: readAnalyticsMap(data, 'clicksByLocation'),
+        viewsByEntrySource: topMap(readAnalyticsMap(data, 'viewsByEntrySource'), DASHBOARD_ITEM_LIMIT),
+        menuSessionsBySource: topMap(readAnalyticsMap(data, 'menuSessionsBySource'), DASHBOARD_ITEM_LIMIT),
+        actionSessionsBySource: topMap(readAnalyticsMap(data, 'actionSessionsBySource'), DASHBOARD_ITEM_LIMIT),
+        menuActionClicksBySource: topMap(readAnalyticsMap(data, 'menuActionClicksBySource'), DASHBOARD_ITEM_LIMIT),
+        attributeFilterInteractions: topMap(readAnalyticsMap(data, 'attributeFilterInteractions'), DASHBOARD_ITEM_LIMIT),
+        attributeFilterItemViews: topMap(readAnalyticsMap(data, 'attributeFilterItemViews'), DASHBOARD_ITEM_LIMIT),
+        attributeFilterItemTaps: topMap(readAnalyticsMap(data, 'attributeFilterItemTaps'), DASHBOARD_ITEM_LIMIT),
+        attributeFilterSearches: topMap(readAnalyticsMap(data, 'attributeFilterSearches'), DASHBOARD_ITEM_LIMIT),
+        attributeFilterUnavailableTaps: topMap(readAnalyticsMap(data, 'attributeFilterUnavailableTaps'), DASHBOARD_ITEM_LIMIT),
+        attributeFilterActionClicks: topMap(readAnalyticsMap(data, 'attributeFilterActionClicks'), DASHBOARD_ITEM_LIMIT),
+        viewsByItem: pickMap(viewsByItem, keepItemIds),
+        viewsByCategory: topMap(readAnalyticsMap(data, 'viewsByCategory'), DASHBOARD_ITEM_LIMIT),
+        clicksByCategory: topMap(readAnalyticsMap(data, 'clicksByCategory'), DASHBOARD_ITEM_LIMIT),
+        hourlyViews: topMap(readAnalyticsMap(data, 'hourlyViews'), 24),
+        hourlyMenuActionClicks: topMap(readAnalyticsMap(data, 'hourlyMenuActionClicks'), 24),
+        clicksByItem: pickMap(clicksByItem, keepItemIds),
+        recommendationClicksByItem: pickMap(recommendationClicksByItem, keepItemIds),
+        hourlyClicksByItem: pickNestedHourlyMap(hourlyClicksByItem, keepItemIds),
+        searchTerms: topMap(readAnalyticsMap(data, 'searchTerms'), DASHBOARD_ITEM_LIMIT),
+        zeroResultSearchTerms: topMap(readAnalyticsMap(data, 'zeroResultSearchTerms'), DASHBOARD_ITEM_LIMIT),
+        unavailableItemTapsByItem: pickMap(unavailableItemTapsByItem, keepItemIds),
+        menuActionClicks: readAnalyticsMap(data, 'menuActionClicks'),
+        recommendationClicks: readAnalyticsMap(data, 'recommendationClicks'),
+        decisionBlocksRendered: readAnalyticsMap(data, 'decisionBlocksRendered'),
         itemNames,
-        categoryNames: data.categoryNames || {},
-        attributeFilterNames: data.attributeFilterNames || {},
+        categoryNames: readAnalyticsMap(data, 'categoryNames'),
+        attributeFilterNames: readAnalyticsMap(data, 'attributeFilterNames'),
         lastUpdated: data.lastUpdated || data.modifiedOn || null,
     };
 }
@@ -1191,12 +1222,12 @@ async function buildIncrementalCustomerAppDailyMap(
                 totalInstalled: settledDailyData.totalInstalled || 0,
                 uniqueInstallSessions: settledDailyData.uniqueInstallSessions || 0,
                 totalAppOpens: settledDailyData.totalAppOpens || 0,
-                shortcutClicks: settledDailyData.shortcutClicks || {},
-                installsByDevice: settledDailyData.installsByDevice || {},
-                installsByLocation: settledDailyData.installsByLocation || {},
-                installsByPlatform: settledDailyData.installsByPlatform || {},
-                installsBySource: settledDailyData.installsBySource || {},
-                appOpensByPlatform: settledDailyData.appOpensByPlatform || {},
+                shortcutClicks: readAnalyticsMap(settledDailyData, 'shortcutClicks'),
+                installsByDevice: readAnalyticsMap(settledDailyData, 'installsByDevice'),
+                installsByLocation: readAnalyticsMap(settledDailyData, 'installsByLocation'),
+                installsByPlatform: readAnalyticsMap(settledDailyData, 'installsByPlatform'),
+                installsBySource: readAnalyticsMap(settledDailyData, 'installsBySource'),
+                appOpensByPlatform: readAnalyticsMap(settledDailyData, 'appOpensByPlatform'),
             });
         }
         return { dailyMap, source: 'incremental' };
@@ -1311,12 +1342,12 @@ async function writeCustomerAppDashboardSummary(
             totalInstalled: data.totalInstalled || 0,
             uniqueInstallSessions: data.uniqueInstallSessions || 0,
             totalAppOpens: data.totalAppOpens || 0,
-            shortcutClicks: data.shortcutClicks || {},
-            installsByDevice: data.installsByDevice || {},
-            installsByLocation: data.installsByLocation || {},
-            installsByPlatform: data.installsByPlatform || {},
-            installsBySource: data.installsBySource || {},
-            appOpensByPlatform: data.appOpensByPlatform || {},
+            shortcutClicks: readAnalyticsMap(data, 'shortcutClicks'),
+            installsByDevice: readAnalyticsMap(data, 'installsByDevice'),
+            installsByLocation: readAnalyticsMap(data, 'installsByLocation'),
+            installsByPlatform: readAnalyticsMap(data, 'installsByPlatform'),
+            installsBySource: readAnalyticsMap(data, 'installsBySource'),
+            appOpensByPlatform: readAnalyticsMap(data, 'appOpensByPlatform'),
         }));
 
     await dashboardRef.set({

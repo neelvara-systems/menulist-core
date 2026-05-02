@@ -141,26 +141,119 @@ const mergeQueuedAnalyticsData = (target: Record<string, any>, source: Record<st
   });
 };
 
+const TWO_LEVEL_ANALYTICS_MAP_FIELDS = new Set([
+  'actionSessionsBySource',
+  'appOpensByPlatform',
+  'appOpensBySurface',
+  'attributeFilterActionClicks',
+  'attributeFilterInteractions',
+  'attributeFilterItemTaps',
+  'attributeFilterItemViews',
+  'attributeFilterNames',
+  'attributeFilterSearches',
+  'attributeFilterUnavailableTaps',
+  'categoryNames',
+  'clicksByCategory',
+  'clicksByDevice',
+  'clicksByItem',
+  'clicksByLocation',
+  'decisionBlocksRendered',
+  'hourlyAppOpens',
+  'hourlyClicks',
+  'hourlyDecisionBlocksRendered',
+  'hourlyItemViews',
+  'hourlyMenuActionClicks',
+  'hourlyOBPActionClicks',
+  'hourlyOBPLinkClicks',
+  'hourlyOBPMenuClicks',
+  'hourlyPromptShown',
+  'hourlyRecommendationClicks',
+  'hourlySearches',
+  'hourlyUnavailableItemTaps',
+  'hourlyViews',
+  'installsByDevice',
+  'installsByLocation',
+  'installsByPlatform',
+  'installsBySource',
+  'installsBySurface',
+  'itemNames',
+  'menuActionClicks',
+  'menuActionClicksBySource',
+  'menuResolutionLayer',
+  'menuSessionsBySource',
+  'obpActionClicks',
+  'obpLinkClicks',
+  'obpMenuClicksBySurface',
+  'obpShares',
+  'recommendationClicks',
+  'recommendationClicksByItem',
+  'searchTerms',
+  'shortcutClicks',
+  'unavailableItemTapsByItem',
+  'viewsByCampaign',
+  'viewsByCategory',
+  'viewsByDevice',
+  'viewsByEntrySource',
+  'viewsByLocation',
+  'viewsByMedium',
+  'viewsBySource',
+  'viewsByItem',
+  'zeroResultSearchTerms',
+]);
+
+const setAnalyticsObjectValue = (target: Record<string, any>, key: string, value: any) => {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+};
+
+const ensureAnalyticsObject = (target: Record<string, any>, key: string): Record<string, any> => {
+  const existing = Object.prototype.hasOwnProperty.call(target, key) ? target[key] : undefined;
+  if (existing && typeof existing === 'object' && !Array.isArray(existing)) return existing;
+  const next: Record<string, any> = {};
+  setAnalyticsObjectValue(target, key, next);
+  return next;
+};
+
 const assignProcessedAnalyticsField = (
   target: Record<string, any>,
   key: string,
   value: any
 ) => {
-  const parts = key.split('.');
-  if (parts.length === 1) {
-    target[key] = value;
+  const firstDotIndex = key.indexOf('.');
+  if (firstDotIndex === -1) {
+    setAnalyticsObjectValue(target, key, value);
     return;
   }
 
-  let cursor = target;
-  parts.slice(0, -1).forEach((part) => {
-    if (!cursor[part] || typeof cursor[part] !== 'object' || Array.isArray(cursor[part])) {
-      cursor[part] = {};
-    }
-    cursor = cursor[part];
-  });
+  const parent = key.slice(0, firstDotIndex);
+  const childPath = key.slice(firstDotIndex + 1);
 
-  cursor[parts[parts.length - 1]] = value;
+  if (parent === 'hourlyClicksByItem') {
+    const lastDotIndex = childPath.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      target[key] = value;
+      return;
+    }
+
+    const itemId = childPath.slice(0, lastDotIndex);
+    const hour = childPath.slice(lastDotIndex + 1);
+    const parentMap = ensureAnalyticsObject(target, parent);
+    const itemMap = ensureAnalyticsObject(parentMap, itemId);
+    setAnalyticsObjectValue(itemMap, hour, value);
+    return;
+  }
+
+  if (!TWO_LEVEL_ANALYTICS_MAP_FIELDS.has(parent)) {
+    setAnalyticsObjectValue(target, key, value);
+    return;
+  }
+
+  const parentMap = ensureAnalyticsObject(target, parent);
+  setAnalyticsObjectValue(parentMap, childPath, value);
 };
 
 const writeAnalyticsEventNow = async (
