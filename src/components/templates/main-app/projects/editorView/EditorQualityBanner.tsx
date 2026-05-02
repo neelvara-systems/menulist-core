@@ -24,9 +24,11 @@ interface EditorQualityBannerProps {
 const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, onAction }) => {
     const actionableSignals = useMemo(() => {
         if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || !projectData?.files) return [];
-        const all = computeQualitySignals(projectData.files, projectData.languages);
+        const all = computeQualitySignals(projectData.files, projectData.languages, {
+            showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
+        });
         return getActionableSignals(all);
-    }, [projectData?.files, projectData?.languages]);
+    }, [projectData?.config?.design?.menu?.showCategoryIcons, projectData?.files, projectData?.languages]);
 
     if (actionableSignals.length === 0) return null;
 
@@ -52,7 +54,15 @@ const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, 
                                     onClick={() => onAction(signal.actionRoute!)}
                                     style={{ fontSize: 12, padding: '0 4px' }}
                                 >
-                                    {signal.actionLabel} {signal.id === 'descriptions' ? 'Descriptions' : signal.id === 'images' ? 'Images' : ''}
+                                    {signal.actionLabel} {
+                                        signal.id === 'descriptions'
+                                            ? 'Descriptions'
+                                            : signal.id === 'images'
+                                                ? 'Images'
+                                                : signal.id === 'categoryIcons'
+                                                    ? 'Categories'
+                                                    : ''
+                                    }
                                 </Button>
                             ) : null
                         ))}

@@ -19,7 +19,7 @@ import { computeQualitySignals, getVisibleSignals, isAllClear, QualitySignal } f
 import { Button, Card, Flex, Skeleton, theme, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
-import { LuDollarSign, LuEyeOff, LuFileText, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
+import { LuDollarSign, LuEyeOff, LuFileText, LuFolder, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -30,6 +30,7 @@ interface MenuQualitySignalsProps {
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
+    categoryIcons: <LuFolder size={16} />,
     images: <LuImage size={16} />,
     prices: <LuDollarSign size={16} />,
     hidden: <LuEyeOff size={16} />,
@@ -56,7 +57,9 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                 setLoading(true);
                 const project = await getProjectData(projectId);
                 if (!cancelled && project?.files) {
-                    const computed = computeQualitySignals(project.files, project.languages);
+                    const computed = computeQualitySignals(project.files, project.languages, {
+                        showCategoryIcons: project?.config?.design?.menu?.showCategoryIcons ?? true,
+                    });
                     setSignals(getVisibleSignals(computed));
                 }
             } catch {

@@ -185,12 +185,17 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 </Row>
             </Card>
 
-            {(data.menuActions || data.topCategories?.length || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
+            {(data.menuActions || data.topCategories?.length || data.topAttributeFilters?.length || data.topSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
                 <Card className={styles.detailCard} variant="borderless">
                     <Title level={5}>What customers tried to do</Title>
                     {data.topCategories?.length ? (
                         <Text style={{ display: 'block', marginBottom: 8 }}>
                             Top category: {data.topCategories.slice(0, 3).map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}
+                        </Text>
+                    ) : null}
+                    {data.topAttributeFilters?.length ? (
+                        <Text style={{ display: 'block', marginBottom: 8 }}>
+                            Top filters: {data.topAttributeFilters.slice(0, 3).map((filter) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}
                         </Text>
                     ) : null}
                     <Text type="secondary">

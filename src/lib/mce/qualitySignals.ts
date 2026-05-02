@@ -46,11 +46,16 @@ const MIN_ITEMS_FOR_PRICE_OUTLIER = 4;
 const SIGNAL_PRIORITY: Record<string, number> = {
     prices: 1,
     images: 2,
-    descriptions: 3,
-    translations: 4,
-    hidden: 5,
-    priceOutliers: 6,
+    categoryIcons: 3,
+    descriptions: 4,
+    translations: 5,
+    hidden: 6,
+    priceOutliers: 7,
 };
+
+interface ComputeQualitySignalsOptions {
+    showCategoryIcons?: boolean;
+}
 
 /**
  * Flatten all items from all files' extractedData into a single array.
@@ -64,6 +69,17 @@ function getAllItems(files: ProjectFileType[] | undefined): ExtractedDataItem[] 
         }
     }
     return items;
+}
+
+function getAllCategories(files: ProjectFileType[] | undefined): ExtractedDataCategory[] {
+    if (!files) return [];
+    const categories: ExtractedDataCategory[] = [];
+    for (const file of files) {
+        if (file.extractedData?.data?.categories) {
+            categories.push(...file.extractedData.data.categories);
+        }
+    }
+    return categories;
 }
 
 /**
@@ -106,6 +122,23 @@ function isImageMissing(item: ExtractedDataItem): boolean {
     }
 
     return true;
+}
+
+function hasCategoryIcon(category: ExtractedDataCategory): boolean {
+    const icon = category?.icon;
+
+    if (typeof icon === 'string') {
+        return icon.trim().length > 0;
+    }
+
+    if (icon && typeof icon === 'object') {
+        return ['icon', 'value', 'name'].some((key) => {
+            const candidate = (icon as Record<string, unknown>)[key];
+            return typeof candidate === 'string' && candidate.trim().length > 0;
+        });
+    }
+
+    return false;
 }
 
 function isPriceMissing(item: ExtractedDataItem): boolean {
@@ -229,13 +262,19 @@ function countPriceOutliers(activeItems: ExtractedDataItem[]): number {
  * @param files - Project files array (project.files)
  * @returns Array of QualitySignal
  */
-export function computeQualitySignals(files: ProjectFileType[] | undefined, projectLanguages?: string[]): QualitySignal[] {
+export function computeQualitySignals(
+    files: ProjectFileType[] | undefined,
+    projectLanguages?: string[],
+    options?: ComputeQualitySignalsOptions
+): QualitySignal[] {
     const allItems = getAllItems(files);
+    const allCategories = getAllCategories(files);
     if (allItems.length === 0) return [];
 
     const lang = getPrimaryLang(files, projectLanguages);
     const allLanguages = getAllLanguageCodes(files, projectLanguages);
     const activeItems = allItems.filter(item => item.active !== false);
+    const activeCategories = allCategories.filter((category) => category.active !== false);
     const signals: QualitySignal[] = [];
 
     // Signal 1: Description coverage
@@ -265,6 +304,21 @@ export function computeQualitySignals(files: ProjectFileType[] | undefined, proj
         actionLabel: missingImages > 0 ? 'Generate' : undefined,
         actionRoute: missingImages > 0 ? 'images' : undefined,
     });
+
+    if (options?.showCategoryIcons) {
+        const categoriesMissingIcons = activeCategories.filter((category) => !hasCategoryIcon(category)).length;
+        signals.push({
+            id: 'categoryIcons',
+            label: categoriesMissingIcons > 0
+                ? `${categoriesMissingIcons} categor${categoriesMissingIcons !== 1 ? 'ies' : 'y'} missing icons`
+                : 'All categories have icons',
+            helpText: categoriesMissingIcons > 0 ? 'Icons make categories easier to scan on your menu' : undefined,
+            count: categoriesMissingIcons,
+            status: categoriesMissingIcons > 0 ? 'warning' : 'ok',
+            actionLabel: categoriesMissingIcons > 0 ? 'Review' : undefined,
+            actionRoute: categoriesMissingIcons > 0 ? 'categories' : undefined,
+        });
+    }
 
     // Signal 3: Pricing gaps
     const missingPrices = activeItems.filter(item => isPriceMissing(item)).length;
@@ -360,6 +414,7 @@ export function getVisibleSignals(signals: QualitySignal[]): QualitySignal[] {
 export function getActionableSignals(signals: QualitySignal[]): QualitySignal[] {
     return signals.filter(s => {
         if (s.status === 'ok') return false;
+        if (s.id === 'categoryIcons' && s.count >= 1) return true;
         if (s.id === 'descriptions' && s.count >= 3) return true;
         if (s.id === 'images' && s.count >= 3) return true;
         if (s.id === 'prices' && s.count >= 1) return true;

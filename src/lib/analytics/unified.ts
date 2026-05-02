@@ -35,6 +35,8 @@ const lastEventTime: Map<string, number> = new Map();
 const menuViewTracker: Map<string, number> = new Map();
 const SESSION_MILESTONE_STORAGE_PREFIX = 'menulist_analytics_session_milestones_v1';
 const SESSION_SOURCE_STORAGE_PREFIX = 'menulist_analytics_session_source_v1';
+const SESSION_FILTER_STORAGE_PREFIX = 'menulist_analytics_active_filter_v1';
+const ALLOWED_ATTRIBUTE_FILTERS = new Set(['popular', 'veg', 'nonveg', 'forMen', 'forWomen']);
 
 type SessionMilestoneState = {
   menuSession?: boolean;
@@ -55,6 +57,12 @@ type EntrySource =
   | 'shortcut'
   | 'direct'
   | 'other';
+
+type ActiveAttributeFilterState = {
+  filter: string;
+  label?: string;
+  selectedAt?: number;
+};
 
 /**
  * Check if event should be rate limited
@@ -144,6 +152,18 @@ const getSessionSourceKey = (data: TrackingData, localDate: string, sessionId: s
   ].join('|');
 };
 
+const getSessionFilterKey = (data: Partial<TrackingData>, localDate: string, sessionId: string): string | null => {
+  if (!data.tenantId || !data.storeId || !data.projectId || !sessionId) return null;
+  return [
+    SESSION_FILTER_STORAGE_PREFIX,
+    String(data.tenantId),
+    String(data.storeId),
+    String(data.projectId),
+    localDate,
+    sessionId,
+  ].join('|');
+};
+
 const readSessionMilestoneState = (key: string | null): SessionMilestoneState | null => {
   if (!key || typeof window === 'undefined') return null;
   try {
@@ -182,6 +202,75 @@ const writeSessionEntrySource = (key: string | null, entrySource: EntrySource | 
     window.sessionStorage.setItem(key, JSON.stringify({ entrySource }));
   } catch {
     // Source quality is additive analytics only; never block customer UX.
+  }
+};
+
+const readActiveAttributeFilter = (key: string | null): ActiveAttributeFilterState | null => {
+  if (!key || typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const filter = String(parsed?.filter || '').trim();
+    return ALLOWED_ATTRIBUTE_FILTERS.has(filter) ? {
+      filter,
+      label: parsed?.label,
+      selectedAt: parsed?.selectedAt,
+    } : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeActiveAttributeFilter = (
+  key: string | null,
+  filter: string | null,
+  label?: string,
+): void => {
+  if (!key || typeof window === 'undefined') return;
+  try {
+    if (!filter || !ALLOWED_ATTRIBUTE_FILTERS.has(filter)) {
+      window.sessionStorage.removeItem(key);
+      return;
+    }
+
+    window.sessionStorage.setItem(key, JSON.stringify({
+      filter,
+      label: label || filter,
+      selectedAt: Date.now(),
+    }));
+  } catch {
+    // Filter intent is additive analytics only; never block customer UX.
+  }
+};
+
+const addAttributeFilterContextCounters = (
+  updateData: Record<string, any>,
+  filterState: ActiveAttributeFilterState | null,
+  eventName: TrackingEvent,
+) => {
+  if (!filterState?.filter) return;
+
+  const filter = filterState.filter;
+  updateData[`attributeFilterInteractions.${filter}`] = 1;
+  updateData[`attributeFilterNames.${filter}`] = filterState.label || filter;
+
+  switch (eventName) {
+    case TrackingEvent.ITEM_VIEW:
+      updateData[`attributeFilterItemViews.${filter}`] = 1;
+      break;
+    case TrackingEvent.ITEM_CLICK:
+    case TrackingEvent.DECISION_BLOCK_CLICK:
+      updateData[`attributeFilterItemTaps.${filter}`] = 1;
+      break;
+    case TrackingEvent.SEARCH:
+      updateData[`attributeFilterSearches.${filter}`] = 1;
+      break;
+    case TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT:
+      updateData[`attributeFilterUnavailableTaps.${filter}`] = 1;
+      break;
+    case TrackingEvent.MENU_ACTION_CLICK:
+      updateData[`attributeFilterActionClicks.${filter}`] = 1;
+      break;
   }
 };
 
@@ -532,8 +621,10 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     const localDate = getBusinessAnalyticsDateKey(now, data.storeTimeZone, data.businessDayEndTime);
     const sessionMilestoneKey = getSessionMilestoneKey(data, localDate, sessionId);
     const sessionSourceKey = getSessionSourceKey(data, localDate, sessionId);
+    const sessionFilterKey = getSessionFilterKey(data, localDate, sessionId);
     const sessionMilestones = readSessionMilestoneState(sessionMilestoneKey);
     const entrySource = readSessionEntrySource(sessionSourceKey) || inferEntrySource(data);
+    const activeAttributeFilter = readActiveAttributeFilter(sessionFilterKey);
 
     // Prepare update data
     const updateData: any = {
@@ -864,6 +955,17 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         return;
     }
 
+    const shouldAttachFilterContext =
+      eventName === TrackingEvent.ITEM_VIEW ||
+      eventName === TrackingEvent.ITEM_CLICK ||
+      eventName === TrackingEvent.SEARCH ||
+      eventName === TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT ||
+      eventName === TrackingEvent.MENU_ACTION_CLICK ||
+      eventName === TrackingEvent.DECISION_BLOCK_CLICK;
+    if (shouldAttachFilterContext) {
+      addAttributeFilterContextCounters(updateData, activeAttributeFilter, eventName);
+    }
+
     // Customer App events always write under the reserved 'customerApp' project segment,
     // regardless of which menu projectId the page is currently viewing.
     const isCustomerAppEvent =
@@ -1042,6 +1144,21 @@ export const trackPageView = (additionalData: Partial<TrackingData> = {}): void 
  */
 export const trackMenuView = (storeId?: string, storeName?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
   return trackEvent(TrackingEvent.MENU_VIEW, { storeId, storeName, ...additionalData });
+};
+
+/**
+ * Store active menu filter context without writing to Firebase.
+ * The selected filter is attached to later accepted analytics writes only.
+ */
+export const setMenuAttributeFilterContext = (
+  filter: string | null,
+  additionalData: Partial<TrackingData> = {},
+  label?: string,
+): void => {
+  const sessionId = additionalData.sessionId || getSessionId();
+  const localDate = getBusinessAnalyticsDateKey(new Date(), additionalData.storeTimeZone, additionalData.businessDayEndTime);
+  const sessionFilterKey = getSessionFilterKey(additionalData, localDate, sessionId);
+  writeActiveAttributeFilter(sessionFilterKey, filter, label);
 };
 
 /**

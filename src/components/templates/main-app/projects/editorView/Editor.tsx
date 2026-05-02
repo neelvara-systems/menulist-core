@@ -314,7 +314,9 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
         if (FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS) {
             try {
                 const { computeQualitySignals, getActionableSignals } = await import("@lib/mce/qualitySignals");
-                const signals = computeQualitySignals(projectData.files, projectData.languages);
+                const signals = computeQualitySignals(projectData.files, projectData.languages, {
+                    showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
+                });
                 const actionable = getActionableSignals(signals);
                 if (actionable.length > 0) {
                     const proceed = await new Promise<boolean>((resolve) => {

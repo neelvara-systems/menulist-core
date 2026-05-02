@@ -45,6 +45,7 @@ interface CategoryManagerSheetProps {
     presets: TimeSlotPreset[];
     visible: boolean;
     onAdd: (payload: { names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
+    onAddItem?: (categoryId: string) => void;
     onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onGenerateContent?: (payload: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => Promise<Record<string, string> | null>;
@@ -142,6 +143,7 @@ export default function CategoryManagerSheet({
     presets,
     visible,
     onAdd,
+    onAddItem,
     onUpdate,
     onDelete,
     onGenerateContent,
@@ -827,6 +829,7 @@ export default function CategoryManagerSheet({
                 category={categoryEditorMode === 'edit' ? selectedCategory : null}
                 categoryIconsEnabled={categoryIconsEnabled}
                 mode={categoryEditorMode === 'edit' ? 'edit' : 'add'}
+                onAddItem={onAddItem}
                 onClose={closeCategoryEditor}
                 onDelete={async (categoryId) => {
                     await handleDelete(categoryId);

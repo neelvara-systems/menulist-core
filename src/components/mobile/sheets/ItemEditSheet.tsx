@@ -182,9 +182,41 @@ export default function ItemEditSheet({
     }, [draftItem.images, imagePreview]);
     const imageActionLabel = itemImagePreviews.length > 0 ? t('editImages') : t('addImages');
     const hasAnyDescription = Object.values(draftItem.description || {}).some((description) => hasMeaningfulDescription(description));
-    const contentActionLabel = isAddMode || !hasAnyDescription
-        ? t('generateContent')
-        : t('regenerateContent');
+    const contentActionCopy = useMemo(() => {
+        if (hasMultipleLanguages) {
+            return hasAnyDescription
+                ? {
+                    label: 'Regenerate Description & Translations',
+                    helper: 'Refreshes the description and translations for this item.',
+                    success: 'Description and translations refreshed.',
+                    failure: 'Failed to refresh description and translations.',
+                    validation: 'description and translations',
+                }
+                : {
+                    label: 'Generate Description & Translations',
+                    helper: 'Creates the description and translations for this item.',
+                    success: 'Description and translations generated.',
+                    failure: 'Failed to generate description and translations.',
+                    validation: 'description and translations',
+                };
+        }
+
+        return hasAnyDescription
+            ? {
+                label: 'Regenerate Description',
+                helper: 'Refreshes the description for this item.',
+                success: 'Description refreshed.',
+                failure: 'Failed to refresh description.',
+                validation: 'description',
+            }
+            : {
+                label: 'Generate Description',
+                helper: 'Creates the description for this item.',
+                success: 'Description generated.',
+                failure: 'Failed to generate description.',
+                validation: 'description',
+            };
+    }, [hasAnyDescription, hasMultipleLanguages]);
     const initialComparisonState = useMemo(() => JSON.stringify({
         draftItem: normalizeDraftItemForComparison(
             createDraftItem({ item, initialCategoryId, languages: selectedLanguages }),
@@ -265,7 +297,7 @@ export default function ItemEditSheet({
         if (!sourceLanguage || targetLanguages.length === 0) return;
 
         if (!getLocalizedValue(draftItem.name, primaryLanguage).trim()) {
-            Toast.show({ content: `Item name in ${sourceLanguage.name} is required to generate content.`, duration: 1800 });
+            Toast.show({ content: `Item name in ${sourceLanguage.name} is required to generate ${contentActionCopy.validation}.`, duration: 1800 });
             return;
         }
 
@@ -297,15 +329,15 @@ export default function ItemEditSheet({
 
             if (result) {
                 setDraftItem((previous) => mergeGeneratedItemMetadata(previous, result));
-                Toast.show({ content: t('contentUpdated'), duration: 1400 });
+                Toast.show({ content: contentActionCopy.success, duration: 1400 });
             } else {
-                Toast.show({ content: t('contentGenerationFailed'), duration: 2000 });
+                Toast.show({ content: contentActionCopy.failure, duration: 2000 });
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
                 Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
             } else {
-                Toast.show({ content: t('contentGenerationFailed'), duration: 2000 });
+                Toast.show({ content: contentActionCopy.failure, duration: 2000 });
             }
         } finally {
             dispatch(stopLoader('generating_content'));
@@ -691,10 +723,10 @@ export default function ItemEditSheet({
                             >
                                 <Flex align="center" gap={6}>
                                     <LuSparkles size={16} />
-                                    <Text>{contentActionLabel}</Text>
+                                    <Text>{contentActionCopy.label}</Text>
                                 </Flex>
                             </Button>
-                            <Text type="secondary">{t('contentActionHelper')}</Text>
+                            <Text type="secondary">{contentActionCopy.helper}</Text>
                         </Flex>
                     ) : null}
 

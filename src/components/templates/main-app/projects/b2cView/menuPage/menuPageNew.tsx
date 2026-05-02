@@ -16,7 +16,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
-import { trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -61,6 +61,23 @@ interface MenuPageNewProps {
     businessType?: string;
     precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
 }
+
+const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefined => {
+    switch (filter) {
+        case 'popular':
+            return 'Popular';
+        case 'veg':
+            return 'Veg';
+        case 'nonveg':
+            return 'Non-Veg';
+        case 'forMen':
+            return 'For Men';
+        case 'forWomen':
+            return 'For Women';
+        default:
+            return undefined;
+    }
+};
 
 function MenuPageNew({
     mood = DEFAULTS.menu.mood,
@@ -504,9 +521,36 @@ function MenuPageNew({
         debouncedSearch,
         filteredItems.length,
         projectData?.projectId,
+        storeDetails?.businessDayEndTime,
         storeDetails?.storeId,
+        storeDetails?.timeZone,
         storeDetails?.tenantId,
     ]);
+
+    const handleAttributeFilterIntentChange = useCallback((filter: FilterType, label?: string) => {
+        if (!analyticsPreferences.trackMenuViews) return;
+        if (!storeDetails?.tenantId || !storeDetails?.storeId || !projectData?.projectId) return;
+
+        setMenuAttributeFilterContext(filter, {
+            tenantId: storeDetails.tenantId,
+            storeId: String(storeDetails.storeId),
+            projectId: projectData.projectId,
+            storeTimeZone: storeDetails.timeZone,
+            businessDayEndTime: storeDetails.businessDayEndTime,
+        }, label);
+    }, [
+        analyticsPreferences.trackMenuViews,
+        projectData?.projectId,
+        storeDetails?.businessDayEndTime,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        storeDetails?.timeZone,
+    ]);
+
+    useEffect(() => {
+        if (!stateRestored) return;
+        handleAttributeFilterIntentChange(activeFilter, getAttributeFilterAnalyticsLabel(activeFilter));
+    }, [activeFilter, handleAttributeFilterIntentChange, stateRestored]);
 
     // Get items for a category
     const getItemsForCategory = useCallback((categoryId: string) => {
@@ -845,6 +889,7 @@ function MenuPageNew({
                         items={allItems}
                         activeFilter={activeFilter}
                         onFilterChange={setActiveFilter}
+                        onFilterIntentChange={handleAttributeFilterIntentChange}
                         moodConfig={moodConfig}
                         businessType={businessType}
                         isSearchActive={!!debouncedSearch}

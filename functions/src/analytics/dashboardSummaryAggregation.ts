@@ -41,6 +41,49 @@ const DEFAULT_ANALYTICS_AI_ENTITLEMENT: AnalyticsAiEntitlement = {
     reason: 'missing_plan',
 };
 
+export interface CatalogInsightInput {
+    projectId?: string;
+    defaultLanguage?: string;
+    languages?: string[];
+    files?: Array<Record<string, any>>;
+}
+
+interface CatalogInsightCategory {
+    id: string;
+    name: string;
+    active: boolean;
+    orderIndex: number;
+    timeSlots: Array<Record<string, any>>;
+}
+
+interface CatalogInsightItem {
+    id: string;
+    name: string;
+    categoryId: string;
+    active: boolean;
+    available: boolean;
+    price: number | null;
+    activeAttributes: number;
+    tags: string[];
+    dietaryTags: string[];
+    spiceLevel?: string;
+    targetAudience?: string;
+    skillLevel?: string;
+    duration?: number;
+    isBestSeller: boolean;
+    ownerBoost: number;
+    orderIndex: number;
+    hasImage: boolean;
+    hasDescription: boolean;
+    hasQualityReview: boolean;
+}
+
+interface CatalogInsightContext {
+    itemsById: Record<string, CatalogInsightItem>;
+    categoriesById: Record<string, CatalogInsightCategory>;
+    itemsByCategoryId: Record<string, CatalogInsightItem[]>;
+}
+
 function getDashboardSummaryDocId(tId: string, sId: string, projectId: string): string {
     return `${tId}_${sId}_${projectId}_dashboard_summary`;
 }
@@ -120,6 +163,12 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         menuSessionsBySource: {},
         actionSessionsBySource: {},
         menuActionClicksBySource: {},
+        attributeFilterInteractions: {},
+        attributeFilterItemViews: {},
+        attributeFilterItemTaps: {},
+        attributeFilterSearches: {},
+        attributeFilterUnavailableTaps: {},
+        attributeFilterActionClicks: {},
         viewsByCategory: {},
         clicksByCategory: {},
         hourlyViews: {},
@@ -136,6 +185,7 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         shortcutClicks: {},
         itemNames: {},
         categoryNames: {},
+        attributeFilterNames: {},
     };
 
     for (const doc of docs) {
@@ -160,6 +210,12 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         mergeMapField(result.menuSessionsBySource, doc.menuSessionsBySource);
         mergeMapField(result.actionSessionsBySource, doc.actionSessionsBySource);
         mergeMapField(result.menuActionClicksBySource, doc.menuActionClicksBySource);
+        mergeMapField(result.attributeFilterInteractions, doc.attributeFilterInteractions);
+        mergeMapField(result.attributeFilterItemViews, doc.attributeFilterItemViews);
+        mergeMapField(result.attributeFilterItemTaps, doc.attributeFilterItemTaps);
+        mergeMapField(result.attributeFilterSearches, doc.attributeFilterSearches);
+        mergeMapField(result.attributeFilterUnavailableTaps, doc.attributeFilterUnavailableTaps);
+        mergeMapField(result.attributeFilterActionClicks, doc.attributeFilterActionClicks);
         mergeMapField(result.viewsByCategory, doc.viewsByCategory);
         mergeMapField(result.clicksByCategory, doc.clicksByCategory);
         mergeMapField(result.hourlyViews, doc.hourlyViews);
@@ -179,6 +235,9 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         }
         if (doc.categoryNames) {
             Object.assign(result.categoryNames, doc.categoryNames);
+        }
+        if (doc.attributeFilterNames) {
+            Object.assign(result.attributeFilterNames, doc.attributeFilterNames);
         }
     }
 
@@ -279,6 +338,38 @@ function topCategoryEntries(data: Record<string, any> = {}) {
         }))
         .filter((category) => category.views > 0 || category.clicks > 0)
         .sort((a, b) => (b.views + b.clicks) - (a.views + a.clicks))
+        .slice(0, 5);
+}
+
+function topAttributeFilters(data: Record<string, any> = {}) {
+    const interactions = data.attributeFilterInteractions || {};
+    const actionClicks = data.attributeFilterActionClicks || {};
+    const itemViews = data.attributeFilterItemViews || {};
+    const itemTaps = data.attributeFilterItemTaps || {};
+    const searches = data.attributeFilterSearches || {};
+    const unavailableTaps = data.attributeFilterUnavailableTaps || {};
+    const filterIds = new Set<string>([
+        ...Object.keys(interactions),
+        ...Object.keys(actionClicks),
+        ...Object.keys(itemViews),
+        ...Object.keys(itemTaps),
+        ...Object.keys(searches),
+        ...Object.keys(unavailableTaps),
+    ]);
+
+    return Array.from(filterIds)
+        .map((filterId) => ({
+            filterId,
+            label: data.attributeFilterNames?.[filterId] || filterId,
+            interactions: interactions[filterId] || 0,
+            itemViews: itemViews[filterId] || 0,
+            itemTaps: itemTaps[filterId] || 0,
+            searches: searches[filterId] || 0,
+            unavailableTaps: unavailableTaps[filterId] || 0,
+            actionClicks: actionClicks[filterId] || 0,
+        }))
+        .filter((entry) => entry.interactions > 0 || entry.actionClicks > 0)
+        .sort((a, b) => (b.actionClicks - a.actionClicks) || (b.interactions - a.interactions))
         .slice(0, 5);
 }
 
@@ -614,6 +705,12 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         menuSessionsBySource: topMap(data.menuSessionsBySource, DASHBOARD_ITEM_LIMIT),
         actionSessionsBySource: topMap(data.actionSessionsBySource, DASHBOARD_ITEM_LIMIT),
         menuActionClicksBySource: topMap(data.menuActionClicksBySource, DASHBOARD_ITEM_LIMIT),
+        attributeFilterInteractions: topMap(data.attributeFilterInteractions, DASHBOARD_ITEM_LIMIT),
+        attributeFilterItemViews: topMap(data.attributeFilterItemViews, DASHBOARD_ITEM_LIMIT),
+        attributeFilterItemTaps: topMap(data.attributeFilterItemTaps, DASHBOARD_ITEM_LIMIT),
+        attributeFilterSearches: topMap(data.attributeFilterSearches, DASHBOARD_ITEM_LIMIT),
+        attributeFilterUnavailableTaps: topMap(data.attributeFilterUnavailableTaps, DASHBOARD_ITEM_LIMIT),
+        attributeFilterActionClicks: topMap(data.attributeFilterActionClicks, DASHBOARD_ITEM_LIMIT),
         viewsByItem: pickMap(data.viewsByItem, keepItemIds),
         viewsByCategory: topMap(data.viewsByCategory, DASHBOARD_ITEM_LIMIT),
         clicksByCategory: topMap(data.clicksByCategory, DASHBOARD_ITEM_LIMIT),
@@ -630,6 +727,7 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         decisionBlocksRendered: data.decisionBlocksRendered || {},
         itemNames,
         categoryNames: data.categoryNames || {},
+        attributeFilterNames: data.attributeFilterNames || {},
         lastUpdated: data.lastUpdated || data.modifiedOn || null,
     };
 }
@@ -733,6 +831,7 @@ function buildDailyView(data: Record<string, any>, date: string) {
         blockPerformance: getBlockPerformance(data),
         topItems: topMapEntries(data.recommendationClicksByItem, data.itemNames),
         topCategories: topCategoryEntries(data),
+        topAttributeFilters: topAttributeFilters(data),
         menuActions: getMenuActions(data),
         topSearchTerms: topSearchTerms(data.searchTerms),
         unavailableItems: topMapEntries(data.unavailableItemTapsByItem, data.itemNames),
@@ -750,6 +849,7 @@ function buildPeriodView(aggregated: Record<string, any>) {
         blockPerformance: getBlockPerformance(aggregated),
         topItems: topMapEntries(aggregated.recommendationClicksByItem, aggregated.itemNames),
         topCategories: topCategoryEntries(aggregated),
+        topAttributeFilters: topAttributeFilters(aggregated),
         menuActions: getMenuActions(aggregated),
         topSearchTerms: topSearchTerms(aggregated.searchTerms),
         unavailableItems: topMapEntries(aggregated.unavailableItemTapsByItem, aggregated.itemNames),
@@ -1007,6 +1107,7 @@ async function writeMenuDashboardSummary(
             totalMenuActionClicks: summary.lifetimeTotalMenuActionClicks || 0,
         },
         topCategories: topCategoryEntries(summary),
+        topAttributeFilters: topAttributeFilters(summary),
         menuActions: getMenuActions(summary),
         sourceQuality: sourceQualityEntries(summary),
         ownerConfidence: buildOwnerConfidence(summary),

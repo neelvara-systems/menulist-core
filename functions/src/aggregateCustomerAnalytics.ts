@@ -83,6 +83,12 @@ interface DailyMetrics {
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
     menuActionClicksBySource?: Record<string, number>;
+    attributeFilterInteractions?: Record<string, number>;
+    attributeFilterItemViews?: Record<string, number>;
+    attributeFilterItemTaps?: Record<string, number>;
+    attributeFilterSearches?: Record<string, number>;
+    attributeFilterUnavailableTaps?: Record<string, number>;
+    attributeFilterActionClicks?: Record<string, number>;
     viewsByCategory?: Record<string, number>;
     clicksByCategory?: Record<string, number>;
     hourlyViews?: Record<string, number>;
@@ -96,6 +102,7 @@ interface DailyMetrics {
     unavailableItemTapsByItem?: Record<string, number>;
     itemNames?: Record<string, string>;
     categoryNames?: Record<string, string>;
+    attributeFilterNames?: Record<string, string>;
 
     // ── Customer App (installable PWA surface) fields — additive-only, projectId='customerApp' ──
     // All optional so existing menu analytics projects (obp, menu slugs) are unaffected.
@@ -473,7 +480,18 @@ async function updateSummaryDocument(
         }
     }
 
-    for (const field of ['viewsByEntrySource', 'menuSessionsBySource', 'actionSessionsBySource', 'menuActionClicksBySource'] as const) {
+    for (const field of [
+        'viewsByEntrySource',
+        'menuSessionsBySource',
+        'actionSessionsBySource',
+        'menuActionClicksBySource',
+        'attributeFilterInteractions',
+        'attributeFilterItemViews',
+        'attributeFilterItemTaps',
+        'attributeFilterSearches',
+        'attributeFilterUnavailableTaps',
+        'attributeFilterActionClicks',
+    ] as const) {
         const map = dailyData[field];
         if (!map) continue;
         for (const [key, value] of Object.entries(map)) {
@@ -581,6 +599,12 @@ async function updateSummaryDocument(
     if (dailyData.categoryNames) {
         for (const [categoryId, name] of Object.entries(dailyData.categoryNames)) {
             updates[`categoryNames.${categoryId}`] = name;
+        }
+    }
+
+    if (dailyData.attributeFilterNames) {
+        for (const [filterId, name] of Object.entries(dailyData.attributeFilterNames)) {
+            updates[`attributeFilterNames.${filterId}`] = name;
         }
     }
 
@@ -773,6 +797,12 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('menuSessionsBySource', 'menuSessionsBySource');
     addMapDelta('actionSessionsBySource', 'actionSessionsBySource');
     addMapDelta('menuActionClicksBySource', 'menuActionClicksBySource');
+    addMapDelta('attributeFilterInteractions', 'attributeFilterInteractions');
+    addMapDelta('attributeFilterItemViews', 'attributeFilterItemViews');
+    addMapDelta('attributeFilterItemTaps', 'attributeFilterItemTaps');
+    addMapDelta('attributeFilterSearches', 'attributeFilterSearches');
+    addMapDelta('attributeFilterUnavailableTaps', 'attributeFilterUnavailableTaps');
+    addMapDelta('attributeFilterActionClicks', 'attributeFilterActionClicks');
     addMapDelta('viewsByCategory', 'viewsByCategory');
     addMapDelta('clicksByCategory', 'clicksByCategory');
     addMapDelta('hourlyViews', 'hourlyViews');
@@ -800,6 +830,11 @@ function buildLateCorrectionSummaryUpdates(
     if (currentDaily.categoryNames) {
         Object.entries(currentDaily.categoryNames).forEach(([categoryId, name]) => {
             updates[`categoryNames.${categoryId}`] = name;
+        });
+    }
+    if (currentDaily.attributeFilterNames) {
+        Object.entries(currentDaily.attributeFilterNames).forEach(([filterId, name]) => {
+            updates[`attributeFilterNames.${filterId}`] = name;
         });
     }
 
@@ -1053,6 +1088,12 @@ function aggregateDailyDocs(docs: any[]): any {
         menuSessionsBySource: {},
         actionSessionsBySource: {},
         menuActionClicksBySource: {},
+        attributeFilterInteractions: {},
+        attributeFilterItemViews: {},
+        attributeFilterItemTaps: {},
+        attributeFilterSearches: {},
+        attributeFilterUnavailableTaps: {},
+        attributeFilterActionClicks: {},
         viewsByCategory: {},
         clicksByCategory: {},
         hourlyViews: {},
@@ -1067,6 +1108,7 @@ function aggregateDailyDocs(docs: any[]): any {
         recommendationClicksByItem: {},
         itemNames: {},
         categoryNames: {},
+        attributeFilterNames: {},
         // ── Customer App (projectId='customerApp') fields ──
         // Stay zero for all other projects; summed only when daily docs contain these keys.
         totalPromptShown: 0,
@@ -1116,6 +1158,12 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.menuSessionsBySource, doc.menuSessionsBySource);
         mergeMapField(result.actionSessionsBySource, doc.actionSessionsBySource);
         mergeMapField(result.menuActionClicksBySource, doc.menuActionClicksBySource);
+        mergeMapField(result.attributeFilterInteractions, doc.attributeFilterInteractions);
+        mergeMapField(result.attributeFilterItemViews, doc.attributeFilterItemViews);
+        mergeMapField(result.attributeFilterItemTaps, doc.attributeFilterItemTaps);
+        mergeMapField(result.attributeFilterSearches, doc.attributeFilterSearches);
+        mergeMapField(result.attributeFilterUnavailableTaps, doc.attributeFilterUnavailableTaps);
+        mergeMapField(result.attributeFilterActionClicks, doc.attributeFilterActionClicks);
         mergeMapField(result.viewsByCategory, doc.viewsByCategory);
         mergeMapField(result.clicksByCategory, doc.clicksByCategory);
         mergeMapField(result.hourlyViews, doc.hourlyViews);
@@ -1134,6 +1182,9 @@ function aggregateDailyDocs(docs: any[]): any {
         }
         if (doc.categoryNames) {
             Object.assign(result.categoryNames, doc.categoryNames);
+        }
+        if (doc.attributeFilterNames) {
+            Object.assign(result.attributeFilterNames, doc.attributeFilterNames);
         }
         // Customer App map fields (additive merge — keys summed, never replaced)
         mergeMapField(result.shortcutClicks, doc.shortcutClicks);

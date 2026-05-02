@@ -134,6 +134,12 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                 </Text>
             ) : null}
 
+            {data.topAttributeFilters?.length ? (
+                <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
+                    {`Top filters: ${data.topAttributeFilters.slice(0, 3).map((filter) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}`}
+                </Text>
+            ) : null}
+
             {lastUpdated && (
                 <Text type="secondary" className={styles.lastUpdated}>
                     Last updated: {formatDate(lastUpdated)}

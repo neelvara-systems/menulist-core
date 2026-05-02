@@ -125,6 +125,17 @@ export interface SourceQuality {
     actionRate: number;
 }
 
+export interface AttributeFilterInterest {
+    filterId: string;
+    label: string;
+    interactions: number;
+    itemViews: number;
+    itemTaps: number;
+    searches: number;
+    unavailableTaps: number;
+    actionClicks: number;
+}
+
 export interface OwnerConfidence {
     status: 'stable' | 'watch' | 'no_data';
     label: string;
@@ -165,6 +176,7 @@ export interface DailyViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -190,6 +202,7 @@ export interface WeeklyViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -210,6 +223,7 @@ export interface MonthlyViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -230,6 +244,7 @@ export interface WTDViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -251,6 +266,7 @@ export interface MTDViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -312,6 +328,7 @@ export interface OverallData {
         totalMenuActionClicks?: number;
     };
     topCategories?: TopCategory[];
+    topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     sourceQuality?: SourceQuality[];
     ownerConfidence?: OwnerConfidence;

@@ -247,11 +247,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const renderDemandAndActions = (data?: any) => {
         const hasActions = Object.values(data?.menuActions || {}).some((value) => Number(value) > 0);
         const hasTopCategories = Boolean(data?.topCategories?.length);
+        const hasTopFilters = Boolean(data?.topAttributeFilters?.length);
         const hasSearchTerms = Boolean(data?.topSearchTerms?.length);
         const hasUnavailable = Boolean(data?.unavailableItems?.length);
         const hasZeroResultSearches = Number(data?.metrics?.zeroResultSearches || 0) > 0;
 
-        if (!hasActions && !hasTopCategories && !hasSearchTerms && !hasUnavailable && !hasZeroResultSearches) return null;
+        if (!hasActions && !hasTopCategories && !hasTopFilters && !hasSearchTerms && !hasUnavailable && !hasZeroResultSearches) return null;
 
         return (
             <Card size="small" title={<Text strong>Customer Intent</Text>}>
@@ -267,6 +268,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     {hasTopCategories ? (
                         <Text type="secondary">
                             {`Top category: ${data.topCategories.slice(0, 3).map((category: any) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}`}
+                        </Text>
+                    ) : null}
+                    {hasTopFilters ? (
+                        <Text type="secondary">
+                            {`Top filters: ${data.topAttributeFilters.slice(0, 3).map((filter: any) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}`}
                         </Text>
                     ) : null}
                     {hasSearchTerms ? (
@@ -318,6 +324,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         const hasActions = Object.values(today.menuActions || {}).some((value) => Number(value) > 0);
         const topSearch = today.topSearchTerms?.[0];
         const topUnavailable = today.unavailableItems?.[0];
+        const topFilter = today.topAttributeFilters?.[0];
         const todayInfoContent = (
             <div style={{ maxWidth: 280 }}>
                 <Text type="secondary" style={{ display: 'block' }}>
@@ -334,6 +341,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 {topSearch ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
                         {`Top search right now: ${topSearch.term} (${topSearch.count})`}
+                    </Text>
+                ) : null}
+                {topFilter ? (
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        {`Top filter right now: ${topFilter.label || topFilter.filterId} (${topFilter.interactions} intent, ${topFilter.actionClicks} actions)`}
                     </Text>
                 ) : null}
                 <Text style={{ display: 'block', marginTop: 8 }}>

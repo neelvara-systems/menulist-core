@@ -47,6 +47,7 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 | `DECISION_BLOCK_CLICK`     | Block item click | Measure recommendation effectiveness |
 | `DECISION_BLOCKS_RENDERED` | Blocks displayed | Track impression                     |
 | `SEARCH`                   | Unique search term per session | Track real demand without per-keystroke cost |
+| Active filter context      | Attached to later item/search/action writes only | Show owner-visible customer filter intent without a separate Firebase write |
 | `UNAVAILABLE_ITEM_ATTEMPT` | Tap on unavailable item | Track missed demand / stock friction |
 | `MENU_ACTION_CLICK`        | Final CTA click from menu footer or recovery UI | Track action intent without passive telemetry cost |
 
@@ -279,6 +280,7 @@ Total: ~₹183/month
 - The recommended owner flow is: load `Today so far` first, then load settled historical analytics only when the owner asks for them.
 - That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.
 - Search demand, unavailable-item demand, and final menu CTA clicks are visible in dashboard views after nightly aggregation.
+- Attribute filter intent is visible as `Top filters` only when a customer selected a public filter chip and then performed a meaningful existing action such as item view, search, unavailable tap, recommendation tap, or final CTA.
 - Dashboard read models carry `engagedSessionRate`, `intentRate`, and `actionRate` precomputed by the scheduler/DAL from `menuSessions`.
 - Dashboard read models also carry `sourceQuality`, `ownerConfidence`, and `ownerActionPlan` so Dashboard and Today screens render owner guidance without client-side daily-doc aggregation.
 - Owner-facing wording uses `Action Rate`, not conversion rate, because MenuList only observes final CTA clicks unless a future integration confirms booking/order/payment completion.

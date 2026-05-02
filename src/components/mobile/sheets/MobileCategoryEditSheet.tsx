@@ -28,6 +28,7 @@ interface MobileCategoryEditSheetProps {
     mode: 'add' | 'edit';
     businessType?: string;
     categoryIconsEnabled?: boolean;
+    onAddItem?: (categoryId: string) => void;
     onClose: () => void;
     onDelete?: (categoryId: string) => void;
     onGenerateContent?: (payload: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => Promise<Record<string, string> | null>;
@@ -73,6 +74,7 @@ export default function MobileCategoryEditSheet({
     mode,
     businessType,
     categoryIconsEnabled = true,
+    onAddItem,
     onClose,
     onDelete,
     onGenerateContent,
@@ -382,6 +384,21 @@ export default function MobileCategoryEditSheet({
 
                 <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 'auto' }}>
                     <Flex gap={8} vertical>
+                        {mode === 'edit' && category?.id && onAddItem ? (
+                            <Button
+                                block
+                                disabled={isSaving}
+                                fill="outline"
+                                onClick={() => onAddItem(category.id)}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6}>
+                                    <LuPlus size={14} />
+                                    <Text>{t('addItem')}</Text>
+                                </Flex>
+                            </Button>
+                        ) : null}
+
                         {translationActionState ? (
                             <Button
                                 block

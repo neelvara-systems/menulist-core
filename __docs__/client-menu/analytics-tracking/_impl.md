@@ -51,7 +51,7 @@ Debounce check (1 second window)
 Menu view cooldown check (30 seconds)
     ↓ PASS
 trackFirebaseEvent()
-    └── Adds anonymous session milestones/category interest to the same accepted write when applicable
+    └── Adds anonymous session milestones/category/filter interest to the same accepted write when applicable
     ↓
 database/analytics → trackAnalyticsEvent()
     ↓
@@ -179,7 +179,7 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 ### Dashboard Surfacing
 
 - Owner dashboard reads settled metrics from nightly dashboard read-model docs, not by rebuilding every card from daily docs on each visit.
-- `aggregateCustomerAnalytics.ts` rolls search demand, unavailable-item demand, menu CTA clicks, and Customer App metrics into summary / weekly / monthly rollups, then writes `{tId}_{sId}_{projectId}_dashboard_summary`.
+- `aggregateCustomerAnalytics.ts` rolls search demand, unavailable-item demand, active filter context, menu CTA clicks, and Customer App metrics into summary / weekly / monthly rollups, then writes `{tId}_{sId}_{projectId}_dashboard_summary`.
 - `analytics/dashboardSummaryAggregation.ts` writes menu and Customer App owner-dashboard read models. `analytics/obpAnalyticsAggregation.ts` writes the OBP dashboard read model.
 - The menu, OBP, and Customer App dashboard read models update incrementally in steady state: existing compact daily rows are reused, the settled day is added when present, and wide daily-range rebuilds happen only for first deploy/cache gaps.
 - Weekly/monthly rollups also prefer the same dashboard read-model cache. Daily-doc range reads are fallback only when the compact cache does not cover the required window.
@@ -212,6 +212,7 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
   - anonymous engaged-session rate
   - anonymous action rate
   - top category interest
+  - top customer filters
   - action rate by source
   - owner confidence status
   - Today Action List cards from the settled read model

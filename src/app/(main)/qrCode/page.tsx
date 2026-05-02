@@ -1,9 +1,7 @@
-import QrCodePage from "@template/main-app/qrCode"
+import { redirect } from 'next/navigation';
 
 function page() {
-    return (
-        <QrCodePage />
-    )
+    redirect('/qr-code');
 }
 
 export default page

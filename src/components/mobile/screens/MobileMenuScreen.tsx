@@ -76,6 +76,7 @@ type CategoryIssueSummary = {
     missingDescriptions: number;
     missingImages: number;
     missingPrices: number;
+    missingIcon?: boolean;
 };
 
 type MobileMenuFilters = {
@@ -87,7 +88,7 @@ type MobileMenuFilters = {
     hasPrice: boolean | null;
     availability: boolean | null;
     activeStatus: boolean | null;
-    qualityIssue: 'priceOutliers' | 'translationMissing' | null;
+    qualityIssue: 'priceOutliers' | 'translationMissing' | 'categoryIconMissing' | null;
 };
 
 const DEFAULT_FILTERS: MobileMenuFilters = {
@@ -188,6 +189,21 @@ function hasLocalizedValue(value: unknown, languageCode: string): boolean {
     if (!value || typeof value !== 'object') return false;
     const localizedValue = (value as Record<string, unknown>)[languageCode];
     return typeof localizedValue === 'string' && localizedValue.trim().length > 0;
+}
+
+function hasCategoryIconValue(icon: unknown): boolean {
+    if (typeof icon === 'string') {
+        return icon.trim().length > 0;
+    }
+
+    if (icon && typeof icon === 'object') {
+        return ['icon', 'value', 'name'].some((key) => {
+            const candidate = (icon as Record<string, unknown>)[key];
+            return typeof candidate === 'string' && candidate.trim().length > 0;
+        });
+    }
+
+    return false;
 }
 
 function hasMissingTranslations(item: Partial<ExtractedDataItem> | null | undefined, languages: string[]): boolean {
@@ -424,6 +440,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
     const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
     const [addSheetInitialCategoryId, setAddSheetInitialCategoryId] = useState<string | null>(null);
+    const [addSheetSource, setAddSheetSource] = useState<'default' | 'commandMenu' | 'categorySheet'>('default');
     const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
     const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
     const [bulkActionType, setBulkActionType] = useState<'availability' | 'showHide' | 'pricing' | 'moveCategory' | 'aiRepair' | null>(null);
@@ -1264,6 +1281,46 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         return outliers;
     }, [isItemEffectivelyActive, menuItems]);
 
+    const categorySummary = useMemo(() => {
+        if (!menuData?.files) return [];
+        const map = new Map<string, CategorySummary>();
+        menuData.files.forEach((file: any) => {
+            const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
+            const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
+            categories.forEach((category) => {
+                const name = resolveCategoryName(category, displayLanguage, uncategorizedLabel);
+                const count = items.filter((item) => item.category === category.id).length;
+                if (!map.has(category.id)) {
+                    map.set(category.id, {
+                        id: category.id,
+                        name,
+                        active: category.active !== false,
+                        itemCount: count,
+                        icon: category.icon,
+                        nameByLanguage: typeof category.name === 'object' ? removeObjRef(category.name) : undefined,
+                        orderIndex: category.orderIndex,
+                        timeSlotPresetIds: getCategoryTimeSlotPresetIds(category),
+                        translationMissing: hasMissingCategoryTranslationForLanguage(category, primaryLang, displayLanguage),
+                    });
+                }
+            });
+        });
+        return Array.from(map.values()).sort((a, b) => {
+            const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
+            const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
+            if (aIndex !== bIndex) return aIndex - bIndex;
+            return a.name.localeCompare(b.name);
+        });
+    }, [displayLanguage, menuData?.files, primaryLang, uncategorizedLabel]);
+
+    const missingCategoryIconCategoryIds = useMemo(() => {
+        if (!showCategoryIcons) return [];
+
+        return categorySummary
+            .filter((category) => category.active !== false && !hasCategoryIconValue(category.icon))
+            .map((category) => category.id);
+    }, [categorySummary, showCategoryIcons]);
+
     const categoryIssueSummary = useMemo(() => {
         const map = new Map<string, CategoryIssueSummary>();
 
@@ -1327,9 +1384,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             if (filters.qualityIssue === 'translationMissing' && !hasAnyMissingTranslationsForMenuItem(item)) {
                 return false;
             }
+            if (filters.qualityIssue === 'categoryIconMissing' && (!item.categoryId || !missingCategoryIconCategoryIds.includes(item.categoryId))) {
+                return false;
+            }
             return true;
         });
-    }, [filters, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds, searchQuery]);
+    }, [filters, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, missingCategoryIconCategoryIds, priceOutlierItemIds, searchQuery]);
 
     const appliedFilterCount = useMemo(() => {
         return [
@@ -1356,10 +1416,18 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             missingPrice: reviewableItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length,
             priceOutliers: reviewableItems.filter((item) => priceOutlierItemIds.has(item.id)).length,
             missingTranslation: reviewableItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
+            missingCategoryIcon: showCategoryIcons
+                ? categorySummary.filter((category) => {
+                    if (draftFilters.categoryIds.length > 0 && !draftFilters.categoryIds.includes(category.id)) {
+                        return false;
+                    }
+                    return category.active !== false && !hasCategoryIconValue(category.icon);
+                }).length
+                : 0,
             shown: scopedItems.filter((item) => isItemEffectivelyActive(item)).length,
             unavailable: scopedItems.filter((item) => !item.available).length,
         };
-    }, [draftFilters.categoryIds, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds]);
+    }, [categorySummary, draftFilters.categoryIds, hasAnyMissingTranslationsForMenuItem, isItemEffectivelyActive, menuItems, priceOutlierItemIds, showCategoryIcons]);
     const listingStatusLegend = useMemo(() => {
         const entries: { color: string; key: string; label: string }[] = [];
         if (menuIssueCounts.hidden > 0) {
@@ -1393,6 +1461,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (!isFilterSheetOpen) return;
         setDraftFilters(filters);
     }, [filters, isFilterSheetOpen]);
+
+    useEffect(() => {
+        if (!showCategoryIcons) {
+            setFilters((prev) => prev.qualityIssue === 'categoryIconMissing' ? { ...prev, qualityIssue: null } : prev);
+            setDraftFilters((prev) => prev.qualityIssue === 'categoryIconMissing' ? { ...prev, qualityIssue: null } : prev);
+        }
+    }, [showCategoryIcons]);
 
     const activeFilterChips = useMemo(() => {
         const chips: { key: string; label: string; onRemove: () => void }[] = [];
@@ -1465,6 +1540,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             });
         }
 
+        if (filters.qualityIssue === 'categoryIconMissing') {
+            chips.push({
+                key: 'quality-category-icon-missing',
+                label: t('missingCategoryIcon'),
+                onRemove: () => setFilters((prev) => ({ ...prev, qualityIssue: null })),
+            });
+        }
+
         return chips;
     }, [availabilityLabels.available, availabilityLabels.unavailable, categoryOptions, filters, t]);
 
@@ -1488,6 +1571,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         setDisplayLanguage(firstLanguageWithMissingTranslations);
                     }
                     return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
+                case 'categoryIcons':
+                    return { ...DEFAULT_FILTERS, qualityIssue: 'categoryIconMissing' };
                 default:
                     return DEFAULT_FILTERS;
             }
@@ -1610,37 +1695,6 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         () => formatSpecialMenuWindow(activeProjectSummary?.specialMenuStartsAt, activeProjectSummary?.specialMenuEndsAt),
         [activeProjectSummary?.specialMenuEndsAt, activeProjectSummary?.specialMenuStartsAt]
     );
-    const categorySummary = useMemo(() => {
-        if (!menuData?.files) return [];
-        const map = new Map<string, CategorySummary>();
-        menuData.files.forEach((file: any) => {
-            const categories = toArray<ExtractedDataCategory>(file.extractedData?.data?.categories);
-            const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
-            categories.forEach((category) => {
-                const name = resolveCategoryName(category, displayLanguage, uncategorizedLabel);
-                const count = items.filter((item) => item.category === category.id).length;
-                if (!map.has(category.id)) {
-                    map.set(category.id, {
-                        id: category.id,
-                        name,
-                        active: category.active !== false,
-                        itemCount: count,
-                        icon: category.icon,
-                        nameByLanguage: typeof category.name === 'object' ? removeObjRef(category.name) : undefined,
-                        orderIndex: category.orderIndex,
-                        timeSlotPresetIds: getCategoryTimeSlotPresetIds(category),
-                        translationMissing: hasMissingCategoryTranslationForLanguage(category, primaryLang, displayLanguage),
-                    });
-                }
-            });
-        });
-        return Array.from(map.values()).sort((a, b) => {
-            const aIndex = typeof a.orderIndex === 'number' ? a.orderIndex : Number.POSITIVE_INFINITY;
-            const bIndex = typeof b.orderIndex === 'number' ? b.orderIndex : Number.POSITIVE_INFINITY;
-            if (aIndex !== bIndex) return aIndex - bIndex;
-            return a.name.localeCompare(b.name);
-        });
-    }, [displayLanguage, menuData?.files, primaryLang, uncategorizedLabel]);
     const hasCategories = categorySummary.length > 0;
     const categoryCount = useMemo(() => categorySummary.length, [categorySummary.length]);
     const isFirstRunProject = Boolean(menuData?.projectId) && !hasCategories && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
@@ -1990,6 +2044,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         setReturnToCommandMenu(false);
     }, []);
 
+    const openAddItemSheet = useCallback((
+        categoryId: string | null = null,
+        source: 'default' | 'commandMenu' | 'categorySheet' = 'default',
+    ) => {
+        setAddSheetInitialCategoryId(categoryId);
+        setAddSheetSource(source);
+        setIsAddSheetOpen(true);
+    }, []);
+
     const menuPreviewUrl = useMemo(() => {
         const projectName = selectedProjectSummary?.name || selectedProject?.name || menuData?.name;
         const subdomain = storeDetails?.subdomain;
@@ -2088,6 +2151,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 setIsBulkActionsOpen(true);
                             }}
                             projectLanguages={menuData.languages}
+                            showCategoryIcons={showCategoryIcons}
                             onExpandedChange={setIsMenuQualityExpanded}
                             onReviewSignal={handleReviewQualitySignal}
                         />
@@ -2204,6 +2268,20 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         size="small"
                                     >
                                         {t('showOnMenu')}
+                                    </Button>
+                                ) : null}
+                                {filters.qualityIssue === 'categoryIconMissing' && showCategoryIcons && missingCategoryIconCategoryIds.length > 0 ? (
+                                    <Button
+                                        color="primary"
+                                        fill="outline"
+                                        onClick={() => {
+                                            setCategorySheetMode('manage');
+                                            setCategorySheetInitialCategoryId(missingCategoryIconCategoryIds[0] || null);
+                                            setIsCategorySheetOpen(true);
+                                        }}
+                                        size="small"
+                                    >
+                                        {t('addCategoryIcons')}
                                     </Button>
                                 ) : null}
                                 <Button
@@ -2411,8 +2489,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                             block
                                             fill="outline"
                                             onClick={() => {
-                                                setAddSheetInitialCategoryId(null);
-                                                setIsAddSheetOpen(true);
+                                                openAddItemSheet();
                                             }}
                                             size="large"
                                             style={{
@@ -2580,8 +2657,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                                 fill="outline"
                                                                 onClick={(event) => {
                                                                     event.stopPropagation();
-                                                                    setAddSheetInitialCategoryId(id);
-                                                                    setIsAddSheetOpen(true);
+                                                                    openAddItemSheet(id);
                                                                 }}
                                                                 size="small"
                                                             >
@@ -2683,6 +2759,20 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                                 />
                                                             ))}
                                                         </List>
+                                                        {id !== 'uncategorized' ? (
+                                                            <Button
+                                                                block
+                                                                fill="outline"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    openAddItemSheet(id);
+                                                                }}
+                                                                size="small"
+                                                                style={{ marginTop: 8 }}
+                                                            >
+                                                                {t('addItem')}
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
                                                 )}
                                             </Collapse.Panel>
@@ -2959,6 +3049,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         draftFilters.hasImage === false,
                                         () => setDraftFilters((prev) => ({ ...prev, hasImage: prev.hasImage === false ? null : false }))
                                     ) : null}
+                                    {showCategoryIcons && (menuIssueCounts.missingCategoryIcon > 0 || draftFilters.qualityIssue === 'categoryIconMissing') ? renderIssueToggle(
+                                        `${t('missingCategoryIcon')} (${menuIssueCounts.missingCategoryIcon})`,
+                                        draftFilters.qualityIssue === 'categoryIconMissing',
+                                        () => setDraftFilters((prev) => ({
+                                            ...prev,
+                                            qualityIssue: prev.qualityIssue === 'categoryIconMissing' ? null : 'categoryIconMissing',
+                                        }))
+                                    ) : null}
                                     {(menuIssueCounts.missingDescription > 0 || draftFilters.hasDescription === false) ? renderIssueToggle(
                                         `${t('missingDescription')} (${menuIssueCounts.missingDescription})`,
                                         draftFilters.hasDescription === false,
@@ -3087,8 +3185,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 businessType={storeDetails?.businessType}
                 labels={labels}
                 onAddItem={() => launchCommandAction(() => {
-                    setAddSheetInitialCategoryId(null);
-                    setIsAddSheetOpen(true);
+                    openAddItemSheet(null, 'commandMenu');
                 })}
                 onCategories={() => launchCommandAction(() => {
                     setCategorySheetMode('manage');
@@ -3219,6 +3316,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 onUpdate={handleCategoryUpdate}
                 onReorder={handleCategoryReorder}
                 onReorderItems={handleCategoryItemReorder}
+                onAddItem={(categoryId) => {
+                    openAddItemSheet(categoryId, 'categorySheet');
+                }}
                 selectedLanguages={activeProjectLanguages}
                 visible={isCategorySheetOpen}
             />
@@ -3337,10 +3437,22 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     currencySymbol={storeDetails?.currencySymbol || '₹'}
                     initialCategoryId={addSheetInitialCategoryId || undefined}
                     mode="add"
-                    onClose={() => handleCommandActionBack(() => {
+                    onClose={() => {
+                        const shouldReturnToCommandMenu = addSheetSource === 'commandMenu';
+
+                        if (shouldReturnToCommandMenu) {
+                            handleCommandActionBack(() => {
+                                setIsAddSheetOpen(false);
+                                setAddSheetInitialCategoryId(null);
+                                setAddSheetSource('default');
+                            });
+                            return;
+                        }
+
                         setIsAddSheetOpen(false);
                         setAddSheetInitialCategoryId(null);
-                    })}
+                        setAddSheetSource('default');
+                    }}
                     projectData={menuData}
                     onSave={async (newItem) => {
                         if (!menuData) return;
@@ -3413,9 +3525,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
                         applyLocalMenuUpdate(updated);
                         Toast.show({ content: t('itemAdded'), duration: 1000 });
+                        const currentAddSheetSource = addSheetSource;
                         setIsAddSheetOpen(false);
                         setAddSheetInitialCategoryId(null);
-                        resetCommandActionFlow();
+                        setAddSheetSource('default');
+                        if (currentAddSheetSource !== 'categorySheet') {
+                            resetCommandActionFlow();
+                        }
 
                         if (shouldUploadImage && pendingImage) {
                             uploadItemImageInBackground(

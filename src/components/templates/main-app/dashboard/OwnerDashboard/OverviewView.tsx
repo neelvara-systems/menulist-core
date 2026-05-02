@@ -290,6 +290,20 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                             </div>
                         </Col>
                     )}
+                    {wtd.topAttributeFilters && wtd.topAttributeFilters.length > 0 && (
+                        <Col span={24}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Top Filters:
+                            </Text>
+                            <div style={{ marginTop: 4 }}>
+                                {wtd.topAttributeFilters.slice(0, 3).map((filter) => (
+                                    <Tag key={filter.filterId} style={{ marginBottom: 4 }}>
+                                        {filter.label || filter.filterId} ({filter.interactions} intent, {filter.actionClicks} actions)
+                                    </Tag>
+                                ))}
+                            </div>
+                        </Col>
+                    )}
                     {renderActionSummary(wtd.menuActions)}
                     {renderDemandSummary(wtd.topSearchTerms, wtd.unavailableItems)}
                 </Row>

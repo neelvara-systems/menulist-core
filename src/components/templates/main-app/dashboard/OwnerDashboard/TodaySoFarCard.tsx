@@ -71,6 +71,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     const hasActions = Object.values(data.menuActions || {}).some((value) => Number(value) > 0);
     const topSearch = data.topSearchTerms?.[0];
     const topUnavailable = data.unavailableItems?.[0];
+    const topFilter = data.topAttributeFilters?.[0];
     const detailContent = (
         <div style={{ maxWidth: 320 }}>
             <Text type="secondary" style={{ display: 'block' }}>
@@ -85,6 +86,11 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
             {topSearch ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
                     Top search right now: {topSearch.term} ({topSearch.count})
+                </Text>
+            ) : null}
+            {topFilter ? (
+                <Text style={{ display: 'block', marginTop: 8 }}>
+                    Top filter right now: {topFilter.label || topFilter.filterId} ({topFilter.interactions} intent, {topFilter.actionClicks} actions)
                 </Text>
             ) : null}
             <Text style={{ display: 'block', marginTop: 8 }}>

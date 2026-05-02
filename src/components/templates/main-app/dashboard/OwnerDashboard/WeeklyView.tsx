@@ -159,6 +159,14 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                             </Text>
                         </Card>
                     ) : null}
+                    {data.topAttributeFilters?.length ? (
+                        <Card className={styles.detailCard} variant="borderless" style={{ marginTop: 16 }}>
+                            <Title level={5}>Top Filters</Title>
+                            <Text type="secondary">
+                                {data.topAttributeFilters.slice(0, 3).map((filter) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}
+                            </Text>
+                        </Card>
+                    ) : null}
                 </Col>
                 <Col xs={24} lg={12}>
                     <Card className={styles.blockPerformanceCard} variant="borderless">

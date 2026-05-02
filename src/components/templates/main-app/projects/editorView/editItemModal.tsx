@@ -8,6 +8,7 @@ import GlobalLanguagesList from '@data/languages';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
+import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -194,6 +195,50 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         });
         return categoriesForDropdown;
     }, [projectData]);
+    const hasMultipleLanguages = selectedLanguages.length > 1;
+    const hasAnyDescription = useMemo(
+        () => Object.values(itemData?.description || {}).some((description) => hasMeaningfulDescription(description)),
+        [itemData?.description]
+    );
+    const contentActionCopy = useMemo(() => {
+        if (hasMultipleLanguages) {
+            return hasAnyDescription
+                ? {
+                    label: 'Regenerate Description & Translations',
+                    helper: 'Refreshes the description and translations for this item.',
+                    success: 'Description and translations refreshed.',
+                    failure: 'Failed to refresh description and translations. Please try again.',
+                    unexpected: 'An unexpected error occurred while refreshing description and translations. Please try again.',
+                    validation: 'description and translations',
+                }
+                : {
+                    label: 'Generate Description & Translations',
+                    helper: 'Creates the description and translations for this item.',
+                    success: 'Description and translations generated.',
+                    failure: 'Failed to generate description and translations. Please try again.',
+                    unexpected: 'An unexpected error occurred while generating description and translations. Please try again.',
+                    validation: 'description and translations',
+                };
+        }
+
+        return hasAnyDescription
+            ? {
+                label: 'Regenerate Description',
+                helper: 'Refreshes the description for this item.',
+                success: 'Description refreshed.',
+                failure: 'Failed to refresh description. Please try again.',
+                unexpected: 'An unexpected error occurred while refreshing description. Please try again.',
+                validation: 'description',
+            }
+            : {
+                label: 'Generate Description',
+                helper: 'Creates the description for this item.',
+                success: 'Description generated.',
+                failure: 'Failed to generate description. Please try again.',
+                unexpected: 'An unexpected error occurred while generating description. Please try again.',
+                validation: 'description',
+            };
+    }, [hasAnyDescription, hasMultipleLanguages]);
 
     const onUploadGeneratedImage = useCallback((imagesToUpload: UserUploadedFileType[]) => {
         if (!itemData) return;
@@ -364,7 +409,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
 
             // Validate if item name is present in the source language
             if (!itemData.name[sourceLanguage.code]) {
-                antdMessage.error(`Item name in ${sourceLanguage.name} is required to generate content.`);
+                antdMessage.error(`Item name in ${sourceLanguage.name} is required to generate ${contentActionCopy.validation}.`);
                 return;
             }
 
@@ -390,17 +435,17 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             }
             const result = await getNewItemMetadataViaAPI(payload)
             if (result) {
-                antdMessage.success("Content generated successfully")
+                antdMessage.success(contentActionCopy.success)
                 setItemData(mergeGeneratedItemMetadata(itemData, result))
             } else {
-                antdMessage.error("Failed to generate content. Please try again.");
+                antdMessage.error(contentActionCopy.failure);
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 console.error("Error generating content:", error);
-                antdMessage.error("An unexpected error occurred while generating content. Please try again.");
+                antdMessage.error(contentActionCopy.unexpected);
             }
         } finally {
             dispatch(stopLoader("generating_content"));
@@ -507,13 +552,11 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 <Flex gap={8} vertical>
                     <Flex gap={16}>
                         <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
-                        {modalData.status == 'add' ?
-                            <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Generate Content" /> :
-                            <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label="Regenerate Content" />}
+                        <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label={contentActionCopy.label} />
                         <Button type="primary" icon={<LuCheck />} onClick={onSave} >Save</Button>
                     </Flex>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        Adds missing description and translations for this item.
+                        {contentActionCopy.helper}
                     </Text>
                 </Flex>
             </>}

@@ -54,7 +54,9 @@ const nextConfig = {
     reactStrictMode: false,
     productionBrowserSourceMaps: false,
     compiler: {
-        removeConsole: process.env.NODE_ENV === 'production',
+        removeConsole: process.env.NODE_ENV === 'production'
+            ? { exclude: ['error', 'warn', 'info'] }
+            : false,
     },
     transpilePackages: ['antd-mobile', 'pdfjs-dist'],
     images: {
@@ -71,16 +73,6 @@ const nextConfig = {
         ],
     },
     webpack(config, { isServer, dev, nextRuntime }) {
-        // Memory optimizations for builds
-        if (!dev && !isServer && nextRuntime !== 'edge') {
-            config.optimization = {
-                ...config.optimization,
-                // Enable tree shaking
-                usedExports: true,
-                sideEffects: false,
-            };
-        }
-
         if (isServer) {
             config.externals = [
                 ...config.externals,
@@ -141,6 +133,7 @@ const nextConfig = {
             { source: '/about-us', destination: '/about', permanent: true },
             { source: '/contact-us', destination: '/contact', permanent: true },
             { source: '/home', destination: '/', permanent: true },
+            { source: '/qrCode', destination: '/qr-code', permanent: true },
         ];
     },
 }
@@ -251,7 +244,9 @@ const sentryWebpackPluginOptions = {
     sourcemaps: {
         disable: !process.env.SENTRY_AUTH_TOKEN,
     },
-    widenClientFileUpload: true,
+    // Keep Sentry active in every deployed environment while avoiding the
+    // preview-build penalty from uploading widened client artifacts.
+    widenClientFileUpload: process.env.VERCEL_ENV === 'production',
 };
 
 module.exports = withSentryConfig(

@@ -6,11 +6,12 @@ import type { ProjectFileType } from '@template/main-app/projects/types/project.
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
-import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
+import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuFolder, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
 import { Button, Collapse, Flex, List, Tag, Text } from '../antd';
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     descriptions: <LuFileText size={16} />,
+    categoryIcons: <LuFolder size={16} />,
     hidden: <LuEyeOff size={16} />,
     images: <LuImage size={16} />,
     priceOutliers: <LuTrendingDown size={16} />,
@@ -22,16 +23,20 @@ interface MobileMenuQualitySignalsProps {
     activeKey?: string[];
     files: ProjectFileType[] | undefined;
     projectLanguages?: string[];
+    showCategoryIcons?: boolean;
     onExpandedChange?: (expanded: boolean) => void;
     onOpenRepairMenu?: () => void;
     onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, showCategoryIcons = true, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
     const tMenu = useTranslations('MobileMenu');
     const { token } = theme.useToken();
-    const allSignals = useMemo(() => computeQualitySignals(files, projectLanguages), [files, projectLanguages]);
+    const allSignals = useMemo(
+        () => computeQualitySignals(files, projectLanguages, { showCategoryIcons }),
+        [files, projectLanguages, showCategoryIcons]
+    );
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
 

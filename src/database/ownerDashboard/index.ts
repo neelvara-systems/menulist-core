@@ -36,6 +36,7 @@ import {
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     BlockPerformance,
+    AttributeFilterInterest,
     DAILY_GUARDRAILS,
     DailyViewData,
     HistoricalWeek,
@@ -273,6 +274,38 @@ function transformTopCategories(data: any): TopCategory[] {
         .slice(0, 5);
 }
 
+function transformTopAttributeFilters(data: any): AttributeFilterInterest[] {
+    const interactions = data?.attributeFilterInteractions || {};
+    const actionClicks = data?.attributeFilterActionClicks || {};
+    const itemViews = data?.attributeFilterItemViews || {};
+    const itemTaps = data?.attributeFilterItemTaps || {};
+    const searches = data?.attributeFilterSearches || {};
+    const unavailableTaps = data?.attributeFilterUnavailableTaps || {};
+    const filterIds = new Set<string>([
+        ...Object.keys(interactions),
+        ...Object.keys(actionClicks),
+        ...Object.keys(itemViews),
+        ...Object.keys(itemTaps),
+        ...Object.keys(searches),
+        ...Object.keys(unavailableTaps),
+    ]);
+
+    return Array.from(filterIds)
+        .map((filterId) => ({
+            filterId,
+            label: data?.attributeFilterNames?.[filterId] || filterId,
+            interactions: interactions[filterId] || 0,
+            itemViews: itemViews[filterId] || 0,
+            itemTaps: itemTaps[filterId] || 0,
+            searches: searches[filterId] || 0,
+            unavailableTaps: unavailableTaps[filterId] || 0,
+            actionClicks: actionClicks[filterId] || 0,
+        }))
+        .filter((entry) => entry.interactions > 0 || entry.actionClicks > 0)
+        .sort((a, b) => (b.actionClicks - a.actionClicks) || (b.interactions - a.interactions))
+        .slice(0, 5);
+}
+
 const SOURCE_LABELS: Record<string, string> = {
     qr: 'QR / table scan',
     whatsapp: 'WhatsApp',
@@ -397,6 +430,12 @@ interface DailyDocData {
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
     menuActionClicksBySource?: Record<string, number>;
+    attributeFilterInteractions?: Record<string, number>;
+    attributeFilterItemViews?: Record<string, number>;
+    attributeFilterItemTaps?: Record<string, number>;
+    attributeFilterSearches?: Record<string, number>;
+    attributeFilterUnavailableTaps?: Record<string, number>;
+    attributeFilterActionClicks?: Record<string, number>;
     hourlyViews?: Record<string, number>;
     hourlyMenuActionClicks?: Record<string, number>;
     menuActionClicks?: Partial<MenuActionBreakdown>;
@@ -405,6 +444,7 @@ interface DailyDocData {
     unavailableItemTapsByItem?: Record<string, number>;
     itemNames?: Record<string, string>;
     categoryNames?: Record<string, string>;
+    attributeFilterNames?: Record<string, string>;
 }
 
 async function fetchDailyDocs(
@@ -449,6 +489,12 @@ async function fetchDailyDocs(
                     menuSessionsBySource: data.menuSessionsBySource,
                     actionSessionsBySource: data.actionSessionsBySource,
                     menuActionClicksBySource: data.menuActionClicksBySource,
+                    attributeFilterInteractions: data.attributeFilterInteractions,
+                    attributeFilterItemViews: data.attributeFilterItemViews,
+                    attributeFilterItemTaps: data.attributeFilterItemTaps,
+                    attributeFilterSearches: data.attributeFilterSearches,
+                    attributeFilterUnavailableTaps: data.attributeFilterUnavailableTaps,
+                    attributeFilterActionClicks: data.attributeFilterActionClicks,
                     hourlyViews: data.hourlyViews,
                     hourlyMenuActionClicks: data.hourlyMenuActionClicks,
                     menuActionClicks: data.menuActionClicks,
@@ -457,6 +503,7 @@ async function fetchDailyDocs(
                     unavailableItemTapsByItem: data.unavailableItemTapsByItem,
                     itemNames: data.itemNames,
                     categoryNames: data.categoryNames,
+                    attributeFilterNames: data.attributeFilterNames,
                 } as DailyDocData;
             }
             return null;
@@ -474,6 +521,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories: TopCategory[];
+    topAttributeFilters: AttributeFilterInterest[];
     menuActions: MenuActionBreakdown;
     topSearchTerms: SearchTerm[];
     unavailableItems: TopItem[];
@@ -512,6 +560,15 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         menuSessionsBySource: {} as Record<string, number>,
         actionSessionsBySource: {} as Record<string, number>,
         menuActionClicksBySource: {} as Record<string, number>,
+    };
+    const filterData = {
+        attributeFilterInteractions: {} as Record<string, number>,
+        attributeFilterItemViews: {} as Record<string, number>,
+        attributeFilterItemTaps: {} as Record<string, number>,
+        attributeFilterSearches: {} as Record<string, number>,
+        attributeFilterUnavailableTaps: {} as Record<string, number>,
+        attributeFilterActionClicks: {} as Record<string, number>,
+        attributeFilterNames: {} as Record<string, string>,
     };
     const menuActions: MenuActionBreakdown = { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 };
 
@@ -578,12 +635,22 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             ['menuSessionsBySource', sourceData.menuSessionsBySource],
             ['actionSessionsBySource', sourceData.actionSessionsBySource],
             ['menuActionClicksBySource', sourceData.menuActionClicksBySource],
+            ['attributeFilterInteractions', filterData.attributeFilterInteractions],
+            ['attributeFilterItemViews', filterData.attributeFilterItemViews],
+            ['attributeFilterItemTaps', filterData.attributeFilterItemTaps],
+            ['attributeFilterSearches', filterData.attributeFilterSearches],
+            ['attributeFilterUnavailableTaps', filterData.attributeFilterUnavailableTaps],
+            ['attributeFilterActionClicks', filterData.attributeFilterActionClicks],
         ] as const) {
             const map = doc[field];
             if (!map) continue;
             for (const [key, count] of Object.entries(map)) {
                 target[key] = (target[key] || 0) + count;
             }
+        }
+
+        if (doc.attributeFilterNames) {
+            Object.assign(filterData.attributeFilterNames, doc.attributeFilterNames);
         }
 
         if (doc.unavailableItemTapsByItem) {
@@ -632,6 +699,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         }))
         .sort((a, b) => (b.views + b.clicks) - (a.views + a.clicks))
         .slice(0, 5);
+    const topAttributeFilters = transformTopAttributeFilters(filterData);
 
     const unavailableItems: TopItem[] = Object.entries(unavailableItemsMap)
         .map(([itemId, data]) => ({
@@ -647,6 +715,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         blockPerformance,
         topItems,
         topCategories,
+        topAttributeFilters,
         menuActions,
         topSearchTerms,
         unavailableItems,
@@ -678,6 +747,7 @@ function buildDailyViewData(
         blockPerformance: transformBlockPerformance(data),
         topItems: transformToTopItems(data),
         topCategories: transformTopCategories(data),
+        topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
         menuActions: transformMenuActions(data),
         topSearchTerms: transformTopSearchTerms(data),
         unavailableItems: transformUnavailableItems(data),
@@ -890,6 +960,7 @@ export async function getOwnerDashboardWeekly(
                 blockPerformance: transformBlockPerformance(weeklyData),
                 topItems: transformToTopItems(weeklyData),
                 topCategories: transformTopCategories(weeklyData),
+                topAttributeFilters: weeklyData.topAttributeFilters || transformTopAttributeFilters(weeklyData),
                 menuActions: transformMenuActions(weeklyData),
                 topSearchTerms: transformTopSearchTerms(weeklyData),
                 unavailableItems: transformUnavailableItems(weeklyData),
@@ -932,6 +1003,7 @@ export async function getOwnerDashboardMonthly(
                 blockPerformance: transformBlockPerformance(data),
                 topItems: transformToTopItems(data),
                 topCategories: transformTopCategories(data),
+                topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
                 menuActions: transformMenuActions(data),
                 topSearchTerms: transformTopSearchTerms(data),
                 unavailableItems: transformUnavailableItems(data),
@@ -961,7 +1033,7 @@ export async function getOwnerDashboardWTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             return {
                 startDate: dates[0],
@@ -971,6 +1043,7 @@ export async function getOwnerDashboardWTD(
                 blockPerformance,
                 topItems,
                 topCategories,
+                topAttributeFilters,
                 menuActions,
                 topSearchTerms,
                 unavailableItems,
@@ -1007,7 +1080,7 @@ export async function getOwnerDashboardMTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             // Get month name
             const firstDate = parseAnalyticsDateKey(dates[0]);
@@ -1030,6 +1103,7 @@ export async function getOwnerDashboardMTD(
                 blockPerformance,
                 topItems,
                 topCategories,
+                topAttributeFilters,
                 menuActions,
                 topSearchTerms,
                 unavailableItems,
@@ -1146,7 +1220,7 @@ export async function getOwnerDashboardOverview(
 
             let wtd: WTDViewData | null = null;
             if (wtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
                 wtd = {
                     startDate: wtdDates[0],
                     endDate: wtdDates[wtdDates.length - 1],
@@ -1155,6 +1229,7 @@ export async function getOwnerDashboardOverview(
                     blockPerformance,
                     topItems,
                     topCategories,
+                    topAttributeFilters,
                     menuActions,
                     topSearchTerms,
                     unavailableItems,
@@ -1170,7 +1245,7 @@ export async function getOwnerDashboardOverview(
 
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
                 const firstDate = parseAnalyticsDateKey(mtdDates[0]);
                 const monthName = formatMonthLabel(mtdDates[0]);
                 const daysInMonth = new Date(Date.UTC(
@@ -1189,6 +1264,7 @@ export async function getOwnerDashboardOverview(
                     blockPerformance,
                     topItems,
                     topCategories,
+                    topAttributeFilters,
                     menuActions,
                     topSearchTerms,
                     unavailableItems,
@@ -1308,6 +1384,7 @@ export async function getOwnerDashboardOverall(
                     totalMenuActionClicks: data.lifetimeTotalMenuActionClicks || 0,
                 },
                 topCategories: transformTopCategories(data),
+                topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
                 menuActions: transformMenuActions(data),
                 sourceQuality: transformSourceQuality(data),
                 ownerConfidence: transformOwnerConfidence({

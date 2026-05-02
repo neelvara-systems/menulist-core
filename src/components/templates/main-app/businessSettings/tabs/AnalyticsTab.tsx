@@ -127,7 +127,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                     <Alert
                         style={{ marginBottom: 16 }}
                         message="Tracked by default"
-                        description="Client-facing screens currently record menu opens, item detail opens, anonymous session milestones, category interest from item views and taps, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, recommendation block impressions and taps, OBP views and CTA taps, customer-app prompt and install events, device/session totals, entry source tags for action-rate-by-source reporting, and approximate location unless you switch a category off below. We do not collect customer names, emails, payment details, exact GPS coordinates, scroll heatmaps, hover activity, or per-keystroke tracking in this analytics flow."
+                        description="Client-facing screens currently record menu opens, item detail opens, anonymous session milestones, category interest from item views and taps, active filter context attached to later item/search/action events, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, recommendation block impressions and taps, OBP views and CTA taps, customer-app prompt and install events, device/session totals, entry source tags for action-rate-by-source reporting, and approximate location unless you switch a category off below. We do not collect customer names, emails, payment details, exact GPS coordinates, scroll heatmaps, hover activity, or per-keystroke tracking in this analytics flow."
                         type="info"
                         showIcon
                     />

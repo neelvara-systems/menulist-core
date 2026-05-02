@@ -85,6 +85,7 @@ interface MenuFilterChipsProps {
     items: MenuItem[];
     activeFilter: FilterType;
     onFilterChange: (filter: FilterType) => void;
+    onFilterIntentChange?: (filter: FilterType, label?: string) => void;
     moodConfig: MenuMoodConfig;
     businessType?: string;
     isSearchActive?: boolean;
@@ -94,6 +95,7 @@ function MenuFilterChips({
     items,
     activeFilter,
     onFilterChange,
+    onFilterIntentChange,
     moodConfig,
     businessType,
     isSearchActive = false,
@@ -157,7 +159,9 @@ function MenuFilterChips({
     }
 
     const handleFilterClick = (filter: SystemFilter) => {
-        onFilterChange(activeFilter === filter ? null : filter);
+        const nextFilter = activeFilter === filter ? null : filter;
+        onFilterChange(nextFilter);
+        onFilterIntentChange?.(nextFilter, nextFilter ? FILTER_UI_CONFIG[nextFilter].label : undefined);
     };
 
     const chipStyle = (isActive: boolean): React.CSSProperties => ({
