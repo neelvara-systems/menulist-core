@@ -521,6 +521,7 @@ export default async function OBPContent({
                 tenantId={store?.tenantId}
                 storeId={store?.storeId}
                 storeTimeZone={store?.timeZone}
+                businessDayEndTime={store?.businessDayEndTime}
                 trackViews={trackingEnabled}
                 includeLocation={includeLocation}
             />
@@ -609,6 +610,7 @@ export default async function OBPContent({
                             storeId={store?.storeId}
                             trackingEnabled={trackingEnabled}
                             storeTimeZone={store?.timeZone}
+                            businessDayEndTime={store?.businessDayEndTime}
                             includeLocation={includeLocation}
                             googleReviewUrl={googleReviewUrl}
                             googleReviewLabel={
@@ -641,6 +643,7 @@ export default async function OBPContent({
                             tenantId={store?.tenantId}
                             storeId={store?.storeId}
                             storeTimeZone={store?.timeZone}
+                            businessDayEndTime={store?.businessDayEndTime}
                             projects={ctaProjects}
                             // T2-N-02 / A-07: when OBPContent renders for an
                             // outlet URL, storeOverride is set (see G-01).
@@ -695,6 +698,7 @@ export default async function OBPContent({
                     storeId={store?.storeId}
                     trackingEnabled={trackingEnabled}
                     storeTimeZone={store?.timeZone}
+                    businessDayEndTime={store?.businessDayEndTime}
                     includeLocation={includeLocation}
                     phoneNumber={store?.phoneNumber}
                     whatsappNumber={whatsappNumber}
@@ -783,6 +787,7 @@ export default async function OBPContent({
                         storeId={store?.storeId}
                         trackingEnabled={trackingEnabled}
                         storeTimeZone={store?.timeZone}
+                        businessDayEndTime={store?.businessDayEndTime}
                         includeLocation={includeLocation}
                         instagram={instagram}
                         facebook={facebook}

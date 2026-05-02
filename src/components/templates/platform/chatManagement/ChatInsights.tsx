@@ -234,7 +234,7 @@ function InsightsContent() {
               Insights Dashboard
             </Title>
             <Text type="secondary">
-              AI-powered intelligence for your help center
+              Generated insights for your help center
             </Text>
           </Space>
 

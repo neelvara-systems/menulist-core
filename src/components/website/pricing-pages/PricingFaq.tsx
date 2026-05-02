@@ -42,7 +42,7 @@ const pricingFaqData = [
                 <p>Choose based on your stage:</p>
                 <ul className="list-disc list-outside pl-5 space-y-1">
                     <li><strong>Starter</strong> — getting your menu online quickly with one outlet.</li>
-                    <li><strong>Pro</strong> — full presentation control, AI content, multi-language, and branding. Most restaurants choose this.</li>
+                    <li><strong>Pro</strong> — full presentation control, generated descriptions and photos, multi-language, and branding. Most restaurants choose this.</li>
                     <li><strong>Premium</strong> — central control across multiple outlets with consistent branding.</li>
                 </ul>
             </div>
@@ -64,8 +64,8 @@ const pricingFaqData = [
                 <ul className="list-disc list-outside pl-5 space-y-1">
                     <li>QR menu, web menu, and shareable link</li>
                     <li>Official Business Page with hours, contact, and menu</li>
-                    <li>AI data extraction from images, PDFs, or links</li>
-                    <li>AI descriptions, translations, and image generation</li>
+                    <li>Automatic data extraction from images, PDFs, or links</li>
+                    <li>Descriptions, translations, and photo generation</li>
                     <li>Real-time updates across all surfaces</li>
                 </ul>
             </div>
@@ -75,26 +75,26 @@ const pricingFaqData = [
         category: 'Understanding Plans',
         question: `What is your refund policy?`,
         answer: (
-            <p>MenuList has a no-refund policy as AI processing costs are incurred immediately. You can cancel anytime to prevent future charges.</p>
+            <p>MenuList has a no-refund policy because processing costs are incurred immediately. You can cancel anytime to prevent future charges.</p>
         )
     },
-    // == AI & Credits ==
+    // == Content & Credits ==
     {
-        category: 'AI & Credits',
-        question: `How does AI usage work?`,
+        category: 'Content & Credits',
+        question: `How do credits work?`,
         answer: (
-            <p>AI runs on credits. Core features like data extraction and descriptions are included. Credits are used for image generation and editing. Each plan includes a monthly allowance, and you can top up anytime.</p>
+            <p>Credits are used for generation features. Core features like data extraction and descriptions are included. Credits are mainly used for photo generation and editing. Each plan includes a monthly allowance, and you can top up anytime.</p>
         )
     },
     {
-        category: 'AI & Credits',
+        category: 'Content & Credits',
         question: `What happens to unused credits?`,
         answer: (
             <p>Monthly credits reset each billing cycle. Purchased credit packs do not expire.</p>
         )
     },
     {
-        category: 'AI & Credits',
+        category: 'Content & Credits',
         question: `Can I use my own domain?`,
         answer: (
             <p>Yes. Pro and Premium plans include custom domain support so customers see your brand, not ours.</p>

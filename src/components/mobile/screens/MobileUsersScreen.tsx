@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMail, LuPhone, LuPlus, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileUsersScreenProps {
     onBack: () => void;
@@ -105,7 +105,11 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     if (!storeDetails) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
+                    title={t('title')}
+                />
                 <Flex align="center" flex={1} justify="center"><DotLoading color="primary" /></Flex>
             </Flex>
         );
@@ -113,12 +117,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 <Text>{t('staffMembers', { count: users.length })}</Text>
 
                 {users.length === 0 ? (

@@ -114,7 +114,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
             {/* Display additional information */}
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-                    AI can make mistakes. If you don&apos;t find the correct answer, you can still explore our documentation <a href="/kb">here</a>.
+                    Answers may still miss details. If you don&apos;t find the correct answer, you can still explore our documentation <a href="/kb">here</a>.
                 </Typography.Text>
             </div>
         </div>

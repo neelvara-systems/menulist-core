@@ -108,7 +108,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
         <Flex vertical gap={16} >
             <Flex vertical gap={4}>
                 <Typography.Title level={4} style={{ textAlign: 'center', margin: 0 }}>Select Items for Batch Generation</Typography.Title>
-                <Typography.Text type="secondary" style={{ textAlign: 'center', marginTop: 0 }}>Choose one or more items to generate AI images for.</Typography.Text>
+                <Typography.Text type="secondary" style={{ textAlign: 'center', marginTop: 0 }}>Choose one or more items to generate photos for.</Typography.Text>
             </Flex>
 
             <Input.Search

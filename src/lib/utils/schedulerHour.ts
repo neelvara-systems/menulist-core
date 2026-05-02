@@ -1,54 +1,58 @@
+import { getAnalyticsSettlementLocalMinutes } from '@lib/analytics/businessDay';
+
 /**
  * Scheduler Hour Utility
  * 
  * Computes the UTC hour at which a store's nightly scheduler should run,
- * based on the store's IANA timezone. The goal: run at ~2:30 AM local time.
+ * based on the store's IANA timezone and business day end time.
  * 
  * WHY: Global clients operate in different timezones. A restaurant in
- * Sydney needs scoring at 2:30 AM AEST, not 2:30 AM UTC (which is 12:30 PM AEST).
+ * Sydney needs scoring after its local business day ends, not at a fixed UTC hour.
  * 
  * STORAGE: Stored as `schedulerHour` (0-23 UTC integer) on:
  *   - Store document (stores/{sId})
  *   - storesSummary (platformSummary/storesSummary → stores.{sId}.schedulerHour)
  * 
- * DEFAULT: 2 (UTC) — equivalent to current fixed 2:30 AM UTC behavior.
+ * FALLBACK: UTC settlement hour derived from `businessDayEndTime` when timezone
+ * is missing or invalid.
  * 
  * @see __docs__/patterns/nightly-scheduler-architecture.md
  */
 
 /**
- * Compute the UTC hour that corresponds to 2:30 AM in the given timezone.
+ * Compute the UTC hour that corresponds to the store-local analytics
+ * settlement window (businessDayEndTime + buffer).
  * 
  * @param timeZone - IANA timezone string (e.g., 'Asia/Kolkata', 'Australia/Sydney')
- * @returns UTC hour (0-23) when 2:30 AM local falls. Returns 2 if timezone is invalid/missing.
+ * @param businessDayEndTime - Store-local HH:mm business-day cutoff.
+ * @returns UTC hour (0-23) when the settlement window falls. Missing/invalid timezone is treated as UTC.
  * 
  * @example
- * computeSchedulerHour('Asia/Kolkata')      // → 21 (IST is UTC+5:30, so 2:30 AM IST = 21:00 UTC)
- * computeSchedulerHour('Australia/Sydney')   // → 15 or 16 (AEST/AEDT, 2:30 AM = ~15:30-16:30 UTC)
- * computeSchedulerHour('America/New_York')   // → 7 (EST is UTC-5, so 2:30 AM EST = 7:30 UTC)
- * computeSchedulerHour('Europe/London')      // → 2 (GMT = UTC, so 2:30 AM = 2:30 UTC)
- * computeSchedulerHour(undefined)            // → 2 (default)
+ * computeSchedulerHour('Asia/Kolkata', '03:00') // → 0 (05:30 IST settlement ~= 00:00 UTC)
+ * computeSchedulerHour('Europe/London', '00:00') // → 2 (02:30 local settlement)
+ * computeSchedulerHour(undefined, '03:00')       // → 5 (05:30 UTC settlement)
  */
-export function computeSchedulerHour(timeZone?: string): number {
-    const DEFAULT_HOUR = 2;
 
-    if (!timeZone) return DEFAULT_HOUR;
+export function computeSchedulerHour(timeZone?: string, businessDayEndTime?: string): number {
+    const targetLocalHour = Math.floor(getAnalyticsSettlementLocalMinutes(businessDayEndTime) / 60);
+    const fallbackHour = targetLocalHour;
+
+    if (!timeZone) return fallbackHour;
 
     try {
         // Create a reference date and format it in the target timezone
-        // We want to find: "what UTC hour = 2:30 AM in this timezone?"
-        // Approach: Create 2:30 AM today in the target timezone, convert to UTC hour
+        // We want to find: "what UTC hour maps to the local settlement hour?"
         
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth();
         const day = now.getDate();
 
-        // Try each hour of the day to find which UTC hour maps to ~2 AM local
+        // Try each hour of the day to find which UTC hour maps to the settlement local hour.
         for (let utcHour = 0; utcHour < 24; utcHour++) {
             const testDate = new Date(Date.UTC(year, month, day, utcHour, 30));
             const localHour = getLocalHour(testDate, timeZone);
-            if (localHour === 2) {
+            if (localHour === targetLocalHour) {
                 return utcHour;
             }
         }
@@ -57,14 +61,14 @@ export function computeSchedulerHour(timeZone?: string): number {
         for (let utcHour = 0; utcHour < 24; utcHour++) {
             const testDate = new Date(Date.UTC(year, month, day, utcHour, 0));
             const localHour = getLocalHour(testDate, timeZone);
-            if (localHour === 2) {
+            if (localHour === targetLocalHour) {
                 return utcHour;
             }
         }
 
-        return DEFAULT_HOUR;
+        return fallbackHour;
     } catch {
-        return DEFAULT_HOUR;
+        return fallbackHour;
     }
 }
 

@@ -107,7 +107,7 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { businessName, businessIndustry, planId, interval, currency, userType } = validation.data;
+        const { businessName, businessIndustry, planId, interval, currency, userType, timeZone, businessDayEndTime } = validation.data;
 
         // 3. Find Plan Details
         const plans = userType === "B2C" ? getB2CPlansList() : getB2BPlansList();
@@ -133,6 +133,8 @@ export const POST = withAuth(async (request, session) => {
                 businessName,
                 businessType: businessIndustry || 'Restaurant',
                 businessIndustry: userType,
+                timeZone,
+                businessDayEndTime,
                 email: session.user.email,
                 onboardingSource: 'WEBSITE_ONBOARDING',
                 subdomain: { preChecked: preCheckedSubdomain },

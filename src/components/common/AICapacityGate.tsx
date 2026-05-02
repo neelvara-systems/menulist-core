@@ -76,7 +76,7 @@ const ExhaustedCTA: React.FC<{ onPurchase: () => void; compact?: boolean }> = ({
                 icon={<FaBolt />}
                 onClick={handleClick}
             >
-                Get AI Enhancements
+                Get Enhancements
             </Button>
         );
     }
@@ -84,7 +84,7 @@ const ExhaustedCTA: React.FC<{ onPurchase: () => void; compact?: boolean }> = ({
     return (
         <Flex vertical align="center" gap={8} style={{ padding: '12px 16px' }}>
             <Text type="secondary" style={{ textAlign: 'center' }}>
-                Get more AI enhancements for images, descriptions, and translations.
+                Get more enhancements for images, descriptions, and translations.
             </Text>
             <Button
                 type="primary"
@@ -92,7 +92,7 @@ const ExhaustedCTA: React.FC<{ onPurchase: () => void; compact?: boolean }> = ({
                 icon={<FaBolt />}
                 onClick={handleClick}
             >
-                Get AI Enhancements
+                Get Enhancements
             </Button>
         </Flex>
     );

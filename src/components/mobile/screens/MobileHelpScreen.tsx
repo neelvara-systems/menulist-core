@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { LuBookOpen, LuBug, LuMail, LuMessageCircle } from 'react-icons/lu';
 import { Card, Collapse, Flex, List, NavBar, Text, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileHelpScreenProps {
     onBack: () => void;
@@ -23,12 +23,12 @@ export default function MobileHelpScreen({ onBack }: MobileHelpScreenProps) {
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 <Flex gap={12}>
                     <Card onClick={() => window.open('https://wa.me/917042916884?text=Hi%2C%20I%20need%20help%20with%20MenuList.ai', '_blank')} style={{ flex: 1 }}>
                         <Flex align="center" gap={8} vertical>

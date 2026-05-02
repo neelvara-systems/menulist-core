@@ -67,7 +67,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
             setCopied(true);
             message.success('Link copied');
             setTimeout(() => setCopied(false), 2000);
-            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_link', { storeTimeZone: storeDetails?.timeZone }).catch(() => { });
+            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_link', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
         } catch {
             message.error('Could not copy link');
         }
@@ -78,7 +78,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         try {
             await navigator.clipboard.writeText(msg);
             message.success('Message copied — paste it in WhatsApp or anywhere');
-            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_message', { storeTimeZone: storeDetails?.timeZone }).catch(() => { });
+            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_message', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
         } catch {
             message.error('Could not copy message');
         }
@@ -88,7 +88,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         const storeName = storeDetails?.name || 'our business';
         const msg = `${storeName} — menu, timings & contact:\n${obpUrl}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'whatsapp', { storeTimeZone: storeDetails?.timeZone }).catch(() => { });
+        if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'whatsapp', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
     };
 
     const handleOpen = () => {

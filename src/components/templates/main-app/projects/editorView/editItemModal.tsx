@@ -7,7 +7,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { getProjectDescriptionContentLength } from '@lib/ai/projectAIPreferences';
+import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -273,7 +273,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
-                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Translation failed');
                 console.error('Translation failed:', error);
@@ -385,6 +385,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 projectId: projectData.projectId,
                 fileId: fileData.uid,
                 contentLength: getProjectDescriptionContentLength(projectData),
+                tone: getProjectDescriptionTone(projectData),
                 businessType: storeDetails.businessType
             }
             const result = await getNewItemMetadataViaAPI(payload)
@@ -396,7 +397,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
-                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 console.error("Error generating content:", error);
                 antdMessage.error("An unexpected error occurred while generating content. Please try again.");

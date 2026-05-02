@@ -14,7 +14,7 @@ import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, 
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 // Customer App (installable PWA) metrics — store-scoped (projectId='customerApp').
@@ -122,7 +122,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('subtitle', { offering: labels.offeringLower })}
+                    onBack={onBack}
+                    title={t('title')}
+                />
                 <Flex align="center" justify="center" style={{ flex: 1 }}>
                     <DotLoading color="primary" />
                 </Flex>
@@ -133,7 +137,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     if (!selectedProjectId) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('subtitle', { offering: labels.offeringLower })}
+                    onBack={onBack}
+                    title={t('title')}
+                />
                 <Flex align="center" gap={12} justify="center" style={{ flex: 1 }} vertical>
                     <LuBarChart3 color={token.colorTextQuaternary} size={36} />
                     <Text type="secondary" style={{ textAlign: 'center' }}>
@@ -314,8 +322,8 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             <div style={{ maxWidth: 280 }}>
                 <Text type="secondary" style={{ display: 'block' }}>
                     {updatedLabel
-                        ? `Updated ${updatedLabel}. This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.`
-                        : "This is today's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow."}
+                        ? `Updated ${updatedLabel}. This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.`
+                        : "This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement."}
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
                     Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.
@@ -441,23 +449,20 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar
+            <MobileSettingsScreenHeader
+                description={t('subtitle', { offering: labels.offeringLower })}
                 onBack={onBack}
-                right={
+                right={(
                     <Flex align="center" gap={8}>
                         <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
                             <LuRefreshCw size={18} color={token.colorTextTertiary} />
                         </Button>
                     </Flex>
-                }
+                )}
+                title={t('title')}
             />
 
             <Flex gap={16} style={{ padding: 16, paddingBottom: 24 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle', { offering: labels.offeringLower })}
-                    title={t('title')}
-                />
-
                 <ProjectSelectorTrigger
                     clickable={projectsList.length > 1}
                     currentProject={{

@@ -31,6 +31,7 @@ export interface StoreSummaryData {
     active: boolean;
     name: string;
     timeZone?: string;         // IANA timezone (e.g., 'Asia/Kolkata') — used for DST-safe runtime scheduling
+    businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
     activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
 }
@@ -170,6 +171,9 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
             // Include timeZone for DST-safe runtime scheduling in CF
             if (data.timeZone) {
                 summaryEntry[`stores.${storeId}.timeZone`] = data.timeZone;
+            }
+            if (data.businessDayEndTime) {
+                summaryEntry[`stores.${storeId}.businessDayEndTime`] = data.businessDayEndTime;
             }
             // schedulerHour is FALLBACK only (for stores without timeZone)
             if (data.schedulerHour !== undefined) {

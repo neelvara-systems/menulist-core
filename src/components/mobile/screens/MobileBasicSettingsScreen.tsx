@@ -12,7 +12,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileBasicSettingsScreenProps {
     onBack: () => void;
@@ -204,12 +204,12 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description="Manage your brand profile, business identity, contact details, and address."
+                onBack={onBack}
+                title="Brand Settings"
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle="Manage your brand profile, business identity, contact details, and address."
-                    title="Brand Settings"
-                />
                 <Card>
                     <Flex gap={4} vertical>
                         <Text type="secondary">Brand name</Text>

@@ -432,6 +432,11 @@ If any of these reset on refresh, the hook must be revised (lift state out of co
 
 ##### QA-2. SW scope migration — owner origin
 
+- [ ] Open `/signin` while logged out on the platform origin
+- [ ] Verify the page links `/manifest.json`
+- [ ] Add to home screen / install from the sign-in page
+- [ ] Verify the installed app identity is the MenuList owner app, not a browser-only shortcut
+- [ ] Launch the installed app while logged out and verify it opens the sign-in gate, then reaches `/dashboard` after login
 - [ ] Install owner dashboard as PWA on platform origin (e.g. `app.menulist.ai`)
 - [ ] Verify `navigator.serviceWorker.getRegistrations()` returns exactly one registration with `scriptURL` ending in `/sw.js`
 - [ ] Verify it is NOT `sw-customer.js`
@@ -712,11 +717,12 @@ Serve via /api/app-icons/{storeId}/{size}
 
 ### As a MenuList Surface
 
-The Customer App is one of five customer-facing surfaces:
+The Customer App is one of six live customer-facing surfaces:
 
 | Surface                | Purpose                       |
 | ---------------------- | ----------------------------- |
 | Digital Menu           | Live menu access via browser  |
+| Public Link            | Shareable link for social, WhatsApp, and packaging |
 | PDF Menu               | Printable/sharable version    |
 | Digital Screens        | In-store display              |
 | Official Business Page | Public web presence           |

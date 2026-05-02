@@ -57,13 +57,13 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
         <>
             <div style={{ textAlign: 'center' }}>
                 <SectionHeading
-                    title="AI runs inside your menu"
+                    title="Descriptions, photos, and translations are built in"
                     highlightedText="your menu"
-                    subtitle="Write descriptions, generate images, and translate menus in seconds. Included in all plans. Use only when needed."
+                    subtitle="Write descriptions, generate photos, and translate menus in seconds. Included in all plans. Use credits only when needed."
                     centered
                 />
                 <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-2)' }}>
-                    AI usage is credit-based. Top up anytime.
+                    Credit-based usage. Top up anytime.
                 </p>
                 <div id="credit-packs" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap', maxWidth: '800px', margin: 'var(--ws-space-10) auto 0' }}>
                     {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (

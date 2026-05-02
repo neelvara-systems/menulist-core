@@ -9,10 +9,11 @@ import { Label } from '@shadcncomponents/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shadcncomponents/select';
 import { useToast } from '@shadcnhooks/use-toast';
 import { useInView } from '@shadcnhooks/useInView';
+import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { IMAGE_VIEW_TYPES } from '@template/main-app/projects/editorView/AiImageGenerator/imageViewType';
 import { motion } from 'framer-motion';
 import { signIn, useSession } from 'next-auth/react';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 // import SectionHeading from '@shadcncomponents/SectionHeading';
 
@@ -53,7 +54,7 @@ const SectionHeading = ({ text, highlightedText, as: Tag = 'h2', subheading }) =
 interface OnboardingModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (details: { businessName: string; businessIndustry: string }) => void;
+    onSubmit: (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string }) => void;
     businessType: PlanType;
 }
 
@@ -61,7 +62,30 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
     const { toast } = useToast();
     const [businessName, setBusinessName] = useState('');
     const [businessIndustry, setBusinessIndustry] = useState('');
+    const [timeZone, setTimeZone] = useState('');
+    const [businessDayEndTime, setBusinessDayEndTime] = useState('');
+    const [businessDayEndTimeEdited, setBusinessDayEndTimeEdited] = useState(false);
     const { data: session } = useSession();
+
+    useEffect(() => {
+        try {
+            setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+        } catch {
+            setTimeZone('');
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!businessDayEndTimeEdited) {
+            setBusinessDayEndTime(resolveBusinessDayEndTime(businessIndustry));
+        }
+    }, [businessDayEndTimeEdited, businessIndustry]);
+
+    const businessDayHint = useMemo(() => {
+        return businessDayEndTime === '00:00'
+            ? 'Analytics follow the calendar day for this business type.'
+            : 'Analytics include after-midnight activity in the previous business day.';
+    }, [businessDayEndTime]);
 
     const handleSubmit = () => {
         if (!businessName.trim()) {
@@ -72,7 +96,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
             toast({ variant: 'destructive', title: 'Error', description: 'Please select business industry.' });
             return;
         }
-        onSubmit({ businessName, businessIndustry });
+        onSubmit({ businessName, businessIndustry, timeZone, businessDayEndTime });
     };
 
     return (
@@ -162,6 +186,27 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                                         </SelectContent>
                                     </Select>
                                 )}
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.5, delay: 0.5 }}
+                                className="grid w-full items-center gap-2"
+                            >
+                                <Label htmlFor="businessDayEndTime">Business day ends at</Label>
+                                <Input
+                                    id="businessDayEndTime"
+                                    type="time"
+                                    value={businessDayEndTime}
+                                    onChange={(e) => {
+                                        setBusinessDayEndTimeEdited(true);
+                                        setBusinessDayEndTime(e.target.value);
+                                    }}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {businessDayHint} You can change this later in Language & Region settings.
+                                </p>
                             </motion.div>
 
                             <motion.div

@@ -60,7 +60,7 @@ export default function SearchBar({
                     <Space>
                         {query && <Button icon={<LuX />} onClick={handleClear} type="text" shape="circle" />}
                         <Button disabled={isSearching || !query.trim()} type="primary" htmlType="submit" loading={isSearching} icon={<LuSparkles />}>
-                            Ask AI
+                            Ask a Question
                         </Button>
                     </Space>
                 </div>

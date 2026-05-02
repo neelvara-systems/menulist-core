@@ -215,6 +215,7 @@ function MenuPageNew({
                 storeId: String(storeDetails.storeId),
                 projectId: projectData.projectId,
                 storeTimeZone: storeDetails.timeZone,
+                businessDayEndTime: storeDetails.businessDayEndTime,
             }
             : null;
         const trackRecoveryAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
@@ -491,6 +492,7 @@ function MenuPageNew({
                 storeId: String(storeDetails.storeId),
                 projectId: projectData.projectId,
                 storeTimeZone: storeDetails.timeZone,
+                businessDayEndTime: storeDetails.businessDayEndTime,
                 includeLocation: analyticsPreferences.trackLocation,
             });
         }, 900);
@@ -526,6 +528,7 @@ function MenuPageNew({
                     storeId: String(storeDetails.storeId),
                     projectId: projectData.projectId,
                     storeTimeZone: storeDetails.timeZone,
+                    businessDayEndTime: storeDetails.businessDayEndTime,
                     includeLocation: analyticsPreferences.trackLocation,
                 });
             }
@@ -768,6 +771,7 @@ function MenuPageNew({
                                 storeId: String(storeDetails?.storeId || ''),
                                 projectId: projectData?.projectId,
                                 storeTimeZone: storeDetails?.timeZone,
+                                businessDayEndTime: storeDetails?.businessDayEndTime,
                             }}
                             trackingEnabled={isDecisionBlockAnalyticsEnabled(storeDetails?.analytics)}
                         />
@@ -1197,6 +1201,7 @@ function MenuPageNew({
                             storeId: String(storeDetails?.storeId || ''),
                             projectId: projectData?.projectId,
                             storeTimeZone: storeDetails?.timeZone,
+                            businessDayEndTime: storeDetails?.businessDayEndTime,
                         }}
                         trackingEnabled={analyticsPreferences.trackMenuViews}
                     />

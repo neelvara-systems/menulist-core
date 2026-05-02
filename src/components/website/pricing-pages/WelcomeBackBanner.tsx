@@ -19,7 +19,7 @@ const WelcomeBackBanner: React.FC<WelcomeBackBannerProps> = ({ tenantName }) => 
                         Welcome back, {tenantName}!
                     </h3>
                     <p className="text-muted-foreground text-sm">
-                        Ready to activate your account and unlock the full power of MenuListAI? Just select a plan below to get started.
+                        Ready to activate your account and unlock the full MenuList experience? Just select a plan below to get started.
                     </p>
                 </div>
             </div>

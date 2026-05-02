@@ -12,7 +12,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuExternalLink, LuQrCode, LuShare2, LuStar } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
 
@@ -160,7 +160,13 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     if (isLoading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                {onBack ? <NavBar onBack={onBack} /> : null}
+                {onBack ? (
+                    <MobileSettingsScreenHeader
+                        description={t('subtitle')}
+                        onBack={onBack}
+                        title={t('title')}
+                    />
+                ) : null}
                 <Flex align="center" flex={1} justify="center">
                     <DotLoading color="primary" />
                 </Flex>
@@ -170,13 +176,14 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            {onBack ? <NavBar onBack={onBack} /> : null}
-            <Flex gap={12} style={{ padding: 16, paddingTop: onBack ? 16 : 24 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
+            {onBack ? (
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
                     title={t('title')}
                 />
-
+            ) : null}
+            <Flex gap={12} style={{ padding: 16, paddingTop: onBack ? 16 : 24 }} vertical>
                 <FeedbackLinkCard
                     description={t('feedbackQrDesc')}
                     disabled={!feedbackReady}

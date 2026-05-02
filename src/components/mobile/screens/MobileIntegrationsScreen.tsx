@@ -7,7 +7,7 @@ import { useContext } from 'react';
 import { LuLink, LuMapPin } from 'react-icons/lu';
 import { SiGooglemybusiness } from 'react-icons/si';
 import { Card, Flex, NavBar, Tag, Text, Title } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileIntegrationsScreenProps {
     onBack: () => void;
@@ -30,12 +30,12 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={tBusiness('integrations')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={tBusiness('integrations')}
-                />
                 <Card>
                     <Flex align="center" gap={10}>
                         <SiGooglemybusiness color="#4285F4" size={22} />

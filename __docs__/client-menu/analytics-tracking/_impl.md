@@ -186,7 +186,7 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - The next nightly pass checks the previously settled local date for late passive writes and applies only positive deltas to lifetime summaries and cached daily rows.
 - The menu dashboard read model includes compact rolling daily rows for the deeper analytics screen. This keeps recent trend, device, location, and customer-intent cards to one read-model read instead of a daily-range query.
 - The same nightly writer stores `{tId}_{sId}_{projectId}_intelligence_7d` for Decision Blocks and Menu Intelligence. The scheduler reads this compact input doc instead of rebuilding the same 7-day analytics window from daily docs; missing/stale snapshots settle as empty for that run and are counted in scheduler ops details.
-- Nightly settlement is driven by `computeDecisionBlocksScores`, which runs at each store's local 2:30 AM window.
+- Nightly settlement is driven by `computeDecisionBlocksScores`, which runs after each store's configured business-day cutoff plus the settlement buffer.
 - The scheduler uses `platformSummary/projects_{sId}` as the active project index, then fetches full project docs only for active projects that need Decision Blocks / Menu Intelligence.
 - OBP analytics settle first for the store/date. If OBP settlement fails, menu/customer-app settlement for that same store/date does not run.
 - Store/date analytics settlement runs before Decision Blocks / Menu Intelligence. If settlement fails, the intelligence pass for that store does not continue on stale analytics.
@@ -194,10 +194,10 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - The completed nightly state also stores a compact store-level analytics index with active project ids, customer analytics project ids, enabled surfaces, and dashboard summary doc ids. This keeps future guard/discovery flows pointed at one store-level state doc instead of rediscovering analytics surfaces.
 - If a night is missed, the next local nightly run catches up pending store-local dates in order, capped per run for Firebase cost safety.
 - Summary lifetime counters are idempotent: a date already recorded as aggregated is skipped instead of incremented again.
-- Settled owner dashboard views still end on yesterday. They are intentionally not mixed with the current partial day.
+- Settled owner dashboard views end on the latest settled business date. They are intentionally not mixed with the current partial business day or the just-ended day before scheduler settlement.
 - A separate `Today so far` card reads the current day daily doc directly through the owner-dashboard DAL.
 - The live card uses SWR plus local cache with a short TTL only for that slice, so Firebase cost stays bounded.
-- Settled dashboard SWR/localStorage cache uses the store-local scheduler cycle key. It survives midnight and invalidates after the next expected local scheduler completion window.
+- Settled dashboard SWR/localStorage cache uses the store-local scheduler cycle key. It survives midnight and business-day cutoff changes, then invalidates after the next expected local scheduler completion window.
 - The existing overview / daily / weekly / monthly historical flow is served from the read-model doc. Legacy daily-doc rebuilds are not used on the owner display path.
 - The deep analytics dashboard uses the same read-model doc via SWR/local cache:
   - recent settled ranges are served from `{tId}_{sId}_{projectId}_dashboard_summary`
@@ -350,14 +350,15 @@ export default function FacebookPixel({ storeDetails }: Props) {
 ## Cloud Function: Nightly Aggregation
 
 **Trigger:** `functions/src/decisionBlocksScoring.ts`
-**Schedule Model:** hourly scheduler with per-store timezone filtering
+**Schedule Model:** hourly scheduler with per-store timezone + business-day cutoff filtering
 **Aggregation Helpers:** `functions/src/aggregateCustomerAnalytics.ts` and `functions/src/analytics/obpAnalyticsAggregation.ts`
 
 ### Nightly Flow
 
 ```
-STEP 1: Pick stores whose local time has reached the nightly analytics hour
-  └── Shared nightly scheduler filters by store timezone / schedulerHour
+STEP 1: Pick stores whose local time has reached the business-day settlement window
+  └── Shared nightly scheduler filters by store timezone + businessDayEndTime
+  └── schedulerHour remains fallback only when timezone is missing
   └── Reads platformSummary/projects_{sId} for active project IDs
 
 STEP 2: Acquire store/date settlement lock
@@ -390,11 +391,13 @@ STEP 9: Mark settlement completed
   └── Updates lastSettledLocalDate and releases the lock
 ```
 
-### Store-Local Day Buckets
+### Store-Local Business-Day Buckets
 
-- Event writes now resolve the analytics document date from the **store timezone**.
+- Event writes now resolve the analytics document date from the **store timezone** and `businessDayEndTime`.
+- Food/late-service stores default to `03:00`, calendar-day stores default to `00:00`, and owners can override the field in Language & Region settings.
+- The same field is mirrored into `platformSummary/storesSummary` so Cloud Functions do not need per-store reads just to know the settlement cutoff.
 - Hourly maps such as `hourlyViews`, `hourlySearches`, `hourlyMenuActionClicks`, and `hourlyClicksByItem` also use the **store-local hour**.
-- Dashboard reads (`Today so far`, `Yesterday`, WTD, MTD, historical weeks) now resolve dates in the same store-local calendar instead of UTC.
+- Dashboard reads (`Today so far`, `Yesterday`, WTD, MTD, historical weeks) now resolve dates in the same store-local business-day calendar instead of UTC.
 - Decision Blocks and Menu Intelligence read their 7-day analytics window from the same store-local day keys, so recommendation scoring and owner reporting use the same day boundaries.
 
 ### Additive Fields Only

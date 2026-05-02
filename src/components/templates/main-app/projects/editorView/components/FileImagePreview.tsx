@@ -111,8 +111,8 @@ const ImageControlsHelp = () => {
 
     const actions = [
         { icon: <LuEye size={14} />, label: 'View Full Image', desc: 'Open image in fullscreen preview' },
-        { icon: <TbLanguageHiragana size={14} />, label: 'Re-translate', desc: 'Use AI to re-extract and translate text' },
-        { icon: <LuInfo size={14} />, label: 'Generate Descriptions', desc: 'Use AI to create item descriptions' },
+        { icon: <TbLanguageHiragana size={14} />, label: 'Re-translate', desc: 'Re-read this file and translate the text again' },
+        { icon: <LuInfo size={14} />, label: 'Generate Descriptions', desc: 'Create item descriptions automatically' },
         { icon: <LuTrash size={14} color={token.colorError} />, label: 'Delete File', desc: 'Remove this file from the project' },
     ];
 

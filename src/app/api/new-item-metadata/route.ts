@@ -70,7 +70,7 @@ export const POST = withAuth(async (request, session) => {
         const item = rawData.item;
         const targetLang = rawData.targetLang;
         const sourceLang = rawData.sourceLang;
-        const { projectId, fileId, contentLength, businessType } = validated;
+        const { projectId, fileId, contentLength, businessType, tone } = validated;
         const targetLangCodes = Array.isArray(targetLang)
             ? targetLang.map((language: { code?: string }) => language?.code || 'unspecified')
             : [targetLang?.code || 'unspecified'];
@@ -86,6 +86,7 @@ export const POST = withAuth(async (request, session) => {
             storeId: session.sId,
             targetLangs: targetLangCodes,
             tenantId: session.tId,
+            tone: tone || 'Professional',
             userId,
         });
 
@@ -114,7 +115,7 @@ export const POST = withAuth(async (request, session) => {
             topP = 0.92;
         }
 
-        const prompt = getMultilingualNewItemPrompt({ item, targetLang, sourceLang, businessType });
+        const prompt = getMultilingualNewItemPrompt({ item, targetLang, sourceLang, businessType, tone });
         const generationConfig = {
             responseMimeType: "application/json",
             temperature,
@@ -150,6 +151,7 @@ export const POST = withAuth(async (request, session) => {
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
+                tone: tone || 'Professional',
                 userId,
             });
             await writeLogEntry({
@@ -169,6 +171,7 @@ export const POST = withAuth(async (request, session) => {
                     storeId: session.sId,
                     targetLangs: targetLangCodes,
                     tenantId: session.tId,
+                    tone: tone || 'Professional',
                 },
                 error: errorDiagnostics,
             });

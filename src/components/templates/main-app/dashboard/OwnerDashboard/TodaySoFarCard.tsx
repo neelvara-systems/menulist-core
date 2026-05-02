@@ -74,7 +74,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     const detailContent = (
         <div style={{ maxWidth: 320 }}>
             <Text type="secondary" style={{ display: 'block' }}>
-                This is today&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update tomorrow.
+                This is the current business day&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.
             </Text>
             <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
                 Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.

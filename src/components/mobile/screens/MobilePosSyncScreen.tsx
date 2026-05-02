@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobilePosSyncScreenProps {
     onBack: () => void;
@@ -224,12 +224,13 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} right={isSaving ? <Tag color="processing">Saving</Tag> : null} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                right={isSaving ? <Tag color="processing">Saving</Tag> : null}
+                title={t('title')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 <Card>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={10}>

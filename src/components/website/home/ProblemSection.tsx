@@ -35,11 +35,10 @@ export default function ProblemSection() {
 
       <AnimateOnScroll delay={0.15}>
         <p
+          className="ws-body"
           style={{
             textAlign: 'center',
-            fontSize: '1.0625rem',
             fontWeight: 600,
-            color: 'var(--ws-text-primary)',
             marginTop: 'var(--ws-space-6)',
           }}
         >

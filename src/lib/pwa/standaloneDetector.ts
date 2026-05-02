@@ -39,6 +39,7 @@ function isSessionStorageAvailable(): boolean {
 export interface StandaloneDetectorOptions {
   tenantId?: string | number;
   storeTimeZone?: string;
+  businessDayEndTime?: string;
   /** Owner opt-out flag; explicit `false` suppresses all events. */
   trackingEnabled?: boolean;
   includeLocation?: boolean;
@@ -57,7 +58,7 @@ export async function detectAndTrackAppOpen(
   if (options.trackingEnabled === false) return false;
   if (!detectInstalled()) return false;
 
-  const { tenantId, storeTimeZone, includeLocation = true } = options;
+  const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = true } = options;
 
   // One fire per session per store — prevents SPA route changes from inflating opens
   if (isSessionStorageAvailable()) {
@@ -81,6 +82,7 @@ export async function detectAndTrackAppOpen(
       tenantId,
       sessionId: getSessionId(),
       storeTimeZone,
+      businessDayEndTime,
       includeLocation,
       pwaPlatform: platform,
       pwaInstallSurface: launchSurface,
@@ -108,6 +110,7 @@ export async function detectAndTrackAppOpen(
         void fireInstalledEventOnce(storeId, {
           tenantId,
           storeTimeZone,
+          businessDayEndTime,
           trackingEnabled: true,
           includeLocation,
           source,

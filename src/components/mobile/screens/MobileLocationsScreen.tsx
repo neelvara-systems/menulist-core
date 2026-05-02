@@ -11,7 +11,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileLocationsScreenProps {
     onBack: () => void;
@@ -60,7 +60,11 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
+                    title={t('title')}
+                />
                 <Flex align="center" gap={8} justify="center" style={{ flex: 1, padding: 24, textAlign: 'center' }} vertical>
                     <Text strong>Locations / Branches / Outlets list is not available for this store.</Text>
                     <Text type="secondary">This screen appears only for the main account when multi-location management is enabled.</Text>
@@ -160,13 +164,13 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 <Card>
                     <Flex justify="space-between">
                         <Flex gap={2} vertical>

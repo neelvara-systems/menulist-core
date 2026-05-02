@@ -76,7 +76,7 @@ export default function IndustrySection() {
                 >
                   <Icon size={22} color="var(--ws-brand-secondary)" />
                 </div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--ws-text-secondary)', textAlign: 'center', lineHeight: 1.3 }}>
+                <span className="ws-caption" style={{ fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>
                   {t(`Industry.${item.key}`)}
                 </span>
               </div>

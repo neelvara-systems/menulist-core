@@ -115,7 +115,7 @@ export const InfiniteMovingCards = ({ items, direction = "left", speed = "normal
                         >
                             <Image
                                 src={item.imageUrl}
-                                alt={`MenuListAI digital menu template: ${item.name} style - ${item.hint}`}
+                                alt={`MenuList digital menu template: ${item.name} style - ${item.hint}`}
                                 fill
                                 sizes="200px"
                                 style={{ objectFit: 'cover' }}

@@ -73,7 +73,7 @@ const PromptEnhancer: React.FC<PromptEnhancerProps> = ({
         icon={<LuWand2 />} 
         onClick={handleOpenModal}
         disabled={!prompt}
-        title="Enhance your prompt with AI suggestions"
+        title="Improve your prompt with ready-made suggestions"
       >
         Enhance
       </Button>

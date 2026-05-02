@@ -3,7 +3,8 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { DB_COLLECTIONS, getAnalyticsDocId, getMonthDateRange, getWeekDateRange, TTL_CONFIG } from './constants/database';
 import { firestoreAdmin } from './firebaseAdmin';
 import { logger as appLogger } from './lib/logger';
-import { addDaysToAnalyticsDateKey, getAnalyticsDateKey, getAnalyticsWeekday, parseAnalyticsDateKey } from './utils/analyticsDate';
+import { addDaysToAnalyticsDateKey, getAnalyticsWeekday, parseAnalyticsDateKey } from './utils/analyticsDate';
+import { getBusinessAnalyticsDateKey } from './utils/businessDay';
 import { OwnerDashboardAIPayloads, writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
 import {
     AnalyticsAiEntitlement,
@@ -143,8 +144,8 @@ function normalizeDailyRow(date: string, data: Record<string, any>): Record<stri
     };
 }
 
-function buildAggregationContext(now: Date = new Date(), timeZone?: string) {
-    const localTodayStr = getAnalyticsDateKey(now, timeZone);
+function buildAggregationContext(now: Date = new Date(), timeZone?: string, businessDayEndTime?: string) {
+    const localTodayStr = getBusinessAnalyticsDateKey(now, timeZone, businessDayEndTime);
     const yesterdayStr = addDaysToAnalyticsDateKey(localTodayStr, -1);
     return buildAggregationContextForDate(yesterdayStr);
 }
@@ -205,10 +206,11 @@ export async function aggregateCustomerAnalyticsForStore(
     sId: string,
     now: Date = new Date(),
     timeZone?: string,
+    businessDayEndTime?: string,
     knownProjectIds: string[] = [],
     analyticsAiEntitlement?: AnalyticsAiEntitlement,
 ): Promise<AggregationResults> {
-    const settlementDate = addDaysToAnalyticsDateKey(getAnalyticsDateKey(now, timeZone), -1);
+    const settlementDate = addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(now, timeZone, businessDayEndTime), -1);
     return aggregateCustomerAnalyticsForStoreDate(db, tId, sId, settlementDate, knownProjectIds, analyticsAiEntitlement);
 }
 
@@ -1489,7 +1491,8 @@ export const triggerCustomerAnalyticsManually = onCall({
             const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
             const storeSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[String(sId)] : null;
             const timeZone = storeSummary?.timeZone;
-            const { yesterday, yesterdayStr } = buildAggregationContext(new Date(), timeZone);
+            const businessDayEndTime = storeSummary?.businessDayEndTime;
+            const { yesterday, yesterdayStr } = buildAggregationContext(new Date(), timeZone, businessDayEndTime);
             // Get yesterday's daily doc
             const dailyDocId = getAnalyticsDocId.daily(tId, sId, projectId, yesterdayStr);
             const dailyDoc = await db.collection(ANALYTICS_COLLECTION).doc(dailyDocId).get();

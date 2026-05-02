@@ -67,8 +67,8 @@ export default function FaqSection() {
                   aria-expanded={isOpen}
                 >
                   <span
+                    className="ws-body-sm"
                     style={{
-                      fontSize: '1rem',
                       fontWeight: 600,
                       color: isOpen ? 'var(--ws-brand-secondary)' : 'var(--ws-text-primary)',
                       lineHeight: 1.5,
@@ -103,9 +103,8 @@ export default function FaqSection() {
                     }}
                   >
                     <p
+                      className="ws-body-sm"
                       style={{
-                        fontSize: '0.9375rem',
-                        color: 'var(--ws-text-secondary)',
                         lineHeight: 1.7,
                       }}
                     >

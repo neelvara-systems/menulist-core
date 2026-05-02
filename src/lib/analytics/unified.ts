@@ -8,7 +8,8 @@
  * - Session-based deduplication for menu views
  */
 import { trackAnalyticsEvent } from '@database/analytics';
-import { getAnalyticsDateKey, getAnalyticsHourKey } from '@lib/analytics/dateKey';
+import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
+import { getAnalyticsHourKey } from '@lib/analytics/dateKey';
 import { logger } from '@lib/monitoring/logger';
 import { getDeviceInfo } from './device';
 import { getLocationInfo } from './geo';
@@ -384,6 +385,7 @@ export interface TrackingData {
   country?: string;           // User's country
   timezone?: string;          // User's timezone
   storeTimeZone?: string;     // Store timezone used for local analytics day/hour bucketing
+  businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
   includeLocation?: boolean;  // Whether approximate location data may be collected
 
   // Search properties
@@ -527,7 +529,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
     // Ensure we have a session ID
     const sessionId = data.sessionId || getSessionId();
-    const localDate = getAnalyticsDateKey(now, data.storeTimeZone);
+    const localDate = getBusinessAnalyticsDateKey(now, data.storeTimeZone, data.businessDayEndTime);
     const sessionMilestoneKey = getSessionMilestoneKey(data, localDate, sessionId);
     const sessionSourceKey = getSessionSourceKey(data, localDate, sessionId);
     const sessionMilestones = readSessionMilestoneState(sessionMilestoneKey);
@@ -880,7 +882,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
     // Use the database function to track the event
     // Pass projectId and tenantId for project-wise analytics storage
-    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId, data.storeTimeZone);
+    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId, data.storeTimeZone, data.businessDayEndTime);
     writeSessionMilestoneState(sessionMilestoneKey, sessionMilestones);
     if (eventName === TrackingEvent.MENU_VIEW) {
       writeSessionEntrySource(sessionSourceKey, entrySource);

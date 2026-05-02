@@ -6,7 +6,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileWorkingHoursEditScreenProps {
     onBack: () => void;
@@ -135,13 +135,12 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
-
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">

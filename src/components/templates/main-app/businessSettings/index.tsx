@@ -11,6 +11,7 @@ import { updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
@@ -737,6 +738,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         //timezone
         if (!storeDetails?.timeZone) {
             form.setFieldsValue({ timeZone: timezone });
+        }
+        if (!storeDetails?.businessDayEndTime) {
+            form.setFieldsValue({ businessDayEndTime: resolveBusinessDayEndTime(storeDetails?.businessType) });
         }
     }, [storeDetails, form]);
 

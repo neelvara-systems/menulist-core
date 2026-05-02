@@ -20,8 +20,10 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { slugify } from '@lib/utils/slugify';
+import { computeSchedulerHour } from '@lib/utils/schedulerHour';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -42,6 +44,8 @@ export interface TenantStoreConfig {
 
     /** Industry/plan type (e.g. 'B2C', 'B2B', ''). Default: '' */
     businessIndustry?: string;
+    timeZone?: string;
+    businessDayEndTime?: string;
 
     /** Subdomain config. Omit to skip subdomain generation entirely. */
     subdomain?: {
@@ -135,6 +139,8 @@ export async function createTenantStoreInTransaction(
         businessName,
         businessType,
         businessIndustry = '',
+        timeZone,
+        businessDayEndTime,
         email,
         onboardingSource,
         storeName: storeNameOverride,
@@ -163,6 +169,8 @@ export async function createTenantStoreInTransaction(
     const storeKey = storeName.toLowerCase().replaceAll(' ', '_');
     const businessCategory = getBusinessCategory(businessType) || 'specialty';
     const defaultRoles = createDefaultRoles(newStoreId, email || 'system');
+    const resolvedBusinessDayEndTime = resolveBusinessDayEndTime(businessType, businessDayEndTime);
+    const schedulerHour = computeSchedulerHour(timeZone, resolvedBusinessDayEndTime);
 
     // 3. Resolve subdomain (if requested)
     let autoSubdomain: string | undefined;
@@ -221,6 +229,9 @@ export async function createTenantStoreInTransaction(
         tenantId: newTenantId,
         storeId: newStoreId,
         storeKey,
+        ...(timeZone ? { timeZone } : {}),
+        businessDayEndTime: resolvedBusinessDayEndTime,
+        schedulerHour,
         ...(autoSubdomain ? { subdomain: autoSubdomain } : {}),
         ...(timeSlotPresets ? { timeSlotPresets } : {}),
         publicPresence: {
@@ -250,6 +261,9 @@ export async function createTenantStoreInTransaction(
                 businessCategory,
                 active: true,
                 name: storeName,
+                ...(timeZone ? { timeZone } : {}),
+                businessDayEndTime: resolvedBusinessDayEndTime,
+                schedulerHour,
             },
         },
         { merge: true },

@@ -3,13 +3,13 @@ import { useTranslations } from 'next-intl';
 
 const features = [
   'Menu Creation & Editing',
-  'AI Data Extraction (OCR)',
+  'Automatic Data Extraction (OCR)',
   'Multi-language Translation',
-  'AI Image Generation',
+  'Photo Generation',
   'Digital Menu Display',
   'QR Code Menu Sharing',
   'Knowledge Base & Help Articles',
-  'AI Chatbot Support',
+  'Help Assistant Support',
   'Billing & Subscriptions',
   'Analytics Dashboard',
 ];

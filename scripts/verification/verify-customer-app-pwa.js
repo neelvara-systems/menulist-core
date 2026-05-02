@@ -72,6 +72,17 @@ function verifyNextPwaScoping() {
   assertNotIncludes(executableConfig, '/api/public', 'next-pwa runtimeCaching');
 }
 
+function verifyOwnerAuthManifest() {
+  const authLayout = read('src/app/(global-pages)/layout.tsx');
+  const mainLayout = read('src/app/(main)/layout.tsx');
+  const ownerManifest = JSON.parse(read('public/manifest.json'));
+
+  assertIncludes(authLayout, "manifest: '/manifest.json'", 'owner auth layout metadata');
+  assertIncludes(mainLayout, 'manifest: "/manifest.json"', 'owner dashboard layout metadata');
+  assert(ownerManifest.start_url === '/dashboard', 'owner manifest start_url must be /dashboard');
+  assert(ownerManifest.display === 'standalone', 'owner manifest display must be standalone');
+}
+
 function verifyAnalyticsCoverage() {
   const analytics = read('src/lib/analytics/unified.ts');
   const expectedEvents = [
@@ -111,6 +122,7 @@ const checks = [
   ['manifest route', verifyManifestRoute],
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
   ['next-pwa scoping', verifyNextPwaScoping],
+  ['owner auth manifest', verifyOwnerAuthManifest],
   ['analytics coverage', verifyAnalyticsCoverage],
   ['menu freshness hook', verifyFreshnessHook],
 ];

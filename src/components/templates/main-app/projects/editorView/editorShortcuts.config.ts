@@ -109,7 +109,7 @@ export const EDITOR_SHORTCUTS: Record<string, EditorShortcutConfig> = {
     DESCRIPTION_MODAL: {
         key: 'g',
         ctrlKey: true,
-        description: 'Open AI description generator',
+        description: 'Open description generator',
         category: 'Batch Actions'
     },
     IMAGES_MODAL: {

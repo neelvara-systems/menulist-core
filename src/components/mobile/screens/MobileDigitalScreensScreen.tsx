@@ -12,7 +12,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, NavBar, Switch, Tag, Text, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileDigitalScreensScreenProps {
     onBack: () => void;
@@ -133,7 +133,11 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     if (loading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('setupTip')}
+                    onBack={onBack}
+                    title={t('title')}
+                />
                 <Flex align="center" flex={1} justify="center">
                     <DotLoading color="primary" />
                 </Flex>
@@ -143,13 +147,12 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('setupTip')}
+                onBack={onBack}
+                title={t('title')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('setupTip')}
-                    title={t('title')}
-                />
-
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>How content works</Text>

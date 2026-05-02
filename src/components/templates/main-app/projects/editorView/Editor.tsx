@@ -666,7 +666,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             setIsTranslating(false);
             setTranslationProgress(undefined);
             if (error instanceof AICapacityError) {
-                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error("Translation failed. Please try again.");
                 console.error("Translation failed:", error);
@@ -726,7 +726,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             antdMessage.success("Translations updated and saved!");
         } catch (error) {
             if (error instanceof AICapacityError) {
-                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error("Something went wrong, please try again!");
                 console.error("Translation failed:", error);

@@ -506,7 +506,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             icon={<LuSend size={16} />}
                             onClick={handleSend}
                             disabled={!inputValue.trim() || disabled}
-                            aria-label="Send message to AI assistant"
+                            aria-label="Send message to help assistant"
                             style={{
                                 height: 32,
                                 fontSize: 13,
@@ -515,7 +515,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                                 paddingRight: 12
                             }}
                         >
-                            Ask AI
+                            Ask a Question
                         </Button>
                     </Tooltip>
                 </div>

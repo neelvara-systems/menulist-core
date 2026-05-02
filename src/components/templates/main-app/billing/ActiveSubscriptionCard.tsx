@@ -306,20 +306,20 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                     <Card style={creditCardStyle}>
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             <Flex justify="space-between" align="center" gap={16} style={{ width: '100%' }} >
-                                <Title level={5}>AI Features</Title>
+                                <Title level={5}>Content Features</Title>
                                 <Tag color={(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'success' : 'warning'}>
                                     {(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'Active' : 'Exhausted'}
                                 </Tag>
                             </Flex>
 
                             <Text type="secondary">
-                                Your plan includes AI enhancements for images, descriptions, and translations.
+                                Your plan includes enhancements for images, descriptions, and translations.
                             </Text>
 
                             <Flex align='end' style={{ width: '100%' }} gap={16}>
                                 <Button block icon={<LuHistory />} onClick={() => router.push('/transactions')}>View Usage</Button>
                                 <Button type="primary" ghost block icon={<FaBolt />} onClick={() => setIsCreditsModalOpen(true)}>
-                                    {(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'Get AI Enhancements' : 'Get More AI Enhancements'}
+                                    {(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'Get Enhancements' : 'Get More Enhancements'}
                                 </Button>
                             </Flex>
                         </Space>

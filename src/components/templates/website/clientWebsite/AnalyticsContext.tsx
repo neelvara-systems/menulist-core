@@ -105,7 +105,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
       // Get the session ID for all tracking events
       const sessionId = getSessionId();
 
-      trackMenuView(storeId, storeName, { sessionId, tenantId, projectId, storeTimeZone: storeDetails.timeZone, menuResolutionLayer, includeLocation, ...utmParams }).catch(error => {
+      trackMenuView(storeId, storeName, { sessionId, tenantId, projectId, storeTimeZone: storeDetails.timeZone, businessDayEndTime: storeDetails.businessDayEndTime, menuResolutionLayer, includeLocation, ...utmParams }).catch(error => {
         console.error('Error tracking menu page view:', error);
       });
       // T5-N-04: If resolved via Layer 2 /menu alias, fire a latent PROJECT_SWITCH
@@ -115,6 +115,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
           sessionId,
           tenantId,
           storeTimeZone: storeDetails.timeZone,
+          businessDayEndTime: storeDetails.businessDayEndTime,
           includeLocation,
           ...utmParams,
         }).catch(error => {
@@ -150,6 +151,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
         storeId,
         projectId,
         storeTimeZone: storeDetails.timeZone,
+        businessDayEndTime: storeDetails.businessDayEndTime,
         includeLocation,
         categoryId: data.categoryId,
         categoryName: data.categoryName || data.category,

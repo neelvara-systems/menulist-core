@@ -20,6 +20,10 @@ export interface ImageGenPreferences {
     colors?: string[];
     moods?: string[];
     compositions?: string[];
+    backgroundColor?: string | null;
+    negativePrompt?: string;
+    transparentBg?: boolean;
+    foregroundColor?: string | null;
     isMultiMode?: boolean;
     savedAt?: string;
 }
@@ -49,6 +53,10 @@ export function saveImageGenPreferences(
             colors: prefs.colors,
             moods: prefs.moods,
             compositions: prefs.compositions,
+            backgroundColor: prefs.backgroundColor ?? null,
+            negativePrompt: prefs.negativePrompt || '',
+            transparentBg: prefs.transparentBg || false,
+            foregroundColor: prefs.foregroundColor ?? null,
             isMultiMode: prefs.isMultiMode,
             savedAt: new Date().toISOString(),
         };

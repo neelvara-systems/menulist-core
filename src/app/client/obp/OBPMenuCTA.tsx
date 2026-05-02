@@ -47,6 +47,7 @@ interface OBPMenuCTAProps {
     trackingEnabled?: boolean;
     includeLocation?: boolean;
     storeTimeZone?: string;
+    businessDayEndTime?: string;
 }
 
 function withOBPEntrySource(url: string): string {
@@ -73,6 +74,7 @@ export default function OBPMenuCTA({
     trackingEnabled = true,
     includeLocation = true,
     storeTimeZone,
+    businessDayEndTime,
 }: OBPMenuCTAProps) {
     const trackPrimary = () => {
         if (!trackingEnabled) return;
@@ -80,6 +82,7 @@ export default function OBPMenuCTA({
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
+            businessDayEndTime,
             includeLocation,
         }).catch(() => { });
     };
@@ -91,6 +94,7 @@ export default function OBPMenuCTA({
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
+            businessDayEndTime,
             includeLocation,
         }).catch(() => { });
         // G-10: also tag this as a customer-side project switch so the
@@ -101,7 +105,7 @@ export default function OBPMenuCTA({
             project.slug,
             null, // OBP is a fresh entry point; there is no "from" project.
             'obp_secondary_card',
-            { tenantId, sessionId: getSessionId(), storeTimeZone, includeLocation },
+            { tenantId, sessionId: getSessionId(), storeTimeZone, businessDayEndTime, includeLocation },
         ).catch(() => { });
     };
 

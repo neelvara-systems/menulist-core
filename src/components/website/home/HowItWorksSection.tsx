@@ -69,7 +69,7 @@ export default function HowItWorksSection() {
               </span>
             </div>
 
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: 'var(--ws-space-2)' }}>
+            <h3 className="ws-h3" style={{ fontSize: '1rem' }}>
               {step.title}
             </h3>
             <p className="ws-caption" style={{ maxWidth: '240px', margin: '0 auto' }}>

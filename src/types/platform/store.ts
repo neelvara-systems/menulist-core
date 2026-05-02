@@ -48,6 +48,11 @@ export type StoreDataType = {
     postalCode?: string;
     country?: string;
     timeZone?: string;
+    /**
+     * Store-local business day cutoff in HH:mm.
+     * Analytics before this time are counted into the previous business day.
+     */
+    businessDayEndTime?: string;
     dateFormat?: string;
     timeFormat?: string;
     language?: string;

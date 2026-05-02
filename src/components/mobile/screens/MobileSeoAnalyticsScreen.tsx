@@ -12,7 +12,7 @@ import { useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popover, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
 
@@ -474,12 +474,12 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={pageSubtitle}
+                onBack={onBack}
+                title={pageTitle}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={pageSubtitle}
-                    title={pageTitle}
-                />
                 {isSeoMode ? (
                     <>
                         <MobileLocalizedLanguageSelector

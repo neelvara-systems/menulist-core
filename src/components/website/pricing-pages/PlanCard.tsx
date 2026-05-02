@@ -20,7 +20,7 @@ const getPlanBullets = (planId: string, monthlyCreditAllowance: string | number)
         case 'pro':
             return [
                 'Your menu looks professional everywhere your customers see it',
-                'AI descriptions and images',
+                'Generated descriptions and images',
                 'Multi-language menu',
                 'Pro analytics action summaries',
                 'Branding and presentation control',

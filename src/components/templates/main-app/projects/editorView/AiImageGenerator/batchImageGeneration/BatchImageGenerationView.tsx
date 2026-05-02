@@ -90,7 +90,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                     <Flex vertical>
                                         <Typography.Text strong>Use Smart Defaults</Typography.Text>
                                         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                            AI will pick the best settings for your business type
+                                            We&apos;ll pick the best settings for your business type
                                         </Typography.Text>
                                     </Flex>
                                 </Flex>

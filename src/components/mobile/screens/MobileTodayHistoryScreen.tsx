@@ -1,13 +1,13 @@
 'use client'
 
-import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from '@constant/todayFeatureGuide';
 import { usePastActivity } from '@hook/usePastActivity';
 import { Campaign } from '@type/campaigns';
 import { useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuClock, LuClock3, LuInfo, LuX } from 'react-icons/lu';
+import { LuCheck, LuClock, LuClock3, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, Popup, Text, Title } from '../antd';
+import { Card, DotLoading, Flex, Text } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 interface MobileTodayHistoryScreenProps {
@@ -22,7 +22,6 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
         selectedProjectSummary,
         selectProject,
     } = useMobileProjects();
-    const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const { campaigns, isLoading } = usePastActivity(selectedProjectId);
 
@@ -68,141 +67,101 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
     };
 
     return (
-        <Flex
-            gap={12}
-            style={{
-                padding: 16,
-                paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
-            }}
-            vertical
-        >
-            <Flex align="center" gap={8}>
-                <Button fill="none" onClick={onBack} size="small" style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}>
-                    <LuArrowLeft size={16} />
-                </Button>
-                <Title level={4} style={{ margin: 0 }}>Past Activity</Title>
-                <Button
-                    fill="none"
-                    onClick={() => setIsGuideOpen(true)}
-                    size="small"
-                    style={{ marginLeft: 'auto', minHeight: 32, minWidth: 32, paddingInline: 6 }}
-                >
-                    <Flex align="center" gap={6}>
-                        <LuInfo size={16} />
-                        <Text type="secondary">What is this?</Text>
-                    </Flex>
-                </Button>
-            </Flex>
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <MobileSettingsScreenHeader
+                description="Review generated, shared, and skipped Today actions from the last 7 days for the selected menu."
+                onBack={onBack}
+                title="Past Activity"
+            />
 
-            {!loadingProjects && selectedProjectId ? (
-                <ProjectSelectorTrigger
-                    clickable={projectsList.length > 1}
-                    currentProject={{
-                        active: selectedProjectSummary?.active !== false,
-                        deleted: selectedProjectSummary?.deleted === true,
-                        id: selectedProjectId,
-                        isDefault: selectedProjectSummary?.isDefault,
-                        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
-                        name: selectedProjectSummary?.name || 'Untitled',
-                        specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
-                        specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
-                            ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
-                            : undefined,
-                        specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
-                        specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
-                    }}
-                    onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
-                />
-            ) : null}
-
-            {isLoading ? (
-                <Flex align="center" justify="center" style={{ minHeight: 220 }}>
-                    <DotLoading color="primary" />
-                </Flex>
-            ) : !selectedProjectId ? (
-                <Card>
-                    <Flex align="center" gap={10}>
-                        <LuClock size={18} />
-                        <Text type="secondary">No project available.</Text>
-                    </Flex>
-                </Card>
-            ) : Object.keys(groupedHistory).length === 0 ? (
-                <Card>
-                    <Flex align="center" gap={10}>
-                        <LuClock size={18} />
-                        <Text type="secondary">No activity in the last 7 days for this project.</Text>
-                    </Flex>
-                </Card>
-            ) : (
-                <Flex gap={10} vertical>
-                    {(Object.entries(groupedHistory) as [string, Campaign[]][]).map(([dateLabel, entries]) => (
-                        <Card key={dateLabel}>
-                            <Flex gap={8} vertical>
-                                <Text strong>{dateLabel}</Text>
-                                <Flex gap={8} vertical>
-                                    {entries.map((entry) => (
-                                        <Flex align="center" gap={8} key={entry.id}>
-                                            {entry.status === 'completed' ? (
-                                                <LuCheck color="#16a34a" size={15} />
-                                            ) : entry.status === 'suggested' ? (
-                                                <LuClock3 color="#d97706" size={15} />
-                                            ) : (
-                                                <LuX color="#dc2626" size={15} />
-                                            )}
-                                            <Text>
-                                                {getCampaignLabel(entry)}
-                                                {entry.status === 'skipped' ? ' — Skipped' : ''}
-                                                {entry.status === 'suggested' ? ' — Generated' : ''}
-                                            </Text>
-                                        </Flex>
-                                    ))}
-                                </Flex>
-                            </Flex>
-                        </Card>
-                    ))}
-                </Flex>
-            )}
-
-            <Popup
-                bodyStyle={{ maxHeight: '75vh', overflowY: 'auto', paddingBottom: 12 }}
-                onMaskClick={() => setIsGuideOpen(false)}
-                visible={isGuideOpen}
+            <Flex
+                gap={12}
+                style={{
+                    padding: 16,
+                }}
+                vertical
             >
-                <Flex gap={12} vertical>
-                    <Flex align="center" justify="space-between">
-                        <Text strong>{PAST_ACTIVITY_GUIDE_TITLE}</Text>
-                        <Button
-                            fill="none"
-                            onClick={() => setIsGuideOpen(false)}
-                            size="small"
-                            style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
-                        >
-                            ✕
-                        </Button>
+
+                {!loadingProjects && selectedProjectId ? (
+                    <ProjectSelectorTrigger
+                        clickable={projectsList.length > 1}
+                        currentProject={{
+                            active: selectedProjectSummary?.active !== false,
+                            deleted: selectedProjectSummary?.deleted === true,
+                            id: selectedProjectId,
+                            isDefault: selectedProjectSummary?.isDefault,
+                            isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+                            name: selectedProjectSummary?.name || 'Untitled',
+                            specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                                ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                                : undefined,
+                            specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                            specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
+                        }}
+                        onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                    />
+                ) : null}
+
+                {isLoading ? (
+                    <Flex align="center" justify="center" style={{ minHeight: 220 }}>
+                        <DotLoading color="primary" />
                     </Flex>
+                ) : !selectedProjectId ? (
+                    <Card>
+                        <Flex align="center" gap={10}>
+                            <LuClock size={18} />
+                            <Text type="secondary">No project available.</Text>
+                        </Flex>
+                    </Card>
+                ) : Object.keys(groupedHistory).length === 0 ? (
+                    <Card>
+                        <Flex align="center" gap={10}>
+                            <LuClock size={18} />
+                            <Text type="secondary">No activity in the last 7 days for this project.</Text>
+                        </Flex>
+                    </Card>
+                ) : (
                     <Flex gap={10} vertical>
-                        {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
-                            <Card key={section.title}>
-                                <Flex gap={4} vertical>
-                                    <Text strong>{section.title}</Text>
-                                    <Text type="secondary">{section.description}</Text>
+                        {(Object.entries(groupedHistory) as [string, Campaign[]][]).map(([dateLabel, entries]) => (
+                            <Card key={dateLabel}>
+                                <Flex gap={8} vertical>
+                                    <Text strong>{dateLabel}</Text>
+                                    <Flex gap={8} vertical>
+                                        {entries.map((entry) => (
+                                            <Flex align="center" gap={8} key={entry.id}>
+                                                {entry.status === 'completed' ? (
+                                                    <LuCheck color="#16a34a" size={15} />
+                                                ) : entry.status === 'suggested' ? (
+                                                    <LuClock3 color="#d97706" size={15} />
+                                                ) : (
+                                                    <LuX color="#dc2626" size={15} />
+                                                )}
+                                                <Text>
+                                                    {getCampaignLabel(entry)}
+                                                    {entry.status === 'skipped' ? ' — Skipped' : ''}
+                                                    {entry.status === 'suggested' ? ' — Generated' : ''}
+                                                </Text>
+                                            </Flex>
+                                        ))}
+                                    </Flex>
                                 </Flex>
                             </Card>
                         ))}
                     </Flex>
-                </Flex>
-            </Popup>
+                )}
 
-            <MobileProjectSelectorSheet
-                currentProjectId={selectedProjectId}
-                currentProjectName={selectedProjectSummary?.name || null}
-                onClose={() => setIsProjectSelectorOpen(false)}
-                onProjectsChanged={async (preferredProjectId) => {
-                    setIsProjectSelectorOpen(false);
-                    await selectProject(preferredProjectId || null);
-                }}
-                visible={isProjectSelectorOpen}
-            />
+                <MobileProjectSelectorSheet
+                    currentProjectId={selectedProjectId}
+                    currentProjectName={selectedProjectSummary?.name || null}
+                    onClose={() => setIsProjectSelectorOpen(false)}
+                    onProjectsChanged={async (preferredProjectId) => {
+                        setIsProjectSelectorOpen(false);
+                        await selectProject(preferredProjectId || null);
+                    }}
+                    visible={isProjectSelectorOpen}
+                />
+            </Flex>
         </Flex>
     );
 }

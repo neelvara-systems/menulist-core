@@ -9,7 +9,8 @@ import {
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
-import { getAnalyticsDateKey, getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
+import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
+import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useContext, useMemo } from 'react';
 import useSWR from 'swr';
@@ -86,12 +87,12 @@ export function useOBPDashboard() {
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
     const analyticsDayKey = useMemo(
-        () => getAnalyticsDateKey(new Date(), storeDetails?.timeZone),
-        [storeDetails?.timeZone],
+        () => getBusinessAnalyticsDateKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+        [storeDetails?.timeZone, storeDetails?.businessDayEndTime],
     );
     const schedulerCacheKey = useMemo(
-        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
-        [storeDetails?.timeZone],
+        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+        [storeDetails?.timeZone, storeDetails?.businessDayEndTime],
     );
     const canFetch = Boolean(tId && sId);
     const settledCacheKey = canFetch ? createCacheKey('settled', tId!, sId!) : null;
@@ -106,7 +107,7 @@ export function useOBPDashboard() {
         canFetch ? ['obpDashboard', 'settled', tId, sId] : null,
         () => cachedFetcher(
             settledCacheKey!,
-            () => getOBPDashboardData(tId!, sId!, storeDetails?.timeZone),
+            () => getOBPDashboardData(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
         ),
         {
@@ -123,7 +124,7 @@ export function useOBPDashboard() {
         canFetch ? ['obpDashboard', 'today', tId, sId] : null,
         () => cachedFetcherWithTTL(
             todayCacheKey!,
-            () => getOBPDashboardToday(tId!, sId!, storeDetails?.timeZone),
+            () => getOBPDashboardToday(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             600000,
             analyticsDayKey,
         ),

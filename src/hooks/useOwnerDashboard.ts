@@ -30,7 +30,8 @@ import {
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
-import { getAnalyticsDateKey, getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
+import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
+import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import {
     DailyViewData,
@@ -152,12 +153,12 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
     const analyticsDayKey = useMemo(
-        () => getAnalyticsDateKey(new Date(), storeDetails?.timeZone),
-        [storeDetails?.timeZone],
+        () => getBusinessAnalyticsDateKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+        [storeDetails?.timeZone, storeDetails?.businessDayEndTime],
     );
     const schedulerCacheKey = useMemo(
-        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
-        [storeDetails?.timeZone],
+        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+        [storeDetails?.timeZone, storeDetails?.businessDayEndTime],
     );
     const canFetch = Boolean(tId && sId && projectId);
 
@@ -182,7 +183,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical ? ['ownerDashboard', 'settled', tId, sId, projectId] : null,
         () => cachedFetcher(
             settledCacheKey!,
-            () => getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone),
+            () => getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
         ),
         {
@@ -201,7 +202,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch ? ['ownerDashboard', 'today', tId, sId, projectId] : null,
         () => cachedFetcherWithTTL(
             todayCacheKey!,
-            () => getOwnerDashboardToday(tId!, sId!, projectId!, storeDetails?.timeZone),
+            () => getOwnerDashboardToday(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             600000,
             analyticsDayKey,
         ),
@@ -223,7 +224,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical && viewMode === 'daily' && !settledData?.daily ? ['ownerDashboard', 'daily', tId, sId, projectId] : null,
         () => cachedFetcher(
             dailyCacheKey!,
-            () => getOwnerDashboardDaily(tId!, sId!, projectId!, storeDetails?.timeZone),
+            () => getOwnerDashboardDaily(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
         ),
         {
@@ -243,7 +244,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical && viewMode === 'weekly' && !settledData?.weekly ? ['ownerDashboard', 'weekly', tId, sId, projectId] : null,
         () => cachedFetcher(
             weeklyCacheKey!,
-            () => getOwnerDashboardWeekly(tId!, sId!, projectId!, storeDetails?.timeZone),
+            () => getOwnerDashboardWeekly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
         ),
         {
@@ -263,7 +264,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         canFetch && loadHistorical && viewMode === 'monthly' && !settledData?.monthly ? ['ownerDashboard', 'monthly', tId, sId, projectId] : null,
         () => cachedFetcher(
             monthlyCacheKey!,
-            () => getOwnerDashboardMonthly(tId!, sId!, projectId!, storeDetails?.timeZone),
+            () => getOwnerDashboardMonthly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
         ),
         {

@@ -23,7 +23,7 @@ const QuickStartGuide = () => (
                         <List.Item>2. Click &quot;Start measuring&quot;</List.Item>
                         <List.Item>3. Follow the setup wizard</List.Item>
                         <List.Item>4. Copy your Measurement ID (starts with &quot;G-&quot;)</List.Item>
-                        <List.Item>5. Paste ID in MenuListAI settings</List.Item>
+                        <List.Item>5. Paste the ID in MenuList settings</List.Item>
                     </List>
                 }
             />
@@ -36,7 +36,7 @@ const QuickStartGuide = () => (
                         <List.Item>3. Enter your menu website URL</List.Item>
                         <List.Item>4. Choose &quot;HTML tag&quot; verification</List.Item>
                         <List.Item>5. Copy the meta tag content</List.Item>
-                        <List.Item>6. Paste in MenuListAI settings</List.Item>
+                        <List.Item>6. Paste it in MenuList settings</List.Item>
                     </List>
                 }
             />
@@ -48,7 +48,7 @@ const QuickStartGuide = () => (
                         <List.Item>2. Click &quot;Connect Data Sources&quot;</List.Item>
                         <List.Item>3. Select &quot;Web&quot; as your platform</List.Item>
                         <List.Item>4. Copy your Pixel ID</List.Item>
-                        <List.Item>5. Paste ID in MenuListAI settings</List.Item>
+                        <List.Item>5. Paste the ID in MenuList settings</List.Item>
                     </List>
                 }
             />

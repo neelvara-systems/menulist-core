@@ -7,7 +7,6 @@
  */
 
 import { Collapse, Divider, Flex, Input, Switch, Typography } from 'antd';
-import { AI_IMAGE_ASPECT_RATIO_OPTIONS, getProjectImagePreferencesSummary } from '@lib/ai/projectAIPreferences';
 import { useTranslations } from 'next-intl';
 import { LuFileText, LuImage, LuList, LuSettings2 } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -38,9 +37,6 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     const showImages = projectData?.config?.design?.menu?.showImages ?? true;
     const showCategoryIcons = projectData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
-    const aiDescriptionLength = projectData?.aiPreferences?.description?.contentLength || 'Standard';
-    const aiImageAspectRatio = projectData?.aiPreferences?.image?.aspectRatio || '1:1';
-    const aiImageSummary = getProjectImagePreferencesSummary(projectData);
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
     const specialNote = projectData?.menuSettings?.specialNote ?? '';
 
@@ -159,32 +155,6 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
         });
     };
 
-    const handleAIDescriptionLengthChange = (contentLength: 'Standard' | 'Detailed') => {
-        setProjectData({
-            ...projectData,
-            aiPreferences: {
-                ...(projectData?.aiPreferences || {}),
-                description: {
-                    ...(projectData?.aiPreferences?.description || {}),
-                    contentLength,
-                },
-            },
-        });
-    };
-
-    const handleAIImageAspectRatioChange = (aspectRatio: string) => {
-        setProjectData({
-            ...projectData,
-            aiPreferences: {
-                ...(projectData?.aiPreferences || {}),
-                image: {
-                    ...(projectData?.aiPreferences?.image || {}),
-                    aspectRatio,
-                },
-            },
-        });
-    };
-
     // G06 - Service Charge Note (Constitutional trust disclosure)
     const handlespecialNoteChange = (note: string) => {
         // HARD ENFORCEMENT: 140 character limit + trim whitespace
@@ -257,90 +227,6 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     checked={showCategoryTabs}
                     onChange={handleShowCategoryTabsChange}
                 />
-            </Flex>
-
-            <Divider style={{ margin: '4px 0' }} />
-
-            <Flex vertical gap={10}>
-                <Text strong>AI defaults</Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    Keep future AI descriptions and menu photos consistent.
-                </Text>
-
-                <Flex vertical gap={8}>
-                    <Text strong style={{ fontSize: 13 }}>Description length</Text>
-                    <Flex gap={8}>
-                        {[
-                            { value: 'Standard', description: 'One clear sentence for most items.' },
-                            { value: 'Detailed', description: 'A richer description for premium items.' },
-                        ].map((option) => {
-                            const isSelected = aiDescriptionLength === option.value;
-                            return (
-                                <Flex
-                                    key={option.value}
-                                    onClick={() => handleAIDescriptionLengthChange(option.value as 'Standard' | 'Detailed')}
-                                    style={{
-                                        background: isSelected ? '#f0f7ff' : 'transparent',
-                                        border: `1px solid ${isSelected ? '#1677ff' : '#d9d9d9'}`,
-                                        borderRadius: 10,
-                                        cursor: 'pointer',
-                                        flex: 1,
-                                        padding: '10px 12px',
-                                    }}
-                                    vertical
-                                >
-                                    <Text strong style={{ color: isSelected ? '#1677ff' : undefined }}>{option.value}</Text>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>{option.description}</Text>
-                                </Flex>
-                            );
-                        })}
-                    </Flex>
-                </Flex>
-
-                <Flex vertical gap={8}>
-                    <Text strong style={{ fontSize: 13 }}>Photo shape</Text>
-                    <Flex gap={8}>
-                        {AI_IMAGE_ASPECT_RATIO_OPTIONS.map((option) => {
-                            const isSelected = aiImageAspectRatio === option.value;
-                            return (
-                                <Flex
-                                    key={option.value}
-                                    onClick={() => handleAIImageAspectRatioChange(option.value)}
-                                    style={{
-                                        background: isSelected ? '#f0f7ff' : 'transparent',
-                                        border: `1px solid ${isSelected ? '#1677ff' : '#d9d9d9'}`,
-                                        borderRadius: 10,
-                                        cursor: 'pointer',
-                                        flex: 1,
-                                        padding: '10px 12px',
-                                    }}
-                                    vertical
-                                >
-                                    <Text strong style={{ color: isSelected ? '#1677ff' : undefined }}>{option.label}</Text>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>{option.description}</Text>
-                                </Flex>
-                            );
-                        })}
-                    </Flex>
-                </Flex>
-
-                <Flex
-                    style={{
-                        background: '#fafafa',
-                        border: '1px solid #f0f0f0',
-                        borderRadius: 10,
-                        padding: '10px 12px',
-                    }}
-                    vertical
-                >
-                    <Text strong style={{ fontSize: 13 }}>Saved photo look</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {`${aiImageSummary.primaryStyle} · ${aiImageSummary.aspectRatio}`}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        The AI photo generator updates this look automatically when you create new images.
-                    </Text>
-                </Flex>
             </Flex>
 
             <Collapse

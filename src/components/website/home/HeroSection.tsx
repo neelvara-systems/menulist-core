@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
-import { LuFileText, LuLayoutGrid, LuLink, LuMonitor, LuQrCode } from 'react-icons/lu';
+import { LuFileText, LuLayoutGrid, LuLink, LuMonitor, LuQrCode, LuSmartphone } from 'react-icons/lu';
 import WebsiteButton from '../shared/WebsiteButton';
 
 const surfaceKeys = [
@@ -12,6 +12,7 @@ const surfaceKeys = [
   { key: 'surfaceDigitalScreen', icon: LuMonitor },
   { key: 'surfaceWebLink', icon: LuLink },
   { key: 'surfacePrintPdf', icon: LuFileText },
+  { key: 'surfaceCustomerApp', icon: LuSmartphone },
 ];
 
 function SurfaceCard({ label, isActive, dark, children }: { label: string; isActive: boolean; dark?: boolean; children: React.ReactNode }) {
@@ -166,6 +167,19 @@ export default function HeroSection() {
           ))}
           <div style={{ borderTop: '1px dashed var(--ws-border-default)', marginTop: '4px', paddingTop: '6px' }}>
             <div style={{ height: '4px', width: '60%', backgroundColor: 'var(--ws-border-default)', borderRadius: '2px' }} />
+          </div>
+        </SurfaceCard>
+
+        {/* Customer App card */}
+        <SurfaceCard label={t('Hero.surfaceCustomerApp')} isActive={activeIndex === 5}>
+          <div style={{ width: '58px', height: '92px', border: '2px solid var(--ws-border-default)', borderRadius: '14px', margin: '0 auto', padding: '8px 6px', backgroundColor: 'var(--ws-bg-subtle)' }}>
+            <div style={{ width: '22px', height: '22px', borderRadius: '7px', backgroundColor: 'var(--ws-brand-light)', margin: '4px auto 8px' }} />
+            <div style={{ height: '4px', width: '70%', backgroundColor: 'var(--ws-border-default)', borderRadius: '2px', margin: '0 auto 4px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginTop: '10px' }}>
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div key={n} style={{ height: '8px', borderRadius: '3px', backgroundColor: n === 2 ? 'var(--ws-brand-light)' : 'var(--ws-border-default)' }} />
+              ))}
+            </div>
           </div>
         </SurfaceCard>
       </div>

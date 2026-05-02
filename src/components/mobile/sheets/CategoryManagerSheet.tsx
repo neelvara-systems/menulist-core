@@ -47,7 +47,7 @@ interface CategoryManagerSheetProps {
     onAdd: (payload: { names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
     onUpdate: (payload: { id: string; names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
-    onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
+    onGenerateContent?: (payload: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => Promise<Record<string, string> | null>;
     onOpenDesignEditor?: () => void;
     onReorder: (orderedIds: string[]) => Promise<void>;
     onReorderItems: (categoryId: string, orderedItemIds: string[]) => Promise<void>;

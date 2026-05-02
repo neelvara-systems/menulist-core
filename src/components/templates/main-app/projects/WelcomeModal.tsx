@@ -44,7 +44,7 @@ export const WelcomeModal = ({ isOpen, onClose, onStart }: WelcomeModalProps) =>
                             },
                             {
                                 title: 'Review',
-                                description: 'AI extracts your data automatically.',
+                                description: 'We extract your data automatically.',
                                 icon: <LuFileText size={20} />
                             },
                             {

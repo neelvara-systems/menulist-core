@@ -27,7 +27,7 @@ import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, Tex
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 
 interface MobileOfficialPageScreenProps {
@@ -256,13 +256,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('officialPageSubtitle')}
+                onBack={onBack}
+                title={t('officialPage')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('officialPageSubtitle')}
-                    title={t('officialPage')}
-                />
-
                 <MobileLocalizedLanguageSelector
                     helperText="Choose which public-content language you want to edit. Links, toggles, ratings, and photos stay shared for all languages."
                     languages={managedLanguages}

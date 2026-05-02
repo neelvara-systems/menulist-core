@@ -41,7 +41,7 @@ const descriptionItemSchema = z.object({
     description: z.string().max(2000).optional()
 });
 
-const toneSchema = z.enum(['Professional']); // Locked to Professional per doctrine — infrastructure = deterministic output
+const toneSchema = z.enum(['Professional', 'Friendly', 'Premium']);
 
 export const DescriptionRequestSchema = z.object({
     itemsList: z.array(descriptionItemSchema).min(1).max(100),
@@ -184,6 +184,7 @@ export const NewItemMetadataRequestSchema = z.object({
     projectId: z.string().max(100).optional(),
     fileId: z.string().max(100).optional(),
     contentLength: contentLengthSchema.optional(),
+    tone: toneSchema.optional().default('Professional'),
     businessType: z.string().max(100).optional()
 });
 
@@ -246,7 +247,9 @@ export const OnboardingSubscriptionSchema = z.object({
     planId: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid plan ID'),
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
-    userType: z.enum(['B2C', 'B2B'])
+    userType: z.enum(['B2C', 'B2B']),
+    timeZone: z.string().max(100).optional(),
+    businessDayEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional()
 });
 
 export type OnboardingSubscriptionRequest = z.infer<typeof OnboardingSubscriptionSchema>;

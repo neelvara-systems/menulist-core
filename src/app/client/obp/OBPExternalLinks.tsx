@@ -10,6 +10,7 @@ interface OBPExternalLinksProps {
     trackingEnabled?: boolean;
     includeLocation?: boolean;
     storeTimeZone?: string;
+    businessDayEndTime?: string;
     googleReviewLabel?: string;
     googleReviewUrl?: string;
     instagram?: string | null;
@@ -27,6 +28,7 @@ export default function OBPExternalLinks({
     trackingEnabled = true,
     includeLocation = true,
     storeTimeZone,
+    businessDayEndTime,
     googleReviewLabel,
     googleReviewUrl,
     instagram,
@@ -44,6 +46,7 @@ export default function OBPExternalLinks({
             tenantId,
             sessionId: getSessionId(),
             storeTimeZone,
+            businessDayEndTime,
             includeLocation,
         }).catch(() => { });
     };

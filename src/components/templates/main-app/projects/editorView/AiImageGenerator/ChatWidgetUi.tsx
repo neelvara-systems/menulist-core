@@ -207,7 +207,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                                 Add any extra detail you want the image to follow.
                             </Typography.Text>
                         </Flex>
-                        <Tooltip title="The prompt is used to guide the AI in generating an image that matches your vision.">
+                        <Tooltip title="The prompt is used to guide image generation so the result matches your vision.">
                             <Input.TextArea
                                 id="prompt-input"
                                 allowClear

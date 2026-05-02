@@ -40,6 +40,7 @@ export interface InstallTrackerOptions {
   tenantId?: string | number;
   /** Store timezone used for local analytics day/hour bucketing. */
   storeTimeZone?: string;
+  businessDayEndTime?: string;
   /** Owner opt-out flag. When explicitly `false` (trackMenuViews === false), the
    *  event is suppressed entirely, matching the OBP/menu-view privacy precedent. */
   trackingEnabled?: boolean;
@@ -63,7 +64,7 @@ export async function fireInstalledEventOnce(
   // Customer App analytics are suppressed too.
   if (options.trackingEnabled === false) return;
 
-  const { tenantId, storeTimeZone, source = 'native', includeLocation = true } = options;
+  const { tenantId, storeTimeZone, businessDayEndTime, source = 'native', includeLocation = true } = options;
   const { platform } = detectPlatform();
   // Entry/source context only. Customer App identity is store-level, so this
   // does not create or imply separate installed apps per public route.
@@ -76,6 +77,7 @@ export async function fireInstalledEventOnce(
       tenantId,
       sessionId: getSessionId(),
       storeTimeZone,
+      businessDayEndTime,
       includeLocation,
       pwaPlatform: platform,
       pwaInstallSource: source,
@@ -96,6 +98,7 @@ export async function fireInstalledEventOnce(
       tenantId,
       sessionId: getSessionId(),
       storeTimeZone,
+      businessDayEndTime,
       includeLocation,
       pwaPlatform: platform,
       pwaInstallSource: source,

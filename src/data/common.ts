@@ -45,6 +45,8 @@ export interface PurchaseIntent {
     currency: Currency;
     businessName: string;
     businessIndustry: string;
+    timeZone?: string;
+    businessDayEndTime?: string;
 }
 
 export interface Plan {

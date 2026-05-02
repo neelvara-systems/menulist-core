@@ -274,7 +274,7 @@ const EditCategoryModal = ({
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
-                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Category translation failed. Please try again.');
             }

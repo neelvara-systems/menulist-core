@@ -58,8 +58,8 @@ export function useOwnerActionPlan(projectId?: string | null): UseOwnerActionPla
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
     const canFetch = Boolean(tId && sId && projectId);
     const schedulerCacheKey = useMemo(
-        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
-        [storeDetails?.timeZone],
+        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+        [storeDetails?.timeZone, storeDetails?.businessDayEndTime],
     );
     const cacheKey = canFetch ? createCacheKey(tId!, sId!, projectId!) : null;
     const fallbackData = useMemo(
@@ -71,7 +71,7 @@ export function useOwnerActionPlan(projectId?: string | null): UseOwnerActionPla
         canFetch ? ['ownerActionPlan', tId, sId, projectId] : null,
         () => cachedSettledFetcher(
             cacheKey!,
-            () => getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone),
+            () => getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
         ),
         {

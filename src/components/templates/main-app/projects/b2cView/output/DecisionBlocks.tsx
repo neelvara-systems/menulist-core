@@ -47,7 +47,7 @@ interface DecisionBlocksProps {
     /** Precomputed Decision Blocks from Cloud Function (optional) */
     precomputedBlocks?: PrecomputedDecisionBlocks | null;
     /** Required for project-wise analytics storage */
-    analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone'>>;
+    analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     /** Controls whether decision-block analytics should fire. */
     trackingEnabled?: boolean;
 }

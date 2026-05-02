@@ -1,7 +1,7 @@
 'use client'
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
-import { getProjectDescriptionContentLength, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
+import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { AICapacityError } from '@services/ai/capacityError';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -56,11 +56,15 @@ export default function GenerateDescriptionsSheet({
 
         try {
             const projectWithPreferences = mergeProjectAIPreferences(projectData, {
-                description: { contentLength },
+                description: {
+                    contentLength,
+                    tone: getProjectDescriptionTone(projectData),
+                },
             });
             const updatedProject = await runDescriptionGeneration({
                 action,
                 contentLength,
+                tone: getProjectDescriptionTone(projectData),
                 onProgress: (processedFiles, nextTotalFiles) => {
                     setProcessedCount(processedFiles);
                     setTotalFiles(nextTotalFiles);

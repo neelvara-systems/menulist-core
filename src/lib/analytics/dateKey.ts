@@ -1,3 +1,5 @@
+import { DEFAULT_FOOD_BUSINESS_DAY_END_TIME, getAnalyticsSettlementCycleDateKey } from './businessDay';
+
 function isValidTimeZone(timeZone?: string): timeZone is string {
   if (!timeZone) return false;
   try {
@@ -8,13 +10,14 @@ function isValidTimeZone(timeZone?: string): timeZone is string {
   }
 }
 
-function formatParts(date: Date, timeZone?: string): { year: string; month: string; day: string; hour?: string } {
+function formatParts(date: Date, timeZone?: string): { year: string; month: string; day: string; hour?: string; minute?: string } {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: isValidTimeZone(timeZone) ? timeZone : 'UTC',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
+    minute: '2-digit',
     hourCycle: 'h23',
   });
 
@@ -23,8 +26,9 @@ function formatParts(date: Date, timeZone?: string): { year: string; month: stri
   const month = parts.find((part) => part.type === 'month')?.value || '01';
   const day = parts.find((part) => part.type === 'day')?.value || '01';
   const hour = parts.find((part) => part.type === 'hour')?.value || '00';
+  const minute = parts.find((part) => part.type === 'minute')?.value || '00';
 
-  return { year, month, day, hour };
+  return { year, month, day, hour, minute };
 }
 
 export function getAnalyticsDateKey(date: Date = new Date(), timeZone?: string): string {
@@ -81,29 +85,29 @@ export function getAnalyticsISOWeek(dateKey: string): number {
 /**
  * Cache key for settled nightly analytics.
  *
- * Analytics settlement runs around 2:30 AM in the store's local timezone. The
+ * Analytics settlement runs after the store's configured business day end. The
  * owner-facing settled dashboard should not invalidate at midnight because the
- * previous day's rollup is not ready yet. Use a conservative 3:30 AM local
- * cutoff so cached settled data survives until the next scheduler result is
- * expected to be available.
+ * previous business day's rollup is not ready yet.
  */
 export function getAnalyticsSchedulerCacheKey(
   date: Date = new Date(),
   timeZone?: string,
-  cutoffHour: number = 3,
+  cutoffHourOrBusinessDayEndTime: number | string = DEFAULT_FOOD_BUSINESS_DAY_END_TIME,
   cutoffMinute: number = 30,
 ): string {
-  const { hour } = formatParts(date, timeZone);
+  const { hour, minute } = formatParts(date, timeZone);
+  const isBusinessDayCutoff = typeof cutoffHourOrBusinessDayEndTime === 'string';
+  if (isBusinessDayCutoff) {
+    return getAnalyticsSettlementCycleDateKey(date, timeZone, cutoffHourOrBusinessDayEndTime);
+  }
+
   const localDateKey = getAnalyticsDateKey(date, timeZone);
   const localHour = Number(hour || '0');
-  const localMinuteFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: isValidTimeZone(timeZone) ? timeZone : 'UTC',
-    minute: '2-digit',
-  });
-  const localMinute = Number(localMinuteFormatter.format(date) || '0');
-  const isAfterSchedulerWindow =
-    localHour > cutoffHour ||
-    (localHour === cutoffHour && localMinute >= cutoffMinute);
+  const localMinute = Number(minute || '0');
+
+  const cutoffMinutes = Number(cutoffHourOrBusinessDayEndTime) * 60 + cutoffMinute;
+  const localMinutes = localHour * 60 + localMinute;
+  const isAfterSchedulerWindow = localMinutes >= cutoffMinutes;
 
   return isAfterSchedulerWindow
     ? localDateKey

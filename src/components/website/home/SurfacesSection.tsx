@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { LuFileText, LuLayoutGrid, LuLink, LuMapPin, LuMonitor, LuQrCode } from 'react-icons/lu';
+import { LuFileText, LuLayoutGrid, LuLink, LuMapPin, LuMonitor, LuQrCode, LuSmartphone } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -10,6 +10,7 @@ const surfaceMeta = [
   { icon: LuMonitor },
   { icon: LuFileText },
   { icon: LuLayoutGrid },
+  { icon: LuSmartphone },
   { icon: LuMapPin, comingSoon: true },
 ];
 
@@ -96,9 +97,9 @@ export default function SurfacesSection() {
 
       <AnimateOnScroll delay={0.2}>
         <p
+          className="ws-body-sm"
           style={{
             textAlign: 'center',
-            fontSize: '0.9375rem',
             color: 'var(--ws-text-muted)',
             marginTop: 'var(--ws-space-10)',
             maxWidth: '520px',

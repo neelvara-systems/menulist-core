@@ -40,7 +40,7 @@ interface MenuFooterProps {
     menuVersion?: number;
     /** When menu was last published (from project.lastPublishedAt) */
     lastPublishedAt?: any; // Firestore Timestamp or Date
-    analyticsIds?: Partial<Pick<TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone'>>;
+    analyticsIds?: Partial<Pick<TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     trackingEnabled?: boolean;
 }
 
@@ -146,6 +146,7 @@ export default function MenuFooter({
             storeId: String(analyticsIds?.storeId),
             projectId: analyticsIds?.projectId,
             storeTimeZone: analyticsIds?.storeTimeZone,
+            businessDayEndTime: analyticsIds?.businessDayEndTime,
         });
     };
 

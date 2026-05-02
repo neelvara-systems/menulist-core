@@ -19,7 +19,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { Card, DotLoading, Flex, NavBar, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
@@ -129,13 +129,13 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 <Card>
                     <MobileTempStatusConfigurator
                         activeStatusLabel={t('activeStatus')}

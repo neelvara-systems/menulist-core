@@ -91,7 +91,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         localStorage.removeItem('purchaseIntent');
     }
 
-    const handleOnboardingModalSubmit = (details: { businessName: string; businessIndustry: string }) => {
+    const handleOnboardingModalSubmit = (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string }) => {
         if (!pendingPlan) {
             console.error("User selection was lost. Cannot proceed.");
             return;
@@ -298,7 +298,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ws-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-brand-secondary)' }}>2</div>
                             <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Review and adjust</p>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>AI structures everything</p>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>MenuList structures everything</p>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ws-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-brand-secondary)' }}>3</div>

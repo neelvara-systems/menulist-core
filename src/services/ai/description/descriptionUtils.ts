@@ -1,6 +1,7 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { logger } from "@lib/monitoring/logger";
 import { AICapacityError } from "@services/ai/capacityError";
+import type { DescriptionTone } from "@template/main-app/projects/editorView/descriptionGeneration.shared";
 import { LanguageType, Project, ProjectFileType } from "@template/main-app/projects/types";
 import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
@@ -102,7 +103,7 @@ export const addDescription = async (
     sourceLanguage: LanguageType,
     action: any,
     contentLength: "Standard" | "Detailed",
-    tone: "Professional" = "Professional",
+    tone: DescriptionTone = "Professional",
     governance?: DescriptionGovernanceOptions
 ) => {
     const prevData = removeObjRef(projectData)

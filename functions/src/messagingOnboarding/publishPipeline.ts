@@ -18,6 +18,8 @@ import { DB_COLLECTIONS } from "../constants/database";
 import { admin, firestoreAdmin } from "../firebaseAdmin";
 import { getBusinessCategory } from "../sharedData/businessTypes";
 import { createDefaultRoles } from "../sharedData/defaultRoles";
+import { resolveBusinessDayEndTime } from "../utils/businessDay";
+import { computeSchedulerHour } from "../utils/schedulerHour";
 import {
   MessagingOnboardingSession,
   PublishedResult,
@@ -175,6 +177,8 @@ export async function executePublish(
     const storeName = `${businessName} - Main Store`;
     const storeKey = storeName.toLowerCase().replaceAll(" ", "_");
     const tenantKey = businessName.toLowerCase().replaceAll(" ", "_");
+    const businessDayEndTime = resolveBusinessDayEndTime(finalBusinessType);
+    const schedulerHour = computeSchedulerHour(currencyInfo.timezone, businessDayEndTime);
 
     // Create Tenant (§8.2.1)
     const tenantRef = db.collection("tenants").doc(String(newTenantId));
@@ -226,6 +230,8 @@ export async function executePublish(
       currencyCode: currencyInfo.code,
       currencySymbol: currencyInfo.symbol,
       timeZone: currencyInfo.timezone,
+      businessDayEndTime,
+      schedulerHour,
       logo: "",
       createdOn: now,
       modifiedOn: now,
@@ -245,6 +251,9 @@ export async function executePublish(
           businessCategory: finalBusinessCategory,
           active: true,
           name: storeName,
+          timeZone: currencyInfo.timezone,
+          businessDayEndTime,
+          schedulerHour,
         },
       },
       { merge: true },

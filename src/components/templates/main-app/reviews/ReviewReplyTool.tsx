@@ -151,7 +151,7 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <Text strong style={{ fontSize: 13 }}>Suggested Reply</Text>
                         <Tag color={replySource === 'ai' ? 'blue' : 'default'} style={{ fontSize: 11 }}>
-                            {replySource === 'ai' ? 'AI Generated' : 'Template'}
+                            {replySource === 'ai' ? 'Generated' : 'Template'}
                         </Tag>
                     </div>
 

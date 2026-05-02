@@ -1,10 +1,10 @@
 import { useTranslations } from 'next-intl';
-import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, LuQrCode, LuShare2, LuStar } from 'react-icons/lu';
+import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, LuQrCode, LuShare2, LuSmartphone, LuStar } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 
-const surfaceIcons = [LuQrCode, LuLink, LuMonitor, LuFileText, LuShare2];
+const surfaceIcons = [LuQrCode, LuLink, LuMonitor, LuFileText, LuGlobe, LuSmartphone];
 const aiIcons = [LuImage, LuFileText, LuLanguages];
 const aiKeys = ['step2AiImages', 'step2AiDesc', 'step2AiTranslations'];
 const aiSubKeys = ['step2AiImagesSub', 'step2AiDescSub', 'step2AiTranslationsSub'];
@@ -94,13 +94,13 @@ export default function ProductPage() {
             <text x="430" y="151" textAnchor="middle" fill="white" fontSize="16" fontWeight="700" fontFamily="Inter, sans-serif">MenuList</text>
 
             {/* Centre → output lines */}
-            {[{ x: 90, delay: 'hiw-l3' }, { x: 250, delay: 'hiw-l4' }, { x: 430, delay: 'hiw-l5' }, { x: 610, delay: 'hiw-l6' }, { x: 770, delay: 'hiw-l7' }].map(({ x, delay }) => (
+            {[{ x: 70, delay: 'hiw-l3' }, { x: 214, delay: 'hiw-l4' }, { x: 358, delay: 'hiw-l5' }, { x: 502, delay: 'hiw-l6' }, { x: 646, delay: 'hiw-l7' }, { x: 790, delay: 'hiw-l7' }].map(({ x, delay }) => (
               <line key={x} className={delay} x1="430" y1="176" x2={x} y2="240" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="6 6" strokeOpacity="0.5" />
             ))}
 
             {/* Output nodes */}
             {[
-              { label: 'QR', x: 90 }, { label: 'Web Page', x: 250 }, { label: 'Screens', x: 430 }, { label: 'PDF', x: 610 }, { label: 'Print', x: 770 },
+              { label: 'QR', x: 70 }, { label: 'Web Link', x: 214 }, { label: 'Screens', x: 358 }, { label: 'PDF', x: 502 }, { label: 'Official', x: 646 }, { label: 'App', x: 790 },
             ].map(({ label, x }) => (
               <g key={label}>
                 <rect x={x - 52} y="240" width="104" height="42" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
@@ -251,7 +251,7 @@ export default function ProductPage() {
                 <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ws-text-primary)' }}>{t('HowItWorks.step3Published')}</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)' }}>
-                {['QR Menu', 'Official Page', 'Digital Screens', 'PDF Export', 'Shareable Link'].map((s) => (
+                {['QR Menu', 'Official Page', 'Digital Screens', 'PDF Export', 'Shareable Link', 'Customer App'].map((s) => (
                   <div key={s} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--ws-space-2) var(--ws-space-3)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-md)', border: '1px solid var(--ws-border-subtle)' }}>
                     <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{s}</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>{t('HowItWorks.step3Live')}</span>

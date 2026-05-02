@@ -18,7 +18,7 @@ import {
     LuX,
 } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileDomainSettingsScreenProps {
     onBack: () => void;
@@ -197,13 +197,12 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('domainSettingsSubtitle')}
+                onBack={onBack}
+                title={t('domain')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('domainSettingsSubtitle')}
-                    title={t('domain')}
-                />
-
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">

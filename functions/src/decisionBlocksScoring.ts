@@ -16,7 +16,8 @@ import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunConte
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
 import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './intelligence/shared/scoreNormalizer';
-import { addDaysToAnalyticsDateKey, getAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
+import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
+import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
 
 /**
  * UNIFIED NIGHTLY SCHEDULER (Timezone-Aware)
@@ -216,8 +217,9 @@ async function getPendingSettlementDates(
     sId: string,
     now: Date,
     timeZone?: string,
+    businessDayEndTime?: string,
 ): Promise<string[]> {
-    const targetDate = addDaysToAnalyticsDateKey(getAnalyticsDateKey(now, timeZone), -1);
+    const targetDate = addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(now, timeZone, businessDayEndTime), -1);
     const stateSnap = await getNightlyStateRef(db, tId, sId).get();
     const lastSettledLocalDate = stateSnap.exists
         ? String(stateSnap.data()?.lastSettledLocalDate || '')
@@ -468,6 +470,7 @@ async function computeForProject(
     businessCategory: string = 'specialty',
     prefetchedAnalytics?: AggregatedAnalytics,  // OPTIMIZATION: Reuse analytics if already fetched
     timeZone?: string,
+    businessDayEndTime?: string,
 ): Promise<DecisionBlocksDocument | null> {
     const logger = functions.logger;
 
@@ -512,7 +515,7 @@ async function computeForProject(
         }
     } else {
         // Standalone mode (manual triggers): Query analytics directly
-        const dateStr = addDaysToAnalyticsDateKey(getAnalyticsDateKey(new Date(), timeZone), -7);
+        const dateStr = addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime), -7);
 
         const analyticsQuery = await db.collection(DB_COLLECTIONS.ANALYTICS)
             .where('__name__', '>=', `${tId}_${sId}_${projectId}_daily_${dateStr}`)
@@ -761,33 +764,24 @@ export const computeDecisionBlocksScores = onSchedule({
         const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
         const allStoreIds = Object.keys(storesSummary);
 
-        // DST-SAFE TIMEZONE-AWARE SCHEDULING
-        // Instead of comparing a stored static UTC hour (which drifts with DST),
-        // we compute the LOCAL hour for each store at runtime using its IANA timeZone.
-        // A store is processed when its local hour === TARGET_LOCAL_HOUR (2 = 2:30 AM local).
-        // Fallback: stores without timeZone use stored schedulerHour (default 2 UTC).
+        // DST-safe business-day scheduling. Owners configure "Business day ends at";
+        // the scheduler runs after EOD + buffer, using runtime timezone math instead
+        // of a static UTC hour where possible.
         // @see __docs__/patterns/nightly-scheduler-architecture.md
-        const TARGET_LOCAL_HOUR = 2; // 2:30 AM local time
-        const DEFAULT_SCHEDULER_HOUR = 2; // UTC fallback for stores without timeZone
+        const DEFAULT_SCHEDULER_HOUR = 2; // Legacy UTC fallback when no timezone/cutoff metadata exists
         const now = new Date();
 
         const storeIds = allStoreIds.filter(sId => {
             const storeInfo = storesSummary[sId];
+            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime);
 
-            // Primary: runtime timezone computation (DST-safe)
-            if (storeInfo.timeZone) {
+            // Primary: runtime settlement computation. Missing/invalid timezone
+            // safely falls back to UTC inside isAnalyticsSettlementDue.
+            if (storeInfo.timeZone || storeInfo.businessDayEndTime || storeInfo.businessType) {
                 try {
-                    const formatter = new Intl.DateTimeFormat('en-US', {
-                        timeZone: storeInfo.timeZone,
-                        hour: 'numeric',
-                        hour12: false,
-                    });
-                    const parts = formatter.formatToParts(now);
-                    const hourPart = parts.find(p => p.type === 'hour');
-                    const localHour = hourPart ? parseInt(hourPart.value, 10) : -1;
-                    return localHour === TARGET_LOCAL_HOUR;
+                    return isAnalyticsSettlementDue(now, storeInfo.timeZone, businessDayEndTime);
                 } catch {
-                    // Invalid timezone — fall through to schedulerHour fallback
+                    // Fall through to legacy schedulerHour fallback.
                 }
             }
 
@@ -818,7 +812,7 @@ export const computeDecisionBlocksScores = onSchedule({
             return;
         }
 
-        logger.info(`Processing ${storeIds.length} of ${allStoreIds.length} stores (currentUTCHour=${currentUTCHour}, targetLocalHour=${TARGET_LOCAL_HOUR})`);
+        logger.info(`Processing ${storeIds.length} of ${allStoreIds.length} stores (currentUTCHour=${currentUTCHour})`);
 
         const analyticsTaskStart = Date.now();
         const analyticsRunAt = new Date(analyticsTaskStart);
@@ -842,6 +836,7 @@ export const computeDecisionBlocksScores = onSchedule({
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
             const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
+            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime);
             // Use businessCategory directly from storesSummary (derived at store creation/update)
             const businessCategory = storeInfo.businessCategory || 'specialty';
 
@@ -874,7 +869,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
                 analyticsResults.storesAttempted++;
                 try {
-                    const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, storeInfo.timeZone);
+                    const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, storeInfo.timeZone, businessDayEndTime);
                     const knownAnalyticsProjectIds = Array.from(new Set([...activeProjectIds, 'customerApp']));
 
                     if (settlementDates.length === 0) {
@@ -929,6 +924,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                         ...(FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS ? [`${tId}_${sId}_obp_dashboard_summary`] : []),
                                     ],
                                     lastSettledLocalDate: settlementDate,
+                                    businessDayEndTime,
                                 },
                             });
                             await completeNightlyDateLock(lockRef, 'completed');
@@ -959,14 +955,14 @@ export const computeDecisionBlocksScores = onSchedule({
                         // intelligence snapshot once, reuse for both DI + CMI.
                         // Missing/stale snapshots are visible in ops and score
                         // as empty for the run instead of opening daily reads.
-                        const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone);
+                        const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
                         if (analytics.source === 'missing_or_stale') {
                             analyticsResults.intelligenceSnapshotMissing++;
                             appLogger.warn('[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
                                 tId,
                                 sId,
                                 projectId,
-                                expectedLocalDate: addDaysToAnalyticsDateKey(getAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone), -1),
+                                expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
                                 lastSettledLocalDate: analytics.lastSettledLocalDate || null,
                             });
                         }
@@ -980,6 +976,7 @@ export const computeDecisionBlocksScores = onSchedule({
                             businessCategory,
                             analytics,
                             storeInfo.timeZone,
+                            businessDayEndTime,
                         );
 
                         if (blocks) {
@@ -1727,6 +1724,7 @@ export const triggerDecisionBlocksScoring = onCall({
             storeData?.businessType,
             undefined,
             storeData?.timeZone,
+            storeData?.businessDayEndTime,
         );
 
         if (blocks) {
@@ -1781,6 +1779,7 @@ export const triggerDecisionBlocksScoring = onCall({
                     storeData?.businessType,
                     undefined,
                     storeData?.timeZone,
+                    storeData?.businessDayEndTime,
                 );
 
                 if (blocks) {
@@ -1838,6 +1837,7 @@ export const triggerDecisionBlocksScoring = onCall({
                     storeData.businessType,
                     undefined,
                     storeData.timeZone,
+                    storeData.businessDayEndTime,
                 );
 
                 if (blocks) {

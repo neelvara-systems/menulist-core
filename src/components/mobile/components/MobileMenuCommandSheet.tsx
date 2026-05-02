@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 
 type CommandAction = {
@@ -25,6 +25,7 @@ interface MobileMenuCommandSheetProps {
     onChangeAvailability: () => void;
     onClose: () => void;
     onAddImages: () => void;
+    onAIDefaults: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
     onRepairMenu: () => void;
@@ -47,6 +48,7 @@ export default function MobileMenuCommandSheet({
     onChangeAvailability,
     onClose,
     onAddImages,
+    onAIDefaults,
     onGenerateDescriptions,
     onManageLanguages,
     onRepairMenu,
@@ -107,6 +109,13 @@ export default function MobileMenuCommandSheet({
 
     const aiActions = useMemo<CommandAction[]>(() => [
         {
+            key: 'ai-defaults',
+            icon: <LuSettings2 style={{ fontSize: 20 }} />,
+            title: 'Generation defaults',
+            description: 'Set the default writing and photo style for this menu.',
+            onClick: onAIDefaults,
+        },
+        {
             key: 'add-images',
             icon: <LuFileImage style={{ fontSize: 20 }} />,
             title: t('addImages'),
@@ -134,7 +143,7 @@ export default function MobileMenuCommandSheet({
             description: t('menuLanguagesManualDesc'),
             onClick: onManageLanguages,
         },
-    ], [onAddImages, onGenerateDescriptions, onManageLanguages, onRepairMenu, t]);
+    ], [onAIDefaults, onAddImages, onGenerateDescriptions, onManageLanguages, onRepairMenu, t]);
 
     const menuSetupActions = useMemo<CommandAction[]>(() => [
         {

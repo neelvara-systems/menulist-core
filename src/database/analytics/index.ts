@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { addDaysToAnalyticsDateKey, getAnalyticsDateKey } from "@lib/analytics/dateKey";
+import { getBusinessAnalyticsDateKey } from "@lib/analytics/businessDay";
+import { addDaysToAnalyticsDateKey } from "@lib/analytics/dateKey";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logger } from "@lib/monitoring/logger";
 import { collection, doc, DocumentData, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "firebase/firestore";
@@ -54,6 +55,7 @@ type QueuedAnalyticsWrite = {
   projectId: string;
   dateString: string;
   storeTimeZone?: string;
+  businessDayEndTime?: string;
   updateData: Record<string, any>;
   eventCount: number;
   flushTimer?: ReturnType<typeof setTimeout>;
@@ -74,6 +76,7 @@ const persistAnalyticsQueue = () => {
         projectId: queued.projectId,
         dateString: queued.dateString,
         storeTimeZone: queued.storeTimeZone,
+        businessDayEndTime: queued.businessDayEndTime,
         updateData: queued.updateData,
         eventCount: queued.eventCount,
       },
@@ -145,6 +148,7 @@ const writeAnalyticsEventNow = async (
   projectId: string,
   dateString: string,
   storeTimeZone?: string,
+  businessDayEndTime?: string,
 ) => {
   const dailyDocRef = getDailyAnalyticsDocRef(tenantId, storeId, projectId, dateString);
   const processedData: any = {};
@@ -170,6 +174,7 @@ const writeAnalyticsEventNow = async (
         : 'menu',
     localDate: dateString,
     storeTimeZone: storeTimeZone || 'UTC',
+    businessDayEndTime: businessDayEndTime || null,
     ...processedData,
     lastUpdated: serverTimestamp()
   }, { merge: true });
@@ -191,6 +196,7 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
       queued.projectId,
       queued.dateString,
       queued.storeTimeZone,
+      queued.businessDayEndTime,
     );
     analyticsWriteQueue.delete(queueKey);
     reportedAnalyticsQueueFailures.delete(queueKey);
@@ -224,6 +230,7 @@ const enqueueAnalyticsWrite = (
   projectId: string,
   dateString: string,
   storeTimeZone?: string,
+  businessDayEndTime?: string,
 ) => {
   const queueKey = getAnalyticsQueueKey(tenantId, storeId, projectId, dateString);
   const existing = analyticsWriteQueue.get(queueKey);
@@ -247,6 +254,7 @@ const enqueueAnalyticsWrite = (
     projectId: String(projectId),
     dateString,
     storeTimeZone,
+    businessDayEndTime,
     updateData: { ...updateData },
     eventCount: 1,
   };
@@ -268,7 +276,7 @@ if (typeof window !== 'undefined') {
     if (Array.isArray(entries)) {
       entries.forEach(([queueKey, queued]) => {
         if (!queueKey || !queued?.updateData) return;
-        const currentLocalDate = getAnalyticsDateKey(new Date(), queued.storeTimeZone);
+        const currentLocalDate = getBusinessAnalyticsDateKey(new Date(), queued.storeTimeZone, queued.businessDayEndTime);
         const oldestRecoverableDate = addDaysToAnalyticsDateKey(currentLocalDate, -1);
         if (String(queued.dateString || '') < oldestRecoverableDate) return;
         analyticsWriteQueue.set(queueKey, {
@@ -277,6 +285,7 @@ if (typeof window !== 'undefined') {
           projectId: String(queued.projectId),
           dateString: String(queued.dateString),
           storeTimeZone: queued.storeTimeZone,
+          businessDayEndTime: queued.businessDayEndTime,
           updateData: queued.updateData,
           eventCount: queued.eventCount || 1,
         });
@@ -400,12 +409,13 @@ export const getOptimizedAnalyticsData = async (
   startDate: string,
   endDate: string,
   timeZone?: string,
+  businessDayEndTime?: string,
 ) => {
   return await apiCallComposer(
     async () => {
       const dashboardRef = getAnalyticsDashboardSummaryDocRef(tId, sId, projectId);
       const dashboardSnap = await getDoc(dashboardRef);
-      const todayKey = getAnalyticsDateKey(new Date(), timeZone);
+      const todayKey = getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime);
 
       if (dashboardSnap.exists()) {
         const dashboardData = dashboardSnap.data();
@@ -481,7 +491,8 @@ export const trackAnalyticsEvent = async (
   tenantId?: string | number,
   storeId?: string | number,
   projectId?: string,
-  storeTimeZone?: string
+  storeTimeZone?: string,
+  businessDayEndTime?: string
 ) => {
   // Validate required IDs for project-wise analytics
   if (!tenantId || !storeId || !projectId) {
@@ -491,7 +502,7 @@ export const trackAnalyticsEvent = async (
 
   return await apiCallComposer(
     async () => {
-      const dateString = getAnalyticsDateKey(new Date(), storeTimeZone);
+      const dateString = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
 
       // Update Firestore document with merge to avoid overwriting existing data
       // COST OPTIMIZATION: Only write to daily document
@@ -502,9 +513,9 @@ export const trackAnalyticsEvent = async (
       // Final conversion actions stay immediate because losing those events is
       // more damaging to owner decision-making than saving a write.
       if (shouldWriteImmediately(updateData)) {
-        await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, dateString, storeTimeZone);
+        await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
       } else {
-        enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, dateString, storeTimeZone);
+        enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
       }
 
       // NOTE: Summary updates moved to Cloud Function for cost optimization

@@ -10,9 +10,19 @@ import { removeObjRef } from '@util/utils';
 import type { ExtractedDataItem, Project, ProjectFileType } from '../types';
 
 export type DescriptionContentLength = 'Standard' | 'Detailed';
-export type DescriptionTone = 'Professional';
+export type DescriptionTone = 'Professional' | 'Friendly' | 'Premium';
 
 export const DEFAULT_DESCRIPTION_TONE: DescriptionTone = 'Professional';
+
+export const DESCRIPTION_TONE_OPTIONS: {
+    value: DescriptionTone;
+    label: string;
+    description: string;
+}[] = [
+    { value: 'Professional', label: 'Professional', description: 'Clear, neutral language for most menus' },
+    { value: 'Friendly', label: 'Friendly', description: 'Warm, welcoming language that feels more personal' },
+    { value: 'Premium', label: 'Premium', description: 'Polished language for signature or upscale items' },
+];
 
 export const DESCRIPTION_LENGTH_OPTIONS: {
     value: DescriptionContentLength;

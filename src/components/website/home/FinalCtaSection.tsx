@@ -19,11 +19,9 @@ export default function FinalCtaSection() {
           <h2 className="ws-h2">{t('FinalCta.title')}<span className="ws-highlight">{t('FinalCta.highlight')}</span>{t('FinalCta.titleEnd')}</h2>
 
           <p
+            className="ws-body"
             style={{
               marginTop: 'var(--ws-space-4)',
-              fontSize: '1.0625rem',
-              color: 'var(--ws-text-secondary)',
-              fontWeight: 400,
               lineHeight: 1.5,
             }}
           >
@@ -41,10 +39,9 @@ export default function FinalCtaSection() {
           </p>
 
           <p
+            className="ws-body-sm"
             style={{
               marginTop: 'var(--ws-space-6)',
-              fontSize: '0.9375rem',
-              color: 'var(--ws-text-secondary)',
               fontWeight: 500,
             }}
           >

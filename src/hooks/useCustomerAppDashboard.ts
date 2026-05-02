@@ -56,8 +56,8 @@ export function useCustomerAppDashboard() {
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
     const schedulerCacheKey = useMemo(
-        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
-        [storeDetails?.timeZone],
+        () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+        [storeDetails?.timeZone, storeDetails?.businessDayEndTime],
     );
     const canFetch = Boolean(tId && sId);
     const cacheKey = canFetch ? createCacheKey(tId!, sId!) : null;

@@ -8,7 +8,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuExternalLink, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandYoutube } from 'react-icons/tb';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileAdvancedSettingsScreenProps {
     onBack: () => void;
@@ -414,17 +414,14 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar
+            <MobileSettingsScreenHeader
+                description={pageSubtitle}
                 onBack={onBack}
                 right={isSaving ? <Tag color="processing">Saving</Tag> : null}
+                title={pageTitle}
             />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={pageSubtitle}
-                    title={pageTitle}
-                />
-
                 {showSocial ? (
                     <Flex gap={12} vertical>
                         <Card size="small">

@@ -10,7 +10,8 @@
  */
 
 import { DB_COLLECTIONS } from '../../constants/database';
-import { addDaysToAnalyticsDateKey, getAnalyticsDateKey } from '../../utils/analyticsDate';
+import { addDaysToAnalyticsDateKey } from '../../utils/analyticsDate';
+import { getBusinessAnalyticsDateKey } from '../../utils/businessDay';
 
 export interface AggregatedAnalytics {
     totalViews: number;
@@ -77,8 +78,9 @@ export async function fetch7DayAnalytics(
     sId: string,
     projectId: string,
     timeZone?: string,
+    businessDayEndTime?: string,
 ): Promise<AggregatedAnalytics> {
-    const todayKey = getAnalyticsDateKey(new Date(), timeZone);
+    const todayKey = getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime);
     const lastSettledKey = addDaysToAnalyticsDateKey(todayKey, -1);
     const snapshotDoc = await db.collection(DB_COLLECTIONS.ANALYTICS)
         .doc(getIntelligenceSnapshotDocId(tId, sId, projectId))

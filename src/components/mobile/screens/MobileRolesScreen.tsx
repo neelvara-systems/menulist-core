@@ -9,7 +9,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuCheck, LuPencil, LuPlus, LuShield, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Dialog, Empty, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileRolesScreenProps {
     onBack: () => void;
@@ -157,14 +157,13 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
-
                 {roles.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>

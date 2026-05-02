@@ -100,7 +100,7 @@ const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: 
                             <Space direction="vertical" size="large" style={{ width: '100%', height: '100%' }}>
                                 <Space direction="vertical" size="small">
                                     <Title level={3} style={{ textAlign: 'center', width: '100%' }}>We&apos;re sorry to see you go</Title>
-                                    <Text type="secondary" style={{ textAlign: 'center', width: '100%' }}>Thank you for choosing MenuList AI, we&apos;re sorry to see you go. Before you cancel, please specify your reason for cancellation below.</Text>
+                                    <Text type="secondary" style={{ textAlign: 'center', width: '100%' }}>Thank you for choosing MenuList. We&apos;re sorry to see you go. Before you cancel, please specify your reason for cancellation below.</Text>
                                 </Space>
                                 <Form layout="vertical">
                                     <Radio.Group onChange={(e) => setReason(e.target.value)} value={reason}>

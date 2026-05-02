@@ -35,7 +35,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 return {
                     icon: <LuClock size={32} style={{ color: '#faad14' }} />,
                     title: 'Processing...',
-                    description: `Our AI is reading your ${labels.offeringLower} and extracting ${labels.itemsPlural}`,
+                    description: `We're reading your ${labels.offeringLower} and extracting ${labels.itemsPlural}`,
                     color: '#faad14',
                     showProgress: true
                 };
@@ -137,7 +137,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 {status === 'processing' && (
                     <Alert
                         message="💡 What's happening?"
-                        description={`We're using AI to read your ${labels.offeringLower} and automatically extract ${labels.itemsPlural}, prices, and descriptions. This saves you hours of manual typing.`}
+                        description={`We're reading your ${labels.offeringLower} and automatically extracting ${labels.itemsPlural}, prices, and descriptions. This saves you hours of manual typing.`}
                         type="info"
                         showIcon={false}
                         style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }}

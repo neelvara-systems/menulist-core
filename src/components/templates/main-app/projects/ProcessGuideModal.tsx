@@ -54,7 +54,7 @@ export const ProcessGuideModal = ({ isOpen, onClose }: ProcessGuideModalProps) =
                                 icon: <LuUpload size={24} style={{ color: token.colorPrimary }} />
                             },
                             {
-                                title: <Typography.Text strong style={{ fontSize: '16px' }}>2. AI Extracts Your Items</Typography.Text>,
+                                title: <Typography.Text strong style={{ fontSize: '16px' }}>2. We Extract Your Items</Typography.Text>,
                                 description: (
                                     <Typography.Paragraph style={{ marginTop: 8, marginBottom: 0, color: token.colorTextSecondary }}>
                                         {labels.aiExtractsDesc}
@@ -122,7 +122,7 @@ export const ProcessGuideModal = ({ isOpen, onClose }: ProcessGuideModalProps) =
                         paddingLeft: 28
                     }}>
                         <Typography.Text style={{ fontSize: '14px' }}>
-                            • Upload clear photos for best AI accuracy
+                            • Upload clear photos for the best results
                         </Typography.Text>
                         <Typography.Text style={{ fontSize: '14px' }}>
                             • You can add multiple languages later

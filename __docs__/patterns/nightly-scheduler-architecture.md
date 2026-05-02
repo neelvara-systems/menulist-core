@@ -3,7 +3,7 @@
 > **Status:** PRODUCTION
 > **Last Updated:** 2026-05-01
 > **Entry Point:** `functions/src/decisionBlocksScoring.ts`
-> **Schedule:** Every hour at :30 (timezone-aware, filters by store's `schedulerHour`)
+> **Schedule:** Every hour at :30 (timezone-aware, filters by store `timeZone` + `businessDayEndTime`; `schedulerHour` is fallback only)
 
 ---
 
@@ -17,7 +17,7 @@ All nightly batch processing runs through **one Cloud Function**: `computeDecisi
 Cloud Scheduler (every hour at :30)
   └── computeDecisionBlocksScores (CF)
       ├── Read storesSummary (1 read)
-      ├── Filter: only stores where schedulerHour === currentUTCHour
+      ├── Filter: only stores whose local business-day settlement window is due
       ├── Skip if 0 stores match (early exit — saves compute)
       │
       ├── PER-STORE TASKS (iterate matching stores):
@@ -58,7 +58,7 @@ Cloud Scheduler (every hour at :30)
 
 ### Analytics Settlement Contract
 
-Owner-facing analytics are settled per store-local calendar date. The scheduler records settlement state in `platformSummary/nightlyState_{tId}_{sId}` and uses a per-date lock document `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}`. If a run is retried, the lock and idempotency guards prevent double-counting. If a night is missed, the next eligible local 2:30 AM run catches up from `lastSettledLocalDate + 1`, capped to 7 dates per run.
+Owner-facing analytics are settled per store-local business day, not raw UTC dates. Each store has a `businessDayEndTime` (`HH:mm`) that decides when a customer event belongs to the next analytics day. The scheduler records settlement state in `platformSummary/nightlyState_{tId}_{sId}` and uses a per-date lock document `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}`. If a run is retried, the lock and idempotency guards prevent double-counting. If a night is missed, the next eligible settlement window catches up from `lastSettledLocalDate + 1`, capped to 7 dates per run.
 
 OBP analytics and menu/customer-app analytics run in the same locked store/date phase:
 
@@ -79,24 +79,24 @@ The completed `nightlyState` doc includes a compact `analyticsIndex` with active
 
 ---
 
-## 2. Timezone-Aware Scheduling
+## 2. Timezone + Business-Day Scheduling
 
 ### Problem
 
-Global clients operate in different timezones. A restaurant in Sydney needs nightly scoring at 2:30 AM AEST, not 2:30 AM UTC (which is 12:30 PM AEST — peak business hours).
+Global clients operate in different timezones and many food businesses close after midnight. A bar that closes at 2:00 AM should not split the same service night across two analytics days. A restaurant in Sydney also needs settlement after its local business day ends, not at a fixed UTC hour.
 
-### Solution: DST-Safe Runtime Timezone Computation
+### Solution: DST-Safe Runtime Settlement Computation
 
-Instead of storing a static UTC hour (which drifts with DST), the CF computes each store's local hour **at runtime** using its IANA `timeZone`.
+Instead of relying on a static UTC hour, the CF computes each store's local settlement window **at runtime** using its IANA `timeZone` and `businessDayEndTime`.
 
 ```
 CF runs at any UTC hour:
   For each store with timeZone:
-    localHour = getLocalHour(now, store.timeZone)
-    if (localHour === 2)  → process this store
+    settlementMinute = businessDayEndTime + 150 minute buffer
+    if local time is inside that hourly settlement window → process this store
 
   For stores WITHOUT timeZone:
-    fallback to stored schedulerHour (default: 2 UTC)
+    fallback to stored schedulerHour derived from businessDayEndTime in UTC
 ```
 
 **Why runtime, not stored?** DST-observing regions shift by 1 hour twice per year:
@@ -111,9 +111,9 @@ Runtime computation using `Intl.DateTimeFormat` handles DST automatically. Zero 
 
 1. **CF runs every hour** at :30 (Cloud Scheduler: `30 * * * *`)
 2. **Reads storesSummary** (1 Firestore read)
-3. **For each store with `timeZone`:** Compute local hour now via `Intl.DateTimeFormat`
-4. **Match:** `localHour === 2` (target: 2:30 AM local)
-5. **Fallback:** Stores without `timeZone` use stored `schedulerHour` (default 2 UTC)
+3. **For each store with `timeZone`:** Compute local hour/minute now via `Intl.DateTimeFormat`
+4. **Match:** local time is in the `businessDayEndTime + 150 minutes` settlement window
+5. **Fallback:** Stores without `timeZone` use stored `schedulerHour`, derived from `businessDayEndTime` in UTC
 6. **Early exit** if 0 stores match (no wasted compute)
 
 ### Data Flow
@@ -121,13 +121,14 @@ Runtime computation using `Intl.DateTimeFormat` handles DST automatically. Zero 
 ```
 Store Creation / Update
   → Save timeZone to store doc (e.g., 'Asia/Kolkata')
-  → Sync timeZone + schedulerHour to storesSummary
+  → Save businessDayEndTime to store doc (e.g., '03:00')
+  → Sync timeZone + businessDayEndTime + schedulerHour fallback to storesSummary
 
 Cloud Function (runs every hour at :30):
   → Reads storesSummary (1 read)
-  → For store with timeZone='Asia/Kolkata':
-       localHour = getLocalHour(now, 'Asia/Kolkata') → 2 (if it's 2 AM IST)
-       2 === 2 → process this store
+  → For store with timeZone='Asia/Kolkata' and businessDayEndTime='03:00':
+       settlement window starts at 05:30 local
+       if now is in that hourly window → process this store
   → DST changes? Intl.DateTimeFormat handles it automatically
 ```
 
@@ -136,8 +137,10 @@ Cloud Function (runs every hour at :30):
 | Location                                       | Field           | Type            | Purpose                                 |
 | ---------------------------------------------- | --------------- | --------------- | --------------------------------------- |
 | `stores/{sId}`                                 | `timeZone`      | `string` (IANA) | Primary — DST-safe runtime source       |
-| `stores/{sId}`                                 | `schedulerHour` | `number` (0-23) | Fallback only (stores without timeZone) |
+| `stores/{sId}`                                 | `businessDayEndTime` | `string` (`HH:mm`) | Owner-configured analytics day cutoff |
+| `stores/{sId}`                                 | `schedulerHour` | `number` (0-23) | UTC fallback derived from business-day cutoff |
 | `platformSummary/storesSummary → stores.{sId}` | `timeZone`      | `string` (IANA) | CF reads this for runtime computation   |
+| `platformSummary/storesSummary → stores.{sId}` | `businessDayEndTime` | `string` (`HH:mm`) | CF reads this without fetching every store |
 | `platformSummary/storesSummary → stores.{sId}` | `schedulerHour` | `number` (0-23) | CF fallback                             |
 
 ### Auto-Detection
@@ -145,15 +148,16 @@ Cloud Function (runs every hour at :30):
 When a store is created or updated with a `timeZone`:
 
 - `timeZone` synced to storesSummary (primary scheduling source)
-- `computeSchedulerHour(timeZone)` also stored as fallback
+- `businessDayEndTime` synced to storesSummary (primary business-day source)
+- `computeSchedulerHour(timeZone, businessDayEndTime)` also stored as fallback
 - Runtime: CF uses `timeZone` first, `schedulerHour` only if `timeZone` missing
 
 ### Multi-Outlet Inheritance
 
 When creating an outlet store:
 
-- `schedulerHour` is inherited from the master store
-- If master has `schedulerHour: 21` (India), all outlets get `schedulerHour: 21`
+- `timeZone`, `businessDayEndTime`, and `schedulerHour` can be inherited from the master store
+- If master has `businessDayEndTime: 03:00`, outlets use the same business-day cutoff unless overridden
 - Outlet can override independently if needed
 
 ---

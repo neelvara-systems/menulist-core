@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuSearch, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileSubdomainScreenProps {
     onBack: () => void;
@@ -60,9 +60,12 @@ export default function MobileSubdomainScreen({ onBack }: MobileSubdomainScreenP
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={tMobile('subdomainIntro')}
+                onBack={onBack}
+                title={t('subdomain')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro subtitle={tMobile('subdomainIntro')} title={t('subdomain')} />
                 {storeDetails?.isMaster === false ? (
                     <Card>
                         <Flex gap={6} vertical>

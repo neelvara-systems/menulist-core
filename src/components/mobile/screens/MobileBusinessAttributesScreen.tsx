@@ -6,7 +6,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { Button, Card, DotLoading, Flex, NavBar, Switch, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileBusinessAttributesScreenProps {
     onBack: () => void;
@@ -80,13 +80,12 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('businessAttributesDesc')}
+                onBack={onBack}
+                title={t('businessAttributes')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('businessAttributesDesc')}
-                    title={t('businessAttributes')}
-                />
-
                 {ATTRIBUTE_GROUP_KEYS.map((group) => (
                     <Card key={group.labelKey}>
                         <Flex gap={12} vertical>

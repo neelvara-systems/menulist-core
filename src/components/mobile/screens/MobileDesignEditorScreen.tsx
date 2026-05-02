@@ -11,7 +11,6 @@ import {
 } from '@config/designSystem';
 import useViewportInfo from '@hook/useViewportInfo';
 import { publishProject } from '@database/projects';
-import { AI_IMAGE_ASPECT_RATIO_OPTIONS, getProjectImagePreferencesSummary } from '@lib/ai/projectAIPreferences';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -27,7 +26,7 @@ import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextAr
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
@@ -117,11 +116,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const showCategoryTabs = draftProjectData?.config?.design?.menu?.showCategoryTabs ?? false;
     const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
     const specialNote = draftProjectData?.menuSettings?.specialNote ?? '';
-    const aiDescriptionLength = draftProjectData?.aiPreferences?.description?.contentLength || 'Standard';
-    const aiImageAspectRatio = draftProjectData?.aiPreferences?.image?.aspectRatio || '1:1';
     const compatibleLayouts = useMemo(() => getCompatibleLayouts(menuMood), [menuMood]);
     const defaultMoodColor = MENU_MOODS[menuMood]?.accentColor || '#059669';
-    const aiImageSummary = useMemo(() => getProjectImagePreferencesSummary(draftProjectData), [draftProjectData]);
     const resolvedProjectName = useMemo(
         () => getLocalizedText(
             draftProjectData?.name || selectedProjectSummary?.name,
@@ -197,8 +193,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const handleShowCategoryIconsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryIcons'], show);
     const handleCategoryTabsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryTabs'], show);
     const handleBrandColorChange = (color: string | undefined) => updateDesign(['config', 'design', 'brand', 'accentColor'], color);
-    const handleAIDescriptionLengthChange = (value: 'Standard' | 'Detailed') => updateDesign(['aiPreferences', 'description', 'contentLength'], value);
-    const handleAIImageAspectRatioChange = (value: string) => updateDesign(['aiPreferences', 'image', 'aspectRatio'], value);
     const handleServiceChargeChange = (note: string) => {
         const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
         setDraftProjectData((prev: any) => ({
@@ -314,16 +308,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
                 onBack={onBack}
-                backIcon={<LuArrowLeft size={20} />}
+                title={t('title')}
             />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 128px' }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 <ProjectSelectorTrigger
                     clickable={isProjectSelectorClickable}
                     currentProject={{
@@ -520,56 +511,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             description={<Text type="secondary">{t('categoryTabsDesc')}</Text>}
                         />
                     </List>
-                </SectionCard>
-
-                <SectionCard title="AI defaults" subtitle="These defaults keep future AI descriptions and photos consistent.">
-                    <Flex gap={12} vertical>
-                        <Flex gap={8} vertical>
-                            <Text strong>Description length</Text>
-                            <Flex gap={8} vertical>
-                                {[
-                                    { value: 'Standard', description: 'One clear sentence for most menu items.' },
-                                    { value: 'Detailed', description: 'A richer description for premium items.' },
-                                ].map((option) => (
-                                    <OptionRow
-                                        key={option.value}
-                                        label={option.value}
-                                        description={option.description}
-                                        isSelected={aiDescriptionLength === option.value}
-                                        onSelect={() => handleAIDescriptionLengthChange(option.value as 'Standard' | 'Detailed')}
-                                    />
-                                ))}
-                            </Flex>
-                        </Flex>
-
-                        <Flex gap={8} vertical>
-                            <Text strong>Photo shape</Text>
-                            <Text type="secondary">Used the next time AI creates menu photos.</Text>
-                            <Flex gap={8} vertical>
-                                {AI_IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
-                                    <OptionRow
-                                        key={option.value}
-                                        label={option.label}
-                                        description={option.description}
-                                        isSelected={aiImageAspectRatio === option.value}
-                                        onSelect={() => handleAIImageAspectRatioChange(option.value)}
-                                    />
-                                ))}
-                            </Flex>
-                        </Flex>
-
-                        <Card size="small" style={{ background: token.colorFillAlter }}>
-                            <Flex gap={4} vertical>
-                                <Text strong>Saved photo look</Text>
-                                <Text type="secondary">
-                                    {`${aiImageSummary.primaryStyle} · ${aiImageSummary.aspectRatio}`}
-                                </Text>
-                                <Text type="secondary">
-                                    The AI photo generator updates this look automatically when you create new images.
-                                </Text>
-                            </Flex>
-                        </Card>
-                    </Flex>
                 </SectionCard>
 
                 <SectionCard title={t('pricingNote')} subtitle={t('pricingNoteSubtitle')}>

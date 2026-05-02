@@ -247,7 +247,7 @@ Total: ~₹183/month
 ## Nightly Aggregation
 
 **Cloud Function Path:** `computeDecisionBlocksScores` triggers the shared nightly store flow, which runs customer menu analytics and OBP analytics together.
-**Schedule Model:** Timezone-aware per store. The scheduler runs hourly and settles analytics when a store reaches its configured nightly local hour.
+**Schedule Model:** Timezone-aware per store with owner-configurable business-day cutoff. The scheduler runs hourly and settles analytics when a store reaches `businessDayEndTime + settlement buffer`.
 
 ### Tasks
 
@@ -261,17 +261,20 @@ Total: ~₹183/month
 
 ### Date Semantics
 
-- Daily analytics documents now use the **store's local calendar date**, not the server's UTC date.
+- Daily analytics documents now use the **store's local business-day date**, not the server's UTC date.
+- `businessDayEndTime` (`HH:mm`) lives on `stores/{sId}` and `platformSummary/storesSummary.stores.{sId}` so public writes, owner reads, and the scheduler use the same date key without extra store reads.
+- Default food/late-service businesses use `03:00`; calendar-day businesses use `00:00`. Owners can override this from Language & Region settings.
 - Hourly analytics buckets also use the **store's local hour**.
 - This applies to menu analytics, OBP analytics, and Customer App analytics so all owner-facing reporting settles against the same business day.
-- If a store is in `Asia/Kolkata`, an event at local `12:15 AM` is written to that new local day immediately, even if UTC is still on the previous date.
+- If a store is in `Asia/Kolkata` with `businessDayEndTime: 03:00`, an event at local `12:15 AM` is still written to the previous business day; an event after `03:00 AM` is written to the new business day.
 - Nightly aggregation records `lastSettledLocalDate` per store and catches up missed dates in order on the next local nightly run.
 - Lifetime summary counters are idempotent. If a date is already aggregated, reruns skip the lifetime increment instead of double-counting.
 
 ### Owner Dashboard Reporting
 
 - The owner dashboard reads these signals from the same summary / weekly / monthly / daily documents.
-- The default owner dashboard remains settled and yesterday-bounded for `Yesterday`, `Last 7 Days`, and month-to-date confirmation views.
+- The default owner dashboard remains settled and bounded by the latest completed nightly settlement for `Yesterday`, `Last 7 Days`, and month-to-date confirmation views.
+- Between `businessDayEndTime` and the settlement window, the settled tabs continue to show the previous settled business date; the just-ended business day appears after the scheduler completes.
 - A separate `Today so far` card may read the current day daily document directly for partial live activity.
 - The recommended owner flow is: load `Today so far` first, then load settled historical analytics only when the owner asks for them.
 - That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.

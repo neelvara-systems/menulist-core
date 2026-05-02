@@ -1451,7 +1451,7 @@ function ProjectsPage() {
                                                 Drag and drop your {labels.offeringLower} photos or PDFs here, or click below to browse
                                             </Typography.Text>
                                             <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '13px', color: token.colorTextTertiary }}>
-                                                ⚡ AI will automatically extract items in ~3 minutes
+                                                ⚡ We&apos;ll automatically extract items in ~3 minutes
                                             </Typography.Text>
                                             <Flex gap={20} align='center' justify='center'>
                                                 <Tooltip title="Upload JPG or PNG images">
@@ -1621,7 +1621,7 @@ function ProjectsPage() {
                                                         <LuZap size={22} color={token.colorSuccess} />
                                                     </div>
                                                     <Typography.Text strong style={{ fontSize: 13 }}>
-                                                        AI Extracts
+                                                        We Extract
                                                     </Typography.Text>
                                                     <Typography.Text type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>
                                                         Automatic digitization
@@ -1690,7 +1690,7 @@ function ProjectsPage() {
                                                 </div>
                                                 <Flex vertical gap={2}>
                                                     <Typography.Text strong style={{ fontSize: 13 }}>
-                                                        AI Extraction
+                                                        Automatic Extraction
                                                     </Typography.Text>
                                                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                                                         Automatic menu digitization

@@ -158,7 +158,7 @@ ChatGPT had zero awareness of these built features:
 ### Sections UNCHANGED (content preserved)
 
 - **PreparedForYouSection** — All 6 capabilities stay (unique competitive advantage)
-- **SurfacesSection** — All 6 surfaces stay
+- **SurfacesSection** — Customer App is now included as a live customer-facing surface; Google Business remains a "Soon" surface.
 - **StatsSection** — All 4 stats stay
 - **BusinessSection** — All 6 points stay (special menus, temp status, multi-location)
 - **IndustrySection** — All 12 industry types stay

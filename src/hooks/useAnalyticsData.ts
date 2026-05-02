@@ -1,5 +1,6 @@
 import { getOptimizedAnalyticsData } from '@database/analytics';
-import { getAnalyticsDateKey, getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
+import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
+import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import {
   getCachedData,
   setCachedData,
@@ -79,16 +80,16 @@ function addDays(dateKey: string, days: number): string {
   return `${outYear}-${outMonth}-${outDay}`;
 }
 
-function getDefaultDateRange(timeZone?: string): { startDate: string; endDate: string } {
-  const today = getAnalyticsDateKey(new Date(), timeZone);
+function getDefaultDateRange(timeZone?: string, businessDayEndTime?: string): { startDate: string; endDate: string } {
+  const today = getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime);
   return {
     startDate: addDays(today, -7),
     endDate: today,
   };
 }
 
-function isTodayRange(endDate: string, timeZone?: string): boolean {
-  const today = getAnalyticsDateKey(new Date(), timeZone);
+function isTodayRange(endDate: string, timeZone?: string, businessDayEndTime?: string): boolean {
+  const today = getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime);
   return endDate >= today;
 }
 
@@ -104,12 +105,12 @@ function isTodayRange(endDate: string, timeZone?: string): boolean {
 export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: string) => {
   const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
   const analyticsDayKey = useMemo(
-    () => getAnalyticsDateKey(new Date(), storeDetails?.timeZone),
-    [storeDetails?.timeZone]
+    () => getBusinessAnalyticsDateKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+    [storeDetails?.timeZone, storeDetails?.businessDayEndTime]
   );
   const schedulerCacheKey = useMemo(
-    () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone),
-    [storeDetails?.timeZone]
+    () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+    [storeDetails?.timeZone, storeDetails?.businessDayEndTime]
   );
 
   const effectiveRange = useMemo(() => {
@@ -120,12 +121,12 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
       };
     }
 
-    return getDefaultDateRange(storeDetails?.timeZone);
-  }, [dateRange?.endDate, dateRange?.startDate, storeDetails?.timeZone]);
+    return getDefaultDateRange(storeDetails?.timeZone, storeDetails?.businessDayEndTime);
+  }, [dateRange?.endDate, dateRange?.startDate, storeDetails?.timeZone, storeDetails?.businessDayEndTime]);
 
   const isLiveRange = useMemo(
-    () => isTodayRange(effectiveRange.endDate, storeDetails?.timeZone),
-    [effectiveRange.endDate, storeDetails?.timeZone]
+    () => isTodayRange(effectiveRange.endDate, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
+    [effectiveRange.endDate, storeDetails?.timeZone, storeDetails?.businessDayEndTime]
   );
 
   const tId = storeDetails?.tenantId;
@@ -159,6 +160,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
             effectiveRange.startDate,
             effectiveRange.endDate,
             storeDetails?.timeZone,
+            storeDetails?.businessDayEndTime,
           ),
           600000,
           analyticsDayKey
@@ -174,6 +176,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
           effectiveRange.startDate,
           effectiveRange.endDate,
           storeDetails?.timeZone,
+          storeDetails?.businessDayEndTime,
         ),
         schedulerCacheKey
       );

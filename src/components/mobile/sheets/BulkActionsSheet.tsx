@@ -2,7 +2,7 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getOwnerLabels } from '@config/businessLabels';
-import { getProjectDescriptionContentLength } from '@lib/ai/projectAIPreferences';
+import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -409,6 +409,7 @@ export default function BulkActionsSheet({
                     updated = await runDescriptionGeneration({
                         action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
                         contentLength: getProjectDescriptionContentLength(updated),
+                        tone: getProjectDescriptionTone(updated),
                         projectData: updated,
                     });
                 }

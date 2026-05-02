@@ -19,7 +19,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, List, NavBar, Tag, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { getStoreLanguageLabel, getStoreManagedLanguages } from '../utils/localizedStoreContent';
 
 interface MobileBusinessCopySetupScreenProps {
@@ -288,13 +288,12 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('businessCopySetupDesc')}
+                onBack={onBack}
+                title={t('businessCopySetup')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('businessCopySetupDesc')}
-                    title={t('businessCopySetup')}
-                />
-
                 <Card>
                     <Flex gap={12} vertical>
                         <Text>{t('businessCopySourceHint')}</Text>

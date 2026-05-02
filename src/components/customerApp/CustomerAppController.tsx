@@ -43,6 +43,7 @@ interface Props {
     tenantId: string | number;
     storeName: string;
     storeTimeZone?: string;
+    businessDayEndTime?: string;
     /** From store.pwaSettings.promoteInstallation — default true. */
     promoteInstallation?: boolean;
     /** From store.analytics.trackMenuViews !== false (default true). */
@@ -55,6 +56,7 @@ export default function CustomerAppController({
     tenantId,
     storeName,
     storeTimeZone,
+    businessDayEndTime,
     promoteInstallation = true,
     trackingEnabled = true,
     locationTrackingEnabled = true,
@@ -75,10 +77,10 @@ export default function CustomerAppController({
         incrementVisitCount(storeId);
 
         // 2. Fire OPENED event if this is a standalone-mode launch.
-        void detectAndTrackAppOpen(storeId, { tenantId, storeTimeZone, trackingEnabled, includeLocation: locationTrackingEnabled });
+        void detectAndTrackAppOpen(storeId, { tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // 3. Fire SHORTCUT_* event if launched from a manifest shortcut.
-        void detectAndTrackShortcutLaunch(storeId, { tenantId, storeTimeZone, trackingEnabled, includeLocation: locationTrackingEnabled });
+        void detectAndTrackShortcutLaunch(storeId, { tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // 4. Compute prompt eligibility AFTER incrementing visits.
         //    Direct-install intent (?pwa=install on the URL) bypasses the visit
@@ -90,7 +92,7 @@ export default function CustomerAppController({
             !detectInstalled() &&
             canShowPrompt(storeId, directIntent);
         if (eligible) setShouldShowPrompt(true);
-    }, [featureOn, storeId, tenantId, trackingEnabled, locationTrackingEnabled, promoteInstallation]);
+    }, [featureOn, storeId, tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, locationTrackingEnabled, promoteInstallation]);
 
     // ── beforeinstallprompt capture (Chromium only) ──
     useEffect(() => {
@@ -113,11 +115,11 @@ export default function CustomerAppController({
 
         const handler = () => {
             setInstalledInThisSession(true);
-            void fireInstalledEventOnce(storeId, { tenantId, storeTimeZone, trackingEnabled, includeLocation: locationTrackingEnabled });
+            void fireInstalledEventOnce(storeId, { tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, includeLocation: locationTrackingEnabled });
         };
         window.addEventListener('appinstalled', handler);
         return () => window.removeEventListener('appinstalled', handler);
-    }, [featureOn, storeId, tenantId, storeTimeZone, trackingEnabled, locationTrackingEnabled]);
+    }, [featureOn, storeId, tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, locationTrackingEnabled]);
 
     if (!featureOn) return null;
     if (installedInThisSession) return null;
@@ -129,6 +131,7 @@ export default function CustomerAppController({
             tenantId={tenantId}
             storeName={storeName}
             storeTimeZone={storeTimeZone}
+            businessDayEndTime={businessDayEndTime}
             deferredPrompt={deferredPrompt}
             trackingEnabled={trackingEnabled}
             locationTrackingEnabled={locationTrackingEnabled}

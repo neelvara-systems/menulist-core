@@ -35,6 +35,7 @@ import {
     LuX,
 } from 'react-icons/lu';
 import { Avatar, Card, Dialog, Flex, List, NavBar, Tag, Text, Title, Toast } from '../antd';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 type ItemStatusTag = {
     color: 'success' | 'warning' | 'default';
@@ -217,7 +218,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const businessIdentityItems: MoreListItem[] = [
         { key: 'businessProfileHub', icon: <LuBuilding2 color="#f97316" size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business Profile', description: 'Brand, public identity, social links, official page, and app branding.', onClick: () => openSubScreen('businessProfileHub') },
-        { key: 'searchDiscoveryHub', icon: <LuSearch color="#0ea5e9" size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, AI copy, and discovery setup in one place.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') },
+        { key: 'searchDiscoveryHub', icon: <LuSearch color="#0ea5e9" size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, business copy, and discovery setup in one place.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') },
         { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, keywords: ['timezone', 'time zone', 'date format', 'currency', 'language', 'region'], label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
@@ -518,14 +519,12 @@ function MobileMoreHubScreen({
 }) {
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={description}
+                onBack={onBack}
+                title={title}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex gap={6} vertical>
-                        <Title level={4} style={{ margin: 0 }}>{title}</Title>
-                        <Text type="secondary">{description}</Text>
-                    </Flex>
-                </Card>
                 <Card>
                     <List>
                         {items.map((item) => (

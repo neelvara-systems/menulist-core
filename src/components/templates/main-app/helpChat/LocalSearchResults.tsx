@@ -172,13 +172,13 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
                                 No articles match &quot;{query}&quot;
                             </AntText>
                             <AntText type="secondary" style={{ fontSize: 12 }}>
-                                Try different keywords or press <strong>Enter</strong> to ask AI
+                                Try different keywords or press <strong>Enter</strong> to ask your question
                             </AntText>
                         </div>
                         <Flex align="center" gap={4} style={{ marginTop: 4 }}>
                             <LuSparkles size={14} color={token.colorPrimary} />
                             <AntText type="secondary" style={{ fontSize: 11 }}>
-                                AI can help answer questions not in our docs
+                                The assistant can help answer questions not covered in our docs
                             </AntText>
                         </Flex>
                     </Flex>

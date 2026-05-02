@@ -352,12 +352,12 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                 </Flex>
             </div>
             <Flex gap={10}>
-                <Tooltip title="AI will improve translations for all items from this menu image">
+                <Tooltip title="This will improve translations for all items from this menu image">
                     <Button onClick={retryTranslations} block icon={<TbLanguageHiragana />}>
                         Fix Translations
                     </Button>
                 </Tooltip>
-                <Tooltip title="AI will create descriptions for items that don&apos;t have one">
+                <Tooltip title="This will create descriptions for items that don&apos;t have one">
                     <Button onClick={retryDescription} block icon={<LuInfo />}>
                         Add Descriptions
                     </Button>

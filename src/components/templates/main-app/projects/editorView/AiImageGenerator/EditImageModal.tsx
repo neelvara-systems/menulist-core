@@ -161,7 +161,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
 
         } catch (error) {
             if (error instanceof AICapacityError) {
-                message.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 message.error("Edit generation failed.");
             }

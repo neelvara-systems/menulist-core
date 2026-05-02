@@ -5,6 +5,7 @@ interface PromptParams {
   businessType: string;
   targetLang: LanguageType[]; // e.g., ["Spanish (es)", "German (de)"]
   sourceLang: LanguageType; // e.g., "English (en)"
+  tone?: 'Professional' | 'Friendly' | 'Premium';
 }
 
 /**
@@ -14,7 +15,13 @@ interface PromptParams {
  * @param {PromptParams} params - The parameters needed to build the prompt.
  * @returns {string} The complete prompt string to be sent to the AI.
  */
-const getMultilingualNewItemPrompt = ({ item, businessType, targetLang, sourceLang }: PromptParams): string => {
+const getMultilingualNewItemPrompt = ({ item, businessType, targetLang, sourceLang, tone = 'Professional' }: PromptParams): string => {
+  const toneInstructionMap: Record<string, string> = {
+    Professional: 'Use clear, neutral, trustworthy language.',
+    Friendly: 'Use warm, welcoming language while staying factual and easy to understand.',
+    Premium: 'Use polished, refined language while staying factual and not exaggerated.',
+  };
+  const toneInstruction = toneInstructionMap[tone] || toneInstructionMap.Professional;
   const systemInstruction = `You are an expert AI assistant specializing in multilingual content generation and structured JSON transformation for business applications. Your mission is to process a single JSON object containing item details, translate its text fields, and conditionally generate a description if one is not provided. You must adhere to the following rules with absolute precision.
 
 **1. Primary Goal & Structure:**
@@ -36,7 +43,7 @@ This is a conditional task. You must analyze the \`item.description\` field:
 **5. Rules for Generation:**
 When generating a new description:
 *   **Use Full Context:** Leverage the \`businessType\`, \`item.name\`, and \`item.category\` to create a relevant, appealing, and contextually appropriate description.
-*   **Tone:** The tone must match the business type. For a "Restaurant", use appetizing language. For a "Spa" or "Salon", use relaxing and beautifying language.
+*   **Tone:** ${toneInstruction} Also match the business context. For a "Restaurant", use appetizing language. For a "Spa" or "Salon", use relaxing and beautifying language.
 *   **Length:** Keep the generated description concise and impactful, aiming for 1-3 well-crafted sentences.
 
 **6. Attributes and Price Integrity:**
@@ -77,6 +84,7 @@ Now, process the following JSON input and generate the corresponding structured 
     businessType,
     targetLang,
     sourceLang,
+    tone,
   };
 
   return `${systemInstruction}

@@ -84,9 +84,9 @@ function BillingPage() {
                 if (!Array.isArray(orderNotes) && orderNotes?.packId) {
                     return {
                         id: entity.id,
-                        type: "AI Enhancement Pack",
+                        type: "Enhancement Pack",
                         date: event.created_at * 1000,
-                        description: entity.description || `${orderNotes?.packName || 'AI Enhancement Pack'}`,
+                        description: entity.description || `${orderNotes?.packName || 'Enhancement Pack'}`,
                         amount: entity.amount,
                         currency: entity.currency,
                         status: entity.status,

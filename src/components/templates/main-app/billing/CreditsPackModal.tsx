@@ -23,7 +23,7 @@ function CreditsPackModal({ isOpen, onClose, handleCreditsPurchase, activeSubscr
             footer={null}
             width={"auto"}
             title={<Flex vertical>
-                <Text strong >Get More AI Enhancements</Text>
+                <Text strong >Get More Enhancements</Text>
                 <Text type="secondary">{labels.creditsDesc}</Text>
             </Flex>}
             centered

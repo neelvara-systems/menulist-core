@@ -10,7 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuClock, LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 const PRESET_COLORS = ['#f50', '#2db7f5', '#87d068', '#108ee9', '#531dab', '#c41d7f', '#d4380d', '#096dd9', '#7cb305', '#cf1322', '#08979c', '#d46b08'];
 
@@ -153,7 +153,12 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
     if (isLoading) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
+                    right={<Button fill="none" onClick={openAdd}><Flex align="center" gap={4}><LuPlus size={16} /><Text>{t('add')}</Text></Flex></Button>}
+                    title={t('title')}
+                />
                 <Flex align="center" flex={1} justify="center"><DotLoading /></Flex>
             </Flex>
         );
@@ -161,16 +166,14 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
                 onBack={onBack}
                 right={<Button fill="none" onClick={openAdd}><Flex align="center" gap={4}><LuPlus size={16} /><Text>{t('add')}</Text></Flex></Button>}
+                title={t('title')}
             />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 {presets.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>

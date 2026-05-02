@@ -12,6 +12,13 @@ import { useMemo } from 'react';
 
 const { Title, Text } = Typography;
 
+const BUSINESS_DAY_END_OPTIONS = [
+    { label: 'Calendar day (12:00 AM)', value: '00:00' },
+    { label: 'Late service day (3:00 AM)', value: '03:00' },
+    { label: 'Very late service (4:00 AM)', value: '04:00' },
+    { label: 'Morning close (5:00 AM)', value: '05:00' },
+];
+
 interface LocaleSettingsTabProps {
     onOpenSearchDiscovery?: () => void;
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -54,7 +61,7 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
             <Title level={5} style={{ margin: "unset" }}>{t('localeSettings')}</Title>
             <Divider />
             <Row gutter={[16, 0]}>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={6}>
                     <Form.Item
                         name="timeZone"
                         label={t('timeZone')}
@@ -69,7 +76,21 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={6}>
+                    <Form.Item
+                        name="businessDayEndTime"
+                        label={t('businessDayEndTime')}
+                    >
+                        <Select
+                            placeholder={t('selectBusinessDayEndTime')}
+                            options={BUSINESS_DAY_END_OPTIONS}
+                        />
+                    </Form.Item>
+                    <Text type="secondary" style={{ display: 'block', marginTop: -16, marginBottom: 16, fontSize: 12 }}>
+                        {t('businessDayEndTimeHelper')}
+                    </Text>
+                </Col>
+                <Col xs={24} md={6}>
                     <Form.Item
                         name="dateFormat"
                         label={t('dateFormat')}
@@ -80,7 +101,7 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={6}>
                     <Form.Item
                         name="timeFormat"
                         label={t('timeFormat')}

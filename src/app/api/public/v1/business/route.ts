@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
             } : null,
             workingHours: storeData.workingHours || null,
             timeZone: storeData.timeZone || null,
+            businessDayEndTime: storeData.businessDayEndTime || null,
             logo: storeData.logo || null,
             socialMedia: storeData.socialMedia || null,
             tempStatus: storeData.tempStatus ? {

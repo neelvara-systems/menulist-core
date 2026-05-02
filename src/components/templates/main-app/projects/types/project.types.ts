@@ -190,7 +190,7 @@ export interface MenuSettings {
 
 export interface ProjectAIDescriptionPreferences {
     contentLength?: 'Standard' | 'Detailed';
-    tone?: 'Professional';
+    tone?: 'Professional' | 'Friendly' | 'Premium';
 }
 
 export interface ProjectAIImagePreferences {
@@ -202,6 +202,10 @@ export interface ProjectAIImagePreferences {
     colors?: string[];
     moods?: string[];
     compositions?: string[];
+    backgroundColor?: string | null;
+    negativePrompt?: string;
+    transparentBg?: boolean;
+    foregroundColor?: string | null;
     isMultiMode?: boolean;
 }
 

@@ -30,12 +30,42 @@ interface MobileCategoryEditSheetProps {
     categoryIconsEnabled?: boolean;
     onClose: () => void;
     onDelete?: (categoryId: string) => void;
-    onGenerateContent?: (payload: { id?: string; names: Record<string, string> }) => Promise<Record<string, string> | null>;
+    onGenerateContent?: (payload: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => Promise<Record<string, string> | null>;
     onOpenDesignEditor?: () => void;
     onSave: (payload: SavePayload) => Promise<void>;
     presets: TimeSlotPreset[];
     selectedLanguages: string[];
     visible: boolean;
+}
+
+function createInitialCategoryDraft(category: MobileCategoryItem | null | undefined, selectedLanguages: string[]) {
+    return {
+        active: category?.active ?? true,
+        icon: category?.icon || '',
+        names: Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || ''])),
+        presetIds: category?.timeSlotPresetIds || [],
+    };
+}
+
+function normalizeCategoryDraft({
+    active,
+    icon,
+    names,
+    presetIds,
+    selectedLanguages,
+}: {
+    active: boolean;
+    icon: string;
+    names: Record<string, string>;
+    presetIds: string[];
+    selectedLanguages: string[];
+}) {
+    return {
+        active,
+        icon: icon.trim(),
+        names: Object.fromEntries(selectedLanguages.map((language) => [language, String(names[language] || '').trim()])),
+        presetIds: [...presetIds].sort(),
+    };
 }
 
 export default function MobileCategoryEditSheet({
@@ -68,16 +98,18 @@ export default function MobileCategoryEditSheet({
 
     useEffect(() => {
         if (!visible) return;
-        const nextNames = Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || '']));
+        const initialDraft = createInitialCategoryDraft(category, selectedLanguages);
+        const nextNames = initialDraft.names;
         setNames(nextNames);
-        setIcon(category?.icon || '');
-        setActive(category?.active ?? true);
-        setPresetIds(category?.timeSlotPresetIds || []);
+        setIcon(initialDraft.icon);
+        setActive(initialDraft.active);
+        setPresetIds(initialDraft.presetIds);
         setActiveLanguageKey([primaryLanguage]);
     }, [category, primaryLanguage, selectedLanguages, visible]);
 
     const selectedCount = useMemo(() => presetIds.length, [presetIds.length]);
     const hasMultipleLanguages = selectedLanguages.length > 1;
+    const initialDraft = useMemo(() => createInitialCategoryDraft(category, selectedLanguages), [category, selectedLanguages]);
     const resetLabel = useMemo(() => {
         const value = t('reset');
         return value ? `${value.charAt(0).toLocaleUpperCase()}${value.slice(1)}` : value;
@@ -87,13 +119,54 @@ export default function MobileCategoryEditSheet({
         if (!hasMultipleLanguages || !hasPrimaryName) return false;
         return selectedLanguages.slice(1).some((language) => !names[language]?.trim());
     }, [hasMultipleLanguages, hasPrimaryName, names, selectedLanguages]);
+    const translationActionState = useMemo(() => {
+        if (!onGenerateContent || !hasMultipleLanguages) return null;
+        if (!hasPrimaryName) {
+            return {
+                disabled: true,
+                label: t('addPrimaryNameFirst'),
+            };
+        }
+        if (!hasMissingTranslations) {
+            return {
+                disabled: false,
+                label: t('regenerateTranslations'),
+                mode: 'regenerate' as const,
+            };
+        }
+        return {
+            disabled: false,
+            label: t('generateMissingTranslations'),
+            mode: 'missing' as const,
+        };
+    }, [hasMissingTranslations, hasMultipleLanguages, hasPrimaryName, onGenerateContent, t]);
+    const initialComparisonState = useMemo(() => JSON.stringify(
+        normalizeCategoryDraft({
+            active: initialDraft.active,
+            icon: initialDraft.icon,
+            names: initialDraft.names,
+            presetIds: initialDraft.presetIds,
+            selectedLanguages,
+        })
+    ), [initialDraft, selectedLanguages]);
+    const currentComparisonState = useMemo(() => JSON.stringify(
+        normalizeCategoryDraft({
+            active,
+            icon,
+            names,
+            presetIds,
+            selectedLanguages,
+        })
+    ), [active, icon, names, presetIds, selectedLanguages]);
+    const hasChanges = currentComparisonState !== initialComparisonState;
 
     const handleGenerateContent = async () => {
-        if (!onGenerateContent || isSaving || !hasMissingTranslations) return;
+        if (!onGenerateContent || isSaving || !translationActionState || translationActionState.disabled) return;
         setIsSaving(true);
         try {
             const nextNames = await onGenerateContent({
                 id: category?.id,
+                mode: translationActionState.mode,
                 names: Object.fromEntries(
                     selectedLanguages.map((language) => [language, names[language]?.trim() || ''])
                 ),
@@ -111,11 +184,10 @@ export default function MobileCategoryEditSheet({
     };
 
     const handleReset = () => {
-        const nextNames = Object.fromEntries(selectedLanguages.map((language) => [language, category?.nameByLanguage?.[language] || '']));
-        setNames(nextNames);
-        setIcon(category?.icon || '');
-        setActive(category?.active ?? true);
-        setPresetIds(category?.timeSlotPresetIds || []);
+        setNames(initialDraft.names);
+        setIcon(initialDraft.icon);
+        setActive(initialDraft.active);
+        setPresetIds(initialDraft.presetIds);
         setActiveLanguageKey([primaryLanguage]);
     };
 
@@ -145,7 +217,7 @@ export default function MobileCategoryEditSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '85vh', padding: 0 }}
+            bodyStyle={{ minHeight: '72vh', maxHeight: '94vh', overflowX: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={() => {
                 if (!isSaving) onClose();
@@ -160,7 +232,7 @@ export default function MobileCategoryEditSheet({
                     {mode === 'add' ? t('addCategoryLabel') : (category?.name || t('categoriesTitle'))}
                 </NavBar>
 
-                <Flex gap={12} style={{ padding: 12 }} vertical>
+                <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS ? (
@@ -310,23 +382,43 @@ export default function MobileCategoryEditSheet({
 
                 <Card style={{ backgroundColor: token.colorBgContainer, borderBottom: 0, borderLeft: 0, borderRadius: 0, borderRight: 0, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 'auto' }}>
                     <Flex gap={8} vertical>
+                        {translationActionState ? (
+                            <Button
+                                block
+                                disabled={translationActionState.disabled || isSaving}
+                                fill="outline"
+                                onClick={() => void handleGenerateContent()}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6}>
+                                    <LuLanguages size={14} />
+                                    <Text>{translationActionState.label}</Text>
+                                </Flex>
+                            </Button>
+                        ) : null}
+
                         <Flex gap={8}>
-                            {hasMissingTranslations && onGenerateContent ? (
-                                <Button block disabled={isSaving} fill="outline" onClick={() => void handleGenerateContent()}>
-                                    <Flex align="center" gap={6}>
-                                        <LuLanguages size={14} />
-                                        <Text>{t('generateTranslations')}</Text>
-                                    </Flex>
+                            {mode === 'edit' && category?.id && onDelete ? (
+                                <Button
+                                    color="danger"
+                                    disabled={isSaving}
+                                    fill="outline"
+                                    onClick={() => onDelete(category.id)}
+                                    size="large"
+                                    style={{ minWidth: 52, paddingInline: 0 }}
+                                >
+                                    <LuTrash2 size={18} />
                                 </Button>
                             ) : null}
-                            <Button block disabled={isSaving} fill="outline" onClick={handleReset}>
+                            <Button block disabled={!hasChanges || isSaving} fill="outline" onClick={handleReset} size="large">
                                 {resetLabel}
                             </Button>
                             <Button
                                 block
-                                disabled={!selectedLanguages.some((language) => names[language]?.trim()) || isSaving}
+                                disabled={!hasChanges || !selectedLanguages.some((language) => names[language]?.trim()) || isSaving}
                                 loading={isSaving}
                                 onClick={() => void handleSave()}
+                                size="large"
                             >
                                 <Flex align="center" gap={6}>
                                     {mode === 'add' ? <LuPlus size={14} /> : <LuCheck size={14} />}
@@ -334,15 +426,6 @@ export default function MobileCategoryEditSheet({
                                 </Flex>
                             </Button>
                         </Flex>
-
-                        {mode === 'edit' && category?.id && onDelete ? (
-                            <Button block color="danger" disabled={isSaving} fill="outline" onClick={() => onDelete(category.id)}>
-                                <Flex align="center" gap={8}>
-                                    <LuTrash2 size={16} />
-                                    <Text>{t('delete')}</Text>
-                                </Flex>
-                            </Button>
-                        ) : null}
                     </Flex>
                 </Card>
             </Flex>

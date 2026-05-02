@@ -129,7 +129,7 @@ const PlanCardComponent = ({ action, plan, currency, onPurchase, currentPlanId }
                     {plan.planId !== 'custom' && (
                         <List.Item style={ListItemStyle}>
                             <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
-                            <Text>Unlimited Core AI Tools</Text>
+                            <Text>Unlimited Core Content Tools</Text>
                             <Tooltip title="Includes unlimited data extraction, description generation, and language translation.">
                                 <LuInfo style={{ marginLeft: 8, color: token.colorInfoActive, cursor: 'pointer' }} />
                             </Tooltip>

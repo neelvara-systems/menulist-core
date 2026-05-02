@@ -36,11 +36,11 @@ const ChatFooter = ({
 
     return (
         <>
-            {/* AI Disclaimer - Show when has messages */}
+            {/* Help reminder - Show when has messages */}
             {hasMessages && (
                 <div style={{ textAlign: 'center', padding: '12px 24px' }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        AI can make mistakes. If you don&apos;t find the correct answer, you can still explore our documentation{' '}
+                        Answers may still miss details. If you don&apos;t find the correct answer, you can still explore our documentation{' '}
                         <a href="/kb" target="_blank" rel="noopener noreferrer">here</a>.
                     </Text>
                 </div>

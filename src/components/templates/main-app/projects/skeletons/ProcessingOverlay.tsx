@@ -25,7 +25,7 @@ function getStageConfig(labels: OfferingLabels) {
         reading: {
             icon: <LuFileText size={40} />,
             title: `Reading your ${labels.offeringLower}...`,
-            description: `Our AI is looking at your ${labels.offeringLower}`,
+            description: `We're looking at your ${labels.offeringLower}`,
             color: '#52c41a',
             step: 2
         },

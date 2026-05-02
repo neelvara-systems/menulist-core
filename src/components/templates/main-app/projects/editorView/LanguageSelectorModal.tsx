@@ -262,7 +262,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                 <Text type="secondary">
                                     {isMasterLinked
                                         ? `Activate languages from your main ${labels.offeringPhrase}, or remove ones you don't need. Only local ${labels.itemsPlural} will be translated.`
-                                        : `Add languages to translate your ${labels.offeringLower} with AI, or remove ones you don't need.`
+                                        : `Add languages to translate your ${labels.offeringLower} automatically, or remove ones you don't need.`
                                     }
                                 </Text>
                             </Flex>

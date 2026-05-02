@@ -18,11 +18,12 @@ interface OBPAnalyticsProps {
     tenantId: number;
     storeId: number;
     storeTimeZone?: string;
+    businessDayEndTime?: string;
     trackViews?: boolean;
     includeLocation?: boolean;
 }
 
-export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, trackViews = true, includeLocation = true }: OBPAnalyticsProps) {
+export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews = true, includeLocation = true }: OBPAnalyticsProps) {
     useEffect(() => {
         if (!trackViews || !tenantId || !storeId) return;
 
@@ -38,6 +39,7 @@ export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, trackVi
                 tenantId,
                 sessionId,
                 storeTimeZone,
+                businessDayEndTime,
                 includeLocation,
                 utm_source,
                 utm_medium,
@@ -48,7 +50,7 @@ export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, trackVi
         } catch (error) {
             console.error('OBP analytics setup failed:', error);
         }
-    }, [tenantId, storeId, storeTimeZone, trackViews]);
+    }, [tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews, includeLocation]);
 
     return null;
 }

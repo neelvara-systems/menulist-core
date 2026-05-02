@@ -76,6 +76,6 @@ export function computeBusinessCopyCoverage(
         managedLanguages,
         missingFieldCount: fields.filter((field) => field.status !== 'ok').length,
         referenceLanguage: result.referenceLanguage,
-        repairableGapCount: result.repairableGapCount,
+        repairableGapCount: result.repairableGapCount + keywordsField.missingLanguages.length,
     };
 }

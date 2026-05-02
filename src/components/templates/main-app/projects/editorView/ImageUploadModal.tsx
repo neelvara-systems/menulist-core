@@ -146,11 +146,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     stylesCategory: savedPrefs.stylesCategory || DefaultGenerationConfig.stylesCategory,
                     styles: savedPrefs.styles?.length ? savedPrefs.styles : DefaultGenerationConfig.styles,
                     aspectRatio: savedPrefs.aspectRatio || DefaultGenerationConfig.aspectRatio,
+                    backgroundColor: savedPrefs.backgroundColor ?? null,
                     environments: savedPrefs.environments,
+                    foregroundColor: savedPrefs.foregroundColor ?? null,
                     lighting: savedPrefs.lighting,
                     colors: savedPrefs.colors,
                     moods: savedPrefs.moods,
                     compositions: savedPrefs.compositions,
+                    negativePrompt: savedPrefs.negativePrompt || '',
+                    transparentBg: savedPrefs.transparentBg || false,
                     isMultiMode: savedPrefs.isMultiMode,
                 }
                 : DefaultGenerationConfig;
@@ -381,7 +385,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
         } catch (error: any) {
             if (error instanceof AICapacityError) {
-                message.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 message.error(`Image generation failed: ${error.message}`);
                 logger.error('Batch generation error', error);
@@ -534,7 +538,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 <Flex vertical gap={4} align='start' justify='flex-start' >
                     <Typography.Text strong>For Single Item</Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 10, textAlign: 'left' }}>
-                        Upload from your device or generate with AI for one specific menu item.
+                        Upload from your device or generate a photo for one specific menu item.
                     </Typography.Text>
                 </Flex>
             </Button>
@@ -548,7 +552,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 <Flex vertical gap={4} align='start' justify='flex-start'>
                     <Typography.Text strong>For Multiple Items</Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 10, textAlign: 'left' }}>
-                        Select multiple items and let AI generate images for all of them at once.
+                        Select multiple items and generate photos for all of them at once.
                     </Typography.Text>
                 </Flex>
             </Button>
@@ -605,7 +609,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                             {
                                 icon: <LuSparkles color={APP_THEME_COLOR} />,
                                 key: 'generate',
-                                label: 'Generate with AI',
+                                label: 'Generate Photo',
                                 children: <AiImageGenerator
                                     selectedItem={selectedItem}
                                     generationConfig={generationConfig}
@@ -661,7 +665,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 setModalView('initialChoice');
             };
         } else if (modalView === 'batchAIConfig') {
-            titleText = 'Configure Batch AI Generation';
+            titleText = 'Configure Batch Photo Generation';
             onBack = () => setModalView('batchSetup');
         } else {
             return ''; // Default for initialChoice, no back button

@@ -4,8 +4,9 @@ import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useContext, useMemo } from 'react';
-import { Flex, NavBar } from '../antd';
+import { Flex } from '../antd';
 import MobilePresenceMonitor from '../components/PresenceMonitor';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobilePresenceMonitorScreenProps {
     onBack: () => void;
@@ -22,10 +23,15 @@ export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMo
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description="Check where your menu is already visible and confirm the online surfaces where you have placed your official link."
+                onBack={onBack}
+                title="Presence Monitor"
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobilePresenceMonitor
                     hasFeedbackEnabled={storeDetails.feedbackEnabled !== false}
+                    hidePageSummary
                     hasPublishedMenu={Boolean(storeDetails.subdomain || storeDetails.customDomain)}
                     obpLink={obpLink}
                     storeDetails={storeDetails as any}

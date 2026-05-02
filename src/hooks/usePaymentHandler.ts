@@ -268,7 +268,7 @@ const usePaymentHandler = (dispatcher: any) => {
             }
 
             try {
-                const { businessName, businessIndustry, currency, plan } = purchaseIntent;
+                const { businessName, businessIndustry, currency, plan, timeZone, businessDayEndTime } = purchaseIntent;
 
                 if (!session?.user) {
                     throw new Error('Unauthorized');
@@ -298,7 +298,9 @@ const usePaymentHandler = (dispatcher: any) => {
                         planId: plan.planId,
                         interval: plan.billingInterval,
                         currency,
-                        userType: plan.type
+                        userType: plan.type,
+                        timeZone,
+                        businessDayEndTime
                     })
                 });
 

@@ -30,6 +30,7 @@ import {
     getAnalyticsDateRange,
     parseAnalyticsDateKey,
 } from '../utils/analyticsDate';
+import { getBusinessAnalyticsDateKey, resolveBusinessDayEndTime } from '../utils/businessDay';
 
 const logger = functions.logger;
 
@@ -380,8 +381,9 @@ export async function aggregateOBPAnalyticsForStore(
     sId: string,
     now: Date = new Date(),
     timeZone?: string,
+    businessDayEndTime?: string,
 ): Promise<boolean> {
-    const localTodayStr = getAnalyticsDateKey(now, timeZone);
+    const localTodayStr = getBusinessAnalyticsDateKey(now, timeZone, businessDayEndTime);
     const yesterdayStr = addDaysToAnalyticsDateKey(localTodayStr, -1);
     return aggregateOBPAnalyticsForStoreDate(db, tId, sId, yesterdayStr);
 }
@@ -655,16 +657,18 @@ export async function aggregateOBPAnalyticsForAllStores(): Promise<{
 
             const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
             if (!tId) continue;
+            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo?.businessType, storeInfo?.businessDayEndTime);
             result.storesProcessed++;
 
             try {
-                const hadData = await aggregateOBPAnalyticsForStore(db, tId, sId, new Date(), storeInfo?.timeZone);
+                const hadData = await aggregateOBPAnalyticsForStore(db, tId, sId, new Date(), storeInfo?.timeZone, businessDayEndTime);
                 if (hadData) result.storesWithData++;
             } catch (e: any) {
                 appLogger.error('[OBPAnalyticsSettlement] Store aggregation failed', e, {
                     tId,
                     sId,
                     timeZone: storeInfo?.timeZone || 'UTC',
+                    businessDayEndTime,
                 });
                 result.errors++;
             }

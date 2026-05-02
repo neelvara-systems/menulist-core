@@ -80,7 +80,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 variant='ghost'
                 onClick={() => signIn('google', { callbackUrl: window.location.href })}
             >
-                Add more AI capacity<>&nbsp; <FcGoogle /></>
+                Add more credits<>&nbsp; <FcGoogle /></>
             </Button>
         } else if (Boolean(activeSubscription?.id)) {
             return <Button
@@ -88,7 +88,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 variant='ghost'
                 onClick={() => onPurchase(pack, currency)}
             >
-                Add more AI capacity<>&nbsp; {currentStyle.icon}</>
+                Add more credits<>&nbsp; {currentStyle.icon}</>
             </Button>
         } else {
             return <Button
@@ -96,7 +96,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 variant='ghost'
                 onClick={() => onClickOurchasePlan()}
             >
-                Add more AI capacity
+                Add more credits
             </Button>
         }
     }
@@ -108,7 +108,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
             </CardHeader>
             <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-between">
                 <div className="text-center">
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">{pack.description || 'AI Enhancement Pack'}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">{pack.description || 'Enhancement Pack'}</p>
                     <span className="text-3xl font-bold text-slate-900 dark:text-white mt-1 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
                 </div>
                 <CTAButton />

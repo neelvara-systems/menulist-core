@@ -181,7 +181,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
 
         } catch (error: any) {
             if (error instanceof AICapacityError) {
-                message.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 message.error(`Image generation failed: ${error.message}`);
             }
@@ -1106,7 +1106,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
 
                                     {selectedItem === null && batchItemCount && batchItemCount > 0 && (
                                         <Typography.Text strong style={{ textAlign: 'center', marginBottom: token.marginSM }}>
-                                            Configuring AI generation for {batchItemCount} item(s).
+                                            Configuring photo generation for {batchItemCount} item(s).
                                         </Typography.Text>
                                     )}
                                 </Flex>

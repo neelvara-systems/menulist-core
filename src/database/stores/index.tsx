@@ -5,6 +5,7 @@ import { createDefaultRoles } from "@data/defaultRoles";
 import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, query, where } from "@firebase/firestore";
+import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
@@ -180,18 +181,20 @@ export const addStore = async (data: any, from: string = "") => {
                 data.roles = createDefaultRoles(data.storeId, createdBy);
             }
 
-            await setDoc(getDocRef(data.id), await requestBodyComposer(data));
-            if (from != "onboarding") {
-                await updateStoresCountInPlatformSummary()
-            }
-
             // Derive businessCategory from businessType if not provided
             const businessCategory = data.businessCategory || getBusinessCategory(data.businessType || '');
             data.businessCategory = businessCategory;
 
-            // Auto-compute schedulerHour from timezone if not explicitly set
-            const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone);
+            data.businessDayEndTime = resolveBusinessDayEndTime(data.businessType, data.businessDayEndTime);
+
+            // Auto-compute schedulerHour from timezone/EOD if not explicitly set
+            const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, data.businessDayEndTime);
             data.schedulerHour = schedulerHour;
+
+            await setDoc(getDocRef(data.id), await requestBodyComposer(data));
+            if (from != "onboarding") {
+                await updateStoresCountInPlatformSummary()
+            }
 
             // Sync to storesSummary for Cloud Function optimization
             // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
@@ -202,6 +205,7 @@ export const addStore = async (data: any, from: string = "") => {
                 active: true,
                 name: data.name || '',
                 timeZone: data.timeZone,
+                businessDayEndTime: data.businessDayEndTime,
                 schedulerHour,
                 activePlanType: data.activePlanType,
             });
@@ -216,6 +220,15 @@ export const addStore = async (data: any, from: string = "") => {
 export const updateStore = async (data: any) => {
     return await apiCallComposer(
         async () => {
+            let currentStoreData: any | null = null;
+            const getCurrentStoreData = async () => {
+                if (!currentStoreData) {
+                    const currentSnap = await getDoc(getDocRef(data.id));
+                    currentStoreData = currentSnap.exists() ? currentSnap.data() : {};
+                }
+                return currentStoreData || {};
+            };
+
             if ('activeLanguages' in data || 'defaultLanguage' in data || 'language' in data) {
                 const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
                 data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
@@ -239,8 +252,7 @@ export const updateStore = async (data: any) => {
             // through untouched so the save still succeeds.
             if (data.subdomain !== undefined) {
                 try {
-                    const currentSnap = await getDoc(getDocRef(data.id));
-                    const current: any = currentSnap.exists() ? currentSnap.data() : null;
+                    const current: any = await getCurrentStoreData();
                     const wasPublished = !!current?.lastPublishedAt;
                     const subdomainChanged = (current?.subdomain || '') !== data.subdomain;
                     if (wasPublished && subdomainChanged) {
@@ -265,35 +277,49 @@ export const updateStore = async (data: any) => {
                 }
             }
 
+            const summaryFields = ['businessType', 'businessCategory', 'active', 'name', 'timeZone', 'businessDayEndTime', 'schedulerHour', 'activePlanType'];
+            const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
+            const needsSchedulerRecompute = data.timeZone !== undefined || data.businessDayEndTime !== undefined;
+            const existingStore = hasSummaryFieldChanges || needsSchedulerRecompute ? await getCurrentStoreData() : {};
+            const effectiveBusinessType = data.businessType ?? existingStore.businessType;
+            const effectiveTimeZone = data.timeZone ?? existingStore.timeZone;
+            const effectiveBusinessDayEndTime = data.businessDayEndTime ?? existingStore.businessDayEndTime;
+
             // Derive businessCategory from businessType if not provided
-            const businessCategory = data.businessCategory || getBusinessCategory(data.businessType || '');
+            const businessCategory = data.businessCategory || getBusinessCategory(effectiveBusinessType || '');
             data.businessCategory = businessCategory;
 
-            await updateDoc(getDocRef(data.id), await requestBodyComposer(data));
-
-            // Recompute schedulerHour if timezone changed
-            if (data.timeZone) {
-                data.schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone);
+            if (data.businessDayEndTime !== undefined) {
+                data.businessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime);
             }
+
+            // Recompute schedulerHour before writing store doc so store and summary stay aligned.
+            if (needsSchedulerRecompute) {
+                const nextBusinessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime ?? effectiveBusinessDayEndTime);
+                data.businessDayEndTime = nextBusinessDayEndTime;
+                data.schedulerHour = data.schedulerHour ?? computeSchedulerHour(effectiveTimeZone, nextBusinessDayEndTime);
+            }
+
+            await updateDoc(getDocRef(data.id), await requestBodyComposer(data));
 
             // Sync to storesSummary for Cloud Function optimization
             // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
             // Only sync if summary-relevant fields are present in the update
-            const summaryFields = ['businessType', 'businessCategory', 'active', 'name', 'timeZone', 'schedulerHour', 'activePlanType'];
-            const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
+            const summaryTenantId = data.tenantId ?? existingStore.tenantId;
 
-            if (hasSummaryFieldChanges && data.tenantId) {
+            if (hasSummaryFieldChanges && summaryTenantId) {
                 await syncStoreToSummary(data.storeId, {
-                    tId: data.tenantId,
-                    businessType: data.businessType || 'unknown',
+                    tId: summaryTenantId,
+                    businessType: effectiveBusinessType || 'unknown',
                     businessCategory,
-                    active: data.active ?? true,
-                    name: data.name || '',
-                    timeZone: data.timeZone,
-                    schedulerHour: data.schedulerHour,
-                    activePlanType: data.activePlanType,
+                    active: data.active ?? existingStore.active ?? true,
+                    name: data.name ?? existingStore.name ?? '',
+                    timeZone: data.timeZone ?? existingStore.timeZone,
+                    businessDayEndTime: data.businessDayEndTime ?? existingStore.businessDayEndTime,
+                    schedulerHour: data.schedulerHour ?? existingStore.schedulerHour,
+                    activePlanType: data.activePlanType ?? existingStore.activePlanType,
                 });
-            } else if (!data.tenantId) {
+            } else if (!summaryTenantId) {
                 console.warn('Skipping syncStoreToSummary: tenantId is undefined for store', data.storeId);
             }
             // Skip sync if no summary-relevant fields present in update

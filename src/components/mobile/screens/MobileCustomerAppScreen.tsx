@@ -42,6 +42,7 @@ import {
     Toast,
 } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 
 interface Props {
@@ -324,7 +325,11 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description="Let customers install your menu as an app on their phone home screen. One tap to reopen. No app store required."
+                    onBack={onBack}
+                    title="Customer App"
+                />
                 <Flex align="center" justify="center" style={{ flex: 1, padding: 24 }} vertical>
                     <LuSmartphone color="#9ca3af" size={40} />
                     <Text style={{ marginTop: 12, textAlign: 'center' }}>
@@ -337,7 +342,11 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description="Let customers install your menu as an app on their phone home screen. One tap to reopen. No app store required."
+                onBack={onBack}
+                title="Customer App"
+            />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobileLocalizedLanguageSelector
@@ -347,21 +356,6 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     selectedLanguage={selectedLanguage}
                     title="Customer app language"
                 />
-
-                {/* Intro */}
-                <Card>
-                    <Flex align="center" gap={10} style={{ marginBottom: 8 }}>
-                        <LuSmartphone color="#8b5cf6" size={20} />
-                        <Title level={5} style={{ margin: 0 }}>Customer App</Title>
-                    </Flex>
-                    <Text type="secondary">
-                        Let customers install your menu as an app on their phone home screen.
-                        One tap to reopen. No app store required.
-                    </Text>
-                    <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                        Install stats live in the Dashboard screen.
-                    </Text>
-                </Card>
 
                 <Card>
                     <Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>Customer App status</Title>

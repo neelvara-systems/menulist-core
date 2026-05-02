@@ -101,7 +101,7 @@ function HelpChat({ open, onClose }: HelpChatProps) {
             footer={null}
             width="92vw"
             centered
-            aria-label="AI Help Assistant"
+            aria-label="Help Assistant"
             aria-describedby="help-chat-description"
             style={{
                 top: 30,
@@ -126,7 +126,7 @@ function HelpChat({ open, onClose }: HelpChatProps) {
                 <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
                     {/* Screen reader description */}
                     <span id="help-chat-description" style={{ position: 'absolute', left: '-9999px' }}>
-                        AI-powered help assistant for answering questions and providing guidance.
+                        Help assistant for answering questions and providing guidance.
                         Use Tab to navigate, Enter to select, and Escape to close.
                     </span>
 

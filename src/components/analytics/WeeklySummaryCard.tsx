@@ -63,7 +63,7 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
         title={
           <Space>
             <RobotOutlined style={{ color: token.colorPrimary }} />
-            <span>AI Weekly Summary</span>
+            <span>Weekly Summary</span>
             <Tag color="purple">Gemini 2.5 Flash</Tag>
           </Space>
         }

@@ -119,7 +119,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                         </div>
                                                         <Flex vertical align="center" gap={4}>
                                                             <Text strong style={{ color: 'white', fontSize: 14 }}>
-                                                                AI is reading...
+                                                                Reading file...
                                                             </Text>
                                                             <Text type="secondary" style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
                                                                 Extracting {labels.itemsPlural}

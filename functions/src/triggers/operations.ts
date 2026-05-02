@@ -15,6 +15,8 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
 import { activateSafeMode } from '../monitoring/safeMode';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
+import { resolveBusinessDayEndTime } from '../utils/businessDay';
+import { computeSchedulerHour } from '../utils/schedulerHour';
 
 // ═══════════════════════════════════════════════════════════════
 // MENU HEALTH MONITOR
@@ -244,6 +246,8 @@ export const backfillStoresSummary = onCall({
             const data = doc.data();
             const businessType = data.businessType || 'unknown';
             const businessCategory = data.businessCategory || BUSINESS_TYPE_TO_CATEGORY[businessType] || 'specialty';
+            const businessDayEndTime = resolveBusinessDayEndTime(businessType, data.businessDayEndTime);
+            const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, businessDayEndTime);
 
             summary[doc.id] = {
                 tId: data.tenantId || data.tId,
@@ -251,6 +255,9 @@ export const backfillStoresSummary = onCall({
                 businessCategory,
                 active: data.active ?? true,
                 name: data.name || '',
+                timeZone: data.timeZone || null,
+                businessDayEndTime,
+                schedulerHour,
                 activePlanType: data.activePlanType || null,
             };
         }

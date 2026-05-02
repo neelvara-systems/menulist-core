@@ -35,6 +35,7 @@ type ManualSurfaceId = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
 interface MobilePresenceMonitorProps {
     hasPublishedMenu: boolean;
     hasFeedbackEnabled: boolean;
+    hidePageSummary?: boolean;
     storeDetails: StoreDataType;
     obpLink: string;
 }
@@ -93,6 +94,7 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
 export default function MobilePresenceMonitor({
     hasPublishedMenu,
     hasFeedbackEnabled,
+    hidePageSummary = false,
     storeDetails,
     obpLink,
 }: MobilePresenceMonitorProps) {
@@ -188,17 +190,25 @@ export default function MobilePresenceMonitor({
     return (
         <Card>
             <Flex gap={16} vertical>
-                <Flex align="center" justify="space-between">
-                    <Flex gap={2} vertical>
-                        <Title level={5} style={{ margin: 0 }}>
-                            {t('title')}
-                        </Title>
-                        <Text type="secondary">{t('subtitle')}</Text>
+                {hidePageSummary ? (
+                    <Flex justify="flex-end">
+                        <Tag color={allDone ? 'success' : 'default'}>
+                            {allDone ? t('allSet') : t('placesActive', { count: totalActive })}
+                        </Tag>
                     </Flex>
-                    <Tag color={allDone ? 'success' : 'default'}>
-                        {allDone ? t('allSet') : t('placesActive', { count: totalActive })}
-                    </Tag>
-                </Flex>
+                ) : (
+                    <Flex align="center" justify="space-between">
+                        <Flex gap={2} vertical>
+                            <Title level={5} style={{ margin: 0 }}>
+                                {t('title')}
+                            </Title>
+                            <Text type="secondary">{t('subtitle')}</Text>
+                        </Flex>
+                        <Tag color={allDone ? 'success' : 'default'}>
+                            {allDone ? t('allSet') : t('placesActive', { count: totalActive })}
+                        </Tag>
+                    </Flex>
+                )}
 
                 <Text type="secondary">{t('trackingNote')}</Text>
 

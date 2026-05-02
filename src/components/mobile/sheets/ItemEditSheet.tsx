@@ -4,7 +4,7 @@ import { getOwnerLabels } from '@config/businessLabels';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { getProjectDescriptionContentLength } from '@lib/ai/projectAIPreferences';
+import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -78,6 +78,28 @@ function getLocalizedValue(value: Record<string, string> | undefined, language: 
     return value[language] || '';
 }
 
+function normalizeLocalizedRecord(value: Record<string, string> | undefined, languages: string[]) {
+    return Object.fromEntries(
+        languages.map((language) => [language, String(value?.[language] || '').trim()])
+    );
+}
+
+function normalizeDraftItemForComparison(draftItem: ExtractedDataItem, languages: string[]) {
+    return {
+        active: draftItem.active !== false,
+        attributes: (draftItem.attributes || []).map((attribute) => ({
+            active: attribute.active !== false,
+            name: normalizeLocalizedRecord(attribute.name, languages),
+            price: String(attribute.price ?? '').trim(),
+        })),
+        available: draftItem.available !== false,
+        category: draftItem.category || '',
+        description: normalizeLocalizedRecord(draftItem.description, languages),
+        name: normalizeLocalizedRecord(draftItem.name, languages),
+        price: String(draftItem.price ?? '').trim(),
+    };
+}
+
 export default function ItemEditSheet({
     item,
     categories,
@@ -117,6 +139,7 @@ export default function ItemEditSheet({
     const [isSaving, setIsSaving] = useState(false);
     const [isAiWorking, setIsAiWorking] = useState(false);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
+    const canEditImageInline = isAddMode || !onManageImages;
 
     const resetDraft = () => {
         setDraftItem(createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
@@ -162,6 +185,18 @@ export default function ItemEditSheet({
     const contentActionLabel = isAddMode || !hasAnyDescription
         ? t('generateContent')
         : t('regenerateContent');
+    const initialComparisonState = useMemo(() => JSON.stringify({
+        draftItem: normalizeDraftItemForComparison(
+            createDraftItem({ item, initialCategoryId, languages: selectedLanguages }),
+            selectedLanguages
+        ),
+        imagePreview: canEditImageInline ? (item?.image || null) : null,
+    }), [canEditImageInline, initialCategoryId, item, selectedLanguages]);
+    const currentComparisonState = useMemo(() => JSON.stringify({
+        draftItem: normalizeDraftItemForComparison(draftItem, selectedLanguages),
+        imagePreview: canEditImageInline ? (imagePreview || null) : null,
+    }), [canEditImageInline, draftItem, imagePreview, selectedLanguages]);
+    const hasChanges = currentComparisonState !== initialComparisonState;
 
     const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -255,6 +290,7 @@ export default function ItemEditSheet({
                 sourceLang: sourceLanguage,
                 targetLang: targetLanguages as any,
                 contentLength: getProjectDescriptionContentLength(projectData),
+                tone: getProjectDescriptionTone(projectData),
             };
 
             const result = await getNewItemMetadataViaAPI(payload);
@@ -699,13 +735,13 @@ export default function ItemEditSheet({
                                         <LuTrash2 size={18} />
                                     </Button>
                                 ) : null}
-                                <Button block disabled={isSaving} fill="outline" onClick={resetDraft} size="large">
+                                <Button block disabled={!hasChanges || isSaving} fill="outline" onClick={resetDraft} size="large">
                                     Reset
                                 </Button>
                                 <Button
                                     block
                                     color="primary"
-                                    disabled={!getLocalizedValue(draftItem.name, primaryLanguage).trim() || isSaving}
+                                    disabled={!hasChanges || !getLocalizedValue(draftItem.name, primaryLanguage).trim() || isSaving}
                                     loading={isSaving}
                                     onClick={() => {
                                         void handleSave();

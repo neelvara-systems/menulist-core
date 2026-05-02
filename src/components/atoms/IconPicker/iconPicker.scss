@@ -69,7 +69,7 @@
         display: flex;
         flex-direction: column;
         gap: 18px;
-        max-height: 380px;
+        max-height: min(58vh, 560px);
         overflow-x: hidden;
         overflow-y: auto;
         padding-right: 2px;
@@ -110,7 +110,7 @@
         flex-direction: column;
         gap: 12px;
         justify-content: flex-start;
-        max-height: 380px;
+        max-height: min(58vh, 560px);
         overflow-y: auto;
         padding-right: 2px;
     }

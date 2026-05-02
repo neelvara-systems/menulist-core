@@ -1,7 +1,7 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { getProjectDescriptionContentLength, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
+import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -74,7 +74,10 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
 
         try {
             const projectWithPreferences = mergeProjectAIPreferences(projectData, {
-                description: { contentLength: nextContentLength },
+                description: {
+                    contentLength: nextContentLength,
+                    tone: getProjectDescriptionTone(projectData),
+                },
             });
             setTotalFiles(projectData.files?.filter((file) =>
                 file.extractedData?.data && (modalData.sourceFile ? modalData.sourceFile.uid === file.uid : true)
@@ -92,6 +95,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                 onProjectUpdate: setActiveProject,
                 projectData: projectWithPreferences,
                 sourceFile: modalData.sourceFile,
+                tone: getProjectDescriptionTone(projectData),
             });
 
             dispatch(stopLoader("adding description"));
@@ -102,7 +106,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
         } catch (error) {
             dispatch(stopLoader("adding description"));
             if (error instanceof AICapacityError) {
-                antdMessage.info('Get more AI enhancements to continue. Visit Billing to add an enhancement pack.');
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Description generation failed. Please try again.');
                 logger.error('Description generation failed', error);

@@ -8,7 +8,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuReceipt, LuRefreshCw } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, InfiniteScroll, List, NavBar, Text, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileTransactionsScreenProps {
     onBack: () => void;
@@ -79,20 +79,18 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
                 onBack={onBack}
                 right={(
                     <Button fill="none" onClick={() => { setLoading(true); void fetchPage(true); }}>
                         <LuRefreshCw color="#64748b" size={18} />
                     </Button>
                 )}
+                title={t('title')}
             />
 
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 {loading && transactions.length === 0 ? (
                     <Flex align="center" justify="center" style={{ padding: 48 }}>
                         <DotLoading color="primary" />
@@ -101,7 +99,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     <Card>
                         <Flex align="center" gap={12} vertical>
                             <LuReceipt color="#d1d5db" size={36} />
-                            <Title level={5} style={{ margin: 0 }}>No AI transactions yet.</Title>
+                            <Title level={5} style={{ margin: 0 }}>No enhancement activity yet.</Title>
                         </Flex>
                     </Card>
                 ) : (

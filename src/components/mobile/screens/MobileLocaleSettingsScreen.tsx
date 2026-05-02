@@ -8,6 +8,7 @@ import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import countryData from '@atoms/phoneNumberInput/countryData';
 import { normalizeStoreLanguagePolicy } from '@lib/localization/languagePolicy';
+import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { theme } from 'antd';
 import {
@@ -21,7 +22,14 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+
+const BUSINESS_DAY_END_OPTIONS = [
+    { label: 'Calendar day (12:00 AM)', value: '00:00' },
+    { label: 'Late service day (3:00 AM)', value: '03:00' },
+    { label: 'Very late service (4:00 AM)', value: '04:00' },
+    { label: 'Morning close (5:00 AM)', value: '05:00' },
+];
 
 interface MobileLocaleSettingsScreenProps {
     onBack: () => void;
@@ -38,6 +46,7 @@ function getInitialLocaleForm(storeDetails: any) {
         defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
         timeFormat: storeDetails?.timeFormat || defaultTimeFormatString,
         timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        businessDayEndTime: resolveBusinessDayEndTime(storeDetails?.businessType, storeDetails?.businessDayEndTime),
     };
 }
 
@@ -131,6 +140,7 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
             defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
             timeFormat: formData.timeFormat,
             timeZone: formData.timeZone,
+            businessDayEndTime: formData.businessDayEndTime,
             dateFormat: formData.dateFormat,
         };
 
@@ -159,6 +169,7 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
                 defaultLanguage: storeDetails.defaultLanguage,
                 timeFormat: storeDetails.timeFormat,
                 timeZone: storeDetails.timeZone,
+                businessDayEndTime: storeDetails.businessDayEndTime,
                 dateFormat: storeDetails.dateFormat,
             }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
@@ -181,12 +192,12 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('localeSubtitle')}
+                onBack={onBack}
+                title={tBusiness('localeSettings')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('localeSubtitle')}
-                    title={tBusiness('localeSettings')}
-                />
                 <Card>
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={6}>
@@ -199,6 +210,22 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
                             options={TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))}
                             placeholder={tBusiness('selectTimeZone')}
                             value={formData.timeZone}
+                        />
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Flex align="center" gap={6}>
+                            <LuClock size={14} />
+                            <Text type="secondary">{tBusiness('businessDayEndTime')}</Text>
+                        </Flex>
+                        <Text type="secondary">{tBusiness('businessDayEndTimeHelper')}</Text>
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({ ...previous, businessDayEndTime: value }))}
+                            options={BUSINESS_DAY_END_OPTIONS}
+                            placeholder={tBusiness('selectBusinessDayEndTime')}
+                            value={formData.businessDayEndTime}
                         />
                     </Flex>
                 </Card>

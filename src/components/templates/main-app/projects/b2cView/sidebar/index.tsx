@@ -1,9 +1,10 @@
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Card, Divider, Flex, Segmented, theme } from 'antd'
-import { useContext, useMemo } from 'react';
+import { Button, Card, Divider, Flex, Segmented, theme } from 'antd'
+import { useContext, useMemo, useState } from 'react';
 import ShareLinkCard from '../../../ShareLinkCard';
+import AIDefaultsModal from '../../editorView/AIDefaultsModal';
 import { DEFAULTS } from '../designSystem'
 import BrandColorPicker from '../designSystem/BrandColorPicker'
 import HomePageSettingsNew from '../homePage/homePageSettingsNew'
@@ -21,6 +22,7 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: 
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const [isAIDefaultsOpen, setIsAIDefaultsOpen] = useState(false);
     const pageUrl = useMemo(() => {
         if (!storeDetails?.subdomain && !storeDetails?.customDomain) return '';
         if (!projectData?.name) return '';
@@ -61,6 +63,18 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: 
                         />
                     ) : null}
 
+                    {activePage === PageType.MENU ? (
+                        <Card
+                            size="small"
+                            title="Generation defaults"
+                            extra={<Button onClick={() => setIsAIDefaultsOpen(true)} size="small" type="link">Open</Button>}
+                        >
+                            <Flex vertical gap={4}>
+                                <span>Set the default writing and photo style for this menu.</span>
+                            </Flex>
+                        </Card>
+                    ) : null}
+
                     {activePage === PageType.HOME && (
                         <HomePageSettingsNew
                             projectData={projectData}
@@ -98,6 +112,13 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: 
                     />
                 </Flex>
             </Card>
+            <AIDefaultsModal
+                businessType={storeDetails?.businessType}
+                onClose={() => setIsAIDefaultsOpen(false)}
+                open={isAIDefaultsOpen}
+                projectData={projectData}
+                setProjectData={setProjectData}
+            />
         </Flex>
     )
 }

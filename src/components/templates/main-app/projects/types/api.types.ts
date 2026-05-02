@@ -57,7 +57,7 @@ export interface DescriptionAPIParams {
     projectId: string;
     fileId: string;
     contentLength: "Standard" | "Detailed";
-    tone?: "Professional"; // Locked to Professional per doctrine
+    tone?: "Professional" | "Friendly" | "Premium";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -80,6 +80,7 @@ export interface NewItemMetadataAPIParams {
     businessType: string;
     fileId: string;
     contentLength: "Standard" | "Detailed";
+    tone?: "Professional" | "Friendly" | "Premium";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

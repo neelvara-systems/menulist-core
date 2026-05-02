@@ -17,13 +17,13 @@ import CreateMenuClient from './CreateMenuClient';
 
 export const metadata: Metadata = {
     title: 'Create Your Menu — MenuList | Free Digital Menu Creator',
-    description: 'Create a professional digital menu for your restaurant in minutes. Upload a photo or PDF and let AI extract items, categories, and prices automatically.',
+    description: 'Create a professional digital menu for your restaurant in minutes. Upload a photo or PDF and let MenuList extract items, categories, and prices automatically.',
     alternates: {
         canonical: '/create-menu',
     },
     openGraph: {
         title: 'Create Your Menu — MenuList | Free Digital Menu Creator',
-        description: 'Create a professional digital menu for your restaurant in minutes. Upload a photo or PDF and let AI extract items, categories, and prices automatically.',
+        description: 'Create a professional digital menu for your restaurant in minutes. Upload a photo or PDF and let MenuList extract items, categories, and prices automatically.',
         url: '/create-menu',
     },
 };

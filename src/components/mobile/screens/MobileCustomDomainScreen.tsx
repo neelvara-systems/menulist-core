@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCheckCircle2, LuCopy, LuExternalLink, LuGlobe, LuSearch, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, NavBar, Tag, Text, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileCustomDomainScreenProps {
     onBack: () => void;
@@ -111,13 +111,12 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('customDomainSubtitle')}
+                onBack={onBack}
+                title={t('customDomain')}
+            />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('customDomainSubtitle')}
-                    title={t('customDomain')}
-                />
-
                 {activeDomain ? (
                     <Card>
                         <Flex gap={8} vertical>

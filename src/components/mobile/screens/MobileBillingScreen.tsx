@@ -13,7 +13,7 @@ import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileBillingScreenProps {
     onBack: () => void;
@@ -37,7 +37,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     if (!storeDetails) {
         return (
             <Flex style={{ height: '100%' }} vertical>
-                <NavBar onBack={onBack} />
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
+                    title={t('title')}
+                />
                 <Flex align="center" justify="center" style={{ flex: 1 }}>
                     <DotLoading color="primary" />
                 </Flex>
@@ -186,7 +190,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     const entity = event.payload?.payment?.entity;
                     return {
                         id: entity?.id,
-                        type: 'AI Enhancement Pack',
+                        type: 'Enhancement Pack',
                         date: (event.created_at || 0) * 1000,
                         amount: entity?.amount || 0,
                         currency: entity?.currency || 'INR',
@@ -207,13 +211,13 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
                 {isLoading ? (
                     <Card>
                         <Flex align="center" gap={8} justify="center">
@@ -251,7 +255,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         extra={<Text>{formatDate(sub.renewsOn || sub.cycleEndDate)}</Text>}
                                     />
                                     <List.Item
-                                        title={<Text>AI capacity remaining</Text>}
+                                        title={<Text>Enhancement balance remaining</Text>}
                                         extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits}</Tag>}
                                     />
                                 </List>
@@ -446,7 +450,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         <Flex align="center" justify="space-between">
                                             <Flex gap={4} vertical>
                                                 <Text strong>{pack.name}</Text>
-                                                <Text type="secondary">{pack.description || 'AI Enhancement Pack'}</Text>
+                                                <Text type="secondary">{pack.description || 'Enhancement Pack'}</Text>
                                             </Flex>
                                             <Text>{price ? formatCurrency(price, currency) : 'N/A'}</Text>
                                         </Flex>

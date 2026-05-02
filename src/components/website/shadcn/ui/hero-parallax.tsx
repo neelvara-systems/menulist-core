@@ -32,7 +32,7 @@ const products = [
         thumbnail: "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/craftBuilder%2FScreenshot%202024-06-01%20at%2010.45.15%E2%80%AFPM.png?alt=media&token=47795693-f302-4251-8035-7ac16c55ec3d"
     },
     {
-        title: "Editrix AI",
+        title: "Editrix",
         link: "https://editrix.ai",
         thumbnail: "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/craftBuilder%2FScreenshot%202024-06-01%20at%2010.45.15%E2%80%AFPM.png?alt=media&token=47795693-f302-4251-8035-7ac16c55ec3d"
     },

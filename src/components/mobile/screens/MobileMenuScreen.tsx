@@ -55,6 +55,7 @@ const ManageLanguagesSheet = dynamic(() => import('../sheets/ManageLanguagesShee
 const GenerateDescriptionsSheet = dynamic(() => import('../sheets/GenerateDescriptionsSheet'), { ssr: false });
 const SmartRecommendationsSheet = dynamic(() => import('../sheets/SmartRecommendationsSheet'), { ssr: false });
 const TextCaseSheet = dynamic(() => import('../sheets/TextCaseSheet'), { ssr: false });
+const AIDefaultsSheet = dynamic(() => import('../sheets/AIDefaultsSheet'), { ssr: false });
 const ImageUploadModal = dynamic(() => import('../../templates/main-app/projects/editorView/ImageUploadModal'), { ssr: false });
 
 type CategoryOption = { id: string; name: string; icon?: string };
@@ -433,6 +434,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
     const [isManageLanguagesOpen, setIsManageLanguagesOpen] = useState(false);
     const [isGenerateDescriptionsOpen, setIsGenerateDescriptionsOpen] = useState(false);
+    const [isAIDefaultsOpen, setIsAIDefaultsOpen] = useState(false);
     const [isSmartRecommendationsOpen, setIsSmartRecommendationsOpen] = useState(false);
     const [isTextCaseOpen, setIsTextCaseOpen] = useState(false);
     const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
@@ -1795,15 +1797,18 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         applyLocalMenuUpdate(updated);
     };
 
-    const handleCategoryGenerateContent = async ({ id: categoryId, names }: { id?: string; names: Record<string, string> }) => {
+    const handleCategoryGenerateContent = async ({ id: categoryId, mode, names }: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => {
         if (!menuData) return null;
 
-        const targetFile = ensurePrimaryMenuFile(menuData, storeDetails?.tenantId, storeDetails?.storeId);
+        const targetFile = categoryId
+            ? findFileForCategory(menuData, categoryId)
+            : ensurePrimaryMenuFile(menuData, storeDetails?.tenantId, storeDetails?.storeId);
         if (!targetFile) return null;
 
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLang);
         const targetLanguages = activeProjectLanguages
             .slice(1)
+            .filter((languageCode) => mode === 'regenerate' || !names[languageCode]?.trim())
             .map((languageCode) => GlobalLanguagesList.find((language) => language.code === languageCode))
             .filter(Boolean);
 
@@ -1817,7 +1822,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         let nextCategory: ExtractedDataCategory = {
             active: true,
             id: baseCategoryId,
-            name: Object.fromEntries(activeProjectLanguages.map((language) => [language, names[language] || ''])),
+            name: Object.fromEntries(activeProjectLanguages.map((language) => [
+                language,
+                mode === 'regenerate' && language !== sourceLanguage.code ? '' : names[language] || '',
+            ])),
         };
 
         let translatedCount = 0;
@@ -1839,7 +1847,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (translatedCount === 0) {
             Toast.show({ content: 'No missing category translations found.', duration: 1500 });
         } else {
-            Toast.show({ content: 'Category translations updated.', duration: 1200 });
+            Toast.show({ content: mode === 'regenerate' ? 'Category translations regenerated.' : 'Category translations updated.', duration: 1200 });
         }
 
         return nextCategory.name;
@@ -3092,6 +3100,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     setIsBulkActionsOpen(true);
                 })}
                 onClose={() => setIsCommandMenuOpen(false)}
+                onAIDefaults={() => launchCommandAction(() => setIsAIDefaultsOpen(true))}
                 onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
                 onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
                 onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
@@ -3160,6 +3169,20 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     }}
                     projectData={menuData}
                     visible={isManageLanguagesOpen}
+                />
+            ) : null}
+
+            {menuData ? (
+                <AIDefaultsSheet
+                    businessType={storeDetails?.businessType}
+                    onClose={() => handleCommandActionBack(() => setIsAIDefaultsOpen(false))}
+                    onSaved={(updatedProject) => {
+                        applyLocalMenuUpdate(updatedProject);
+                        setIsAIDefaultsOpen(false);
+                        resetCommandActionFlow();
+                    }}
+                    projectData={menuData}
+                    visible={isAIDefaultsOpen}
                 />
             ) : null}
 

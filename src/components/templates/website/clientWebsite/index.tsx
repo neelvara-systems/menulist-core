@@ -228,6 +228,7 @@ function ClientMenuRenderer({
                     tenantId={storeDetails.tenantId}
                     storeName={storeDisplayName}
                     storeTimeZone={storeDetails.timeZone}
+                    businessDayEndTime={storeDetails.businessDayEndTime}
                     promoteInstallation={
                         (storeDetails as any)?.pwaSettings?.promoteInstallation !== false
                     }

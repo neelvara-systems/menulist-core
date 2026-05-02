@@ -21,7 +21,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
-import MobileScreenIntro from '../components/MobileScreenIntro';
+import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 interface MobileSpecialMenuScreenProps {
@@ -1052,14 +1052,13 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <NavBar onBack={onBack} />
+            <MobileSettingsScreenHeader
+                description={t('subtitle')}
+                onBack={onBack}
+                title={t('title')}
+            />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
-                <MobileScreenIntro
-                    subtitle={t('subtitle')}
-                    title={t('title')}
-                />
-
                 {selectedBaseProjectName ? (
                     <Card size="small" style={{ backgroundColor: token.colorBgLayout }}>
                         <Text type="secondary">{t('currentBaseMenu', { name: selectedBaseProjectName })}</Text>

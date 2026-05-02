@@ -58,7 +58,7 @@ const actionType = {
   REWRITE_DESCRIPTION: AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
 }
 
-const descriptionPrompt = (contentLength: "Standard" | "Detailed" = "Standard", action: keyof typeof actionType, inputJson: any = {}, _tone: string = "Professional") => {
+const descriptionPrompt = (contentLength: "Standard" | "Detailed" = "Standard", action: keyof typeof actionType, inputJson: any = {}, tone: string = "Professional") => {
 
   // 🔒 SECURITY: Sanitize all user inputs to prevent prompt injection
   const sanitizedInputJson = {
@@ -88,6 +88,14 @@ const descriptionPrompt = (contentLength: "Standard" | "Detailed" = "Standard", 
     lengthConstraints = "Provide a detailed description, aiming for 45-60 words. Use multiple sentences to describe the offering clearly. For example: 'A professional Swedish massage service designed for full-body relaxation. This treatment focuses on easing muscle tension and promoting comfort through long, flowing strokes. Suitable for those seeking a calming and restorative experience.'";
   }
 
+  const toneInstructionMap: Record<string, string> = {
+    Professional: "Use clear, neutral, trustworthy language.",
+    Friendly: "Use warm, welcoming language while staying factual and easy to understand.",
+    Premium: "Use polished, refined language while staying factual and not exaggerated.",
+  };
+
+  const toneInstruction = toneInstructionMap[tone] || toneInstructionMap.Professional;
+
   const actionSpecificInstructions = {
     [actionType.ADD_DESCRIPTION]: `
      * Generate a new description if the "description" field is empty or null.
@@ -115,8 +123,8 @@ Instructions:
     ${actionSpecificInstructions[action]}
 3. ${lengthConstraints}
 4. If "attributes" exist, incorporate them into the description exactly as provided. Do not amplify, exaggerate, or reinterpret attributes.
-5. Use clear, neutral, professional language. Avoid promotional or marketing phrasing.
-6. Write the description in each of the languages specified in "targetLang". Maintain the same neutral professional tone across all languages.
+5. ${toneInstruction} Avoid promotional or marketing phrasing.
+6. Write the description in each of the languages specified in "targetLang". Maintain the same selected tone across all languages.
 7. Output the descriptions in the following JSON format:
 
   {
