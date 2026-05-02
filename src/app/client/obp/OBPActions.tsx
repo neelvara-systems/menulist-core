@@ -8,9 +8,9 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPAction } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
-import { trackBeforeNavigate } from './trackBeforeNavigate';
 
 interface OBPActionsProps {
     tenantId: number;

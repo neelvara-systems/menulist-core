@@ -14,14 +14,16 @@ import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
+import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
+import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Project } from '../../types';
 import { DEFAULTS, getMoodWithBrandColor, MENU_LAYOUTS, MenuLayout, MenuMood, SPACING } from '../designSystem';
 import BackToTop from '../output/BackToTop';
@@ -99,6 +101,7 @@ function MenuPageNew({
     precomputedBlocks
 }: MenuPageNewProps) {
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
+    const { trackMenuItemTap } = useContext(AnalyticsContext);
     const getMenuBasePath = useCallback(() => {
         if (typeof window === 'undefined') return '/menu';
 
@@ -236,39 +239,39 @@ function MenuPageNew({
             }
             : null;
         const trackRecoveryAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
-            if (!analyticsPreferences.trackMenuViews || !analyticsIds) return;
-            void trackMenuAction(menuAction, analyticsIds);
+            if (!analyticsPreferences.trackMenuViews || !analyticsIds) return Promise.resolve();
+            return trackMenuAction(menuAction, analyticsIds);
         };
 
         return [
             (publicPresence?.showCall !== false) && callHref ? {
                 label: 'Call',
                 href: callHref,
-                onClick: () => trackRecoveryAction('call'),
+                track: () => trackRecoveryAction('call'),
             } : null,
             (publicPresence?.showWhatsApp !== false) && whatsappHref ? {
                 label: 'WhatsApp',
                 href: whatsappHref,
                 external: true,
-                onClick: () => trackRecoveryAction('whatsapp'),
+                track: () => trackRecoveryAction('whatsapp'),
             } : null,
             (publicPresence?.showDirections !== false) && directionsHref ? {
                 label: 'Directions',
                 href: directionsHref,
                 external: true,
-                onClick: () => trackRecoveryAction('directions'),
+                track: () => trackRecoveryAction('directions'),
             } : null,
             (publicPresence?.showReservation !== false) && publicPresence?.reservationUrl ? {
                 label: 'Reserve',
                 href: publicPresence.reservationUrl,
                 external: true,
-                onClick: () => trackRecoveryAction('reserve'),
+                track: () => trackRecoveryAction('reserve'),
             } : null,
             (publicPresence?.showOrder !== false) && publicPresence?.orderUrl ? {
                 label: 'Order',
                 href: publicPresence.orderUrl,
                 external: true,
-                onClick: () => trackRecoveryAction('order'),
+                track: () => trackRecoveryAction('order'),
             } : null,
         ].filter(Boolean);
     }, [
@@ -581,14 +584,32 @@ function MenuPageNew({
             return;
         }
 
+        const categoryId = typeof item.category === 'string' ? item.category : '';
+        const category = allCategories.find((cat: any) => cat.id === categoryId);
+        const categoryName = category?.name?.[activeLanguage]
+            || category?.name?.en
+            || (typeof item.category === 'object' ? item.category?.[activeLanguage] || item.category?.en : undefined);
+        const trackedItemName = item.name?.[activeLanguage] || item.name?.en || 'Menu item';
+        trackMenuItemTap({
+            itemId: item.id,
+            name: trackedItemName,
+            category: categoryName,
+            categoryId,
+            categoryName,
+            price: showItemPrices
+                ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
+                : undefined,
+            currency: storeDetails?.currencySymbol || 'USD',
+        });
+
         setSelectedItemTrackView(true);
         setSelectedItem(item);
 
         // G14: Push history state for back button support
         // Human-readable slug URLs for shareability + AI crawlability
         // Format: /menu/item/{slug}-{shortId} — slug for readability, shortId for uniqueness
-        const itemName = item.name?.[activeLanguage] || item.name?.en || '';
-        const itemSlug = slugify(itemName);
+        const itemSlugName = item.name?.[activeLanguage] || item.name?.en || '';
+        const itemSlug = slugify(itemSlugName);
         const shortId = item.id?.slice(-6) || '';
         const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
         const basePath = getMenuBasePath();
@@ -599,7 +620,7 @@ function MenuPageNew({
             '',
             `${basePath}/item/${urlSegment}`
         );
-    }, [activeLanguage, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, getMenuBasePath, projectData?.projectId, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [activeLanguage, allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, getMenuBasePath, projectData?.projectId, showItemPrices, storeDetails?.currencySymbol, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -1185,7 +1206,12 @@ function MenuPageNew({
                                             <a
                                                 key={action.label}
                                                 href={action.href}
-                                                onClick={action.onClick}
+                                                onClick={(event) => trackBeforeNavigate({
+                                                    event,
+                                                    href: action.href,
+                                                    target: action.external ? '_blank' : undefined,
+                                                    track: action.track,
+                                                })}
                                                 target={action.external ? '_blank' : undefined}
                                                 rel={action.external ? 'noopener noreferrer' : undefined}
                                                 style={{

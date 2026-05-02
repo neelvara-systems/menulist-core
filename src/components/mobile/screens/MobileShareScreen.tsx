@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
@@ -165,12 +166,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         [data]
     );
 
-    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') => {
-        if (!url) return url;
-        const entrySource = src === 'qr' ? 'qr' : src === 'share' ? 'other' : 'direct';
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}src=${src}&utm_source=${entrySource}&entry_source=${entrySource}&source=${entrySource}`;
-    };
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
+        withAnalyticsSource(
+            url,
+            src === 'copy' ? 'copy_link' : src === 'share' ? 'native_share' : src,
+        )
+    );
 
     const openInternalLink = (url: string) => {
         if (!url) return;

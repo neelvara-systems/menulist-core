@@ -11,6 +11,7 @@
 
 import { ExtractedDataCategory } from '@template/main-app/projects/types';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
+import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -33,7 +34,7 @@ interface PDPModalProps {
         label: string;
         href: string;
         external?: boolean;
-        onClick?: () => void;
+        track: () => Promise<void>;
     }>;
 }
 
@@ -357,7 +358,12 @@ function PDPModal({
                                                 <a
                                                     key={action.label}
                                                     href={action.href}
-                                                    onClick={action.onClick}
+                                                    onClick={(event) => trackBeforeNavigate({
+                                                        event,
+                                                        href: action.href,
+                                                        target: action.external ? '_blank' : undefined,
+                                                        track: action.track,
+                                                    })}
                                                     target={action.external ? '_blank' : undefined}
                                                     rel={action.external ? 'noopener noreferrer' : undefined}
                                                     className="px-3 py-2 text-sm rounded-lg"

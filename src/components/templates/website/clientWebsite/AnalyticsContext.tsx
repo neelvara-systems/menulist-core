@@ -2,7 +2,7 @@
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getSessionId, refreshSession } from '@lib/analytics/session';
-import { trackItemView, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
+import { trackItemClick, trackItemView, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
 import React, { createContext, useCallback, useEffect, useRef } from 'react';
 
@@ -19,10 +19,12 @@ export interface MenuItemViewData {
 
 interface AnalyticsContextType {
   trackMenuItemView: (data: MenuItemViewData) => void;
+  trackMenuItemTap: (data: MenuItemViewData) => void;
 }
 
 export const AnalyticsContext = createContext<AnalyticsContextType>({
   trackMenuItemView: () => { },
+  trackMenuItemTap: () => { },
 });
 
 interface UtmParams {
@@ -178,8 +180,38 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
     }
   }, [isEnabled, storeDetails, projectId, includeLocation]);
 
+  const trackMenuItemTap = useCallback((data: MenuItemViewData) => {
+    if (!isEnabled || !storeDetails) return;
+
+    try {
+      const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
+      const storeId = storeDetails.storeId || (storeDetails as any)._id;
+      if (!tenantId || !storeId) return;
+
+      const sessionId = getSessionId();
+      const utmParams = getUtmParams();
+
+      trackItemClick(data.itemId, data.name, data.categoryName || data.category, data.price, data.currency, {
+        sessionId,
+        tenantId,
+        storeId,
+        projectId,
+        storeTimeZone: storeDetails.timeZone,
+        businessDayEndTime: storeDetails.businessDayEndTime,
+        includeLocation,
+        categoryId: data.categoryId,
+        categoryName: data.categoryName || data.category,
+        ...utmParams,
+      }).catch(error => {
+        console.error('Error tracking menu item tap:', error);
+      });
+    } catch (error) {
+      console.error('Error in item tap tracking:', error);
+    }
+  }, [isEnabled, storeDetails, projectId, includeLocation]);
+
   return (
-    <AnalyticsContext.Provider value={{ trackMenuItemView }}>
+    <AnalyticsContext.Provider value={{ trackMenuItemView, trackMenuItemTap }}>
       {children}
     </AnalyticsContext.Provider>
   );

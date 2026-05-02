@@ -47,6 +47,7 @@ type SessionMilestoneState = {
 };
 
 type EntrySource =
+  | 'copy_link'
   | 'qr'
   | 'whatsapp'
   | 'instagram'
@@ -54,6 +55,7 @@ type EntrySource =
   | 'google'
   | 'obp'
   | 'menu_kit'
+  | 'native_share'
   | 'shortcut'
   | 'direct'
   | 'other';
@@ -277,6 +279,7 @@ const addAttributeFilterContextCounters = (
 const normalizeEntrySource = (value?: string | null): EntrySource | null => {
   const source = String(value || '').trim().toLowerCase();
   if (!source) return null;
+  if (source.includes('copy')) return 'copy_link';
   if (source.includes('qr') || source.includes('table_tent') || source.includes('tent')) return 'qr';
   if (source.includes('whatsapp') || source === 'wa') return 'whatsapp';
   if (source.includes('instagram') || source === 'ig') return 'instagram';
@@ -284,8 +287,9 @@ const normalizeEntrySource = (value?: string | null): EntrySource | null => {
   if (source.includes('google') || source === 'gmb') return 'google';
   if (source.includes('obp') || source.includes('official_business_page')) return 'obp';
   if (source.includes('menu_kit')) return 'menu_kit';
+  if (source.includes('native_share') || source === 'share') return 'native_share';
   if (source.includes('shortcut')) return 'shortcut';
-  if (source === 'direct') return 'direct';
+  if (source === 'direct' || source === 'open') return 'direct';
   return 'other';
 };
 
@@ -301,7 +305,8 @@ const inferEntrySource = (data: TrackingData): EntrySource => {
       params.get('entry_source') ||
       params.get('utm_source') ||
       params.get('utm_medium') ||
-      params.get('source')
+      params.get('source') ||
+      params.get('src')
     );
     if (fromQuery) return fromQuery;
 
@@ -781,10 +786,11 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         if (locationKey) updateData[`viewsByLocation.${locationKey}`] = 1;
         updateData[`hourlyViews.${hour}`] = 1;
         updateData.totalSessions = 1;
+        updateData[`viewsByEntrySource.${entrySource}`] = 1;
         if (data.utm_source) {
           updateData[`viewsBySource.${data.utm_source}`] = 1;
         } else {
-          updateData[`viewsBySource.direct`] = 1;
+          updateData[`viewsBySource.${entrySource}`] = 1;
         }
         if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
         if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
@@ -798,6 +804,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         }
         updateData.totalOBPActionClicks = 1;
         updateData[`obpActionClicks.${data.obpAction}`] = 1;
+        updateData[`obpActionClicksBySource.${entrySource}`] = 1;
         updateData[`hourlyOBPActionClicks.${hour}`] = 1;
         break;
 
@@ -807,6 +814,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // conversion can be measured independently.
         updateData.totalOBPMenuClicks = 1;
         updateData[`hourlyOBPMenuClicks.${hour}`] = 1;
+        updateData[`obpMenuClicksBySource.${entrySource}`] = 1;
         const obpSurface = data.obpSurface === 'outlet' ? 'outlet' : 'brand';
         updateData[`obpMenuClicksBySurface.${obpSurface}`] = 1;
         break;
@@ -819,6 +827,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         }
         updateData.totalOBPLinkClicks = 1;
         updateData[`obpLinkClicks.${data.obpLink}`] = 1;
+        updateData[`obpLinkClicksBySource.${entrySource}`] = 1;
         updateData[`hourlyOBPLinkClicks.${hour}`] = 1;
         break;
 
@@ -986,7 +995,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     // Pass projectId and tenantId for project-wise analytics storage
     await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId, data.storeTimeZone, data.businessDayEndTime);
     writeSessionMilestoneState(sessionMilestoneKey, sessionMilestones);
-    if (eventName === TrackingEvent.MENU_VIEW) {
+    if (eventName === TrackingEvent.MENU_VIEW || eventName === TrackingEvent.OBP_VIEW) {
       writeSessionEntrySource(sessionSourceKey, entrySource);
     }
   } catch (error) {

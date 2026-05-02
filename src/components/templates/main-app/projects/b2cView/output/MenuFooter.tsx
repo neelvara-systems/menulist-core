@@ -20,6 +20,7 @@
  */
 
 import GlobalLanguagesList from '@data/languages';
+import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
@@ -140,8 +141,8 @@ export default function MenuFooter({
     };
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
-        if (!shouldTrackMenuActions) return;
-        void trackMenuAction(menuAction, {
+        if (!shouldTrackMenuActions) return Promise.resolve();
+        return trackMenuAction(menuAction, {
             tenantId: analyticsIds?.tenantId,
             storeId: String(analyticsIds?.storeId),
             projectId: analyticsIds?.projectId,
@@ -208,7 +209,11 @@ export default function MenuFooter({
                     {showCall && callHref && (
                         <a
                             href={callHref}
-                            onClick={() => handleMenuAction('call')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: callHref,
+                                track: () => handleMenuAction('call'),
+                            })}
                             style={{
                                 color: moodConfig.accentColor,
                                 textDecoration: 'none',
@@ -227,7 +232,12 @@ export default function MenuFooter({
                             href={whatsappHref}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => handleMenuAction('whatsapp')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: whatsappHref,
+                                target: '_blank',
+                                track: () => handleMenuAction('whatsapp'),
+                            })}
                             style={{
                                 color: moodConfig.accentColor,
                                 textDecoration: 'none',
@@ -246,7 +256,12 @@ export default function MenuFooter({
                             href={directionsHref}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => handleMenuAction('directions')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: directionsHref,
+                                target: '_blank',
+                                track: () => handleMenuAction('directions'),
+                            })}
                             style={{
                                 color: moodConfig.accentColor,
                                 textDecoration: 'none',
@@ -265,7 +280,12 @@ export default function MenuFooter({
                             href={publicPresence.reservationUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => handleMenuAction('reserve')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: publicPresence.reservationUrl,
+                                target: '_blank',
+                                track: () => handleMenuAction('reserve'),
+                            })}
                             style={{
                                 color: moodConfig.accentColor,
                                 textDecoration: 'none',
@@ -284,7 +304,12 @@ export default function MenuFooter({
                             href={publicPresence.orderUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => handleMenuAction('order')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: publicPresence.orderUrl,
+                                target: '_blank',
+                                track: () => handleMenuAction('order'),
+                            })}
                             style={{
                                 color: moodConfig.accentColor,
                                 textDecoration: 'none',
@@ -311,7 +336,11 @@ export default function MenuFooter({
                     {showCall && callHref ? (
                         <a
                             href={callHref}
-                            onClick={() => handleMenuAction('call')}
+                            onClick={(event) => trackBeforeNavigate({
+                                event,
+                                href: callHref,
+                                track: () => handleMenuAction('call'),
+                            })}
                             style={{
                                 color: moodConfig.accentColor,
                                 textDecoration: 'none',

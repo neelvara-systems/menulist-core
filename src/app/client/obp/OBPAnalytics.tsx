@@ -34,6 +34,8 @@ export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, busines
             const utm_source = urlParams.get('utm_source') || undefined;
             const utm_medium = urlParams.get('utm_medium') || undefined;
             const utm_campaign = urlParams.get('utm_campaign') || undefined;
+            const entrySource = urlParams.get('entry_source') || undefined;
+            const source = urlParams.get('source') || urlParams.get('src') || undefined;
 
             trackOBPView(storeId, {
                 tenantId,
@@ -44,6 +46,8 @@ export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, busines
                 utm_source,
                 utm_medium,
                 utm_campaign,
+                entrySource,
+                source,
             }).catch(err => {
                 console.error('OBP view tracking failed:', err);
             });

@@ -18,9 +18,9 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
-import { trackBeforeNavigate } from './trackBeforeNavigate';
 
 export interface OBPMenuCTAProjectEntry {
     slug: string;
