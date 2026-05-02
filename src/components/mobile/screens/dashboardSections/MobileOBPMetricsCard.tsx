@@ -6,6 +6,7 @@ import type {
     OBPLinkBreakdown,
     OBPPeriodMetrics,
     OBPShareBreakdown,
+    OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import { theme } from 'antd';
@@ -111,6 +112,34 @@ function renderLinkRows(links: OBPLinkBreakdown) {
     );
 }
 
+function renderSourceRows(sources?: OBPSourceBreakdown[]) {
+    const rows = (sources || []).filter((source) => (
+        source.views > 0 || source.actionClicks > 0 || source.menuClicks > 0 || source.linkClicks > 0
+    ));
+    if (rows.length === 0) return null;
+
+    return (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                Visitor sources
+            </Text>
+            <Flex gap={8} vertical>
+                {rows.slice(0, 6).map((source) => (
+                    <Flex key={source.source} align="center" justify="space-between" gap={10}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{source.label}</Text>
+                        <Text style={{ fontSize: 12, textAlign: 'right' }}>
+                            {source.views.toLocaleString()} views
+                            {source.menuClicks > 0 ? ` · ${source.menuClicks.toLocaleString()} menu` : ''}
+                            {source.actionClicks > 0 ? ` · ${source.actionClicks.toLocaleString()} actions` : ''}
+                            {source.linkClicks > 0 ? ` · ${source.linkClicks.toLocaleString()} links` : ''}
+                        </Text>
+                    </Flex>
+                ))}
+            </Flex>
+        </div>
+    );
+}
+
 function renderMetricCards(metrics: OBPPeriodMetrics) {
     return (
         <>
@@ -152,6 +181,7 @@ function renderMetricCards(metrics: OBPPeriodMetrics) {
             {renderActionRows(metrics.actions)}
             {renderLinkRows(metrics.links)}
             {renderShareRows(metrics.shareMethods)}
+            {renderSourceRows(metrics.sources)}
         </>
     );
 }
@@ -320,6 +350,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     {renderActionRows(overall.lifetimeActions)}
                     {renderLinkRows(overall.lifetimeLinks)}
                     {renderShareRows(overall.lifetimeShareMethods)}
+                    {renderSourceRows(overall.lifetimeSources)}
                 </div>
             ) : null}
         </Card>

@@ -2,8 +2,12 @@
 
 import GlobalLanguagesList from '@data/languages';
 import { addProject, uploadFile } from '@database/projects';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
+import { updateStore } from '@database/stores';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
+import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import createProcessingJob from '@template/main-app/projects/getProcessedFile';
 import type { ProjectFileType } from '@template/main-app/projects/types';
@@ -14,7 +18,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuFileText, LuTrash2, LuUpload } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
+import { Button, Card, Checkbox, Dialog, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 interface MenuUploadSheetProps {
@@ -45,6 +49,56 @@ type PreparedFile = {
     url: string;
 };
 
+type MenuIntakeDecisionResult =
+    | { action: 'continue'; files: PreparedFile[]; ignoredFiles: PreparedFile[] }
+    | { action: 'cancel' }
+    | { action: 'create_new_project'; projectId: string; files: PreparedFile[]; ignoredFiles: PreparedFile[] };
+
+type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
+    defaultLanguage?: string;
+    languages?: string[];
+};
+
+function BusinessIdentitySuggestionList({
+    onSelectionChange,
+    suggestions,
+}: {
+    onSelectionChange: (fields: BusinessIdentitySuggestionField[]) => void;
+    suggestions: BusinessIdentitySuggestion[];
+}) {
+    const [selectedFields, setSelectedFields] = useState<BusinessIdentitySuggestionField[]>(
+        suggestions.map((suggestion) => suggestion.field),
+    );
+
+    useEffect(() => {
+        onSelectionChange(selectedFields);
+    }, [onSelectionChange, selectedFields]);
+
+    return (
+        <Flex gap={10} vertical>
+            <Text>We found business details in the upload. Save only the details you want to use.</Text>
+            {suggestions.map((suggestion) => (
+                <Checkbox
+                    checked={selectedFields.includes(suggestion.field)}
+                    key={suggestion.field}
+                    onChange={(checked) => {
+                        setSelectedFields((current) => checked
+                            ? [...current, suggestion.field]
+                            : current.filter((field) => field !== suggestion.field));
+                    }}
+                >
+                    <Flex gap={2} vertical>
+                        <Text strong>{suggestion.label}: {suggestion.value}</Text>
+                        {suggestion.currentValue ? (
+                            <Text type="secondary">Current: {suggestion.currentValue}</Text>
+                        ) : null}
+                    </Flex>
+                </Checkbox>
+            ))}
+        </Flex>
+    );
+}
+
 export default function MenuUploadSheet({
     currentProjectId,
     currentProjectLanguages,
@@ -54,7 +108,7 @@ export default function MenuUploadSheet({
 }: MenuUploadSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [step, setStep] = useState<UploadStep>('select');
     const [selectedFiles, setSelectedFiles] = useState<SelectedUploadFile[]>([]);
     const [progress, setProgress] = useState(0);
@@ -226,6 +280,129 @@ export default function MenuUploadSheet({
         return preparedFiles;
     }, [selectedFiles, storeDetails?.storeId, storeDetails?.tenantId, t]);
 
+    const maybeAcceptBusinessIdentitySuggestions = useCallback(async (
+        result: Awaited<ReturnType<typeof runMenuIntakeIdentityPreflight>> | null,
+    ) => {
+        const suggestions = buildBusinessIdentitySuggestions(result, storeDetails);
+        if (!suggestions.length || !storeDetails?.storeId) return;
+
+        let selectedFields = suggestions.map((suggestion) => suggestion.field);
+        await Dialog.confirm({
+            title: 'Save detected business details?',
+            content: (
+                <BusinessIdentitySuggestionList
+                    suggestions={suggestions}
+                    onSelectionChange={(fields) => {
+                        selectedFields = fields;
+                    }}
+                />
+            ),
+            confirmText: 'Save selected',
+            cancelText: 'Skip',
+            onConfirm: async () => {
+                if (!selectedFields.length) return;
+                const updates = buildBusinessIdentityUpdatePayload(suggestions, selectedFields);
+                if (!Object.keys(updates).length) return;
+
+                try {
+                    await updateStore({
+                        storeId: storeDetails.storeId,
+                        tenantId: storeDetails.tenantId,
+                        ...updates,
+                    });
+                    setStoreDetails((previous: any) => ({ ...previous, ...updates }));
+                    Toast.show({ content: 'Business details updated', duration: 1400 });
+                } catch (error: any) {
+                    Toast.show({ content: error?.message || 'Could not update business details.', duration: 2200 });
+                }
+            },
+        });
+    }, [setStoreDetails, storeDetails]);
+
+    const confirmMenuIntakeDecision = useCallback(async (
+        projectId: string,
+        files: PreparedFile[],
+    ): Promise<MenuIntakeDecisionResult> => {
+        try {
+            const result = await runMenuIntakeIdentityPreflight({ projectId, files });
+            const decision = result?.decision;
+            const validIndexes = new Set(result?.validation?.validMenuFileIndexes || files.map((_, index) => index + 1));
+            const filesForExtraction = files.filter((_, index) => validIndexes.has(index + 1));
+            const ignoredFiles = files.filter((_, index) => !validIndexes.has(index + 1));
+
+            if (filesForExtraction.length === 0) {
+                Toast.show({ content: 'We could not find a clear menu or price list in this upload.', duration: 2400 });
+                return { action: 'cancel' };
+            }
+
+            if (!decision || decision.severity === 'none') {
+                await maybeAcceptBusinessIdentitySuggestions(result);
+                return { action: 'continue', files: filesForExtraction, ignoredFiles };
+            }
+
+            if (decision.severity === 'block') {
+                Toast.show({ content: decision.message, duration: 2400 });
+                return { action: 'cancel' };
+            }
+
+            const canCreateNewProject = decision.secondaryAction === 'create_new_project';
+            const confirmed = await Dialog.confirm({
+                title: decision.title,
+                content: (
+                    <Flex gap={8} vertical>
+                        <Text>{decision.message}</Text>
+                        {result?.identity?.businessName ? (
+                            <Text style={{ color: token.colorTextSecondary }}>
+                                Uploaded menu: {result.identity.businessName}
+                            </Text>
+                        ) : null}
+                    </Flex>
+                ),
+                confirmText: decision.severity === 'confirm' ? 'Add here anyway' : 'Continue',
+                cancelText: canCreateNewProject
+                    ? 'Create new menu'
+                    : decision.primaryAction === 'upload_more'
+                        ? 'Upload more files'
+                        : 'Cancel',
+            });
+            if (confirmed) {
+                await maybeAcceptBusinessIdentitySuggestions(result);
+                return { action: 'continue', files: filesForExtraction, ignoredFiles };
+            }
+            if (!canCreateNewProject) return { action: 'cancel' };
+
+            try {
+                const languageCodes = currentProjectLanguages?.length ? currentProjectLanguages : ['en'];
+                const projectPayload: ProjectCreationPayload = {
+                    name: result?.identity?.businessName || t('myMenu'),
+                    languages: languageCodes,
+                    defaultLanguage: languageCodes[0] || 'en',
+                };
+                const newProject = await addProject(projectPayload);
+                if (!newProject?.projectId) {
+                    throw new Error(t('menuUploadCreateProjectFailed'));
+                }
+
+                Toast.show({ content: 'Created a new menu for this upload', duration: 1600 });
+                return {
+                    action: 'create_new_project',
+                    projectId: newProject.projectId,
+                    files: filesForExtraction,
+                    ignoredFiles,
+                };
+            } catch (createError: any) {
+                Toast.show({
+                    content: createError?.message || t('menuUploadCreateProjectFailed'),
+                    duration: 2400,
+                });
+                return { action: 'cancel' };
+            }
+        } catch (error: any) {
+            console.warn('[MobileMenuUpload] Intake preflight skipped:', error?.message || error);
+            return { action: 'continue', files, ignoredFiles: [] };
+        }
+    }, [currentProjectLanguages, maybeAcceptBusinessIdentitySuggestions, t, token.colorTextSecondary]);
+
     const handleUploadAndProcess = useCallback(async () => {
         if (!selectedFiles.length) return;
 
@@ -241,13 +418,6 @@ export default function MenuUploadSheet({
                     throw new Error(t('menuUploadCreateProjectFailed'));
                 }
                 projectId = newProject.projectId;
-            }
-
-            const existingJobId = await checkExistingActiveJob(projectId);
-            if (existingJobId) {
-                Toast.show({ content: t('menuUploadProcessingInProgress'), duration: 1800 });
-                onJobCreated({ jobId: existingJobId, projectId });
-                return;
             }
 
             const preparedFiles = await prepareFilesForUpload();
@@ -284,27 +454,57 @@ export default function MenuUploadSheet({
                 };
             }));
 
+            const intakeDecision = await confirmMenuIntakeDecision(projectId, uploadedFiles);
+            if (intakeDecision.action === 'cancel') {
+                await Promise.allSettled(uploadedFiles.map(file => deleteFileByUrl(file.url)));
+                setStep('review');
+                setProgress(0);
+                setStatusText('');
+                return;
+            }
+            await Promise.allSettled(intakeDecision.ignoredFiles.map(file => deleteFileByUrl(file.url)));
+            const filesForJob = intakeDecision.files;
+            if (filesForJob.length === 0) {
+                await Promise.allSettled(uploadedFiles.map(file => deleteFileByUrl(file.url)));
+                setStep('review');
+                setProgress(0);
+                setStatusText('');
+                return;
+            }
+            const targetProjectId = intakeDecision.action === 'create_new_project'
+                ? intakeDecision.projectId
+                : projectId;
+            projectId = targetProjectId;
+
+            const existingJobId = await checkExistingActiveJob(targetProjectId);
+            if (existingJobId) {
+                await Promise.allSettled(filesForJob.map(file => deleteFileByUrl(file.url)));
+                Toast.show({ content: t('menuUploadProcessingInProgress'), duration: 1800 });
+                onJobCreated({ jobId: existingJobId, projectId: targetProjectId });
+                return;
+            }
+
             setProgress(85);
             setStatusText(t('uploadCreatingJob'));
 
             const languageCodes = currentProjectLanguages?.length ? currentProjectLanguages : ['en'];
             const targetLanguages = GlobalLanguagesList.filter((language) => languageCodes.includes(language.code));
             const { jobId } = await createProcessingJob({
-                files: uploadedFiles,
+                files: filesForJob,
                 targetLanguages: targetLanguages.length
                     ? targetLanguages
                     : [{ code: 'en', name: 'English' }],
-                projectId,
+                projectId: targetProjectId,
             });
 
             setProgress(100);
-            onJobCreated({ jobId, projectId });
+            onJobCreated({ jobId, projectId: targetProjectId });
         } catch (error: any) {
             console.error('[MobileMenuUpload] Failed:', error);
             setErrorMessage(error?.message || t('menuUploadRetry'));
             setStep('error');
         }
-    }, [currentProjectId, currentProjectLanguages, onJobCreated, prepareFilesForUpload, selectedFiles, t]);
+    }, [confirmMenuIntakeDecision, currentProjectId, currentProjectLanguages, onJobCreated, prepareFilesForUpload, selectedFiles, t]);
 
     return (
         <Popup

@@ -65,7 +65,11 @@ interface OBPDailyData {
         copy_link?: number;
         copy_message?: number;
     };
+    viewsByEntrySource?: Record<string, number>;
     viewsBySource?: Record<string, number>;
+    obpActionClicksBySource?: Record<string, number>;
+    obpMenuClicksBySource?: Record<string, number>;
+    obpLinkClicksBySource?: Record<string, number>;
     viewsByDevice?: Record<string, number>;
     hourlyViews?: Record<string, number>;
 }
@@ -79,6 +83,11 @@ interface OBPAggregatedMetrics {
     obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
     obpLinkClicks: { google_review: number; instagram: number; facebook: number; website: number };
     obpShares: { whatsapp: number; copy_link: number; copy_message: number };
+    viewsByEntrySource: Record<string, number>;
+    viewsBySource: Record<string, number>;
+    obpActionClicksBySource: Record<string, number>;
+    obpMenuClicksBySource: Record<string, number>;
+    obpLinkClicksBySource: Record<string, number>;
     daysWithData: number;
 }
 
@@ -103,6 +112,11 @@ function emptyMetrics(): OBPAggregatedMetrics {
         obpActionClicks: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
         obpLinkClicks: { google_review: 0, instagram: 0, facebook: 0, website: 0 },
         obpShares: { whatsapp: 0, copy_link: 0, copy_message: 0 },
+        viewsByEntrySource: {},
+        viewsBySource: {},
+        obpActionClicksBySource: {},
+        obpMenuClicksBySource: {},
+        obpLinkClicksBySource: {},
         daysWithData: 0,
     };
 }
@@ -121,12 +135,81 @@ function toDashboardMetrics(metrics: OBPAggregatedMetrics) {
         actions: metrics.obpActionClicks,
         shareMethods: metrics.obpShares,
         links: metrics.obpLinkClicks,
+        sources: buildOBPSourceBreakdown(metrics),
         daysWithData: metrics.daysWithData,
     };
 }
 
 function readOBPCounter(data: Record<string, any>, mapName: string, key: string): number {
     return Number(data?.[mapName]?.[key] || data?.[`${mapName}.${key}`] || 0);
+}
+
+function readAnalyticsMap(data: Record<string, any> = {}, field: string): Record<string, number> {
+    const result: Record<string, number> = {};
+    Object.entries(data?.[field] || {}).forEach(([key, value]) => {
+        const numeric = Number(value || 0);
+        if (numeric > 0) result[key] = numeric;
+    });
+
+    const prefix = `${field}.`;
+    Object.entries(data || {}).forEach(([key, value]) => {
+        if (!key.startsWith(prefix)) return;
+        const numeric = Number(value || 0);
+        if (numeric > 0) result[key.slice(prefix.length)] = numeric;
+    });
+
+    return result;
+}
+
+function mergeNumericMap(target: Record<string, number>, source: Record<string, number> = {}) {
+    Object.entries(source).forEach(([key, value]) => {
+        const numeric = Number(value || 0);
+        if (numeric > 0) target[key] = (target[key] || 0) + numeric;
+    });
+}
+
+function sumNumericMaps(...maps: Array<Record<string, number> | undefined>): Record<string, number> {
+    const result: Record<string, number> = {};
+    maps.forEach((map) => mergeNumericMap(result, map || {}));
+    return result;
+}
+
+const OBP_SOURCE_LABELS: Record<string, string> = {
+    copy_link: 'Copied link',
+    direct: 'Direct link',
+    facebook: 'Facebook',
+    google: 'Google',
+    instagram: 'Instagram',
+    menu_kit: 'Menu kit',
+    native_share: 'Phone share',
+    obp: 'Official business page',
+    qr: 'QR / table scan',
+    shortcut: 'Customer app shortcut',
+    whatsapp: 'WhatsApp',
+    other: 'Other source',
+};
+
+function buildOBPSourceBreakdown(metrics: OBPAggregatedMetrics) {
+    const sourceIds = new Set<string>([
+        ...Object.keys(metrics.viewsByEntrySource || {}),
+        ...Object.keys(metrics.viewsBySource || {}),
+        ...Object.keys(metrics.obpActionClicksBySource || {}),
+        ...Object.keys(metrics.obpMenuClicksBySource || {}),
+        ...Object.keys(metrics.obpLinkClicksBySource || {}),
+    ]);
+
+    return Array.from(sourceIds)
+        .map((source) => ({
+            source,
+            label: OBP_SOURCE_LABELS[source] || source,
+            views: Math.max(metrics.viewsByEntrySource[source] || 0, metrics.viewsBySource[source] || 0),
+            actionClicks: metrics.obpActionClicksBySource[source] || 0,
+            menuClicks: metrics.obpMenuClicksBySource[source] || 0,
+            linkClicks: metrics.obpLinkClicksBySource[source] || 0,
+        }))
+        .filter((entry) => entry.views > 0 || entry.actionClicks > 0 || entry.menuClicks > 0 || entry.linkClicks > 0)
+        .sort((a, b) => (b.views + b.actionClicks + b.menuClicks + b.linkClicks) - (a.views + a.actionClicks + a.menuClicks + a.linkClicks))
+        .slice(0, 6);
 }
 
 function normalizeOBPActionClicks(data: Record<string, any> = {}) {
@@ -162,6 +245,11 @@ function normalizeOBPDailyData(data: OBPDailyData): OBPDailyData {
         obpActionClicks: normalizeOBPActionClicks(data as Record<string, any>),
         obpLinkClicks: normalizeOBPLinkClicks(data as Record<string, any>),
         obpShares: normalizeOBPShares(data as Record<string, any>),
+        viewsByEntrySource: readAnalyticsMap(data as Record<string, any>, 'viewsByEntrySource'),
+        viewsBySource: readAnalyticsMap(data as Record<string, any>, 'viewsBySource'),
+        obpActionClicksBySource: readAnalyticsMap(data as Record<string, any>, 'obpActionClicksBySource'),
+        obpMenuClicksBySource: readAnalyticsMap(data as Record<string, any>, 'obpMenuClicksBySource'),
+        obpLinkClicksBySource: readAnalyticsMap(data as Record<string, any>, 'obpLinkClicksBySource'),
     };
 }
 
@@ -196,6 +284,11 @@ function normalizeOBPLifetimeData(data: Record<string, any>): OBPDailyData {
             copy_link: readMapNumber('obpShares', 'copy_link'),
             copy_message: readMapNumber('obpShares', 'copy_message'),
         },
+        viewsByEntrySource: readAnalyticsMap(lifetime, 'viewsByEntrySource'),
+        viewsBySource: readAnalyticsMap(lifetime, 'viewsBySource'),
+        obpActionClicksBySource: readAnalyticsMap(lifetime, 'obpActionClicksBySource'),
+        obpMenuClicksBySource: readAnalyticsMap(lifetime, 'obpMenuClicksBySource'),
+        obpLinkClicksBySource: readAnalyticsMap(lifetime, 'obpLinkClicksBySource'),
     };
 }
 
@@ -220,6 +313,18 @@ function toDashboardDailyMetrics(data: OBPDailyData) {
         actions: normalized.obpActionClicks || emptyMetrics().obpActionClicks,
         shareMethods: normalized.obpShares || emptyMetrics().obpShares,
         links: normalized.obpLinkClicks || emptyMetrics().obpLinkClicks,
+        sources: buildOBPSourceBreakdown({
+            ...emptyMetrics(),
+            totalOBPViews: normalized.totalOBPViews || 0,
+            totalOBPActionClicks: normalized.totalOBPActionClicks || 0,
+            totalOBPMenuClicks: normalized.totalOBPMenuClicks || 0,
+            totalOBPLinkClicks: normalized.totalOBPLinkClicks || 0,
+            viewsByEntrySource: normalized.viewsByEntrySource || {},
+            viewsBySource: normalized.viewsBySource || {},
+            obpActionClicksBySource: normalized.obpActionClicksBySource || {},
+            obpMenuClicksBySource: normalized.obpMenuClicksBySource || {},
+            obpLinkClicksBySource: normalized.obpLinkClicksBySource || {},
+        }),
         daysWithData: 1,
     };
 }
@@ -236,6 +341,11 @@ function compactOBPAnalyticsDay(date: string, data: OBPDailyData) {
         obpActionClicks: normalized.obpActionClicks || {},
         obpLinkClicks: normalized.obpLinkClicks || {},
         obpShares: normalized.obpShares || {},
+        viewsByEntrySource: normalized.viewsByEntrySource || {},
+        viewsBySource: normalized.viewsBySource || {},
+        obpActionClicksBySource: normalized.obpActionClicksBySource || {},
+        obpMenuClicksBySource: normalized.obpMenuClicksBySource || {},
+        obpLinkClicksBySource: normalized.obpLinkClicksBySource || {},
     };
 }
 
@@ -344,6 +454,11 @@ async function applyLateOBPCorrection(
     addMapDelta('obpActionClicks', 'lifetime.obpActionClicks');
     addMapDelta('obpLinkClicks', 'lifetime.obpLinkClicks');
     addMapDelta('obpShares', 'lifetime.obpShares');
+    addMapDelta('viewsByEntrySource', 'lifetime.viewsByEntrySource');
+    addMapDelta('viewsBySource', 'lifetime.viewsBySource');
+    addMapDelta('obpActionClicksBySource', 'lifetime.obpActionClicksBySource');
+    addMapDelta('obpMenuClicksBySource', 'lifetime.obpMenuClicksBySource');
+    addMapDelta('obpLinkClicksBySource', 'lifetime.obpLinkClicksBySource');
 
     if (!hasDelta) return false;
 
@@ -437,6 +552,11 @@ function aggregateOBPDailyDocsFromMap(
         metrics.obpShares.whatsapp += data.obpShares?.whatsapp || 0;
         metrics.obpShares.copy_link += data.obpShares?.copy_link || 0;
         metrics.obpShares.copy_message += data.obpShares?.copy_message || 0;
+        mergeNumericMap(metrics.viewsByEntrySource, data.viewsByEntrySource || {});
+        mergeNumericMap(metrics.viewsBySource, data.viewsBySource || {});
+        mergeNumericMap(metrics.obpActionClicksBySource, data.obpActionClicksBySource || {});
+        mergeNumericMap(metrics.obpMenuClicksBySource, data.obpMenuClicksBySource || {});
+        mergeNumericMap(metrics.obpLinkClicksBySource, data.obpLinkClicksBySource || {});
         metrics.daysWithData++;
     }
 
@@ -562,6 +682,7 @@ export async function aggregateOBPAnalyticsForStoreDate(
     // Lifetime: accumulate from existing + today's new data
     // We recalculate lifetime from all-time by reading existing lifetime and adding delta
     const existingLifetime = normalizeOBPLifetimeData(existingData || {});
+    const normalizedYesterdayData = yesterdayData ? normalizeOBPDailyData(yesterdayData) : null;
 
     // For lifetime, we use a simple approach: store lifetime counters that get
     // updated by adding today's daily doc (yesterday's data) to existing lifetime
@@ -570,29 +691,34 @@ export async function aggregateOBPAnalyticsForStoreDate(
     const shouldIncrementLifetime = yesterdayData && lastProcessedDate < yesterdayStr;
 
     const lifetimeUpdate = shouldIncrementLifetime ? {
-        totalOBPViews: (existingLifetime.totalOBPViews || 0) + (yesterdayData?.totalOBPViews || 0),
-        totalOBPActionClicks: (existingLifetime.totalOBPActionClicks || 0) + (yesterdayData?.totalOBPActionClicks || 0),
-        totalOBPMenuClicks: (existingLifetime.totalOBPMenuClicks || 0) + (yesterdayData?.totalOBPMenuClicks || 0),
-        totalOBPLinkClicks: (existingLifetime.totalOBPLinkClicks || 0) + (yesterdayData?.totalOBPLinkClicks || 0),
-        totalOBPShares: (existingLifetime.totalOBPShares || 0) + (yesterdayData?.totalOBPShares || 0),
+        totalOBPViews: (existingLifetime.totalOBPViews || 0) + (normalizedYesterdayData?.totalOBPViews || 0),
+        totalOBPActionClicks: (existingLifetime.totalOBPActionClicks || 0) + (normalizedYesterdayData?.totalOBPActionClicks || 0),
+        totalOBPMenuClicks: (existingLifetime.totalOBPMenuClicks || 0) + (normalizedYesterdayData?.totalOBPMenuClicks || 0),
+        totalOBPLinkClicks: (existingLifetime.totalOBPLinkClicks || 0) + (normalizedYesterdayData?.totalOBPLinkClicks || 0),
+        totalOBPShares: (existingLifetime.totalOBPShares || 0) + (normalizedYesterdayData?.totalOBPShares || 0),
         obpActionClicks: {
-            call: (existingLifetime.obpActionClicks?.call || 0) + (yesterdayData?.obpActionClicks?.call || 0),
-            whatsapp: (existingLifetime.obpActionClicks?.whatsapp || 0) + (yesterdayData?.obpActionClicks?.whatsapp || 0),
-            directions: (existingLifetime.obpActionClicks?.directions || 0) + (yesterdayData?.obpActionClicks?.directions || 0),
-            reserve: (existingLifetime.obpActionClicks?.reserve || 0) + (yesterdayData?.obpActionClicks?.reserve || 0),
-            order: (existingLifetime.obpActionClicks?.order || 0) + (yesterdayData?.obpActionClicks?.order || 0),
+            call: (existingLifetime.obpActionClicks?.call || 0) + (normalizedYesterdayData?.obpActionClicks?.call || 0),
+            whatsapp: (existingLifetime.obpActionClicks?.whatsapp || 0) + (normalizedYesterdayData?.obpActionClicks?.whatsapp || 0),
+            directions: (existingLifetime.obpActionClicks?.directions || 0) + (normalizedYesterdayData?.obpActionClicks?.directions || 0),
+            reserve: (existingLifetime.obpActionClicks?.reserve || 0) + (normalizedYesterdayData?.obpActionClicks?.reserve || 0),
+            order: (existingLifetime.obpActionClicks?.order || 0) + (normalizedYesterdayData?.obpActionClicks?.order || 0),
         },
         obpLinkClicks: {
-            google_review: (existingLifetime.obpLinkClicks?.google_review || 0) + (yesterdayData?.obpLinkClicks?.google_review || 0),
-            instagram: (existingLifetime.obpLinkClicks?.instagram || 0) + (yesterdayData?.obpLinkClicks?.instagram || 0),
-            facebook: (existingLifetime.obpLinkClicks?.facebook || 0) + (yesterdayData?.obpLinkClicks?.facebook || 0),
-            website: (existingLifetime.obpLinkClicks?.website || 0) + (yesterdayData?.obpLinkClicks?.website || 0),
+            google_review: (existingLifetime.obpLinkClicks?.google_review || 0) + (normalizedYesterdayData?.obpLinkClicks?.google_review || 0),
+            instagram: (existingLifetime.obpLinkClicks?.instagram || 0) + (normalizedYesterdayData?.obpLinkClicks?.instagram || 0),
+            facebook: (existingLifetime.obpLinkClicks?.facebook || 0) + (normalizedYesterdayData?.obpLinkClicks?.facebook || 0),
+            website: (existingLifetime.obpLinkClicks?.website || 0) + (normalizedYesterdayData?.obpLinkClicks?.website || 0),
         },
         obpShares: {
-            whatsapp: (existingLifetime.obpShares?.whatsapp || 0) + (yesterdayData?.obpShares?.whatsapp || 0),
-            copy_link: (existingLifetime.obpShares?.copy_link || 0) + (yesterdayData?.obpShares?.copy_link || 0),
-            copy_message: (existingLifetime.obpShares?.copy_message || 0) + (yesterdayData?.obpShares?.copy_message || 0),
+            whatsapp: (existingLifetime.obpShares?.whatsapp || 0) + (normalizedYesterdayData?.obpShares?.whatsapp || 0),
+            copy_link: (existingLifetime.obpShares?.copy_link || 0) + (normalizedYesterdayData?.obpShares?.copy_link || 0),
+            copy_message: (existingLifetime.obpShares?.copy_message || 0) + (normalizedYesterdayData?.obpShares?.copy_message || 0),
         },
+        viewsByEntrySource: sumNumericMaps(existingLifetime.viewsByEntrySource, normalizedYesterdayData?.viewsByEntrySource),
+        viewsBySource: sumNumericMaps(existingLifetime.viewsBySource, normalizedYesterdayData?.viewsBySource),
+        obpActionClicksBySource: sumNumericMaps(existingLifetime.obpActionClicksBySource, normalizedYesterdayData?.obpActionClicksBySource),
+        obpMenuClicksBySource: sumNumericMaps(existingLifetime.obpMenuClicksBySource, normalizedYesterdayData?.obpMenuClicksBySource),
+        obpLinkClicksBySource: sumNumericMaps(existingLifetime.obpLinkClicksBySource, normalizedYesterdayData?.obpLinkClicksBySource),
     } : existingLifetime;
 
     const hasAnyData = currentWeekMetrics.daysWithData > 0 ||
@@ -641,6 +767,18 @@ export async function aggregateOBPAnalyticsForStoreDate(
         lifetimeActions: lifetimeUpdate.obpActionClicks || emptyMetrics().obpActionClicks,
         lifetimeShareMethods: lifetimeUpdate.obpShares || emptyMetrics().obpShares,
         lifetimeLinks: lifetimeUpdate.obpLinkClicks || emptyMetrics().obpLinkClicks,
+        lifetimeSources: buildOBPSourceBreakdown({
+            ...emptyMetrics(),
+            totalOBPViews: lifetimeUpdate.totalOBPViews || 0,
+            totalOBPActionClicks: lifetimeUpdate.totalOBPActionClicks || 0,
+            totalOBPMenuClicks: lifetimeUpdate.totalOBPMenuClicks || 0,
+            totalOBPLinkClicks: lifetimeUpdate.totalOBPLinkClicks || 0,
+            viewsByEntrySource: lifetimeUpdate.viewsByEntrySource || {},
+            viewsBySource: lifetimeUpdate.viewsBySource || {},
+            obpActionClicksBySource: lifetimeUpdate.obpActionClicksBySource || {},
+            obpMenuClicksBySource: lifetimeUpdate.obpMenuClicksBySource || {},
+            obpLinkClicksBySource: lifetimeUpdate.obpLinkClicksBySource || {},
+        }),
         firstDataDate: existingData?.firstDataDate || yesterdayStr,
         lastUpdated: FieldValue.serverTimestamp(),
     };

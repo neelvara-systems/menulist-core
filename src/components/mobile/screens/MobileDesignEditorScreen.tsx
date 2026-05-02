@@ -11,6 +11,7 @@ import {
 } from '@config/designSystem';
 import useViewportInfo from '@hook/useViewportInfo';
 import { publishProject } from '@database/projects';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -261,7 +262,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     };
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
-        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url
+        withAnalyticsSource(
+            url,
+            src === 'copy' ? 'copy_link' : src === 'share' ? 'native_share' : src,
+        )
     ), []);
 
     const handleCopyLink = useCallback(async (value: string, label: string) => {

@@ -5,6 +5,7 @@ import {
     OBPHistoricalWeek,
     OBPPeriodMetrics,
     OBPShareBreakdown,
+    OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import { Card, Col, Divider, Empty, Flex, Row, Statistic, Tag, Typography } from 'antd';
@@ -82,6 +83,36 @@ function LinkBreakdown({ links }: { links: OBPLinkBreakdown }) {
     );
 }
 
+function SourceBreakdown({ sources }: { sources?: OBPSourceBreakdown[] }) {
+    const rows = (sources || []).filter((source) => (
+        source.views > 0 || source.actionClicks > 0 || source.menuClicks > 0 || source.linkClicks > 0
+    ));
+    if (!rows.length) return null;
+
+    return (
+        <div>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                Visitor sources
+            </Text>
+            <Flex gap={8} wrap="wrap">
+                {rows.slice(0, 6).map((source) => (
+                    <Card key={source.source} size="small" styles={{ body: { padding: '8px 10px' } }}>
+                        <Flex vertical gap={2}>
+                            <Text strong style={{ fontSize: 12 }}>{source.label}</Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                {source.views.toLocaleString()} views
+                                {source.menuClicks > 0 ? ` · ${source.menuClicks.toLocaleString()} menu` : ''}
+                                {source.actionClicks > 0 ? ` · ${source.actionClicks.toLocaleString()} actions` : ''}
+                                {source.linkClicks > 0 ? ` · ${source.linkClicks.toLocaleString()} links` : ''}
+                            </Text>
+                        </Flex>
+                    </Card>
+                ))}
+            </Flex>
+        </div>
+    );
+}
+
 function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
     if (weeks.length === 0) return null;
     const maxViews = Math.max(...weeks.map((week) => week.views), 1);
@@ -149,6 +180,9 @@ function renderPeriodGrid(metrics: OBPPeriodMetrics) {
             </div>
             <div style={{ marginTop: 12 }}>
                 <ShareBreakdown shares={metrics.shareMethods} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+                <SourceBreakdown sources={metrics.sources} />
             </div>
         </>
     );
@@ -270,6 +304,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                             <div style={{ marginTop: 12 }}>
                                 <ShareBreakdown shares={overview.wtd.shareMethods} />
                             </div>
+                            <div style={{ marginTop: 12 }}>
+                                <SourceBreakdown sources={overview.wtd.sources} />
+                            </div>
                         </>
                     ) : (
                         <Empty description={<Text type="secondary">No settled OBP activity yet.</Text>} />
@@ -317,6 +354,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     </div>
                     <div style={{ marginTop: 12 }}>
                         <ShareBreakdown shares={overall.lifetimeShareMethods} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <SourceBreakdown sources={overall.lifetimeSources} />
                     </div>
                 </>
             ) : null}

@@ -1,5 +1,6 @@
 'use client';
 
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { LuClipboard, LuCopy, LuExternalLink } from 'react-icons/lu';
@@ -27,8 +28,9 @@ export default function ShareLinkCard({
 }: ShareLinkCardProps) {
     const { token } = theme.useToken();
 
-    const withSrc = (src: 'copy' | 'whatsapp' | 'direct') =>
-        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
+    const withSrc = (src: 'copy' | 'whatsapp' | 'direct') => (
+        withAnalyticsSource(url, src === 'copy' ? 'copy_link' : src)
+    );
 
     const handleCopy = async () => {
         try {

@@ -2,6 +2,7 @@
 
 import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
@@ -779,8 +780,9 @@ export default function MobileProjectSelectorSheet({
         }
     };
 
-    const withSource = (url: string, src: 'copy' | 'direct' | 'qr') =>
-        `${url}${url.includes('?') ? '&' : '?'}src=${src}`;
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr') => (
+        withAnalyticsSource(url, src === 'copy' ? 'copy_link' : src)
+    );
 
     const handleCopyProjectLink = async (project: ProjectSheetProject) => {
         const shareUrl = getProjectShareUrl(project);

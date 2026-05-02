@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectsList } from '@database/projects';
 import { isOBPAnalyticsEnabled } from '@lib/analytics/preferences';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackOBPShare } from '@lib/analytics/unified';
 import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
 import { slugify } from '@lib/utils/slugify';
@@ -60,10 +61,13 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     if (!obpUrl) return null;
 
     const storeId = storeDetails?.storeId;
+    const obpCopyUrl = withAnalyticsSource(obpUrl, 'copy_link');
+    const obpWhatsAppUrl = withAnalyticsSource(obpUrl, 'whatsapp');
+    const obpOpenUrl = withAnalyticsSource(obpUrl, 'direct');
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(obpUrl);
+            await navigator.clipboard.writeText(obpCopyUrl);
             setCopied(true);
             message.success('Link copied');
             setTimeout(() => setCopied(false), 2000);
@@ -74,7 +78,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     };
 
     const handleCopyMessage = async () => {
-        const msg = `Here's our menu, timings & location:\n${obpUrl}`;
+        const msg = `Here's our menu, timings & location:\n${obpCopyUrl}`;
         try {
             await navigator.clipboard.writeText(msg);
             message.success('Message copied — paste it in WhatsApp or anywhere');
@@ -86,13 +90,13 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
 
     const handleWhatsAppShare = () => {
         const storeName = storeDetails?.name || 'our business';
-        const msg = `${storeName} — menu, timings & contact:\n${obpUrl}`;
+        const msg = `${storeName} — menu, timings & contact:\n${obpWhatsAppUrl}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'whatsapp', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
     };
 
     const handleOpen = () => {
-        window.open(obpUrl, '_blank', 'noopener,noreferrer');
+        window.open(obpOpenUrl, '_blank', 'noopener,noreferrer');
     };
 
     const handleDownloadQr = () => {
@@ -105,7 +109,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         a.click();
     };
 
-    const activeQrUrl = qrType === 'menu' ? menuUrl : obpUrl;
+    const activeQrUrl = withAnalyticsSource(qrType === 'menu' ? menuUrl : obpUrl, 'qr');
 
     return (
         <Card style={{ marginBottom: 16 }}>

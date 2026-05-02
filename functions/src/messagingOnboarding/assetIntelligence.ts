@@ -9,6 +9,11 @@
 
 import * as functions from "firebase-functions";
 import { genAIClient } from "../genAiClient";
+import {
+  buildMenuIntakeIdentityPrompt,
+  normalizeMenuIntakeIdentityResult,
+  RawMenuIntakeIdentityResult,
+} from "../sharedData/menuIntakeIdentity";
 import { AssetValidationResult, SessionUpload } from "../types/messagingOnboarding.types";
 
 const logger = functions.logger;
@@ -26,9 +31,10 @@ export async function validateAssets(
   const imageParts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }> = [];
 
   // Add instruction text
-  imageParts.push({ text: buildValidationPrompt(uploads.length) });
+  imageParts.push({ text: buildMenuIntakeIdentityPrompt(uploads.length) });
 
   // Download and encode each upload as base64 for Gemini
+  let readableUploadCount = 0;
   for (let i = 0; i < uploads.length; i++) {
     const upload = uploads[i];
     try {
@@ -43,6 +49,8 @@ export async function validateAssets(
       const buffer = Buffer.from(await response.arrayBuffer());
       const base64 = buffer.toString("base64");
 
+      readableUploadCount += 1;
+      imageParts.push({ text: `File ${i + 1}` });
       imageParts.push({
         inlineData: {
           mimeType: upload.mimeType,
@@ -55,6 +63,10 @@ export async function validateAssets(
         error: (err as Error).message,
       });
     }
+  }
+
+  if (readableUploadCount === 0) {
+    return fallbackValidationResult(uploads);
   }
 
   // Call Gemini API via gateway (key rotation + retry protection)
@@ -71,8 +83,8 @@ export async function validateAssets(
   const responseText = geminiResult?.text || "";
 
   try {
-    const parsed = JSON.parse(responseText) as AssetValidationResult;
-    return normalizeValidationResult(parsed, uploads.length);
+    const parsed = parseGeminiJson(responseText) as RawMenuIntakeIdentityResult;
+    return toAssetValidationResult(parsed, uploads.length);
   } catch (parseErr) {
     logger.error("[AssetIntelligence] Failed to parse Gemini response", {
       responseText: responseText.slice(0, 500),
@@ -80,142 +92,64 @@ export async function validateAssets(
     });
 
     // Fallback: treat all files as valid menu files with low confidence
-    return {
-      valid_menu_files: uploads.map((_, i) => i + 1),
-      invalid_files: [],
-      menu_completeness: "likely_complete",
-      confidence: "low",
-      extracted_business_info: {
-        business_name: null,
-        phone_number: null,
-        address: null,
-        logo_present: false,
-        cuisine_hint: null,
-        confidence: "low",
-      },
-      detected_business_type: {
-        business_type: "Restaurant",
-        business_category: "food",
-        type_confidence: "low",
-      },
-    };
+    return fallbackValidationResult(uploads);
   }
 }
 
-/**
- * Build the validation prompt for Gemini
- * @see __docs__/messaging-onboarding/messaging-onboarding_impl.md §8.4
- */
-function buildValidationPrompt(fileCount: number): string {
-  return `You are a menu validation system. Analyze the provided ${fileCount} image(s)/document(s) and return ONLY valid JSON.
-
-For each file (numbered 1 to ${fileCount} in order), determine:
-1. Is this an actual menu page with items and prices? (not a logo, interior photo, selfie, etc.)
-2. Is there business information visible? (name, phone, address)
-3. What type of business is this? (detect from menu content, items, services, pricing patterns)
-
-Return this exact JSON structure:
-{
-  "valid_menu_files": [1, 3, 4],
-  "invalid_files": [2, 5],
-  "menu_completeness": "likely_complete",
-  "confidence": "high",
-  "extracted_business_info": {
-    "business_name": "string or null",
-    "phone_number": "string or null",
-    "address": "string or null",
-    "logo_present": true,
-    "cuisine_hint": "string or null",
-    "confidence": "high"
-  },
-  "detected_business_type": {
-    "business_type": "Restaurant",
-    "business_category": "food",
-    "type_confidence": "high"
+function parseGeminiJson(text: string): RawMenuIntakeIdentityResult {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fenced ? fenced[1].trim() : trimmed;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    const objectMatch = candidate.match(/\{[\s\S]*\}/);
+    if (!objectMatch) throw new Error("No JSON object found in Gemini response");
+    return JSON.parse(objectMatch[0]);
   }
 }
 
-BUSINESS TYPE RULES:
-- Food menus (items + prices) → category "food", type from: Restaurant, Cafe, Bakery, Bar, Fast Food, Cloud Kitchen, Food Truck, Ice Cream
-- Service price lists (salon, spa, gym) → category "service" or "health", type from: Salon, Spa, Gym, Clinic
-- If unsure → { "business_type": "Restaurant", "business_category": "food", "type_confidence": "low" }
-
-VALIDATION RULES:
-- Valid menu: contains item names AND prices OR service list with pricing
-- Invalid: logos, interiors, people, business cards, GST certificates, random photos, personal documents
-- menu_completeness: "likely_complete" if most categories seem present, "partial" if obvious gaps, "insufficient" if too few items
-- confidence: "high" if clear menu, "medium" if readable but unclear, "low" if poor quality
-- Extract business info aggressively — even low confidence is useful
-- Return ONLY JSON, no other text`;
-}
-
-/**
- * Normalize and sanitize Gemini response
- */
-function normalizeValidationResult(
-  raw: AssetValidationResult,
-  totalFiles: number,
-): AssetValidationResult {
-  // Ensure valid_menu_files and invalid_files are arrays of numbers within range
-  const validFiles = (raw.valid_menu_files || []).filter(
-    (n) => typeof n === "number" && n >= 1 && n <= totalFiles,
-  );
-  const invalidFiles = (raw.invalid_files || []).filter(
-    (n) => typeof n === "number" && n >= 1 && n <= totalFiles,
-  );
-
-  // Default completeness
-  const completeness = ["complete", "likely_complete", "partial", "insufficient"].includes(
-    raw.menu_completeness,
-  )
-    ? raw.menu_completeness
-    : "likely_complete";
-
-  // Default confidence
-  const confidence = ["high", "medium", "low"].includes(raw.confidence)
-    ? raw.confidence
-    : "low";
-
-  // Default business info
-  const bizInfo = raw.extracted_business_info || {
-    business_name: null,
-    phone_number: null,
-    address: null,
-    logo_present: false,
-    cuisine_hint: null,
-    confidence: "low" as const,
-  };
-
-  // Default business type
-  const bizType = raw.detected_business_type || {
-    business_type: "Restaurant",
-    business_category: "food",
-    type_confidence: "low" as const,
-  };
-
+function fallbackValidationResult(uploads: SessionUpload[]): AssetValidationResult {
   return {
-    valid_menu_files: validFiles,
-    invalid_files: invalidFiles,
-    menu_completeness: completeness,
-    confidence,
+    valid_menu_files: uploads.map((_, i) => i + 1),
+    invalid_files: [],
+    menu_completeness: "likely_complete",
+    confidence: "low",
     extracted_business_info: {
-      business_name: bizInfo.business_name || null,
-      phone_number: bizInfo.phone_number || null,
-      address: bizInfo.address || null,
-      logo_present: !!bizInfo.logo_present,
-      cuisine_hint: bizInfo.cuisine_hint || null,
-      confidence: ["high", "medium", "low"].includes(bizInfo.confidence)
-        ? bizInfo.confidence
-        : "low",
+      business_name: null,
+      phone_number: null,
+      address: null,
+      logo_present: false,
+      cuisine_hint: null,
+      confidence: "low",
     },
     detected_business_type: {
-      business_type: bizType.business_type || "Restaurant",
-      business_category: bizType.business_category || "food",
-      type_confidence: ["high", "medium", "low"].includes(
-        bizType.type_confidence,
-      )
-        ? bizType.type_confidence
-        : "low",
+      business_type: "Restaurant",
+      business_category: "food",
+      type_confidence: "low",
+    },
+  };
+}
+
+function toAssetValidationResult(raw: RawMenuIntakeIdentityResult, totalFiles: number): AssetValidationResult {
+  const normalized = normalizeMenuIntakeIdentityResult(raw, totalFiles);
+  return {
+    valid_menu_files: normalized.validation.validMenuFileIndexes,
+    invalid_files: normalized.validation.invalidFileIndexes,
+    menu_completeness: normalized.validation.menuCompleteness,
+    confidence: normalized.validation.confidence,
+    extracted_business_info: {
+      business_name: normalized.identity.businessName,
+      phone_number: normalized.identity.phoneNumber,
+      address: normalized.identity.address,
+      logo_present: false,
+      cuisine_hint: null,
+      confidence: normalized.identity.confidence,
+    },
+    detected_business_type: {
+      business_type: normalized.identity.businessType || "Restaurant",
+      business_category: normalized.identity.businessCategory || "food",
+      type_confidence: normalized.identity.confidence,
     },
   };
 }

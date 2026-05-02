@@ -1,4 +1,5 @@
 import { LOGO_SMALL } from '@constant/common';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { Button, Checkbox, ColorPicker, Flex, QRCode, Typography, message } from 'antd';
 import { useState } from 'react';
 import { LuDownload } from 'react-icons/lu';
@@ -10,8 +11,7 @@ interface QRCodeViewProps {
 }
 
 function withQrEntrySource(url: string): string {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}utm_source=qr&entry_source=qr`;
+    return withAnalyticsSource(url, 'qr');
 }
 
 function QRCodeView({ shareUrl }: QRCodeViewProps) {

@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
 import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
 import React from 'react';
 import { FaFacebook, FaInstagram, FaLine, FaLinkedin, FaTelegram, FaVk, FaWeixin, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
@@ -19,8 +20,8 @@ interface SocialPlatform {
 
 function withEntrySource(url: string, source: string): string {
     const normalizedSource = source.toLowerCase();
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}utm_source=${normalizedSource}&entry_source=${normalizedSource}`;
+    const supportedSources = new Set(['whatsapp', 'facebook', 'instagram', 'google']);
+    return withAnalyticsSource(url, supportedSources.has(normalizedSource) ? normalizedSource as AnalyticsEntrySource : 'other');
 }
 
 function SocialShareView({ shareUrl }: SocialShareViewProps) {

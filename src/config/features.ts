@@ -1088,6 +1088,18 @@ export const FEATURE_FLAGS = {
     ENABLE_MESSAGING_ONBOARDING_TRACKING: true,
 
     // ─────────────────────────────────────────────────────────────
+    // MENU INTAKE IDENTITY (Shared upload preflight)
+    // @see __docs__/menu-intake-identity/
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Runs a lightweight identity and safety check before full menu extraction.
+     * Used to detect non-menu files, partial uploads, and strong existing-project
+     * mismatches before creating the normal extraction job.
+     */
+    ENABLE_MENU_INTAKE_IDENTITY: true,
+
+    // ─────────────────────────────────────────────────────────────
     // AGENT DISCOVERY (Machine-Readable Business Truth)
     // @see __docs__/agent-readiness-strategy/
     // ─────────────────────────────────────────────────────────────

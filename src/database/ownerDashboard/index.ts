@@ -1610,6 +1610,15 @@ export interface OBPLinkBreakdown {
     website: number;
 }
 
+export interface OBPSourceBreakdown {
+    source: string;
+    label: string;
+    views: number;
+    actionClicks: number;
+    menuClicks: number;
+    linkClicks: number;
+}
+
 export interface OBPPeriodMetrics {
     views: number;
     actionClicks: number;
@@ -1619,6 +1628,7 @@ export interface OBPPeriodMetrics {
     actions: OBPActionBreakdown;
     shareMethods: OBPShareBreakdown;
     links: OBPLinkBreakdown;
+    sources: OBPSourceBreakdown[];
     daysWithData: number;
 }
 
@@ -1656,6 +1666,7 @@ export interface OBPOverallData {
     lifetimeActions: OBPActionBreakdown;
     lifetimeShareMethods: OBPShareBreakdown;
     lifetimeLinks: OBPLinkBreakdown;
+    lifetimeSources: OBPSourceBreakdown[];
     firstDataDate?: string;
     lastUpdated?: Date;
 }
@@ -1678,12 +1689,68 @@ interface OBPDailyDoc {
     obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
     obpShares: OBPShareBreakdown;
     obpLinkClicks: OBPLinkBreakdown;
+    viewsByEntrySource: Record<string, number>;
+    viewsBySource: Record<string, number>;
+    obpActionClicksBySource: Record<string, number>;
+    obpMenuClicksBySource: Record<string, number>;
+    obpLinkClicksBySource: Record<string, number>;
 }
 
 // ── OBP Aggregation Helpers ──
 
 function readOBPCounter(data: Record<string, any>, mapName: string, key: string): number {
     return Number(data?.[mapName]?.[key] || data?.[`${mapName}.${key}`] || 0);
+}
+
+const OBP_SOURCE_LABELS: Record<string, string> = {
+    copy_link: 'Copied link',
+    direct: 'Direct link',
+    facebook: 'Facebook',
+    google: 'Google',
+    instagram: 'Instagram',
+    menu_kit: 'Menu kit',
+    native_share: 'Phone share',
+    obp: 'Official business page',
+    qr: 'QR / table scan',
+    shortcut: 'Customer app shortcut',
+    whatsapp: 'WhatsApp',
+    other: 'Other source',
+};
+
+function sumOBPMap(target: Record<string, number>, source: Record<string, number> = {}) {
+    Object.entries(source || {}).forEach(([key, value]) => {
+        const numeric = Number(value || 0);
+        if (numeric > 0) target[key] = (target[key] || 0) + numeric;
+    });
+}
+
+function buildOBPSourceBreakdown(data: {
+    viewsByEntrySource?: Record<string, number>;
+    viewsBySource?: Record<string, number>;
+    obpActionClicksBySource?: Record<string, number>;
+    obpMenuClicksBySource?: Record<string, number>;
+    obpLinkClicksBySource?: Record<string, number>;
+}): OBPSourceBreakdown[] {
+    const sourceIds = new Set<string>([
+        ...Object.keys(data.viewsByEntrySource || {}),
+        ...Object.keys(data.viewsBySource || {}),
+        ...Object.keys(data.obpActionClicksBySource || {}),
+        ...Object.keys(data.obpMenuClicksBySource || {}),
+        ...Object.keys(data.obpLinkClicksBySource || {}),
+    ]);
+
+    return Array.from(sourceIds)
+        .map((source) => ({
+            source,
+            label: OBP_SOURCE_LABELS[source] || source,
+            views: Math.max(data.viewsByEntrySource?.[source] || 0, data.viewsBySource?.[source] || 0),
+            actionClicks: data.obpActionClicksBySource?.[source] || 0,
+            menuClicks: data.obpMenuClicksBySource?.[source] || 0,
+            linkClicks: data.obpLinkClicksBySource?.[source] || 0,
+        }))
+        .filter((entry) => entry.views > 0 || entry.actionClicks > 0 || entry.menuClicks > 0 || entry.linkClicks > 0)
+        .sort((a, b) => (b.views + b.actionClicks + b.menuClicks + b.linkClicks) - (a.views + a.actionClicks + a.menuClicks + a.linkClicks))
+        .slice(0, 6);
 }
 
 function readOBPActionBreakdown(data: Record<string, any>): OBPActionBreakdown {
@@ -1750,6 +1817,11 @@ async function fetchOBPDailyDocs(
                 obpActionClicks: readOBPActionBreakdown(data),
                 obpShares: readOBPShareBreakdown(data),
                 obpLinkClicks: readOBPLinkBreakdown(data),
+                viewsByEntrySource: readAnalyticsMap(data, 'viewsByEntrySource'),
+                viewsBySource: readAnalyticsMap(data, 'viewsBySource'),
+                obpActionClicksBySource: readAnalyticsMap(data, 'obpActionClicksBySource'),
+                obpMenuClicksBySource: readAnalyticsMap(data, 'obpMenuClicksBySource'),
+                obpLinkClicksBySource: readAnalyticsMap(data, 'obpLinkClicksBySource'),
             });
         }
     }
@@ -1767,7 +1839,15 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         actions: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
         shareMethods: { whatsapp: 0, copy_link: 0, copy_message: 0 },
         links: { google_review: 0, instagram: 0, facebook: 0, website: 0 },
+        sources: [],
         daysWithData: docs.length,
+    };
+    const sourceAccumulator = {
+        viewsByEntrySource: {} as Record<string, number>,
+        viewsBySource: {} as Record<string, number>,
+        obpActionClicksBySource: {} as Record<string, number>,
+        obpMenuClicksBySource: {} as Record<string, number>,
+        obpLinkClicksBySource: {} as Record<string, number>,
     };
 
     for (const d of docs) {
@@ -1788,8 +1868,14 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         result.links.instagram += d.obpLinkClicks.instagram;
         result.links.facebook += d.obpLinkClicks.facebook;
         result.links.website += d.obpLinkClicks.website;
+        sumOBPMap(sourceAccumulator.viewsByEntrySource, d.viewsByEntrySource);
+        sumOBPMap(sourceAccumulator.viewsBySource, d.viewsBySource);
+        sumOBPMap(sourceAccumulator.obpActionClicksBySource, d.obpActionClicksBySource);
+        sumOBPMap(sourceAccumulator.obpMenuClicksBySource, d.obpMenuClicksBySource);
+        sumOBPMap(sourceAccumulator.obpLinkClicksBySource, d.obpLinkClicksBySource);
     }
 
+    result.sources = buildOBPSourceBreakdown(sourceAccumulator);
     return result;
 }
 
@@ -1804,6 +1890,13 @@ function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayDat
         actions: readOBPActionBreakdown(data),
         shareMethods: readOBPShareBreakdown(data),
         links: readOBPLinkBreakdown(data),
+        sources: buildOBPSourceBreakdown({
+            viewsByEntrySource: readAnalyticsMap(data, 'viewsByEntrySource'),
+            viewsBySource: readAnalyticsMap(data, 'viewsBySource'),
+            obpActionClicksBySource: readAnalyticsMap(data, 'obpActionClicksBySource'),
+            obpMenuClicksBySource: readAnalyticsMap(data, 'obpMenuClicksBySource'),
+            obpLinkClicksBySource: readAnalyticsMap(data, 'obpLinkClicksBySource'),
+        }),
         daysWithData: 1,
         isPartial: true,
         lastUpdated: data.lastUpdated?.toDate?.() || undefined,
@@ -1856,6 +1949,7 @@ export async function getOBPDashboardOverview(
                 actions: yesterdayDoc.obpActionClicks,
                 shareMethods: yesterdayDoc.obpShares,
                 links: yesterdayDoc.obpLinkClicks,
+                sources: buildOBPSourceBreakdown(yesterdayDoc),
                 daysWithData: 1,
             } : null;
 
@@ -2008,6 +2102,13 @@ export async function getOBPDashboardOverall(
                     facebook: readOBPLifetimeMapCounter(data, lifetime, 'obpLinkClicks', 'facebook'),
                     website: readOBPLifetimeMapCounter(data, lifetime, 'obpLinkClicks', 'website'),
                 },
+                lifetimeSources: buildOBPSourceBreakdown({
+                    viewsByEntrySource: readAnalyticsMap(lifetime, 'viewsByEntrySource'),
+                    viewsBySource: readAnalyticsMap(lifetime, 'viewsBySource'),
+                    obpActionClicksBySource: readAnalyticsMap(lifetime, 'obpActionClicksBySource'),
+                    obpMenuClicksBySource: readAnalyticsMap(lifetime, 'obpMenuClicksBySource'),
+                    obpLinkClicksBySource: readAnalyticsMap(lifetime, 'obpLinkClicksBySource'),
+                }),
                 firstDataDate: data.firstDataDate,
                 lastUpdated: data.modifiedOn?.toDate?.() || undefined,
             };
@@ -2032,10 +2133,21 @@ export async function getOBPDashboardData(
 
             if (summarySnap.exists()) {
                 const data = summarySnap.data();
+                const normalizeOBPPeriod = (period: any) => period ? {
+                    ...period,
+                    sources: period.sources || [],
+                } : null;
+                const overview = data.overview ? {
+                    ...data.overview,
+                    yesterday: normalizeOBPPeriod(data.overview.yesterday),
+                    wtd: normalizeOBPPeriod(data.overview.wtd),
+                    mtd: normalizeOBPPeriod(data.overview.mtd),
+                } : null;
                 return {
-                    overview: data.overview || null,
+                    overview,
                     overall: data.overall ? {
                         ...data.overall,
+                        lifetimeSources: data.overall.lifetimeSources || [],
                         lastUpdated: parseDateValue(data.overall.lastUpdated),
                     } : null,
                     lastFetched: new Date(),

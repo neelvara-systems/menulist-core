@@ -1,5 +1,3 @@
-'use client';
-
 export type AnalyticsEntrySource =
     | 'copy_link'
     | 'direct'

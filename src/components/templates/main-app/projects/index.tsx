@@ -3,8 +3,10 @@
 import LoadingMessage from '@antdComponent/loadingMessage';
 import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
+import { updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import useDeviceType from '@hook/useDeviceType';
@@ -16,13 +18,15 @@ import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
+import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { getBase64, removeObjRef } from '@util/utils';
-import { Button, Flex, Form, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Checkbox, Flex, Form, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
 import type { UploadFileStatus, UploadProps } from 'antd/es/upload/interface';
 import DOMPurify from 'isomorphic-dompurify';
 import { useTranslations } from 'next-intl';
@@ -63,6 +67,58 @@ import { generateMenuFileUid } from './utils';
 import { validateFile } from './validation';
 import { WelcomeModal } from './WelcomeModal';
 
+type MenuIntakeDecisionResult =
+    | { action: 'continue'; files: MenuFileToProcess[]; ignoredFiles: MenuFileToProcess[] }
+    | { action: 'cancel' }
+    | { action: 'create_new_project'; projectId: string; projectMetadata: ProjectMetadata; files: MenuFileToProcess[]; ignoredFiles: MenuFileToProcess[] };
+
+type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
+    defaultLanguage?: string;
+    languages?: string[];
+};
+
+function BusinessIdentitySuggestionList({
+    onSelectionChange,
+    suggestions,
+}: {
+    onSelectionChange: (fields: BusinessIdentitySuggestionField[]) => void;
+    suggestions: BusinessIdentitySuggestion[];
+}) {
+    const [selectedFields, setSelectedFields] = useState<BusinessIdentitySuggestionField[]>(
+        suggestions.map((suggestion) => suggestion.field),
+    );
+
+    useEffect(() => {
+        onSelectionChange(selectedFields);
+    }, [onSelectionChange, selectedFields]);
+
+    return (
+        <Flex gap={10} vertical>
+            <Typography.Text>
+                We found business details in the upload. Save only the details you want to use.
+            </Typography.Text>
+            {suggestions.map((suggestion) => (
+                <Checkbox
+                    checked={selectedFields.includes(suggestion.field)}
+                    key={suggestion.field}
+                    onChange={(event) => {
+                        setSelectedFields((current) => event.target.checked
+                            ? [...current, suggestion.field]
+                            : current.filter((field) => field !== suggestion.field));
+                    }}
+                >
+                    <Flex gap={2} vertical>
+                        <Typography.Text strong>{suggestion.label}: {suggestion.value}</Typography.Text>
+                        {suggestion.currentValue ? (
+                            <Typography.Text type="secondary">Current: {suggestion.currentValue}</Typography.Text>
+                        ) : null}
+                    </Flex>
+                </Checkbox>
+            ))}
+        </Flex>
+    );
+}
+
 // B2CView ref interface for calling functions from parent
 interface B2CViewRef {
     publish: () => Promise<void>;
@@ -92,7 +148,7 @@ function ProjectsPage() {
     const b2cViewRef = useRef<B2CViewRef>(null);
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [pdfFiles, setPdfFiles] = useState<{ images: ConvertedImageType[]; action: string } | null>({ images: [], action: "" });
-    const { tenantDetails, storeDetails, activeSubscription } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { tenantDetails, storeDetails, setStoreDetails, activeSubscription } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [pdfPagesCount, setPdfPagesCount] = useState(null);
     const cancelPdfRef = useRef(false); // Ref for immediate access in async operations
     const dispatch = useAppDispatch()
@@ -970,10 +1026,164 @@ function ProjectsPage() {
      * - Data redistribution
      * - Saving to project
      */
+    const maybeAcceptBusinessIdentitySuggestions = useCallback(async (
+        result: Awaited<ReturnType<typeof runMenuIntakeIdentityPreflight>> | null,
+    ) => {
+        const suggestions = buildBusinessIdentitySuggestions(result, storeDetails);
+        if (!suggestions.length || !storeDetails?.storeId) return;
+
+        let selectedFields = suggestions.map((suggestion) => suggestion.field);
+        await new Promise<void>((resolve) => {
+            Modal.confirm({
+                title: 'Save detected business details?',
+                content: (
+                    <BusinessIdentitySuggestionList
+                        suggestions={suggestions}
+                        onSelectionChange={(fields) => {
+                            selectedFields = fields;
+                        }}
+                    />
+                ),
+                okText: 'Save selected',
+                cancelText: 'Skip',
+                onCancel: () => resolve(),
+                onOk: async () => {
+                    if (!selectedFields.length) {
+                        resolve();
+                        return;
+                    }
+
+                    const updates = buildBusinessIdentityUpdatePayload(suggestions, selectedFields);
+                    if (!Object.keys(updates).length) {
+                        resolve();
+                        return;
+                    }
+
+                    try {
+                        await updateStore({
+                            storeId: storeDetails.storeId,
+                            tenantId: storeDetails.tenantId,
+                            ...updates,
+                        });
+                        setStoreDetails((previous: any) => ({ ...previous, ...updates }));
+                        message.success('Business details updated');
+                    } catch (error: any) {
+                        message.error(error?.message || 'Could not update business details.');
+                    } finally {
+                        resolve();
+                    }
+                },
+            });
+        });
+    }, [setStoreDetails, storeDetails]);
+
+    const confirmMenuIntakeDecision = useCallback(async (
+        projectId: string,
+        files: MenuFileToProcess[],
+        sourceProject: Project,
+    ): Promise<MenuIntakeDecisionResult> => {
+        try {
+            const result = await runMenuIntakeIdentityPreflight({ projectId, files });
+            const decision = result?.decision;
+            const validIndexes = new Set(result?.validation?.validMenuFileIndexes || files.map((_, index) => index + 1));
+            const filesForExtraction = files.filter((_, index) => validIndexes.has(index + 1));
+            const ignoredFiles = files.filter((_, index) => !validIndexes.has(index + 1));
+
+            if (filesForExtraction.length === 0) {
+                message.error('We could not find a clear menu or price list in this upload.');
+                return { action: 'cancel' };
+            }
+
+            if (!decision || decision.severity === 'none') {
+                await maybeAcceptBusinessIdentitySuggestions(result);
+                return { action: 'continue', files: filesForExtraction, ignoredFiles };
+            }
+
+            if (decision.severity === 'block') {
+                message.error(decision.message);
+                return { action: 'cancel' };
+            }
+
+            return await new Promise<MenuIntakeDecisionResult>((resolve) => {
+                const canCreateNewProject = decision.secondaryAction === 'create_new_project';
+                Modal.confirm({
+                    title: decision.title,
+                    content: (
+                        <Flex gap={8} vertical>
+                            <Typography.Text>{decision.message}</Typography.Text>
+                            {result?.identity?.businessName ? (
+                                <Typography.Text type="secondary">
+                                    Uploaded menu: {result.identity.businessName}
+                                </Typography.Text>
+                            ) : null}
+                        </Flex>
+                    ),
+                    okText: decision.severity === 'confirm' ? 'Add here anyway' : 'Continue',
+                    cancelText: canCreateNewProject
+                        ? 'Create new menu'
+                        : decision.primaryAction === 'upload_more'
+                            ? 'Upload more files'
+                            : 'Cancel',
+                    onOk: async () => {
+                        await maybeAcceptBusinessIdentitySuggestions(result);
+                        resolve({ action: 'continue', files: filesForExtraction, ignoredFiles });
+                    },
+                    onCancel: async () => {
+                        if (!canCreateNewProject) {
+                            resolve({ action: 'cancel' });
+                            return;
+                        }
+
+                        try {
+                            const projectPayload: ProjectCreationPayload = {
+                                name: result?.identity?.businessName || 'New menu',
+                                ...(sourceProject.languages?.length ? { languages: sourceProject.languages } : {}),
+                                ...(sourceProject.defaultLanguage ? { defaultLanguage: sourceProject.defaultLanguage } : {}),
+                            };
+                            const newProject = await addProject(projectPayload);
+                            if (!newProject?.projectId) {
+                                throw new Error('Could not create a new menu.');
+                            }
+
+                            const projectMetadata = {
+                                ...newProject.summaryData,
+                                projectId: newProject.projectId,
+                            } as ProjectMetadata;
+                            setSelectedProject(projectMetadata);
+                            mutateProjects(
+                                (current) => current ? {
+                                    ...current,
+                                    projects: current.projects.some((project) => project.projectId === projectMetadata.projectId)
+                                        ? current.projects
+                                        : [...current.projects, projectMetadata],
+                                } : { projects: [projectMetadata], lastDoc: null },
+                                { revalidate: false },
+                            );
+                            message.success('Created a new menu for this upload');
+                            resolve({
+                                action: 'create_new_project',
+                                projectId: newProject.projectId,
+                                projectMetadata,
+                                files: filesForExtraction,
+                                ignoredFiles,
+                            });
+                        } catch (error: any) {
+                            message.error(error?.message || 'Could not create a new menu.');
+                            resolve({ action: 'cancel' });
+                        }
+                    },
+                });
+            });
+        } catch (error: any) {
+            console.warn('[MenuIntakeIdentity] Preflight skipped:', error?.message || error);
+            return { action: 'continue', files, ignoredFiles: [] };
+        }
+    }, [maybeAcceptBusinessIdentitySuggestions, mutateProjects]);
+
     const uploadAndCreateJob = async (
         filesToProcess: ProjectFileType[],
         projectDataCopy: Project
-    ): Promise<{ jobId: string; uploadedUrls: Map<string, string> }> => {
+    ): Promise<{ jobId: string; uploadedUrls: Map<string, string>; projectId: string } | null> => {
         const startTime = Date.now();
         console.log('[JobQueue] Starting uploadAndCreateJob with', filesToProcess.length, 'files');
 
@@ -1014,19 +1224,44 @@ function ProjectsPage() {
 
         console.log(`[JobQueue] ${successfulUploads.length}/${filesToProcess.length} files uploaded in ${Date.now() - startTime}ms`);
 
+        const intakeDecision = await confirmMenuIntakeDecision(projectDataCopy.projectId, successfulUploads, projectDataCopy);
+        if (intakeDecision.action === 'cancel') {
+            await Promise.allSettled(successfulUploads.map(file => deleteFileByUrl(file.url)));
+            return null;
+        }
+        await Promise.allSettled(intakeDecision.ignoredFiles.map(file => deleteFileByUrl(file.url)));
+        const filesForJob = intakeDecision.files;
+        if (filesForJob.length === 0) {
+            await Promise.allSettled(successfulUploads.map(file => deleteFileByUrl(file.url)));
+            return null;
+        }
+        const targetProjectId = intakeDecision.action === 'create_new_project'
+            ? intakeDecision.projectId
+            : projectDataCopy.projectId;
+
         // Step 2: Create job with uploaded files
         const targetLanguages = GlobalLanguagesList.filter(lang => projectDataCopy.languages.includes(lang.code));
 
         console.log(`[JobQueue] Creating processing job...`);
-        const { jobId } = await createProcessingJob({
-            files: successfulUploads,
-            targetLanguages,
-            projectId: projectDataCopy.projectId,
-            businessType: storeDetails?.businessType,
-        });
+        const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
+        const existingJobId = await checkExistingActiveJob(targetProjectId);
+        if (existingJobId) {
+            await Promise.allSettled(filesForJob.map(file => deleteFileByUrl(file.url)));
+            return { jobId: existingJobId, uploadedUrls, projectId: targetProjectId };
+        }
+
+        const { jobId } = await withTimeout(
+            createProcessingJob({
+                files: filesForJob,
+                targetLanguages,
+                projectId: targetProjectId,
+                businessType: storeDetails?.businessType,
+            }),
+            PROCESSING_TIMEOUT * filesToProcess.length,
+        );
 
         console.log(`[JobQueue] Job created: ${jobId} - createProcessingJob should have already triggered it`);
-        return { jobId, uploadedUrls };
+        return { jobId, uploadedUrls, projectId: targetProjectId };
     };
 
     /**
@@ -1070,17 +1305,21 @@ function ProjectsPage() {
             setFileProcessingId(filesToProcess[0].uid);
 
             // Upload files and create job
-            const { jobId } = await withTimeout(
-                uploadAndCreateJob(filesToProcess, projectDataCopy),
-                PROCESSING_TIMEOUT * filesToProcess.length
-            );
+            const jobPayload = await uploadAndCreateJob(filesToProcess, projectDataCopy);
+            if (!jobPayload) {
+                setFileProcessingId(null);
+                return;
+            }
+            const { jobId, projectId: targetProjectId } = jobPayload;
 
             console.log(`[JobQueue] Job created: ${jobId}, waiting for server processing...`);
 
             // Server already saved files + extractedData to the project doc
             // (the callable blocks until processing is complete)
             // Just refetch project data to pick up backend changes
-            await mutateProject();
+            if (targetProjectId === projectDataCopy.projectId) {
+                await mutateProject();
+            }
 
             // Set active job ID - the useEffect will handle completion
             console.log('[JobQueue] Setting activeProcessingJobId from job creation:', jobId);

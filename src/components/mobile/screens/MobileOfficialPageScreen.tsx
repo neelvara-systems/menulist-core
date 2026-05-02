@@ -5,6 +5,7 @@ import useViewportInfo from '@hook/useViewportInfo';
 import { updateStore } from '@database/stores';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { updateLocalizedText } from '@lib/localization/text';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -225,7 +226,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     }, [originalFormData]);
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
-        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url
+        withAnalyticsSource(
+            url,
+            src === 'copy' ? 'copy_link' : src === 'share' ? 'native_share' : src,
+        )
     ), []);
 
     const handleCopyLink = useCallback(async (value: string, label: string) => {

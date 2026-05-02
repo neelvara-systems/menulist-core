@@ -26,6 +26,7 @@ export const viewport: Viewport = {
     themeColor: APP_THEME_COLOR,
     width: 'device-width',
     initialScale: 1,
+    viewportFit: 'cover',
 }
 
 export default async function AuthLayout({

@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { Button, Flex, message, Typography } from 'antd';
 import { LuCopy, LuExternalLink } from 'react-icons/lu';
 
@@ -12,11 +13,13 @@ interface LinkViewProps {
 
 function LinkView({ shareUrl }: LinkViewProps) {
     const labels = useOfferingLabels();
+    const copyUrl = withAnalyticsSource(shareUrl, 'copy_link');
+    const directUrl = withAnalyticsSource(shareUrl, 'direct');
 
 
     const handleCopyLink = async () => {
         try {
-            await navigator.clipboard.writeText(shareUrl);
+            await navigator.clipboard.writeText(copyUrl);
             message.success('Link copied to clipboard!');
         } catch (err) {
             message.error('Failed to copy link');
@@ -24,7 +27,7 @@ function LinkView({ shareUrl }: LinkViewProps) {
     };
 
     const handleOpenLink = () => {
-        window.location.assign(shareUrl);
+        window.location.assign(directUrl);
     };
 
 

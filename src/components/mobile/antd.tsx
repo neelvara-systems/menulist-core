@@ -394,6 +394,12 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     if (paddingRight !== undefined) normalizedPadding.paddingRight = paddingRight;
     if (paddingBottom !== undefined) normalizedPadding.paddingBottom = paddingBottom;
     if (paddingLeft !== undefined) normalizedPadding.paddingLeft = paddingLeft;
+    const hasExplicitZeroBottomPadding = padding === 0
+        || padding === '0'
+        || padding === '0px'
+        || paddingBottom === 0
+        || paddingBottom === '0'
+        || paddingBottom === '0px';
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -422,7 +428,9 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
         minHeight: undefined,
         overflowX: overflowX ?? 'hidden',
         overflowY: overflowY ?? 'auto',
-        paddingBottom: withSafeAreaBottomPadding(normalizedPadding.paddingBottom, popupBodyPadding.paddingBottom),
+        paddingBottom: hasExplicitZeroBottomPadding
+            ? normalizedPadding.paddingBottom
+            : withSafeAreaBottomPadding(normalizedPadding.paddingBottom, popupBodyPadding.paddingBottom),
     };
 
     useEffect(() => {

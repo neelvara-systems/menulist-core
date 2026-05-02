@@ -1,6 +1,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { LOGO_SMALL } from '@constant/common';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { generateProjectUrl, slugify } from '@lib/utils/slugify';
@@ -55,9 +56,8 @@ function getContrastRatio(hex1: string, hex2: string): number {
 // Minimum contrast for QR readability
 const MIN_QR_CONTRAST = 4.5;
 
-function withEntrySource(url: string, source: string): string {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}utm_source=${source}&entry_source=${source}`;
+function withEntrySource(url: string, source: 'copy_link' | 'direct' | 'facebook' | 'instagram' | 'qr' | 'whatsapp'): string {
+    return withAnalyticsSource(url, source);
 }
 
 function ShareModal({
@@ -136,7 +136,7 @@ function ShareModal({
 
     const handleCopyLink = async () => {
         try {
-            await navigator.clipboard.writeText(shareUrl);
+            await navigator.clipboard.writeText(withEntrySource(shareUrl, 'copy_link'));
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
@@ -438,10 +438,10 @@ function ShareModal({
                         We track scans and opens so you can see what works
                     </Text>
                     <Flex gap={8}>
-                        <Button size="small" type="text" icon={<LuExternalLink />} onClick={() => window.location.assign(shareUrl)}>
+                        <Button size="small" type="text" icon={<LuExternalLink />} onClick={() => window.location.assign(withEntrySource(shareUrl, 'direct'))}>
                             Open
                         </Button>
-                        <Button size="small" type="text" icon={<LuCopy />} onClick={() => { navigator.clipboard.writeText(shareUrl); message.success('URL copied'); }}>
+                        <Button size="small" type="text" icon={<LuCopy />} onClick={() => { navigator.clipboard.writeText(withEntrySource(shareUrl, 'copy_link')); message.success('URL copied'); }}>
                             Copy URL
                         </Button>
                     </Flex>

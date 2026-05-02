@@ -9,6 +9,7 @@ import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
@@ -2104,7 +2105,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             return;
         }
 
-        window.open(`${menuPreviewUrl}${menuPreviewUrl.includes('?') ? '&' : '?'}src=direct`, '_blank');
+        window.open(withAnalyticsSource(menuPreviewUrl, 'direct'), '_blank');
     }, [menuPreviewUrl, tShare]);
 
     if (!storeDetails || (loadingProjects && !menuData)) {
@@ -3588,6 +3589,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     onJobCreated={({ jobId, projectId }) => {
                         setIsUploadSheetOpen(false);
                         resetCommandActionFlow();
+                        void refreshProjects({ force: true, preferredProjectId: projectId, showLoader: false });
                         setActiveProcessingState({ jobId, projectId });
                     }}
                 />

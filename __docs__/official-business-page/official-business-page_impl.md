@@ -503,6 +503,8 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 **Summary doc namespaces:** `weekly` (current week metrics + viewsChange), `monthly` (current month metrics), `previousWeek` (for comparison), `lifetime` (all-time counters with dedup via `lastProcessedDate`).
 
+**OBP source attribution:** Share surfaces append canonical `src`, `source`, `entry_source`, and `utm_source` parameters to OBP and direct-menu links. `OBP_VIEW` stores `viewsByEntrySource` / `viewsBySource`; existing OBP action, View Menu, and external-link click writes attach `obpActionClicksBySource`, `obpMenuClicksBySource`, and `obpLinkClicksBySource`. This gives owners visitor-source context without adding a separate source event or extra write path.
+
 **OBP field names vs Menu field names:** OBP uses `totalOBPViews`, `totalOBPActionClicks`, `obpActionClicks.{call|whatsapp|directions}`. Menu uses `totalViews`, `totalClicks`, block metrics. Different field names because OBP and menu have fundamentally different metric types. The aggregation pipeline structure is identical — just the fields differ.
 
 **Why not reuse menu's `aggregateDailyDocs`?** Menu aggregation expects `totalViews`, `totalClicks`, `decisionBlocksRendered`, etc. OBP has completely different fields. Sharing the aggregator would require complex field mapping with no benefit. Separate, clear OBP aggregation is simpler and more maintainable.

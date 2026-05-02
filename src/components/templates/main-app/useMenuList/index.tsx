@@ -23,6 +23,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -208,8 +209,9 @@ export default function UseMenuList() {
 
     // ── Action handlers ──────────────────────────────────────────
 
-    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'whatsapp') =>
-        url ? `${url}${url.includes('?') ? '&' : '?'}src=${src}` : url;
+    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'whatsapp') => (
+        withAnalyticsSource(url, src === 'copy' ? 'copy_link' : src)
+    );
 
     const handleCopy = async (text: string, label: string) => {
         try {
