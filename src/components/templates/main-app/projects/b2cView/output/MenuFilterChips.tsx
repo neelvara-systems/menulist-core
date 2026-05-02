@@ -3,7 +3,7 @@
  * 
  * 3-LAYER ARCHITECTURE:
  * 1. AI produces signals (raw tags) - UNCHANGED
- * 2. System normalizes them (normalizeItemAttributes.ts)
+ * 2. System normalizes tags + owner-confirmed decision facts (normalizeItemAttributes.ts)
  * 3. UI enforces rules (this component + FILTER_ALLOWLIST)
  * 
  * CONSTITUTIONAL RULES:
@@ -22,12 +22,15 @@ import { FILTER_ALLOWLIST, getBusinessCategory, SystemFilter } from '@constant/c
 import { useMemo } from 'react';
 import { LuLeaf, LuStar } from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';
-import { normalizeTags } from '../utils/normalizeItemAttributes';
+import { normalizeItemFilterAttributes } from '../utils/normalizeItemAttributes';
 
 export type FilterType = SystemFilter | null;
 
 interface MenuItem {
     tags?: string[];
+    dietaryTags?: string[];
+    targetAudience?: string;
+    decisionFacts?: Record<string, { value?: unknown }>;
     isBestSeller?: boolean;
     available?: boolean;
     active?: boolean;
@@ -108,10 +111,10 @@ function MenuFilterChips({
     const { visibleFilters, counts } = useMemo(() => {
         const activeItems = items.filter(item => item.active !== false && item.available !== false);
 
-        // Normalize each item's tags to boolean attributes
+        // Normalize each item's tags and owner-confirmed facts to boolean attributes
         const normalizedItems = activeItems.map(item => ({
             ...item,
-            attributes: normalizeTags(item.tags, item.isBestSeller),
+            attributes: normalizeItemFilterAttributes(item),
         }));
 
         // Count items for each attribute

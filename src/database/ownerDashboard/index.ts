@@ -796,6 +796,8 @@ function normalizeOverviewData(data: any): OverviewData | null {
         ownerConfidence: data.ownerConfidence,
         sourceQuality: data.sourceQuality || [],
         analyticsAiEntitlement: data.analyticsAiEntitlement,
+        catalogInsightCount: data.catalogInsightCount,
+        catalogInsightGeneratedAt: parseDateValue(data.catalogInsightGeneratedAt),
         aiSummary: data.aiSummary ? {
             ...data.aiSummary,
             generatedAt: parseDateValue(data.aiSummary.generatedAt) || new Date(),
@@ -836,6 +838,8 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
         ownerConfidence: data.ownerConfidence || overview?.ownerConfidence,
         sourceQuality: data.sourceQuality || overview?.sourceQuality || [],
         analyticsAiEntitlement: data.analyticsAiEntitlement || overview?.analyticsAiEntitlement,
+        catalogInsightCount: data.catalogInsightCount || overview?.catalogInsightCount,
+        catalogInsightGeneratedAt: parseDateValue(data.catalogInsightGeneratedAt) || overview?.catalogInsightGeneratedAt,
         projectId,
         lastFetched: new Date(),
     };

@@ -79,6 +79,8 @@ Entry source is attached to existing menu view and final action writes. It does 
 
 The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the dashboard read model for all owners. The Pro analytics assistant layer adds `ownerActionPlan` plus daily / weekly / monthly wording summaries.
 
+Pro menu intelligence joins existing analytics counters with compact owner-authored menu catalog fields during nightly settlement. It produces deterministic owner action candidates for unavailable demand, best-seller validation, category order, hidden demand, variant clarity, metadata demand, timed categories, and price signals.
+
 Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and `platformSummary/storesSummary.stores.{sId}.activePlanType`. Only `pro` and `premium` are eligible. Missing plan data fails closed and writes an `analyticsAiEntitlement` lock state into the dashboard read model. When enabled, owner analytics wording uses the analytics-specific `gemini-2.5-flash-lite` model because the underlying metrics and action choices are deterministic.
 
 ### Explicitly Not Tracked
@@ -86,6 +88,7 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
 - ❌ Scroll depth
 - ❌ Per-keystroke search input
 - ❌ Hover / passive exposure metrics
+- ❌ Option/variant row clicks while item attributes are display-only
 - ❌ High-frequency continuous behavior that would create write-heavy noise
 - ❌ Generic ecommerce/auth/share/location/ops counters in Firestore unless they become owner-visible dashboard metrics
 
@@ -281,6 +284,7 @@ Total: ~₹183/month
 - That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.
 - Search demand, unavailable-item demand, and final menu CTA clicks are visible in dashboard views after nightly aggregation.
 - Attribute filter intent is visible as `Top filters` only when a customer selected a public filter chip and then performed a meaningful existing action such as item view, search, unavailable tap, recommendation tap, or final CTA.
+- Catalog variants/options are not tracked as clicks unless they become real selectable customer controls. Current menu intelligence uses catalog fields plus existing item/category analytics only.
 - Dashboard read models carry `engagedSessionRate`, `intentRate`, and `actionRate` precomputed by the scheduler/DAL from `menuSessions`.
 - Dashboard read models also carry `sourceQuality`, `ownerConfidence`, and `ownerActionPlan` so Dashboard and Today screens render owner guidance without client-side daily-doc aggregation.
 - Owner-facing wording uses `Action Rate`, not conversion rate, because MenuList only observes final CTA clicks unless a future integration confirms booking/order/payment completion.

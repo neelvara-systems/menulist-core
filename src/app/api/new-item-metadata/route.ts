@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { AI_BLOCKED_METADATA_FIELDS } from "@config/itemMetadataConfig";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { addAiOperation } from "@database/aiOperations";
@@ -19,6 +20,21 @@ import getMultilingualNewItemPrompt from "./prompt";
 const AI_MODEL = "gemini-2.5-flash";
 const LOG_FILE = "new-item-metadata.log";
 const action = AI_ACTIONS_TYPES.NEW_ITEM_METADATA;
+
+function stripForbiddenGeneratedMetadata<T extends Record<string, unknown>>(generatedData: T): T {
+    const sanitized = { ...generatedData };
+    for (const field of AI_BLOCKED_METADATA_FIELDS) {
+        delete sanitized[field];
+    }
+    if (sanitized.decisionFacts && typeof sanitized.decisionFacts === 'object' && !Array.isArray(sanitized.decisionFacts)) {
+        const decisionFacts = { ...(sanitized.decisionFacts as Record<string, unknown>) };
+        for (const field of AI_BLOCKED_METADATA_FIELDS) {
+            delete decisionFacts[field];
+        }
+        (sanitized as Record<string, unknown>).decisionFacts = Object.keys(decisionFacts).length > 0 ? decisionFacts : undefined;
+    }
+    return sanitized;
+}
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -258,6 +274,7 @@ export const POST = withAuth(async (request, session) => {
             });
             return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
         }
+        generatedData = stripForbiddenGeneratedMetadata(generatedData);
 
         let transactionObject = {
             transactionId: null,

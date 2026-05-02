@@ -1,3 +1,5 @@
+import { getDecisionFactArray, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
+
 /**
  * Item Attribute Normalization
  * 
@@ -89,6 +91,26 @@ export function normalizeTags(
         forWomen: normalizedTags.some(tag =>
             TAG_PATTERNS.forWomen.some(pattern => tag.includes(pattern))
         ),
+    };
+}
+
+export function normalizeItemFilterAttributes(item: {
+    tags?: string[] | Record<string, string>;
+    isBestSeller?: boolean;
+    dietaryTags?: string[];
+    targetAudience?: string;
+    decisionFacts?: Record<string, { value?: unknown }>;
+}): NormalizedAttributes {
+    const fromTags = normalizeTags(item.tags, item.isBestSeller);
+    const dietaryTags = getDecisionFactArray(item as any, 'dietaryTags');
+    const targetAudience = getDecisionFactString(item as any, 'targetAudience');
+
+    return {
+        veg: fromTags.veg || dietaryTags.includes('vegetarian') || dietaryTags.includes('vegan'),
+        nonveg: fromTags.nonveg,
+        popular: fromTags.popular,
+        forMen: fromTags.forMen || targetAudience === 'for-men',
+        forWomen: fromTags.forWomen || targetAudience === 'for-women',
     };
 }
 

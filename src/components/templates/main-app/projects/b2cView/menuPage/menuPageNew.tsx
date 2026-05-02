@@ -35,7 +35,7 @@ import MenuSearchBar from '../output/MenuSearchBar';
 import PDPModal from '../output/PDPModal';
 import ServiceChargeNote from '../output/ServiceChargeNote';
 import { DeviceTypes, PageType } from '../types';
-import { normalizeTags } from '../utils/normalizeItemAttributes';
+import { normalizeItemFilterAttributes } from '../utils/normalizeItemAttributes';
 
 interface MenuPageNewProps {
     mood?: MenuMood;
@@ -483,10 +483,10 @@ function MenuPageNew({
         }
 
         // Apply filter chips using normalized attributes
-        // Layer 2: Normalization converts tags → boolean flags
+        // Layer 2: Normalization converts tags + decision facts → boolean flags
         if (activeFilter) {
             items = items.filter((item: any) => {
-                const attributes = normalizeTags(item.tags, item.isBestSeller);
+                const attributes = normalizeItemFilterAttributes(item);
                 return attributes[activeFilter];
             });
         }

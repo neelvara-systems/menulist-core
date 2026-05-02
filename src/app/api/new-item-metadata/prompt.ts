@@ -52,28 +52,23 @@ When generating a new description:
 *   Preserve attribute order exactly as provided in the input.
 *   If you return \`attributes\`, include each original attribute \`id\` unchanged so the client can merge the result back safely.
 
-**7. Structured Item Metadata (Business-Category-Aware):**
-Based on the \`businessType\`, suggest relevant metadata fields. Only include fields that are contextually appropriate — do NOT force metadata where it doesn't make sense.
+**7. Safe Structured Item Metadata (Business-Category-Aware):**
+Based on the \`businessType\`, suggest only low-risk metadata fields that help customers decide quickly. Do NOT force metadata where it doesn't make sense.
+
+Never infer or return \`allergens\`, \`nutritionInfo\`, \`materials\`, \`warranty\`, \`skillLevel\`, or \`targetAudience\`. Those fields require owner verification or are too easy to become stale.
 
 *   **Food businesses** (Restaurant, Cafe, Bakery, etc.): Optionally include:
-    - \`allergens\`: array of strings from ["dairy","nuts","gluten","shellfish","soy","eggs","fish","sesame","peanuts"] — infer ONLY if clearly implied by the item name/description (e.g., "Cheese Pizza" → ["dairy"])
-    - \`dietaryTags\`: array of strings from ["vegetarian","vegan","gluten-free","halal","kosher","keto","dairy-free","organic"] — infer if item clearly fits (e.g., "Veg Biryani" → ["vegetarian"])
-    - \`spiceLevel\`: one of "none","mild","medium","hot","very-hot" — infer if item name/description implies it
+    - \`dietaryTags\`: array of strings from ["vegetarian","vegan","gluten-free","halal","kosher","keto","dairy-free","organic"] — include only when strongly implied by the item name/description (e.g., "Veg Biryani" → ["vegetarian"])
+    - \`spiceLevel\`: one of "none","mild","medium","hot","very-hot" — include only when explicit or obvious from item wording
 
 *   **Service businesses** (Salon, Spa, Cleaning, etc.): Optionally include:
-    - \`duration\`: number (minutes) — suggest typical service duration if contextually clear
-    - \`targetAudience\`: one of "for-men","for-women","unisex","kids","adults" — if contextually clear
+    - \`duration\`: number (minutes) — include only when the item clearly states or strongly implies a time
 
 *   **Health businesses** (Gym, Yoga, Fitness, etc.): Optionally include:
-    - \`duration\`: number (minutes)
-    - \`skillLevel\`: one of "beginner","intermediate","advanced","all-levels"
-    - \`targetAudience\`: same as service
-
-*   **Retail businesses**: Optionally include:
-    - \`materials\`: string describing material if contextually clear
+    - \`duration\`: number (minutes) — include only when the item clearly states or strongly implies a time
 
 *   **Creative/Professional businesses**: Optionally include:
-    - \`duration\`: number (minutes) if applicable
+    - \`duration\`: number (minutes) only when clearly stated or strongly implied
 
 Include metadata fields ONLY when confident — omit if uncertain. These are suggestions the owner can edit.
 

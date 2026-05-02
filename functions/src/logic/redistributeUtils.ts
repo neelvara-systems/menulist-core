@@ -49,6 +49,9 @@ export interface ExtractedDataItem {
     price?: string;
     attributes?: ExtractedDataItemAttribute[];
     tags?: string[];
+    dietaryTags?: string[];
+    spiceLevel?: string;
+    duration?: number;
     active?: boolean;
     available?: boolean; // Feature #2: Instant Availability - false = "Sold out"
 }
@@ -378,7 +381,20 @@ export function transformIdsForFile(
             ? categoryIdMap[item.category] || item.category
             : item.category;
 
-        const { attributes: rawAttributes, tags: rawTags, price: rawPrice, ...restItem } = item;
+        const {
+            attributes: rawAttributes,
+            tags: rawTags,
+            price: rawPrice,
+            // Owner-confirmed fields must not be created by image extraction.
+            allergens: _allergens,
+            nutritionInfo: _nutritionInfo,
+            materials: _materials,
+            warranty: _warranty,
+            skillLevel: _skillLevel,
+            targetAudience: _targetAudience,
+            decisionFacts: _decisionFacts,
+            ...restItem
+        } = item as ExtractedDataItem & Record<string, unknown>;
 
         // Transform attribute IDs
         const transformedAttributes = Array.isArray(rawAttributes)

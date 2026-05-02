@@ -54,7 +54,7 @@ export default function MobileOwnerActionPlanCard({
                         <Flex gap={2} vertical>
                             <Text strong>Available on Pro</Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Pro adds a daily action list and plain-language summaries from your menu activity.
+                                Pro adds menu intelligence, a daily action list, and plain-language summaries from your menu activity.
                             </Text>
                         </Flex>
                     </Flex>

@@ -175,6 +175,8 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - Non-Pro dashboards keep factual metrics, source quality, and confidence. The Pro action-list / summary layer writes `analyticsAiEntitlement` so desktop and mobile can show a locked state instead of silently hiding the card.
 - Owner analytics wording uses `gemini-2.5-flash-lite`, not the global extraction model, because this flow only rewrites deterministic summaries/actions.
 - When analytics AI is enabled, daily / weekly / monthly summaries are generated as in-memory payloads and saved inside the existing `{tId}_{sId}_{projectId}_dashboard_summary` write. They are not written as separate daily / summary / monthly documents.
+- Pro menu intelligence also joins the existing analytics counters with compact fields from the already-loaded project catalog during nightly settlement. It creates deterministic action candidates for unavailable demand, best-seller validation, category order, hidden demand, variant clarity, metadata demand, timed categories, and price signals before Gemini rewrites wording.
+- Item `attributes` are variants/options in the catalog. They are not tracked as clicks today because the public PDP renders them as static option rows.
 
 ### Dashboard Surfacing
 

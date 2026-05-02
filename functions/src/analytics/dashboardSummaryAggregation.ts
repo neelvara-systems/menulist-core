@@ -448,9 +448,392 @@ function buildOwnerConfidence(data: Record<string, any> = {}) {
     };
 }
 
-function buildOwnerActionCandidates(data: Record<string, any> = {}): OwnerActionCandidate[] {
-    const metrics = getDashboardMetrics(data);
+function localizedValue(value: any, language: string, fallback = ''): string {
+    if (typeof value === 'string') return value.trim() || fallback;
+    if (!value || typeof value !== 'object') return fallback;
+    return String(value[language] || value.en || Object.values(value).find(Boolean) || fallback).trim();
+}
+
+function parseCatalogPrice(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    const parsed = Number(String(value || '').replace(/[^0-9.]/g, ''));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeTextList(values: unknown): string[] {
+    if (!Array.isArray(values)) return [];
+    return values
+        .map((value) => String(value || '').trim())
+        .filter(Boolean);
+}
+
+function isPopularItem(item: CatalogInsightItem): boolean {
+    if (item.isBestSeller) return true;
+    return item.tags.some((tag) => {
+        const normalized = tag.toLowerCase();
+        return normalized.includes('popular') || normalized.includes('best seller') || normalized.includes('bestseller');
+    });
+}
+
+function normalizeCatalogForInsights(projectData?: CatalogInsightInput | null): CatalogInsightContext | null {
+    if (!projectData?.files?.length) return null;
+
+    const primaryLanguage = projectData.defaultLanguage
+        || projectData.languages?.[0]
+        || projectData.files
+            .flatMap((file) => file?.extractedData?.data?.languages || [])
+            .find((language: any) => language?.isPrimary)?.code
+        || 'en';
+    const categoriesById: Record<string, CatalogInsightCategory> = {};
+    const itemsById: Record<string, CatalogInsightItem> = {};
+    const itemsByCategoryId: Record<string, CatalogInsightItem[]> = {};
+
+    for (const file of projectData.files) {
+        if (!file || file.active === false || file.deleted === true) continue;
+        const extractedData = file.extractedData?.data;
+        const categories = Array.isArray(extractedData?.categories) ? extractedData.categories : [];
+        const items = Array.isArray(extractedData?.items) ? extractedData.items : [];
+
+        categories.forEach((category: any, index: number) => {
+            if (!category?.id) return;
+            categoriesById[category.id] = {
+                id: String(category.id),
+                name: localizedValue(category.name, primaryLanguage, String(category.id)),
+                active: category.active !== false,
+                orderIndex: Number.isFinite(Number(category.orderIndex)) ? Number(category.orderIndex) : index,
+                timeSlots: Array.isArray(category.timeSlots) ? category.timeSlots : [],
+            };
+        });
+
+        items.forEach((item: any, index: number) => {
+            if (!item?.id) return;
+            const categoryId = String(item.category || '');
+            const activeAttributes = Array.isArray(item.attributes)
+                ? item.attributes.filter((attribute: any) => attribute?.active !== false).length
+                : 0;
+            const description = localizedValue(item.description, primaryLanguage, '');
+            const tags = normalizeTextList(item.tags);
+            const dietaryTags = normalizeTextList(item.dietaryTags);
+            const catalogItem: CatalogInsightItem = {
+                id: String(item.id),
+                name: localizedValue(item.name, primaryLanguage, String(item.id)),
+                categoryId,
+                active: item.active !== false,
+                available: item.available !== false,
+                price: parseCatalogPrice(item.price),
+                activeAttributes,
+                tags,
+                dietaryTags,
+                spiceLevel: item.spiceLevel,
+                targetAudience: item.targetAudience,
+                skillLevel: item.skillLevel,
+                duration: typeof item.duration === 'number' ? item.duration : undefined,
+                isBestSeller: Boolean(item.isBestSeller),
+                ownerBoost: typeof item.ownerBoost === 'number' ? item.ownerBoost : 0,
+                orderIndex: Number.isFinite(Number(item.orderIndex)) ? Number(item.orderIndex) : index,
+                hasImage: Array.isArray(item.images) && item.images.length > 0,
+                hasDescription: description.length > 0,
+                hasQualityReview: Boolean(item.qualityReview?.priceOutlierReviewedAt || item.qualityReview?.priceOutlierReviewedPrice),
+            };
+
+            itemsById[catalogItem.id] = catalogItem;
+            if (!itemsByCategoryId[categoryId]) itemsByCategoryId[categoryId] = [];
+            itemsByCategoryId[categoryId].push(catalogItem);
+        });
+    }
+
+    return Object.keys(itemsById).length > 0
+        ? { itemsById, categoriesById, itemsByCategoryId }
+        : null;
+}
+
+function itemSignal(data: Record<string, any>, itemId: string) {
+    const views = data.viewsByItem?.[itemId] || 0;
+    const taps = data.clicksByItem?.[itemId] || 0;
+    const recommendationTaps = data.recommendationClicksByItem?.[itemId] || 0;
+    const unavailableTaps = data.unavailableItemTapsByItem?.[itemId] || 0;
+    const score = views + (taps * 2) + (recommendationTaps * 2) + (unavailableTaps * 3);
+    return { views, taps, recommendationTaps, unavailableTaps, score };
+}
+
+function categorySignal(data: Record<string, any>, categoryId: string) {
+    const views = data.viewsByCategory?.[categoryId] || 0;
+    const taps = data.clicksByCategory?.[categoryId] || 0;
+    return { views, taps, score: views + (taps * 2) };
+}
+
+function slotHours(timeSlots: Array<Record<string, any>>): Set<string> {
+    const hours = new Set<string>();
+    timeSlots.forEach((slot) => {
+        const start = Number(String(slot.startTime || '').split(':')[0]);
+        const end = Number(String(slot.endTime || '').split(':')[0]);
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+        const span = start === end ? 24 : ((end - start + 24) % 24);
+        for (let offset = 0; offset < span; offset++) {
+            hours.add(String((start + offset) % 24));
+        }
+    });
+    return hours;
+}
+
+function activeMetadataBuckets(item: CatalogInsightItem): string[] {
+    const buckets = new Set<string>();
+    [...item.dietaryTags, ...item.tags].forEach((tag) => {
+        const normalized = tag.toLowerCase();
+        if (normalized.includes('veg')) buckets.add('veg');
+        if (normalized.includes('vegan')) buckets.add('vegan');
+        if (normalized.includes('halal')) buckets.add('halal');
+        if (normalized.includes('gluten')) buckets.add('gluten-free');
+    });
+    if (item.spiceLevel && item.spiceLevel !== 'none') buckets.add(`${item.spiceLevel} spice`);
+    if (item.targetAudience) buckets.add(item.targetAudience.replace(/-/g, ' '));
+    if (item.skillLevel) buckets.add(item.skillLevel.replace(/-/g, ' '));
+    if (typeof item.duration === 'number' && item.duration > 0 && item.duration <= 30) buckets.add('quick choices');
+    return Array.from(buckets);
+}
+
+function buildCatalogActionCandidates(
+    data: Record<string, any>,
+    catalog?: CatalogInsightContext | null,
+): OwnerActionCandidate[] {
+    if (!catalog) return [];
+
     const candidates: OwnerActionCandidate[] = [];
+    const items = Object.values(catalog.itemsById);
+    const categories = Object.values(catalog.categoriesById);
+    const sortedCategories = categories
+        .slice()
+        .sort((a, b) => a.orderIndex - b.orderIndex);
+    const categoryRank = new Map(sortedCategories.map((category, index) => [category.id, index]));
+
+    const unavailableItem = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => !item.available && signal.unavailableTaps > 0)
+        .sort((a, b) => b.signal.unavailableTaps - a.signal.unavailableTaps)[0];
+    if (unavailableItem) {
+        candidates.push({
+            id: `catalog-unavailable-${unavailableItem.item.id}`,
+            type: 'unavailable_demand',
+            title: 'Restock this requested item',
+            description: `${unavailableItem.item.name} is unavailable but customers still tapped it.`,
+            reason: `${unavailableItem.signal.unavailableTaps} unavailable taps`,
+            actionLabel: 'Restock or update availability',
+            metricLabel: `${unavailableItem.signal.unavailableTaps} taps`,
+            priority: 'high',
+        });
+    }
+
+    const highDemandUnmarked = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => item.active && item.available && !isPopularItem(item) && signal.score >= 6)
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (highDemandUnmarked) {
+        candidates.push({
+            id: `catalog-bestseller-add-${highDemandUnmarked.item.id}`,
+            type: 'bestseller_validation',
+            title: 'Mark this item as popular',
+            description: `${highDemandUnmarked.item.name} is getting customer interest but is not marked as popular.`,
+            reason: `${highDemandUnmarked.signal.score} interest signals`,
+            actionLabel: 'Review popular label',
+            metricLabel: `${highDemandUnmarked.signal.score} signals`,
+            priority: 'medium',
+        });
+    } else {
+        const overMarkedPopular = items
+            .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+            .filter(({ item, signal }) => item.active && isPopularItem(item) && signal.score === 0 && (data.totalViews || 0) >= 20)
+            .sort((a, b) => a.item.orderIndex - b.item.orderIndex)[0];
+        if (overMarkedPopular) {
+            candidates.push({
+                id: `catalog-bestseller-review-${overMarkedPopular.item.id}`,
+                type: 'bestseller_validation',
+                title: 'Review one popular label',
+                description: `${overMarkedPopular.item.name} is marked popular but has no recent customer interest.`,
+                reason: `${data.totalViews || 0} menu views this period`,
+                actionLabel: 'Check popular items',
+                metricLabel: '0 signals',
+                priority: 'low',
+            });
+        }
+    }
+
+    const topCategory = categories
+        .map((category) => ({ category, signal: categorySignal(data, category.id), rank: categoryRank.get(category.id) || 0 }))
+        .filter(({ category, signal, rank }) => category.active && rank >= 2 && signal.score >= 5)
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (topCategory) {
+        candidates.push({
+            id: `catalog-category-order-${topCategory.category.id}`,
+            type: 'category_reorder',
+            title: 'Move this category higher',
+            description: `${topCategory.category.name} is lower in the menu but gets strong customer interest.`,
+            reason: `${topCategory.signal.views} views and ${topCategory.signal.taps} taps`,
+            actionLabel: 'Review category order',
+            metricLabel: `${topCategory.signal.score} signals`,
+            priority: 'medium',
+        });
+    }
+
+    const hiddenItem = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => !item.active && signal.score >= 3)
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    const hiddenCategory = categories
+        .map((category) => ({ category, signal: categorySignal(data, category.id) }))
+        .filter(({ category, signal }) => !category.active && signal.score >= 5)
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (hiddenItem || hiddenCategory) {
+        candidates.push(hiddenItem ? {
+            id: `catalog-hidden-item-${hiddenItem.item.id}`,
+            type: 'hidden_demand',
+            title: 'Review this hidden item',
+            description: `${hiddenItem.item.name} is hidden but still has recent customer interest.`,
+            reason: `${hiddenItem.signal.score} interest signals`,
+            actionLabel: 'Review visibility',
+            metricLabel: `${hiddenItem.signal.score} signals`,
+            priority: 'high',
+        } : {
+            id: `catalog-hidden-category-${hiddenCategory!.category.id}`,
+            type: 'hidden_demand',
+            title: 'Review this hidden category',
+            description: `${hiddenCategory!.category.name} is hidden but still has recent customer interest.`,
+            reason: `${hiddenCategory!.signal.score} category signals`,
+            actionLabel: 'Review visibility',
+            metricLabel: `${hiddenCategory!.signal.score} signals`,
+            priority: 'high',
+        });
+    }
+
+    const variantItem = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => item.active && item.activeAttributes >= 2 && signal.score >= 5)
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (variantItem) {
+        candidates.push({
+            id: `catalog-variant-${variantItem.item.id}`,
+            type: 'variant_clarity',
+            title: 'Make options clearer',
+            description: `${variantItem.item.name} has multiple options and strong customer interest.`,
+            reason: `${variantItem.item.activeAttributes} options, ${variantItem.signal.score} signals`,
+            actionLabel: 'Check option names and prices',
+            metricLabel: `${variantItem.item.activeAttributes} options`,
+            priority: 'medium',
+        });
+    }
+
+    const missingContentItem = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => item.active && signal.score >= 6 && (!item.hasImage || !item.hasDescription))
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (missingContentItem) {
+        candidates.push({
+            id: `catalog-metadata-content-${missingContentItem.item.id}`,
+            type: 'metadata_demand',
+            title: 'Add detail to a high-interest item',
+            description: `${missingContentItem.item.name} has demand but is missing ${!missingContentItem.item.hasImage ? 'a photo' : 'a description'}.`,
+            reason: `${missingContentItem.signal.score} interest signals`,
+            actionLabel: !missingContentItem.item.hasImage ? 'Add photo' : 'Add description',
+            metricLabel: `${missingContentItem.signal.score} signals`,
+            priority: 'medium',
+        });
+    } else {
+        const metadataBuckets: Record<string, { score: number; count: number }> = {};
+        items.forEach((item) => {
+            const signal = itemSignal(data, item.id).score;
+            if (signal <= 0) return;
+            activeMetadataBuckets(item).forEach((bucket) => {
+                if (!metadataBuckets[bucket]) metadataBuckets[bucket] = { score: 0, count: 0 };
+                metadataBuckets[bucket].score += signal;
+                metadataBuckets[bucket].count += 1;
+            });
+        });
+        const topBucket = Object.entries(metadataBuckets)
+            .filter(([, value]) => value.score >= 6 && value.count >= 2)
+            .sort((a, b) => b[1].score - a[1].score)[0];
+        if (topBucket) {
+            candidates.push({
+                id: `catalog-metadata-${topBucket[0].replace(/[^a-z0-9]+/gi, '-')}`,
+                type: 'metadata_demand',
+                title: 'Use this customer preference',
+                description: `${topBucket[0]} items are getting repeated customer interest.`,
+                reason: `${topBucket[1].score} signals across ${topBucket[1].count} items`,
+                actionLabel: 'Feature matching items',
+                metricLabel: `${topBucket[1].score} signals`,
+                priority: 'medium',
+            });
+        }
+    }
+
+    const timedCategory = categories
+        .filter((category) => category.active && category.timeSlots.length > 0)
+        .map((category) => {
+            const hours = slotHours(category.timeSlots);
+            const itemsForCategory = catalog.itemsByCategoryId[category.id] || [];
+            let totalClicks = 0;
+            let slotClicks = 0;
+            itemsForCategory.forEach((item) => {
+                const hourly = data.hourlyClicksByItem?.[item.id] || {};
+                Object.entries(hourly).forEach(([hour, count]) => {
+                    const value = typeof count === 'number' ? count : 0;
+                    totalClicks += value;
+                    if (hours.has(hour)) slotClicks += value;
+                });
+            });
+            const signal = categorySignal(data, category.id);
+            return { category, signal, totalClicks, slotClicks };
+        })
+        .filter(({ signal, totalClicks }) => signal.score >= 5 || totalClicks >= 3)
+        .sort((a, b) => (b.totalClicks || b.signal.score) - (a.totalClicks || a.signal.score))[0];
+    if (timedCategory) {
+        const outsideSlotClicks = timedCategory.totalClicks - timedCategory.slotClicks;
+        candidates.push({
+            id: `catalog-timed-category-${timedCategory.category.id}`,
+            type: 'timed_category',
+            title: outsideSlotClicks > timedCategory.slotClicks ? 'Check this timed category' : 'Use this timed category window',
+            description: `${timedCategory.category.name} has customer interest during its scheduled menu window.`,
+            reason: timedCategory.totalClicks > 0
+                ? `${timedCategory.slotClicks}/${timedCategory.totalClicks} item taps during visible hours`
+                : `${timedCategory.signal.score} category signals`,
+            actionLabel: 'Review category timing',
+            metricLabel: timedCategory.totalClicks > 0 ? `${timedCategory.slotClicks}/${timedCategory.totalClicks} taps` : `${timedCategory.signal.score} signals`,
+            priority: outsideSlotClicks > timedCategory.slotClicks ? 'medium' : 'low',
+        });
+    }
+
+    const priceItem = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => item.active && item.hasQualityReview && (signal.views >= 5 || signal.taps + signal.recommendationTaps >= 3))
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (priceItem) {
+        const actionInterest = priceItem.signal.taps + priceItem.signal.recommendationTaps;
+        candidates.push({
+            id: `catalog-price-${priceItem.item.id}`,
+            type: 'price_signal',
+            title: actionInterest > 0 ? 'Price looks acceptable' : 'Check price clarity',
+            description: actionInterest > 0
+                ? `${priceItem.item.name} is still getting taps after price review.`
+                : `${priceItem.item.name} gets views but no item taps after price review.`,
+            reason: `${priceItem.signal.views} views, ${actionInterest} taps`,
+            actionLabel: actionInterest > 0 ? 'No price action needed' : 'Review price display',
+            metricLabel: `${priceItem.signal.views} views`,
+            priority: actionInterest > 0 ? 'low' : 'medium',
+        });
+    }
+
+    return candidates;
+}
+
+export function buildCatalogActionCandidatesForTest(
+    data: Record<string, any>,
+    projectCatalogData?: CatalogInsightInput | null,
+): OwnerActionCandidate[] {
+    return buildCatalogActionCandidates(data, normalizeCatalogForInsights(projectCatalogData));
+}
+
+function buildOwnerActionCandidates(data: Record<string, any> = {}, catalog?: CatalogInsightContext | null): OwnerActionCandidate[] {
+    const metrics = getDashboardMetrics(data);
+    const catalogCandidates = buildCatalogActionCandidates(data, catalog);
+    const candidates: OwnerActionCandidate[] = [...catalogCandidates];
     const topSearch = topSearchTerms(data.searchTerms)[0];
     const topZeroSearch = topSearchTerms(data.zeroResultSearchTerms)[0];
     const topUnavailable = topMapEntries(data.unavailableItemTapsByItem, data.itemNames)[0];
@@ -472,10 +855,11 @@ function buildOwnerActionCandidates(data: Record<string, any> = {}): OwnerAction
         });
     }
 
-    if (topUnavailable) {
+    const hasCatalogUnavailableCandidate = catalogCandidates.some((candidate) => candidate.type === 'unavailable_demand');
+    if (topUnavailable && !hasCatalogUnavailableCandidate) {
         candidates.push({
             id: 'unavailable-demand',
-            type: 'demand_gap',
+            type: 'unavailable_demand',
             title: 'Check unavailable demand',
             description: `${topUnavailable.name || topUnavailable.itemId} was tapped while unavailable.`,
             reason: `${topUnavailable.clicks} unavailable taps`,
@@ -575,6 +959,7 @@ function buildActionPlanFingerprint(candidates: OwnerActionCandidate[]): string 
     return candidates
         .map((candidate) => [
             candidate.id,
+            candidate.type,
             candidate.priority,
             candidate.metricLabel || '',
             candidate.reason,
@@ -955,8 +1340,10 @@ async function writeMenuDashboardSummary(
     settledDailyData?: Record<string, any> | null,
     aiPayloads: OwnerDashboardAIPayloads = {},
     analyticsAiEntitlement: AnalyticsAiEntitlement = DEFAULT_ANALYTICS_AI_ENTITLEMENT,
+    projectCatalogData?: CatalogInsightInput | null,
 ): Promise<void> {
     const canUseAnalyticsAi = analyticsAiEntitlement.enabled;
+    const catalogInsights = canUseAnalyticsAi ? normalizeCatalogForInsights(projectCatalogData) : null;
     const dashboardRef = db.collection(ANALYTICS_COLLECTION).doc(getDashboardSummaryDocId(tId, sId, projectId));
     const [dashboardSnap, summarySnap] = await Promise.all([
         dashboardRef.get(),
@@ -1052,7 +1439,28 @@ async function writeMenuDashboardSummary(
         aiSummary: canUseAnalyticsAi ? aiPayloads.monthly : undefined,
     } : null;
     const actionPlanInput = wtdDocs.length > 0 ? wtdAggregated : mtdDocs.length > 0 ? mtdAggregated : (yesterdayData || {});
-    const actionPlanCandidates = buildOwnerActionCandidates(actionPlanInput);
+    const actionPlanCandidates = buildOwnerActionCandidates(actionPlanInput, catalogInsights);
+    const catalogInsightCount = actionPlanCandidates.filter((candidate) => [
+        'unavailable_demand',
+        'bestseller_validation',
+        'category_reorder',
+        'hidden_demand',
+        'variant_clarity',
+        'metadata_demand',
+        'timed_category',
+        'price_signal',
+    ].includes(candidate.type)).length;
+    if (canUseAnalyticsAi) {
+        appLogger.info('[AnalyticsSettlement] Catalog menu intelligence evaluated', {
+            tId,
+            sId,
+            projectId,
+            settlementDate,
+            catalogInsightCount,
+            actionCandidateCount: actionPlanCandidates.length,
+            hasCatalogInput: Boolean(projectCatalogData),
+        });
+    }
     const actionPlanFingerprint = buildActionPlanFingerprint(actionPlanCandidates);
     const reusableActionPlan = existingDashboard?.ownerActionPlan?.fingerprint === actionPlanFingerprint
         ? existingDashboard.ownerActionPlan
@@ -1147,6 +1555,10 @@ async function writeMenuDashboardSummary(
         ownerConfidence,
         sourceQuality,
         analyticsAiEntitlement,
+        ...(canUseAnalyticsAi ? {
+            catalogInsightCount,
+            catalogInsightGeneratedAt: FieldValue.serverTimestamp(),
+        } : {}),
         analyticsSummary: summary,
         daily30d: Array.from(dailyMap.entries())
             .filter(([date]) => date >= addDaysToAnalyticsDateKey(settlementDate, -(MENU_DAILY_CACHE_DAYS - 1)) && date <= settlementDate)
@@ -1170,11 +1582,12 @@ export async function writeDashboardSummaryDocument(
     settledDailyData?: Record<string, any> | null,
     aiPayloads: OwnerDashboardAIPayloads = {},
     analyticsAiEntitlement: AnalyticsAiEntitlement = DEFAULT_ANALYTICS_AI_ENTITLEMENT,
+    projectCatalogData?: CatalogInsightInput | null,
 ): Promise<void> {
     if (projectId === 'customerApp') {
         await writeCustomerAppDashboardSummary(db, tId, sId, settlementDate, settledDailyData);
         return;
     }
 
-    await writeMenuDashboardSummary(db, tId, sId, projectId, settlementDate, settledDailyData, aiPayloads, analyticsAiEntitlement);
+    await writeMenuDashboardSummary(db, tId, sId, projectId, settlementDate, settledDailyData, aiPayloads, analyticsAiEntitlement, projectCatalogData);
 }

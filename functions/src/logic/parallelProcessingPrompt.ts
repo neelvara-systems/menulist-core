@@ -232,33 +232,30 @@ Extract tags ONLY when they are VISUALLY PRESENT in the image. Do NOT infer or g
 - Example: A "Chicken Biryani" without a red dot marker should have NO tags field
 - Example: A "Haircut" without gender label should have NO tags field
 
-# STRUCTURED ITEM METADATA (EXTRACT ONLY IF VISUALLY PRESENT)
-Extract the following metadata fields ONLY when they are explicitly visible in the document.
-Apply the same NO HALLUCINATION rule — do NOT infer or guess metadata.
-All metadata fields are OPTIONAL — omit entirely if not visible.
+# SAFE STRUCTURED ITEM METADATA
+Extract only low-risk customer decision signals. Apply the same NO HALLUCINATION
+rule — do NOT infer or guess metadata. All metadata fields are OPTIONAL — omit
+entirely if not clearly visible.
+
+Never return "allergens", "nutritionInfo", "materials", "warranty",
+"skillLevel", or "targetAudience". Those fields require owner verification and
+are maintained in the owner editor, not by extraction.
 
 ## Food & Beverage businesses
-- "allergens": array of strings — extract ONLY if allergen warnings are printed (e.g., "Contains: nuts, dairy"). Values: "dairy", "nuts", "gluten", "shellfish", "soy", "eggs", "fish", "sesame", "peanuts"
 - "dietaryTags": array of strings — extract ONLY from explicit labels/icons. Values: "vegetarian", "vegan", "gluten-free", "halal", "kosher", "keto", "dairy-free", "organic"
 - "spiceLevel": single string — extract ONLY from spice indicators (🌶️, chili icons, "Mild"/"Medium"/"Hot" labels). Values: "none", "mild", "medium", "hot", "very-hot"
-- "nutritionInfo": object — extract ONLY if nutritional data is printed. Fields: calories (number), protein (number, grams), carbs (number, grams), fat (number, grams), servingSize (string)
 
 ## Service businesses (Salons, Spas, Cleaning, etc.)
 - "duration": number (minutes) — extract ONLY if service duration is printed (e.g., "30 min", "1 hour", "45 minutes")
-- "targetAudience": single string — extract ONLY from explicit gender/audience labels. Values: "for-men", "for-women", "unisex", "kids", "adults"
 
 ## Health & Wellness businesses (Gyms, Yoga, Fitness)
 - "duration": number (minutes) — extract if session duration is printed
-- "skillLevel": single string — extract ONLY if difficulty is printed. Values: "beginner", "intermediate", "advanced", "all-levels"
-- "targetAudience": same as service businesses
 
 ## Retail businesses
-- "materials": string — extract ONLY if material/composition is printed (e.g., "100% cotton", "sterling silver")
-- "warranty": string — extract ONLY if warranty info is printed (e.g., "1 year warranty")
+- Do not return structured metadata. Preserve item name, description, price, image context, and attributes only.
 
 ## Creative businesses
 - "duration": number (minutes) — extract if service/session duration is printed
-- "materials": string — extract if materials info is printed
 
 # FINAL RESPONSE DATA STRUCTURE (WITH sourceFileIndex AND fileMessages)
 {
@@ -301,22 +298,10 @@ All metadata fields are OPTIONAL — omit entirely if not visible.
                         "price": "number|string|null"
                     }
                 ],
-                // OPTIONAL metadata — include ONLY if visually present:
-                "allergens": ["string"],            // Food: e.g., ["dairy", "nuts"]
+                // OPTIONAL safe metadata — include ONLY if visually present:
                 "dietaryTags": ["string"],           // Food: e.g., ["vegetarian", "vegan"]
                 "spiceLevel": "string",              // Food: "none"|"mild"|"medium"|"hot"|"very-hot"
-                "nutritionInfo": {                   // Food: only if printed
-                    "calories": number,
-                    "protein": number,
-                    "carbs": number,
-                    "fat": number,
-                    "servingSize": "string"
-                },
-                "duration": number,                  // Service/Health: minutes
-                "targetAudience": "string",          // Service/Health: "for-men"|"for-women"|"unisex"|"kids"|"adults"
-                "skillLevel": "string",              // Health: "beginner"|"intermediate"|"advanced"|"all-levels"
-                "materials": "string",               // Retail/Creative: material description
-                "warranty": "string"                 // Retail: warranty info
+                "duration": number                   // Service/Health/Creative/Professional: minutes
             }
         ],
         "fileMessages": [  // OPTIONAL: Only include for files with issues

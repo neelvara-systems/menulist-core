@@ -35,6 +35,7 @@ import {
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
@@ -829,11 +830,18 @@ function generateSchemaOrgJsonLd(
                     .map((item: any) => {
                         // #32: Build suitableForDiet from tags + dietaryTags
                         const diets: string[] = [];
-                        if (item.tags?.includes("Vegetarian") || item.dietaryTags?.includes("vegetarian")) diets.push("https://schema.org/VegetarianDiet");
-                        if (item.dietaryTags?.includes("vegan")) diets.push("https://schema.org/VeganDiet");
-                        if (item.dietaryTags?.includes("gluten-free")) diets.push("https://schema.org/GlutenFreeDiet");
-                        if (item.dietaryTags?.includes("halal")) diets.push("https://schema.org/HalalDiet");
-                        if (item.dietaryTags?.includes("kosher")) diets.push("https://schema.org/KosherDiet");
+                        const dietaryTags = getDecisionFactArray(item, "dietaryTags");
+                        const nutritionInfo = getNutritionFact(item);
+                        const duration = getDecisionFactNumber(item, "duration");
+                        const materials = getDecisionFactString(item, "materials");
+                        const warranty = getDecisionFactString(item, "warranty");
+                        const targetAudience = getDecisionFactString(item, "targetAudience");
+                        const skillLevel = getDecisionFactString(item, "skillLevel");
+                        if (item.tags?.includes("Vegetarian") || dietaryTags.includes("vegetarian")) diets.push("https://schema.org/VegetarianDiet");
+                        if (dietaryTags.includes("vegan")) diets.push("https://schema.org/VeganDiet");
+                        if (dietaryTags.includes("gluten-free")) diets.push("https://schema.org/GlutenFreeDiet");
+                        if (dietaryTags.includes("halal")) diets.push("https://schema.org/HalalDiet");
+                        if (dietaryTags.includes("kosher")) diets.push("https://schema.org/KosherDiet");
 
                         return {
                             "@type": "MenuItem",
@@ -853,23 +861,24 @@ function generateSchemaOrgJsonLd(
                             ...(diets.length > 0 && {
                                 suitableForDiet: diets.length === 1 ? diets[0] : diets,
                             }),
-                            ...(item.nutritionInfo?.calories && {
+                            ...(nutritionInfo?.calories && {
                                 nutrition: {
                                     "@type": "NutritionInformation",
-                                    ...(item.nutritionInfo.calories && { calories: `${item.nutritionInfo.calories} calories` }),
-                                    ...(item.nutritionInfo.protein && { proteinContent: `${item.nutritionInfo.protein} g` }),
-                                    ...(item.nutritionInfo.carbs && { carbohydrateContent: `${item.nutritionInfo.carbs} g` }),
-                                    ...(item.nutritionInfo.fat && { fatContent: `${item.nutritionInfo.fat} g` }),
-                                    ...(item.nutritionInfo.servingSize && { servingSize: item.nutritionInfo.servingSize }),
+                                    ...(nutritionInfo.calories && { calories: `${nutritionInfo.calories} calories` }),
+                                    ...(nutritionInfo.protein && { proteinContent: `${nutritionInfo.protein} g` }),
+                                    ...(nutritionInfo.carbs && { carbohydrateContent: `${nutritionInfo.carbs} g` }),
+                                    ...(nutritionInfo.fat && { fatContent: `${nutritionInfo.fat} g` }),
+                                    ...(nutritionInfo.servingSize && { servingSize: nutritionInfo.servingSize }),
                                 },
                             }),
-                            // SMB metadata: duration, materials, audience (schema.org additionalProperty)
-                            ...((item.duration || item.materials || item.targetAudience || item.skillLevel) && {
+                            // Owner-provided SMB metadata. AI generation is blocked from creating these fields.
+                            ...((duration || materials || warranty || targetAudience || skillLevel) && {
                                 additionalProperty: [
-                                    ...(item.duration ? [{ "@type": "PropertyValue", name: "duration", value: `${item.duration} minutes` }] : []),
-                                    ...(item.materials ? [{ "@type": "PropertyValue", name: "material", value: item.materials }] : []),
-                                    ...(item.targetAudience ? [{ "@type": "PropertyValue", name: "audience", value: item.targetAudience }] : []),
-                                    ...(item.skillLevel ? [{ "@type": "PropertyValue", name: "skillLevel", value: item.skillLevel }] : []),
+                                    ...(duration ? [{ "@type": "PropertyValue", name: "duration", value: `${duration} minutes` }] : []),
+                                    ...(materials ? [{ "@type": "PropertyValue", name: "material", value: materials }] : []),
+                                    ...(warranty ? [{ "@type": "PropertyValue", name: "warranty", value: warranty }] : []),
+                                    ...(targetAudience ? [{ "@type": "PropertyValue", name: "audience", value: targetAudience }] : []),
+                                    ...(skillLevel ? [{ "@type": "PropertyValue", name: "skillLevel", value: skillLevel }] : []),
                                 ].filter(Boolean),
                             }),
                         };

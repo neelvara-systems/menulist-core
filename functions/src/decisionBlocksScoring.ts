@@ -871,6 +871,9 @@ export const computeDecisionBlocksScores = onSchedule({
                 try {
                     const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, storeInfo.timeZone, businessDayEndTime);
                     const knownAnalyticsProjectIds = Array.from(new Set([...activeProjectIds, 'customerApp']));
+                    const projectCatalogById = Object.fromEntries(
+                        projectEntries.map((entry) => [entry.projectId, entry.data]),
+                    );
 
                     if (settlementDates.length === 0) {
                         logger.info(`  - Store ${sId}: Analytics already settled`);
@@ -897,6 +900,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                 settlementDate,
                                 knownAnalyticsProjectIds,
                                 resolveAnalyticsAiEntitlement(storeInfo),
+                                projectCatalogById,
                             );
 
                             analyticsResults.menuProjects += customerAggregation.totalProjects;

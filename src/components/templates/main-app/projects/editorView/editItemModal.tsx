@@ -9,6 +9,7 @@ import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
+import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -677,27 +678,34 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                     <Flex gap={12} wrap="wrap" style={{ padding: '12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
                                         {metadataFields.map((field: MetadataFieldConfig) => {
                                             if (field.key === 'duration') return null; // Duration is in Advanced Options
+                                            const confirmationCopy = field.requiresOwnerConfirmation ? (
+                                                <Text type="secondary" style={{ display: 'block', fontSize: 11 }}>
+                                                    {field.confirmationText || 'Only add this if confirmed.'}
+                                                </Text>
+                                            ) : null;
                                             if (field.key === 'nutritionInfo') {
+                                                const nutritionInfo = getDecisionFactValue(itemData, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined;
                                                 return (
                                                     <Flex key={field.key} vertical gap={4} style={{ width: '100%' }}>
                                                         <Tooltip title={field.tooltip}>
                                                             <Text style={{ fontSize: 12, cursor: 'help' }}>{field.label}</Text>
                                                         </Tooltip>
+                                                        {confirmationCopy}
                                                         <Flex gap={8} wrap="wrap">
-                                                            <InputNumber size="small" placeholder="Calories" value={itemData?.nutritionInfo?.calories}
-                                                                onChange={(v) => setItemData(prev => ({ ...prev!, nutritionInfo: { ...prev?.nutritionInfo, calories: v ?? undefined } }))}
+                                                            <InputNumber size="small" placeholder="Calories" value={nutritionInfo?.calories}
+                                                                onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), calories: v ?? undefined }))}
                                                                 addonAfter="kcal" style={{ width: 130 }} min={0} />
-                                                            <InputNumber size="small" placeholder="Protein" value={itemData?.nutritionInfo?.protein}
-                                                                onChange={(v) => setItemData(prev => ({ ...prev!, nutritionInfo: { ...prev?.nutritionInfo, protein: v ?? undefined } }))}
+                                                            <InputNumber size="small" placeholder="Protein" value={nutritionInfo?.protein}
+                                                                onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), protein: v ?? undefined }))}
                                                                 addonAfter="g" style={{ width: 110 }} min={0} />
-                                                            <InputNumber size="small" placeholder="Carbs" value={itemData?.nutritionInfo?.carbs}
-                                                                onChange={(v) => setItemData(prev => ({ ...prev!, nutritionInfo: { ...prev?.nutritionInfo, carbs: v ?? undefined } }))}
+                                                            <InputNumber size="small" placeholder="Carbs" value={nutritionInfo?.carbs}
+                                                                onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), carbs: v ?? undefined }))}
                                                                 addonAfter="g" style={{ width: 110 }} min={0} />
-                                                            <InputNumber size="small" placeholder="Fat" value={itemData?.nutritionInfo?.fat}
-                                                                onChange={(v) => setItemData(prev => ({ ...prev!, nutritionInfo: { ...prev?.nutritionInfo, fat: v ?? undefined } }))}
+                                                            <InputNumber size="small" placeholder="Fat" value={nutritionInfo?.fat}
+                                                                onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), fat: v ?? undefined }))}
                                                                 addonAfter="g" style={{ width: 110 }} min={0} />
-                                                            <Input size="small" placeholder="Serving size" value={itemData?.nutritionInfo?.servingSize}
-                                                                onChange={(e) => setItemData(prev => ({ ...prev!, nutritionInfo: { ...prev?.nutritionInfo, servingSize: e.target.value || undefined } }))}
+                                                            <Input size="small" placeholder="Serving size" value={nutritionInfo?.servingSize}
+                                                                onChange={(e) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), servingSize: e.target.value || undefined }))}
                                                                 style={{ width: 140 }} />
                                                         </Flex>
                                                     </Flex>
@@ -706,14 +714,17 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                             if (field.type === 'multiSelect' && field.options) {
                                                 return (
                                                     <Flex key={field.key} align="center" gap={8} style={{ flex: 1, minWidth: 220 }}>
-                                                        <Tooltip title={field.tooltip}>
-                                                            <Text style={{ fontSize: 12, cursor: 'help', minWidth: 80 }}>{field.label}</Text>
-                                                        </Tooltip>
+                                                        <Flex vertical style={{ minWidth: 80 }}>
+                                                            <Tooltip title={field.tooltip}>
+                                                                <Text style={{ fontSize: 12, cursor: 'help' }}>{field.label}</Text>
+                                                            </Tooltip>
+                                                            {confirmationCopy}
+                                                        </Flex>
                                                         <Select
                                                             mode="multiple" size="small" allowClear
                                                             placeholder={`Select ${field.label.toLowerCase()}`}
-                                                            value={(itemData as any)?.[field.key] || []}
-                                                            onChange={(val) => setItemData(prev => ({ ...prev!, [field.key]: val.length ? val : undefined }))}
+                                                            value={(getDecisionFactValue(itemData, field.key) as string[] | undefined) || []}
+                                                            onChange={(val) => setItemData(prev => setDecisionFactValue(prev!, field.key, val.length ? val : undefined))}
                                                             options={field.options}
                                                             style={{ flex: 1 }} maxTagCount={2}
                                                         />
@@ -723,14 +734,17 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                             if (field.type === 'singleSelect' && field.options) {
                                                 return (
                                                     <Flex key={field.key} align="center" gap={8} style={{ flex: 1, minWidth: 180 }}>
-                                                        <Tooltip title={field.tooltip}>
-                                                            <Text style={{ fontSize: 12, cursor: 'help', minWidth: 80 }}>{field.label}</Text>
-                                                        </Tooltip>
+                                                        <Flex vertical style={{ minWidth: 80 }}>
+                                                            <Tooltip title={field.tooltip}>
+                                                                <Text style={{ fontSize: 12, cursor: 'help' }}>{field.label}</Text>
+                                                            </Tooltip>
+                                                            {confirmationCopy}
+                                                        </Flex>
                                                         <Select
                                                             size="small" allowClear
                                                             placeholder={`Select`}
-                                                            value={(itemData as any)?.[field.key]}
-                                                            onChange={(val) => setItemData(prev => ({ ...prev!, [field.key]: val || undefined }))}
+                                                            value={getDecisionFactValue(itemData, field.key) as string | undefined}
+                                                            onChange={(val) => setItemData(prev => setDecisionFactValue(prev!, field.key, val || undefined))}
                                                             options={field.options}
                                                             style={{ flex: 1 }}
                                                         />
@@ -740,14 +754,17 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                             if (field.type === 'text') {
                                                 return (
                                                     <Flex key={field.key} align="center" gap={8} style={{ flex: 1, minWidth: 180 }}>
-                                                        <Tooltip title={field.tooltip}>
-                                                            <Text style={{ fontSize: 12, cursor: 'help', minWidth: 80 }}>{field.label}</Text>
-                                                        </Tooltip>
+                                                        <Flex vertical style={{ minWidth: 80 }}>
+                                                            <Tooltip title={field.tooltip}>
+                                                                <Text style={{ fontSize: 12, cursor: 'help' }}>{field.label}</Text>
+                                                            </Tooltip>
+                                                            {confirmationCopy}
+                                                        </Flex>
                                                         <Input
                                                             size="small"
                                                             placeholder={field.tooltip}
-                                                            value={(itemData as any)?.[field.key]}
-                                                            onChange={(e) => setItemData(prev => ({ ...prev!, [field.key]: e.target.value || undefined }))}
+                                                            value={getDecisionFactValue(itemData, field.key) as string | undefined}
+                                                            onChange={(e) => setItemData(prev => setDecisionFactValue(prev!, field.key, e.target.value || undefined))}
                                                             style={{ flex: 1 }}
                                                         />
                                                     </Flex>

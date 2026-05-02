@@ -44,6 +44,27 @@ export interface ExtractedDataAttribute {
     orderIndex?: number; // Multi-store: Store can override attribute order
 }
 
+export type DecisionFactPrimitive = string | number | boolean;
+export type DecisionFactValue =
+    | DecisionFactPrimitive
+    | DecisionFactPrimitive[]
+    | {
+        calories?: number;
+        protein?: number;
+        carbs?: number;
+        fat?: number;
+        servingSize?: string;
+    };
+
+export interface DecisionFactEntry {
+    value?: DecisionFactValue;
+    source?: 'owner' | 'ai' | 'import' | 'system';
+    confirmed?: boolean;
+    updatedAt?: string;
+}
+
+export type ItemDecisionFacts = Record<string, DecisionFactEntry>;
+
 export interface ExtractedDataItem {
     id: string;
     attributes?: ExtractedDataAttribute[];
@@ -60,6 +81,14 @@ export interface ExtractedDataItem {
     active: boolean;
     available?: boolean; // Availability toggle - false = "Sold out" on customer menu (default: true)
     isBestSeller?: boolean; // System-curated or owner-marked popular item for filter chips
+    /**
+     * Generic customer decision facts.
+     *
+     * New SMB-type-specific item facts should be added here instead of growing
+     * the top-level item type. Existing top-level metadata fields below remain
+     * as compatibility mirrors for legacy data and integrations.
+     */
+    decisionFacts?: ItemDecisionFacts;
     // Note: Dietary info (Veg/Non-Veg) is stored in `tags` field as strings
     // e.g., tags: ["Vegetarian"] or tags: ["Non-Vegetarian"]
     // Extracted from visual markers in menu images (see parallelProcessingPrompt.ts)

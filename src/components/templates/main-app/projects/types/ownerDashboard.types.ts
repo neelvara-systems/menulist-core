@@ -303,6 +303,8 @@ export interface OverviewData {
     ownerConfidence?: OwnerConfidence;
     sourceQuality?: SourceQuality[];
     analyticsAiEntitlement?: AnalyticsAiEntitlement;
+    catalogInsightCount?: number;
+    catalogInsightGeneratedAt?: Date;
 }
 
 // ================================================================
@@ -365,6 +367,8 @@ export interface OwnerDashboardData {
     ownerConfidence?: OwnerConfidence;
     sourceQuality?: SourceQuality[];
     analyticsAiEntitlement?: AnalyticsAiEntitlement;
+    catalogInsightCount?: number;
+    catalogInsightGeneratedAt?: Date;
 
     // Meta
     projectId: string;

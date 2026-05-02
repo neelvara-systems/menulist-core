@@ -11,6 +11,7 @@
 
 import { ExtractedDataCategory } from '@template/main-app/projects/types';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
+import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useContext, useEffect, useState } from 'react';
@@ -120,6 +121,14 @@ function PDPModal({
     const images = item.images || [];
     const hasMultipleImages = images.length > 1;
     const isAvailable = item.available !== false;
+    const allergens = getDecisionFactArray(item, 'allergens');
+    const dietaryTags = getDecisionFactArray(item, 'dietaryTags');
+    const spiceLevel = getDecisionFactString(item, 'spiceLevel');
+    const duration = getDecisionFactNumber(item, 'duration');
+    const targetAudience = getDecisionFactString(item, 'targetAudience');
+    const skillLevel = getDecisionFactString(item, 'skillLevel');
+    const materials = getDecisionFactString(item, 'materials');
+    const warranty = getDecisionFactString(item, 'warranty');
 
     const nextImage = () => {
         setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -271,42 +280,47 @@ function PDPModal({
                                     </div>
                                 )}
 
-                                {/* Structured Metadata Badges — only render if data exists */}
-                                {(item.allergens?.length || item.dietaryTags?.length || item.spiceLevel || item.duration || item.targetAudience || item.skillLevel || item.materials) && (
+                                {/* Structured Metadata Badges — render owner-provided details when present */}
+                                {(allergens.length || dietaryTags.length || spiceLevel || duration || targetAudience || skillLevel || materials || warranty) && (
                                     <div className="flex flex-wrap gap-1.5 mb-4">
-                                        {item.dietaryTags?.map((tag: string, idx: number) => (
+                                        {dietaryTags.map((tag: string, idx: number) => (
                                             <span key={`dt-${idx}`} className="px-2 py-0.5 text-xs rounded-full" style={{ background: '#22c55e20', color: '#16a34a' }}>
                                                 {tag.charAt(0).toUpperCase() + tag.slice(1).replace('-', ' ')}
                                             </span>
                                         ))}
-                                        {item.spiceLevel && item.spiceLevel !== 'none' && (
+                                        {spiceLevel && spiceLevel !== 'none' && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: '#ef444420', color: '#ef4444' }}>
-                                                🌶️ {item.spiceLevel.charAt(0).toUpperCase() + item.spiceLevel.slice(1).replace('-', ' ')}
+                                                🌶️ {spiceLevel.charAt(0).toUpperCase() + spiceLevel.slice(1).replace('-', ' ')}
                                             </span>
                                         )}
-                                        {item.allergens?.length > 0 && (
+                                        {allergens.length > 0 && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: '#f59e0b20', color: '#d97706' }}>
-                                                ⚠️ {item.allergens.join(', ')}
+                                                ⚠️ {allergens.join(', ')}
                                             </span>
                                         )}
-                                        {item.duration && (
+                                        {duration && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor }}>
-                                                ⏱ {item.duration} min
+                                                ⏱ {duration} min
                                             </span>
                                         )}
-                                        {item.targetAudience && (
+                                        {targetAudience && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor }}>
-                                                {item.targetAudience.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                                {targetAudience.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                             </span>
                                         )}
-                                        {item.skillLevel && (
+                                        {skillLevel && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor }}>
-                                                {item.skillLevel.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                                {skillLevel.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                             </span>
                                         )}
-                                        {item.materials && (
+                                        {materials && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor }}>
-                                                {item.materials}
+                                                {materials}
+                                            </span>
+                                        )}
+                                        {warranty && (
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor }}>
+                                                Warranty: {warranty}
                                             </span>
                                         )}
                                     </div>

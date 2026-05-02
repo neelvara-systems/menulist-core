@@ -1,11 +1,13 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
+import { getMetadataFieldsForBusiness, type MetadataFieldConfig } from '@config/itemMetadataConfig';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
+import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -70,6 +72,16 @@ function createDraftItem({
             ? { ...item.rawItem.name }
             : Object.fromEntries(languages.map((lang) => [lang, lang === primaryLanguage ? (item?.name || '') : ''])),
         price: item?.rawItem?.price !== undefined ? String(item.rawItem.price || '') : String(item?.price || ''),
+        duration: item?.rawItem?.duration,
+        decisionFacts: item?.rawItem?.decisionFacts ? { ...item.rawItem.decisionFacts } : undefined,
+        allergens: item?.rawItem?.allergens,
+        dietaryTags: item?.rawItem?.dietaryTags,
+        spiceLevel: item?.rawItem?.spiceLevel,
+        nutritionInfo: item?.rawItem?.nutritionInfo ? { ...item.rawItem.nutritionInfo } : undefined,
+        skillLevel: item?.rawItem?.skillLevel,
+        targetAudience: item?.rawItem?.targetAudience,
+        materials: item?.rawItem?.materials,
+        warranty: item?.rawItem?.warranty,
     };
 }
 
@@ -94,7 +106,19 @@ function normalizeDraftItemForComparison(draftItem: ExtractedDataItem, languages
         })),
         available: draftItem.available !== false,
         category: draftItem.category || '',
+        decisionFacts: draftItem.decisionFacts || {},
         description: normalizeLocalizedRecord(draftItem.description, languages),
+        legacyFacts: {
+            allergens: draftItem.allergens || [],
+            dietaryTags: draftItem.dietaryTags || [],
+            duration: draftItem.duration,
+            materials: draftItem.materials || '',
+            nutritionInfo: draftItem.nutritionInfo || {},
+            skillLevel: draftItem.skillLevel || '',
+            spiceLevel: draftItem.spiceLevel || '',
+            targetAudience: draftItem.targetAudience || '',
+            warranty: draftItem.warranty || '',
+        },
         name: normalizeLocalizedRecord(draftItem.name, languages),
         price: String(draftItem.price ?? '').trim(),
     };
@@ -130,6 +154,7 @@ export default function ItemEditSheet({
         padding: '14px 16px',
     } as const;
     const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
+    const metadataFields = useMemo(() => getMetadataFieldsForBusiness(storeDetails?.businessType), [storeDetails?.businessType]);
     const isAddMode = mode === 'add';
     const primaryLanguage = selectedLanguages[0] || 'en';
     const hasMultipleLanguages = selectedLanguages.length > 1;
@@ -262,6 +287,122 @@ export default function ItemEditSheet({
                 attribute.id === attributeId ? { ...attribute, ...updates } : attribute
             )),
         }));
+    };
+
+    const updateDecisionFact = (field: MetadataFieldConfig, value: any) => {
+        setDraftItem((previous) => setDecisionFactValue(previous, field.key, value));
+    };
+
+    const renderDecisionFactControl = (field: MetadataFieldConfig) => {
+        if (field.key === 'duration') return null;
+
+        if (field.key === 'nutritionInfo') {
+            const nutritionInfo = getDecisionFactValue(draftItem, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined;
+            const updateNutrition = (patch: Partial<NonNullable<ExtractedDataItem['nutritionInfo']>>) => {
+                setDraftItem((previous) => setDecisionFactValue(previous, 'nutritionInfo', {
+                    ...(getDecisionFactValue(previous, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined),
+                    ...patch,
+                }));
+            };
+
+            return (
+                <Flex gap={8} key={field.key} vertical>
+                    <Text strong>{field.label}</Text>
+                    {field.requiresOwnerConfirmation ? (
+                        <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
+                    ) : null}
+                    <Flex gap={8} wrap="wrap">
+                        <Input
+                            onChange={(value) => updateNutrition({ calories: value ? Number(value) : undefined })}
+                            placeholder="Calories"
+                            style={{ flex: '1 1 120px' }}
+                            type="number"
+                            value={nutritionInfo?.calories !== undefined ? String(nutritionInfo.calories) : ''}
+                        />
+                        <Input
+                            onChange={(value) => updateNutrition({ protein: value ? Number(value) : undefined })}
+                            placeholder="Protein (g)"
+                            style={{ flex: '1 1 120px' }}
+                            type="number"
+                            value={nutritionInfo?.protein !== undefined ? String(nutritionInfo.protein) : ''}
+                        />
+                        <Input
+                            onChange={(value) => updateNutrition({ carbs: value ? Number(value) : undefined })}
+                            placeholder="Carbs (g)"
+                            style={{ flex: '1 1 120px' }}
+                            type="number"
+                            value={nutritionInfo?.carbs !== undefined ? String(nutritionInfo.carbs) : ''}
+                        />
+                        <Input
+                            onChange={(value) => updateNutrition({ fat: value ? Number(value) : undefined })}
+                            placeholder="Fat (g)"
+                            style={{ flex: '1 1 120px' }}
+                            type="number"
+                            value={nutritionInfo?.fat !== undefined ? String(nutritionInfo.fat) : ''}
+                        />
+                        <Input
+                            onChange={(value) => updateNutrition({ servingSize: value || undefined })}
+                            placeholder="Serving size"
+                            style={{ flex: '1 1 160px' }}
+                            value={nutritionInfo?.servingSize || ''}
+                        />
+                    </Flex>
+                </Flex>
+            );
+        }
+
+        if (field.type === 'multiSelect' && field.options) {
+            return (
+                <Flex gap={6} key={field.key} vertical>
+                    <Text strong>{field.label}</Text>
+                    {field.requiresOwnerConfirmation ? (
+                        <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
+                    ) : null}
+                    <Select
+                        mode="multiple"
+                        onChange={(value) => updateDecisionFact(field, Array.isArray(value) && value.length ? value : undefined)}
+                        options={field.options}
+                        placeholder={`Select ${field.label.toLowerCase()}`}
+                        value={(getDecisionFactValue(draftItem, field.key) as string[] | undefined) || []}
+                    />
+                </Flex>
+            );
+        }
+
+        if (field.type === 'singleSelect' && field.options) {
+            return (
+                <Flex gap={6} key={field.key} vertical>
+                    <Text strong>{field.label}</Text>
+                    {field.requiresOwnerConfirmation ? (
+                        <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
+                    ) : null}
+                    <Select
+                        onChange={(value) => updateDecisionFact(field, value || undefined)}
+                        options={field.options}
+                        placeholder={`Select ${field.label.toLowerCase()}`}
+                        value={getDecisionFactValue(draftItem, field.key) as string | undefined}
+                    />
+                </Flex>
+            );
+        }
+
+        if (field.type === 'text') {
+            return (
+                <Flex gap={6} key={field.key} vertical>
+                    <Text strong>{field.label}</Text>
+                    {field.requiresOwnerConfirmation ? (
+                        <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
+                    ) : null}
+                    <Input
+                        onChange={(value) => updateDecisionFact(field, value || undefined)}
+                        placeholder={field.tooltip}
+                        value={(getDecisionFactValue(draftItem, field.key) as string | undefined) || ''}
+                    />
+                </Flex>
+            );
+        }
+
+        return null;
     };
 
     const handleAddAttribute = () => {
@@ -698,6 +839,34 @@ export default function ItemEditSheet({
                             </div>
                         </Flex>
                     </Card>
+
+                    {metadataFields.length > 0 ? (
+                        <Card size="small" style={sectionCardStyle}>
+                            <Flex gap={14} vertical>
+                                <Flex gap={2} vertical>
+                                    <Text strong>Item details</Text>
+                                    <Text type="secondary">Only add details you know are correct.</Text>
+                                </Flex>
+                                {metadataFields.map((field) => {
+                                    if (field.key === 'duration') {
+                                        return (
+                                            <Flex gap={6} key={field.key} vertical>
+                                                <Text strong>{field.label}</Text>
+                                                <Input
+                                                    onChange={(value) => updateDecisionFact(field, value ? Number(value) : undefined)}
+                                                    placeholder={field.tooltip}
+                                                    type="number"
+                                                    value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
+                                                />
+                                            </Flex>
+                                        );
+                                    }
+
+                                    return renderDecisionFactControl(field);
+                                })}
+                            </Flex>
+                        </Card>
+                    ) : null}
 
                     {hasMultipleLanguages ? (
                         <Collapse activeKey={activeLanguageKey} onChange={(key) => setActiveLanguageKey(Array.isArray(key) ? key : (key ? [key] : []))}>

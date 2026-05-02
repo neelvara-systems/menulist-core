@@ -5,7 +5,7 @@ import { firestoreAdmin } from './firebaseAdmin';
 import { logger as appLogger } from './lib/logger';
 import { addDaysToAnalyticsDateKey, getAnalyticsWeekday, parseAnalyticsDateKey } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey } from './utils/businessDay';
-import { OwnerDashboardAIPayloads, writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
+import { CatalogInsightInput, OwnerDashboardAIPayloads, writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
 import {
     AnalyticsAiEntitlement,
     resolveAnalyticsAiEntitlement,
@@ -216,9 +216,10 @@ export async function aggregateCustomerAnalyticsForStore(
     businessDayEndTime?: string,
     knownProjectIds: string[] = [],
     analyticsAiEntitlement?: AnalyticsAiEntitlement,
+    projectCatalogById: Record<string, CatalogInsightInput> = {},
 ): Promise<AggregationResults> {
     const settlementDate = addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(now, timeZone, businessDayEndTime), -1);
-    return aggregateCustomerAnalyticsForStoreDate(db, tId, sId, settlementDate, knownProjectIds, analyticsAiEntitlement);
+    return aggregateCustomerAnalyticsForStoreDate(db, tId, sId, settlementDate, knownProjectIds, analyticsAiEntitlement, projectCatalogById);
 }
 
 export async function aggregateCustomerAnalyticsForStoreDate(
@@ -228,6 +229,7 @@ export async function aggregateCustomerAnalyticsForStoreDate(
     settlementDate: string,
     knownProjectIds: string[] = [],
     analyticsAiEntitlement: AnalyticsAiEntitlement = resolveAnalyticsAiEntitlement(null),
+    projectCatalogById: Record<string, CatalogInsightInput> = {},
 ): Promise<AggregationResults> {
     const results: AggregationResults = {
         totalProjects: 0,
@@ -369,6 +371,7 @@ export async function aggregateCustomerAnalyticsForStoreDate(
                 yesterdayDoc?.data || null,
                 aiPayloads,
                 analyticsAiEntitlement,
+                projectCatalogById[projectId] || null,
             );
 
             if (isFirstOfMonth) {

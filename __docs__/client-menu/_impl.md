@@ -773,7 +773,7 @@ All 8 items from the ChatGPT infrastructure review have been implemented or veri
 | --- | ---------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | #30 | **Lazy Language Loading**    | `optimizeLanguagePayload()` strips non-primary language descriptions from SSR payload (3+ languages) | `page.tsx:619-645`                                 |
 | #31 | **Progressive Rendering**    | IntersectionObserver-based category rendering for menus with 150+ items; 500px pre-load margin       | `menuPageNew.tsx:101-108, 266-302, 742-748`        |
-| #32 | **Structured Dish Metadata** | Added `allergens`, `dietaryTags`, `spiceLevel`, `nutritionInfo` to `ExtractedDataItem` + schema.org  | `extractedData.types.ts:66-76`, `page.tsx:570-607` |
+| #32 | **Structured Dish Metadata** | Added optional metadata fields to `ExtractedDataItem`; AI no longer invents high-liability or easily stale fields | `extractedData.types.ts:66-76`, `page.tsx:570-607` |
 | #33 | **State Version Key**        | Storage key changed to `menuState_v2_${projectId}` — prevents stale schema parse errors              | `menuPageNew.tsx:103-106`                          |
 | #34 | **Analytics Lazy Loading**   | GA4, Facebook Pixel, Enhanced Ecommerce converted to `dynamic()` imports with `ssr: false`           | `clientWebsite/index.tsx:17-20`                    |
 | #35 | **Text-First Fallback**      | "Loading menu..." message fades in after 3s delay via CSS animation in MenuSkeleton                  | `page.tsx:731-753`                                 |
@@ -787,26 +787,28 @@ All 8 items from the ChatGPT infrastructure review have been implemented or veri
 
 ---
 
-## SMB-Compatible Item Metadata (Implemented March 15, 2026)
+## SMB-Compatible Item Metadata (AI-Tightened May 2, 2026)
 
-Structured item metadata that adapts per business category. Food businesses see allergens/dietary/spice; service businesses see duration/audience; retail sees materials/warranty.
+Structured item metadata adapts per business category. Owners can manually add known item details, while AI generation and extraction are restricted from inventing high-liability or easily stale fields. New long-term SMB-specific facts belong in generic `decisionFacts`; older top-level metadata fields remain compatibility mirrors.
 
 ### Architecture
 
 ```
 itemMetadataConfig.ts (SSOT for field definitions + category mapping)
         ↓
-ExtractedDataItem type (universal superset — all fields optional)
+ExtractedDataItem.decisionFacts (generic fact store; legacy top-level mirrors retained)
         ↓
-AI Extraction Prompt (category-aware metadata extraction)
+AI Extraction Prompt (safe metadata suggestions only; risky fields stripped)
         ↓
 aiResponseUtils → redistributeUtils (spread operator passes through all metadata)
         ↓
-EditItemModal (collapsible "Item Details" — shows only relevant fields)
+EditItemModal (collapsible "Item Details" — writes owner facts into decisionFacts)
         ↓
-Schema.org (suitableForDiet, NutritionInfo, additionalProperty)
+Fact resolver helpers (prefer decisionFacts, fall back to legacy fields)
         ↓
-PDP Modal (customer-facing metadata badges)
+Schema.org and filters (price, availability, name, description, owner-provided metadata)
+        ↓
+PDP Modal (owner-provided metadata badges)
 ```
 
 ### Files Created
@@ -819,11 +821,12 @@ PDP Modal (customer-facing metadata badges)
 
 | File                          | Change                                                                               |
 | ----------------------------- | ------------------------------------------------------------------------------------ |
-| `extractedData.types.ts`      | Added `skillLevel`, `targetAudience`, `materials`, `warranty` to `ExtractedDataItem` |
-| `parallelProcessingPrompt.ts` | Added structured metadata extraction instructions per business category              |
-| `editItemModal.tsx`           | Added "Item Details" collapsible section with category-aware fields                  |
-| `page.tsx` (client menu)      | Enhanced schema.org with `additionalProperty` for SMB metadata                       |
-| `PDPModal.tsx`                | Added metadata badges (dietary, spice, allergens, duration, audience, etc.)          |
+| `extractedData.types.ts`      | Added generic `decisionFacts`; legacy metadata fields remain for compatibility        |
+| `itemDecisionFacts.ts`        | Resolves, writes, and mirrors owner-entered decision facts                            |
+| `parallelProcessingPrompt.ts` | Structured metadata extraction tightened so AI does not invent risky fields          |
+| `editItemModal.tsx`           | "Item Details" collapsible section renders business-category owner controls         |
+| `page.tsx` (client menu)      | Schema.org reads owner-provided facts, including retail warranty, when present       |
+| `PDPModal.tsx`                | Metadata badges render owner-provided facts, including retail warranty               |
 
 ### Business Category → Field Mapping
 
@@ -836,6 +839,27 @@ PDP Modal (customer-facing metadata badges)
 | Creative          | Duration, Materials                                  |
 | Professional      | Duration                                             |
 | Specialty         | Duration, Target Audience                            |
+
+Exact business-type overrides may narrow or adjust the category default when the broad category would expose misleading fields. Examples: `Bookstore` shows no extra item facts, `Electronics Store` shows Warranty, `Dental Clinic` shows Duration only, and fitness/yoga/training businesses show Duration, Skill Level, and Target Audience. The override layer must stay small and obvious; do not use image-generation presets as the metadata source of truth.
+
+### Metadata Safety Policy
+
+Allergens, nutrition, materials, warranty, skill level, and target audience are owner-entered fields only. AI generation and extraction must not infer them from weak context, and `/api/new-item-metadata` strips those fields if the model returns them anyway.
+
+### Long-Term Fact Model
+
+Do not add new business-type-specific facts as top-level `ExtractedDataItem` fields. Add them to the decision-facts registry/helper layer, define whether they are owner-editable, public-facing, filterable, AI-suggestible, confirmation-gated, and schema-mapped, then render through the shared resolver. Public filters may use normalized facts only when the fact has a controlled value set; free-text facts such as warranty, care notes, or materials should display as item details rather than becoming filter chips.
+
+Registry policy fields:
+
+| Policy | Purpose |
+| ------ | ------- |
+| `ownerEditable` | Whether owners can manually maintain this fact |
+| `publicVisible` | Whether the public menu may show it when filled |
+| `filterable` | Whether it may become a public filter chip |
+| `aiSuggestible` | Whether AI may return it from generation/extraction |
+| `requiresOwnerConfirmation` | Whether UI must remind owners to add only confirmed values |
+| `schemaOrgMapping` | Whether/how it maps into public structured data |
 
 ### Infrastructure Readiness Signals (Track When at Scale)
 
