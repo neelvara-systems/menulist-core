@@ -34,6 +34,7 @@ import {
 import { unstable_cache } from "next/cache";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPAnalytics from "./OBPAnalytics";
+import OBPThemeToggle from "./OBPThemeToggle";
 import { getOBPTranslations } from "./i18n";
 import styles from "./obp.module.scss";
 
@@ -123,7 +124,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const firstLetter = brandName.charAt(0);
 
     return (
-        <main className={styles.page} style={{ '--obp-accent': accentColor } as any}>
+        <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
             <OBPAnalytics
                 tenantId={store?.tenantId}
                 storeId={store?.storeId}
@@ -252,6 +253,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                     />
                 </footer>
             </div>
+            <OBPThemeToggle />
         </main>
     );
 }

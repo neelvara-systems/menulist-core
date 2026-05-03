@@ -446,7 +446,7 @@ const getMenuAliasCanonicalSlug = unstable_cache(
 
 // Generate metadata for SEO
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-    const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
+    const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
     const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang);
 
     // Lookup store based on tenant type (with retry for transient failures - TASK 4)
@@ -511,11 +511,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const imageUrl = storeData.logo || "/images/default-menu-preview.png";
 
     // Build canonical URL based on domain type
+    const requestBase = origin || (subdomain ? `https://${subdomain}.menulist.ai` : '');
     const canonicalBase = customDomain
         ? `https://${customDomain}`
-        : host
-            ? `https://${host}`
-            : `https://${subdomain}.menulist.ai`;
+        : requestBase;
 
     // G-05 + G-14 / R5 Layer 2 canonical override (§9 + §8 + §11 PUBLIC-ROUTING-DOCTRINE):
     // When the request path is `/menu` or `/{outletSlug}/menu` AND no project
@@ -1268,7 +1267,7 @@ async function MenuContent({
     slugSegments?: string[];
     requestedLanguage?: string | null;
 }) {
-    const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
+    const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
 
     // Lookup store — withTimeout prevents infinite SSR hang (GPT FIX 4), withRetry handles transients (TASK 4)
     let storeData: any = null;
@@ -1443,9 +1442,7 @@ async function MenuContent({
     if (redirectSlug && slug && redirectSlug !== slug.toLowerCase()) {
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : host
-                ? `https://${host}`
-                : `https://${subdomain}.menulist.ai`;
+            : origin || `https://${subdomain}.menulist.ai`;
         redirect(appendPublicLanguageParam(`${baseUrl}/${redirectSlug}`, requestedLanguage));
     }
 
@@ -1469,9 +1466,7 @@ async function MenuContent({
     const baseUrl =
         tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : host
-                ? `https://${host}`
-                : `https://${subdomain}.menulist.ai`;
+            : origin || `https://${subdomain}.menulist.ai`;
 
     // Add slug to canonical if not default project.
     // G-05 / R5 Layer 2 canonical (§9 + §8 PUBLIC-ROUTING-DOCTRINE):

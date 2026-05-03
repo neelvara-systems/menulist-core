@@ -19,6 +19,7 @@ export type TenantInfo = {
     customDomain: string | null;
     tenantType: string | null;
     host: string | null;
+    origin: string | null;
 };
 
 /**
@@ -40,6 +41,10 @@ export async function getTenantFromHeaders(logContext = 'ClientPage'): Promise<T
         process.env.VERCEL_URL;                        // Vercel env fallback
 
     const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
+    const protocol =
+        headersList.get('x-forwarded-proto') ||
+        (process.env.NODE_ENV === 'development' ? 'http' : 'https');
+    const origin = requestHost ? `${protocol}://${requestHost.toLowerCase()}` : null;
 
     // If still no host we're in a broken state — log once and return nulls
     if (!host) {
@@ -57,5 +62,5 @@ export async function getTenantFromHeaders(logContext = 'ClientPage'): Promise<T
     const subdomain = tenantSubdomain || resolvedDomain.subdomain || null;
     const customDomain = tenantCustomDomain || resolvedDomain.customDomain || null;
 
-    return { subdomain, customDomain, tenantType, host };
+    return { subdomain, customDomain, tenantType, host, origin };
 }

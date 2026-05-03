@@ -42,6 +42,7 @@ import {
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import {
+    LuBadgeCheck,
     LuCalendarDays,
     LuCheck,
     LuClock,
@@ -59,6 +60,7 @@ import OBPExternalLinks from "./OBPExternalLinks";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPMenuCTA from "./OBPMenuCTA";
 import OBPPhotoStrip from "./OBPPhotoStrip";
+import OBPThemeToggle from "./OBPThemeToggle";
 import { getOBPTranslations } from "./i18n";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
@@ -341,6 +343,15 @@ function getFullAddress(store: any): string | null {
     return parts.length > 0 ? parts.join(', ') : null;
 }
 
+function isCustomerFacingSpecialNote(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    return !normalized.includes('shown on the official business page')
+        && !normalized.includes('use for service charges')
+        && !normalized.includes('today-only notes')
+        && !normalized.includes('important customer information');
+}
+
 // ── Main async component ──
 
 interface OBPContentProps {
@@ -556,7 +567,19 @@ export default async function OBPContent({
         icon: attribute.icon || '+',
         label: attribute.label,
     }));
-    const allAttributeTags = [...attributeTags, ...customAttributeTags].slice(0, 18);
+    const repeatedStructuredAttributeKeys = new Set([
+        'dineIn',
+        'takeaway',
+        'delivery',
+        'driveThrough',
+        'acceptsCards',
+        'acceptsUPI',
+        'acceptsCash',
+    ]);
+    const allAttributeTags = [
+        ...attributeTags.filter((attribute) => !repeatedStructuredAttributeKeys.has(attribute.key)),
+        ...customAttributeTags,
+    ].slice(0, 12);
 
     // Freshness signal — compute how recently the store was updated
     const freshnessText = getFreshnessText(store?.modifiedOn, t);
@@ -566,7 +589,8 @@ export default async function OBPContent({
 
     // Known-for identity cue
     const knownFor = getLocalizedText(pp.knownFor, contentLanguage, getPrimaryLocalizedLanguage(pp.knownFor, contentLanguage), '');
-    const specialNote = getLocalizedText(pp.specialNote, contentLanguage, getPrimaryLocalizedLanguage(pp.specialNote, contentLanguage), '');
+    const rawSpecialNote = getLocalizedText(pp.specialNote, contentLanguage, getPrimaryLocalizedLanguage(pp.specialNote, contentLanguage), '');
+    const specialNote = isCustomerFacingSpecialNote(rawSpecialNote) ? rawSpecialNote : '';
 
     // Short area context (city name for quick location recognition)
     const areaContext = store?.area || store?.city || null;
@@ -600,6 +624,7 @@ export default async function OBPContent({
         pp.showTermsLink !== false ? { href: '/terms', label: t('publicTerms') } : null,
         pp.showRefundLink !== false ? { href: '/refund', label: t('publicRefund') } : null,
     ].filter(Boolean) as Array<{ href: string; label: string }>;
+    const officialPageLabel = t('publicOfficialPagePoweredBy').split('·')[0]?.trim() || 'Official Page';
 
     return (
         <>
@@ -624,7 +649,7 @@ export default async function OBPContent({
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
                 />
             )}
-            <main className={styles.page} style={{ '--obp-accent': accentColor } as any}>
+            <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
                 <div className={styles.shell}>
                     {showLanguageSwitcher ? (
                         <OBPLanguageSwitcher
@@ -657,75 +682,84 @@ export default async function OBPContent({
 
                     {/* ── Identity Block ── */}
                     <section className={styles.identity} aria-label={storeName}>
-                    {logo ? (
-                        <img
-                            src={logo}
-                            alt={storeName}
-                            className={styles.logo}
-                            width={80}
-                            height={80}
-                            loading="eager"
-                        />
-                    ) : (
-                        <div className={styles.logoFallback} style={{ background: accentColor }}>
-                            {firstLetter}
+                        <div className={styles.identityHeader}>
+                            {logo ? (
+                                <img
+                                    src={logo}
+                                    alt={storeName}
+                                    className={styles.logo}
+                                    width={72}
+                                    height={72}
+                                    loading="eager"
+                                />
+                            ) : (
+                                <div className={styles.logoFallback} style={{ background: accentColor }}>
+                                    {firstLetter}
+                                </div>
+                            )}
+
+                            <div className={styles.identityText}>
+                                <h1 className={styles.name}>{storeName}</h1>
+
+                                {descriptor && (
+                                    <p className={styles.descriptor}>{descriptor}</p>
+                                )}
+
+                                {/* Above-fold trust strip: price range + area + service modes */}
+                                {(priceRange || areaContext || serviceModeTags.length > 0) && (
+                                    <p className={`${styles.descriptor} ${styles.descriptorCompact}`}>
+                                        {[priceRange, areaContext, serviceModeTags.slice(0, 3).join(' · ')].filter(Boolean).join(' · ')}
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    <h1 className={styles.name}>{storeName}</h1>
+                        <div className={styles.trustRow}>
+                            {isPermanentlyClosed ? (
+                                <div className={`${styles.statusBadge} ${styles.statusClosed}`}>
+                                    <span className={`${styles.statusDot} ${styles.statusDotClosed}`} />
+                                    {t('publicPermanentlyClosed')}
+                                </div>
+                            ) : showStatusBadge ? (
+                                <div className={`${styles.statusBadge} ${status.isOpen ? styles.statusOpen : styles.statusClosed}`}>
+                                    <span className={`${styles.statusDot} ${status.isOpen ? styles.statusDotOpen : styles.statusDotClosed}`} />
+                                    {status.isOpen ? t('publicOpen') : t('publicClosed')}{status.nextChange ? ` · ${status.nextChange}` : ''}
+                                </div>
+                            ) : (
+                                <p className={`${styles.nextChange} ${styles.statusMuted}`}>
+                                    {status.statusText}
+                                </p>
+                            )}
 
-                    {descriptor && (
-                        <p className={styles.descriptor}>{descriptor}</p>
-                    )}
+                            <span className={styles.officialBadge}>
+                                <LuBadgeCheck aria-hidden="true" size={14} />
+                                {officialPageLabel}
+                            </span>
 
-                    {/* Above-fold trust strip: price range + area + service modes */}
-                    {(priceRange || areaContext || serviceModeTags.length > 0) && (
-                        <p className={`${styles.descriptor} ${styles.descriptorCompact}`}>
-                            {[priceRange, areaContext, serviceModeTags.join(' · ')].filter(Boolean).join(' · ')}
-                        </p>
-                    )}
-
-                    {isPermanentlyClosed ? (
-                        <div className={`${styles.statusBadge} ${styles.statusClosed}`}>
-                            <span className={`${styles.statusDot} ${styles.statusDotClosed}`} />
-                            {t('publicPermanentlyClosed')}
+                            {/* Google rating as subtle reference signal (NOT dominant) */}
+                            {hasGoogleReview && (
+                                <OBPExternalLinks
+                                    tenantId={store?.tenantId}
+                                    storeId={store?.storeId}
+                                    trackingEnabled={trackingEnabled}
+                                    storeTimeZone={store?.timeZone}
+                                    businessDayEndTime={store?.businessDayEndTime}
+                                    includeLocation={includeLocation}
+                                    googleReviewUrl={googleReviewUrl}
+                                    googleReviewLabel={
+                                        googleReviewCount
+                                            ? t('publicGoogleRatingWithCount', { count: googleReviewCount, rating: googleRating })
+                                            : t('publicGoogleRating', { rating: googleRating })
+                                    }
+                                />
+                            )}
                         </div>
-                    ) : showStatusBadge ? (
-                        <div className={`${styles.statusBadge} ${status.isOpen ? styles.statusOpen : styles.statusClosed}`}>
-                            <span className={`${styles.statusDot} ${status.isOpen ? styles.statusDotOpen : styles.statusDotClosed}`} />
-                            {status.isOpen ? t('publicOpen') : t('publicClosed')}{status.nextChange ? ` · ${status.nextChange}` : ''}
-                        </div>
-                    ) : (
-                        <p className={`${styles.nextChange} ${styles.statusMuted}`}>
-                            {status.statusText}
-                        </p>
-                    )}
 
-                    {/* Google rating as subtle reference signal (NOT dominant) */}
-                    {hasGoogleReview && (
-                        <OBPExternalLinks
-                            tenantId={store?.tenantId}
-                            storeId={store?.storeId}
-                            trackingEnabled={trackingEnabled}
-                            storeTimeZone={store?.timeZone}
-                            businessDayEndTime={store?.businessDayEndTime}
-                            includeLocation={includeLocation}
-                            googleReviewUrl={googleReviewUrl}
-                            googleReviewLabel={
-                                googleReviewCount
-                                    ? t('publicGoogleRatingWithCount', { count: googleReviewCount, rating: googleRating })
-                                    : t('publicGoogleRating', { rating: googleRating })
-                            }
-                        />
-                    )}
-
-                    {knownFor && (
-                        <p className={styles.nextChange}>{t('publicKnownForPrefix', { value: knownFor })}</p>
-                    )}
-
-                    {establishedYear && (
-                        <p className={styles.nextChange}>{t('publicServingSince', { year: establishedYear })}</p>
-                    )}
+                        {(knownFor || establishedYear) && (
+                            <p className={styles.identityMeta}>
+                                {[knownFor ? t('publicKnownForPrefix', { value: knownFor }) : null, establishedYear ? t('publicServingSince', { year: establishedYear }) : null].filter(Boolean).join(' · ')}
+                            </p>
+                        )}
                     </section>
 
                     {/* ── Primary CTA ── */}
@@ -791,7 +825,7 @@ export default async function OBPContent({
 
                     {/* ── Info Block ── */}
                     {(fullAddress || todayHours) && (
-                        <section className={styles.info} aria-label="Business details">
+                        <section className={`${styles.info} ${styles.locationInfo}`} aria-label="Business details">
                         {fullAddress && (
                             <div className={styles.infoRow}>
                                 <span className={styles.infoIcon}><LuMapPin aria-hidden="true" size={16} /></span>
@@ -813,76 +847,80 @@ export default async function OBPContent({
                     </div>
                 ) : null}
 
-                {/* ── Structured Info Section (P3 — AEO critical, all SSR) ── */}
-                    {hasStructuredInfo && !isPermanentlyClosed && (
-                        <section className={styles.info} aria-label="Additional business details">
-                        {allHours && (
-                            <details className={styles.details}>
-                                <summary className={styles.infoRow}>
-                                    <span className={styles.infoIcon}><LuCalendarDays aria-hidden="true" size={16} /></span>
-                                    <span>{t('publicBusinessHours')}</span>
-                                </summary>
-                                <div className={styles.hoursList}>
-                                    {allHours}
+                {(hasStructuredInfo || (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0) || hasSocials) && (
+                    <div className={styles.utilityStack}>
+                        {/* ── Structured Info Section (P3 — AEO critical, all SSR) ── */}
+                        {hasStructuredInfo && !isPermanentlyClosed && (
+                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label="Additional business details">
+                            {allHours && (
+                                <div>
+                                    <div className={styles.infoRow}>
+                                        <span className={styles.infoIcon}><LuCalendarDays aria-hidden="true" size={16} /></span>
+                                        <span>{t('publicBusinessHours')}</span>
+                                    </div>
+                                    <div className={styles.hoursList}>
+                                        {allHours}
+                                    </div>
                                 </div>
-                            </details>
+                            )}
+                            {cuisineTypes.length > 0 && (
+                                <div className={styles.infoRow}>
+                                    <span className={styles.infoIcon}><LuUtensils aria-hidden="true" size={16} /></span>
+                                    <span>{cuisineTypes.join(', ')}</span>
+                                </div>
+                            )}
+                            {priceRange && (
+                                <div className={styles.infoRow}>
+                                    <span className={styles.infoIcon}><LuIndianRupee aria-hidden="true" size={16} /></span>
+                                    <span>{t('publicPriceRange', { value: priceRange })}</span>
+                                </div>
+                            )}
+                            {serviceModeTags.length > 0 && (
+                                <div className={styles.infoRow}>
+                                    <span className={styles.infoIcon}><LuStore aria-hidden="true" size={16} /></span>
+                                    <span>{serviceModeTags.join(' · ')}</span>
+                                </div>
+                            )}
+                            {paymentTags.length > 0 && (
+                                <div className={styles.infoRow}>
+                                    <span className={styles.infoIcon}><LuCreditCard aria-hidden="true" size={16} /></span>
+                                    <span>{t('publicAccepts', { value: paymentTags.join(', ') })}</span>
+                                </div>
+                            )}
+                            </section>
                         )}
-                        {cuisineTypes.length > 0 && (
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}><LuUtensils aria-hidden="true" size={16} /></span>
-                                <span>{cuisineTypes.join(', ')}</span>
-                            </div>
-                        )}
-                        {priceRange && (
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}><LuIndianRupee aria-hidden="true" size={16} /></span>
-                                <span>{t('publicPriceRange', { value: priceRange })}</span>
-                            </div>
-                        )}
-                        {serviceModeTags.length > 0 && (
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}><LuStore aria-hidden="true" size={16} /></span>
-                                <span>{serviceModeTags.join(' · ')}</span>
-                            </div>
-                        )}
-                        {paymentTags.length > 0 && (
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}><LuCreditCard aria-hidden="true" size={16} /></span>
-                                <span>{t('publicAccepts', { value: paymentTags.join(', ') })}</span>
-                            </div>
-                        )}
-                        </section>
-                    )}
 
-                {/* ── Business Attributes (BTG Layer 12) ── */}
-                {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0 && (
-                    <div className={styles.attributes}>
-                        {allAttributeTags.map((tag) => (
-                            <span key={tag.key} className={styles.attributeTag}>
-                                <span className={styles.attributeIcon}>{tag.icon}</span>
-                                <span>{tag.label}</span>
-                            </span>
-                        ))}
+                        {/* ── Business Attributes (BTG Layer 12) ── */}
+                        {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0 && (
+                            <div className={styles.attributes}>
+                                {allAttributeTags.map((tag) => (
+                                    <span key={tag.key} className={styles.attributeTag}>
+                                        <span className={styles.attributeIcon}>{tag.icon}</span>
+                                        <span>{tag.label}</span>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* ── Social Links ── */}
+                        {hasSocials && (
+                            <OBPExternalLinks
+                                tenantId={store?.tenantId}
+                                storeId={store?.storeId}
+                                trackingEnabled={trackingEnabled}
+                                storeTimeZone={store?.timeZone}
+                                businessDayEndTime={store?.businessDayEndTime}
+                                includeLocation={includeLocation}
+                                instagram={instagram}
+                                facebook={facebook}
+                                twitter={twitter}
+                                linkedin={linkedin}
+                                youtube={youtube}
+                                whatsapp={socialWhatsApp}
+                                website={website}
+                            />
+                        )}
                     </div>
-                )}
-
-                {/* ── Social Links ── */}
-                {hasSocials && (
-                    <OBPExternalLinks
-                        tenantId={store?.tenantId}
-                        storeId={store?.storeId}
-                        trackingEnabled={trackingEnabled}
-                        storeTimeZone={store?.timeZone}
-                        businessDayEndTime={store?.businessDayEndTime}
-                        includeLocation={includeLocation}
-                        instagram={instagram}
-                        facebook={facebook}
-                        twitter={twitter}
-                        linkedin={linkedin}
-                        youtube={youtube}
-                        whatsapp={socialWhatsApp}
-                        website={website}
-                    />
                 )}
 
                 {/* ── Freshness Signal ── */}
@@ -911,6 +949,7 @@ export default async function OBPContent({
                     )}
                     </footer>
                 </div>
+                <OBPThemeToggle />
             </main>
 
             {/*

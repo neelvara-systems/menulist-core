@@ -80,7 +80,7 @@ export default function OBPActions({
             {showCall && phoneNumber && (
                 <a
                     href={callHref}
-                    className={styles.actionButton}
+                    className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
                     onClick={(event) => trackBeforeNavigate({
                         event,
                         href: callHref,
@@ -91,27 +91,10 @@ export default function OBPActions({
                     <span>{labels.call}</span>
                 </a>
             )}
-            {showWhatsApp && whatsappNumber && (
-                <a
-                    href={whatsappHref}
-                    className={styles.actionButton}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(event) => trackBeforeNavigate({
-                        event,
-                        href: whatsappHref,
-                        target: '_blank',
-                        track: () => handleAction('whatsapp'),
-                    })}
-                >
-                    <span className={styles.actionIcon}><LuMessageCircle aria-hidden="true" size={20} /></span>
-                    <span>{labels.whatsapp}</span>
-                </a>
-            )}
             {showDirections && directionsUrl && (
                 <a
                     href={directionsUrl}
-                    className={styles.actionButton}
+                    className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
@@ -121,14 +104,31 @@ export default function OBPActions({
                         track: () => handleAction('directions'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuMapPin aria-hidden="true" size={20} /></span>
+                    <span className={styles.actionIcon}><LuMapPin aria-hidden="true" size={18} /></span>
                     <span>{labels.directions}</span>
+                </a>
+            )}
+            {showWhatsApp && whatsappNumber && (
+                <a
+                    href={whatsappHref}
+                    className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: whatsappHref,
+                        target: '_blank',
+                        track: () => handleAction('whatsapp'),
+                    })}
+                >
+                    <span className={styles.actionIcon}><LuMessageCircle aria-hidden="true" size={18} /></span>
+                    <span>{labels.whatsapp}</span>
                 </a>
             )}
             {showReservation && reservationUrl && (
                 <a
                     href={reservationUrl}
-                    className={styles.actionButton}
+                    className={`${styles.actionButton} ${styles.actionButtonUtility}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
@@ -138,14 +138,14 @@ export default function OBPActions({
                         track: () => handleAction('reserve'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuCalendarCheck aria-hidden="true" size={20} /></span>
+                    <span className={styles.actionIcon}><LuCalendarCheck aria-hidden="true" size={18} /></span>
                     <span>{labels.reserve}</span>
                 </a>
             )}
             {showOrder && orderUrl && (
                 <a
                     href={orderUrl}
-                    className={styles.actionButton}
+                    className={`${styles.actionButton} ${styles.actionButtonUtility}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
@@ -155,7 +155,7 @@ export default function OBPActions({
                         track: () => handleAction('order'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuShoppingBag aria-hidden="true" size={20} /></span>
+                    <span className={styles.actionIcon}><LuShoppingBag aria-hidden="true" size={18} /></span>
                     <span>{labels.order}</span>
                 </a>
             )}
