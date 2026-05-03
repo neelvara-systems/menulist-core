@@ -62,7 +62,8 @@
 - Primary CTA: "View Menu" → opens existing digital menu (with OBP→menu conversion tracking)
 - Quick actions: Call, WhatsApp, Directions, Reserve, Order
 - Google review reference: rating badge + link to Google reviews (NOT hosted reviews)
-- Business photos: up to 3 curated photos (storefront, interior, hero product) — NOT a gallery
+- Business photos: owner-managed photos; first 3 preview on OBP, tapping opens the full viewer
+- Utility cards split service modes, payment options, dietary options, and amenities for mobile scanning
 - Info block: address, today's hours
 - Structured info section (AEO): full 7-day hours, cuisine types, price range, service modes, payment methods
 - Social links: Instagram, Facebook, Website
@@ -81,7 +82,7 @@
 ### Out-of-Scope (Permanent Ban)
 
 - Custom text blocks / about section / marketing copy
-- Photo gallery / slideshow / carousel (max 3 curated only)
+- Masonry/page gallery / slideshow as default page content (OBP preview stays first 3 only)
 - Hosting reviews / testimonials / UGC (external reference only)
 - Promotions / offers / banners
 - Custom sections / drag-drop editor
@@ -139,7 +140,7 @@
 │   │    VIEW MENU        │   │  ← Primary CTA, conversion tracked
 │   └─────────────────────┘   │
 │                             │
-│   [photo1] [photo2] [photo3]│  ← 1-3 curated photos (optional)
+│   [photo1] [photo2] [photo3]│  ← first 3 photo preview; tap opens all
 │                             │
 │   [Call][WhatsApp][Map]     │  ← Quick actions + Reserve + Order
 │                             │
@@ -173,7 +174,7 @@
 | FR-01 | OBP auto-generated for every store with name + phone     | P0       |
 | FR-02 | Shows logo, name, descriptor, open/closed status         | P0       |
 | FR-03 | "View Menu" CTA opens digital menu at `/menu` route      | P0       |
-| FR-04 | Call, WhatsApp, Directions quick action buttons          | P0       |
+| FR-04 | Call, WhatsApp, Directions, Google reviews, feedback, reserve, and order quick action buttons with owner visibility controls | P0       |
 | FR-05 | Address and today's hours displayed                      | P0       |
 | FR-06 | Social links (Instagram, Facebook, Website) if available | P1       |
 | FR-07 | "Powered by MenuList" footer (not removable)             | P0       |
@@ -223,7 +224,7 @@
 - Accent color (color picker)
 - Established year
 - Google review URL + rating + review count
-- Up to 3 business photos (upload to Firebase Storage)
+- Business photos (upload to Firebase Storage; first 3 appear in OBP preview)
 - WhatsApp number (separate from main phone)
 - Google Maps URL (exact location link)
 - Reservation URL (e.g., Dineout, OpenTable)

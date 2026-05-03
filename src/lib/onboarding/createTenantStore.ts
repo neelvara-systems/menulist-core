@@ -15,7 +15,7 @@
  */
 
 import { getDefaultTimeSlotPresets } from '@config/defaultTimeSlotPresets';
-import { getBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
@@ -167,9 +167,9 @@ export async function createTenantStoreInTransaction(
     const storeName = storeNameOverride || `${businessName} - Main Store`;
     const tenantKey = businessName.toLowerCase().replaceAll(' ', '_');
     const storeKey = storeName.toLowerCase().replaceAll(' ', '_');
-    const businessCategory = getBusinessCategory(businessType) || 'specialty';
+    const businessCategory = resolveBusinessCategory(businessType) || 'specialty';
     const defaultRoles = createDefaultRoles(newStoreId, email || 'system');
-    const resolvedBusinessDayEndTime = resolveBusinessDayEndTime(businessType, businessDayEndTime);
+    const resolvedBusinessDayEndTime = resolveBusinessDayEndTime(businessType, businessDayEndTime, businessCategory);
     const schedulerHour = computeSchedulerHour(timeZone, resolvedBusinessDayEndTime);
 
     // 3. Resolve subdomain (if requested)

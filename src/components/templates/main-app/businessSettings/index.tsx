@@ -750,7 +750,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             form.setFieldsValue({ timeZone: timezone });
         }
         if (!storeDetails?.businessDayEndTime) {
-            form.setFieldsValue({ businessDayEndTime: resolveBusinessDayEndTime(storeDetails?.businessType) });
+            form.setFieldsValue({ businessDayEndTime: resolveBusinessDayEndTime(storeDetails?.businessType, undefined, storeDetails?.businessCategory) });
         }
     }, [storeDetails, form]);
 

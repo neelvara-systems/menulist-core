@@ -24,8 +24,8 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
     const [originalAttributes, setOriginalAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
     const [originalCustomAttributes, setOriginalCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
     const attributeGroups = useMemo(
-        () => getBusinessAttributeGroupsForType(storeDetails?.businessType),
-        [storeDetails?.businessType],
+        () => getBusinessAttributeGroupsForType(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessCategory, storeDetails?.businessType],
     );
     const isDirty =
         JSON.stringify(attributes) !== JSON.stringify(originalAttributes)

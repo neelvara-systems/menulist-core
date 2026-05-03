@@ -9,8 +9,10 @@
 
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
-import { trackOBPAction } from '@lib/analytics/unified';
-import { LuCalendarCheck, LuMapPin, LuMessageCircle, LuPhone, LuShoppingBag } from 'react-icons/lu';
+import { trackOBPAction, trackOBPLinkClick } from '@lib/analytics/unified';
+import type { ReactNode } from 'react';
+import { LuCalendarCheck, LuMessageSquarePlus, LuPhone, LuShoppingBag } from 'react-icons/lu';
+import { TbBrandGoogleFilled, TbBrandWhatsapp, TbMapPinFilled } from 'react-icons/tb';
 import styles from './obp.module.scss';
 
 interface OBPActionsProps {
@@ -25,17 +27,24 @@ interface OBPActionsProps {
     directionsUrl?: string;
     reservationUrl?: string;
     orderUrl?: string;
+    googleReviewUrl?: string;
+    feedbackUrl?: string;
+    iconVariant?: 'icons' | 'emoji';
     showCall: boolean;
     showWhatsApp: boolean;
     showDirections: boolean;
     showReservation: boolean;
     showOrder: boolean;
+    showGoogleReview: boolean;
+    showFeedback: boolean;
     labels: {
         call: string;
         whatsapp: string;
         directions: string;
         reserve: string;
         order: string;
+        reviews: string;
+        feedback: string;
     };
 }
 
@@ -51,17 +60,22 @@ export default function OBPActions({
     directionsUrl,
     reservationUrl,
     orderUrl,
+    googleReviewUrl,
+    feedbackUrl,
+    iconVariant = 'icons',
     showCall,
     showWhatsApp,
     showDirections,
     showReservation,
     showOrder,
+    showGoogleReview,
+    showFeedback,
     labels,
 }: OBPActionsProps) {
-    const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl);
+    const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl) || (showGoogleReview && !!googleReviewUrl) || (showFeedback && !!feedbackUrl);
     if (!hasAnyAction) return null;
 
-    const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
+    const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback') => {
         if (!trackingEnabled) return Promise.resolve();
         return trackOBPAction(storeId, action, {
             tenantId,
@@ -72,8 +86,24 @@ export default function OBPActions({
         });
     };
 
+    const handleGoogleReview = () => {
+        if (!trackingEnabled) return Promise.resolve();
+        return trackOBPLinkClick(storeId, 'google_review', {
+            tenantId,
+            sessionId: getSessionId(),
+            storeTimeZone,
+            businessDayEndTime,
+            includeLocation,
+        });
+    };
+
     const callHref = phoneNumber ? `tel:${phoneNumber}` : '';
     const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : '';
+    const renderActionIcon = (emoji: string, icon: ReactNode, className?: string) => (
+        <span className={`${styles.actionIcon} ${className || ''} ${iconVariant === 'emoji' ? styles.actionIconEmojiMode : ''}`}>
+            {iconVariant === 'emoji' ? <span aria-hidden="true" className={styles.actionEmoji}>{emoji}</span> : icon}
+        </span>
+    );
 
     return (
         <div className={styles.actions}>
@@ -87,7 +117,7 @@ export default function OBPActions({
                         track: () => handleAction('call'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuPhone aria-hidden="true" size={20} /></span>
+                    {renderActionIcon('☎️', <LuPhone aria-hidden="true" size={20} />, styles.actionIconCall)}
                     <span>{labels.call}</span>
                 </a>
             )}
@@ -104,7 +134,7 @@ export default function OBPActions({
                         track: () => handleAction('directions'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuMapPin aria-hidden="true" size={18} /></span>
+                    {renderActionIcon('📍', <TbMapPinFilled aria-hidden="true" size={19} />, styles.actionIconDirections)}
                     <span>{labels.directions}</span>
                 </a>
             )}
@@ -121,8 +151,25 @@ export default function OBPActions({
                         track: () => handleAction('whatsapp'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuMessageCircle aria-hidden="true" size={18} /></span>
+                    {renderActionIcon('🟢', <TbBrandWhatsapp aria-hidden="true" size={19} />, styles.actionIconWhatsapp)}
                     <span>{labels.whatsapp}</span>
+                </a>
+            )}
+            {showGoogleReview && googleReviewUrl && (
+                <a
+                    href={googleReviewUrl}
+                    className={`${styles.actionButton} ${styles.actionButtonUtility}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: googleReviewUrl,
+                        target: '_blank',
+                        track: handleGoogleReview,
+                    })}
+                >
+                    {renderActionIcon('⭐', <TbBrandGoogleFilled aria-hidden="true" size={18} />, styles.actionIconGoogle)}
+                    <span>{labels.reviews}</span>
                 </a>
             )}
             {showReservation && reservationUrl && (
@@ -138,7 +185,7 @@ export default function OBPActions({
                         track: () => handleAction('reserve'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuCalendarCheck aria-hidden="true" size={18} /></span>
+                    {renderActionIcon('📅', <LuCalendarCheck aria-hidden="true" size={18} />, styles.actionIconReserve)}
                     <span>{labels.reserve}</span>
                 </a>
             )}
@@ -155,8 +202,25 @@ export default function OBPActions({
                         track: () => handleAction('order'),
                     })}
                 >
-                    <span className={styles.actionIcon}><LuShoppingBag aria-hidden="true" size={18} /></span>
+                    {renderActionIcon('🛍️', <LuShoppingBag aria-hidden="true" size={18} />, styles.actionIconOrder)}
                     <span>{labels.order}</span>
+                </a>
+            )}
+            {showFeedback && feedbackUrl && (
+                <a
+                    href={feedbackUrl}
+                    className={`${styles.actionButton} ${styles.actionButtonUtility}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => trackBeforeNavigate({
+                        event,
+                        href: feedbackUrl,
+                        target: '_blank',
+                        track: () => handleAction('feedback'),
+                    })}
+                >
+                    {renderActionIcon('💬', <LuMessageSquarePlus aria-hidden="true" size={18} />, styles.actionIconFeedback)}
+                    <span>{labels.feedback}</span>
                 </a>
             )}
         </div>

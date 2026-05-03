@@ -16,7 +16,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { admin, firestoreAdmin } from "../firebaseAdmin";
-import { getBusinessCategory } from "../sharedData/businessTypes";
+import { resolveBusinessCategory } from "../sharedData/businessTypes";
 import { createDefaultRoles } from "../sharedData/defaultRoles";
 import { resolveBusinessDayEndTime } from "../utils/businessDay";
 import { computeSchedulerHour } from "../utils/schedulerHour";
@@ -149,7 +149,7 @@ export async function executePublish(
   // Determine business type and category
   const finalBusinessType =
     params.businessType || session.detectedBusinessType || "Restaurant";
-  const finalBusinessCategory = getBusinessCategory(finalBusinessType);
+  const finalBusinessCategory = resolveBusinessCategory(finalBusinessType) || "specialty";
 
   // Infer country/currency/timezone from phone (uses sharedData/countryData.ts — 252 countries)
   const phoneDisplay = session.providerDisplayId;
@@ -177,7 +177,7 @@ export async function executePublish(
     const storeName = `${businessName} - Main Store`;
     const storeKey = storeName.toLowerCase().replaceAll(" ", "_");
     const tenantKey = businessName.toLowerCase().replaceAll(" ", "_");
-    const businessDayEndTime = resolveBusinessDayEndTime(finalBusinessType);
+    const businessDayEndTime = resolveBusinessDayEndTime(finalBusinessType, undefined, finalBusinessCategory);
     const schedulerHour = computeSchedulerHour(currencyInfo.timezone, businessDayEndTime);
 
     // Create Tenant (§8.2.1)

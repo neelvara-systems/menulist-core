@@ -17,10 +17,11 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
     ({ scrollRef }, ref) => {
         const t = useTranslations('BusinessSettings');
         const businessType = Form.useWatch('businessType');
+        const businessCategory = Form.useWatch('businessCategory');
 
         if (!FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES) return null;
 
-        const attributeGroups = getBusinessAttributeGroupsForType(businessType);
+        const attributeGroups = getBusinessAttributeGroupsForType(businessType, businessCategory);
 
         return (
             <Card size="small" ref={ref || scrollRef}>

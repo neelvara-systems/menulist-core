@@ -9,7 +9,7 @@ import { Button, Card, Col, ColorPicker, Divider, Form, Input, InputNumber, Row,
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
-import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuPhone, LuShoppingBag, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
 import CompliancePagesSection from './CompliancePagesSection';
 import GoogleListingGuide from './GoogleListingGuide';
 
@@ -30,9 +30,12 @@ interface OfficialPageTabProps {
         showDirections?: boolean;
         showReservation?: boolean;
         showOrder?: boolean;
+        showGoogleReview?: boolean;
+        showFeedback?: boolean;
         showPrivacyLink?: boolean;
         showTermsLink?: boolean;
         showRefundLink?: boolean;
+        iconVariant?: 'icons' | 'emoji';
         reservationUrl?: string;
         orderUrl?: string;
         establishedYear?: number;
@@ -57,6 +60,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const session = useClientAuthSession();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
         const [photos, setPhotos] = useState<string[]>(publicPresence?.photos || []);
+        const photoSlots = [...photos.filter(Boolean), ''];
         const officialPageUrl = generateOBPUrl(subdomain, customDomain);
         const localizedPresenceDrafts = Form.useWatch('__localizedPublicPresenceDrafts') || {};
         const storeContentLanguage = Form.useWatch('__storeContentLanguage');
@@ -545,8 +549,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         {t('businessPhotosHelp')}
                     </Text>
                     <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-                        {[0, 1, 2].map((idx) => {
-                            const photo = photos[idx];
+                        {photoSlots.map((photo, idx) => {
                             const isUploading = photoUploading === idx;
                             return (
                                 <Col key={idx} xs={8}>
@@ -619,6 +622,22 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     <Row gutter={[16, 16]}>
                         <Col xs={24} md={8}>
                             <Form.Item
+                                name={['publicPresence', 'iconVariant']}
+                                label={t('obpIconVariant')}
+                                extra={t('obpIconVariantHelp')}
+                                initialValue={publicPresence?.iconVariant || 'icons'}
+                            >
+                                <Select
+                                    options={[
+                                        { label: t('obpIconVariantIcons'), value: 'icons' },
+                                        { label: t('obpIconVariantEmoji'), value: 'emoji' },
+                                    ]}
+                                    onChange={(value) => onPublicPresenceChange?.('iconVariant', value)}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item
                                 name={['publicPresence', 'showCall']}
                                 label={t('showCallButton')}
                                 valuePropName="checked"
@@ -679,6 +698,32 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 <Switch
                                     checkedChildren={<LuShoppingBag size={12} />}
                                     onChange={handleToggle('showOrder')}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item
+                                name={['publicPresence', 'showGoogleReview']}
+                                label={t('showGoogleReviewButton')}
+                                valuePropName="checked"
+                                initialValue={publicPresence?.showGoogleReview !== false}
+                            >
+                                <Switch
+                                    checkedChildren={<LuStar size={12} />}
+                                    onChange={handleToggle('showGoogleReview')}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item
+                                name={['publicPresence', 'showFeedback']}
+                                label={t('showFeedbackButton')}
+                                valuePropName="checked"
+                                initialValue={publicPresence?.showFeedback !== false}
+                            >
+                                <Switch
+                                    checkedChildren={<LuMessageSquarePlus size={12} />}
+                                    onChange={handleToggle('showFeedback')}
                                 />
                             </Form.Item>
                         </Col>

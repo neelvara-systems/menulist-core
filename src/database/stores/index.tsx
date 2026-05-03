@@ -1,5 +1,5 @@
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
-import { getBusinessCategory } from "@constant/common";
+import { resolveBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { createDefaultRoles } from "@data/defaultRoles";
 import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
@@ -181,11 +181,11 @@ export const addStore = async (data: any, from: string = "") => {
                 data.roles = createDefaultRoles(data.storeId, createdBy);
             }
 
-            // Derive businessCategory from businessType if not provided
-            const businessCategory = data.businessCategory || getBusinessCategory(data.businessType || '');
+            // Stored businessCategory wins; derive from businessType only as fallback.
+            const businessCategory = resolveBusinessCategory(data.businessType || '', data.businessCategory);
             data.businessCategory = businessCategory;
 
-            data.businessDayEndTime = resolveBusinessDayEndTime(data.businessType, data.businessDayEndTime);
+            data.businessDayEndTime = resolveBusinessDayEndTime(data.businessType, data.businessDayEndTime, businessCategory);
 
             // Auto-compute schedulerHour from timezone/EOD if not explicitly set
             const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, data.businessDayEndTime);
@@ -282,20 +282,21 @@ export const updateStore = async (data: any) => {
             const needsSchedulerRecompute = data.timeZone !== undefined || data.businessDayEndTime !== undefined;
             const existingStore = hasSummaryFieldChanges || needsSchedulerRecompute ? await getCurrentStoreData() : {};
             const effectiveBusinessType = data.businessType ?? existingStore.businessType;
+            const effectiveBusinessCategory = data.businessCategory ?? existingStore.businessCategory;
             const effectiveTimeZone = data.timeZone ?? existingStore.timeZone;
             const effectiveBusinessDayEndTime = data.businessDayEndTime ?? existingStore.businessDayEndTime;
 
-            // Derive businessCategory from businessType if not provided
-            const businessCategory = data.businessCategory || getBusinessCategory(effectiveBusinessType || '');
+            // Stored businessCategory wins; derive from businessType only as fallback.
+            const businessCategory = resolveBusinessCategory(effectiveBusinessType || '', effectiveBusinessCategory);
             data.businessCategory = businessCategory;
 
             if (data.businessDayEndTime !== undefined) {
-                data.businessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime);
+                data.businessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime, businessCategory);
             }
 
             // Recompute schedulerHour before writing store doc so store and summary stay aligned.
             if (needsSchedulerRecompute) {
-                const nextBusinessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime ?? effectiveBusinessDayEndTime);
+                const nextBusinessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime ?? effectiveBusinessDayEndTime, businessCategory);
                 data.businessDayEndTime = nextBusinessDayEndTime;
                 data.schedulerHour = data.schedulerHour ?? computeSchedulerHour(effectiveTimeZone, nextBusinessDayEndTime);
             }

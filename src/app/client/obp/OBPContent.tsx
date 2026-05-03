@@ -415,6 +415,80 @@ function getBusinessAttributeIcon(key: string): IconType {
     }
 }
 
+type OBPIconVariant = 'icons' | 'emoji';
+
+function getServiceModeEmoji(mode: string): string {
+    switch (mode) {
+        case 'dineIn':
+            return '🍽️';
+        case 'takeaway':
+            return '🛍️';
+        case 'delivery':
+            return '🚚';
+        case 'driveThrough':
+            return '🚗';
+        default:
+            return '🏪';
+    }
+}
+
+function getPaymentEmoji(method: string): string {
+    switch (method) {
+        case 'cash':
+            return '💵';
+        case 'cards':
+            return '💳';
+        case 'upi':
+            return '₹';
+        default:
+            return '💳';
+    }
+}
+
+function getBusinessAttributeEmoji(key: string): string {
+    switch (key) {
+        case 'vegetarian':
+            return '🌿';
+        case 'vegan':
+            return '🌱';
+        case 'halal':
+            return '✅';
+        case 'glutenFree':
+            return '🚫';
+        case 'wifi':
+            return '📶';
+        case 'outdoorSeating':
+            return '🌳';
+        case 'parking':
+            return '🅿️';
+        case 'airConditioning':
+            return '❄️';
+        case 'liveMusic':
+            return '🎵';
+        case 'petFriendly':
+            return '🐾';
+        case 'dineIn':
+        case 'takeaway':
+        case 'delivery':
+        case 'driveThrough':
+            return getServiceModeEmoji(key);
+        case 'acceptsCards':
+            return '💳';
+        case 'acceptsUPI':
+            return '₹';
+        case 'acceptsCash':
+            return '💵';
+        default:
+            return '✓';
+    }
+}
+
+function renderDisplayIcon(iconVariant: OBPIconVariant, Icon: IconType, emoji: string, size: number = 15) {
+    return iconVariant === 'emoji'
+        ? <span aria-hidden="true" className={styles.displayEmoji}>{emoji}</span>
+        : <Icon aria-hidden="true" size={size} />;
+}
+
 interface OBPIconItem {
     key: string;
     label: string;
@@ -427,11 +501,16 @@ function renderIconTile(item: OBPIconItem) {
     return (
         <div key={item.key} className={styles.iconTile}>
             <span className={styles.iconTileSymbol}>
-                {Icon ? <Icon aria-hidden="true" size={19} /> : <span aria-hidden="true">{item.fallbackIcon}</span>}
+                {Icon ? <Icon aria-hidden="true" size={19} /> : <span aria-hidden="true" className={styles.iconTileEmoji}>{item.fallbackIcon}</span>}
             </span>
             <span className={styles.iconTileLabel}>{item.label}</span>
         </div>
     );
+}
+
+function isLegacySpecialNoteHelper(value: string): boolean {
+    const normalized = value.trim().replace(/\s+/g, ' ').toLowerCase();
+    return normalized === 'shown on the official business page. use for service charges, today-only notes, or important customer information.';
 }
 
 // ── Build full address string ──
@@ -470,15 +549,6 @@ function localizeStatusNextChange(value: string | undefined, t: (key: string, va
         return t('publicOpensOn', { day: localizedDay === `publicDays.${dayKey}` ? target : localizedDay });
     }
     return trimmed;
-}
-
-function isCustomerFacingSpecialNote(value: string): boolean {
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return false;
-    return !normalized.includes('shown on the official business page')
-        && !normalized.includes('use for service charges')
-        && !normalized.includes('today-only notes')
-        && !normalized.includes('important customer information');
 }
 
 // ── Main async component ──
@@ -566,6 +636,7 @@ export default async function OBPContent({
 
     const store = storeData;
     const pp = store?.publicPresence || {};
+    const iconVariant: OBPIconVariant = pp.iconVariant === 'emoji' ? 'emoji' : 'icons';
     const isPermanentlyClosed = store?.permanentlyClosed === true;
     const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
     const languageOptions = getPublicLanguageOptions(store);
@@ -646,6 +717,10 @@ export default async function OBPContent({
     // unavailable (no published menu), falls back to /menu which Layer 2
     // handles gracefully.
     const menuUrl = buildProjectUrl(defaultSlug);
+    const defaultActionProject = activeProjects.find((project) => project.isDefault) || activeProjects.find((project) => !project.isSpecialMenu) || activeProjects[0];
+    const feedbackUrl = defaultActionProject?.projectId
+        ? `${masterBase}/feedback/${defaultActionProject.projectId}?source=direct_link`
+        : '';
 
     // G-06 (§11 + D-03): per-project-count CTA payload. Each entry carries
     // its real canonical slug URL so clicks go straight to /{projectSlug}
@@ -669,6 +744,8 @@ export default async function OBPContent({
     const showDirections = (pp.showDirections !== false) && !!(pp.googleMapsUrl || fullAddress);
     const showReservation = (pp.showReservation !== false) && !!pp.reservationUrl;
     const showOrder = (pp.showOrder !== false) && !!pp.orderUrl;
+    const showGoogleReview = (pp.showGoogleReview !== false) && !!pp.googleReviewUrl;
+    const showFeedback = (pp.showFeedback !== false) && store?.feedbackEnabled !== false && !!feedbackUrl;
 
     const whatsappNumber = (pp.whatsappNumber || store?.phoneNumber || '').replace(/[^0-9+]/g, '');
     const directionsUrl = pp.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
@@ -686,17 +763,19 @@ export default async function OBPContent({
     const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website);
 
     // Business attributes → display tags
-    const attributeConfig = getBusinessAttributeConfigForType(store?.businessType);
+    const attributeConfig = getBusinessAttributeConfigForType(store?.businessType, store?.businessCategory);
     const attributeTags = attributeConfig
         .filter((attribute) => store?.businessAttributes?.[attribute.key] === true)
         .map((attribute) => ({
             key: attribute.key,
-            Icon: getBusinessAttributeIcon(attribute.key),
+            Icon: iconVariant === 'icons' ? getBusinessAttributeIcon(attribute.key) : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.key) : undefined,
             label: t(attribute.publicLabelKey),
         }));
     const customAttributeTags = normalizeCustomBusinessAttributes(pp.customAttributes).map((attribute) => ({
         key: attribute.id,
-        fallbackIcon: attribute.icon || '+',
+        Icon: iconVariant === 'icons' && !attribute.icon ? LuBadgeCheck : undefined,
+        fallbackIcon: attribute.icon || (iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.id) : '+'),
         label: attribute.label,
     }));
     const repeatedStructuredAttributeKeys = new Set([
@@ -712,6 +791,9 @@ export default async function OBPContent({
         ...attributeTags.filter((attribute) => !repeatedStructuredAttributeKeys.has(attribute.key)),
         ...customAttributeTags,
     ].slice(0, 12);
+    const dietaryAttributeKeys = new Set(['vegetarian', 'vegan', 'halal', 'glutenFree']);
+    const dietaryAttributeTags = allAttributeTags.filter((attribute) => dietaryAttributeKeys.has(attribute.key));
+    const amenityAttributeTags = allAttributeTags.filter((attribute) => !dietaryAttributeKeys.has(attribute.key));
 
     // Freshness signal — compute how recently the store was updated
     const freshnessText = getFreshnessText(store?.modifiedOn, t);
@@ -722,7 +804,7 @@ export default async function OBPContent({
     // Known-for identity cue
     const knownFor = getLocalizedText(pp.knownFor, contentLanguage, getPrimaryLocalizedLanguage(pp.knownFor, contentLanguage), '');
     const rawSpecialNote = getLocalizedText(pp.specialNote, contentLanguage, getPrimaryLocalizedLanguage(pp.specialNote, contentLanguage), '');
-    const specialNote = isCustomerFacingSpecialNote(rawSpecialNote) ? rawSpecialNote : '';
+    const specialNote = isLegacySpecialNoteHelper(rawSpecialNote) ? '' : rawSpecialNote.trim();
 
     // Short area context (city name for quick location recognition)
     const areaContext = store?.area || store?.city || null;
@@ -733,20 +815,22 @@ export default async function OBPContent({
     const googleReviewCount = pp.googleReviewCount;
     const hasGoogleReview = !!(googleReviewUrl && googleRating);
 
-    // Business photos (P2 — max 3 curated, not a gallery)
-    const photos = (pp.photos || []).filter(Boolean).slice(0, 3);
+    // Business photos: OBP previews the first 3 for speed; tap opens the full owner-managed gallery.
+    const photos = (pp.photos || []).filter(Boolean);
 
     // Structured info for AEO (P3 — full hours, services, payment, cuisine, price)
     const allHours = getAllHoursDisplay(store?.workingHours, t, todayDayKey);
     const serviceModeItems = buildServiceModes(store?.businessAttributes).map((mode) => ({
         key: mode,
-        Icon: getServiceModeIcon(mode),
+        Icon: iconVariant === 'icons' ? getServiceModeIcon(mode) : undefined,
+        fallbackIcon: iconVariant === 'emoji' ? getServiceModeEmoji(mode) : undefined,
         label: t(`publicServiceModes.${mode}`),
     }));
     const serviceModeTags = serviceModeItems.map((item) => item.label);
     const paymentItems = buildPaymentMethods(store?.businessAttributes).map((method) => ({
         key: method,
-        Icon: getPaymentIcon(method),
+        Icon: iconVariant === 'icons' ? getPaymentIcon(method) : undefined,
+        fallbackIcon: iconVariant === 'emoji' ? getPaymentEmoji(method) : undefined,
         label: t(`publicPaymentMethods.${method}`),
     }));
     const paymentTags = paymentItems.map((item) => item.label);
@@ -826,10 +910,13 @@ export default async function OBPContent({
                     <TempStatusBanner tempStatus={store.tempStatus} variant="pill" />
                 )}
 
-                    {/* ── Business Photos (visual identity, max 3 curated) ── */}
+                    {/* ── Business Photos (first 3 preview, full tap viewer) ── */}
                     <OBPPhotoStrip
                         closePreviewLabel={t('publicPhotoPreviewClose')}
+                        nextPhotoLabel={t('publicPhotoNext')}
                         photoLabelTemplate={t('publicPhotoLabel', { index: '{index}' })}
+                        photoPositionTemplate={t('publicPhotoPosition', { index: '{index}', total: '{total}' })}
+                        previousPhotoLabel={t('publicPhotoPrevious')}
                         photos={photos}
                         previewLabel={t('publicPhotoPreview')}
                         storeName={storeName}
@@ -882,7 +969,7 @@ export default async function OBPContent({
                                     {status.isOpen ? (
                                         <span className={`${styles.statusDot} ${styles.statusDotOpen}`} />
                                     ) : (
-                                        <LuClock aria-hidden="true" size={14} />
+                                        renderDisplayIcon(iconVariant, LuClock, '🕒', 14)
                                     )}
                                     {status.isOpen ? t('publicOpen') : t('publicClosed')}{statusNextChange ? ` · ${statusNextChange}` : ''}
                                 </div>
@@ -893,7 +980,7 @@ export default async function OBPContent({
                             )}
 
                             <span className={styles.officialBadge}>
-                                <LuBadgeCheck aria-hidden="true" size={14} />
+                                {renderDisplayIcon(iconVariant, LuBadgeCheck, '✅', 14)}
                                 {officialPageLabel}
                             </span>
 
@@ -967,17 +1054,24 @@ export default async function OBPContent({
                         directionsUrl={directionsUrl}
                         reservationUrl={pp.reservationUrl}
                         orderUrl={pp.orderUrl}
+                        googleReviewUrl={googleReviewUrl}
+                        feedbackUrl={feedbackUrl}
+                        iconVariant={iconVariant}
                         showCall={showCall}
                         showWhatsApp={showWhatsApp}
                         showDirections={showDirections}
                         showReservation={showReservation}
                         showOrder={showOrder}
+                        showGoogleReview={showGoogleReview}
+                        showFeedback={showFeedback}
                         labels={{
                             call: t('publicActionCall'),
                             whatsapp: t('publicActionWhatsApp'),
                             directions: t('publicActionDirections'),
                             reserve: t('publicActionReserve'),
                             order: t('publicActionOrder'),
+                            reviews: t('publicActionReviews'),
+                            feedback: t('publicActionFeedback'),
                         }}
                     />
 
@@ -985,18 +1079,18 @@ export default async function OBPContent({
                     {(fullAddress || todayHours) && (
                         <section className={`${styles.info} ${styles.locationInfo}`} aria-label={t('publicBusinessDetailsLabel')}>
                         <h2 className={styles.groupTitle}>
-                            <span className={styles.groupTitleIcon}><LuMapPin aria-hidden="true" size={15} /></span>
+                            <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuMapPin, '📍')}</span>
                             {t('publicLocation')}
                         </h2>
                         {fullAddress && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}><LuMapPin aria-hidden="true" size={16} /></span>
+                                <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuMapPin, '📍', 16)}</span>
                                 <span>{fullAddress}</span>
                             </div>
                         )}
                         {todayHours && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}><LuClock aria-hidden="true" size={16} /></span>
+                                <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuClock, '🕒', 16)}</span>
                                 <span>{todayHours}</span>
                             </div>
                         )}
@@ -1015,7 +1109,7 @@ export default async function OBPContent({
                         {allHours && !isPermanentlyClosed && (
                             <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicBusinessHours')}>
                                 <h2 className={styles.groupTitle}>
-                                    <span className={styles.groupTitleIcon}><LuCalendarDays aria-hidden="true" size={15} /></span>
+                                    <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCalendarDays, '📅')}</span>
                                     {t('publicBusinessHours')}
                                 </h2>
                                 <div className={styles.hoursList}>
@@ -1024,10 +1118,10 @@ export default async function OBPContent({
                             </section>
                         )}
 
-                        {(serviceModeItems.length > 0 || paymentItems.length > 0 || cuisineTypes.length > 0 || priceRange) && !isPermanentlyClosed && (
+                        {(serviceModeItems.length > 0 || cuisineTypes.length > 0 || priceRange) && !isPermanentlyClosed && (
                             <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicServiceOptions')}>
                                 <h2 className={styles.groupTitle}>
-                                    <span className={styles.groupTitleIcon}><LuStore aria-hidden="true" size={15} /></span>
+                                    <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                     {t('publicServiceOptions')}
                                 </h2>
                                 {serviceModeItems.length > 0 && (
@@ -1035,35 +1129,54 @@ export default async function OBPContent({
                                         {serviceModeItems.map(renderIconTile)}
                                     </div>
                                 )}
-                                {paymentItems.length > 0 && (
-                                    <div className={styles.iconGrid}>
-                                        {paymentItems.map(renderIconTile)}
-                                    </div>
-                                )}
                             {cuisineTypes.length > 0 && (
                                 <div className={styles.infoRow}>
-                                    <span className={styles.infoIcon}><LuUtensils aria-hidden="true" size={16} /></span>
+                                    <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuUtensils, '🍽️', 16)}</span>
                                     <span>{cuisineTypes.join(', ')}</span>
                                 </div>
                             )}
                             {priceRange && (
                                 <div className={styles.infoRow}>
-                                    <span className={styles.infoIcon}><LuIndianRupee aria-hidden="true" size={16} /></span>
+                                    <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuIndianRupee, '₹', 16)}</span>
                                     <span>{t('publicPriceRange', { value: priceRange })}</span>
                                 </div>
                             )}
                             </section>
                         )}
 
+                        {paymentItems.length > 0 && !isPermanentlyClosed && (
+                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicPaymentOptions')}>
+                                <h2 className={styles.groupTitle}>
+                                    <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCreditCard, '💳')}</span>
+                                    {t('publicPaymentOptions')}
+                                </h2>
+                                <div className={styles.iconGrid}>
+                                    {paymentItems.map(renderIconTile)}
+                                </div>
+                            </section>
+                        )}
+
+                        {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && dietaryAttributeTags.length > 0 && (
+                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicDietaryOptions')}>
+                                <h2 className={styles.groupTitle}>
+                                    <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuLeaf, '🌿')}</span>
+                                    {t('publicDietaryOptions')}
+                                </h2>
+                                <div className={styles.iconGrid}>
+                                    {dietaryAttributeTags.map(renderIconTile)}
+                                </div>
+                            </section>
+                        )}
+
                         {/* ── Business Attributes (BTG Layer 12) ── */}
-                        {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0 && (
+                        {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && amenityAttributeTags.length > 0 && (
                             <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicAmenities')}>
                                 <h2 className={styles.groupTitle}>
-                                    <span className={styles.groupTitleIcon}><LuLeaf aria-hidden="true" size={15} /></span>
+                                    <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                     {t('publicAmenities')}
                                 </h2>
                                 <div className={styles.iconGrid}>
-                                    {allAttributeTags.map(renderIconTile)}
+                                    {amenityAttributeTags.map(renderIconTile)}
                                 </div>
                             </section>
                         )}

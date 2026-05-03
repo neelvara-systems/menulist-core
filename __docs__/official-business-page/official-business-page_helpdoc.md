@@ -107,11 +107,11 @@ If your WhatsApp number is different from your main phone:
 
 ### How to Add Business Photos
 
-You can add up to 3 photos (storefront, interior, or signature dish):
+You can add business photos (storefront, interior, or signature dish). The first 3 appear as the official page preview, and customers can tap a photo to view the rest:
 
 1. Go to **Settings** → **Business Profile** → **Official Page Settings**
 2. Find **Business Photos** section
-3. Click on a photo slot to upload
+3. Click on a photo slot to upload. A new empty slot appears after your current photos.
 4. Choose an image from your phone or computer
 5. To remove a photo, click the delete button on it
 
@@ -153,10 +153,11 @@ When someone opens your link, they see:
 - Your **Google rating** (if set) — links to your Google reviews
 - **"Serving since [year]"** (if set)
 - A big **View Menu** button (takes them to your full digital menu)
-- Up to **3 business photos** (storefront, interior, signature dish)
-- Buttons to **Call**, **WhatsApp**, **Directions**, **Reserve**, or **Order**
+- **Business photos** (first 3 preview on the page; all uploaded photos available after tapping a photo)
+- Buttons to **Call**, **WhatsApp**, **Directions**, **Google reviews**, **Feedback**, **Reserve**, or **Order** when enabled
 - Your **address** and **today's hours**
-- **Full weekly hours** (expandable), **cuisine types**, **payment methods**
+- **Special note** if you add one
+- **Full weekly hours**, **cuisine types**, separate **payment options**, **dietary options**, and amenities
 - Links to your **Instagram**, **Facebook**, or **Website** (if added)
 - **"Info verified"** freshness signal
 - **"Official Page · Powered by MenuList"** footer
@@ -213,7 +214,7 @@ When someone opens your link, they see:
 - Set up your **WhatsApp Business auto-reply** with the link
 - Add the link to your **Google Business profile** as your website URL
 - Add your **Google rating** to build instant trust on your page
-- Upload **3 photos** (storefront, interior, best dish) — photos increase customer trust by 62%
+- Upload your best photos (storefront, interior, best dish) — the first 3 appear in the preview and the rest are available after tapping a photo
 
 ---
 
@@ -221,7 +222,7 @@ When someone opens your link, they see:
 
 - **Digital Menu** — Your full menu with items, prices, and photos (opens from your official page)
 - **Business Hours** — Live open/closed status shown on your official page
-- **Guest Feedback** — Collect customer feedback from your menus
+- **Guest Feedback** — Collect customer feedback from your menus and optionally expose it from the official page
 
 ---
 

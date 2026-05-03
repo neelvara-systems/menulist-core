@@ -18,7 +18,7 @@
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { firestoreAdmin } from "../firebaseAdmin";
-import { getBusinessCategory } from "../sharedData/businessTypes";
+import { normalizeBusinessCategory, resolveBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
 import { hardenExtractedData } from "./extractionHardening";
@@ -32,13 +32,9 @@ import { getProject, saveFilesToProject } from "./saveFilesToProject";
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CONFIDENCE_SCORE_MAP: Record<string, number> = { high: 1, medium: 0.6, low: 0.2 };
-const BUSINESS_CATEGORY_VALUES = new Set(['food', 'service', 'retail', 'health', 'creative', 'professional', 'specialty']);
 
-function resolveBusinessCategory(value?: string): string | undefined {
-    const normalized = String(value || '').trim();
-    if (!normalized) return undefined;
-    const lowered = normalized.toLowerCase();
-    return BUSINESS_CATEGORY_VALUES.has(lowered) ? lowered : getBusinessCategory(normalized);
+function resolveJobBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
+    return resolveBusinessCategory(businessType, businessCategory) || normalizeBusinessCategory(businessType);
 }
 
 function computeConfidenceSummary(items: MenuItem[]): ConfidenceSummary | undefined {
@@ -328,7 +324,7 @@ export async function processMenuImagesJobLogic(
         const existingCategories = existingProject?.files
             ? buildExistingCategoriesMap(existingProject.files, primaryLang)
             : undefined;
-        const businessCategory = resolveBusinessCategory(job.businessType || existingProject?.businessType || existingProject?.businessCategory);
+        const businessCategory = resolveJobBusinessCategory(job.businessType || existingProject?.businessType, existingProject?.businessCategory);
         const categoriesBeforeIconDefaults = result.data.data?.categories?.length || 0;
         result.data.data = {
             ...result.data.data,

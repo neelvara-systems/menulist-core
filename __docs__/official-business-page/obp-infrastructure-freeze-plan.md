@@ -61,19 +61,19 @@ If I look at OBP from scratch — as a customer landing on `joespizza.menulist.a
 
 **My verdict:** This is the single biggest credibility gap. We do NOT need to host reviews (moderation nightmare). But we MUST reference the business's existing Google rating. A simple "4.5 ★ on Google" with a link to the Google listing is a massive trust signal with ZERO infrastructure cost.
 
-**How:** Owner enters their Google Place ID or review URL (already have `reviewUrl` field). System fetches rating via Google Places API (or owner manually enters rating). Display on OBP as a small badge.
+**How:** Owner enters their Google review URL and optional rating/count. Display it on OBP as a small trust badge and, when enabled, a Google Reviews quick action. This keeps review hosting out of MenuList while still giving customers a direct path to the existing public review source.
 
 **Simpler version (v1):** Just show Google Review URL as a "See reviews on Google" link. No rating fetch needed. Even this creates trust.
 
-#### Gap B — Business Photos (1-3 photos, not a gallery)
+#### Gap B — Business Photos (Preview + Viewer, not page gallery)
 
 **Research says:** 62% more likely to purchase after seeing photos. GBP profiles with 15+ photos dominate. Even low-quality images increase perceived legitimacy.
 
 **Current OBP:** Only logo. No environment/food/storefront photos.
 
-**My verdict:** We don't need a gallery (that's page-builder territory). But 1-3 curated photos (storefront, interior, hero product) dramatically increase trust. Think Google Business Profile — it shows 3-4 photos at the top, not a gallery.
+**My verdict:** We don't need a masonry/page gallery (that's page-builder territory). But business photos (storefront, interior, hero product) dramatically increase trust. Think Google Business Profile — a small preview appears first, with deeper viewing only after customer intent.
 
-**How:** Add optional `publicPresence.photos?: string[]` (max 3 URLs). Display as a small horizontal strip below identity block. Owner uploads via Business Settings.
+**How:** Add optional `publicPresence.photos?: string[]`. Display the first 3 as a small horizontal preview. Tapping any preview photo opens a viewer for all uploaded photos. Owner uploads via Business Settings.
 
 #### Gap C — Page Content Depth for SEO/AEO
 
@@ -192,10 +192,11 @@ If a business has a Google review URL and we can reference their rating, we can 
 - [x] Add `AggregateRating` to schema.org when rating data available (`buildAggregateRating()`)
 - [x] Add Google review fields to OfficialPageTab.tsx (URL + rating + count inputs)
 
-### Priority 2: Business Photos (1-3, NOT a gallery) — ✅ IMPLEMENTED
+### Priority 2: Business Photos (first 3 preview, full tap viewer) — ✅ IMPLEMENTED
 
-- [x] Add `publicPresence.photos?: string[]` to store.ts (max 3 URLs)
-- [x] Display on OBP as horizontal photo strip (3 images, lazy-loaded, 4:3 aspect)
+- [x] Add `publicPresence.photos?: string[]` to store.ts
+- [x] Display first 3 on OBP as horizontal photo strip (lazy-loaded, fixed aspect)
+- [x] Open all uploaded photos in a tap viewer with previous/next navigation
 - [x] Add photo placeholder UI to OfficialPageTab.tsx
 - [x] Emit `image` array in schema.org via `buildImageSchema()` (logo + photos combined)
 
@@ -275,10 +276,10 @@ Based on this analysis, the existing MenuList doctrine should be updated:
 **Current doctrine:** Reviews are permanently banned on OBP.
 **New position:** Hosting reviews is banned. Referencing external reviews (Google rating badge, link to Google reviews) is allowed and NECESSARY. Trust signals are not engagement features — they're infrastructure signals.
 
-### Amendment 2: Photos ARE Allowed (1-3 Curated, Not Gallery)
+### Amendment 2: Photos ARE Allowed (Preview + Viewer, Not Page Gallery)
 
 **Current doctrine:** Photo gallery permanently banned.
-**New position:** Gallery is banned. But 1-3 curated business photos (storefront, interior, hero product) are allowed. This is the same as Google Business Profile showing 3-4 photos — it's identity, not a gallery. Photos are trust infrastructure, not vanity.
+**New position:** Masonry/page gallery is banned. But owner-managed business photos (storefront, interior, hero product) are allowed. The OBP page previews the first 3 only; tapping opens a viewer for all uploaded photos. Photos are trust infrastructure, not vanity.
 
 ### Amendment 3: Structured Content IS Allowed (Entity Data, Not Marketing)
 
@@ -299,7 +300,7 @@ After implementing all BUILD NOW items, these rules lock OBP:
 1. **NO custom text sections** — All content auto-generated from structured store data
 2. **NO theme customization** — One design, one layout, forever
 3. **NO review hosting** — Only reference external reviews (Google, etc.)
-4. **NO photo gallery** — Max 3 curated photos, owner-uploaded
+4. **NO page gallery** — First 3 owner-uploaded photos preview on OBP; full set appears only in tap viewer
 5. **NO dynamic/adaptive UI** — Server-rendered truth page
 6. **NO per-owner disable toggle** — OBP always on when flag enabled
 7. **NO ordering/booking ON the page** — Only links to external systems
@@ -307,7 +308,7 @@ After implementing all BUILD NOW items, these rules lock OBP:
 9. **New store data fields allowed** — If it's truth data (not marketing)
 10. **OBP must remain <100KB** — Relaxed from 50KB to accommodate photos (lazy-loaded)
 11. **All business data in SSR HTML** — Nothing critical behind client-side hydration
-12. **Max 3 photos** — Never more. This is NOT a gallery.
+12. **Preview max 3 photos** — The page preview never shows more than 3; the viewer may navigate all uploaded photos.
 13. **Google review reference only** — Never host or display individual review text
 
 ---
@@ -321,10 +322,10 @@ All 11 original ADRs remain valid. New ADRs added:
 **Decision:** OBP may display a Google rating badge and link to Google reviews. Individual review text is never displayed or stored.
 **Rationale:** 93% of consumers read reviews. Referencing external reviews provides trust without moderation burden. This is the same pattern Google Maps uses when linking to Yelp reviews.
 
-### ADR-13: Curated Photos (Not Gallery)
+### ADR-13: Photo Preview + Viewer (Not Page Gallery)
 
-**Decision:** OBP may show 1-3 owner-uploaded photos. No gallery, no lightbox, no carousel.
-**Rationale:** 62% more likely to purchase after seeing photos. 3 photos = identity proof. More = gallery = page builder territory.
+**Decision:** OBP may show the first 3 owner-uploaded photos as a preview. Tapping any preview photo opens the full uploaded photo set in a viewer. No masonry/page gallery.
+**Rationale:** 62% more likely to purchase after seeing photos. 3 preview photos preserve scan speed; a tap viewer supports customers who intentionally want more proof.
 
 ### ADR-14: Structured Info Section (Entity Data Display)
 
@@ -405,7 +406,7 @@ Once OBP is everywhere (Instagram bio, GBP, QR codes, packaging), replacing Menu
 | ---------------- | --------------------------- | ------------------------------ | ----------------------------------- |
 | Identity         | Strong                      | Strong                         | Comparable                          |
 | Category clarity | Strong (explicit labels)    | Moderate (descriptor text)     | Minor gap — cuisine tags help       |
-| Photos           | Heavy (15+ recommended)     | Curated (max 3)                | OBP cleaner/faster by design        |
+| Photos           | Heavy (15+ recommended)     | First 3 preview + tap viewer   | OBP cleaner/faster by design        |
 | Actions          | Action-first                | Menu-first                     | Different intent — correct for each |
 | Information      | Scattered across tabs       | Clean single page              | OBP better                          |
 | Reviews          | Hosted                      | External reference             | OBP correct choice (no moderation)  |

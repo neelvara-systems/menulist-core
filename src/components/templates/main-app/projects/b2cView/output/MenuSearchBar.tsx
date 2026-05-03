@@ -13,6 +13,7 @@
 
 import { useRef } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { MenuMoodConfig } from '../designSystem';
 
 interface MenuSearchBarProps {
@@ -20,38 +21,33 @@ interface MenuSearchBarProps {
     onSearchChange: (term: string) => void;
     moodConfig: MenuMoodConfig;
     businessType?: string;
+    businessCategory?: string;
     isMobile?: boolean;
 }
 
-const getSearchAriaLabel = (businessType?: string): string => {
-    switch (businessType?.toLowerCase()) {
-        case 'restaurant':
-        case 'cafe':
+const getSearchAriaLabel = (businessType?: string, businessCategory?: string): string => {
+    switch (resolveBusinessCategory(businessType, businessCategory)) {
         case 'food':
-        case 'bakery':
             return 'Search menu items';
-        case 'salon':
-        case 'spa':
-        case 'beauty':
         case 'service':
+        case 'health':
             return 'Search services';
-        default:
+        case 'retail':
             return 'Search products';
+        default:
+            return 'Search menu';
     }
 };
 
-const getSearchPlaceholder = (businessType?: string): string => {
-    switch (businessType?.toLowerCase()) {
-        case 'restaurant':
-        case 'cafe':
+const getSearchPlaceholder = (businessType?: string, businessCategory?: string): string => {
+    switch (resolveBusinessCategory(businessType, businessCategory)) {
         case 'food':
-            return 'Search dishes...';
-        case 'salon':
-        case 'spa':
+            return 'Search menu...';
+        case 'service':
+        case 'health':
             return 'Search services...';
-        case 'clinic':
-        case 'hospital':
-            return 'Search consultations...';
+        case 'retail':
+            return 'Search products...';
         default:
             return 'Search menu...';
     }
@@ -62,6 +58,7 @@ function MenuSearchBar({
     onSearchChange,
     moodConfig,
     businessType,
+    businessCategory,
     isMobile = false,
 }: MenuSearchBarProps) {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +85,7 @@ function MenuSearchBar({
             <input
                 ref={inputRef}
                 type="text"
-                placeholder={getSearchPlaceholder(businessType)}
+                placeholder={getSearchPlaceholder(businessType, businessCategory)}
                 value={searchTerm}
                 onChange={handleChange}
                 className="w-full pl-10 pr-10 py-3 rounded-lg text-sm outline-none transition-all"
@@ -99,7 +96,7 @@ function MenuSearchBar({
                     fontFamily: moodConfig.bodyFont,
                     fontSize: isMobile ? 14 : 15,
                 }}
-                aria-label={getSearchAriaLabel(businessType)}
+                aria-label={getSearchAriaLabel(businessType, businessCategory)}
             />
             {searchTerm && (
                 <button

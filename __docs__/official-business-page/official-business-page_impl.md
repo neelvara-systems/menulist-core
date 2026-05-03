@@ -57,6 +57,11 @@ publicPresence?: {
     showCall?: boolean;
     showWhatsApp?: boolean;
     showDirections?: boolean;
+    showReservation?: boolean;
+    showOrder?: boolean;
+    showGoogleReview?: boolean;
+    showFeedback?: boolean;
+    iconVariant?: 'icons' | 'emoji';
 
     /** Reservation/booking URL (e.g., Dineout, Zomato, OpenTable). For schema.org + CTA. */
     reservationUrl?: string;
@@ -64,7 +69,7 @@ publicPresence?: {
     /** Online ordering URL (e.g., Swiggy, Zomato). For schema.org + CTA. */
     orderUrl?: string;
 
-    /** Optional short note shown on OBP, max 140 chars. */
+    /** Optional owner-managed short note shown on OBP, max 140 chars. */
     specialNote?: string;
 
     /** Compliance footer link visibility. Defaults true per link. */
@@ -87,7 +92,7 @@ publicPresence?: {
     /** Google review count (owner-entered, e.g. 320). Shown alongside rating. */
     googleReviewCount?: number;
 
-    /** Up to 3 curated business photos (storefront, interior, hero product). Max 3 URLs. */
+    /** Owner-managed business photos. First 3 are shown on OBP; tapping opens the full viewer. */
     photos?: string[];
 
     /** Owner-defined public attribute chips, shown after controlled attributes. */

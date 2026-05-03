@@ -101,7 +101,7 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
   **A:** Yes. Enter your Google review link and rating in Business Settings. Your page will show your rating as a trust signal for customers.
 
 - **Q:** How many photos can I add?
-  **A:** Up to 3. Choose your best — storefront, interior, or signature dish. This is identity proof, not a gallery.
+  **A:** Add the photos that best prove your place — storefront, interior, or signature dish. The first 3 appear on the page preview; customers can tap to view the rest.
 
 - **Q:** What about QR codes?
   **A:** You get two: a Share QR (links to your business page) and a Menu QR (links directly to your menu). Use the Share QR on packaging and business cards, and the Menu QR on table tents.

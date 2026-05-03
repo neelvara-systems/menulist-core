@@ -15,6 +15,7 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
 import { activateSafeMode } from '../monitoring/safeMode';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
+import { resolveBusinessCategory } from '../sharedData/businessTypes';
 import { resolveBusinessDayEndTime } from '../utils/businessDay';
 import { computeSchedulerHour } from '../utils/schedulerHour';
 
@@ -193,38 +194,6 @@ export const forceRepublish = onCall(
 // STORES SUMMARY BACKFILL — One-time utility
 // ═══════════════════════════════════════════════════════════════
 
-const BUSINESS_TYPE_TO_CATEGORY: Record<string, string> = {
-    'Restaurant': 'food', 'Cafe': 'food', 'Cake Shop': 'food', 'Bakery': 'food',
-    'Coffee Shop': 'food', 'Specialty Coffee Shop': 'food', 'Ice Cream Shop': 'food',
-    'Spa': 'service', 'Salon': 'service', 'Pet Grooming Service': 'service',
-    'Pet Grooming Salon': 'service', 'Pet Grooming Studio': 'service',
-    'Cleaning Services Company': 'service', 'Car Wash & Detailing Service': 'service',
-    'Landscaping Service': 'service', 'Landscaping Company': 'service',
-    'Fashion Boutique': 'retail', 'Jewelry Store': 'retail', 'Bookstore': 'retail',
-    'Electronics Store': 'retail', 'Furniture Store': 'retail', 'Luxury Watch Dealer': 'retail',
-    'Craft Supply Store': 'retail', 'Music Store': 'retail', 'Shoe Store': 'retail',
-    'Aquarium Store': 'retail', 'Florist Shop': 'retail', 'Handmade Crafts': 'retail',
-    'Etsy Shop': 'retail', 'Fitness Equipment Seller': 'retail',
-    'Real Estate Agent': 'professional', 'Real Estate Agency': 'professional',
-    'Law Firm': 'professional', 'Financial Advisor': 'professional',
-    'Wedding Planner': 'professional', 'Event Planning Company': 'professional',
-    'Interior Designer': 'professional', 'Life Coach': 'professional',
-    'Personal Development': 'professional', 'Travel Agency': 'professional',
-    'Home Renovation Contractor': 'professional',
-    'Photography Studio': 'creative', 'Photography Tour Operator': 'creative',
-    'Tattoo Studio': 'creative', 'Art Gallery': 'creative', 'Music School': 'creative',
-    'Makeup Studio': 'creative', 'Handmade Jewelry Brand': 'creative',
-    'Furniture Maker': 'creative', 'Florist': 'creative', 'Event Decorator': 'creative',
-    'Tailoring Shop': 'creative',
-    'Dental Clinic': 'health', 'Yoga Studio': 'health', 'Fitness Bootcamp': 'health',
-    'Gym': 'health', 'Fitness Center': 'health', 'Personal Trainer': 'health',
-    'Spa Resort': 'health', 'Martial Arts Academy': 'health', 'Veterinary Clinic': 'health',
-    'Car Dealership': 'specialty', 'Auto Repair Shop': 'specialty',
-    '3D Printing Studio': 'specialty', 'Drone Services Company': 'specialty',
-    'Boutique Hotel': 'specialty', "Children's Daycare": 'specialty',
-    'Daycare Center': 'specialty', 'Coworking Space': 'specialty', 'Bike Rental Shop': 'specialty',
-};
-
 export const backfillStoresSummary = onCall({
     region: 'us-central1',
     timeoutSeconds: 300,
@@ -245,8 +214,8 @@ export const backfillStoresSummary = onCall({
         for (const doc of storesSnapshot.docs) {
             const data = doc.data();
             const businessType = data.businessType || 'unknown';
-            const businessCategory = data.businessCategory || BUSINESS_TYPE_TO_CATEGORY[businessType] || 'specialty';
-            const businessDayEndTime = resolveBusinessDayEndTime(businessType, data.businessDayEndTime);
+            const businessCategory = resolveBusinessCategory(businessType, data.businessCategory) || 'specialty';
+            const businessDayEndTime = resolveBusinessDayEndTime(businessType, data.businessDayEndTime, businessCategory);
             const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, businessDayEndTime);
 
             summary[doc.id] = {

@@ -1,4 +1,4 @@
-import { getBusinessCategory } from '@data/shared/businessTypes';
+import { normalizeBusinessCategory, resolveBusinessCategory } from '@data/shared/businessTypes';
 import {
     applyCategoryIconDefaults as applySharedCategoryIconDefaults,
     getCategoryIconSuggestions,
@@ -8,8 +8,8 @@ import {
     type CategoryIconTarget,
 } from '@data/shared/categoryIconSuggestions';
 
-function resolveBusinessCategory(businessType?: string): string | undefined {
-    return getBusinessCategory(businessType) || businessType;
+function resolveIconBusinessCategory(businessType?: string): string | undefined {
+    return resolveBusinessCategory(businessType) || normalizeBusinessCategory(businessType);
 }
 
 export function normalizeCategoryIconValue(icon: unknown): string {
@@ -28,7 +28,7 @@ export function normalizeCategoryIconValue(icon: unknown): string {
 }
 
 export function getSuggestedCategoryIcons(categoryName?: string, businessType?: string, limit = 8): string[] {
-    return getCategoryIconSuggestions(categoryName, resolveBusinessCategory(businessType), limit);
+    return getCategoryIconSuggestions(categoryName, resolveIconBusinessCategory(businessType), limit);
 }
 
 export function getSuggestedCategoryIcon(categoryName?: string, businessType?: string): string | null {
@@ -36,7 +36,7 @@ export function getSuggestedCategoryIcon(categoryName?: string, businessType?: s
 }
 
 export function resolveSuggestedCategoryIcon(categoryName?: string, businessType?: string, itemContext: string[] = []): CategoryIconMatch | null {
-    return resolveCategoryIcon(categoryName, resolveBusinessCategory(businessType), itemContext);
+    return resolveCategoryIcon(categoryName, resolveIconBusinessCategory(businessType), itemContext);
 }
 
 export function applyCategoryIconDefaults<TCategory extends CategoryIconTarget>(
@@ -44,5 +44,5 @@ export function applyCategoryIconDefaults<TCategory extends CategoryIconTarget>(
     items: CategoryIconItemContext[] = [],
     businessType?: string,
 ): TCategory[] {
-    return applySharedCategoryIconDefaults(categories, items, resolveBusinessCategory(businessType));
+    return applySharedCategoryIconDefaults(categories, items, resolveIconBusinessCategory(businessType));
 }

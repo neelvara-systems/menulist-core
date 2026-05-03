@@ -46,7 +46,7 @@ function getInitialLocaleForm(storeDetails: any) {
         defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
         timeFormat: storeDetails?.timeFormat || defaultTimeFormatString,
         timeZone: storeDetails?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-        businessDayEndTime: resolveBusinessDayEndTime(storeDetails?.businessType, storeDetails?.businessDayEndTime),
+        businessDayEndTime: resolveBusinessDayEndTime(storeDetails?.businessType, storeDetails?.businessDayEndTime, storeDetails?.businessCategory),
     };
 }
 

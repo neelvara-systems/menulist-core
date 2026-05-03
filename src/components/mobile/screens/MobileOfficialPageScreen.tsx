@@ -13,14 +13,18 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ColorPicker, InputNumber, Upload, theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
     LuCalendar,
     LuExternalLink,
     LuMapPin,
     LuMessageSquare,
+    LuMessageSquarePlus,
     LuShoppingBag,
+    LuSmile,
     LuPhone,
+    LuStar,
     LuTrash2,
     LuUpload
 } from 'react-icons/lu';
@@ -44,11 +48,14 @@ function getInitialPresenceForm(storeDetails: any) {
         googleRating: initialPresence.googleRating,
         googleReviewCount: initialPresence.googleReviewCount,
         googleReviewUrl: initialPresence.googleReviewUrl || '',
+        iconVariant: initialPresence.iconVariant || 'icons',
         orderUrl: initialPresence.orderUrl || '',
         photos: initialPresence.photos || [],
         reservationUrl: initialPresence.reservationUrl || '',
         showCall: initialPresence.showCall !== false,
         showDirections: initialPresence.showDirections !== false,
+        showFeedback: initialPresence.showFeedback !== false,
+        showGoogleReview: initialPresence.showGoogleReview !== false,
         showOrder: initialPresence.showOrder !== false,
         showPrivacyLink: initialPresence.showPrivacyLink !== false,
         showRefundLink: initialPresence.showRefundLink !== false,
@@ -105,8 +112,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         || JSON.stringify(localizedDrafts) !== JSON.stringify(originalLocalizedDrafts);
 
     const photoSlots = useMemo(() => {
-        const slots = Array.from({ length: 3 }, (_, index) => formData.photos[index] || '');
-        return slots;
+        return [...formData.photos.filter(Boolean), ''];
     }, [formData.photos]);
     const officialPageInfoContent = useMemo(() => (
         <Flex gap={8} style={{ maxWidth: 280 }} vertical>
@@ -229,7 +235,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     };
 
     const handlePhotoRemove = (index: number) => {
-        const nextPhotos = [...photoSlots];
+        const nextPhotos = [...formData.photos];
         nextPhotos[index] = '';
         setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
@@ -290,6 +296,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             </Flex>
         );
     }
+
+    const renderQuickActionSettingIcon = (emoji: string, icon: ReactNode) => (
+        formData.iconVariant === 'emoji'
+            ? <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, textAlign: 'center', width: 16 }}>{emoji}</span>
+            : icon
+    );
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
@@ -612,41 +624,72 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={12} vertical>
+                        <Text strong>{t('obpIconVariant')}</Text>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuSmile size={16} />
+                                <Text>{t('obpUseEmojiIcons')}</Text>
+                            </Flex>
+                            <Switch
+                                checked={formData.iconVariant === 'emoji'}
+                                onChange={(value) => setFormData((previous) => ({ ...previous, iconVariant: value ? 'emoji' : 'icons' }))}
+                            />
+                        </Flex>
+                        <Text type="secondary">{t('obpIconVariantHelp')}</Text>
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={12} vertical>
                         <Text strong>{t('quickActionButtons')}</Text>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
-                                <LuPhone size={16} />
+                                {renderQuickActionSettingIcon('☎️', <LuPhone size={16} />)}
                                 <Text>{t('showCallButton')}</Text>
                             </Flex>
                             <Switch checked={formData.showCall} onChange={(value) => setFormData((previous) => ({ ...previous, showCall: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
-                                <LuMessageSquare size={16} />
+                                {renderQuickActionSettingIcon('🟢', <LuMessageSquare size={16} />)}
                                 <Text>{t('showWhatsAppButton')}</Text>
                             </Flex>
                             <Switch checked={formData.showWhatsApp} onChange={(value) => setFormData((previous) => ({ ...previous, showWhatsApp: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
-                                <LuMapPin size={16} />
+                                {renderQuickActionSettingIcon('📍', <LuMapPin size={16} />)}
                                 <Text>{t('showDirectionsButton')}</Text>
                             </Flex>
                             <Switch checked={formData.showDirections} onChange={(value) => setFormData((previous) => ({ ...previous, showDirections: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
-                                <LuCalendar size={16} />
+                                {renderQuickActionSettingIcon('📅', <LuCalendar size={16} />)}
                                 <Text>{t('showReservationButton')}</Text>
                             </Flex>
                             <Switch checked={formData.showReservation} onChange={(value) => setFormData((previous) => ({ ...previous, showReservation: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
-                                <LuShoppingBag size={16} />
+                                {renderQuickActionSettingIcon('🛍️', <LuShoppingBag size={16} />)}
                                 <Text>{t('showOrderButton')}</Text>
                             </Flex>
                             <Switch checked={formData.showOrder} onChange={(value) => setFormData((previous) => ({ ...previous, showOrder: value }))} />
+                        </Flex>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                {renderQuickActionSettingIcon('⭐', <LuStar size={16} />)}
+                                <Text>{t('showGoogleReviewButton')}</Text>
+                            </Flex>
+                            <Switch checked={formData.showGoogleReview} onChange={(value) => setFormData((previous) => ({ ...previous, showGoogleReview: value }))} />
+                        </Flex>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                {renderQuickActionSettingIcon('💬', <LuMessageSquarePlus size={16} />)}
+                                <Text>{t('showFeedbackButton')}</Text>
+                            </Flex>
+                            <Switch checked={formData.showFeedback} onChange={(value) => setFormData((previous) => ({ ...previous, showFeedback: value }))} />
                         </Flex>
                     </Flex>
                 </Card>

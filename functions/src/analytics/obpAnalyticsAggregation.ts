@@ -996,7 +996,7 @@ export async function aggregateOBPAnalyticsForAllStores(): Promise<{
 
             const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
             if (!tId) continue;
-            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo?.businessType, storeInfo?.businessDayEndTime);
+            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo?.businessType, storeInfo?.businessDayEndTime, storeInfo?.businessCategory);
             result.storesProcessed++;
 
             try {

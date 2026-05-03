@@ -4,7 +4,7 @@
  * Storage path: stores/obp-photos/{tenantId}/{storeId}/{timestamp}-{index}.jpg
  * Returns download URL to store in publicPresence.photos[]
  * 
- * Max 3 photos per store. Owner manages via OfficialPageTab in Business Settings.
+ * OBP previews the first 3 photos; all uploaded photos remain available in the public image viewer.
  * @see __docs__/official-business-page/obp-infrastructure-freeze-plan.md §Priority 2
  */
 
@@ -16,7 +16,7 @@ import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebas
  * Upload a single OBP business photo to Firebase Storage
  * @param file - File or Blob to upload
  * @param session - User session with tId and sId
- * @param index - Photo slot index (0, 1, or 2)
+ * @param index - Photo slot index
  * @returns Download URL of the uploaded photo
  */
 export async function uploadOBPPhoto(

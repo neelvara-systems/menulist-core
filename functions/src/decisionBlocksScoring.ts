@@ -773,7 +773,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
         const storeIds = allStoreIds.filter(sId => {
             const storeInfo = storesSummary[sId];
-            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime);
+            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime, storeInfo.businessCategory);
 
             // Primary: runtime settlement computation. Missing/invalid timezone
             // safely falls back to UTC inside isAnalyticsSettlementDue.
@@ -836,7 +836,7 @@ export const computeDecisionBlocksScores = onSchedule({
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
             const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
-            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime);
+            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime, storeInfo.businessCategory);
             // Use businessCategory directly from storesSummary (derived at store creation/update)
             const businessCategory = storeInfo.businessCategory || 'specialty';
 

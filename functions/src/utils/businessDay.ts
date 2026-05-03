@@ -1,8 +1,10 @@
+import { resolveBusinessCategory } from '../sharedData/businessTypes';
+
 export const DEFAULT_FOOD_BUSINESS_DAY_END_TIME = '03:00';
 export const DEFAULT_CALENDAR_BUSINESS_DAY_END_TIME = '00:00';
 export const ANALYTICS_SETTLEMENT_BUFFER_MINUTES = 150;
 
-const LATE_SERVICE_KEYWORDS = [
+const LEGACY_FOOD_BUSINESS_KEYWORDS = [
     'bar',
     'bakery',
     'cafe',
@@ -39,17 +41,24 @@ export function normalizeBusinessDayEndTime(
     return parseBusinessDayEndMinutes(value) === null ? fallback : String(value).trim();
 }
 
-export function resolveDefaultBusinessDayEndTime(businessType?: string): string {
+export function resolveDefaultBusinessDayEndTime(businessType?: string, businessCategory?: string): string {
+    const category = resolveBusinessCategory(businessType, businessCategory);
+    if (category) {
+        return category === 'food'
+            ? DEFAULT_FOOD_BUSINESS_DAY_END_TIME
+            : DEFAULT_CALENDAR_BUSINESS_DAY_END_TIME;
+    }
+
     const normalizedType = String(businessType || '').trim().toLowerCase();
     if (!normalizedType) return DEFAULT_FOOD_BUSINESS_DAY_END_TIME;
 
-    return LATE_SERVICE_KEYWORDS.some((keyword) => normalizedType.includes(keyword))
+    return LEGACY_FOOD_BUSINESS_KEYWORDS.some((keyword) => normalizedType.includes(keyword))
         ? DEFAULT_FOOD_BUSINESS_DAY_END_TIME
         : DEFAULT_CALENDAR_BUSINESS_DAY_END_TIME;
 }
 
-export function resolveBusinessDayEndTime(businessType?: string, value?: string): string {
-    return normalizeBusinessDayEndTime(value, resolveDefaultBusinessDayEndTime(businessType));
+export function resolveBusinessDayEndTime(businessType?: string, value?: string, businessCategory?: string): string {
+    return normalizeBusinessDayEndTime(value, resolveDefaultBusinessDayEndTime(businessType, businessCategory));
 }
 
 function formatLocalParts(date: Date, timeZone?: string): {

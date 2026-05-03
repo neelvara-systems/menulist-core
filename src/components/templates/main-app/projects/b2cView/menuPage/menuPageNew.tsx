@@ -828,6 +828,7 @@ function MenuPageNew({
                         onSearchChange={setSearchTerm}
                         moodConfig={moodConfig}
                         businessType={businessType}
+                        businessCategory={storeDetails?.businessCategory}
                         isMobile={isMobile}
                     />
 

@@ -359,9 +359,14 @@ export type StoreDataType = {
         showDirections?: boolean;
         showReservation?: boolean;
         showOrder?: boolean;
+        showGoogleReview?: boolean;
+        showFeedback?: boolean;
         showPrivacyLink?: boolean;
         showTermsLink?: boolean;
         showRefundLink?: boolean;
+
+        /** Public OBP icon style. Icons are the default; emoji mode swaps public action/detail/attribute symbols to emoji. */
+        iconVariant?: 'icons' | 'emoji';
 
         /** Reservation/booking URL (e.g., Dineout, Zomato, OpenTable, own website). For schema.org acceptsReservations + CTA. */
         reservationUrl?: string;
@@ -390,10 +395,10 @@ export type StoreDataType = {
         /** Google review count (owner-entered, e.g. 320). Displayed alongside rating. */
         googleReviewCount?: number;
 
-        // ── BUSINESS PHOTOS (ADR-13: Max 3 curated, NOT a gallery) ──
+        // ── BUSINESS PHOTOS (ADR-13: first 3 are OBP preview; full set opens in viewer) ──
         // @see __docs__/official-business-page/obp-infrastructure-freeze-plan.md §Priority 2
 
-        /** Up to 3 curated business photos (storefront, interior, hero product). Max 3 URLs. */
+        /** Owner-managed business photos. OBP previews the first 3; tapping a photo opens the full viewer. */
         photos?: string[];
 
         /** Owner-defined public attributes shown after controlled business attributes. Max 6 in UI. */

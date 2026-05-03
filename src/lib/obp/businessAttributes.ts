@@ -1,4 +1,7 @@
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
+
 export type BusinessAttributeGroup = 'dietary' | 'amenity' | 'service' | 'payment';
+type BusinessAttributeKind = 'food' | 'retail' | 'service' | 'venue';
 
 export interface BusinessAttributeConfig {
     key: string;
@@ -6,7 +9,7 @@ export interface BusinessAttributeConfig {
     publicLabelKey: string;
     group: BusinessAttributeGroup;
     icon: string;
-    businessKinds?: Array<'food' | 'retail' | 'service' | 'venue'>;
+    businessKinds?: BusinessAttributeKind[];
 }
 
 export interface CustomBusinessAttribute {
@@ -43,32 +46,24 @@ export const BUSINESS_ATTRIBUTE_CONFIG: BusinessAttributeConfig[] = [
     { key: 'acceptsCash', labelKey: 'attrAcceptsCash', publicLabelKey: 'publicAttributes.acceptsCash', group: 'payment', icon: 'Cash' },
 ];
 
-function getBusinessKind(businessType?: string): 'food' | 'retail' | 'service' | 'venue' {
-    const normalized = String(businessType || '').toLowerCase();
-    if (/(restaurant|cafe|coffee|bakery|bar|pub|food|kitchen|hotel|dining|pizza|burger|ice|sweet|cloud)/.test(normalized)) {
-        return 'food';
-    }
-    if (/(salon|spa|clinic|doctor|repair|service|studio|gym|fitness|beauty|wellness)/.test(normalized)) {
-        return 'service';
-    }
-    if (/(store|shop|retail|market|boutique|pharmacy|grocery)/.test(normalized)) {
-        return 'retail';
-    }
-    if (/(venue|hall|event|theatre|cinema|club)/.test(normalized)) {
-        return 'venue';
-    }
+function getBusinessKind(businessType?: string, businessCategory?: string): BusinessAttributeKind {
+    const category = resolveBusinessCategory(businessType, businessCategory) || 'food';
+    if (category === 'food') return 'food';
+    if (category === 'retail') return 'retail';
+    if (category === 'venue') return 'venue';
+    if (['service', 'professional', 'creative', 'health', 'specialty'].includes(category)) return 'service';
     return 'food';
 }
 
-export function getBusinessAttributeConfigForType(businessType?: string): BusinessAttributeConfig[] {
-    const kind = getBusinessKind(businessType);
+export function getBusinessAttributeConfigForType(businessType?: string, businessCategory?: string): BusinessAttributeConfig[] {
+    const kind = getBusinessKind(businessType, businessCategory);
     return BUSINESS_ATTRIBUTE_CONFIG.filter((attribute) => (
         !attribute.businessKinds || attribute.businessKinds.includes(kind)
     ));
 }
 
-export function getBusinessAttributeGroupsForType(businessType?: string) {
-    const attributes = getBusinessAttributeConfigForType(businessType);
+export function getBusinessAttributeGroupsForType(businessType?: string, businessCategory?: string) {
+    const attributes = getBusinessAttributeConfigForType(businessType, businessCategory);
     return (Object.keys(BUSINESS_ATTRIBUTE_GROUP_LABELS) as BusinessAttributeGroup[])
         .map((group) => ({
             group,

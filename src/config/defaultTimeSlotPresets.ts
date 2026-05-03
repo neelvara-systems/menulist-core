@@ -8,7 +8,7 @@
  * Owners can modify or delete these presets later.
  */
 
-import { BUSINESS_TYPES } from '@constant/common';
+import { resolveBusinessCategory } from '@constant/common';
 import { antdTagsColorCodes } from '@data/common';
 import { generateOwnCustomUid } from '@lib/utils/generateOwnCustomUid';
 import { TimeSlotPreset } from '@type/platform/store';
@@ -70,15 +70,6 @@ const DEFAULT_PRESETS: PresetTemplate[] = [
 ];
 
 /**
- * Get the business category from business type
- */
-function getBusinessCategory(businessType?: string): string | null {
-    if (!businessType) return null;
-    const found = BUSINESS_TYPES.find(bt => bt.value === businessType);
-    return found?.category || null;
-}
-
-/**
  * Get default time slot presets for a business type
  * 
  * @param businessType - The store's business type (e.g., "Restaurant", "Salon")
@@ -91,7 +82,7 @@ export function getDefaultTimeSlotPresets(
     tenantId: number,
     storeId: number
 ): TimeSlotPreset[] {
-    const category = getBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType);
     const templates = category && CATEGORY_PRESETS[category]
         ? CATEGORY_PRESETS[category]
         : DEFAULT_PRESETS;
@@ -110,7 +101,7 @@ export function getDefaultTimeSlotPresets(
  * Useful for previewing what presets will be created
  */
 export function getPresetTemplatesForCategory(businessType?: string): PresetTemplate[] {
-    const category = getBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType);
     if (category && CATEGORY_PRESETS[category]) {
         return CATEGORY_PRESETS[category];
     }

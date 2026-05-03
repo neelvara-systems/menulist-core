@@ -163,3 +163,22 @@ export function getBusinessCategory(businessType?: string): string | undefined {
         bt => bt.value.toLowerCase() === businessType.toLowerCase()
     )?.category;
 }
+
+/**
+ * Normalize a stored business category value against BUSINESS_CATEGORIES.
+ */
+export function normalizeBusinessCategory(businessCategory?: string): string | undefined {
+    const normalized = String(businessCategory || '').trim().toLowerCase();
+    if (!normalized) return undefined;
+    return BUSINESS_CATEGORIES.some(category => category.value === normalized)
+        ? normalized
+        : undefined;
+}
+
+/**
+ * Resolve the canonical category for a store.
+ * Stored businessCategory wins; businessType derivation is only the fallback.
+ */
+export function resolveBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
+    return normalizeBusinessCategory(businessCategory) || getBusinessCategory(businessType);
+}

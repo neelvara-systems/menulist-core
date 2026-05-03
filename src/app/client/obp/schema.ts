@@ -190,7 +190,7 @@ function buildPotentialActions(reservationUrl?: string, orderUrl?: string): Reco
 }
 
 /**
- * Build image schema. Combines logo + up to 3 business photos into an image array.
+ * Build image schema. Combines logo + preview business photos into an image array.
  * Schema.org image can be a single URL or array of URLs.
  */
 function buildImageSchema(logo?: string, photos?: string[]): Record<string, any> {

@@ -1,7 +1,7 @@
 import HorizontalLogo from "@assets/logo/horizontal.svg";
 
 // Re-export business types from shared data (primary source for copy-paste to functions)
-export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCategory } from "@data/shared/businessTypes";
+export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCategory, normalizeBusinessCategory, resolveBusinessCategory } from "@data/shared/businessTypes";
 export type { BusinessCategory, BusinessType, SystemFilter } from "@data/shared/businessTypes";
 export const APP_NAME = 'MenulistAi'
 export const APP_TAGLINE = 'Your Second Brain'
@@ -163,6 +163,7 @@ export const ASPECT_RATIOS_LIST = [
 ];
 
 // BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCategory,
+// normalizeBusinessCategory, resolveBusinessCategory,
 // BusinessCategory, BusinessType, SystemFilter
 // — All re-exported from @data/shared/businessTypes.ts (see top of file)
 // Primary source: src/data/shared/businessTypes.ts

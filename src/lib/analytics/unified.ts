@@ -566,6 +566,7 @@ export interface TrackingData {
   searchTerm?: string;        // What the user searched for
   searchResults?: number;     // Number of search results
   menuAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order';
+  obpAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback' | 'copy_link' | 'copy_message';
   obpLink?: 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
 
   // Recommendation properties (Decision Intelligence)
@@ -1484,14 +1485,14 @@ export const trackOBPLanguageAdoption = (
 };
 
 /**
- * Track an OBP action button click (Call, WhatsApp, Directions, Reserve, Order)
+ * Track an OBP action button click (Call, WhatsApp, Directions, Reserve, Order, Feedback)
  * @param storeId Store ID
  * @param obpAction The action type
  * @param additionalData Optional additional tracking data
  */
 export const trackOBPAction = (
   storeId: string | number,
-  obpAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order',
+  obpAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
   return trackEvent(TrackingEvent.OBP_ACTION_CLICK, {
