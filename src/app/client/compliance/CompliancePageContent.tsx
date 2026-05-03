@@ -8,6 +8,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
@@ -117,7 +118,7 @@ function ComplianceShell({
 }) {
     return (
         <div style={{
-            minHeight: '100vh',
+            minHeight: '100dvh',
             background: '#fafafa',
             fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}>
@@ -126,7 +127,7 @@ function ComplianceShell({
                 margin: '0 auto',
                 padding: '40px 20px',
                 background: '#fff',
-                minHeight: '100vh',
+                minHeight: '100dvh',
             }}>
                 {/* Header */}
                 <div style={{ marginBottom: 32 }}>
@@ -158,13 +159,9 @@ function ComplianceShell({
                     borderTop: '1px solid #eee',
                     textAlign: 'center',
                 }}>
-                    <span style={{ fontSize: 12, color: '#999' }}>
-                        Powered by MenuList
-                    </span>
+                    <PublicMenuListAttribution mode="compact" surfaceLabel="Powered by MenuList" />
                 </footer>
             </div>
         </div>
     );
 }
-
-

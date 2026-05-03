@@ -121,8 +121,11 @@ function MenuFilters({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="fixed bottom-16 left-4 right-4 z-50 rounded-xl overflow-hidden"
-                            style={{ background: moodConfig.background }}
+                            className="fixed left-4 right-4 z-50 rounded-xl overflow-hidden"
+                            style={{
+                                background: moodConfig.background,
+                                bottom: 'calc(64px + env(safe-area-inset-bottom))',
+                            }}
                         >
                             <div className="p-3 border-b" style={{ borderColor: moodConfig.itemStyle.borderColor }}>
                                 <h3
@@ -183,9 +186,10 @@ function MenuFilters({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         onClick={handleOpenCategories}
-                        className="fixed bottom-6 right-4 flex items-center gap-2 px-4 py-3 rounded-full text-sm shadow-lg z-30 min-h-[48px]"
+                        className="fixed right-4 flex items-center gap-2 px-4 py-3 rounded-full text-sm shadow-lg z-30 min-h-[48px]"
                         style={{
                             background: moodConfig.accentColor,
+                            bottom: 'calc(24px + env(safe-area-inset-bottom))',
                             color: '#000',
                             fontWeight: 600,
                         }}

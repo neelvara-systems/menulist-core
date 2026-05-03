@@ -10,6 +10,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPAction } from '@lib/analytics/unified';
+import { LuCalendarCheck, LuMapPin, LuMessageCircle, LuPhone, LuShoppingBag } from 'react-icons/lu';
 import styles from './obp.module.scss';
 
 interface OBPActionsProps {
@@ -86,8 +87,8 @@ export default function OBPActions({
                         track: () => handleAction('call'),
                     })}
                 >
-                    <span className={styles.actionIcon}>📞</span>
-                    {labels.call}
+                    <span className={styles.actionIcon}><LuPhone aria-hidden="true" size={20} /></span>
+                    <span>{labels.call}</span>
                 </a>
             )}
             {showWhatsApp && whatsappNumber && (
@@ -103,8 +104,8 @@ export default function OBPActions({
                         track: () => handleAction('whatsapp'),
                     })}
                 >
-                    <span className={styles.actionIcon}>💬</span>
-                    {labels.whatsapp}
+                    <span className={styles.actionIcon}><LuMessageCircle aria-hidden="true" size={20} /></span>
+                    <span>{labels.whatsapp}</span>
                 </a>
             )}
             {showDirections && directionsUrl && (
@@ -120,8 +121,8 @@ export default function OBPActions({
                         track: () => handleAction('directions'),
                     })}
                 >
-                    <span className={styles.actionIcon}>📍</span>
-                    {labels.directions}
+                    <span className={styles.actionIcon}><LuMapPin aria-hidden="true" size={20} /></span>
+                    <span>{labels.directions}</span>
                 </a>
             )}
             {showReservation && reservationUrl && (
@@ -137,8 +138,8 @@ export default function OBPActions({
                         track: () => handleAction('reserve'),
                     })}
                 >
-                    <span className={styles.actionIcon}>📅</span>
-                    {labels.reserve}
+                    <span className={styles.actionIcon}><LuCalendarCheck aria-hidden="true" size={20} /></span>
+                    <span>{labels.reserve}</span>
                 </a>
             )}
             {showOrder && orderUrl && (
@@ -154,8 +155,8 @@ export default function OBPActions({
                         track: () => handleAction('order'),
                     })}
                 >
-                    <span className={styles.actionIcon}>🛒</span>
-                    {labels.order}
+                    <span className={styles.actionIcon}><LuShoppingBag aria-hidden="true" size={20} /></span>
+                    <span>{labels.order}</span>
                 </a>
             )}
         </div>

@@ -25,6 +25,7 @@
  * UX. Manifest `start_url` stays `/menu` or `/` at the store level.
  */
 
+import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { useEffect, useMemo, useState } from 'react';
 
 interface MenuNotFoundFallbackProps {
@@ -163,6 +164,8 @@ export default function MenuNotFoundFallback({
                         Redirecting in {countdown}s…
                     </p>
                 ) : null}
+
+                <PublicMenuListAttribution mode="compact" />
             </div>
         </div>
     );

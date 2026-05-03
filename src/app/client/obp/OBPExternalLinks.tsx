@@ -3,6 +3,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
+import { LuGlobe, LuStar } from 'react-icons/lu';
 import styles from './obp.module.scss';
 
 interface OBPExternalLinksProps {
@@ -80,7 +81,7 @@ export default function OBPExternalLinks({
                     href={googleReviewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ textDecoration: 'none', color: '#666', fontSize: 13 }}
+                    className={styles.reviewLink}
                     onClick={(event) => trackBeforeNavigate({
                         event,
                         href: googleReviewUrl,
@@ -88,6 +89,7 @@ export default function OBPExternalLinks({
                         track: () => handleClick('google_review'),
                     })}
                 >
+                    <LuStar aria-hidden="true" size={14} />
                     {googleReviewLabel}
                 </a>
             ) : null}
@@ -210,7 +212,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('website'),
                             })}
                         >
-                            🌐
+                            <LuGlobe aria-hidden="true" size={16} />
                         </a>
                     ) : null}
                 </div>

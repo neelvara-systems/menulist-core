@@ -1128,7 +1128,7 @@ function MenuSkeleton() {
     return (
         <div
             style={{
-                minHeight: "100vh",
+                minHeight: "100dvh",
                 background: "#fafafa",
                 fontFamily: "system-ui, -apple-system, sans-serif",
             }}
@@ -1628,7 +1628,7 @@ export default function ClientMenuPage({ params, searchParams }: PageProps) {
     if (FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && (slug === 'privacy' || slug === 'terms' || slug === 'refund')) {
         const CompliancePageContent = require('../compliance/CompliancePageContent').default;
         return (
-            <Suspense fallback={<div style={{ minHeight: '100vh', background: '#fafafa' }} />}>
+            <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#fafafa' }} />}>
                 <CompliancePageContent type={slug as 'privacy' | 'terms' | 'refund'} />
             </Suspense>
         );

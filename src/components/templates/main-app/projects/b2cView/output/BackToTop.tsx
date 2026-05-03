@@ -52,7 +52,7 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
             onClick={scrollToTop}
             style={{
                 position: 'fixed',
-                bottom: '80px', // Above MenuFilters bottom bar
+                bottom: 'calc(80px + env(safe-area-inset-bottom))', // Above MenuFilters bottom bar
                 right: '16px',
                 width: '48px',
                 height: '48px',

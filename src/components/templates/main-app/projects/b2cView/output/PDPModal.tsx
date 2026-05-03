@@ -13,6 +13,7 @@ import { ExtractedDataCategory } from '@template/main-app/projects/types';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useContext, useEffect, useState } from 'react';
@@ -28,6 +29,8 @@ interface PDPModalProps {
     moodConfig: MenuMoodConfig;
     projectData: Project;
     showItemPrices?: boolean;
+    currencySymbol?: string;
+    currencyCode?: string;
     unavailableLabel?: string;
     trackView?: boolean;
     recoveryActions?: Array<{
@@ -45,6 +48,8 @@ function PDPModal({
     moodConfig,
     projectData,
     showItemPrices = true,
+    currencySymbol = '₹',
+    currencyCode = 'INR',
     unavailableLabel,
     trackView = true,
     recoveryActions = [],
@@ -84,7 +89,7 @@ function PDPModal({
                     price: showItemPrices
                         ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
                         : undefined,
-                    currency: 'USD',
+                    currency: currencyCode,
                     attributes: showItemPrices
                         ? item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
                             if (attr.name?.[language]) {
@@ -106,7 +111,7 @@ function PDPModal({
             document.documentElement.style.overflow = '';
             document.body.style.overflow = '';
         };
-    }, [item, language, trackMenuItemView, projectData, trackView]);
+    }, [currencyCode, item, language, trackMenuItemView, projectData, showItemPrices, trackView]);
 
     useEffect(() => {
         if (!item) return;
@@ -162,7 +167,10 @@ function PDPModal({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-4 md:inset-8 lg:inset-16 z-[60] flex items-center justify-center"
+                        className="fixed z-[60] flex items-center justify-center"
+                        style={{
+                            inset: 'calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px',
+                        }}
                     >
                         <div
                             className="relative w-full max-w-2xl max-h-full overflow-y-auto rounded-2xl shadow-2xl"
@@ -257,12 +265,12 @@ function PDPModal({
                                     >
                                         {item.name?.[language] || 'Menu Item'}
                                     </h2>
-                                    {showItemPrices && !item.attributes?.length && item.price && (
+                                    {showItemPrices && !item.attributes?.length && item.price !== undefined && item.price !== null && String(item.price).trim() !== '' && (
                                         <span
                                             className="text-lg md:text-xl font-semibold whitespace-nowrap"
                                             style={{ color: moodConfig.priceColor }}
                                         >
-                                            {item.price}
+                                            {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
                                         </span>
                                     )}
                                 </div>
@@ -412,7 +420,7 @@ function PDPModal({
                                                         className="font-medium"
                                                         style={{ color: moodConfig.priceColor }}
                                                     >
-                                                        {attr.price}
+                                                        {formatMenuPrice(attr.price, currencySymbol, { fractionDigits: 2 })}
                                                     </span>
                                                 ) : null}
                                             </div>

@@ -11,6 +11,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import GlobalLanguagesList from "@data/languages";
+import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
@@ -30,10 +31,10 @@ import {
     query,
     where,
 } from "firebase/firestore";
-import { getTranslations } from "next-intl/server";
 import { unstable_cache } from "next/cache";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPAnalytics from "./OBPAnalytics";
+import { getOBPTranslations } from "./i18n";
 import styles from "./obp.module.scss";
 
 interface OutletInfo {
@@ -98,10 +99,7 @@ interface BrandOBPContentProps {
 
 export default async function BrandOBPContent({ store, baseUrl, requestedLanguage }: BrandOBPContentProps) {
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
-    const t = await getTranslations({
-        locale: getNextIntlLocaleForPublicLanguage(contentLanguage),
-        namespace: 'BusinessSettings',
-    });
+    const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
     const allOutlets = await getOutletsForTenant(store.tenantId, store.storeId);
     // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a real outletSlug
     // are ever routable and linkable. The outlet-create API guarantees a slug
@@ -125,7 +123,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const firstLetter = brandName.charAt(0);
 
     return (
-        <div className={styles.page}>
+        <main className={styles.page} style={{ '--obp-accent': accentColor } as any}>
             <OBPAnalytics
                 tenantId={store?.tenantId}
                 storeId={store?.storeId}
@@ -137,16 +135,17 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 activeLanguageName={showLanguageSwitcher ? activeLanguageName : undefined}
                 trackLanguageUsage={showLanguageSwitcher}
             />
-            {showLanguageSwitcher ? (
-                <OBPLanguageSwitcher
-                    activeLanguage={contentLanguage}
-                    baseUrl={baseUrl}
-                    languages={languageOptions}
-                />
-            ) : null}
+            <div className={styles.shell}>
+                {showLanguageSwitcher ? (
+                    <OBPLanguageSwitcher
+                        activeLanguage={contentLanguage}
+                        baseUrl={baseUrl}
+                        languages={languageOptions}
+                    />
+                ) : null}
 
-            {/* Brand Identity */}
-            <div className={styles.identity}>
+                {/* Brand Identity */}
+                <section className={styles.identity} aria-label={brandName}>
                 {logo ? (
                     <img
                         src={logo}
@@ -163,18 +162,10 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 )}
                 <h1 className={styles.name}>{brandName}</h1>
                 <p className={styles.descriptor}>{t('publicChooseLocation')}</p>
-            </div>
+                </section>
 
-            {/* Location Cards */}
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                padding: '0 20px',
-                maxWidth: 480,
-                margin: '0 auto',
-                width: '100%',
-            }}>
+                {/* Location Cards */}
+                <section className={styles.outletList} aria-label={t('publicChooseLocation')}>
                 {outlets.map((outlet) => {
                     const hoursOutput = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
                         ? resolveHoursOutput({
@@ -201,46 +192,17 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                         <a
                             key={outlet.storeId}
                             href={outletUrl}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 14,
-                                padding: '14px 16px',
-                                borderRadius: 12,
-                                border: '1px solid #e5e5e5',
-                                textDecoration: 'none',
-                                color: 'inherit',
-                                background: '#fff',
-                                transition: 'box-shadow 0.15s',
-                            }}
+                            className={styles.outletCard}
                         >
                             {/* Outlet mini logo or initial */}
                             {outlet.logo ? (
                                 <img
                                     src={outlet.logo}
                                     alt={outlet.name}
-                                    style={{
-                                        width: 44,
-                                        height: 44,
-                                        borderRadius: 8,
-                                        objectFit: 'cover',
-                                        flexShrink: 0,
-                                    }}
+                                    className={styles.outletLogo}
                                 />
                             ) : (
-                                <div style={{
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: 8,
-                                    background: accentColor,
-                                    color: '#fff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: 18,
-                                    fontWeight: 600,
-                                    flexShrink: 0,
-                                }}>
+                                <div className={styles.outletLogoFallback}>
                                     {getLocalizedText(
                                         outlet.name,
                                         contentLanguage,
@@ -250,15 +212,8 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                                 </div>
                             )}
 
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    fontSize: 15,
-                                    fontWeight: 600,
-                                    lineHeight: 1.3,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                }}>
+                            <div className={styles.outletBody}>
+                                <div className={styles.outletName}>
                                     {getLocalizedText(
                                         outlet.name,
                                         contentLanguage,
@@ -267,14 +222,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                                     ).replace(/ - Main Store$/, '')}
                                 </div>
                                 {(outlet.city || outlet.addressLine) && (
-                                    <div style={{
-                                        fontSize: 13,
-                                        color: '#666',
-                                        marginTop: 2,
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                    }}>
+                                    <div className={styles.outletAddress}>
                                         {outlet.city || outlet.addressLine}
                                     </div>
                                 )}
@@ -282,39 +230,28 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
 
                             {/* Open/Closed badge — confidence-gated */}
                             {showBadge ? (
-                                <div style={{
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    padding: '3px 8px',
-                                    borderRadius: 20,
-                                    background: status.isOpen ? '#dcfce7' : '#fee2e2',
-                                    color: status.isOpen ? '#166534' : '#991b1b',
-                                    flexShrink: 0,
-                                    whiteSpace: 'nowrap',
-                                }}>
+                                <div className={`${styles.outletStatus} ${status.isOpen ? styles.outletStatusOpen : styles.outletStatusClosed}`}>
                                     {status.isOpen ? t('publicOpen') : t('publicClosed')}
                                 </div>
                             ) : (
-                                <div style={{
-                                    fontSize: 11,
-                                    fontWeight: 500,
-                                    padding: '3px 8px',
-                                    color: '#94a3b8',
-                                    flexShrink: 0,
-                                    whiteSpace: 'nowrap',
-                                }}>
+                                <div className={styles.outletStatusMuted}>
                                     {status.statusText}
                                 </div>
                             )}
                         </a>
                     );
                 })}
-            </div>
+                </section>
 
-            {/* Footer */}
-            <footer className={styles.footer}>
-                <span className={styles.footerText}>{t('publicPoweredBy')}</span>
-            </footer>
-        </div>
+                {/* Footer */}
+                <footer className={styles.footer}>
+                    <PublicMenuListAttribution
+                        mode="compact"
+                        surfaceLabel={t('publicPoweredBy')}
+                        mutedColor="#bbb"
+                    />
+                </footer>
+            </div>
+        </main>
     );
 }

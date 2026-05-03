@@ -4,7 +4,7 @@ export function normalizeMenuPrice(price: number | string | null | undefined): n
     }
 
     if (typeof price === 'string') {
-        const parsed = Number(price.trim());
+        const parsed = Number(price.trim().replace(/[^0-9.-]/g, ''));
         return Number.isFinite(parsed) ? parsed : 0;
     }
 
@@ -13,14 +13,22 @@ export function normalizeMenuPrice(price: number | string | null | undefined): n
 
 export function formatMenuPrice(
     price: number | string | null | undefined,
-    currencySymbol = '$',
+    currencySymbol = '₹',
     options?: { fractionDigits?: number }
 ): string {
-    const normalized = normalizeMenuPrice(price);
-
-    if (typeof options?.fractionDigits === 'number') {
-        return `${currencySymbol}${normalized.toFixed(options.fractionDigits)}`;
+    if (typeof price === 'string') {
+        const rawPrice = price.trim();
+        if (rawPrice && rawPrice.replace(/[^0-9.-]/g, '') === '') {
+            return rawPrice;
+        }
     }
 
-    return `${currencySymbol}${normalized}`;
+    const normalized = normalizeMenuPrice(price);
+    const symbol = currencySymbol || '';
+
+    if (typeof options?.fractionDigits === 'number') {
+        return `${symbol}${normalized.toFixed(options.fractionDigits)}`;
+    }
+
+    return `${symbol}${normalized}`;
 }

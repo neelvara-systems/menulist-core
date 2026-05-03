@@ -78,6 +78,7 @@ export default function MenuPageOutput({
         <div
             className="min-h-screen"
             style={{
+                minHeight: '100dvh',
                 background: backgroundImage
                     ? `url(${backgroundImage}) center/cover no-repeat fixed`
                     : moodConfig.background,
@@ -85,7 +86,12 @@ export default function MenuPageOutput({
         >
             <div
                 className="max-w-2xl mx-auto px-4 py-6 md:px-6 md:py-8"
-                style={{ padding: spacing.container }}
+                style={{
+                    paddingTop: `calc(${spacing.container}px + env(safe-area-inset-top))`,
+                    paddingRight: spacing.container,
+                    paddingBottom: `calc(${spacing.container}px + env(safe-area-inset-bottom))`,
+                    paddingLeft: spacing.container,
+                }}
             >
                 {/* Tabs Navigation */}
                 {layout === 'tabs' && (

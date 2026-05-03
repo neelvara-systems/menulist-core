@@ -20,6 +20,7 @@
  */
 
 import GlobalLanguagesList from '@data/languages';
+import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
@@ -33,6 +34,8 @@ interface MenuFooterProps {
     languages?: string[];
     /** Current active language */
     activeLanguage?: string;
+    /** Activates a footer language directly */
+    onLanguageSelect?: (language: string) => void;
     /** Project ID for feedback link */
     projectId?: string;
     /** Project-level feedback toggle (from menuSettings.feedback) */
@@ -84,6 +87,7 @@ export default function MenuFooter({
     moodConfig,
     languages = [],
     activeLanguage,
+    onLanguageSelect,
     projectId,
     feedbackEnabled,
     menuVersion,
@@ -134,11 +138,6 @@ export default function MenuFooter({
     const socialLinks = storeDetails?.socialMedia
         ? Object.entries(storeDetails.socialMedia).filter(([_, url]) => url && url.trim())
         : [];
-
-    // Handle language indicator click - scroll to top to access header selector
-    const handleLanguageClick = () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
         if (!shouldTrackMenuActions) return Promise.resolve();
@@ -409,42 +408,45 @@ export default function MenuFooter({
                 </a>
             )}
 
-            {/* Read-only Language Indicator */}
-            {/* Constitutional: Clicking scrolls to top where header selector is */}
+            {/* Language selector */}
             {languages.length > 1 && (
-                <button
-                    onClick={handleLanguageClick}
+                <nav
                     style={{
                         display: 'flex',
                         justifyContent: 'center',
                         gap: '8px',
                         marginTop: '12px',
-                        padding: '8px 0',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
                         width: '100%',
+                        flexWrap: 'wrap',
                     }}
-                    aria-label="Scroll to top to change language"
+                    aria-label="Change menu language"
                 >
                     {languages.map((lang, index) => (
-                        <span
+                        <button
                             key={lang}
+                            type="button"
+                            onClick={() => onLanguageSelect?.(lang)}
                             style={{
+                                background: 'transparent',
+                                border: 'none',
                                 color: lang === activeLanguage ? moodConfig.accentColor : moodConfig.bodyColor,
+                                cursor: 'pointer',
                                 fontSize: '12px',
                                 fontFamily: moodConfig.bodyFont,
                                 fontWeight: lang === activeLanguage ? 600 : 400,
+                                minHeight: 36,
                                 opacity: lang === activeLanguage ? 1 : 0.6,
+                                padding: '6px 2px',
                             }}
+                            aria-current={lang === activeLanguage ? 'true' : undefined}
                         >
                             {getLanguageDisplay(lang)}
                             {index < languages.length - 1 && (
                                 <span style={{ marginLeft: '8px', opacity: 0.3 }}>•</span>
                             )}
-                        </span>
+                        </button>
                     ))}
-                </button>
+                </nav>
             )}
 
             {/* Canonical Truth: Version + Timestamp (machine-readable, trust signal) */}
@@ -465,6 +467,12 @@ export default function MenuFooter({
                     {menuVersion && `v${menuVersion}`}
                 </p>
             )}
+
+            <PublicMenuListAttribution
+                mode="compact"
+                mutedColor={moodConfig.bodyColor}
+                accentColor={moodConfig.accentColor}
+            />
         </footer>
     );
 }

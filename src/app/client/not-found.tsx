@@ -9,16 +9,18 @@
  * hit a bad URL. Must look professional, not broken.
  */
 
+import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+
 export default function ClientMenuNotFound() {
     return (
         <div
             style={{
-                minHeight: "100vh",
+                minHeight: "100dvh",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: "24px",
+                padding: "calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))",
                 background: "#fafafa",
                 fontFamily: "system-ui, -apple-system, sans-serif",
                 textAlign: "center",
@@ -93,6 +95,8 @@ export default function ClientMenuNotFound() {
             >
                 Please ask your server for the correct menu link.
             </p>
+
+            <PublicMenuListAttribution />
         </div>
     );
 }

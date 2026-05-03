@@ -25,7 +25,7 @@ function DeviceFrame({
                 : '100%',
             margin: '0 auto',
             width: '100%',
-            height: fromPage === "b2c" ? 'calc(100vh - 140px)' : '100%',
+            height: fromPage === "b2c" ? 'calc(100dvh - 140px)' : '100%',
             overflowY: shouldScroll ? 'auto' : 'hidden',
             border: fromPage === "b2c" ? '2px solid lightgray' : 'unset',
             boxShadow: fromPage === "b2c" ? '0px 5px 10px #c1bbbbad' : 'unset',

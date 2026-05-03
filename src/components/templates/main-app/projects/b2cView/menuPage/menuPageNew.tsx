@@ -20,6 +20,7 @@ import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import Image from 'next/image';
@@ -82,6 +83,9 @@ const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefine
     }
 };
 
+const hasDisplayPrice = (price: unknown): boolean =>
+    price !== undefined && price !== null && String(price).trim() !== '';
+
 function MenuPageNew({
     mood = DEFAULTS.menu.mood,
     layout = DEFAULTS.menu.layout,
@@ -141,6 +145,8 @@ function MenuPageNew({
     const isTablet = activeDeviceType === 'tablet';
     const isDesktop = activeDeviceType === 'desktop';
     const labels = useMemo(() => getOfferingLabels(businessType), [businessType]);
+    const currencySymbol = storeDetails?.currencySymbol || '₹';
+    const currencyCode = storeDetails?.currencyCode || 'INR';
 
     // Layout properties from config
     const isGridLayout = layoutConfig.itemsPerRow > 1;
@@ -601,7 +607,7 @@ function MenuPageNew({
             price: showItemPrices
                 ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
                 : undefined,
-            currency: storeDetails?.currencySymbol || 'USD',
+            currency: currencyCode,
         });
 
         setSelectedItemTrackView(true);
@@ -622,7 +628,7 @@ function MenuPageNew({
             '',
             `${basePath}/item/${urlSegment}`
         );
-    }, [activeLanguage, allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, getMenuBasePath, projectData?.projectId, showItemPrices, storeDetails?.currencySymbol, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [activeLanguage, allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuBasePath, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -708,7 +714,7 @@ function MenuPageNew({
 
     // Styles
     const containerStyle: React.CSSProperties = {
-        minHeight: from === 'main-website' ? '100vh' : 'calc(100vh - 76px)',
+        minHeight: from === 'main-website' ? '100dvh' : 'calc(100dvh - 76px)',
         background: backgroundImage
             ? `url(${backgroundImage}) center/cover no-repeat fixed`
             : moodConfig.background,
@@ -719,11 +725,13 @@ function MenuPageNew({
 
     const scrollContentStyle: React.CSSProperties = {
         flex: 1,
-        paddingTop: spacing.container,
+        paddingTop: `calc(${spacing.container}px + env(safe-area-inset-top))`,
         paddingRight: spacing.container,
-        paddingBottom: spacing.container,
+        paddingBottom: `calc(${spacing.container}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 96}px)`,
         paddingLeft: spacing.container,
         overflowY: 'auto',
+        scrollPaddingTop: `calc(72px + env(safe-area-inset-top))`,
+        scrollPaddingBottom: `calc(96px + env(safe-area-inset-bottom))`,
     };
 
     const contentStyle: React.CSSProperties = {
@@ -831,7 +839,7 @@ function MenuPageNew({
                             businessType={businessType}
                             moodConfig={moodConfig}
                             onItemClick={handleItemClick}
-                            currency={storeDetails?.currencySymbol || '$'}
+                            currency={currencySymbol}
                             menuSettings={projectData?.menuSettings}
                             precomputedBlocks={precomputedBlocks}
                             showItemPrices={showItemPrices}
@@ -860,10 +868,10 @@ function MenuPageNew({
                                 scrollbarWidth: 'none',
                                 msOverflowStyle: 'none',
                                 position: 'sticky',
-                                top: 0,
+                                top: 'env(safe-area-inset-top)',
                                 zIndex: 20,
                                 background: backgroundImage ? 'inherit' : moodConfig.background,
-                                paddingTop: 8,
+                                paddingTop: 'calc(8px + env(safe-area-inset-top))',
                             }}
                             className="hide-scrollbar"
                         >
@@ -1114,8 +1122,10 @@ function MenuPageNew({
                                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                                                     <h3 style={itemNameStyle}>{item.name?.[activeLanguage]}</h3>
-                                                                    {showItemPrices && !item.attributes?.length && item.price && (
-                                                                        <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>{item.price}</span>
+                                                                    {showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (
+                                                                        <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>
+                                                                            {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
+                                                                        </span>
                                                                     )}
                                                                 </div>
                                                                 {item.description?.[activeLanguage] && (
@@ -1271,6 +1281,7 @@ function MenuPageNew({
                         feedbackEnabled={projectData?.menuSettings?.feedback}
                         menuVersion={projectData?.menuVersion}
                         lastPublishedAt={projectData?.lastPublishedAt}
+                        onLanguageSelect={setActiveLanguage}
                         analyticsIds={{
                             tenantId: storeDetails?.tenantId,
                             storeId: String(storeDetails?.storeId || ''),
@@ -1306,6 +1317,8 @@ function MenuPageNew({
                 moodConfig={moodConfig}
                 projectData={projectData}
                 showItemPrices={showItemPrices}
+                currencySymbol={currencySymbol}
+                currencyCode={currencyCode}
                 unavailableLabel={unavailableLabel}
                 trackView={selectedItemTrackView}
                 recoveryActions={recoveryActions}

@@ -12,6 +12,7 @@ import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import GlobalLanguagesList from "@data/languages";
+import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     getStoreByCustomDomain,
@@ -38,9 +39,18 @@ import {
     doc,
     getDoc
 } from "firebase/firestore";
-import { getTranslations } from "next-intl/server";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
+import {
+    LuCalendarDays,
+    LuCheck,
+    LuClock,
+    LuCreditCard,
+    LuIndianRupee,
+    LuMapPin,
+    LuStore,
+    LuUtensils,
+} from "react-icons/lu";
 import BrandOBPContent from "./BrandOBPContent";
 import OBPActions from "./OBPActions";
 import OBPAnalytics from "./OBPAnalytics";
@@ -49,6 +59,7 @@ import OBPExternalLinks from "./OBPExternalLinks";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPMenuCTA from "./OBPMenuCTA";
 import OBPPhotoStrip from "./OBPPhotoStrip";
+import { getOBPTranslations } from "./i18n";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
 
@@ -285,9 +296,9 @@ function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t:
             })()
             : t('publicClosed');
         return (
-            <div key={day} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ fontWeight: 500, minWidth: 80 }}>{t(`publicDays.${day}`)}</span>
-                <span style={{ opacity: hours ? 1 : 0.5 }}>{display}</span>
+            <div key={day} className={styles.hoursRow}>
+                <span className={styles.hoursDay}>{t(`publicDays.${day}`)}</span>
+                <span className={!hours ? styles.hoursClosed : undefined}>{display}</span>
             </div>
         );
     });
@@ -416,10 +427,7 @@ export default async function OBPContent({
     const store = storeData;
     const pp = store?.publicPresence || {};
     const isPermanentlyClosed = store?.permanentlyClosed === true;
-    const t = await getTranslations({
-        locale: getNextIntlLocaleForPublicLanguage(contentLanguage),
-        namespace: 'BusinessSettings',
-    });
+    const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
     const languageOptions = getPublicLanguageOptions(store);
     const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
@@ -616,14 +624,15 @@ export default async function OBPContent({
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
                 />
             )}
-            <div className={styles.page}>
-                {showLanguageSwitcher ? (
-                    <OBPLanguageSwitcher
-                        activeLanguage={contentLanguage}
-                        baseUrl={obpUrl}
-                        languages={languageOptions}
-                    />
-                ) : null}
+            <main className={styles.page} style={{ '--obp-accent': accentColor } as any}>
+                <div className={styles.shell}>
+                    {showLanguageSwitcher ? (
+                        <OBPLanguageSwitcher
+                            activeLanguage={contentLanguage}
+                            baseUrl={obpUrl}
+                            languages={languageOptions}
+                        />
+                    ) : null}
 
                 {/*
                  * T2-N-05 / D-12 PUBLIC-ROUTING-DOCTRINE: visible breadcrumb
@@ -646,8 +655,8 @@ export default async function OBPContent({
                     <TempStatusBanner tempStatus={store.tempStatus} />
                 )}
 
-                {/* ── Identity Block ── */}
-                <div className={styles.identity}>
+                    {/* ── Identity Block ── */}
+                    <section className={styles.identity} aria-label={storeName}>
                     {logo ? (
                         <img
                             src={logo}
@@ -671,7 +680,7 @@ export default async function OBPContent({
 
                     {/* Above-fold trust strip: price range + area + service modes */}
                     {(priceRange || areaContext || serviceModeTags.length > 0) && (
-                        <p className={styles.descriptor} style={{ fontSize: 13 }}>
+                        <p className={`${styles.descriptor} ${styles.descriptorCompact}`}>
                             {[priceRange, areaContext, serviceModeTags.join(' · ')].filter(Boolean).join(' · ')}
                         </p>
                     )}
@@ -687,7 +696,7 @@ export default async function OBPContent({
                             {status.isOpen ? t('publicOpen') : t('publicClosed')}{status.nextChange ? ` · ${status.nextChange}` : ''}
                         </div>
                     ) : (
-                        <p className={styles.nextChange} style={{ marginTop: 8, fontSize: 13, opacity: 0.6 }}>
+                        <p className={`${styles.nextChange} ${styles.statusMuted}`}>
                             {status.statusText}
                         </p>
                     )}
@@ -717,10 +726,10 @@ export default async function OBPContent({
                     {establishedYear && (
                         <p className={styles.nextChange}>{t('publicServingSince', { year: establishedYear })}</p>
                     )}
-                </div>
+                    </section>
 
-                {/* ── Primary CTA ── */}
-                <div className={styles.primaryCta}>
+                    {/* ── Primary CTA ── */}
+                    <div className={styles.primaryCta}>
                     {isPermanentlyClosed ? (
                         <span className={styles.menuButtonDisabled}>
                             {t('publicBusinessPermanentlyClosed')}
@@ -748,55 +757,55 @@ export default async function OBPContent({
                             {t('publicMenuComingSoon')}
                         </span>
                     )}
-                </div>
+                    </div>
 
-                {/* ── Business Photos (P2 — max 3, trust proof) ── */}
-                <OBPPhotoStrip photos={photos} storeName={storeName} />
+                    {/* ── Quick Actions (Client Component for onClick tracking) ── */}
+                    <OBPActions
+                        tenantId={store?.tenantId}
+                        storeId={store?.storeId}
+                        trackingEnabled={trackingEnabled}
+                        storeTimeZone={store?.timeZone}
+                        businessDayEndTime={store?.businessDayEndTime}
+                        includeLocation={includeLocation}
+                        phoneNumber={store?.phoneNumber}
+                        whatsappNumber={whatsappNumber}
+                        directionsUrl={directionsUrl}
+                        reservationUrl={pp.reservationUrl}
+                        orderUrl={pp.orderUrl}
+                        showCall={showCall}
+                        showWhatsApp={showWhatsApp}
+                        showDirections={showDirections}
+                        showReservation={showReservation}
+                        showOrder={showOrder}
+                        labels={{
+                            call: t('publicActionCall'),
+                            whatsapp: t('publicActionWhatsApp'),
+                            directions: t('publicActionDirections'),
+                            reserve: t('publicActionReserve'),
+                            order: t('publicActionOrder'),
+                        }}
+                    />
 
-                {/* ── Quick Actions (Client Component for onClick tracking) ── */}
-                <OBPActions
-                    tenantId={store?.tenantId}
-                    storeId={store?.storeId}
-                    trackingEnabled={trackingEnabled}
-                    storeTimeZone={store?.timeZone}
-                    businessDayEndTime={store?.businessDayEndTime}
-                    includeLocation={includeLocation}
-                    phoneNumber={store?.phoneNumber}
-                    whatsappNumber={whatsappNumber}
-                    directionsUrl={directionsUrl}
-                    reservationUrl={pp.reservationUrl}
-                    orderUrl={pp.orderUrl}
-                    showCall={showCall}
-                    showWhatsApp={showWhatsApp}
-                    showDirections={showDirections}
-                    showReservation={showReservation}
-                    showOrder={showOrder}
-                    labels={{
-                        call: t('publicActionCall'),
-                        whatsapp: t('publicActionWhatsApp'),
-                        directions: t('publicActionDirections'),
-                        reserve: t('publicActionReserve'),
-                        order: t('publicActionOrder'),
-                    }}
-                />
+                    {/* ── Business Photos (P2 — max 3, trust proof) ── */}
+                    <OBPPhotoStrip photos={photos} storeName={storeName} />
 
-                {/* ── Info Block ── */}
-                {(fullAddress || todayHours) && (
-                    <div className={styles.info}>
+                    {/* ── Info Block ── */}
+                    {(fullAddress || todayHours) && (
+                        <section className={styles.info} aria-label="Business details">
                         {fullAddress && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>📍</span>
+                                <span className={styles.infoIcon}><LuMapPin aria-hidden="true" size={16} /></span>
                                 <span>{fullAddress}</span>
                             </div>
                         )}
                         {todayHours && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>🕐</span>
+                                <span className={styles.infoIcon}><LuClock aria-hidden="true" size={16} /></span>
                                 <span>{todayHours}</span>
                             </div>
                         )}
-                    </div>
-                )}
+                        </section>
+                    )}
 
                 {specialNote ? (
                     <div className={styles.note}>
@@ -805,45 +814,45 @@ export default async function OBPContent({
                 ) : null}
 
                 {/* ── Structured Info Section (P3 — AEO critical, all SSR) ── */}
-                {hasStructuredInfo && !isPermanentlyClosed && (
-                    <div className={styles.info}>
+                    {hasStructuredInfo && !isPermanentlyClosed && (
+                        <section className={styles.info} aria-label="Additional business details">
                         {allHours && (
-                            <details style={{ width: '100%' }}>
-                                <summary className={styles.infoRow} style={{ cursor: 'pointer', listStyle: 'none' }}>
-                                    <span className={styles.infoIcon}>📅</span>
+                            <details className={styles.details}>
+                                <summary className={styles.infoRow}>
+                                    <span className={styles.infoIcon}><LuCalendarDays aria-hidden="true" size={16} /></span>
                                     <span>{t('publicBusinessHours')}</span>
                                 </summary>
-                                <div style={{ paddingLeft: 28, paddingTop: 4, fontSize: 13, lineHeight: 1.8 }}>
+                                <div className={styles.hoursList}>
                                     {allHours}
                                 </div>
                             </details>
                         )}
                         {cuisineTypes.length > 0 && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>🍽️</span>
+                                <span className={styles.infoIcon}><LuUtensils aria-hidden="true" size={16} /></span>
                                 <span>{cuisineTypes.join(', ')}</span>
                             </div>
                         )}
                         {priceRange && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>💰</span>
+                                <span className={styles.infoIcon}><LuIndianRupee aria-hidden="true" size={16} /></span>
                                 <span>{t('publicPriceRange', { value: priceRange })}</span>
                             </div>
                         )}
                         {serviceModeTags.length > 0 && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>🏪</span>
+                                <span className={styles.infoIcon}><LuStore aria-hidden="true" size={16} /></span>
                                 <span>{serviceModeTags.join(' · ')}</span>
                             </div>
                         )}
                         {paymentTags.length > 0 && (
                             <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>💳</span>
+                                <span className={styles.infoIcon}><LuCreditCard aria-hidden="true" size={16} /></span>
                                 <span>{t('publicAccepts', { value: paymentTags.join(', ') })}</span>
                             </div>
                         )}
-                    </div>
-                )}
+                        </section>
+                    )}
 
                 {/* ── Business Attributes (BTG Layer 12) ── */}
                 {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0 && (
@@ -878,26 +887,31 @@ export default async function OBPContent({
 
                 {/* ── Freshness Signal ── */}
                 {freshnessText && !isPermanentlyClosed && (
-                    <div className={styles.info}>
+                        <div className={styles.info}>
                         <div className={styles.infoRow}>
-                            <span className={styles.infoIcon}>✓</span>
-                            <span style={{ fontSize: 12, opacity: 0.6 }}>{freshnessText}</span>
+                            <span className={styles.infoIcon}><LuCheck aria-hidden="true" size={15} /></span>
+                            <span className={styles.freshnessText}>{freshnessText}</span>
                         </div>
-                    </div>
+                        </div>
                 )}
 
-                {/* ── Footer ── */}
-                <footer className={styles.footer}>
-                    <span className={styles.footerText}>{t('publicOfficialPagePoweredBy')}</span>
+                    {/* ── Footer ── */}
+                    <footer className={styles.footer}>
+                    <PublicMenuListAttribution
+                        mode="compact"
+                        surfaceLabel={t('publicOfficialPagePoweredBy')}
+                        mutedColor="#bbb"
+                    />
                     {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && policyLinks.length > 0 && (
-                        <div style={{ marginTop: 6, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <div className={styles.policyLinks}>
                             {policyLinks.map((link) => (
-                                <a key={link.href} href={link.href} style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{link.label}</a>
+                                    <a key={link.href} href={link.href}>{link.label}</a>
                             ))}
-                        </div>
+                            </div>
                     )}
-                </footer>
-            </div>
+                    </footer>
+                </div>
+            </main>
 
             {/*
              * T2-N-07 / A-10 PUBLIC-ROUTING-DOCTRINE: mount the Customer App

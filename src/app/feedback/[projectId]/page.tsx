@@ -12,6 +12,7 @@
 import GuestFeedbackForm from '@atoms/GuestFeedbackForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
@@ -208,6 +209,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
                     tagline={storeInfo.tagline}
                     whatsappNumber={storeInfo.whatsappNumber}
                 />
+                <PublicMenuListAttribution />
             </div>
         </div>
     );
