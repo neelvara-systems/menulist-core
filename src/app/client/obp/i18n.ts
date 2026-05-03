@@ -3,10 +3,12 @@ import bnIN from "public/locales/menulist.ai/bn-IN.json";
 import enGB from "public/locales/menulist.ai/en-GB.json";
 import enUS from "public/locales/menulist.ai/en-US.json";
 import esES from "public/locales/menulist.ai/es-ES.json";
+import guIN from "public/locales/menulist.ai/gu-IN.json";
 import hiIN from "public/locales/menulist.ai/hi-IN.json";
 import mrIN from "public/locales/menulist.ai/mr-IN.json";
 import taIN from "public/locales/menulist.ai/ta-IN.json";
 import teIN from "public/locales/menulist.ai/te-IN.json";
+import zhCN from "public/locales/menulist.ai/zh-CN.json";
 
 type TranslationValues = Record<string, string | number | boolean | null | undefined>;
 
@@ -16,10 +18,12 @@ const DICTIONARIES: Record<string, Record<string, any>> = {
     "en-GB": enGB,
     "en-US": enUS,
     "es-ES": esES,
+    "gu-IN": guIN,
     "hi-IN": hiIN,
     "mr-IN": mrIN,
     "ta-IN": taIN,
     "te-IN": teIN,
+    "zh-CN": zhCN,
 };
 
 function readPath(source: Record<string, any>, path: string): unknown {

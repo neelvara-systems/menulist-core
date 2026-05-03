@@ -298,20 +298,14 @@ const normalizeEntrySource = (value?: string | null): EntrySource | null => {
 };
 
 const inferEntrySource = (data: TrackingData): EntrySource => {
-  const explicit = normalizeEntrySource(data.entrySource || data.utm_source || data.utm_medium || data.source || data.src);
+  const explicit = normalizeEntrySource(data.entrySource);
   if (explicit) return explicit;
 
   if (typeof window === 'undefined') return 'direct';
 
   try {
     const params = new URLSearchParams(window.location.search);
-    const fromQuery = normalizeEntrySource(
-      params.get('entry_source') ||
-      params.get('utm_source') ||
-      params.get('utm_medium') ||
-      params.get('source') ||
-      params.get('src')
-    );
+    const fromQuery = normalizeEntrySource(params.get('entry_source'));
     if (fromQuery) return fromQuery;
 
     const referrer = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : '';
@@ -516,8 +510,8 @@ export enum TrackingEvent {
   CUSTOMER_APP_INSTALL_STARTED = 'customer_app_install_started',    // Customer tapped "Install" (before native prompt)
   CUSTOMER_APP_INSTALLED = 'customer_app_installed',                // appinstalled event fired — deduped per-device via localStorage
   CUSTOMER_APP_OPENED = 'customer_app_opened',                      // App launched in display-mode: standalone
-  CUSTOMER_APP_SHORTCUT_MENU = 'customer_app_shortcut_menu',        // Menu shortcut launched (?source=shortcut-menu)
-  CUSTOMER_APP_SHORTCUT_CALL = 'customer_app_shortcut_call',        // Call shortcut launched (?source=shortcut-call)
+  CUSTOMER_APP_SHORTCUT_MENU = 'customer_app_shortcut_menu',        // Menu shortcut launched (?entry_source=shortcut-menu)
+  CUSTOMER_APP_SHORTCUT_CALL = 'customer_app_shortcut_call',        // Call shortcut launched (?entry_source=shortcut-call)
   CUSTOMER_APP_SHORTCUT_DIRECTIONS = 'customer_app_shortcut_directions', // Directions shortcut launched
   CUSTOMER_APP_SHORTCUT_WHATSAPP = 'customer_app_shortcut_whatsapp', // WhatsApp shortcut launched — previously miscounted as CALL
   CUSTOMER_APP_SHORTCUT_RESERVATION = 'customer_app_shortcut_reservation', // Reservation shortcut launched
@@ -583,8 +577,6 @@ export interface TrackingData {
   utm_medium?: string;
   utm_campaign?: string;
   entrySource?: EntrySource | string;
-  source?: string;
-  src?: string;
 
   // Menu language usage. Counts only current language on existing menu-view
   // writes and validated switched-language adoption, not every quick toggle.
@@ -757,8 +749,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           updateData[`viewsByEntrySource.${entrySource}`] = 1;
           if (data.utm_source) {
             updateData[`viewsBySource.${data.utm_source}`] = 1;
-          } else {
-            updateData[`viewsBySource.direct`] = 1;
           }
           if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
           if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
@@ -896,8 +886,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         addOBPLanguageCounters(updateData, sessionMilestones, data, 'view');
         if (data.utm_source) {
           updateData[`viewsBySource.${data.utm_source}`] = 1;
-        } else {
-          updateData[`viewsBySource.${entrySource}`] = 1;
         }
         if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
         if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;

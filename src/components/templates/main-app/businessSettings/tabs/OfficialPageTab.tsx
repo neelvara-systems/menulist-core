@@ -21,6 +21,7 @@ interface OfficialPageTabProps {
         displayName?: string | Record<string, string>;
         descriptor?: string | Record<string, string>;
         knownFor?: string | Record<string, string>;
+        specialNote?: string | Record<string, string>;
         accentColor?: string;
         whatsappNumber?: string;
         googleMapsUrl?: string;
@@ -34,7 +35,6 @@ interface OfficialPageTabProps {
         showRefundLink?: boolean;
         reservationUrl?: string;
         orderUrl?: string;
-        specialNote?: string;
         establishedYear?: number;
         googleReviewUrl?: string;
         googleRating?: number;
@@ -65,6 +65,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const watchedDescriptor = Form.useWatch(['publicPresence', 'descriptor']);
         const watchedDisplayName = Form.useWatch(['publicPresence', 'displayName']);
         const watchedKnownFor = Form.useWatch(['publicPresence', 'knownFor']);
+        const watchedSpecialNote = Form.useWatch(['publicPresence', 'specialNote']);
         const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
         const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
         const referenceLanguage = getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
@@ -110,6 +111,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             descriptor: getLocalizedStoreValue(publicPresence?.descriptor, languageCode, ''),
                             displayName: getLocalizedStoreValue(publicPresence?.displayName, languageCode, ''),
                             knownFor: getLocalizedStoreValue(publicPresence?.knownFor, languageCode, ''),
+                            specialNote: getLocalizedStoreValue(publicPresence?.specialNote, languageCode, ''),
                         },
                     ]),
                 );
@@ -122,6 +124,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     descriptor: nextDrafts[currentLanguage]?.descriptor || '',
                     displayName: nextDrafts[currentLanguage]?.displayName || '',
                     knownFor: nextDrafts[currentLanguage]?.knownFor || '',
+                    specialNote: nextDrafts[currentLanguage]?.specialNote || '',
                 },
             });
         }, [publicPresence]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -135,10 +138,11 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         descriptor: visiblePresence.descriptor || '',
                         displayName: visiblePresence.displayName || '',
                         knownFor: visiblePresence.knownFor || '',
+                        specialNote: visiblePresence.specialNote || '',
                     },
                 },
             });
-        }, [currentLanguage, watchedDescriptor, watchedDisplayName, watchedKnownFor]); // eslint-disable-line react-hooks/exhaustive-deps
+        }, [currentLanguage, watchedDescriptor, watchedDisplayName, watchedKnownFor, watchedSpecialNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
         if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
@@ -189,6 +193,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 descriptor: visiblePresence.descriptor || '',
                                                 displayName: visiblePresence.displayName || '',
                                                 knownFor: visiblePresence.knownFor || '',
+                                                specialNote: visiblePresence.specialNote || '',
                                             },
                                         };
 
@@ -200,6 +205,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 descriptor: nextDrafts[nextLanguage]?.descriptor || '',
                                                 displayName: nextDrafts[nextLanguage]?.displayName || '',
                                                 knownFor: nextDrafts[nextLanguage]?.knownFor || '',
+                                                specialNote: nextDrafts[nextLanguage]?.specialNote || '',
                                             },
                                         });
                                     }}
@@ -340,6 +346,32 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     showCount
                                 />
                             </Form.Item>
+                            {currentLanguage !== referenceLanguage ? (
+                                <DesktopLocalizedReferenceHint
+                                    onUseReference={() => {
+                                        const visiblePresence = form.getFieldValue('publicPresence') || {};
+                                        const nextDrafts = {
+                                            ...localizedPresenceDrafts,
+                                            [currentLanguage]: {
+                                                descriptor: visiblePresence.descriptor || '',
+                                                displayName: visiblePresence.displayName || '',
+                                                knownFor: visiblePresence.knownFor || '',
+                                                specialNote: referenceValue(localizedPresenceDrafts[referenceLanguage]?.specialNote),
+                                            },
+                                        };
+
+                                        form.setFieldsValue({
+                                            __localizedPublicPresenceDrafts: nextDrafts,
+                                            publicPresence: {
+                                                ...visiblePresence,
+                                                specialNote: referenceValue(localizedPresenceDrafts[referenceLanguage]?.specialNote),
+                                            },
+                                        });
+                                    }}
+                                    referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                    referenceValue={localizedPresenceDrafts[referenceLanguage]?.specialNote || ''}
+                                />
+                            ) : null}
                         </Col>
                     </Row>
 

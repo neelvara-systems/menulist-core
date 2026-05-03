@@ -10,6 +10,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { getBase64 } from '@util/utils';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
@@ -185,6 +186,7 @@ export default function MobileProjectSelectorSheet({
     const [formStartsAt, setFormStartsAt] = useState('');
     const [formEndsAt, setFormEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const sheetCardStyle = {
@@ -716,6 +718,82 @@ export default function MobileProjectSelectorSheet({
         }));
     };
 
+    const handleTranslatePublicContent = async () => {
+        if (!formProjectId || formMode !== 'edit') return;
+
+        const hasUnsavedContentChanges =
+            JSON.stringify(formNameDrafts) !== JSON.stringify(initialFormNameDrafts)
+            || JSON.stringify(formDescriptionDrafts) !== JSON.stringify(initialFormDescriptionDrafts);
+
+        if (hasUnsavedContentChanges) {
+            Toast.show({ content: 'Save the current project content first, then translate the missing public content.', duration: 2000 });
+            return;
+        }
+
+        try {
+            setIsTranslatingPublicContent(true);
+            const detailedProject = await loadDetailedProject(formSourceProject || { projectId: formProjectId, name: '', description: '' } as any);
+            const translated = await translateProjectPublicContent({
+                projectDetails: detailedProject,
+                projectId: formProjectId,
+                storeDetails,
+            });
+
+            if (!translated) {
+                Toast.show({ content: 'No missing project public content translations found.', duration: 1800 });
+                return;
+            }
+
+            await updateProjectWithoutLoader({
+                projectId: formProjectId,
+                ...(translated.name ? { name: translated.name } : {}),
+                ...(translated.description ? { description: translated.description } : {}),
+                ...(translated.specialNote ? {
+                    menuSettings: {
+                        ...(detailedProject?.menuSettings || {}),
+                        specialNote: translated.specialNote,
+                    },
+                } : {}),
+                ...(translated.specialMenuDisplayName ? {
+                    _specialMenu: {
+                        ...(detailedProject?._specialMenu || {}),
+                        displayName: translated.specialMenuDisplayName,
+                    },
+                } : {}),
+            } as any);
+
+            const metadataUpdate: Record<string, any> = {};
+            if (translated.name) metadataUpdate.name = translated.name;
+            if (translated.description) metadataUpdate.description = translated.description;
+            if (translated.specialMenuDisplayName) metadataUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
+            if (Object.keys(metadataUpdate).length > 0) {
+                await updateProjectMetadata(formProjectId, metadataUpdate);
+            }
+
+            const resolvedName = translated.name || detailedProject?.name || formSourceProject?.name;
+            const resolvedDescription = translated.description || detailedProject?.description || formSourceProject?.description;
+            const nextNameDrafts = buildLocalizedDrafts(resolvedName, formLanguages);
+            const nextDescriptionDrafts = buildLocalizedDrafts(resolvedDescription, formLanguages);
+            setFormNameDrafts(nextNameDrafts);
+            setFormDescriptionDrafts(nextDescriptionDrafts);
+            setInitialFormNameDrafts(nextNameDrafts);
+            setInitialFormDescriptionDrafts(nextDescriptionDrafts);
+            upsertCachedProject({
+                ...(projectsById[formProjectId] || formSourceProject || {}),
+                ...(formSourceProject || {}),
+                ...(translated.name ? { name: translated.name } : {}),
+                ...(translated.description ? { description: translated.description } : {}),
+                ...(translated.specialMenuDisplayName ? { specialMenuDisplayName: translated.specialMenuDisplayName } : {}),
+                projectId: formProjectId,
+            });
+            Toast.show({ content: 'Project public content translations added.', duration: 1800 });
+        } catch {
+            Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
+        } finally {
+            setIsTranslatingPublicContent(false);
+        }
+    };
+
     const handleToggleActive = async (project: ProjectSheetProject) => {
         const nextActive = project.active === false;
         const isCurrent = project.projectId === currentProjectId;
@@ -1163,6 +1241,16 @@ export default function MobileProjectSelectorSheet({
                                 selectedLanguage={formSelectedLanguage}
                                 title="Project content language"
                             />
+                            {formMode === 'edit' ? (
+                                <Button
+                                    fill="outline"
+                                    loading={isTranslatingPublicContent}
+                                    onClick={() => { void handleTranslatePublicContent(); }}
+                                    size="small"
+                                >
+                                    Translate missing public content
+                                </Button>
+                            ) : null}
 
                             <Flex gap={6} vertical>
                                 <Text strong>{t('catalogName')}</Text>

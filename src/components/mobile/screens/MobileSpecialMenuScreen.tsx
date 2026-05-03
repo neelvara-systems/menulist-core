@@ -7,13 +7,14 @@
  */
 
 import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
-import { getProjectDataWithoutLoader } from '@database/projects';
+import { getProjectDataWithoutLoader, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { theme } from 'antd';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
@@ -162,6 +163,7 @@ function CreateSpecialMenuSheet({
     const [startsAt, setStartsAt] = useState(() => toInputValue(new Date().toISOString(), true));
     const [endsAt, setEndsAt] = useState(() => toInputValue(dayjs().add(1, 'day').toISOString(), true));
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const isActiveToggleOn = startsAt
         ? dayjs(toIsoValue(startsAt, true)).valueOf() <= Date.now()
         : false;
@@ -255,6 +257,42 @@ function CreateSpecialMenuSheet({
         }
     };
 
+    const handleTranslatePublicContent = async () => {
+        try {
+            setIsTranslatingPublicContent(true);
+            const translated = await translateProjectPublicContent({
+                projectDetails: {
+                    languages: managedLanguages,
+                    _specialMenu: {
+                        displayName: applyLocalizedProjectDraftMap(undefined, displayNameDrafts),
+                    },
+                },
+                projectId: `${baseProjectId || defaultBaseProjectId}-special-menu-draft`,
+                storeDetails,
+            });
+
+            if (!translated?.specialMenuDisplayName) {
+                Toast.show({ content: 'No missing special menu name translations found.', duration: 1800 });
+                return;
+            }
+
+            const nextDrafts = Object.fromEntries(
+                managedLanguages.map((languageCode) => [
+                    languageCode,
+                    typeof translated.specialMenuDisplayName?.[languageCode] === 'string'
+                        ? translated.specialMenuDisplayName[languageCode]
+                        : displayNameDrafts[languageCode] || '',
+                ]),
+            );
+            setDisplayNameDrafts(nextDrafts);
+            Toast.show({ content: 'Special menu name translations added.', duration: 1800 });
+        } catch {
+            Toast.show({ content: 'Could not translate the special menu name.', duration: 1800 });
+        } finally {
+            setIsTranslatingPublicContent(false);
+        }
+    };
+
     const handleLifecycleToggle = (nextValue: boolean) => {
         if (nextValue) {
             setStartsAt(toInputValue(new Date().toISOString(), true));
@@ -303,6 +341,14 @@ function CreateSpecialMenuSheet({
                                     selectedLanguage={selectedLanguage}
                                     title="Project content language"
                                 />
+                                <Button
+                                    fill="outline"
+                                    loading={isTranslatingPublicContent}
+                                    onClick={() => { void handleTranslatePublicContent(); }}
+                                    size="small"
+                                >
+                                    Translate missing public content
+                                </Button>
                                 <Input
                                     maxLength={100}
                                     onChange={(value) => setDisplayNameDrafts((previous) => ({
@@ -443,6 +489,7 @@ function EditSpecialMenuSheet({
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -570,6 +617,77 @@ function EditSpecialMenuSheet({
         }
     };
 
+    const handleTranslatePublicContent = async () => {
+        if (!item?.projectId) return;
+
+        const hasUnsavedContentChanges =
+            JSON.stringify(displayNameDrafts) !== JSON.stringify(initialDisplayNameDrafts)
+            || JSON.stringify(descriptionDrafts) !== JSON.stringify(initialDescriptionDrafts);
+
+        if (hasUnsavedContentChanges) {
+            Toast.show({ content: 'Save the current project content first, then translate the missing public content.', duration: 2000 });
+            return;
+        }
+
+        try {
+            setIsTranslatingPublicContent(true);
+            const projectDetails = await resolveProjectDetails(item.projectId);
+            const translated = await translateProjectPublicContent({
+                projectDetails,
+                projectId: item.projectId,
+            });
+
+            if (!translated) {
+                Toast.show({ content: 'No missing project public content translations found.', duration: 1800 });
+                return;
+            }
+
+            await updateProjectWithoutLoader({
+                projectId: item.projectId,
+                ...(translated.name ? { name: translated.name } : {}),
+                ...(translated.description ? { description: translated.description } : {}),
+                ...(translated.specialNote ? {
+                    menuSettings: {
+                        ...(projectDetails?.menuSettings || {}),
+                        specialNote: translated.specialNote,
+                    },
+                } : {}),
+                ...(translated.specialMenuDisplayName ? {
+                    _specialMenu: {
+                        ...(projectDetails?._specialMenu || {}),
+                        displayName: translated.specialMenuDisplayName,
+                    },
+                } : {}),
+            } as any);
+
+            const metadataUpdate: Record<string, any> = {};
+            if (translated.name) metadataUpdate.name = translated.name;
+            if (translated.description) metadataUpdate.description = translated.description;
+            if (translated.specialMenuDisplayName) metadataUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
+            if (Object.keys(metadataUpdate).length > 0) {
+                await updateProjectMetadata(item.projectId, metadataUpdate);
+            }
+
+            const nextDisplayNameDrafts = buildLocalizedDrafts(
+                translated.specialMenuDisplayName || projectDetails?._specialMenu?.displayName || item.displayName,
+                managedLanguages,
+            );
+            const nextDescriptionDrafts = buildLocalizedDrafts(
+                translated.description || projectDetails?.description || item.description,
+                managedLanguages,
+            );
+            setDisplayNameDrafts(nextDisplayNameDrafts);
+            setDescriptionDrafts(nextDescriptionDrafts);
+            setInitialDisplayNameDrafts(nextDisplayNameDrafts);
+            setInitialDescriptionDrafts(nextDescriptionDrafts);
+            Toast.show({ content: 'Project public content translations added.', duration: 1800 });
+        } catch {
+            Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
+        } finally {
+            setIsTranslatingPublicContent(false);
+        }
+    };
+
     const handleLifecycleToggle = (nextValue: boolean) => {
         if (nextValue) {
             setStartsAt(toInputValue(new Date().toISOString(), true));
@@ -621,6 +739,14 @@ function EditSpecialMenuSheet({
                                     selectedLanguage={selectedLanguage}
                                     title="Project content language"
                                 />
+                                <Button
+                                    fill="outline"
+                                    loading={isTranslatingPublicContent}
+                                    onClick={() => { void handleTranslatePublicContent(); }}
+                                    size="small"
+                                >
+                                    Translate missing public content
+                                </Button>
                                 <Input
                                     maxLength={100}
                                     onChange={(value) => setDisplayNameDrafts((previous) => ({

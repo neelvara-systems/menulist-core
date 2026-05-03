@@ -1814,7 +1814,6 @@ function buildOBPSourceBreakdown(data: {
 }): OBPSourceBreakdown[] {
     const sourceIds = new Set<string>([
         ...Object.keys(data.viewsByEntrySource || {}),
-        ...Object.keys(data.viewsBySource || {}),
         ...Object.keys(data.obpActionClicksBySource || {}),
         ...Object.keys(data.obpMenuClicksBySource || {}),
         ...Object.keys(data.obpLinkClicksBySource || {}),
@@ -1824,7 +1823,7 @@ function buildOBPSourceBreakdown(data: {
         .map((source) => ({
             source,
             label: OBP_SOURCE_LABELS[source] || source,
-            views: Math.max(data.viewsByEntrySource?.[source] || 0, data.viewsBySource?.[source] || 0),
+            views: data.viewsByEntrySource?.[source] || 0,
             actionClicks: data.obpActionClicksBySource?.[source] || 0,
             menuClicks: data.obpMenuClicksBySource?.[source] || 0,
             linkClicks: data.obpLinkClicksBySource?.[source] || 0,

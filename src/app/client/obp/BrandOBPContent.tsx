@@ -98,6 +98,15 @@ interface BrandOBPContentProps {
     requestedLanguage?: string | string[] | null;
 }
 
+function localizeOutletStatusText(value: string | undefined, t: (key: string, values?: Record<string, any>) => string): string {
+    if (!value) return '';
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'hours not available') return t('publicHoursNotAvailable');
+    if (normalized === 'open now') return t('publicOpen');
+    if (normalized === 'closed') return t('publicClosed');
+    return value;
+}
+
 export default async function BrandOBPContent({ store, baseUrl, requestedLanguage }: BrandOBPContentProps) {
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
     const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
@@ -118,7 +127,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
         pp.displayName,
         contentLanguage,
         getPrimaryLocalizedLanguage(pp.displayName, contentLanguage),
-        store?.name?.replace(/ - Main Store$/, '') || 'Business',
+        store?.name?.replace(/ - Main Store$/, '') || t('publicFallbackBusiness'),
     );
     const logo = store?.logo;
     const firstLetter = brandName.charAt(0);
@@ -140,6 +149,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 {showLanguageSwitcher ? (
                     <OBPLanguageSwitcher
                         activeLanguage={contentLanguage}
+                        ariaLabel={t('publicLanguageSelectorLabel')}
                         baseUrl={baseUrl}
                         languages={languageOptions}
                     />
@@ -178,6 +188,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                     const status = hoursOutput
                         ? { isOpen: hoursOutput.styleHint === 'open', statusText: hoursOutput.statusText }
                         : getStoreOpenStatus(outlet.workingHours, outlet.timeZone);
+                    const statusText = localizeOutletStatusText(status.statusText, t);
                     const showBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
                     // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): outletSlug is the
                     // only acceptable outlet URL segment. Outlets without a
@@ -208,7 +219,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                                         outlet.name,
                                         contentLanguage,
                                         getPrimaryLocalizedLanguage(outlet.name, contentLanguage),
-                                        '?',
+                                        t('publicFallbackOutlet'),
                                     ).charAt(0)}
                                 </div>
                             )}
@@ -219,7 +230,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                                         outlet.name,
                                         contentLanguage,
                                         getPrimaryLocalizedLanguage(outlet.name, contentLanguage),
-                                        'Outlet',
+                                        t('publicFallbackOutlet'),
                                     ).replace(/ - Main Store$/, '')}
                                 </div>
                                 {(outlet.city || outlet.addressLine) && (
@@ -236,7 +247,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                                 </div>
                             ) : (
                                 <div className={styles.outletStatusMuted}>
-                                    {status.statusText}
+                                    {statusText}
                                 </div>
                             )}
                         </a>
@@ -249,11 +260,16 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                     <PublicMenuListAttribution
                         mode="compact"
                         surfaceLabel={t('publicPoweredBy')}
+                        rightsLabel={t('publicAllRightsReserved')}
+                        ctaLabel={t('publicCreateMenuCta')}
                         mutedColor="#bbb"
+                    />
+                    <OBPThemeToggle
+                        switchToDarkLabel={t('publicSwitchToDarkTheme')}
+                        switchToLightLabel={t('publicSwitchToLightTheme')}
                     />
                 </footer>
             </div>
-            <OBPThemeToggle />
         </main>
     );
 }

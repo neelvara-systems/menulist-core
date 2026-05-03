@@ -52,8 +52,8 @@ export default function CommunicationKit({
     }), [storeName, businessType, menuLink, address, phone, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
-    const copyTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'copy_link')), [input]);
-    const whatsappTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'whatsapp')), [input]);
+    const copyTemplates = useMemo(() => generateMessageTemplates(withEntrySource(input, 'copy_link')), [input]);
+    const whatsappTemplates = useMemo(() => generateMessageTemplates(withEntrySource(input, 'whatsapp')), [input]);
 
     return (
         <div>
@@ -80,10 +80,10 @@ export default function CommunicationKit({
     );
 }
 
-function withSource(input: MessageTemplateInput, source: AnalyticsEntrySource): MessageTemplateInput {
+function withEntrySource(input: MessageTemplateInput, entrySource: AnalyticsEntrySource): MessageTemplateInput {
     return {
         ...input,
-        menuLink: withAnalyticsSource(input.menuLink, source),
+        menuLink: withAnalyticsSource(input.menuLink, entrySource),
     };
 }
 

@@ -3,6 +3,8 @@ import { PLATFORM_URL } from '@constant/urls';
 interface PublicMenuListAttributionProps {
     mode?: 'full' | 'compact';
     surfaceLabel?: string;
+    rightsLabel?: string;
+    ctaLabel?: string;
     mutedColor?: string;
     accentColor?: string;
 }
@@ -12,6 +14,8 @@ const ctaHref = `${PLATFORM_URL}/create-menu`;
 export default function PublicMenuListAttribution({
     mode = 'full',
     surfaceLabel = 'Created with MenuList',
+    rightsLabel = 'All rights reserved.',
+    ctaLabel = 'Create your own menu in minutes',
     mutedColor = '#8a8f98',
     accentColor = '#111',
 }: PublicMenuListAttributionProps) {
@@ -37,7 +41,7 @@ export default function PublicMenuListAttribution({
                     margin: 0,
                 }}
             >
-                {surfaceLabel}. All rights reserved.
+                {surfaceLabel}. {rightsLabel}
             </p>
             <a
                 href={ctaHref}
@@ -53,7 +57,7 @@ export default function PublicMenuListAttribution({
                     justifyContent: 'center',
                 }}
             >
-                Create your own menu in minutes
+                {ctaLabel}
             </a>
         </div>
     );

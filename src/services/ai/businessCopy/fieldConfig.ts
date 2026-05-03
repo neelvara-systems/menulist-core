@@ -2,6 +2,7 @@ export type BusinessCopyLocalizedFieldKey =
     | 'displayName'
     | 'descriptor'
     | 'knownFor'
+    | 'specialNote'
     | 'tagline'
     | 'metaTitle'
     | 'metaDescription'
@@ -32,6 +33,12 @@ const BUSINESS_COPY_FIELD_CONFIGS: BusinessCopyFieldConfig[] = [
         labelKey: 'knownFor',
         maxLength: 120,
         readValue: (storeDetails) => storeDetails?.publicPresence?.knownFor,
+    },
+    {
+        key: 'specialNote',
+        labelKey: 'specialNote',
+        maxLength: 140,
+        readValue: (storeDetails) => storeDetails?.publicPresence?.specialNote,
     },
     {
         key: 'tagline',

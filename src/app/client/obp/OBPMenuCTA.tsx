@@ -57,13 +57,10 @@ interface OBPMenuCTAProps {
 function withOBPEntrySource(url: string): string {
     if (!url) return url;
     try {
-        const sourcedUrl = withAnalyticsSource(url, 'obp');
-        const parsed = new URL(sourcedUrl, typeof window !== 'undefined' ? window.location.origin : 'https://menulist.ai');
-        parsed.searchParams.set('utm_medium', 'obp');
-        return sourcedUrl.startsWith('/') ? `${parsed.pathname}${parsed.search}${parsed.hash}` : parsed.toString();
+        return withAnalyticsSource(url, 'obp');
     } catch {
         const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}src=obp&source=obp&utm_source=obp&utm_medium=obp&entry_source=obp`;
+        return `${url}${separator}entry_source=obp`;
     }
 }
 

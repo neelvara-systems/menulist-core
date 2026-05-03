@@ -20,6 +20,7 @@ import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
+import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
@@ -161,6 +162,7 @@ function ProjectsPage() {
     const [projectFormSelectedLanguage, setProjectFormSelectedLanguage] = useState(DefaultLanguage);
     const [projectNameDrafts, setProjectNameDrafts] = useState<Record<string, string>>({});
     const [projectDescriptionDrafts, setProjectDescriptionDrafts] = useState<Record<string, string>>({});
+    const [isTranslatingProjectPublicContent, setIsTranslatingProjectPublicContent] = useState(false);
     const [confirmActionVisible, setConfirmActionVisible] = useState(false);
     const [confirmActionType, setConfirmActionType] = useState<'reset' | 'delete' | null>(null);
     const [isFirstTime, setIsFirstTime] = useState(false);
@@ -916,6 +918,97 @@ function ProjectsPage() {
             });
         }
         setIsModalOpen(true);
+    };
+
+    const handleTranslateProjectPublicContent = async () => {
+        if (!editingProject?.projectId) return;
+
+        const currentNameDrafts = projectNameDrafts;
+        const currentDescriptionDrafts = projectDescriptionDrafts;
+        const hasUnsavedDrafts = JSON.stringify(currentNameDrafts) !== JSON.stringify(
+            buildProjectLocalizedDrafts(editingProject?.name, projectFormLanguages),
+        ) || JSON.stringify(currentDescriptionDrafts) !== JSON.stringify(
+            buildProjectLocalizedDrafts(editingProject?.description, projectFormLanguages),
+        );
+
+        if (hasUnsavedDrafts) {
+            message.info('Save the current project content first, then translate the missing public content.');
+            return;
+        }
+
+        try {
+            setIsTranslatingProjectPublicContent(true);
+            const detailedProject = activeProject?.projectId === editingProject.projectId
+                ? activeProject
+                : await getProjectDataWithoutLoader(editingProject.projectId);
+            const translated = await translateProjectPublicContent({
+                projectDetails: detailedProject,
+                projectId: editingProject.projectId,
+                storeDetails,
+            });
+
+            if (!translated) {
+                message.info('No missing project public content translations found.');
+                return;
+            }
+
+            await updateProjectWithoutLoader({
+                projectId: editingProject.projectId,
+                ...(translated.name ? { name: translated.name } : {}),
+                ...(translated.description ? { description: translated.description } : {}),
+                ...(translated.specialNote ? {
+                    menuSettings: {
+                        ...(detailedProject?.menuSettings || {}),
+                        specialNote: translated.specialNote,
+                    },
+                } : {}),
+                ...(translated.specialMenuDisplayName ? {
+                    _specialMenu: {
+                        ...(detailedProject?._specialMenu || {}),
+                        displayName: translated.specialMenuDisplayName,
+                    },
+                } : {}),
+            } as any);
+
+            const nextSummaryUpdate: any = {};
+            if (translated.name) nextSummaryUpdate.name = translated.name;
+            if (translated.description) nextSummaryUpdate.description = translated.description;
+            if (translated.specialMenuDisplayName) nextSummaryUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
+            if (Object.keys(nextSummaryUpdate).length > 0) {
+                await updateProjectMetadata(editingProject.projectId, nextSummaryUpdate);
+            }
+
+            const resolvedName = translated.name || detailedProject?.name || editingProject?.name;
+            const resolvedDescription = translated.description || detailedProject?.description || editingProject?.description;
+            setProjectNameDrafts(buildProjectLocalizedDrafts(resolvedName, projectFormLanguages));
+            setProjectDescriptionDrafts(buildProjectLocalizedDrafts(resolvedDescription, projectFormLanguages));
+            setEditingProject((previous) => previous ? {
+                ...previous,
+                ...(translated.name ? { name: translated.name } : {}),
+                ...(translated.description ? { description: translated.description } : {}),
+            } : previous);
+            mutateProjects(
+                (current) => current ? {
+                    ...current,
+                    projects: current.projects.map((project) => (
+                        project.projectId === editingProject.projectId
+                            ? {
+                                ...project,
+                                ...(translated.name ? { name: translated.name } : {}),
+                                ...(translated.description ? { description: translated.description } : {}),
+                                ...(translated.specialMenuDisplayName ? { specialMenuDisplayName: translated.specialMenuDisplayName } : {}),
+                            }
+                            : project
+                    )),
+                } : current,
+                { revalidate: false },
+            );
+            message.success('Project public content translations added.');
+        } catch (error: any) {
+            message.error(error?.message || 'Could not translate project public content.');
+        } finally {
+            setIsTranslatingProjectPublicContent(false);
+        }
     };
 
     useImageBatchJobListener({ project: selectedProject, setActiveBatchImageJob });
@@ -2093,6 +2186,7 @@ function ProjectsPage() {
                         ...previous,
                         [projectFormSelectedLanguage]: value,
                     }))}
+                    onTranslatePublicContent={() => void handleTranslateProjectPublicContent()}
                     onSubmit={() => form.validateFields().then(handleProjectEdit)}
                     onReset={() => {
                         setConfirmActionType('reset');
@@ -2114,6 +2208,8 @@ function ProjectsPage() {
                         name: editingProject?.name,
                     }, storeDetails)] || ''}
                     selectedLanguage={projectFormSelectedLanguage}
+                    translateActionDisabled={isTranslatingProjectPublicContent}
+                    translateActionLoading={isTranslatingProjectPublicContent}
                 />
                 <ProjectConfirmModal
                     isOpen={confirmActionVisible}

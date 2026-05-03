@@ -19,6 +19,7 @@ import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { getLocalizedText } from '@lib/localization/text';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
@@ -1269,7 +1270,7 @@ function MenuPageNew({
                       */}
 
                     {/* G06 - Service Charge Disclosure (Trust Zone - Pricing Truth) */}
-                    <ServiceChargeNote note={projectData?.menuSettings?.specialNote} />
+                    <ServiceChargeNote note={getLocalizedText(projectData?.menuSettings?.specialNote, activeLanguage, projectData?.defaultLanguage || 'en', '')} />
 
                     {/* G09 - Contact/Location Display (Trust Zone - Business Identity) */}
                     <MenuFooter

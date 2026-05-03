@@ -51,7 +51,6 @@ export default function OBPAnalytics({
             const utm_medium = urlParams.get('utm_medium') || undefined;
             const utm_campaign = urlParams.get('utm_campaign') || undefined;
             const entrySource = urlParams.get('entry_source') || undefined;
-            const source = urlParams.get('source') || urlParams.get('src') || undefined;
 
             trackOBPView(storeId, {
                 tenantId,
@@ -63,7 +62,6 @@ export default function OBPAnalytics({
                 utm_medium,
                 utm_campaign,
                 entrySource,
-                source,
                 obpLanguage: trackLanguageUsage ? activeLanguage : undefined,
                 obpLanguageName: trackLanguageUsage ? activeLanguageName : undefined,
             }).catch(err => {
@@ -105,7 +103,6 @@ export default function OBPAnalytics({
                     utm_medium: urlParams.get('utm_medium') || undefined,
                     utm_campaign: urlParams.get('utm_campaign') || undefined,
                     entrySource: urlParams.get('entry_source') || undefined,
-                    source: urlParams.get('source') || urlParams.get('src') || undefined,
                 });
             } catch (error) {
                 console.error('OBP language adoption tracking failed:', error);

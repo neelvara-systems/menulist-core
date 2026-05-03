@@ -85,7 +85,7 @@ Entry source is attached to existing menu view and final action writes. It does 
 
 The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the dashboard read model for all owners. The Pro analytics assistant layer adds `ownerActionPlan` plus daily / weekly / monthly wording summaries.
 
-OBP language usage is shown only for multi-language OBPs. Language switch links remain URL-based for SEO/AEO, preserve source attribution parameters, and only count adoption after the switched language page remains active for the dwell window.
+OBP language usage is shown only for multi-language OBPs. Language switch links remain URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and only count adoption after the switched language page remains active for the dwell window.
 
 Pro menu intelligence joins existing analytics counters with compact owner-authored menu catalog fields during nightly settlement. It produces deterministic owner action candidates for unavailable demand, best-seller validation, category order, hidden demand, variant clarity, metadata demand, timed categories, and price signals.
 
@@ -168,7 +168,7 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
   menuActionClicks: { "call": n, "whatsapp": n, "directions": n, "reserve": n, "order": n };
 
   // UTM
-  viewsBySource: { "google": n, "direct": n };
+  viewsBySource: { "google": n }; // Only when utm_source is intentionally present
   viewsByMedium: { "cpc": n };
 
   lastUpdated: Timestamp;
@@ -253,6 +253,8 @@ Total: ~₹183/month
 | Google Analytics 4 | `GoogleAnalytics.tsx`   | page_view, view_item  |
 | Facebook Pixel     | `FacebookPixel.tsx`     | PageView, ViewContent |
 | Enhanced Ecommerce | `EnhancedEcommerce.tsx` | Product tracking      |
+
+Google Analytics and Meta Pixel are owner-provided external scripts. MenuList loads them only when the owner saves the corresponding ID in Analytics Settings. These third-party tools may read intentional campaign parameters (`utm_source`, `utm_medium`, `utm_campaign`) from the public URL, but MenuList internal source attribution uses `entry_source`. Normal MenuList share links do not need a UTM toggle; removing the saved GA4 / Meta Pixel ID stops that external script from loading.
 
 ---
 

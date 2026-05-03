@@ -301,6 +301,8 @@ trackItemClick({ itemId, itemName, categoryId, projectId });
 
 ## Third-Party Integration
 
+Google Analytics and Meta Pixel are loaded only when the owner saves the matching ID in Analytics Settings. These scripts are external owner-owned integrations; MenuList internal attribution uses `entry_source`, while `utm_source`, `utm_medium`, and `utm_campaign` remain intentional campaign parameters that third-party tools may read from the public URL. No separate UTM toggle is implemented because UTM is controlled by the campaign link, and external script loading is controlled by whether the GA4 / Meta Pixel ID is present.
+
 ### Google Analytics 4
 
 ```typescript

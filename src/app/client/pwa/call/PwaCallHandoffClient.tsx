@@ -4,7 +4,7 @@
  * Call Shortcut Handoff — Client Side
  *
  * Fires the analytics event (via shortcutSourceDetector, which reads
- * ?source=shortcut-call from the URL) and redirects to tel:.
+ * ?entry_source=shortcut-call from the URL) and redirects to tel:.
  *
  * Shows a minimal "Connecting…" UI in case the OS takes a moment to handle
  * the tel: handoff — most devices redirect instantly.

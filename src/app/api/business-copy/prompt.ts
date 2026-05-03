@@ -35,6 +35,7 @@ Rules:
 - displayName must be 60 characters or less.
 - descriptor must be 40 characters or less.
 - knownFor must be 40 characters or less.
+- specialNote must be 140 characters or less.
 - tagline must be 100 characters or less.
 - metaTitle must be 60 characters or less.
 - metaDescription must be 160 characters or less.
@@ -62,6 +63,7 @@ Business:
 - Public display name: ${textOrFallback(store.publicPresence?.displayName)}
 - Public descriptor: ${textOrFallback(store.publicPresence?.descriptor)}
 - Known for: ${textOrFallback(store.publicPresence?.knownFor)}
+- Special note: ${textOrFallback(store.publicPresence?.specialNote)}
 - WhatsApp number present: ${store.publicPresence?.whatsappNumber ? 'Yes' : 'No'}
 - Google Maps URL present: ${store.publicPresence?.googleMapsUrl ? 'Yes' : 'No'}
 - Google Review URL present: ${store.publicPresence?.googleReviewUrl ? 'Yes' : 'No'}
@@ -80,6 +82,7 @@ Return JSON in exactly this shape:
   "displayName": "string",
   "descriptor": "string",
   "knownFor": "string",
+  "specialNote": "string",
   "tagline": "string",
   "metaTitle": "string",
   "metaDescription": "string",

@@ -5,6 +5,8 @@ import {
     getLocalizedStringList,
     getLocalizedText,
     getPrimaryLocalizedLanguage,
+    toLocalizedStringList,
+    toLocalizedText,
     updateLocalizedStringList,
     updateLocalizedText,
 } from './text';
@@ -67,22 +69,26 @@ export function applyLocalizedDraftMap(
     existingValue: any,
     draftsByLanguage: Record<string, string>,
 ): any {
-    return Object.entries(draftsByLanguage).reduce(
+    const nextValue = Object.entries(draftsByLanguage).reduce(
         (nextValue, [languageCode, draftValue]) => (
             updateLocalizedText(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
         ),
         existingValue,
     );
+
+    return toLocalizedText(nextValue, CANONICAL_SOURCE_LANGUAGE);
 }
 
 export function applyLocalizedKeywordDraftMap(
     existingValue: any,
     draftsByLanguage: Record<string, string[]>,
 ): any {
-    return Object.entries(draftsByLanguage).reduce(
+    const nextValue = Object.entries(draftsByLanguage).reduce(
         (nextValue, [languageCode, draftValue]) => (
             updateLocalizedStringList(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
         ),
         existingValue,
     );
+
+    return toLocalizedStringList(nextValue, CANONICAL_SOURCE_LANGUAGE);
 }

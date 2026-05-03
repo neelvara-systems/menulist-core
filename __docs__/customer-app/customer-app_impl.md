@@ -236,7 +236,7 @@ Current shortcuts are app actions inside the same store app.
 
 | Shortcut | Condition | URL Strategy |
 | --- | --- | --- |
-| View Menu | Always | Store-level `start_url` with `source=shortcut-menu` |
+| View Menu | Always | Store-level `start_url` with `entry_source=shortcut-menu` |
 | Call | Phone exists and public call action enabled | Same-origin `/pwa/call` handoff |
 | Directions | Maps URL exists and public directions enabled | Same-origin `/pwa/directions` handoff |
 | WhatsApp | WhatsApp number exists and public WhatsApp enabled | Same-origin `/pwa/whatsapp` handoff |

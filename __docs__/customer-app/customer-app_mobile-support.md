@@ -60,7 +60,7 @@ The Customer App feature has two distinct components with different mobile requi
 | Install action                   | P0       | Large tap target; fires `CUSTOMER_APP_INSTALL_STARTED` on tap, then native prompt/instructions |
 | `appinstalled` listener          | P0       | In root layout; fires `CUSTOMER_APP_INSTALLED` once per device (deduped via localStorage)      |
 | Standalone-mode detector         | P0       | Fires `CUSTOMER_APP_OPENED` when app is launched from home screen                              |
-| Shortcut source detector         | P1       | Reads `?source=shortcut-*` query param; fires shortcut-specific event                          |
+| Shortcut source detector         | P1       | Reads `?entry_source=shortcut-*` query param; fires shortcut-specific event                    |
 | Success feedback                 | P1       | "Added to home screen" confirmation                                                            |
 
 ### Out of Scope (Desktop Only)

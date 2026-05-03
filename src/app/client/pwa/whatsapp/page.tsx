@@ -5,7 +5,7 @@
  *
  * Builds a wa.me URL from `publicPresence.whatsappNumber` (falling back to
  * `phoneNumber` + `dialCode`), then redirects. Analytics attributed as
- * shortcut-call (documented in shortcutSourceDetector.ts).
+ * shortcut-whatsapp through `entry_source` (documented in shortcutSourceDetector.ts).
  */
 
 import { notFound } from 'next/navigation';

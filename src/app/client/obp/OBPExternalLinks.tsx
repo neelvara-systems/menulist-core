@@ -3,7 +3,9 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
+import type { ElementType } from 'react';
 import { LuGlobe, LuStar } from 'react-icons/lu';
+import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import styles from './obp.module.scss';
 
 interface OBPExternalLinksProps {
@@ -15,6 +17,8 @@ interface OBPExternalLinksProps {
     businessDayEndTime?: string;
     googleReviewLabel?: string;
     googleReviewUrl?: string;
+    labels?: Partial<Record<Exclude<OBPTrackedLink, 'google_review'>, string>>;
+    socialAriaLabelTemplate?: string;
     instagram?: string | null;
     facebook?: string | null;
     twitter?: string | null;
@@ -25,6 +29,15 @@ interface OBPExternalLinksProps {
 }
 
 type OBPTrackedLink = 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
+
+const SOCIAL_ICONS: Partial<Record<OBPTrackedLink, ElementType>> = {
+    instagram: TbBrandInstagram,
+    facebook: TbBrandFacebook,
+    twitter: TbBrandTwitter,
+    linkedin: TbBrandLinkedin,
+    youtube: TbBrandYoutube,
+    whatsapp: TbBrandWhatsapp,
+};
 
 function normalizeUrl(value: string, prefix: string) {
     const trimmed = String(value || '').trim();
@@ -42,6 +55,8 @@ export default function OBPExternalLinks({
     businessDayEndTime,
     googleReviewLabel,
     googleReviewUrl,
+    labels,
+    socialAriaLabelTemplate,
     instagram,
     facebook,
     twitter,
@@ -73,6 +88,18 @@ export default function OBPExternalLinks({
     const youtubeUrl = youtube ? normalizeUrl(youtube, 'https://youtube.com/') : '';
     const whatsappUrl = whatsapp ? normalizeUrl(whatsapp.replace(/[^0-9+]/g, '').replace('+', ''), 'https://wa.me/') : '';
     const websiteUrl = website ? normalizeUrl(website, 'https://') : '';
+    const InstagramIcon = SOCIAL_ICONS.instagram;
+    const FacebookIcon = SOCIAL_ICONS.facebook;
+    const TwitterIcon = SOCIAL_ICONS.twitter;
+    const LinkedinIcon = SOCIAL_ICONS.linkedin;
+    const YoutubeIcon = SOCIAL_ICONS.youtube;
+    const WhatsappIcon = SOCIAL_ICONS.whatsapp;
+    const getSocialLabel = (platform: Exclude<OBPTrackedLink, 'google_review'>) => labels?.[platform] || platform;
+    const getSocialAriaLabel = (platform: Exclude<OBPTrackedLink, 'google_review'>) => (
+        socialAriaLabelTemplate
+            ? socialAriaLabelTemplate.replace('{platform}', getSocialLabel(platform))
+            : getSocialLabel(platform)
+    );
 
     return (
         <>
@@ -102,7 +129,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Instagram"
+                            aria-label={getSocialAriaLabel('instagram')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: instagramUrl,
@@ -110,7 +137,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('instagram'),
                             })}
                         >
-                            IG
+                            {InstagramIcon ? <InstagramIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
                     {facebook ? (
@@ -119,7 +146,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Facebook"
+                            aria-label={getSocialAriaLabel('facebook')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: facebookUrl,
@@ -127,7 +154,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('facebook'),
                             })}
                         >
-                            FB
+                            {FacebookIcon ? <FacebookIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
                     {twitter ? (
@@ -136,7 +163,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Twitter"
+                            aria-label={getSocialAriaLabel('twitter')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: twitterUrl,
@@ -144,7 +171,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('twitter'),
                             })}
                         >
-                            X
+                            {TwitterIcon ? <TwitterIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
                     {linkedin ? (
@@ -153,7 +180,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="LinkedIn"
+                            aria-label={getSocialAriaLabel('linkedin')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: linkedinUrl,
@@ -161,7 +188,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('linkedin'),
                             })}
                         >
-                            IN
+                            {LinkedinIcon ? <LinkedinIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
                     {youtube ? (
@@ -170,7 +197,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="YouTube"
+                            aria-label={getSocialAriaLabel('youtube')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: youtubeUrl,
@@ -178,7 +205,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('youtube'),
                             })}
                         >
-                            YT
+                            {YoutubeIcon ? <YoutubeIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
                     {whatsapp ? (
@@ -187,7 +214,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="WhatsApp"
+                            aria-label={getSocialAriaLabel('whatsapp')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: whatsappUrl,
@@ -195,7 +222,7 @@ export default function OBPExternalLinks({
                                 track: () => handleClick('whatsapp'),
                             })}
                         >
-                            WA
+                            {WhatsappIcon ? <WhatsappIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
                     {website ? (
@@ -204,7 +231,7 @@ export default function OBPExternalLinks({
                             className={styles.socialLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Website"
+                            aria-label={getSocialAriaLabel('website')}
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: websiteUrl,

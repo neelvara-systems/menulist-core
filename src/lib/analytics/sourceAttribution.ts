@@ -12,7 +12,7 @@ export type AnalyticsEntrySource =
     | 'whatsapp'
     | 'other';
 
-export function withAnalyticsSource(url: string, source: AnalyticsEntrySource): string {
+export function withAnalyticsSource(url: string, entrySource: AnalyticsEntrySource): string {
     if (!url) return url;
 
     try {
@@ -20,17 +20,14 @@ export function withAnalyticsSource(url: string, source: AnalyticsEntrySource): 
         const base = typeof window !== 'undefined' ? window.location.origin : 'https://menulist.ai';
         const parsed = new URL(url, base);
 
-        parsed.searchParams.set('src', source);
-        parsed.searchParams.set('source', source);
-        parsed.searchParams.set('entry_source', source);
-        parsed.searchParams.set('utm_source', source);
+        parsed.searchParams.set('entry_source', entrySource);
 
         return isAbsolute
             ? parsed.toString()
             : `${parsed.pathname}${parsed.search}${parsed.hash}`;
     } catch {
         const separator = url.includes('?') ? '&' : '?';
-        const encodedSource = encodeURIComponent(source);
-        return `${url}${separator}src=${encodedSource}&source=${encodedSource}&entry_source=${encodedSource}&utm_source=${encodedSource}`;
+        const encodedSource = encodeURIComponent(entrySource);
+        return `${url}${separator}entry_source=${encodedSource}`;
     }
 }

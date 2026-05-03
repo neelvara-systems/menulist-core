@@ -123,6 +123,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                         knownFor: getLocalizedText(storeDetails?.publicPresence?.knownFor, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.knownFor, contentLanguage), ''),
                         orderUrl: storeDetails?.publicPresence?.orderUrl || '',
                         reservationUrl: storeDetails?.publicPresence?.reservationUrl || '',
+                        specialNote: getLocalizedText(storeDetails?.publicPresence?.specialNote, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.specialNote, contentLanguage), ''),
                         whatsappNumber: storeDetails?.publicPresence?.whatsappNumber || '',
                     },
                     pwaShortName: currentPwaShortName,
@@ -161,6 +162,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 knownFor: mergeLocalizedField(
                     storeDetails?.publicPresence?.knownFor,
                     localized.knownFor,
+                ),
+                specialNote: mergeLocalizedField(
+                    storeDetails?.publicPresence?.specialNote,
+                    localized.specialNote,
                 ),
             };
 
@@ -246,6 +251,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 knownFor: mergeLocalizedField(
                     storeDetails?.publicPresence?.knownFor,
                     localized.knownFor,
+                ),
+                specialNote: mergeLocalizedField(
+                    storeDetails?.publicPresence?.specialNote,
+                    localized.specialNote,
                 ),
             };
 

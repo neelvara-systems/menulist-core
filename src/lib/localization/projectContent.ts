@@ -4,7 +4,7 @@ import {
     getPreferredDefaultLanguage,
     normalizeProjectLanguages,
 } from './languagePolicy';
-import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from './text';
+import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, toLocalizedText, updateLocalizedText } from './text';
 
 export function getProjectManagedLanguages(projectDetails?: any, storeDetails?: any): string[] {
     return normalizeProjectLanguages([
@@ -48,10 +48,12 @@ export function applyLocalizedProjectDraftMap(
     existingValue: any,
     draftsByLanguage: Record<string, string>,
 ): any {
-    return Object.entries(draftsByLanguage).reduce(
+    const nextValue = Object.entries(draftsByLanguage).reduce(
         (nextValue, [languageCode, draftValue]) => (
             updateLocalizedText(nextValue, draftValue, languageCode, CANONICAL_SOURCE_LANGUAGE)
         ),
         existingValue,
     );
+
+    return toLocalizedText(nextValue, CANONICAL_SOURCE_LANGUAGE);
 }

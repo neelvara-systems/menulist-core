@@ -12,7 +12,7 @@ import {
 import useViewportInfo from '@hook/useViewportInfo';
 import { publishProject } from '@database/projects';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -116,7 +116,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const showCategoryIcons = draftProjectData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showCategoryTabs = draftProjectData?.config?.design?.menu?.showCategoryTabs ?? false;
     const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
-    const specialNote = draftProjectData?.menuSettings?.specialNote ?? '';
+    const specialNoteLanguage = draftProjectData?.defaultLanguage || 'en';
+    const specialNote = getLocalizedDraftText(draftProjectData?.menuSettings?.specialNote, specialNoteLanguage, '');
     const compatibleLayouts = useMemo(() => getCompatibleLayouts(menuMood), [menuMood]);
     const defaultMoodColor = MENU_MOODS[menuMood]?.accentColor || '#059669';
     const resolvedProjectName = useMemo(
@@ -198,7 +199,15 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
         setDraftProjectData((prev: any) => ({
             ...prev,
-            menuSettings: { ...prev?.menuSettings, specialNote: normalized },
+            menuSettings: {
+                ...prev?.menuSettings,
+                specialNote: updateLocalizedText(
+                    prev?.menuSettings?.specialNote,
+                    normalized,
+                    specialNoteLanguage,
+                    'en',
+                ),
+            },
         }));
     };
 

@@ -32,8 +32,6 @@ interface UtmParams {
   utm_medium?: string;
   utm_campaign?: string;
   entrySource?: string;
-  source?: string;
-  src?: string;
 }
 
 interface AnalyticsProviderProps {
@@ -56,8 +54,6 @@ const getUtmParams = () => {
     utm_medium: urlParams.get('utm_medium') || '',
     utm_campaign: urlParams.get('utm_campaign') || '',
     entrySource: urlParams.get('entry_source') || '',
-    source: urlParams.get('source') || '',
-    src: urlParams.get('src') || '',
   };
 };
 

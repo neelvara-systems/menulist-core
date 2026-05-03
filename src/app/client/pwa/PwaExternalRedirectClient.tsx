@@ -4,7 +4,7 @@
  * Shared External-Redirect Handoff — Client Side
  *
  * Used by Reservation and Order shortcuts. Fires the analytics event via
- * shortcutSourceDetector (which reads ?source=shortcut-{kind} from the URL)
+ * shortcutSourceDetector (which reads ?entry_source=shortcut-{kind} from the URL)
  * then redirects to the target external URL.
  *
  * Same pattern as PwaCallHandoffClient / PwaWhatsAppHandoffClient — extracted

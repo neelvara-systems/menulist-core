@@ -156,7 +156,7 @@ export interface ProjectFileType {
 export interface MenuSettings {
     // G06 - Service charge/pricing note (max 140 chars)
     // This is pricing truth, not design-configurable
-    specialNote?: string;
+    specialNote?: string | LocalizedText;
 
     // Decision Intelligence - Owner controls
     decisionBlocks?: {

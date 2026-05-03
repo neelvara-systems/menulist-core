@@ -11,6 +11,7 @@ import { getSpecialMenuCapabilities } from "@config/specialMenuConfig";
 import { normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { applyLocalizedProjectDraftMap, getProjectLanguageLabel, getProjectPreferredLanguage } from "@lib/localization/projectContent";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
+import translateProjectPublicContent from "@services/ai/projectPublicContent/translateProjectPublicContent";
 import type { SpecialMenuMode } from "@template/main-app/projects/types";
 import { getClockTimeInputFormat } from "@util/dateTime";
 import { Button, DatePicker, Form, Input, Modal, Radio, Select, Typography, message, theme } from "antd";
@@ -61,6 +62,7 @@ export default function CreateSpecialMenuModal({
     });
     const [selectedLanguage, setSelectedLanguage] = useState(referenceLanguage);
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({ [referenceLanguage]: '' });
+    const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
 
     const capabilities = getSpecialMenuCapabilities(storeDetails?.businessType);
 
@@ -104,6 +106,42 @@ export default function CreateSpecialMenuModal({
         }
     };
 
+    const handleTranslatePublicContent = async () => {
+        try {
+            setIsTranslatingPublicContent(true);
+            const translated = await translateProjectPublicContent({
+                projectDetails: {
+                    languages: managedLanguages,
+                    _specialMenu: {
+                        displayName: applyLocalizedProjectDraftMap(undefined, displayNameDrafts),
+                    },
+                },
+                projectId: `${baseProjectId}-special-menu-draft`,
+                storeDetails,
+            });
+
+            if (!translated?.specialMenuDisplayName) {
+                message.info("No missing special menu name translations found.");
+                return;
+            }
+
+            const nextDrafts = Object.fromEntries(
+                managedLanguages.map((languageCode) => [
+                    languageCode,
+                    typeof translated.specialMenuDisplayName?.[languageCode] === 'string'
+                        ? translated.specialMenuDisplayName[languageCode]
+                        : displayNameDrafts[languageCode] || '',
+                ]),
+            );
+            setDisplayNameDrafts(nextDrafts);
+            message.success("Special menu name translations added.");
+        } catch (error: any) {
+            message.error(error?.message || "Could not translate the special menu name.");
+        } finally {
+            setIsTranslatingPublicContent(false);
+        }
+    };
+
     return (
         <Modal
             title="Create Special Menu"
@@ -142,6 +180,13 @@ export default function CreateSpecialMenuModal({
                                     }))}
                                     value={selectedLanguage}
                                 />
+                                <Button
+                                    loading={isTranslatingPublicContent}
+                                    onClick={() => void handleTranslatePublicContent()}
+                                    size="small"
+                                >
+                                    Translate missing public content
+                                </Button>
                             </>
                         ) : null}
                         <Input

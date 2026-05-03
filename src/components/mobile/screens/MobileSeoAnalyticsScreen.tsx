@@ -2,7 +2,7 @@
 
 import { updateStore } from '@database/stores';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
-import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES } from '@lib/analytics/settingsDisclosure';
+import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
@@ -678,6 +678,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
 
                         <Card title={tAnalytics('essentialTracking')}>
                             <Flex gap={12} vertical>
+                                <InfoCallout
+                                    title="External analytics scripts"
+                                    description={EXTERNAL_ANALYTICS_INTEGRATION_NOTE}
+                                />
                                 <FieldGroup hint={tAnalytics('googleAnalyticsIdHelp')} label={tAnalytics('googleAnalyticsId')}>
                                     <Input onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
                                 </FieldGroup>

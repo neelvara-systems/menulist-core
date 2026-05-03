@@ -370,7 +370,7 @@ export type StoreDataType = {
         orderUrl?: string;
 
         /** Short owner-managed note shown on the OBP, separate from per-menu pricing notes. */
-        specialNote?: string;
+        specialNote?: string | LocalizedText;
 
         /** Year the business was established. For schema.org foundingDate + OBP "Serving since" display. */
         establishedYear?: number;

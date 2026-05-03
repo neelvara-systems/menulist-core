@@ -2,7 +2,7 @@
  * PWA Manifest Shortcuts Builder
  *
  * Produces the `shortcuts` array for a store's dynamic web app manifest.
- * Each shortcut's `url` carries a ?source=shortcut-{kind} query param so the
+ * Each shortcut's `url` carries an ?entry_source=shortcut-{kind} query param so the
  * shortcutSourceDetector can attribute the launch in analytics.
  *
  * Day-one shortcuts:
@@ -37,10 +37,10 @@ export interface ManifestShortcut {
   url: string;
 }
 
-function withSource(url: string, source: string): string {
+function withEntrySource(url: string, entrySource: string): string {
   // Preserve existing query string if any.
   const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}source=shortcut-${source}`;
+  return `${url}${sep}entry_source=shortcut-${entrySource}`;
 }
 
 /**
@@ -54,7 +54,7 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
     name: 'View Menu',
     short_name: 'Menu',
     description: 'Open the menu',
-    url: withSource(menuPath, 'menu'),
+    url: withEntrySource(menuPath, 'menu'),
   });
 
   if (info.phone) {
@@ -64,7 +64,7 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
       description: 'Call the restaurant',
       // tel: links don't support query params reliably; we keep a same-origin
       // redirect URL instead so the analytics event can fire before the tel: handoff.
-      url: withSource('/pwa/call', 'call'),
+      url: withEntrySource('/pwa/call', 'call'),
     });
   }
 
@@ -73,7 +73,7 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
       name: 'Directions',
       short_name: 'Directions',
       description: 'Get directions',
-      url: withSource('/pwa/directions', 'directions'),
+      url: withEntrySource('/pwa/directions', 'directions'),
     });
   }
 
@@ -82,7 +82,7 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
       name: 'WhatsApp',
       short_name: 'WhatsApp',
       description: 'Message on WhatsApp',
-      url: withSource('/pwa/whatsapp', 'whatsapp'),
+      url: withEntrySource('/pwa/whatsapp', 'whatsapp'),
     });
   }
 
@@ -92,7 +92,7 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
       short_name: 'Reserve',
       description: 'Make a reservation',
       // Same same-origin handoff pattern as call/whatsapp — event first, then redirect.
-      url: withSource('/pwa/reservation', 'reservation'),
+      url: withEntrySource('/pwa/reservation', 'reservation'),
     });
   }
 
@@ -101,7 +101,7 @@ export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
       name: 'Order Online',
       short_name: 'Order',
       description: 'Order for delivery or pickup',
-      url: withSource('/pwa/order', 'order'),
+      url: withEntrySource('/pwa/order', 'order'),
     });
   }
 

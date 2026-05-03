@@ -28,12 +28,15 @@ interface ProjectEditModalProps {
     onDescriptionChange: (value: string) => void;
     onLanguageChange: (languageCode: string) => void;
     onNameChange: (value: string) => void;
+    onTranslatePublicContent?: () => void;
     referenceDescription: string;
     referenceLanguage: string;
     referenceName: string;
     onSubmit: () => void;
     onReset: () => void;
     selectedLanguage: string;
+    translateActionDisabled?: boolean;
+    translateActionLoading?: boolean;
 }
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
@@ -48,12 +51,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     onDescriptionChange,
     onLanguageChange,
     onNameChange,
+    onTranslatePublicContent,
     referenceDescription,
     referenceLanguage,
     referenceName,
     onSubmit,
     onReset,
     selectedLanguage,
+    translateActionDisabled,
+    translateActionLoading,
 }) => {
     const { token } = theme.useToken();
     const tBusiness = useTranslations('BusinessSettings');
@@ -131,6 +137,17 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 <Typography.Text type="secondary">
                                     Edit this {labels.offeringPhrase} label one language at a time.
                                 </Typography.Text>
+                                {editingProject ? (
+                                    <Button
+                                        loading={translateActionLoading}
+                                        onClick={onTranslatePublicContent}
+                                        size="small"
+                                        type="default"
+                                        disabled={translateActionDisabled}
+                                    >
+                                        Translate missing public content
+                                    </Button>
+                                ) : null}
                             </Flex>
                         ) : null}
                         <Input

@@ -58,6 +58,10 @@ export function getNextIntlLocaleForPublicLanguage(language?: string | null): st
             return 'mr-IN';
         case 'bn':
             return 'bn-IN';
+        case 'gu':
+            return 'gu-IN';
+        case 'zh':
+            return 'zh-CN';
         case 'en':
         default:
             return 'en-US';

@@ -2,7 +2,7 @@
 
 import { QuestionCircleOutlined, RocketOutlined, SettingOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Collapse, Form, Input, Space, Switch, Tooltip, Typography } from 'antd';
-import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES } from '@lib/analytics/settingsDisclosure';
+import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { useTranslations } from 'next-intl';
 import { memo, useState } from 'react';
 import AnalyticsGuideModal from './AnalyticsGuideModal';
@@ -76,6 +76,14 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                 </Card>
 
                 <Card title={t('essentialTracking')} size="small">
+                    <Alert
+                        style={{ marginBottom: 16 }}
+                        message="External analytics scripts"
+                        description={EXTERNAL_ANALYTICS_INTEGRATION_NOTE}
+                        type="info"
+                        showIcon
+                    />
+
                     <Form.Item
                         label={(
                             <Space>

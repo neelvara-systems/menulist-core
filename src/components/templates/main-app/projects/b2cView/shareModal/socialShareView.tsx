@@ -18,8 +18,8 @@ interface SocialPlatform {
     shareUrl: (url: string) => string;
 }
 
-function withEntrySource(url: string, source: string): string {
-    const normalizedSource = source.toLowerCase();
+function withEntrySource(url: string, entrySource: string): string {
+    const normalizedSource = entrySource.toLowerCase();
     const supportedSources = new Set(['whatsapp', 'facebook', 'instagram', 'google']);
     return withAnalyticsSource(url, supportedSources.has(normalizedSource) ? normalizedSource as AnalyticsEntrySource : 'other');
 }

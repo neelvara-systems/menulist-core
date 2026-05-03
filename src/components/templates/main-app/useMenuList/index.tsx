@@ -23,7 +23,6 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
-import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -209,8 +208,8 @@ export default function UseMenuList() {
 
     // ── Action handlers ──────────────────────────────────────────
 
-    const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'whatsapp') => (
-        withAnalyticsSource(url, src === 'copy' ? 'copy_link' : src)
+    const withEntrySource = (url: string, entrySource: 'copy' | 'direct' | 'qr' | 'whatsapp') => (
+        withAnalyticsSource(url, entrySource === 'copy' ? 'copy_link' : entrySource)
     );
 
     const handleCopy = async (text: string, label: string) => {
@@ -422,7 +421,7 @@ export default function UseMenuList() {
                             block
                             type="primary"
                             icon={<LuCopy size={16} />}
-                            onClick={() => handleCopy(withSource(data.menuLink, 'copy'), `${labels.offeringTitle} link`)}
+                            onClick={() => handleCopy(withEntrySource(data.menuLink, 'copy'), `${labels.offeringTitle} link`)}
                             size="large"
                         >
                             Copy {labels.offeringTitle} Link
@@ -432,7 +431,7 @@ export default function UseMenuList() {
                         <Button
                             block
                             icon={<LuExternalLink size={16} />}
-                            onClick={() => handleOpen(withSource(data.menuLink, 'direct'))}
+                            onClick={() => handleOpen(withEntrySource(data.menuLink, 'direct'))}
                             size="large"
                         >
                             Open {labels.offeringTitle}
@@ -556,7 +555,7 @@ export default function UseMenuList() {
                             // G-04: inline Layer-2 alias URL (avoids an
                             // extra import the auto-organizer keeps
                             // stripping). Equivalent to generateMenuUrl().
-                            withSource(`${data.obpLink.replace(/\/$/, '')}/menu`, 'qr'),
+                            withEntrySource(`${data.obpLink.replace(/\/$/, '')}/menu`, 'qr'),
                             'Store Menu QR',
                             `${data.storeName}-store-menu-qr`,
                         )}
@@ -571,7 +570,7 @@ export default function UseMenuList() {
                         description={t('businessProfileQrDescription')}
                         loading={generatingAsset === 'Business Profile QR'}
                         onDownload={() => handleDownloadQr(
-                            withSource(data.obpLink, 'qr'),
+                            withEntrySource(data.obpLink, 'qr'),
                             'Business Profile QR',
                             `${data.storeName}-business-profile-qr`,
                         )}
@@ -585,7 +584,7 @@ export default function UseMenuList() {
                         description={t('projectMenuQrDescription', { projectName: data.projectName || t('projectFallback') })}
                         loading={generatingAsset === 'Project Menu QR'}
                         onDownload={() => handleDownloadQr(
-                            withSource(data.menuLink, 'qr'),
+                            withEntrySource(data.menuLink, 'qr'),
                             'Project Menu QR',
                             `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
                         )}
@@ -1139,3 +1138,4 @@ function AssetCard({ icon, title, description, loading, onDownload, disabled, hi
         </Card>
     );
 }
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';

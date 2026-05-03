@@ -41,7 +41,7 @@
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
 
-**Language usage:** Multi-language OBP page views attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing page-view write. Language switch links stay URL-based for SEO/AEO, preserve source/UTM attribution parameters, and de-dupe accepted adoption counters by store-local analytics day.
+**Language usage:** Multi-language OBP page views attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing page-view write. Language switch links stay URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and de-dupe accepted adoption counters by store-local analytics day. Legacy `src` / `source` query parameters are not preserved or consumed by analytics.
 
 ### Deletes
 

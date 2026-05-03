@@ -34,6 +34,7 @@ export interface BusinessCopyGenerationPayload {
             knownFor?: string;
             orderUrl?: string;
             reservationUrl?: string;
+            specialNote?: string;
             whatsappNumber?: string;
         };
         pwaShortName?: string;
@@ -51,6 +52,7 @@ export interface BusinessCopyGenerationResult {
     metaDescription: string;
     metaTitle: string;
     pwaShortName: string;
+    specialNote: string;
     tagline: string;
 }
 

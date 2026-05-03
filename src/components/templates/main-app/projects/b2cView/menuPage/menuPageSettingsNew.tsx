@@ -7,6 +7,7 @@
  */
 
 import { Collapse, Divider, Flex, Input, Switch, Typography } from 'antd';
+import { getLocalizedDraftText, updateLocalizedText } from '@lib/localization/text';
 import { useTranslations } from 'next-intl';
 import { LuFileText, LuImage, LuList, LuSettings2 } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -38,7 +39,8 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     const showCategoryIcons = projectData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
-    const specialNote = projectData?.menuSettings?.specialNote ?? '';
+    const specialNoteLanguage = projectData?.defaultLanguage || 'en';
+    const specialNote = getLocalizedDraftText(projectData?.menuSettings?.specialNote, specialNoteLanguage, '');
 
     // G06 Constitutional limit: 140 characters max
     const SERVICE_CHARGE_MAX_LENGTH = 140;
@@ -164,7 +166,12 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             ...projectData,
             menuSettings: {
                 ...projectData?.menuSettings,
-                specialNote: normalizedNote,
+                specialNote: updateLocalizedText(
+                    projectData?.menuSettings?.specialNote,
+                    normalizedNote,
+                    specialNoteLanguage,
+                    'en',
+                ),
             },
         });
     };

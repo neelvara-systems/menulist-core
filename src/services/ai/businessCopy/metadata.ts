@@ -99,6 +99,7 @@ export function getBusinessCopyFieldKeysFromUpdate(update: any): string[] {
         if ('displayName' in update.publicPresence) fieldKeys.add('displayName');
         if ('descriptor' in update.publicPresence) fieldKeys.add('descriptor');
         if ('knownFor' in update.publicPresence) fieldKeys.add('knownFor');
+        if ('specialNote' in update.publicPresence) fieldKeys.add('specialNote');
     }
     if ('tagline' in (update || {})) fieldKeys.add('tagline');
     if ('metaTitle' in (update || {})) fieldKeys.add('metaTitle');

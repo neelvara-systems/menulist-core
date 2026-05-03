@@ -19,7 +19,7 @@ import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordF
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
 import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncMissingBusinessCopyTranslations";
 import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
-import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage } from "@lib/localization/storeContent";
+import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage, getStoreSourceLanguage } from "@lib/localization/storeContent";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
@@ -132,6 +132,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
                     descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, languageCode, ''),
                     displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, languageCode, ''),
                     knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, languageCode, ''),
+                    specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, languageCode, ''),
                 },
             ]),
         ),
@@ -162,6 +163,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
             displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, ''),
             descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, contentLanguage, ''),
             knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, contentLanguage, ''),
+            specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, contentLanguage, ''),
         },
         tagline: getLocalizedStoreValue(storeDetails?.tagline, contentLanguage, ''),
     };
@@ -426,6 +428,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                         storeDetails?.publicPresence?.knownFor,
                                         localized.knownFor,
                                     ),
+                                    specialNote: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.specialNote,
+                                        localized.specialNote,
+                                    ),
                                 };
 
                                 const nextStoreUpdate: any = {
@@ -433,7 +439,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                         existingMeta: storeDetails?.businessCopyMeta,
                                         includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
                                         projectId,
-                                        sourceLanguage: resolveStoreContentLanguage(storeDetails),
+                                        sourceLanguage: getStoreSourceLanguage(),
                                         storeDetails,
                                     }),
                                     keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
@@ -502,6 +508,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     knownFor: mergeLocalizedField(
                                         storeDetails?.publicPresence?.knownFor,
                                         localized.knownFor,
+                                    ),
+                                    specialNote: mergeLocalizedField(
+                                        storeDetails?.publicPresence?.specialNote,
+                                        localized.specialNote,
                                     ),
                                 };
 
@@ -819,6 +829,17 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     : updateLocalizedText(
                         currentPresence.knownFor,
                         changesToUpload.publicPresence.knownFor,
+                        contentLanguage,
+                        'en',
+                    ),
+                specialNote: localizedPresenceDrafts
+                    ? applyLocalizedDraftMap(
+                        currentPresence.specialNote,
+                        Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.specialNote || ''])),
+                    )
+                    : updateLocalizedText(
+                        currentPresence.specialNote,
+                        changesToUpload.publicPresence.specialNote,
                         contentLanguage,
                         'en',
                     ),

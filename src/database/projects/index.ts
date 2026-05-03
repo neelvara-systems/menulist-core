@@ -760,6 +760,13 @@ const runUpdateProject = async (data: Partial<Project>) => {
         data.description = toLocalizedText(data.description as any, resolveProjectTextLanguage(data.description, CANONICAL_SOURCE_LANGUAGE));
     }
 
+    if (data.menuSettings && 'specialNote' in data.menuSettings) {
+        data.menuSettings.specialNote = toLocalizedText(
+            data.menuSettings.specialNote as any,
+            resolveProjectTextLanguage(data.menuSettings.specialNote, CANONICAL_SOURCE_LANGUAGE),
+        ) as any;
+    }
+
     if (data._specialMenu?.displayName) {
         data._specialMenu.displayName = toLocalizedText(
             data._specialMenu.displayName as any,

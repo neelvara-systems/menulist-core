@@ -6,8 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import styles from './obp.module.scss';
 
 const ATTRIBUTION_PARAMS = [
-    'src',
-    'source',
     'entry_source',
     'utm_source',
     'utm_medium',
@@ -16,12 +14,14 @@ const ATTRIBUTION_PARAMS = [
 
 interface OBPLanguageSwitcherProps {
     activeLanguage: string;
+    ariaLabel: string;
     baseUrl: string;
     languages: string[];
 }
 
 export default function OBPLanguageSwitcher({
     activeLanguage,
+    ariaLabel,
     baseUrl,
     languages,
 }: OBPLanguageSwitcherProps) {
@@ -48,7 +48,7 @@ export default function OBPLanguageSwitcher({
     };
 
     return (
-        <nav className={styles.languageSwitcher} aria-label="Language">
+        <nav className={styles.languageSwitcher} aria-label={ariaLabel}>
             {normalizedLanguages.map((languageCode) => {
                 const language = GlobalLanguagesList.find((entry) => entry.code === languageCode);
                 const isActive = languageCode === activeLanguage;

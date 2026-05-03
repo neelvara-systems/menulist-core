@@ -266,7 +266,7 @@ This reuses the same logic from `ENABLE_HOURS_STATUS_DISPLAY` feature.
 - Otherwise OBP falls back through the normalized store language policy, with English (`en`) as canonical fallback.
 - When a store has more than one active public language, OBP renders a compact language switcher.
 - OBP menu CTA URLs preserve the current language with `?lang=xx`, so customers land on the menu in the same language.
-- OBP language switch links remain URL-based for SEO/AEO and preserve source/UTM attribution parameters such as `src`, `source`, `entry_source`, `utm_source`, `utm_medium`, and `utm_campaign`.
+- OBP language switch links remain URL-based for SEO/AEO and preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters. Legacy `src` / `source` query parameters are not preserved or consumed by analytics.
 - Language usage analytics are shown only for multi-language OBPs. Page opens carry the active language on the existing OBP view write, and a language adoption is counted only after the switched language remains active for the dwell window. De-dupe is scoped to the store-local analytics day.
 - Brand OBP and outlet OBP use the same resolver and selector behavior.
 - OBP metadata and JSON-LD resolve localized business copy using the same language.
@@ -566,7 +566,7 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 **Summary doc namespaces:** `weekly` (current week metrics + viewsChange), `monthly` (current month metrics), `previousWeek` (for comparison), `lifetime` (all-time counters with dedup via `lastProcessedDate`).
 
-**OBP source attribution:** Share surfaces append canonical `src`, `source`, `entry_source`, and `utm_source` parameters to OBP and direct-menu links. `OBP_VIEW` stores `viewsByEntrySource` / `viewsBySource`; existing OBP action, View Menu, and external-link click writes attach `obpActionClicksBySource`, `obpMenuClicksBySource`, and `obpLinkClicksBySource`. This gives owners visitor-source context without adding a separate source event or extra write path.
+**OBP source attribution:** Share surfaces append canonical `entry_source` parameters to OBP and direct-menu links. `OBP_VIEW` stores internal source attribution in `viewsByEntrySource`; existing OBP action, View Menu, and external-link click writes attach `obpActionClicksBySource`, `obpMenuClicksBySource`, and `obpLinkClicksBySource`. External campaign parameters are separate: `utm_source`, `utm_medium`, and `utm_campaign` populate `viewsBySource`, `viewsByMedium`, and `viewsByCampaign` only when intentionally supplied. Legacy `src` / `source` query parameters are not part of the analytics contract. This gives owners visitor-source context without adding a separate source event or extra write path.
 
 **OBP language usage:** Multi-language OBPs attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing OBP view write. `obpLanguageAdoptions` is a separate dwell-gated adoption event so quick accidental language taps are ignored. Single-language OBPs do not track or display language usage.
 

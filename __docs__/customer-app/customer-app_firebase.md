@@ -44,7 +44,7 @@
 | `CUSTOMER_APP_INSTALL_STARTED`  | analytics  | Install CTA tap           | Per tap                   | 1 (increment)                  | `totalInstallStarted`                                                 | Same daily doc                                   |
 | `CUSTOMER_APP_INSTALLED`        | analytics  | `appinstalled` event      | Once per device per store | 1 (increment)                  | `totalInstalled`, `uniqueInstallSessions`, device/location breakdowns | Deduped via `localStorage`                       |
 | `CUSTOMER_APP_OPENED`           | analytics  | Standalone-mode page load | Per open (debounced)      | 1 (increment)                  | `totalAppOpens`, hourly, device, location                             | Fires only in `display-mode: standalone`         |
-| `CUSTOMER_APP_SHORTCUT_*`       | analytics  | Shortcut launch           | Per launch                | 1 (increment)                  | `shortcutClicks.{menu,call,directions}`                               | Detected via `?source=shortcut-*` URL param      |
+| `CUSTOMER_APP_SHORTCUT_*`       | analytics  | Shortcut launch           | Per launch                | 1 (increment)                  | `shortcutClicks.{menu,call,directions}`                               | Detected via `?entry_source=shortcut-*` URL param |
 | Nightly aggregation             | analytics  | Cloud Function            | 1/day/store-local date    | 1-4 (summary, weekly, monthly, dashboard summary) | All metric fields                                                     | Reuses shared locked analytics settlement        |
 
 **Per-visit writes (installed user):** 1-2 (app open + optional shortcut event, both debounced).

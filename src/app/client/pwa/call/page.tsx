@@ -7,7 +7,7 @@
  *   1. Server resolves tenant via headers (same pattern as `[[...slug]]/page.tsx`)
  *   2. Server passes phone + tracking context to client component
  *   3. Client component fires CUSTOMER_APP_SHORTCUT_CALL (via shortcutSourceDetector
- *      — ?source=shortcut-call is already on the URL from the manifest shortcut)
+ *      — ?entry_source=shortcut-call is already on the URL from the manifest shortcut)
  *   4. Client then `window.location.replace('tel:+...')`
  */
 

@@ -226,21 +226,38 @@ export function buildBreadcrumbList(storeName: string, baseUrl: string, menuName
  * Auto-generates common customer questions from available store data.
  * Returns undefined if insufficient data for meaningful FAQs.
  */
-export function buildFaqSchema(storeData: any, canonicalUrl: string) {
+type SchemaTranslator = (key: string, values?: Record<string, string | number | boolean | null | undefined>) => string;
+
+function translateSchemaText(
+    t: SchemaTranslator | undefined,
+    key: string,
+    values: Record<string, string | number | boolean | null | undefined>,
+    fallback: string,
+): string {
+    if (!t) return fallback;
+    const value = t(key, values);
+    return value && value !== key ? value : fallback;
+}
+
+export function buildFaqSchema(storeData: any, canonicalUrl: string, t?: SchemaTranslator) {
     const faqs: { question: string; answer: string }[] = [];
-    const storeName = storeData?.name || 'This business';
+    const storeName = storeData?.name || translateSchemaText(t, 'publicFallbackBusiness', {}, 'This business');
 
     // Q: Working hours
     if (storeData?.workingHours) {
         const days = Object.entries(storeData.workingHours)
             .filter(([, hours]) => hours && typeof hours === 'string' && (hours as string).includes('-'))
-            .map(([day, hours]) => `${day.charAt(0).toUpperCase() + day.slice(1)}: ${hours}`)
+            .map(([day, hours]) => {
+                const fallbackDay = day.charAt(0).toUpperCase() + day.slice(1);
+                const dayLabel = translateSchemaText(t, `publicDays.${day}`, {}, fallbackDay);
+                return `${dayLabel}: ${hours}`;
+            })
             .join(', ');
 
         if (days) {
             faqs.push({
-                question: `What are the opening hours of ${storeName}?`,
-                answer: `${storeName} is open ${days}.`,
+                question: translateSchemaText(t, 'publicFaqOpeningHoursQuestion', { storeName }, `What are the opening hours of ${storeName}?`),
+                answer: translateSchemaText(t, 'publicFaqOpeningHoursAnswer', { storeName, days }, `${storeName} is open ${days}.`),
             });
         }
     }
@@ -249,23 +266,23 @@ export function buildFaqSchema(storeData: any, canonicalUrl: string) {
     if (storeData?.addressLine || storeData?.city) {
         const parts = [storeData.addressLine, storeData.city, storeData.state].filter(Boolean);
         faqs.push({
-            question: `Where is ${storeName} located?`,
-            answer: `${storeName} is located at ${parts.join(', ')}.`,
+            question: translateSchemaText(t, 'publicFaqLocationQuestion', { storeName }, `Where is ${storeName} located?`),
+            answer: translateSchemaText(t, 'publicFaqLocationAnswer', { storeName, address: parts.join(', ') }, `${storeName} is located at ${parts.join(', ')}.`),
         });
     }
 
     // Q: Phone
     if (storeData?.phoneNumber) {
         faqs.push({
-            question: `What is the phone number of ${storeName}?`,
-            answer: `You can reach ${storeName} at ${storeData.phoneNumber}.`,
+            question: translateSchemaText(t, 'publicFaqPhoneQuestion', { storeName }, `What is the phone number of ${storeName}?`),
+            answer: translateSchemaText(t, 'publicFaqPhoneAnswer', { storeName, phone: storeData.phoneNumber }, `You can reach ${storeName} at ${storeData.phoneNumber}.`),
         });
     }
 
     // Q: Menu
     faqs.push({
-        question: `Where can I see the menu for ${storeName}?`,
-        answer: `You can view the full menu at ${canonicalUrl}/menu — it is always up to date.`,
+        question: translateSchemaText(t, 'publicFaqMenuQuestion', { storeName }, `Where can I see the menu for ${storeName}?`),
+        answer: translateSchemaText(t, 'publicFaqMenuAnswer', { url: `${canonicalUrl}/menu` }, `You can view the full menu at ${canonicalUrl}/menu — it is always up to date.`),
     });
 
     if (faqs.length < 2) return undefined;

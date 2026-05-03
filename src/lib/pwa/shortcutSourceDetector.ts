@@ -1,7 +1,7 @@
 /**
  * PWA Shortcut Source Detector
  *
- * Reads the ?source=shortcut-{menu|call|directions} URL parameter that the
+ * Reads the ?entry_source=shortcut-{menu|call|directions} URL parameter that the
  * manifest shortcuts embed, and fires the matching Customer App event.
  *
  * Only fires in standalone mode to avoid counting regular web visits.
@@ -32,14 +32,14 @@ const SHORTCUT_EVENT_MAP: Record<ShortcutSource, TrackingEvent> = {
 };
 
 /**
- * Parse ?source=shortcut-xxx from the current URL and return the source,
+ * Parse ?entry_source=shortcut-xxx from the current URL and return the source,
  * or null if not present or not a recognized value.
  */
 export function parseShortcutSource(search: string): ShortcutSource | null {
   if (!search) return null;
   try {
     const params = new URLSearchParams(search.startsWith('?') ? search : `?${search}`);
-    const raw = params.get('source');
+    const raw = params.get('entry_source');
     if (!raw) return null;
     const match = raw.match(/^shortcut-(menu|call|directions|whatsapp|reservation|order)$/);
     if (!match) return null;

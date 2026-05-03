@@ -228,7 +228,6 @@ const OBP_SOURCE_LABELS: Record<string, string> = {
 function buildOBPSourceBreakdown(metrics: OBPAggregatedMetrics) {
     const sourceIds = new Set<string>([
         ...Object.keys(metrics.viewsByEntrySource || {}),
-        ...Object.keys(metrics.viewsBySource || {}),
         ...Object.keys(metrics.obpActionClicksBySource || {}),
         ...Object.keys(metrics.obpMenuClicksBySource || {}),
         ...Object.keys(metrics.obpLinkClicksBySource || {}),
@@ -238,7 +237,7 @@ function buildOBPSourceBreakdown(metrics: OBPAggregatedMetrics) {
         .map((source) => ({
             source,
             label: OBP_SOURCE_LABELS[source] || source,
-            views: Math.max(metrics.viewsByEntrySource[source] || 0, metrics.viewsBySource[source] || 0),
+            views: metrics.viewsByEntrySource[source] || 0,
             actionClicks: metrics.obpActionClicksBySource[source] || 0,
             menuClicks: metrics.obpMenuClicksBySource[source] || 0,
             linkClicks: metrics.obpLinkClicksBySource[source] || 0,

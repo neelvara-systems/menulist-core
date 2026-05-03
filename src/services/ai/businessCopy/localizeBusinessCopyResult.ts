@@ -15,6 +15,7 @@ export type LocalizedBusinessCopyFields = {
     metaDescription?: LocalizedText;
     metaTitle?: LocalizedText;
     pwaShortName?: LocalizedText;
+    specialNote?: LocalizedText;
     tagline?: LocalizedText;
 };
 

@@ -55,7 +55,7 @@ function getInitialPresenceForm(storeDetails: any) {
         showReservation: initialPresence.showReservation !== false,
         showTermsLink: initialPresence.showTermsLink !== false,
         showWhatsApp: initialPresence.showWhatsApp !== false,
-        specialNote: initialPresence.specialNote || '',
+        specialNote: '',
         whatsappNumber: initialPresence.whatsappNumber || '',
     };
 }
@@ -69,6 +69,7 @@ function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
                 descriptor: getLocalizedStoreValue(initialPresence.descriptor, languageCode, ''),
                 displayName: getLocalizedStoreValue(initialPresence.displayName, languageCode, ''),
                 knownFor: getLocalizedStoreValue(initialPresence.knownFor, languageCode, ''),
+                specialNote: getLocalizedStoreValue(initialPresence.specialNote, languageCode, ''),
             },
         ]),
     );
@@ -97,7 +98,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [originalFormData, setOriginalFormData] = useState(() => getInitialPresenceForm(storeDetails));
     const [localizedDrafts, setLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
     const [originalLocalizedDrafts, setOriginalLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
-    const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' };
+    const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' };
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const isDirty =
         JSON.stringify(formData) !== JSON.stringify(originalFormData)
@@ -122,7 +123,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             <Flex gap={2} vertical>
                 <Text strong>Language rule</Text>
                 <Text type="secondary">
-                    Display name, short descriptor, and known for can be edited per language. Links, toggles, ratings, and photos stay shared across languages.
+                    Display name, short descriptor, known for, and the special note can be edited per language. Links, toggles, ratings, and photos stay shared across languages.
                 </Text>
             </Flex>
         </Flex>
@@ -151,15 +152,22 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 languageCode,
                 'en',
             ),
+            specialNote: updateLocalizedText(
+                presence.specialNote,
+                draft.specialNote,
+                languageCode,
+                'en',
+            ),
         }), {
             displayName: storeDetails.publicPresence?.displayName,
             descriptor: storeDetails.publicPresence?.descriptor,
             knownFor: storeDetails.publicPresence?.knownFor,
+            specialNote: storeDetails.publicPresence?.specialNote,
         } as any);
         const payload = {
             businessCopyMeta: buildBusinessCopyManualOverrideMeta({
                 existingMeta: storeDetails?.businessCopyMeta,
-                fieldKeys: ['displayName', 'descriptor', 'knownFor'],
+                fieldKeys: ['displayName', 'descriptor', 'knownFor', 'specialNote'],
             }),
             storeId: storeDetails.storeId,
             publicPresence: {
@@ -168,6 +176,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 displayName: nextLocalizedPresence.displayName,
                 descriptor: nextLocalizedPresence.descriptor,
                 knownFor: nextLocalizedPresence.knownFor,
+                specialNote: nextLocalizedPresence.specialNote,
                 photos: nextPresence.photos.filter(Boolean),
             },
         };
@@ -327,7 +336,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
                                 [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
                                     displayName: value,
                                 },
                             }))}
@@ -341,7 +350,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 onUseReference={() => setLocalizedDrafts((previous) => ({
                                     ...previous,
                                     [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
                                         displayName: previous[referenceLanguage]?.displayName || '',
                                     },
                                 }))}
@@ -360,7 +369,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
                                 [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
                                     descriptor: value,
                                 },
                             }))}
@@ -373,7 +382,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 onUseReference={() => setLocalizedDrafts((previous) => ({
                                     ...previous,
                                     [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
                                         descriptor: previous[referenceLanguage]?.descriptor || '',
                                     },
                                 }))}
@@ -392,7 +401,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
                                 [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
                                     knownFor: value,
                                 },
                             }))}
@@ -405,7 +414,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 onUseReference={() => setLocalizedDrafts((previous) => ({
                                     ...previous,
                                     [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '' }),
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
                                         knownFor: previous[referenceLanguage]?.knownFor || '',
                                     },
                                 }))}
@@ -422,12 +431,31 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         <TextArea
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             maxLength={140}
-                            onChange={(value) => setFormData((previous) => ({ ...previous, specialNote: value }))}
+                            onChange={(value) => setLocalizedDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: {
+                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                    specialNote: value,
+                                },
+                            }))}
                             placeholder={t('officialPageSpecialNotePlaceholder')}
                             showCount
-                            value={formData.specialNote}
+                            value={currentLocalizedDraft.specialNote}
                         />
                         <Text type="secondary">{t('officialPageSpecialNoteHelp')}</Text>
+                        {selectedLanguage !== referenceLanguage ? (
+                            <LocalizedReferenceHint
+                                onUseReference={() => setLocalizedDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: {
+                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                        specialNote: previous[referenceLanguage]?.specialNote || '',
+                                    },
+                                }))}
+                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                                referenceValue={localizedDrafts[referenceLanguage]?.specialNote || ''}
+                            />
+                        ) : null}
                     </Flex>
                 </Card>
 

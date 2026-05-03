@@ -99,6 +99,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                         knownFor: firstText(publicPresence?.knownFor),
                         orderUrl: publicPresence?.orderUrl || '',
                         reservationUrl: publicPresence?.reservationUrl || '',
+                        specialNote: firstText(publicPresence?.specialNote),
                         whatsappNumber: publicPresence?.whatsappNumber || '',
                     },
                     pwaShortName: getLocalizedText(
@@ -125,6 +126,16 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
 
             await onApplyGeneratedCopy(generated, projectContext?.projectId);
             form.setFieldsValue({
+                __localizedPublicPresenceDrafts: {
+                    ...(form.getFieldValue('__localizedPublicPresenceDrafts') || {}),
+                    [contentLanguage]: {
+                        ...((form.getFieldValue('__localizedPublicPresenceDrafts') || {})[contentLanguage] || {}),
+                        descriptor: generated.descriptor,
+                        displayName: generated.displayName,
+                        knownFor: generated.knownFor,
+                        specialNote: generated.specialNote,
+                    },
+                },
                 __localizedSeoDrafts: {
                     ...(form.getFieldValue('__localizedSeoDrafts') || {}),
                     [contentLanguage]: {
@@ -143,6 +154,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                     descriptor: generated.descriptor,
                     displayName: generated.displayName,
                     knownFor: generated.knownFor,
+                    specialNote: generated.specialNote,
                 },
                 tagline: generated.tagline,
             });

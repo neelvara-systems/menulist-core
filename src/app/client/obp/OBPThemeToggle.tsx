@@ -31,7 +31,15 @@ function applyTheme(theme: OBPTheme | null) {
     });
 }
 
-export default function OBPThemeToggle() {
+interface OBPThemeToggleProps {
+    switchToDarkLabel: string;
+    switchToLightLabel: string;
+}
+
+export default function OBPThemeToggle({
+    switchToDarkLabel,
+    switchToLightLabel,
+}: OBPThemeToggleProps) {
     const [theme, setTheme] = useState<OBPTheme>('light');
     const [mounted, setMounted] = useState(false);
 
@@ -68,7 +76,7 @@ export default function OBPThemeToggle() {
         <button
             type="button"
             className={styles.themeToggle}
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-label={theme === 'dark' ? switchToLightLabel : switchToDarkLabel}
             onClick={toggleTheme}
             suppressHydrationWarning
         >

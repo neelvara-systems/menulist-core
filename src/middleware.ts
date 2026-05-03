@@ -51,7 +51,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.headers.set(
         'Permissions-Policy',
-        'camera=(), microphone=(), geolocation=(), payment=()'
+        'camera=(), microphone=(), geolocation=(self), payment=()'
     );
 
     // Content Security Policy (CSP) - A03: Injection Prevention
