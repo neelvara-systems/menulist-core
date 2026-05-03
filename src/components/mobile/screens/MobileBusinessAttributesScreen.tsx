@@ -2,34 +2,17 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
+import { getBusinessAttributeGroupsForType, normalizeCustomBusinessAttributes } from '@lib/obp/businessAttributes';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useState } from 'react';
-import { Button, Card, DotLoading, Flex, NavBar, Switch, Text, Toast } from '../antd';
+import { useCallback, useContext, useMemo, useState } from 'react';
+import { LuPlus, LuTrash2 } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Input, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileBusinessAttributesScreenProps {
     onBack: () => void;
 }
-
-const ATTRIBUTE_GROUP_KEYS = [
-    {
-        labelKey: 'dietaryOptions',
-        fields: ['vegetarian', 'vegan', 'halal', 'glutenFree'],
-    },
-    {
-        labelKey: 'amenities',
-        fields: ['wifi', 'outdoorSeating', 'parking', 'airConditioning', 'liveMusic', 'petFriendly'],
-    },
-    {
-        labelKey: 'serviceModes',
-        fields: ['dineIn', 'takeaway', 'delivery', 'driveThrough'],
-    },
-    {
-        labelKey: 'paymentMethods',
-        fields: ['acceptsCards', 'acceptsUPI', 'acceptsCash'],
-    },
-] as const;
 
 export default function MobileBusinessAttributesScreen({ onBack }: MobileBusinessAttributesScreenProps) {
     const t = useTranslations('BusinessSettings');
@@ -37,8 +20,16 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [attributes, setAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
+    const [customAttributes, setCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
     const [originalAttributes, setOriginalAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
-    const isDirty = JSON.stringify(attributes) !== JSON.stringify(originalAttributes);
+    const [originalCustomAttributes, setOriginalCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
+    const attributeGroups = useMemo(
+        () => getBusinessAttributeGroupsForType(storeDetails?.businessType),
+        [storeDetails?.businessType],
+    );
+    const isDirty =
+        JSON.stringify(attributes) !== JSON.stringify(originalAttributes)
+        || JSON.stringify(customAttributes) !== JSON.stringify(originalCustomAttributes);
 
     const saveAttributes = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -46,25 +37,39 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
         const payload = {
             storeId: storeDetails.storeId,
             businessAttributes: attributes,
+            publicPresence: {
+                ...(storeDetails.publicPresence || {}),
+                customAttributes: normalizeCustomBusinessAttributes(customAttributes),
+            },
         };
 
-        setStoreDetails((previous: any) => ({ ...previous, businessAttributes: attributes }));
+        setStoreDetails((previous: any) => ({
+            ...previous,
+            businessAttributes: attributes,
+            publicPresence: payload.publicPresence,
+        }));
 
         try {
             await updateStore(payload as any);
             setOriginalAttributes(attributes);
+            setOriginalCustomAttributes(payload.publicPresence.customAttributes);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch {
-            setStoreDetails((previous: any) => ({ ...previous, businessAttributes: storeDetails.businessAttributes }));
+            setStoreDetails((previous: any) => ({
+                ...previous,
+                businessAttributes: storeDetails.businessAttributes,
+                publicPresence: storeDetails.publicPresence,
+            }));
             Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
         } finally {
             setIsSaving(false);
         }
-    }, [attributes, setStoreDetails, storeDetails, tMobile]);
+    }, [attributes, customAttributes, setStoreDetails, storeDetails, tMobile]);
 
     const resetAttributes = useCallback(() => {
         setAttributes(originalAttributes);
-    }, [originalAttributes]);
+        setCustomAttributes(originalCustomAttributes);
+    }, [originalAttributes, originalCustomAttributes]);
 
     if (!FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES) {
         return null;
@@ -86,22 +91,64 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                 title={t('businessAttributes')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                {ATTRIBUTE_GROUP_KEYS.map((group) => (
-                    <Card key={group.labelKey}>
+                {attributeGroups.map((group) => (
+                    <Card key={group.group}>
                         <Flex gap={12} vertical>
                             <Text strong>{t(group.labelKey)}</Text>
                             {group.fields.map((field) => (
-                                <Flex align="center" justify="space-between" key={field}>
-                                    <Text>{t(`attr${field.charAt(0).toUpperCase()}${field.slice(1)}` as any)}</Text>
+                                <Flex align="center" justify="space-between" key={field.key}>
+                                    <Flex align="center" gap={8}>
+                                        <Text type="secondary">{field.icon}</Text>
+                                        <Text>{t(field.labelKey as any)}</Text>
+                                    </Flex>
                                     <Switch
-                                        checked={Boolean(attributes[field])}
-                                        onChange={(value) => setAttributes((previous) => ({ ...previous, [field]: value }))}
+                                        checked={Boolean(attributes[field.key])}
+                                        onChange={(value) => setAttributes((previous) => ({ ...previous, [field.key]: value }))}
                                     />
                                 </Flex>
                             ))}
                         </Flex>
                     </Card>
                 ))}
+
+                <Card>
+                    <Flex gap={12} vertical>
+                        <Text strong>{t('customBusinessAttributes')}</Text>
+                        <Text type="secondary">{t('customBusinessAttributesHelp')}</Text>
+                        {customAttributes.map((attribute, index) => (
+                            <Flex align="center" gap={8} key={attribute.id || index}>
+                                <Input
+                                    maxLength={8}
+                                    onChange={(value) => setCustomAttributes((previous) => previous.map((entry, entryIndex) => (
+                                        entryIndex === index ? { ...entry, icon: value } : entry
+                                    )))}
+                                    placeholder="Icon"
+                                    style={{ width: 72 }}
+                                    value={attribute.icon || ''}
+                                />
+                                <Input
+                                    maxLength={32}
+                                    onChange={(value) => setCustomAttributes((previous) => previous.map((entry, entryIndex) => (
+                                        entryIndex === index ? { ...entry, label: value } : entry
+                                    )))}
+                                    placeholder={t('customBusinessAttributePlaceholder')}
+                                    value={attribute.label}
+                                />
+                                <Button color="danger" fill="none" onClick={() => setCustomAttributes((previous) => previous.filter((_, entryIndex) => entryIndex !== index))}>
+                                    <LuTrash2 size={16} />
+                                </Button>
+                            </Flex>
+                        ))}
+                        {customAttributes.length < 6 ? (
+                            <Button fill="outline" onClick={() => setCustomAttributes((previous) => [...previous, { id: `custom-${Date.now()}`, label: '', active: true }])}>
+                                <Flex align="center" gap={6}>
+                                    <LuPlus size={16} />
+                                    <Text>{t('addCustomBusinessAttribute')}</Text>
+                                </Flex>
+                            </Button>
+                        ) : null}
+                    </Flex>
+                </Card>
 
                 <Flex gap={8}>
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={resetAttributes} size="large">

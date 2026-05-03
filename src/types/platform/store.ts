@@ -359,12 +359,18 @@ export type StoreDataType = {
         showDirections?: boolean;
         showReservation?: boolean;
         showOrder?: boolean;
+        showPrivacyLink?: boolean;
+        showTermsLink?: boolean;
+        showRefundLink?: boolean;
 
         /** Reservation/booking URL (e.g., Dineout, Zomato, OpenTable, own website). For schema.org acceptsReservations + CTA. */
         reservationUrl?: string;
 
         /** Online ordering URL (e.g., Swiggy, Zomato, own website). For schema.org potentialAction OrderAction. */
         orderUrl?: string;
+
+        /** Short owner-managed note shown on the OBP, separate from per-menu pricing notes. */
+        specialNote?: string;
 
         /** Year the business was established. For schema.org foundingDate + OBP "Serving since" display. */
         establishedYear?: number;
@@ -389,6 +395,14 @@ export type StoreDataType = {
 
         /** Up to 3 curated business photos (storefront, interior, hero product). Max 3 URLs. */
         photos?: string[];
+
+        /** Owner-defined public attributes shown after controlled business attributes. Max 6 in UI. */
+        customAttributes?: Array<{
+            id: string;
+            label: string;
+            icon?: string;
+            active?: boolean;
+        }>;
 
         // ── GOOGLE LISTING LINK STATUS (Pre-API bridge) ──
         // Tracks whether owner has manually set OBP URL as their Google website link.

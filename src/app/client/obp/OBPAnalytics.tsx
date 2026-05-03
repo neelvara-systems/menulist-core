@@ -11,6 +11,7 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { trackOBPLanguageAdoption, trackOBPView } from '@lib/analytics/unified';
 import { useEffect } from 'react';
 
@@ -77,7 +78,8 @@ export default function OBPAnalytics({
         if (!trackViews || !trackLanguageUsage || !tenantId || !storeId || !activeLanguage) return;
         if (typeof window === 'undefined') return;
 
-        const storageKey = `${OBP_LANGUAGE_STORAGE_PREFIX}|${tenantId}|${storeId}`;
+        const localDate = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
+        const storageKey = `${OBP_LANGUAGE_STORAGE_PREFIX}|${tenantId}|${storeId}|${localDate}`;
         let previousLanguage: string | null = null;
         try {
             previousLanguage = window.sessionStorage.getItem(storageKey);

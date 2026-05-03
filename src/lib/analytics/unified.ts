@@ -572,7 +572,7 @@ export interface TrackingData {
   searchTerm?: string;        // What the user searched for
   searchResults?: number;     // Number of search results
   menuAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order';
-  obpLink?: 'google_review' | 'instagram' | 'facebook' | 'website';
+  obpLink?: 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
 
   // Recommendation properties (Decision Intelligence)
   blockType?: 'popular' | 'quickPick' | 'bestValue';  // Which recommendation block
@@ -1544,7 +1544,7 @@ export const trackOBPMenuClick = (
 
 export const trackOBPLinkClick = (
   storeId: string | number,
-  obpLink: 'google_review' | 'instagram' | 'facebook' | 'website',
+  obpLink: 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
   return trackEvent(TrackingEvent.OBP_LINK_CLICK, {

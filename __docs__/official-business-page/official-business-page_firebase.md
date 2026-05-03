@@ -37,8 +37,11 @@
 | Track OBP menu click | `analytics` | Customer clicks View Menu from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPMenuClicks` and `obpMenuClicksBySurface.{brand|outlet}`. |
 | Track OBP link click | `analytics` | Customer clicks Google review, Instagram, Facebook, or website from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPLinkClicks` and `obpLinkClicks.{google_review,instagram,facebook,website}`. |
 | Track OBP share action | `analytics` | Owner shares official business link from settings | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPShares` and `obpShares.{whatsapp,copy_link,copy_message}`. |
+| Track OBP language adoption | `analytics` | Customer switches language on a multi-language OBP and stays after the dwell window | Per accepted switch | 1 | merge update | Same daily doc. Tracks `obpLanguageAdoptions.{language}`. Single-language OBPs do not track language usage. Quick taps before dwell are ignored. |
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
+
+**Language usage:** Multi-language OBP page views attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing page-view write. Language switch links stay URL-based for SEO/AEO, preserve source/UTM attribution parameters, and de-dupe accepted adoption counters by store-local analytics day.
 
 ### Deletes
 
@@ -93,6 +96,7 @@
 - **Per-store cache tags:** `store-{storeId}` enables instant invalidation only for changed stores
 - **No new collections:** Zero additional Firestore index costs
 - **One write per tracked event:** OBP analytics use the same daily analytics doc as menu analytics with atomic increments. No separate summary write happens on the customer request path.
+- **Language usage piggybacks on existing writes:** OBP language page-open counters ride on the existing OBP view write. Only dwell-accepted language switches create an additional write.
 - **One owner read-model read:** Settled OBP dashboard data is precomputed nightly into `_obp_dashboard_summary`, avoiding 7-30 daily reads per owner dashboard visit.
 - **One OBP nightly daily-range read:** OBP settlement fetches the required daily window once and reuses it in memory for weekly, monthly, lifetime, and dashboard-summary outputs.
 - **Server component:** No client-side Firestore SDK loaded

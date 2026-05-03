@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
 import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuPhone, LuShoppingBag, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
+import CompliancePagesSection from './CompliancePagesSection';
 import GoogleListingGuide from './GoogleListingGuide';
 
 const { Title, Text } = Typography;
@@ -28,8 +29,12 @@ interface OfficialPageTabProps {
         showDirections?: boolean;
         showReservation?: boolean;
         showOrder?: boolean;
+        showPrivacyLink?: boolean;
+        showTermsLink?: boolean;
+        showRefundLink?: boolean;
         reservationUrl?: string;
         orderUrl?: string;
+        specialNote?: string;
         establishedYear?: number;
         googleReviewUrl?: string;
         googleRating?: number;
@@ -320,6 +325,21 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     referenceValue={localizedPresenceDrafts[referenceLanguage]?.knownFor || ''}
                                 />
                             ) : null}
+                        </Col>
+                        <Col xs={24}>
+                            <Form.Item
+                                name={['publicPresence', 'specialNote']}
+                                label={t('officialPageSpecialNote')}
+                                extra={t('officialPageSpecialNoteHelp')}
+                                rules={[{ max: 140, message: t('officialPageSpecialNoteMax') }]}
+                            >
+                                <Input.TextArea
+                                    autoSize={{ minRows: 2, maxRows: 3 }}
+                                    maxLength={140}
+                                    placeholder={t('officialPageSpecialNotePlaceholder')}
+                                    showCount
+                                />
+                            </Form.Item>
                         </Col>
                     </Row>
 
@@ -631,6 +651,49 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             </Form.Item>
                         </Col>
                     </Row>
+
+                    {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES ? (
+                        <>
+                            <Divider orientation="left" orientationMargin={0}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {t('publicPolicyLinks')}
+                                </Text>
+                            </Divider>
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} md={8}>
+                                    <Form.Item
+                                        name={['publicPresence', 'showPrivacyLink']}
+                                        label={t('showPrivacyLink')}
+                                        valuePropName="checked"
+                                        initialValue={publicPresence?.showPrivacyLink !== false}
+                                    >
+                                        <Switch />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} md={8}>
+                                    <Form.Item
+                                        name={['publicPresence', 'showTermsLink']}
+                                        label={t('showTermsLink')}
+                                        valuePropName="checked"
+                                        initialValue={publicPresence?.showTermsLink !== false}
+                                    >
+                                        <Switch />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} md={8}>
+                                    <Form.Item
+                                        name={['publicPresence', 'showRefundLink']}
+                                        label={t('showRefundLink')}
+                                        valuePropName="checked"
+                                        initialValue={publicPresence?.showRefundLink !== false}
+                                    >
+                                        <Switch />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <CompliancePagesSection domain={customDomain || (subdomain ? `${subdomain}.menulist.ai` : undefined)} />
+                        </>
+                    ) : null}
                 </Card>
             </>
         );

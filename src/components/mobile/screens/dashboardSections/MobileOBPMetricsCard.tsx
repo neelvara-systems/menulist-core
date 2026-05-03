@@ -157,7 +157,7 @@ function renderLanguageRows(languages?: OBPLanguageUsage[]) {
                     <Flex key={language.language} align="center" justify="space-between" gap={10}>
                         <Text type="secondary" style={{ fontSize: 12 }}>{language.label}</Text>
                         <Text style={{ fontSize: 12, textAlign: 'right' }}>
-                            {Math.max(language.sessions, language.views).toLocaleString()} sessions/views
+                            {Math.max(language.sessions, language.views).toLocaleString()} page opens
                             {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed` : ''}
                         </Text>
                     </Flex>

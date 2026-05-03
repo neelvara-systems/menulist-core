@@ -1,9 +1,11 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { Card, Col, Divider, Form, Row, Switch, Typography } from 'antd';
+import { getBusinessAttributeGroupsForType } from '@lib/obp/businessAttributes';
+import { Button, Card, Col, Divider, Form, Input, Row, Space, Switch, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef } from 'react';
+import { LuPlus, LuTrash2 } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -14,47 +16,11 @@ interface BusinessAttributesTabProps {
 const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabProps>(
     ({ scrollRef }, ref) => {
         const t = useTranslations('BusinessSettings');
+        const businessType = Form.useWatch('businessType');
+
         if (!FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES) return null;
 
-        const ATTRIBUTE_GROUPS = [
-            {
-                label: t('dietaryOptions'),
-                fields: [
-                    { name: 'vegetarian', label: t('attrVegetarian') },
-                    { name: 'vegan', label: t('attrVegan') },
-                    { name: 'halal', label: t('attrHalal') },
-                    { name: 'glutenFree', label: t('attrGlutenFree') },
-                ],
-            },
-            {
-                label: t('amenities'),
-                fields: [
-                    { name: 'wifi', label: t('attrWifi') },
-                    { name: 'outdoorSeating', label: t('attrOutdoorSeating') },
-                    { name: 'parking', label: t('attrParking') },
-                    { name: 'airConditioning', label: t('attrAirConditioning') },
-                    { name: 'liveMusic', label: t('attrLiveMusic') },
-                    { name: 'petFriendly', label: t('attrPetFriendly') },
-                ],
-            },
-            {
-                label: t('serviceModes'),
-                fields: [
-                    { name: 'dineIn', label: t('attrDineIn') },
-                    { name: 'takeaway', label: t('attrTakeaway') },
-                    { name: 'delivery', label: t('attrDelivery') },
-                    { name: 'driveThrough', label: t('attrDriveThrough') },
-                ],
-            },
-            {
-                label: t('paymentMethods'),
-                fields: [
-                    { name: 'acceptsCards', label: t('attrAcceptsCards') },
-                    { name: 'acceptsUPI', label: t('attrAcceptsUPI') },
-                    { name: 'acceptsCash', label: t('attrAcceptsCash') },
-                ],
-            },
-        ];
+        const attributeGroups = getBusinessAttributeGroupsForType(businessType);
 
         return (
             <Card size="small" ref={ref || scrollRef}>
@@ -65,19 +31,24 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                     {t('businessAttributesDesc')}
                 </Text>
 
-                {ATTRIBUTE_GROUPS.map((group, groupIndex) => (
-                    <React.Fragment key={group.label}>
+                {attributeGroups.map((group) => (
+                    <React.Fragment key={group.group}>
                         <Divider orientation="left" orientationMargin={0}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                {group.label}
+                                {t(group.labelKey)}
                             </Text>
                         </Divider>
                         <Row gutter={[16, 8]}>
                             {group.fields.map((field) => (
-                                <Col xs={12} md={8} lg={6} key={field.name}>
+                                <Col xs={12} md={8} lg={6} key={field.key}>
                                     <Form.Item
-                                        name={['businessAttributes', field.name]}
-                                        label={field.label}
+                                        name={['businessAttributes', field.key]}
+                                        label={(
+                                            <Space size={6}>
+                                                <span style={{ color: '#999', fontSize: 11, minWidth: 18 }}>{field.icon}</span>
+                                                <span>{t(field.labelKey)}</span>
+                                            </Space>
+                                        )}
                                         valuePropName="checked"
                                         style={{ marginBottom: 8 }}
                                     >
@@ -88,6 +59,44 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                         </Row>
                     </React.Fragment>
                 ))}
+
+                <Divider orientation="left" orientationMargin={0}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {t('customBusinessAttributes')}
+                    </Text>
+                </Divider>
+                <Form.List name={['publicPresence', 'customAttributes']}>
+                    {(fields, { add, remove }) => (
+                        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                            {fields.map((field) => (
+                                <Row gutter={[8, 8]} key={field.key} align="middle">
+                                    <Col xs={6} md={4}>
+                                        <Form.Item name={[field.name, 'icon']} style={{ marginBottom: 0 }}>
+                                            <Input placeholder="Icon" maxLength={8} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={14} md={16}>
+                                        <Form.Item
+                                            name={[field.name, 'label']}
+                                            rules={[{ max: 32, message: t('customBusinessAttributeMax') }]}
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <Input placeholder={t('customBusinessAttributePlaceholder')} maxLength={32} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={4}>
+                                        <Button danger icon={<LuTrash2 size={14} />} onClick={() => remove(field.name)} />
+                                    </Col>
+                                </Row>
+                            ))}
+                            {fields.length < 6 ? (
+                                <Button icon={<LuPlus size={14} />} onClick={() => add({ active: true })}>
+                                    {t('addCustomBusinessAttribute')}
+                                </Button>
+                            ) : null}
+                        </Space>
+                    )}
+                </Form.List>
             </Card>
         );
     },

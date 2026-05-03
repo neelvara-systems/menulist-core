@@ -50,8 +50,12 @@ function getInitialPresenceForm(storeDetails: any) {
         showCall: initialPresence.showCall !== false,
         showDirections: initialPresence.showDirections !== false,
         showOrder: initialPresence.showOrder !== false,
+        showPrivacyLink: initialPresence.showPrivacyLink !== false,
+        showRefundLink: initialPresence.showRefundLink !== false,
         showReservation: initialPresence.showReservation !== false,
+        showTermsLink: initialPresence.showTermsLink !== false,
         showWhatsApp: initialPresence.showWhatsApp !== false,
+        specialNote: initialPresence.specialNote || '',
         whatsappNumber: initialPresence.whatsappNumber || '',
     };
 }
@@ -414,6 +418,21 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={10} vertical>
+                        <Text strong>{t('officialPageSpecialNote')}</Text>
+                        <TextArea
+                            autoSize={{ minRows: 2, maxRows: 4 }}
+                            maxLength={140}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, specialNote: value }))}
+                            placeholder={t('officialPageSpecialNotePlaceholder')}
+                            showCount
+                            value={formData.specialNote}
+                        />
+                        <Text type="secondary">{t('officialPageSpecialNoteHelp')}</Text>
+                    </Flex>
+                </Card>
+
+                <Card>
+                    <Flex gap={10} vertical>
                         <Text strong>{t('whatsappNumber')}</Text>
                         <Input onChange={(value) => setFormData((previous) => ({ ...previous, whatsappNumber: value }))} placeholder="+91 98765 43210" value={formData.whatsappNumber} />
                         <Text type="secondary">{t('whatsappNumberHelp')}</Text>
@@ -603,6 +622,27 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         </Flex>
                     </Flex>
                 </Card>
+
+                {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES ? (
+                    <Card>
+                        <Flex gap={12} vertical>
+                            <Text strong>{t('publicPolicyLinks')}</Text>
+                            <Flex align="center" justify="space-between">
+                                <Text>{t('showPrivacyLink')}</Text>
+                                <Switch checked={formData.showPrivacyLink} onChange={(value) => setFormData((previous) => ({ ...previous, showPrivacyLink: value }))} />
+                            </Flex>
+                            <Flex align="center" justify="space-between">
+                                <Text>{t('showTermsLink')}</Text>
+                                <Switch checked={formData.showTermsLink} onChange={(value) => setFormData((previous) => ({ ...previous, showTermsLink: value }))} />
+                            </Flex>
+                            <Flex align="center" justify="space-between">
+                                <Text>{t('showRefundLink')}</Text>
+                                <Switch checked={formData.showRefundLink} onChange={(value) => setFormData((previous) => ({ ...previous, showRefundLink: value }))} />
+                            </Flex>
+                            <Text type="secondary">{t('policyContentDesktopHint')}</Text>
+                        </Flex>
+                    </Card>
+                ) : null}
 
                 <Flex
                     gap={8}

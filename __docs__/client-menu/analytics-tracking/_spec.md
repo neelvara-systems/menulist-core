@@ -85,6 +85,8 @@ Entry source is attached to existing menu view and final action writes. It does 
 
 The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the dashboard read model for all owners. The Pro analytics assistant layer adds `ownerActionPlan` plus daily / weekly / monthly wording summaries.
 
+OBP language usage is shown only for multi-language OBPs. Language switch links remain URL-based for SEO/AEO, preserve source attribution parameters, and only count adoption after the switched language page remains active for the dwell window.
+
 Pro menu intelligence joins existing analytics counters with compact owner-authored menu catalog fields during nightly settlement. It produces deterministic owner action candidates for unavailable demand, best-seller validation, category order, hidden demand, variant clarity, metadata demand, timed categories, and price signals.
 
 Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and `platformSummary/storesSummary.stores.{sId}.activePlanType`. Only `pro` and `premium` are eligible. Missing plan data fails closed and writes an `analyticsAiEntitlement` lock state into the dashboard read model. When enabled, owner analytics wording uses the analytics-specific `gemini-2.5-flash-lite` model because the underlying metrics and action choices are deterministic.

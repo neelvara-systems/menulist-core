@@ -64,6 +64,14 @@ publicPresence?: {
     /** Online ordering URL (e.g., Swiggy, Zomato). For schema.org + CTA. */
     orderUrl?: string;
 
+    /** Optional short note shown on OBP, max 140 chars. */
+    specialNote?: string;
+
+    /** Compliance footer link visibility. Defaults true per link. */
+    showPrivacyLink?: boolean;
+    showTermsLink?: boolean;
+    showRefundLink?: boolean;
+
     /** Year established. For schema.org foundingDate + "Serving since" on OBP. */
     establishedYear?: number;
 
@@ -81,6 +89,9 @@ publicPresence?: {
 
     /** Up to 3 curated business photos (storefront, interior, hero product). Max 3 URLs. */
     photos?: string[];
+
+    /** Owner-defined public attribute chips, shown after controlled attributes. */
+    customAttributes?: Array<{ id: string; label: string; icon?: string; active?: boolean }>;
 };
 
 /** Permanent closure state. When true, OBP shows "Permanently Closed" + disables menu CTA. */
@@ -255,6 +266,8 @@ This reuses the same logic from `ENABLE_HOURS_STATUS_DISPLAY` feature.
 - Otherwise OBP falls back through the normalized store language policy, with English (`en`) as canonical fallback.
 - When a store has more than one active public language, OBP renders a compact language switcher.
 - OBP menu CTA URLs preserve the current language with `?lang=xx`, so customers land on the menu in the same language.
+- OBP language switch links remain URL-based for SEO/AEO and preserve source/UTM attribution parameters such as `src`, `source`, `entry_source`, `utm_source`, `utm_medium`, and `utm_campaign`.
+- Language usage analytics are shown only for multi-language OBPs. Page opens carry the active language on the existing OBP view write, and a language adoption is counted only after the switched language remains active for the dwell window. De-dupe is scoped to the store-local analytics day.
 - Brand OBP and outlet OBP use the same resolver and selector behavior.
 - OBP metadata and JSON-LD resolve localized business copy using the same language.
 
@@ -268,7 +281,33 @@ Primary implementation files:
 
 ---
 
-## 10. Schema.org Structured Data
+## 10. Public Rendering Hardening
+
+**Updated May 3, 2026** — OBP public rendering now applies these guards:
+
+- Quick actions wrap across rows when Call, WhatsApp, Directions, Reserve, and Order are all enabled.
+- Social links use the same social source family as the public menu footer: Instagram, Facebook, X/Twitter, LinkedIn, YouTube, WhatsApp, and Website.
+- Menu CTA listing excludes inactive/deleted menus and only includes the currently active special menu, using its base menu URL so the public resolver can apply the special-menu override.
+- Business attributes are filtered by business type before display and include compact icon labels.
+- Owner-defined custom attributes render after controlled attributes, capped by settings UI.
+- OBP photos open an in-page preview on click.
+- Privacy, Terms, and Refund footer links are individually show/hide controlled.
+- Compliance content can be edited from Official Business Page settings using the existing compliance override API.
+
+Primary implementation files:
+
+- `src/app/client/obp/OBPContent.tsx`
+- `src/app/client/obp/OBPPhotoStrip.tsx`
+- `src/app/client/obp/OBPExternalLinks.tsx`
+- `src/lib/obp/businessAttributes.ts`
+- `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx`
+- `src/components/templates/main-app/businessSettings/tabs/BusinessAttributesTab.tsx`
+- `src/components/mobile/screens/MobileOfficialPageScreen.tsx`
+- `src/components/mobile/screens/MobileBusinessAttributesScreen.tsx`
+
+---
+
+## 11. Schema.org Structured Data
 
 **Updated Feb 16, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts`.
 
@@ -326,7 +365,7 @@ The runtime implementation also accepts the resolved render language so localize
 
 ---
 
-## 11. Routing Changes
+## 12. Routing Changes
 
 ### Current Flow (`_client/[[...slug]]/page.tsx`)
 
@@ -528,6 +567,8 @@ Public Link: joespizza.menulist.ai [copy icon]
 **Summary doc namespaces:** `weekly` (current week metrics + viewsChange), `monthly` (current month metrics), `previousWeek` (for comparison), `lifetime` (all-time counters with dedup via `lastProcessedDate`).
 
 **OBP source attribution:** Share surfaces append canonical `src`, `source`, `entry_source`, and `utm_source` parameters to OBP and direct-menu links. `OBP_VIEW` stores `viewsByEntrySource` / `viewsBySource`; existing OBP action, View Menu, and external-link click writes attach `obpActionClicksBySource`, `obpMenuClicksBySource`, and `obpLinkClicksBySource`. This gives owners visitor-source context without adding a separate source event or extra write path.
+
+**OBP language usage:** Multi-language OBPs attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing OBP view write. `obpLanguageAdoptions` is a separate dwell-gated adoption event so quick accidental language taps are ignored. Single-language OBPs do not track or display language usage.
 
 **OBP field names vs Menu field names:** OBP uses `totalOBPViews`, `totalOBPActionClicks`, `obpActionClicks.{call|whatsapp|directions}`. Menu uses `totalViews`, `totalClicks`, block metrics. Different field names because OBP and menu have fundamentally different metric types. The aggregation pipeline structure is identical — just the fields differ.
 

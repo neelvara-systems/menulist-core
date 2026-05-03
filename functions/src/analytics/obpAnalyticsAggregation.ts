@@ -58,6 +58,10 @@ interface OBPDailyData {
         google_review?: number;
         instagram?: number;
         facebook?: number;
+        twitter?: number;
+        linkedin?: number;
+        youtube?: number;
+        whatsapp?: number;
         website?: number;
     };
     obpShares?: {
@@ -86,7 +90,7 @@ interface OBPAggregatedMetrics {
     totalOBPLinkClicks: number;
     totalOBPShares: number;
     obpActionClicks: { call: number; whatsapp: number; directions: number; reserve: number; order: number };
-    obpLinkClicks: { google_review: number; instagram: number; facebook: number; website: number };
+    obpLinkClicks: { google_review: number; instagram: number; facebook: number; twitter: number; linkedin: number; youtube: number; whatsapp: number; website: number };
     obpShares: { whatsapp: number; copy_link: number; copy_message: number };
     viewsByEntrySource: Record<string, number>;
     viewsBySource: Record<string, number>;
@@ -120,7 +124,7 @@ function emptyMetrics(): OBPAggregatedMetrics {
         totalOBPLinkClicks: 0,
         totalOBPShares: 0,
         obpActionClicks: { call: 0, whatsapp: 0, directions: 0, reserve: 0, order: 0 },
-        obpLinkClicks: { google_review: 0, instagram: 0, facebook: 0, website: 0 },
+        obpLinkClicks: { google_review: 0, instagram: 0, facebook: 0, twitter: 0, linkedin: 0, youtube: 0, whatsapp: 0, website: 0 },
         obpShares: { whatsapp: 0, copy_link: 0, copy_message: 0 },
         viewsByEntrySource: {},
         viewsBySource: {},
@@ -172,6 +176,22 @@ function readAnalyticsMap(data: Record<string, any> = {}, field: string): Record
         if (!key.startsWith(prefix)) return;
         const numeric = Number(value || 0);
         if (numeric > 0) result[key.slice(prefix.length)] = numeric;
+    });
+
+    return result;
+}
+
+function readStringMap(data: Record<string, any> = {}, field: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    Object.entries(data?.[field] || {}).forEach(([key, value]) => {
+        if (typeof value !== 'string' || !value.trim()) return;
+        result[key] = value.trim();
+    });
+
+    const prefix = `${field}.`;
+    Object.entries(data || {}).forEach(([key, value]) => {
+        if (!key.startsWith(prefix) || typeof value !== 'string' || !value.trim()) return;
+        result[key.slice(prefix.length)] = value.trim();
     });
 
     return result;
@@ -275,6 +295,10 @@ function normalizeOBPLinkClicks(data: Record<string, any> = {}) {
         google_review: readOBPCounter(data, 'obpLinkClicks', 'google_review'),
         instagram: readOBPCounter(data, 'obpLinkClicks', 'instagram'),
         facebook: readOBPCounter(data, 'obpLinkClicks', 'facebook'),
+        twitter: readOBPCounter(data, 'obpLinkClicks', 'twitter'),
+        linkedin: readOBPCounter(data, 'obpLinkClicks', 'linkedin'),
+        youtube: readOBPCounter(data, 'obpLinkClicks', 'youtube'),
+        whatsapp: readOBPCounter(data, 'obpLinkClicks', 'whatsapp'),
         website: readOBPCounter(data, 'obpLinkClicks', 'website'),
     };
 }
@@ -302,7 +326,7 @@ function normalizeOBPDailyData(data: OBPDailyData): OBPDailyData {
         obpViewsByLanguage: readAnalyticsMap(data as Record<string, any>, 'obpViewsByLanguage'),
         obpSessionsByLanguage: readAnalyticsMap(data as Record<string, any>, 'obpSessionsByLanguage'),
         obpLanguageAdoptions: readAnalyticsMap(data as Record<string, any>, 'obpLanguageAdoptions'),
-        obpLanguageNames: (data as Record<string, any>).obpLanguageNames || {},
+        obpLanguageNames: readStringMap(data as Record<string, any>, 'obpLanguageNames'),
     };
 }
 
@@ -346,7 +370,10 @@ function normalizeOBPLifetimeData(data: Record<string, any>): OBPDailyData {
         obpViewsByLanguage: readAnalyticsMap(lifetime, 'obpViewsByLanguage'),
         obpSessionsByLanguage: readAnalyticsMap(lifetime, 'obpSessionsByLanguage'),
         obpLanguageAdoptions: readAnalyticsMap(lifetime, 'obpLanguageAdoptions'),
-        obpLanguageNames: lifetime.obpLanguageNames || {},
+        obpLanguageNames: {
+            ...readStringMap(data, 'lifetime.obpLanguageNames'),
+            ...readStringMap(lifetime, 'obpLanguageNames'),
+        },
     };
 }
 
@@ -627,6 +654,10 @@ function aggregateOBPDailyDocsFromMap(
         metrics.obpLinkClicks.google_review += data.obpLinkClicks?.google_review || 0;
         metrics.obpLinkClicks.instagram += data.obpLinkClicks?.instagram || 0;
         metrics.obpLinkClicks.facebook += data.obpLinkClicks?.facebook || 0;
+        metrics.obpLinkClicks.twitter += data.obpLinkClicks?.twitter || 0;
+        metrics.obpLinkClicks.linkedin += data.obpLinkClicks?.linkedin || 0;
+        metrics.obpLinkClicks.youtube += data.obpLinkClicks?.youtube || 0;
+        metrics.obpLinkClicks.whatsapp += data.obpLinkClicks?.whatsapp || 0;
         metrics.obpLinkClicks.website += data.obpLinkClicks?.website || 0;
         metrics.obpShares.whatsapp += data.obpShares?.whatsapp || 0;
         metrics.obpShares.copy_link += data.obpShares?.copy_link || 0;

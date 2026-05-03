@@ -28,6 +28,7 @@ import {
 } from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
@@ -47,6 +48,7 @@ import OBPCustomerAppMount from "./OBPCustomerAppMount";
 import OBPExternalLinks from "./OBPExternalLinks";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPMenuCTA from "./OBPMenuCTA";
+import OBPPhotoStrip from "./OBPPhotoStrip";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
 
@@ -95,12 +97,21 @@ async function withRetry<T>(
 interface ObpMenuInfo {
     hasMenu: boolean;
     defaultSlug: string | undefined;
-    /** Active, non-special menu projects ordered with the default first. */
-    projects: Array<{ slug: string; name: string | Record<string, string>; isDefault: boolean; projectImage?: string | null }>;
+    /** Active menu projects ordered with the default first. Active special menus use their base project URL. */
+    projects: Array<{
+        projectId: string;
+        slug: string;
+        name: string | Record<string, string>;
+        isDefault: boolean;
+        projectImage?: string | null;
+        isSpecialMenu?: boolean;
+        specialMenuBaseProjectId?: string;
+        specialMenuDisplayName?: string | Record<string, string>;
+    }>;
 }
 
 const getObpMenuInfo = unstable_cache(
-    async (storeId: number): Promise<ObpMenuInfo> => {
+    async (storeId: number, activeSpecialMenuId?: string): Promise<ObpMenuInfo> => {
         const empty: ObpMenuInfo = { hasMenu: false, defaultSlug: undefined, projects: [] };
         try {
             const summaryRef = doc(
@@ -111,23 +122,49 @@ const getObpMenuInfo = unstable_cache(
             const summarySnap = await getDoc(summaryRef);
             if (!summarySnap.exists()) return empty;
             const raw = parseSummaryProjects(summarySnap.data());
-            const active = Object.values(raw).filter(
-                (p: any) => p.active !== false && !p.isSpecialMenu
+            const entries = Object.entries(raw).map(([projectId, data]: [string, any]) => ({ projectId, ...data }));
+            const activeRegular = entries.filter(
+                (p: any) => p.active !== false && p.deleted !== true && !p.isSpecialMenu
             );
-            if (active.length === 0) return empty;
+            if (activeRegular.length === 0) return empty;
 
             // Order: explicit default first, then everything else.
-            const defaultProj: any = active.find((p: any) => p.isDefault === true) || active[0];
-            const others = active.filter((p: any) => p !== defaultProj);
-            const ordered = [defaultProj, ...others];
+            const defaultProj: any = activeRegular.find((p: any) => p.isDefault === true) || activeRegular[0];
+            const activeSpecial = activeSpecialMenuId
+                ? entries.find((p: any) => {
+                    if (p.projectId !== activeSpecialMenuId) return false;
+                    if (p.active === false || p.deleted === true || p.isSpecialMenu !== true) return false;
+                    if (p.specialMenuStatus !== 'active') return false;
+                    const endsAtMs = p.specialMenuEndsAt ? new Date(p.specialMenuEndsAt).getTime() : null;
+                    return !endsAtMs || endsAtMs > Date.now();
+                })
+                : null;
+            const others = activeRegular.filter((p: any) => p !== defaultProj);
+            const ordered = [
+                ...(activeSpecial ? [activeSpecial] : []),
+                defaultProj,
+                ...others,
+            ];
 
             const projects = ordered
                 .map((p: any) => ({
+                    projectId: p.projectId,
                     slug: (p.slug as string) || '',
-                    name: p.name,
-                    isDefault: p === defaultProj,
+                    name: p.isSpecialMenu ? (p.specialMenuDisplayName || p.name) : p.name,
+                    isDefault: !p.isSpecialMenu && p === defaultProj,
                     projectImage: (p.projectImage as string) || null,
+                    isSpecialMenu: p.isSpecialMenu === true,
+                    specialMenuBaseProjectId: p.specialMenuBaseProjectId,
+                    specialMenuDisplayName: p.specialMenuDisplayName,
                 }))
+                .map((p) => {
+                    if (!p.isSpecialMenu) return p;
+                    const baseProject = activeRegular.find((project: any) => project.projectId === p.specialMenuBaseProjectId) || defaultProj;
+                    return {
+                        ...p,
+                        slug: (baseProject?.slug as string) || p.slug,
+                    };
+                })
                 .filter((p) => p.slug && p.name);
 
             return {
@@ -372,7 +409,7 @@ export default async function OBPContent({
     // Eliminated redundant getStoreById() call — saves 1 Firestore read per OBP page visit.
     // G-05 + G-06: single consolidated read returns hasMenu, default-project slug,
     // and the full active-projects list for per-project CTA rendering.
-    const menuInfo = await withTimeout(getObpMenuInfo(storeData.storeId))
+    const menuInfo = await withTimeout(getObpMenuInfo(storeData.storeId, storeData.activeSpecialMenuId))
         .catch(() => ({ hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo));
     const { hasMenu, defaultSlug, projects: activeProjects } = menuInfo;
 
@@ -489,33 +526,29 @@ export default async function OBPContent({
     const socialMedia = store?.socialMedia || {};
     const instagram = socialMedia.instagram;
     const facebook = socialMedia.facebook;
+    const twitter = socialMedia.twitter;
+    const linkedin = socialMedia.linkedin;
+    const youtube = socialMedia.youtube;
+    const socialWhatsApp = socialMedia.whatsapp;
     const website = store?.url || socialMedia.website;
 
-    const hasSocials = !!(instagram || facebook || website);
+    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website);
 
     // Business attributes → display tags
-    const ATTRIBUTE_DISPLAY: Record<string, string> = {
-        vegetarian: t('publicAttributes.vegetarian'),
-        vegan: t('publicAttributes.vegan'),
-        halal: t('publicAttributes.halal'),
-        glutenFree: t('publicAttributes.glutenFree'),
-        wifi: t('publicAttributes.wifi'),
-        outdoorSeating: t('publicAttributes.outdoorSeating'),
-        parking: t('publicAttributes.parking'),
-        airConditioning: t('publicAttributes.airConditioning'),
-        liveMusic: t('publicAttributes.liveMusic'),
-        petFriendly: t('publicAttributes.petFriendly'),
-        dineIn: t('publicAttributes.dineIn'),
-        takeaway: t('publicAttributes.takeaway'),
-        delivery: t('publicAttributes.delivery'),
-        driveThrough: t('publicAttributes.driveThrough'),
-        acceptsCards: t('publicAttributes.acceptsCards'),
-        acceptsUPI: t('publicAttributes.acceptsUPI'),
-        acceptsCash: t('publicAttributes.acceptsCash'),
-    };
-    const attributeTags: string[] = Object.entries(store?.businessAttributes || {})
-        .filter(([key, val]) => val === true && ATTRIBUTE_DISPLAY[key])
-        .map(([key]) => ATTRIBUTE_DISPLAY[key]);
+    const attributeConfig = getBusinessAttributeConfigForType(store?.businessType);
+    const attributeTags = attributeConfig
+        .filter((attribute) => store?.businessAttributes?.[attribute.key] === true)
+        .map((attribute) => ({
+            key: attribute.key,
+            icon: attribute.icon,
+            label: t(attribute.publicLabelKey),
+        }));
+    const customAttributeTags = normalizeCustomBusinessAttributes(pp.customAttributes).map((attribute) => ({
+        key: attribute.id,
+        icon: attribute.icon || '+',
+        label: attribute.label,
+    }));
+    const allAttributeTags = [...attributeTags, ...customAttributeTags].slice(0, 18);
 
     // Freshness signal — compute how recently the store was updated
     const freshnessText = getFreshnessText(store?.modifiedOn, t);
@@ -525,6 +558,7 @@ export default async function OBPContent({
 
     // Known-for identity cue
     const knownFor = getLocalizedText(pp.knownFor, contentLanguage, getPrimaryLocalizedLanguage(pp.knownFor, contentLanguage), '');
+    const specialNote = getLocalizedText(pp.specialNote, contentLanguage, getPrimaryLocalizedLanguage(pp.specialNote, contentLanguage), '');
 
     // Short area context (city name for quick location recognition)
     const areaContext = store?.area || store?.city || null;
@@ -553,6 +587,11 @@ export default async function OBPContent({
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const trackingEnabled = analyticsPreferences.trackOfficialBusinessPage;
     const includeLocation = analyticsPreferences.trackLocation;
+    const policyLinks = [
+        pp.showPrivacyLink !== false ? { href: '/privacy', label: t('publicPrivacy') } : null,
+        pp.showTermsLink !== false ? { href: '/terms', label: t('publicTerms') } : null,
+        pp.showRefundLink !== false ? { href: '/refund', label: t('publicRefund') } : null,
+    ].filter(Boolean) as Array<{ href: string; label: string }>;
 
     return (
         <>
@@ -712,36 +751,7 @@ export default async function OBPContent({
                 </div>
 
                 {/* ── Business Photos (P2 — max 3, trust proof) ── */}
-                {photos.length > 0 && (
-                    <div style={{
-                        display: 'flex',
-                        gap: 8,
-                        padding: '0 20px',
-                        maxWidth: 480,
-                        margin: '0 auto 24px',
-                        width: '100%',
-                    }}>
-                        {photos.map((url, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    flex: 1,
-                                    aspectRatio: '4/3',
-                                    borderRadius: 8,
-                                    overflow: 'hidden',
-                                    background: '#f5f5f5',
-                                }}
-                            >
-                                <img
-                                    src={url}
-                                    alt={`${storeName} photo ${i + 1}`}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    loading="lazy"
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <OBPPhotoStrip photos={photos} storeName={storeName} />
 
                 {/* ── Quick Actions (Client Component for onClick tracking) ── */}
                 <OBPActions
@@ -788,6 +798,12 @@ export default async function OBPContent({
                     </div>
                 )}
 
+                {specialNote ? (
+                    <div className={styles.note}>
+                        {specialNote}
+                    </div>
+                ) : null}
+
                 {/* ── Structured Info Section (P3 — AEO critical, all SSR) ── */}
                 {hasStructuredInfo && !isPermanentlyClosed && (
                     <div className={styles.info}>
@@ -830,10 +846,13 @@ export default async function OBPContent({
                 )}
 
                 {/* ── Business Attributes (BTG Layer 12) ── */}
-                {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && attributeTags.length > 0 && (
+                {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0 && (
                     <div className={styles.attributes}>
-                        {attributeTags.map((tag) => (
-                            <span key={tag} className={styles.attributeTag}>{tag}</span>
+                        {allAttributeTags.map((tag) => (
+                            <span key={tag.key} className={styles.attributeTag}>
+                                <span className={styles.attributeIcon}>{tag.icon}</span>
+                                <span>{tag.label}</span>
+                            </span>
                         ))}
                     </div>
                 )}
@@ -849,6 +868,10 @@ export default async function OBPContent({
                         includeLocation={includeLocation}
                         instagram={instagram}
                         facebook={facebook}
+                        twitter={twitter}
+                        linkedin={linkedin}
+                        youtube={youtube}
+                        whatsapp={socialWhatsApp}
                         website={website}
                     />
                 )}
@@ -866,13 +889,11 @@ export default async function OBPContent({
                 {/* ── Footer ── */}
                 <footer className={styles.footer}>
                     <span className={styles.footerText}>{t('publicOfficialPagePoweredBy')}</span>
-                    {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && (
+                    {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && policyLinks.length > 0 && (
                         <div style={{ marginTop: 6, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                            <a href="/privacy" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{t('publicPrivacy')}</a>
-                            <span style={{ fontSize: 11, color: '#ccc' }}>·</span>
-                            <a href="/terms" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{t('publicTerms')}</a>
-                            <span style={{ fontSize: 11, color: '#ccc' }}>·</span>
-                            <a href="/refund" style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{t('publicRefund')}</a>
+                            {policyLinks.map((link) => (
+                                <a key={link.href} href={link.href} style={{ fontSize: 11, color: '#999', textDecoration: 'none' }}>{link.label}</a>
+                            ))}
                         </div>
                     )}
                 </footer>

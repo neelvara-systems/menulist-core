@@ -181,7 +181,7 @@ async function getProjectBySlugOrDefault(
     // Use projectsSummary — has slug data + is 1 read instead of N
     // Filter out special menu projects — they are resolved separately via resolveSpecialMenuOverride
     projects = Object.entries(summaryProjects)
-        .filter(([, data]: [string, any]) => data.active !== false && !data.isSpecialMenu)
+        .filter(([, data]: [string, any]) => data.active !== false && data.deleted !== true && !data.isSpecialMenu)
         .map(([projectId, data]: [string, any]) => ({
             id: projectId,
             projectId,
@@ -420,7 +420,7 @@ const getMenuAliasCanonicalSlug = unstable_cache(
             if (!summarySnap.exists()) return null;
             const projects = parseSummaryProjects(summarySnap.data());
             const activeProjects = Object.values(projects).filter(
-                (p: any) => p.active !== false && !p.isSpecialMenu
+                (p: any) => p.active !== false && p.deleted !== true && !p.isSpecialMenu
             );
             // Layer 1 check: if any active project claims slug 'menu', /menu IS
             // that project's canonical URL — no override needed.
@@ -641,6 +641,13 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             : getPublicLanguageOptions(metadataStore))
         : getPublicLanguageOptions(metadataStore);
     const languageAlternates = buildPublicLanguageAlternates(currentUrl, metadataLanguageOptions);
+    const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject;
+    const canonicalWithoutLanguage = isOBPMetadata
+        ? currentUrl
+        : metadataStore.canonicalUrl || menuAliasCanonical || canonicalBase;
+    const canonicalWithLanguage = isOBPMetadata && requestedLanguage && metadataLanguageOptions.length > 1
+        ? appendPublicLanguageParam(canonicalWithoutLanguage, metadataLanguage)
+        : canonicalWithoutLanguage;
 
     if (metadataProject) {
         const projectTitle = getLocalizedText(
@@ -739,7 +746,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         alternates: {
             // Precedence: owner-supplied custom canonical (rare) > R5 Layer 2
             // alias override (when /menu serves default project) > tenant base.
-            canonical: metadataStore.canonicalUrl || menuAliasCanonical || canonicalBase,
+            // OBP language variants use their current public URL so `?lang=xx`
+            // pages canonicalize to their own localized URL when requested.
+            canonical: canonicalWithLanguage,
             ...(languageAlternates ? { languages: languageAlternates } : {}),
         },
         openGraph: {

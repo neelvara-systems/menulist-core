@@ -131,8 +131,8 @@ function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
                         <Flex vertical gap={2}>
                             <Text strong style={{ fontSize: 12 }}>{language.label}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {Math.max(language.sessions, language.views).toLocaleString()} sessions/views
-                                {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed switches` : ''}
+                                {Math.max(language.sessions, language.views).toLocaleString()} page opens
+                                {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed after switch` : ''}
                             </Text>
                         </Flex>
                     </Card>
