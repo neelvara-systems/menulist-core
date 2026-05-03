@@ -266,6 +266,53 @@ function getTodayHoursDisplay(workingHours: Record<string, string> | undefined, 
     return t('publicOpenToday', { hours: `${formatClockTime(openTime)} – ${formatClockTime(closeTime)}` });
 }
 
+function getSafeGoogleMapsEmbedUrl(url?: string): string | null {
+    if (!url) return null;
+    try {
+        const parsed = new URL(url);
+        const isGoogleHost = ['www.google.com', 'google.com', 'maps.google.com'].includes(parsed.hostname);
+        if (parsed.protocol === 'https:' && isGoogleHost && parsed.pathname.startsWith('/maps/embed')) {
+            return parsed.toString();
+        }
+    } catch {
+        return null;
+    }
+    return null;
+}
+
+function getValidCoordinate(value: unknown): number | null {
+    const numberValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function buildGoogleMapsEmbedUrl(params: {
+    address?: string;
+    apiKey?: string;
+    geo?: { latitude?: unknown; longitude?: unknown };
+    googleMapsUrl?: string;
+}): string | null {
+    const safeOwnerEmbedUrl = getSafeGoogleMapsEmbedUrl(params.googleMapsUrl);
+    if (safeOwnerEmbedUrl) return safeOwnerEmbedUrl;
+
+    if (!params.apiKey) return null;
+
+    const latitude = getValidCoordinate(params.geo?.latitude);
+    const longitude = getValidCoordinate(params.geo?.longitude);
+    const query = latitude !== null && longitude !== null
+        ? `${latitude},${longitude}`
+        : params.address?.trim();
+
+    if (!query) return null;
+
+    const searchParams = new URLSearchParams({
+        key: params.apiKey,
+        q: query,
+        zoom: '16',
+    });
+
+    return `https://www.google.com/maps/embed/v1/place?${searchParams.toString()}`;
+}
+
 // ── Freshness signal text ──
 
 function getFreshnessText(modifiedOn: any, t: (key: string) => string): string | null {
@@ -315,10 +362,11 @@ function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t:
                     return `${formatClockTime(openTime)} – ${formatClockTime(closeTime)}`;
                 })()
             : t('publicClosed');
+        const isToday = todayKey === day;
         return (
-            <div key={day} className={`${styles.hoursRow} ${todayKey === day ? styles.hoursRowToday : ''}`}>
+            <div key={day} className={`${styles.hoursRow} ${isToday ? styles.hoursRowToday : ''}`}>
                 <span className={styles.hoursDay}>{t(`publicDays.${day}`)}</span>
-                <span className={isClosed ? styles.hoursClosed : undefined}>{display}</span>
+                <span className={`${styles.hoursTime} ${isClosed ? styles.hoursClosed : ''}`}>{display}</span>
             </div>
         );
     });
@@ -749,6 +797,12 @@ export default async function OBPContent({
 
     const whatsappNumber = (pp.whatsappNumber || store?.phoneNumber || '').replace(/[^0-9+]/g, '');
     const directionsUrl = pp.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
+    const googleMapsEmbedUrl = buildGoogleMapsEmbedUrl({
+        address: fullAddress,
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY,
+        geo: store?.geo || { latitude: store?.latitude, longitude: store?.longitude },
+        googleMapsUrl: pp.googleMapsUrl,
+    });
 
     // Social links
     const socialMedia = store?.socialMedia || {};
@@ -1078,22 +1132,30 @@ export default async function OBPContent({
                     {/* ── Info Block ── */}
                     {(fullAddress || todayHours) && (
                         <section className={`${styles.info} ${styles.locationInfo}`} aria-label={t('publicBusinessDetailsLabel')}>
-                        <h2 className={styles.groupTitle}>
-                            <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuMapPin, '📍')}</span>
-                            {t('publicLocation')}
-                        </h2>
-                        {fullAddress && (
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuMapPin, '📍', 16)}</span>
-                                <span>{fullAddress}</span>
-                            </div>
-                        )}
-                        {todayHours && (
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuClock, '🕒', 16)}</span>
-                                <span>{todayHours}</span>
-                            </div>
-                        )}
+                            <h2 className={styles.groupTitle}>
+                                <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuMapPin, '📍')}</span>
+                                {t('publicLocation')}
+                            </h2>
+                            {googleMapsEmbedUrl && (
+                                <div className={styles.mapPreview}>
+                                    <iframe
+                                        allowFullScreen
+                                        loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        src={googleMapsEmbedUrl}
+                                        title={`${storeName} ${t('publicLocation')}`}
+                                    />
+                                </div>
+                            )}
+                            {fullAddress && (
+                                <p className={styles.locationAddress}>{fullAddress}</p>
+                            )}
+                            {todayHours && (
+                                <div className={styles.infoRow}>
+                                    <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuClock, '🕒', 16)}</span>
+                                    <span>{todayHours}</span>
+                                </div>
+                            )}
                         </section>
                     )}
 

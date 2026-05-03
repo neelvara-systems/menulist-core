@@ -158,6 +158,8 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
         keywords: getLocalizedStoreKeywords(storeDetails?.keywords, contentLanguage, []),
         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, contentLanguage, ''),
         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, contentLanguage, ''),
+        latitude: storeDetails?.latitude ?? storeDetails?.geo?.latitude,
+        longitude: storeDetails?.longitude ?? storeDetails?.geo?.longitude,
         publicPresence: {
             ...(storeDetails?.publicPresence || {}),
             displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, ''),
@@ -792,6 +794,21 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
         changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
         changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
+        const latitudeInput = changesToUpload.latitude;
+        const longitudeInput = changesToUpload.longitude;
+        delete changesToUpload.latitude;
+        delete changesToUpload.longitude;
+        if (latitudeInput !== undefined || longitudeInput !== undefined) {
+            const latitudeValue = String(latitudeInput ?? '').trim();
+            const longitudeValue = String(longitudeInput ?? '').trim();
+            const latitude = latitudeValue ? Number(latitudeValue) : undefined;
+            const longitude = longitudeValue ? Number(longitudeValue) : undefined;
+            if (latitude !== undefined && longitude !== undefined && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+                changesToUpload.geo = { latitude, longitude };
+            } else if (!latitudeValue && !longitudeValue && storeDetails?.geo) {
+                changesToUpload.geo = null;
+            }
+        }
         const contentLanguage = resolveStoreContentLanguage(storeDetails);
 
         if (changesToUpload.publicPresence) {
