@@ -33,6 +33,14 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import {
+    appendPublicLanguageParam,
+    buildPublicLanguageAlternates,
+    getPublicLanguageOptions,
+    normalizePublicLanguageCode,
+    resolveProjectPublicLanguage,
+    resolveStorePublicLanguage,
+} from "@lib/localization/publicRenderLanguage";
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
@@ -437,8 +445,9 @@ const getMenuAliasCanonicalSlug = unstable_cache(
 );
 
 // Generate metadata for SEO
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
+    const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang);
 
     // Lookup store based on tenant type (with retry for transient failures - TASK 4)
     let storeData: any = null;
@@ -455,7 +464,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         };
     }
 
-    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+    const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
     const storeName = getLocalizedText(
         storeData?.publicPresence?.displayName,
         contentLanguage,
@@ -623,19 +632,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const resolvedStoreName = metadataStore?.name || storeName;
     const resolvedImageUrl = metadataStore?.logo || imageUrl;
+    const metadataLanguage = metadataProject
+        ? resolveProjectPublicLanguage(metadataProject, metadataStore, requestedLanguage)
+        : resolveStorePublicLanguage(metadataStore, requestedLanguage);
+    const metadataLanguageOptions = metadataProject
+        ? (Array.isArray(metadataProject?.languages) && metadataProject.languages.length > 0
+            ? metadataProject.languages
+            : getPublicLanguageOptions(metadataStore))
+        : getPublicLanguageOptions(metadataStore);
+    const languageAlternates = buildPublicLanguageAlternates(currentUrl, metadataLanguageOptions);
 
     if (metadataProject) {
-        const projectTitle = metadataProjectRecord?.name || metadataProject?.metadata?.name;
+        const projectTitle = getLocalizedText(
+            metadataProjectRecord?.name || metadataProject?.metadata?.name,
+            metadataLanguage,
+            getPrimaryLocalizedLanguage(metadataProjectRecord?.name || metadataProject?.metadata?.name, metadataLanguage),
+            '',
+        );
         if (projectTitle && !contextSegments.length) {
             title = `${projectTitle} | ${resolvedStoreName}`;
             description = getLocalizedText(
                 metadataStore.metaDescription,
-                contentLanguage,
-                getPrimaryLocalizedLanguage(metadataStore.metaDescription, contentLanguage),
+                metadataLanguage,
+                getPrimaryLocalizedLanguage(metadataStore.metaDescription, metadataLanguage),
                 getLocalizedText(
                     metadataStore.tagline,
-                    contentLanguage,
-                    getPrimaryLocalizedLanguage(metadataStore.tagline, contentLanguage),
+                    metadataLanguage,
+                    getPrimaryLocalizedLanguage(metadataStore.tagline, metadataLanguage),
                     '',
                 ),
             )
@@ -649,6 +672,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             currentUrl,
             projectData: metadataProject,
             contextSegments,
+            language: metadataLanguage,
         });
 
         if (contextMetadata) {
@@ -659,11 +683,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
                 description,
                 keywords: getResolvedStoreKeywords(
                     metadataStore?.keywords,
-                    contentLanguage,
+                    metadataLanguage,
                     [],
                 ).join(", "),
                 manifest: manifestUrl,
-                alternates: contextMetadata.alternates,
+                alternates: {
+                    ...contextMetadata.alternates,
+                    ...(languageAlternates ? { languages: languageAlternates } : {}),
+                },
                 openGraph: {
                     title,
                     description,
@@ -705,7 +732,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         description,
         keywords: getResolvedStoreKeywords(
             metadataStore?.keywords,
-            contentLanguage,
+            metadataLanguage,
             [],
         ).join(", "),
         manifest: manifestUrl,
@@ -713,6 +740,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             // Precedence: owner-supplied custom canonical (rare) > R5 Layer 2
             // alias override (when /menu serves default project) > tenant base.
             canonical: metadataStore.canonicalUrl || menuAliasCanonical || canonicalBase,
+            ...(languageAlternates ? { languages: languageAlternates } : {}),
         },
         openGraph: {
             title,
@@ -771,8 +799,9 @@ function generateSchemaOrgJsonLd(
     projectData: any,
     storeData: any,
     canonicalUrl: string,
+    renderLanguage?: string,
 ) {
-    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+    const contentLanguage = renderLanguage || resolveProjectPublicLanguage(projectData, storeData);
     const storeName = getLocalizedText(
         storeData?.publicPresence?.displayName,
         contentLanguage,
@@ -793,7 +822,7 @@ function generateSchemaOrgJsonLd(
     const openingHours = buildOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
     const schemaType = getMenuSchemaType(storeData?.businessType);
-    const publicDescription = getPublicBusinessDescription(storeData);
+    const publicDescription = getPublicBusinessDescription(storeData, contentLanguage);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
 
     return {
@@ -824,7 +853,7 @@ function generateSchemaOrgJsonLd(
             "@type": "Menu",
             hasMenuSection: categories.slice(0, 10).map((category: any) => ({
                 "@type": "MenuSection",
-                name: category.name?.en || category.name?.default || "Menu Section",
+                name: getLocalizedValue(category.name, contentLanguage) || "Menu Section",
                 hasMenuItem: items
                     .filter((item: any) => item.category === category.id)
                     .slice(0, 20)
@@ -846,9 +875,9 @@ function generateSchemaOrgJsonLd(
 
                         return {
                             "@type": "MenuItem",
-                            name: item.name?.en || item.name?.default || "Menu Item",
+                            name: getLocalizedValue(item.name, contentLanguage) || "Menu Item",
                             description:
-                                item.description?.en || item.description?.default || "",
+                                getLocalizedValue(item.description, contentLanguage) || "",
                             ...(showItemPrices && item.price && {
                                 offers: {
                                     "@type": "Offer",
@@ -924,6 +953,7 @@ function optimizeLanguagePayload(projectData: any): any {
 
 interface PageProps {
     params: { slug?: string[] };
+    searchParams?: { lang?: string | string[] };
 }
 
 function getLocalizedValue(
@@ -997,6 +1027,7 @@ function buildContextMetadata({
     currentUrl,
     projectData,
     contextSegments,
+    language,
 }: {
     storeName: string;
     storeDescription?: string;
@@ -1004,21 +1035,22 @@ function buildContextMetadata({
     currentUrl: string;
     projectData: any;
     contextSegments: string[];
+    language?: string;
 }): Pick<Metadata, 'title' | 'description' | 'openGraph' | 'twitter' | 'alternates'> | null {
     if (contextSegments.length < 2) return null;
 
-    const language = getProjectLanguage(projectData);
+    const renderLanguage = language || getProjectLanguage(projectData);
     const { categories, items } = flattenProjectMenu(projectData);
     const [contextType, contextValue] = contextSegments;
 
     if (contextType === 'item') {
-        const item = findItemByUrlSegment(items, contextValue, language);
+        const item = findItemByUrlSegment(items, contextValue, renderLanguage);
         if (!item) return null;
 
-        const itemName = getLocalizedValue(item.name, language) || 'Menu Item';
-        const itemDescription = getLocalizedValue(item.description, language);
+        const itemName = getLocalizedValue(item.name, renderLanguage) || 'Menu Item';
+        const itemDescription = getLocalizedValue(item.description, renderLanguage);
         const category = categories.find((entry: any) => entry?.id === item.category);
-        const categoryName = getLocalizedValue(category?.name, language);
+        const categoryName = getLocalizedValue(category?.name, renderLanguage);
         const imageUrl = item?.images?.[0]?.url || defaultImageUrl;
 
         return {
@@ -1051,10 +1083,10 @@ function buildContextMetadata({
     }
 
     if (contextType === 'category') {
-        const category = findCategoryByUrlSegment(categories, contextValue, language);
+        const category = findCategoryByUrlSegment(categories, contextValue, renderLanguage);
         if (!category) return null;
 
-        const categoryName = getLocalizedValue(category.name, language) || 'Category';
+        const categoryName = getLocalizedValue(category.name, renderLanguage) || 'Category';
         const categoryItems = items.filter((item: any) => item?.category === category.id && item?.active !== false);
         const categoryDescription = `${categoryName} from ${storeName}. ${categoryItems.length} ${categoryItems.length === 1 ? 'item' : 'items'} available.`;
 
@@ -1218,7 +1250,15 @@ function MenuSkeleton() {
 
 // Async data fetcher — streams after skeleton (Customer Infra Hardening - TASK 5)
 // All Firestore reads happen here so Suspense boundary can show skeleton instantly
-async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSegments?: string[] }) {
+async function MenuContent({
+    slug,
+    slugSegments = [],
+    requestedLanguage,
+}: {
+    slug?: string;
+    slugSegments?: string[];
+    requestedLanguage?: string | null;
+}) {
     const { subdomain, customDomain, tenantType, host } = await getTenantFromHeaders();
 
     // Lookup store — withTimeout prevents infinite SSR hang (GPT FIX 4), withRetry handles transients (TASK 4)
@@ -1245,7 +1285,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
         && storeData.subdomain.toLowerCase() !== subdomain.toLowerCase()
     ) {
         const canonical = `https://${storeData.subdomain}.menulist.ai${slug ? `/${slug}` : ''}`;
-        redirect(canonical);
+        redirect(appendPublicLanguageParam(canonical, requestedLanguage));
     }
 
     // URL Routing Architecture — Phase 2: Subdomain → custom domain 301 redirect
@@ -1253,7 +1293,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     // redirect to custom domain to consolidate SEO authority on the canonical URL
     if (tenantType === "subdomain" && storeData.customDomain && storeData.domainVerified) {
         const customUrl = `https://${storeData.customDomain}${slug ? `/${slug}` : ''}`;
-        redirect(customUrl);
+        redirect(appendPublicLanguageParam(customUrl, requestedLanguage));
     }
 
     // URL Routing Architecture — Gap 2: Outlet routing via outletSlug.
@@ -1271,7 +1311,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
     // (G-01) needs these preserved from the pre-switch master store.
     const masterSubdomain: string | undefined = storeData?.subdomain ?? undefined;
     const masterCustomDomain: string | undefined = storeData?.customDomain ?? undefined;
-    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+    const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
     // G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): capture the master brand name
     // BEFORE the outlet switch so the breadcrumb's "Business" node on outlet
     // project pages can show the tenant-level brand, not the outlet's name.
@@ -1304,7 +1344,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 const canonicalPath = tail
                     ? `/${canonicalOutletSlug}/${tail}`
                     : `/${canonicalOutletSlug}`;
-                redirect(canonicalPath);
+                redirect(appendPublicLanguageParam(canonicalPath, requestedLanguage));
             }
 
             storeData = outletStore;
@@ -1334,6 +1374,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 // T2-N-05 / D-12: lets the outlet OBP render the
                 // Business → Outlet breadcrumb with the correct brand name.
                 masterBrandName={masterBrandName}
+                requestedLanguage={requestedLanguage}
             />
         );
     }
@@ -1396,7 +1437,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
             : host
                 ? `https://${host}`
                 : `https://${subdomain}.menulist.ai`;
-        redirect(`${baseUrl}/${redirectSlug}`);
+        redirect(appendPublicLanguageParam(`${baseUrl}/${redirectSlug}`, requestedLanguage));
     }
 
     // Strip internal metadata before any customer-facing usage (TASK 7)
@@ -1447,14 +1488,15 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
             ? baseUrl
             : `${baseUrl}/${slugify(canonicalProjectName)}`);
 
+    const projectLanguage = resolveProjectPublicLanguage(projectData, storeDetails, requestedLanguage);
     const schemaOrgJsonLd = generateSchemaOrgJsonLd(
         projectData,
         storeDetails,
         canonicalUrl,
+        projectLanguage,
     );
 
     // BreadcrumbList for search engine navigation: Business → Menu
-    const projectLanguage = projectData?.languages?.[0] || contentLanguage;
     const storeName = getLocalizedText(
         storeDetails?.publicPresence?.displayName,
         contentLanguage,
@@ -1556,6 +1598,7 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
                 storeDetails={storeDetails}
                 precomputedBlocks={precomputedBlocks}
                 projectId={projectId}
+                initialLanguage={requestedLanguage || undefined}
                 // T5-N-01: R5 Layer resolution analytics — passed through to
                 // AnalyticsContext so trackMenuView can tag Layer 1 vs Layer 2.
                 menuResolutionLayer={isMenuAliasFallback ? 'layer2' : 'layer1'}
@@ -1566,9 +1609,10 @@ async function MenuContent({ slug, slugSegments = [] }: { slug?: string; slugSeg
 
 // Page entry point — skeleton renders instantly, data streams when ready (Customer Infra Hardening - TASK 5)
 // When ENABLE_OBP is true: root = OBP, "menu" slug = default project, other slugs = specific projects
-export default function ClientMenuPage({ params }: PageProps) {
+export default function ClientMenuPage({ params, searchParams }: PageProps) {
     const slug = params.slug?.[0];
     const allSlugs = params.slug || [];
+    const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang);
 
     // Compliance pages: /privacy, /terms, /refund — static compliance artifacts
     // @see __docs__/compliance-pages/compliance-pages_impl.md
@@ -1587,7 +1631,7 @@ export default function ClientMenuPage({ params }: PageProps) {
         const OBPSkeleton = require('../obp/OBPSkeleton').default;
         return (
             <Suspense fallback={<OBPSkeleton />}>
-                <OBPContent />
+                <OBPContent requestedLanguage={requestedLanguage} />
             </Suspense>
         );
     }
@@ -1602,7 +1646,7 @@ export default function ClientMenuPage({ params }: PageProps) {
     //             tag pointing at the default project's real slug URL.
     return (
         <Suspense fallback={<MenuSkeleton />}>
-            <MenuContent slug={slug} slugSegments={allSlugs} />
+            <MenuContent slug={slug} slugSegments={allSlugs} requestedLanguage={requestedLanguage} />
         </Suspense>
     );
 }

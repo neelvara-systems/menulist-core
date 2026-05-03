@@ -294,13 +294,14 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const renderDemandAndActions = (data?: any) => {
         const hasActions = Object.values(data?.menuActions || {}).some((value) => Number(value) > 0);
         const hasTopCategories = Boolean(data?.topCategories?.length);
+        const hasTopLanguages = Boolean(data?.topLanguages?.length);
         const hasTopFilters = Boolean(data?.topAttributeFilters?.length);
         const hasSearchTerms = Boolean(data?.topSearchTerms?.length);
         const hasZeroResultTerms = Boolean(data?.topZeroResultSearchTerms?.length);
         const hasUnavailable = Boolean(data?.unavailableItems?.length);
         const hasZeroResultSearches = Number(data?.metrics?.zeroResultSearches || 0) > 0;
 
-        if (!hasActions && !hasTopCategories && !hasTopFilters && !hasSearchTerms && !hasZeroResultTerms && !hasUnavailable && !hasZeroResultSearches) return null;
+        if (!hasActions && !hasTopCategories && !hasTopLanguages && !hasTopFilters && !hasSearchTerms && !hasZeroResultTerms && !hasUnavailable && !hasZeroResultSearches) return null;
 
         return (
             <Card size="small" title={<Text strong>Customer Intent</Text>}>
@@ -316,6 +317,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     {hasTopCategories ? (
                         <Text type="secondary">
                             {`Top category: ${data.topCategories.slice(0, 3).map((category: any) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}`}
+                        </Text>
+                    ) : null}
+                    {hasTopLanguages ? (
+                        <Text type="secondary">
+                            {`Top languages: ${data.topLanguages.slice(0, 3).map((language: any) => `${language.label || language.language} (${language.menuSessions || language.menuViews} sessions/views, ${language.adoptions || 0} stayed switches)`).join(', ')}`}
                         </Text>
                     ) : null}
                     {hasTopFilters ? (
@@ -378,6 +384,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         const topSearch = today.topSearchTerms?.[0];
         const topUnavailable = today.unavailableItems?.[0];
         const topFilter = today.topAttributeFilters?.[0];
+        const topLanguage = today.topLanguages?.[0];
         const todayInfoContent = (
             <div style={{ maxWidth: 280 }}>
                 <Text type="secondary" style={{ display: 'block' }}>
@@ -399,6 +406,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 {topFilter ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
                         {`Top filter right now: ${topFilter.label || topFilter.filterId} (${topFilter.interactions} intent, ${topFilter.actionClicks} actions)`}
+                    </Text>
+                ) : null}
+                {topLanguage ? (
+                    <Text style={{ display: 'block', marginTop: 8 }}>
+                        {`Top language right now: ${topLanguage.label || topLanguage.language} (${topLanguage.menuSessions || topLanguage.menuViews} sessions/views, ${topLanguage.adoptions || 0} stayed switches)`}
                     </Text>
                 ) : null}
                 <Text style={{ display: 'block', marginTop: 8 }}>

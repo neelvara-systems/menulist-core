@@ -29,8 +29,8 @@ import {
     getSchemaType,
 } from '@lib/schema';
 
-export function generateOBPSchema(storeData: any, canonicalUrl: string) {
-    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+export function generateOBPSchema(storeData: any, canonicalUrl: string, language?: string) {
+    const contentLanguage = language || storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
     const publicDisplayName = getLocalizedText(
         storeData?.publicPresence?.displayName,
         contentLanguage,
@@ -49,7 +49,7 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
         getPrimaryLocalizedLanguage(storeData?.publicPresence?.knownFor, contentLanguage),
         '',
     );
-    const publicDescription = getPublicBusinessDescription(storeData);
+    const publicDescription = getPublicBusinessDescription(storeData, contentLanguage);
     const address = buildAddress(storeData);
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);

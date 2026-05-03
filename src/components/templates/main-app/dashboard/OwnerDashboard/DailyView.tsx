@@ -152,11 +152,16 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 </Col>
             </Row>
 
-            {(data.menuActions || data.topCategories?.length || data.topAttributeFilters?.length || data.topSearchTerms?.length || data.topZeroResultSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
+            {(data.menuActions || data.topCategories?.length || data.topLanguages?.length || data.topAttributeFilters?.length || data.topSearchTerms?.length || data.topZeroResultSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
                 <Card className={styles.detailCard} variant="borderless">
                     {data.topCategories?.length ? (
                         <Text style={{ display: 'block', marginTop: 8 }}>
                             Top category: {data.topCategories.map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}
+                        </Text>
+                    ) : null}
+                    {data.topLanguages?.length ? (
+                        <Text style={{ display: 'block', marginTop: 8 }}>
+                            Top languages: {data.topLanguages.map((language) => `${language.label || language.language} (${language.menuSessions || language.menuViews} sessions/views, ${language.adoptions || 0} stayed switches)`).join(', ')}
                         </Text>
                     ) : null}
                     {data.topAttributeFilters?.length ? (

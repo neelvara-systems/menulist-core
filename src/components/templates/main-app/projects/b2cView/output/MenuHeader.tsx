@@ -21,6 +21,7 @@ interface MenuHeaderProps {
     setActiveLanguage: (lang: string) => void;
     setActivePage: (page: PageType) => void;
     moodConfig: MenuMoodConfig;
+    restoreStoredLanguage?: boolean;
 }
 
 function MenuHeader({
@@ -30,6 +31,7 @@ function MenuHeader({
     setActiveLanguage,
     setActivePage,
     moodConfig,
+    restoreStoredLanguage = true,
 }: MenuHeaderProps) {
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const isMobile = activeDeviceType === 'mobile';
@@ -52,6 +54,8 @@ function MenuHeader({
 
     // L3: Restore language preference on mount
     useEffect(() => {
+        if (!restoreStoredLanguage) return;
+
         try {
             const savedLang = localStorage.getItem('menulist_preferred_language');
             if (savedLang && projectData.languages?.includes(savedLang) && savedLang !== activeLanguage) {
@@ -61,7 +65,7 @@ function MenuHeader({
             // localStorage not available
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [projectData.languages]); // Only re-run when available languages change
+    }, [projectData.languages, restoreStoredLanguage]); // Only re-run when available languages change
 
     return (
         <header

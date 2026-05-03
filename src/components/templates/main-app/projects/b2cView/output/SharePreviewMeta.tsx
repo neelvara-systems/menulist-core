@@ -40,6 +40,26 @@
 
 import Head from 'next/head';
 
+function normalizeMetaText(value: unknown, fallback = ''): string {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed || fallback;
+    }
+
+    if (value && typeof value === 'object') {
+        const candidates = Object.values(value as Record<string, unknown>)
+            .filter((entry): entry is string => typeof entry === 'string')
+            .map((entry) => entry.trim())
+            .filter(Boolean);
+
+        if (candidates.length > 0) {
+            return candidates[0];
+        }
+    }
+
+    return fallback;
+}
+
 interface SharePreviewMetaProps {
     businessName: string;
     tagline?: string;
@@ -63,11 +83,16 @@ export default function SharePreviewMeta({
     keywords,
     canonicalUrl,
 }: SharePreviewMetaProps) {
+    const normalizedBusinessName = normalizeMetaText(businessName, 'Business');
+    const normalizedMetaTitle = normalizeMetaText(metaTitle);
+    const normalizedMetaDescription = normalizeMetaText(metaDescription);
+    const normalizedTagline = normalizeMetaText(tagline);
+
     // Priority: metaTitle (SEO settings) → businessName + "Menu" (fallback)
-    const title = metaTitle || `${businessName} | Menu`;
+    const title = normalizedMetaTitle || `${normalizedBusinessName} | Menu`;
 
     // Priority: metaDescription (SEO settings) → tagline (project) → generic
-    const description = metaDescription || tagline || `View the menu for ${businessName}`;
+    const description = normalizedMetaDescription || normalizedTagline || `View the menu for ${normalizedBusinessName}`;
 
     // Fallback image if no logo
     const imageUrl = logoUrl || '/images/default-menu-preview.png';
@@ -88,7 +113,7 @@ export default function SharePreviewMeta({
             <meta property="og:title" content={title} />
             <meta property="og:description" content={description} />
             <meta property="og:image" content={imageUrl} />
-            <meta property="og:site_name" content={businessName} />
+            <meta property="og:site_name" content={normalizedBusinessName} />
 
             {/* Twitter Card */}
             <meta property="twitter:card" content="summary_large_image" />
@@ -123,9 +148,14 @@ export function generateSharePreviewMeta({
     keywords,
     canonicalUrl,
 }: SharePreviewMetaProps): Record<string, string> {
+    const normalizedBusinessName = normalizeMetaText(businessName, 'Business');
+    const normalizedMetaTitle = normalizeMetaText(metaTitle);
+    const normalizedMetaDescription = normalizeMetaText(metaDescription);
+    const normalizedTagline = normalizeMetaText(tagline);
+
     // Priority: SEO settings → project data → defaults
-    const title = metaTitle || `${businessName} | Menu`;
-    const description = metaDescription || tagline || `View the menu for ${businessName}`;
+    const title = normalizedMetaTitle || `${normalizedBusinessName} | Menu`;
+    const description = normalizedMetaDescription || normalizedTagline || `View the menu for ${normalizedBusinessName}`;
     const imageUrl = logoUrl || '/images/default-menu-preview.png';
     const url = canonicalUrl || menuUrl;
 
@@ -137,7 +167,7 @@ export function generateSharePreviewMeta({
         'og:title': title,
         'og:description': description,
         'og:image': imageUrl,
-        'og:site_name': businessName,
+        'og:site_name': normalizedBusinessName,
         'twitter:card': 'summary_large_image',
         'twitter:url': menuUrl,
         'twitter:title': title,

@@ -3,7 +3,9 @@ import { CUSTOMER_MENU_REFRESH_EVENT, useMenuFreshness } from "@/hooks/useMenuFr
 import { StoreStatusBadge } from "@atoms/StoreStatusBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
+import GlobalLanguagesList from "@data/languages";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { normalizePublicLanguageCode, resolveProjectPublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import {
@@ -36,6 +38,7 @@ interface ClientMenuRendererProps {
     storeDetails: StoreDataType;
     precomputedBlocks?: any | null; // Precomputed Decision Blocks from Cloud Function
     projectId?: string; // Required for project-wise analytics
+    initialLanguage?: string;
     // T5-N-01: R5 Layer resolution analytics — 'layer1' for claimed-slug match,
     // 'layer2' for /menu universal alias fallback. Passed to AnalyticsContext.
     menuResolutionLayer?: 'layer1' | 'layer2';
@@ -76,6 +79,7 @@ function ClientMenuRenderer({
     storeDetails,
     precomputedBlocks,
     projectId,
+    initialLanguage,
     menuResolutionLayer,
 }: ClientMenuRendererProps) {
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
@@ -87,7 +91,11 @@ function ClientMenuRenderer({
         getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
         storeDetails?.name || "Menu",
     );
-    const defaultLanguage = getProjectDefaultLanguage(projectData, storeDetails);
+    const requestedInitialLanguage = normalizePublicLanguageCode(initialLanguage);
+    const defaultLanguage = requestedInitialLanguage
+        ? resolveProjectPublicLanguage(projectData, storeDetails, requestedInitialLanguage)
+        : getProjectDefaultLanguage(projectData, storeDetails);
+    const shouldTrackLanguageUsage = Array.isArray(projectData?.languages) && projectData.languages.length > 1;
     const pageStorageKey = getCustomerMenuStateKey(storeId, PAGE_KEY);
     const languageStorageKey = getCustomerMenuStateKey(storeId, LANGUAGE_KEY);
     const scrollStorageKey = getCustomerMenuStateKey(storeId, SCROLL_KEY);
@@ -97,8 +105,9 @@ function ClientMenuRenderer({
     // Default to MENU unconditionally; ignore any legacy stored HOME value.
     const [activePage, setActivePage] = useState<PageType>(PageType.MENU);
     const [activeLanguage, setActiveLanguage] = useState<string>(() => {
-        return readSessionValue(languageStorageKey) || defaultLanguage;
+        return requestedInitialLanguage ? defaultLanguage : readSessionValue(languageStorageKey) || defaultLanguage;
     });
+    const activeLanguageName = GlobalLanguagesList.find((language) => language.code === activeLanguage)?.name || activeLanguage.toUpperCase();
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>(
         DEVICE_TYPES_LIST.MOBILE,
     );
@@ -111,6 +120,12 @@ function ClientMenuRenderer({
 
     // Persist top-level client state so a router.refresh() remount does not
     // drop the current page/language or bounce the user back to the top.
+    useEffect(() => {
+        if (requestedInitialLanguage) {
+            setActiveLanguage(defaultLanguage);
+        }
+    }, [requestedInitialLanguage, defaultLanguage]);
+
     useEffect(() => {
         writeSessionValue(pageStorageKey, activePage);
     }, [pageStorageKey, activePage]);
@@ -203,6 +218,8 @@ function ClientMenuRenderer({
             <UnifiedAnalyticsTracking
                 storeDetails={storeDetails}
                 projectId={projectId}
+                activeLanguage={shouldTrackLanguageUsage ? activeLanguage : undefined}
+                activeLanguageName={shouldTrackLanguageUsage ? activeLanguageName : undefined}
                 menuResolutionLayer={menuResolutionLayer}
             >
                 <MainContentRenderer
@@ -216,6 +233,7 @@ function ClientMenuRenderer({
                     setActiveLanguage={setActiveLanguage}
                     businessType={storeDetails?.businessType}
                     precomputedBlocks={precomputedBlocks}
+                    restoreStoredLanguage={!requestedInitialLanguage}
                 />
             </UnifiedAnalyticsTracking>
 

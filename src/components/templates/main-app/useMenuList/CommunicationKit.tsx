@@ -9,6 +9,7 @@
  * @see __docs__/customer-communication-kit/README.md
  */
 
+import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
 import { Button, Card, Flex, message, Typography } from 'antd';
 import { useMemo, useState } from 'react';
@@ -51,6 +52,8 @@ export default function CommunicationKit({
     }), [storeName, businessType, menuLink, address, phone, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
+    const copyTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'copy_link')), [input]);
+    const whatsappTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'whatsapp')), [input]);
 
     return (
         <div>
@@ -66,8 +69,10 @@ export default function CommunicationKit({
                 {templates.map((tmpl) => (
                     <MessageCard
                         key={tmpl.id}
+                        copyMessage={copyTemplates.find((entry) => entry.id === tmpl.id)?.message || tmpl.message}
                         template={tmpl}
                         themeToken={themeToken}
+                        whatsappMessage={whatsappTemplates.find((entry) => entry.id === tmpl.id)?.message || tmpl.message}
                     />
                 ))}
             </Flex>
@@ -75,19 +80,28 @@ export default function CommunicationKit({
     );
 }
 
+function withSource(input: MessageTemplateInput, source: AnalyticsEntrySource): MessageTemplateInput {
+    return {
+        ...input,
+        menuLink: withAnalyticsSource(input.menuLink, source),
+    };
+}
+
 // ── Message Card ──────────────────────────────────────────────────
 
 interface MessageCardProps {
+    copyMessage: string;
     template: MessageTemplate;
     themeToken: any;
+    whatsappMessage: string;
 }
 
-function MessageCard({ template, themeToken }: MessageCardProps) {
+function MessageCard({ copyMessage, template, themeToken, whatsappMessage }: MessageCardProps) {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(template.message);
+            await navigator.clipboard.writeText(copyMessage);
             setCopied(true);
             message.success('Message copied');
             setTimeout(() => setCopied(false), 2000);
@@ -97,7 +111,7 @@ function MessageCard({ template, themeToken }: MessageCardProps) {
     };
 
     const handleWhatsApp = () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank');
+        window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
     };
 
     return (

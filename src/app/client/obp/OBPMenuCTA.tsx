@@ -18,6 +18,7 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
 import styles from './obp.module.scss';
@@ -25,6 +26,7 @@ import styles from './obp.module.scss';
 export interface OBPMenuCTAProjectEntry {
     slug: string;
     name: string;
+    label: string;
     projectImage?: string | null;
     url: string;
     isDefault: boolean;
@@ -33,6 +35,7 @@ export interface OBPMenuCTAProjectEntry {
 interface OBPMenuCTAProps {
     /** Fallback URL for the "View Menu" safety rail when projects is empty. */
     menuUrl: string;
+    fallbackLabel: string;
     accentColor: string;
     tenantId: number;
     storeId: number;
@@ -54,19 +57,19 @@ interface OBPMenuCTAProps {
 function withOBPEntrySource(url: string): string {
     if (!url) return url;
     try {
-        const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://menulist.ai');
-        parsed.searchParams.set('utm_source', 'obp');
-        parsed.searchParams.set('utm_medium', 'official_business_page');
-        parsed.searchParams.set('entry_source', 'obp');
-        return url.startsWith('/') ? `${parsed.pathname}${parsed.search}${parsed.hash}` : parsed.toString();
+        const sourcedUrl = withAnalyticsSource(url, 'obp');
+        const parsed = new URL(sourcedUrl, typeof window !== 'undefined' ? window.location.origin : 'https://menulist.ai');
+        parsed.searchParams.set('utm_medium', 'obp');
+        return sourcedUrl.startsWith('/') ? `${parsed.pathname}${parsed.search}${parsed.hash}` : parsed.toString();
     } catch {
         const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}utm_source=obp&utm_medium=official_business_page&entry_source=obp`;
+        return `${url}${separator}src=obp&source=obp&utm_source=obp&utm_medium=obp&entry_source=obp`;
     }
 }
 
 export default function OBPMenuCTA({
     menuUrl,
+    fallbackLabel,
     accentColor,
     tenantId,
     storeId,
@@ -125,7 +128,7 @@ export default function OBPMenuCTA({
                     track: trackPrimary,
                 })}
             >
-                View Menu
+                {fallbackLabel}
             </a>
         );
     }
@@ -150,7 +153,7 @@ export default function OBPMenuCTA({
                             <img alt={primary.name} src={primary.projectImage} />
                         </span>
                     ) : null}
-                    <span className={styles.menuButtonLabel}>View {primary.name}</span>
+                    <span className={styles.menuButtonLabel}>{primary.label}</span>
                 </span>
             </a>
             {secondary.length > 0 && (
@@ -171,7 +174,7 @@ export default function OBPMenuCTA({
                                     <img alt={p.name} src={p.projectImage} />
                                 </span>
                             ) : null}
-                            <span className={styles.secondaryProjectName}>{p.name}</span>
+                            <span className={styles.secondaryProjectName}>{p.label}</span>
                         </a>
                     ))}
                 </div>

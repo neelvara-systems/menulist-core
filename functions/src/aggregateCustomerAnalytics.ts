@@ -73,6 +73,7 @@ interface DailyMetrics {
     totalUnavailableItemTaps?: number;
     totalMenuActionClicks?: number;
     totalRecommendationClicks?: number;
+    languageTrackingEnabled?: boolean;
     // Decision Blocks rendered - CRITICAL for engagement rate calculation
     totalDecisionBlocksRendered?: number;
     decisionBlocksRendered?: Record<string, number>;  // { popular: n, quickPick: n, bestValue: n }
@@ -83,6 +84,9 @@ interface DailyMetrics {
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
     menuActionClicksBySource?: Record<string, number>;
+    menuViewsByLanguage?: Record<string, number>;
+    menuSessionsByLanguage?: Record<string, number>;
+    languageAdoptions?: Record<string, number>;
     attributeFilterInteractions?: Record<string, number>;
     attributeFilterItemViews?: Record<string, number>;
     attributeFilterItemTaps?: Record<string, number>;
@@ -102,6 +106,7 @@ interface DailyMetrics {
     unavailableItemTapsByItem?: Record<string, number>;
     itemNames?: Record<string, string>;
     categoryNames?: Record<string, string>;
+    languageNames?: Record<string, string>;
     attributeFilterNames?: Record<string, string>;
 
     // ── Customer App (installable PWA surface) fields — additive-only, projectId='customerApp' ──
@@ -457,6 +462,9 @@ async function updateSummaryDocument(
     if (dailyData.totalRecommendationClicks) {
         updates.lifetimeTotalRecommendationClicks = FieldValue.increment(dailyData.totalRecommendationClicks);
     }
+    if (dailyData.languageTrackingEnabled) {
+        updates.languageTrackingEnabled = true;
+    }
 
     // Aggregate map fields (device, location, source breakdowns)
     const addMapUpdates = (field: string) => {
@@ -477,6 +485,9 @@ async function updateSummaryDocument(
         'menuSessionsBySource',
         'actionSessionsBySource',
         'menuActionClicksBySource',
+        'menuViewsByLanguage',
+        'menuSessionsByLanguage',
+        'languageAdoptions',
         'attributeFilterInteractions',
         'attributeFilterItemViews',
         'attributeFilterItemTaps',
@@ -527,6 +538,10 @@ async function updateSummaryDocument(
 
     for (const [categoryId, name] of Object.entries(readAnalyticsMap(dailyData as any, 'categoryNames'))) {
         assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
+    }
+
+    for (const [language, name] of Object.entries(readAnalyticsMap(dailyData as any, 'languageNames'))) {
+        assignNestedMapUpdate(updates, 'languageNames', language, name);
     }
 
     for (const [filterId, name] of Object.entries(readAnalyticsMap(dailyData as any, 'attributeFilterNames'))) {
@@ -672,6 +687,9 @@ function buildLateCorrectionSummaryUpdates(
     addNumericDelta('totalMenuActionClicks', 'lifetimeTotalMenuActionClicks');
     addNumericDelta('totalRecommendationClicks', 'lifetimeTotalRecommendationClicks');
     addNumericDelta('totalDecisionBlocksRendered', 'lifetimeTotalDecisionBlocksRendered');
+    if (currentDaily.languageTrackingEnabled) {
+        updates.languageTrackingEnabled = true;
+    }
     addNumericDelta('totalPromptShown', 'lifetimeTotalPromptShown');
     addNumericDelta('totalPromptDismissed', 'lifetimeTotalPromptDismissed');
     addNumericDelta('totalInstallStarted', 'lifetimeTotalInstallStarted');
@@ -686,6 +704,9 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('menuSessionsBySource', 'menuSessionsBySource');
     addMapDelta('actionSessionsBySource', 'actionSessionsBySource');
     addMapDelta('menuActionClicksBySource', 'menuActionClicksBySource');
+    addMapDelta('menuViewsByLanguage', 'menuViewsByLanguage');
+    addMapDelta('menuSessionsByLanguage', 'menuSessionsByLanguage');
+    addMapDelta('languageAdoptions', 'languageAdoptions');
     addMapDelta('attributeFilterInteractions', 'attributeFilterInteractions');
     addMapDelta('attributeFilterItemViews', 'attributeFilterItemViews');
     addMapDelta('attributeFilterItemTaps', 'attributeFilterItemTaps');
@@ -716,6 +737,9 @@ function buildLateCorrectionSummaryUpdates(
     });
     Object.entries(readAnalyticsMap(currentDaily, 'categoryNames')).forEach(([categoryId, name]) => {
         assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
+    });
+    Object.entries(readAnalyticsMap(currentDaily, 'languageNames')).forEach(([language, name]) => {
+        assignNestedMapUpdate(updates, 'languageNames', language, name);
     });
     Object.entries(readAnalyticsMap(currentDaily, 'attributeFilterNames')).forEach(([filterId, name]) => {
         assignNestedMapUpdate(updates, 'attributeFilterNames', filterId, name);
@@ -971,6 +995,9 @@ function aggregateDailyDocs(docs: any[]): any {
         menuSessionsBySource: {},
         actionSessionsBySource: {},
         menuActionClicksBySource: {},
+        menuViewsByLanguage: {},
+        menuSessionsByLanguage: {},
+        languageAdoptions: {},
         attributeFilterInteractions: {},
         attributeFilterItemViews: {},
         attributeFilterItemTaps: {},
@@ -991,7 +1018,9 @@ function aggregateDailyDocs(docs: any[]): any {
         recommendationClicksByItem: {},
         itemNames: {},
         categoryNames: {},
+        languageNames: {},
         attributeFilterNames: {},
+        languageTrackingEnabled: false,
         // ── Customer App (projectId='customerApp') fields ──
         // Stay zero for all other projects; summed only when daily docs contain these keys.
         totalPromptShown: 0,
@@ -1022,6 +1051,7 @@ function aggregateDailyDocs(docs: any[]): any {
         if (doc.totalUnavailableItemTaps) result.totalUnavailableItemTaps += doc.totalUnavailableItemTaps;
         if (doc.totalMenuActionClicks) result.totalMenuActionClicks += doc.totalMenuActionClicks;
         if (doc.totalRecommendationClicks) result.totalRecommendationClicks += doc.totalRecommendationClicks;
+        result.languageTrackingEnabled = Boolean(result.languageTrackingEnabled || doc.languageTrackingEnabled);
         // Decision Blocks rendered
         if (doc.totalDecisionBlocksRendered) result.totalDecisionBlocksRendered += doc.totalDecisionBlocksRendered;
 
@@ -1041,6 +1071,9 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
         mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
         mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
+        mergeMapField(result.menuViewsByLanguage, readAnalyticsMap(doc, 'menuViewsByLanguage'));
+        mergeMapField(result.menuSessionsByLanguage, readAnalyticsMap(doc, 'menuSessionsByLanguage'));
+        mergeMapField(result.languageAdoptions, readAnalyticsMap(doc, 'languageAdoptions'));
         mergeMapField(result.attributeFilterInteractions, readAnalyticsMap(doc, 'attributeFilterInteractions'));
         mergeMapField(result.attributeFilterItemViews, readAnalyticsMap(doc, 'attributeFilterItemViews'));
         mergeMapField(result.attributeFilterItemTaps, readAnalyticsMap(doc, 'attributeFilterItemTaps'));
@@ -1062,6 +1095,7 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.recommendationClicksByItem, readAnalyticsMap(doc, 'recommendationClicksByItem'));
         Object.assign(result.itemNames, readAnalyticsMap(doc, 'itemNames'));
         Object.assign(result.categoryNames, readAnalyticsMap(doc, 'categoryNames'));
+        Object.assign(result.languageNames, readAnalyticsMap(doc, 'languageNames'));
         Object.assign(result.attributeFilterNames, readAnalyticsMap(doc, 'attributeFilterNames'));
         // Customer App map fields (additive merge — keys summed, never replaced)
         mergeMapField(result.shortcutClicks, readAnalyticsMap(doc, 'shortcutClicks'));

@@ -159,6 +159,14 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                             </Text>
                         </Card>
                     ) : null}
+                    {data.topLanguages?.length ? (
+                        <Card className={styles.detailCard} variant="borderless" style={{ marginTop: 16 }}>
+                            <Title level={5}>Top Languages</Title>
+                            <Text type="secondary">
+                                {data.topLanguages.slice(0, 3).map((language) => `${language.label || language.language} (${language.menuSessions || language.menuViews} sessions/views, ${language.adoptions || 0} stayed switches)`).join(', ')}
+                            </Text>
+                        </Card>
+                    ) : null}
                     {data.topAttributeFilters?.length ? (
                         <Card className={styles.detailCard} variant="borderless" style={{ marginTop: 16 }}>
                             <Title level={5}>Top Filters</Title>

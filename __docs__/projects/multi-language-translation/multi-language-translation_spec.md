@@ -17,9 +17,9 @@ English (`en`) is the required canonical source language across both store-level
 Store-level discovery content follows an explicit SEO policy:
 
 - localized: `tagline`, `metaTitle`, `metaDescription`
-- shared/global: `keywords`
+- localized string list: `keywords`
 
-`keywords` are intentionally excluded from translation fan-out and missing-translation repair until a dedicated multilingual keyword strategy is introduced.
+`keywords` are localized string lists and participate in missing-translation repair with the rest of store-level public business copy.
 
 ### What It Does
 

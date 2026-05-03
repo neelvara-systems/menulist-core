@@ -76,6 +76,12 @@ Entry source is attached to existing menu view and final action writes. It does 
 | `menuSessionsBySource` | First menu session by source | Denominator for action-rate-by-source |
 | `actionSessionsBySource` | First final action session by source | Shows which source creates real customer action |
 | `menuActionClicksBySource` | Final menu action click by source | Shows total CTA taps by source |
+| `menuViewsByLanguage` | Accepted menu view with active language | Shows which language customers opened |
+| `menuSessionsByLanguage` | First active menu language per session | Shows language usage without counting every toggle |
+| `languageAdoptions` | Switched language stayed active after dwell window | Shows useful language switches, not accidental taps |
+| `obpViewsByLanguage` | Accepted OBP view with active language | Shows which business-page language customers opened |
+| `obpSessionsByLanguage` | First active OBP language per session | Shows OBP language usage without counting every toggle |
+| `obpLanguageAdoptions` | Switched OBP language stayed active after dwell window | Shows useful OBP language switches |
 
 The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the dashboard read model for all owners. The Pro analytics assistant layer adds `ownerActionPlan` plus daily / weekly / monthly wording summaries.
 

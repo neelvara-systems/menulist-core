@@ -153,7 +153,7 @@ Localized business-copy fields:
 - `metaTitle`
 - `metaDescription`
 - `pwaSettings.pwaShortName`
-- `keywords` remain shared/global for now and are intentionally excluded from translation fan-out and repair
+- `keywords`
 
 Language policy fields:
 
@@ -179,6 +179,13 @@ Preferred pattern:
 ```ts
 const text = getLocalizedText(value, activeLanguage, primaryLanguage, fallback);
 ```
+
+Public routes should resolve the active render language through:
+
+- `src/lib/localization/publicRenderLanguage.ts`
+- `resolveStorePublicLanguage()` for store-level public surfaces such as OBP
+- `resolveProjectPublicLanguage()` for menu/project surfaces
+- `appendPublicLanguageParam()` when moving between public surfaces and preserving a selected `?lang=xx`
 
 ### Fallback Order
 
@@ -273,7 +280,7 @@ Therefore:
 - translation targets must come from `store.activeLanguages`
 - the source language is fixed to English (`en`) even when render language differs
 - generated SEO fields (`tagline`, `metaTitle`, `metaDescription`) are localized
-- SEO `keywords` remain shared/global until a dedicated multilingual keyword strategy exists
+- SEO `keywords` are localized string lists and count toward missing-translation coverage
 
 The project helps the AI understand the menu.
 It does not decide the language policy for store-level copy.

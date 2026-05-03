@@ -11,6 +11,7 @@ import MenuBreadcrumb from "@/app/client/[[...slug]]/MenuBreadcrumb";
 import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import GlobalLanguagesList from "@data/languages";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     getStoreByCustomDomain,
@@ -18,6 +19,13 @@ import {
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import {
+    appendPublicLanguageParam,
+    getNextIntlLocaleForPublicLanguage,
+    getPublicLanguageOptions,
+    resolveStorePublicLanguage,
+    shouldExposePublicLanguageSwitcher,
+} from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
@@ -37,6 +45,7 @@ import OBPActions from "./OBPActions";
 import OBPAnalytics from "./OBPAnalytics";
 import OBPCustomerAppMount from "./OBPCustomerAppMount";
 import OBPExternalLinks from "./OBPExternalLinks";
+import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPMenuCTA from "./OBPMenuCTA";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
@@ -224,13 +233,9 @@ function getFreshnessText(modifiedOn: any, t: (key: string) => string): string |
 
 // ── Full hours display for AEO (all 7 days, SSR) ──
 
-const DAY_LABELS: Record<string, string> = {
-    sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
-    thu: 'Thursday', fri: 'Friday', sat: 'Saturday',
-};
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
-function getAllHoursDisplay(workingHours?: Record<string, string>): React.ReactNode | null {
+function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t: (key: string) => string): React.ReactNode | null {
     if (!workingHours || Object.keys(workingHours).length === 0) return null;
 
     const rows = DAY_ORDER.map(day => {
@@ -241,10 +246,10 @@ function getAllHoursDisplay(workingHours?: Record<string, string>): React.ReactN
                 if (!openTime || !closeTime) return hours.replace('-', ' – ');
                 return `${formatClockTime(openTime)} – ${formatClockTime(closeTime)}`;
             })()
-            : 'Closed';
+            : t('publicClosed');
         return (
             <div key={day} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ fontWeight: 500, minWidth: 80 }}>{DAY_LABELS[day]}</span>
+                <span style={{ fontWeight: 500, minWidth: 80 }}>{t(`publicDays.${day}`)}</span>
                 <span style={{ opacity: hours ? 1 : 0.5 }}>{display}</span>
             </div>
         );
@@ -258,10 +263,10 @@ function getAllHoursDisplay(workingHours?: Record<string, string>): React.ReactN
 function buildServiceModes(attributes?: Record<string, boolean>): string[] {
     if (!attributes) return [];
     const modes: string[] = [];
-    if (attributes.dineIn) modes.push('Dine-In');
-    if (attributes.takeaway) modes.push('Takeaway');
-    if (attributes.delivery) modes.push('Delivery');
-    if (attributes.driveThrough) modes.push('Drive-Through');
+    if (attributes.dineIn) modes.push('dineIn');
+    if (attributes.takeaway) modes.push('takeaway');
+    if (attributes.delivery) modes.push('delivery');
+    if (attributes.driveThrough) modes.push('driveThrough');
     return modes;
 }
 
@@ -270,9 +275,9 @@ function buildServiceModes(attributes?: Record<string, boolean>): string[] {
 function buildPaymentMethods(attributes?: Record<string, boolean>): string[] {
     if (!attributes) return [];
     const methods: string[] = [];
-    if (attributes.acceptsCash) methods.push('Cash');
-    if (attributes.acceptsCards) methods.push('Cards');
-    if (attributes.acceptsUPI) methods.push('UPI');
+    if (attributes.acceptsCash) methods.push('cash');
+    if (attributes.acceptsCards) methods.push('cards');
+    if (attributes.acceptsUPI) methods.push('upi');
     return methods;
 }
 
@@ -315,6 +320,7 @@ interface OBPContentProps {
      * Brand OBP renders don't need this — they're the top node themselves.
      */
     masterBrandName?: string;
+    requestedLanguage?: string | string[] | null;
 }
 
 export default async function OBPContent({
@@ -322,8 +328,8 @@ export default async function OBPContent({
     masterSubdomain,
     masterCustomDomain,
     masterBrandName,
+    requestedLanguage,
 }: OBPContentProps = {}) {
-    const t = await getTranslations({ namespace: 'BusinessSettings' });
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
 
     // Lookup store (skipped when an outlet override is supplied by the caller)
@@ -340,6 +346,8 @@ export default async function OBPContent({
         notFound();
     }
 
+    const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
+
     // URL Routing Architecture — Phase 2: Multi-store brand detection.
     // G-01: skip the BrandOBPContent short-circuit when rendering a specific
     // outlet (storeOverride set) — we are intentionally on the outlet surface,
@@ -350,7 +358,13 @@ export default async function OBPContent({
             const baseUrl = customDomain
                 ? `https://${customDomain}`
                 : `https://${subdomain}.menulist.ai`;
-            return <BrandOBPContent store={storeData} baseUrl={baseUrl} />;
+            return (
+                <BrandOBPContent
+                    store={storeData}
+                    baseUrl={baseUrl}
+                    requestedLanguage={contentLanguage}
+                />
+            );
         }
     }
 
@@ -365,7 +379,13 @@ export default async function OBPContent({
     const store = storeData;
     const pp = store?.publicPresence || {};
     const isPermanentlyClosed = store?.permanentlyClosed === true;
-    const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+    const t = await getTranslations({
+        locale: getNextIntlLocaleForPublicLanguage(contentLanguage),
+        namespace: 'BusinessSettings',
+    });
+    const languageOptions = getPublicLanguageOptions(store);
+    const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
+    const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
 
     // Derive values
     const accentColor = pp.accentColor || '#111';
@@ -410,6 +430,10 @@ export default async function OBPContent({
         ? `${masterBase}${outletPrefix}`
         : masterBase;
 
+    const withCurrentLanguage = (url: string): string => (
+        showLanguageSwitcher ? appendPublicLanguageParam(url, contentLanguage) : url
+    );
+
     // Helper: build a project URL scoped to the current OBP surface (master
     // or outlet). For outlets the URL is prefixed with `/{outletSlug}` so
     // the canonical per-project URL is `/{outletSlug}/{projectSlug}`.
@@ -417,15 +441,15 @@ export default async function OBPContent({
         if (storeOverride) {
             // Outlet path — absolute, rooted at master origin, with outlet slug.
             if (!slug) {
-                return masterBase
+                return withCurrentLanguage(masterBase
                     ? `${masterBase}${outletPrefix}/menu`
-                    : `${outletPrefix}/menu`;
+                    : `${outletPrefix}/menu`);
             }
-            return masterBase
+            return withCurrentLanguage(masterBase
                 ? `${masterBase}${outletPrefix}/${slug}`
-                : `${outletPrefix}/${slug}`;
+                : `${outletPrefix}/${slug}`);
         }
-        return getDefaultProjectUrl(originSubdomain, originCustomDomain, slug);
+        return withCurrentLanguage(getDefaultProjectUrl(originSubdomain, originCustomDomain, slug));
     };
 
     // G-05 / R5 (§9 PUBLIC-ROUTING-DOCTRINE) sub-change 3: OBP's "View Menu"
@@ -446,6 +470,9 @@ export default async function OBPContent({
         isDefault: p.isDefault,
         projectImage: p.projectImage || null,
         url: buildProjectUrl(p.slug),
+    })).map((project) => ({
+        ...project,
+        label: t('publicViewNamedMenu', { name: project.name }),
     }));
 
     // Action visibility (default to true if data exists)
@@ -468,11 +495,23 @@ export default async function OBPContent({
 
     // Business attributes → display tags
     const ATTRIBUTE_DISPLAY: Record<string, string> = {
-        vegetarian: 'Vegetarian', vegan: 'Vegan', halal: 'Halal', glutenFree: 'Gluten-Free',
-        wifi: 'Free WiFi', outdoorSeating: 'Outdoor Seating', parking: 'Parking',
-        airConditioning: 'AC', liveMusic: 'Live Music', petFriendly: 'Pet Friendly',
-        dineIn: 'Dine-In', takeaway: 'Takeaway', delivery: 'Delivery', driveThrough: 'Drive-Through',
-        acceptsCards: 'Cards', acceptsUPI: 'UPI', acceptsCash: 'Cash',
+        vegetarian: t('publicAttributes.vegetarian'),
+        vegan: t('publicAttributes.vegan'),
+        halal: t('publicAttributes.halal'),
+        glutenFree: t('publicAttributes.glutenFree'),
+        wifi: t('publicAttributes.wifi'),
+        outdoorSeating: t('publicAttributes.outdoorSeating'),
+        parking: t('publicAttributes.parking'),
+        airConditioning: t('publicAttributes.airConditioning'),
+        liveMusic: t('publicAttributes.liveMusic'),
+        petFriendly: t('publicAttributes.petFriendly'),
+        dineIn: t('publicAttributes.dineIn'),
+        takeaway: t('publicAttributes.takeaway'),
+        delivery: t('publicAttributes.delivery'),
+        driveThrough: t('publicAttributes.driveThrough'),
+        acceptsCards: t('publicAttributes.acceptsCards'),
+        acceptsUPI: t('publicAttributes.acceptsUPI'),
+        acceptsCash: t('publicAttributes.acceptsCash'),
     };
     const attributeTags: string[] = Object.entries(store?.businessAttributes || {})
         .filter(([key, val]) => val === true && ATTRIBUTE_DISPLAY[key])
@@ -500,15 +539,15 @@ export default async function OBPContent({
     const photos = (pp.photos || []).filter(Boolean).slice(0, 3);
 
     // Structured info for AEO (P3 — full hours, services, payment, cuisine, price)
-    const allHours = getAllHoursDisplay(store?.workingHours);
-    const serviceModeTags = buildServiceModes(store?.businessAttributes);
-    const paymentTags = buildPaymentMethods(store?.businessAttributes);
+    const allHours = getAllHoursDisplay(store?.workingHours, t);
+    const serviceModeTags = buildServiceModes(store?.businessAttributes).map((mode) => t(`publicServiceModes.${mode}`));
+    const paymentTags = buildPaymentMethods(store?.businessAttributes).map((method) => t(`publicPaymentMethods.${method}`));
     const cuisineTypes = store?.cuisineTypes || [];
     const priceRange = store?.priceRange;
     const hasStructuredInfo = !!(allHours || serviceModeTags.length || paymentTags.length || cuisineTypes.length || priceRange);
 
     // Schema.org
-    const schema = generateOBPSchema(store, obpUrl);
+    const schema = generateOBPSchema(store, obpUrl, contentLanguage);
     const faqSchema = buildFaqSchema(store, obpUrl);
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
@@ -524,6 +563,9 @@ export default async function OBPContent({
                 businessDayEndTime={store?.businessDayEndTime}
                 trackViews={trackingEnabled}
                 includeLocation={includeLocation}
+                activeLanguage={showLanguageSwitcher ? contentLanguage : undefined}
+                activeLanguageName={showLanguageSwitcher ? activeLanguageName : undefined}
+                trackLanguageUsage={showLanguageSwitcher}
             />
             <script
                 type="application/ld+json"
@@ -536,6 +578,14 @@ export default async function OBPContent({
                 />
             )}
             <div className={styles.page}>
+                {showLanguageSwitcher ? (
+                    <OBPLanguageSwitcher
+                        activeLanguage={contentLanguage}
+                        baseUrl={obpUrl}
+                        languages={languageOptions}
+                    />
+                ) : null}
+
                 {/*
                  * T2-N-05 / D-12 PUBLIC-ROUTING-DOCTRINE: visible breadcrumb
                  * on OUTLET OBP pages only. Brand OBPs are the top node so
@@ -595,7 +645,7 @@ export default async function OBPContent({
                     ) : showStatusBadge ? (
                         <div className={`${styles.statusBadge} ${status.isOpen ? styles.statusOpen : styles.statusClosed}`}>
                             <span className={`${styles.statusDot} ${status.isOpen ? styles.statusDotOpen : styles.statusDotClosed}`} />
-                            {status.statusText}{status.nextChange ? ` · ${status.nextChange}` : ''}
+                            {status.isOpen ? t('publicOpen') : t('publicClosed')}{status.nextChange ? ` · ${status.nextChange}` : ''}
                         </div>
                     ) : (
                         <p className={styles.nextChange} style={{ marginTop: 8, fontSize: 13, opacity: 0.6 }}>
@@ -639,6 +689,7 @@ export default async function OBPContent({
                     ) : hasMenu ? (
                         <OBPMenuCTA
                             menuUrl={menuUrl}
+                            fallbackLabel={t('publicViewMenu')}
                             accentColor={accentColor}
                             tenantId={store?.tenantId}
                             storeId={store?.storeId}
@@ -710,6 +761,13 @@ export default async function OBPContent({
                     showDirections={showDirections}
                     showReservation={showReservation}
                     showOrder={showOrder}
+                    labels={{
+                        call: t('publicActionCall'),
+                        whatsapp: t('publicActionWhatsApp'),
+                        directions: t('publicActionDirections'),
+                        reserve: t('publicActionReserve'),
+                        order: t('publicActionOrder'),
+                    }}
                 />
 
                 {/* ── Info Block ── */}

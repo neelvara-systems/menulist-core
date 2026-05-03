@@ -12,6 +12,7 @@
  */
 
 import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, message, Tag, Typography } from 'antd';
 import { useState } from 'react';
@@ -152,12 +153,13 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const nextManualSurface = MANUAL_SURFACES.find(s => !isManualActive(s.id));
 
     const handleCopyAndExpand = async (surface: ManualSurfaceConfig) => {
+        const sourcedObpLink = withAnalyticsSource(data.obpLink, 'copy_link');
         try {
-            await navigator.clipboard.writeText(data.obpLink);
+            await navigator.clipboard.writeText(sourcedObpLink);
             message.success('Official business link copied');
         } catch {
             // Fallback: use onCopyLink which handles failure
-            onCopyLink(data.obpLink, 'Official business link');
+            onCopyLink(sourcedObpLink, 'Official business link');
         }
         setExpandedGuide(surface.id);
     };

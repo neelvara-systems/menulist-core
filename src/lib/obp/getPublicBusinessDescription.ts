@@ -1,7 +1,7 @@
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 
-export function getPublicBusinessDescription(storeData: any): string {
-    const contentLanguage = storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
+export function getPublicBusinessDescription(storeData: any, language?: string): string {
+    const contentLanguage = language || storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
     const publicDescriptor = getLocalizedText(
         storeData?.publicPresence?.descriptor,
         contentLanguage,

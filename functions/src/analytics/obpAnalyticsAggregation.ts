@@ -70,6 +70,11 @@ interface OBPDailyData {
     obpActionClicksBySource?: Record<string, number>;
     obpMenuClicksBySource?: Record<string, number>;
     obpLinkClicksBySource?: Record<string, number>;
+    obpLanguageTrackingEnabled?: boolean;
+    obpViewsByLanguage?: Record<string, number>;
+    obpSessionsByLanguage?: Record<string, number>;
+    obpLanguageAdoptions?: Record<string, number>;
+    obpLanguageNames?: Record<string, string>;
     viewsByDevice?: Record<string, number>;
     hourlyViews?: Record<string, number>;
 }
@@ -88,6 +93,11 @@ interface OBPAggregatedMetrics {
     obpActionClicksBySource: Record<string, number>;
     obpMenuClicksBySource: Record<string, number>;
     obpLinkClicksBySource: Record<string, number>;
+    obpLanguageTrackingEnabled: boolean;
+    obpViewsByLanguage: Record<string, number>;
+    obpSessionsByLanguage: Record<string, number>;
+    obpLanguageAdoptions: Record<string, number>;
+    obpLanguageNames: Record<string, string>;
     daysWithData: number;
 }
 
@@ -117,6 +127,11 @@ function emptyMetrics(): OBPAggregatedMetrics {
         obpActionClicksBySource: {},
         obpMenuClicksBySource: {},
         obpLinkClicksBySource: {},
+        obpLanguageTrackingEnabled: false,
+        obpViewsByLanguage: {},
+        obpSessionsByLanguage: {},
+        obpLanguageAdoptions: {},
+        obpLanguageNames: {},
         daysWithData: 0,
     };
 }
@@ -136,6 +151,7 @@ function toDashboardMetrics(metrics: OBPAggregatedMetrics) {
         shareMethods: metrics.obpShares,
         links: metrics.obpLinkClicks,
         sources: buildOBPSourceBreakdown(metrics),
+        topLanguages: buildOBPLanguageBreakdown(metrics),
         daysWithData: metrics.daysWithData,
     };
 }
@@ -212,6 +228,38 @@ function buildOBPSourceBreakdown(metrics: OBPAggregatedMetrics) {
         .slice(0, 6);
 }
 
+function buildOBPLanguageBreakdown(data: {
+    obpLanguageTrackingEnabled?: boolean;
+    obpViewsByLanguage?: Record<string, number>;
+    obpSessionsByLanguage?: Record<string, number>;
+    obpLanguageAdoptions?: Record<string, number>;
+    obpLanguageNames?: Record<string, string>;
+}) {
+    if (!data.obpLanguageTrackingEnabled) return [];
+
+    const views = data.obpViewsByLanguage || {};
+    const sessions = data.obpSessionsByLanguage || {};
+    const adoptions = data.obpLanguageAdoptions || {};
+    const names = data.obpLanguageNames || {};
+    const languageIds = new Set<string>([
+        ...Object.keys(views),
+        ...Object.keys(sessions),
+        ...Object.keys(adoptions),
+    ]);
+
+    return Array.from(languageIds)
+        .map((language) => ({
+            language,
+            label: names[language] || language.toUpperCase(),
+            views: views[language] || 0,
+            sessions: sessions[language] || 0,
+            adoptions: adoptions[language] || 0,
+        }))
+        .filter((entry) => entry.views > 0 || entry.sessions > 0 || entry.adoptions > 0)
+        .sort((a, b) => ((b.sessions + b.adoptions + b.views) - (a.sessions + a.adoptions + a.views)))
+        .slice(0, 5);
+}
+
 function normalizeOBPActionClicks(data: Record<string, any> = {}) {
     return {
         call: readOBPCounter(data, 'obpActionClicks', 'call'),
@@ -250,6 +298,11 @@ function normalizeOBPDailyData(data: OBPDailyData): OBPDailyData {
         obpActionClicksBySource: readAnalyticsMap(data as Record<string, any>, 'obpActionClicksBySource'),
         obpMenuClicksBySource: readAnalyticsMap(data as Record<string, any>, 'obpMenuClicksBySource'),
         obpLinkClicksBySource: readAnalyticsMap(data as Record<string, any>, 'obpLinkClicksBySource'),
+        obpLanguageTrackingEnabled: Boolean((data as Record<string, any>).obpLanguageTrackingEnabled),
+        obpViewsByLanguage: readAnalyticsMap(data as Record<string, any>, 'obpViewsByLanguage'),
+        obpSessionsByLanguage: readAnalyticsMap(data as Record<string, any>, 'obpSessionsByLanguage'),
+        obpLanguageAdoptions: readAnalyticsMap(data as Record<string, any>, 'obpLanguageAdoptions'),
+        obpLanguageNames: (data as Record<string, any>).obpLanguageNames || {},
     };
 }
 
@@ -289,6 +342,11 @@ function normalizeOBPLifetimeData(data: Record<string, any>): OBPDailyData {
         obpActionClicksBySource: readAnalyticsMap(lifetime, 'obpActionClicksBySource'),
         obpMenuClicksBySource: readAnalyticsMap(lifetime, 'obpMenuClicksBySource'),
         obpLinkClicksBySource: readAnalyticsMap(lifetime, 'obpLinkClicksBySource'),
+        obpLanguageTrackingEnabled: Boolean(lifetime.obpLanguageTrackingEnabled || data?.['lifetime.obpLanguageTrackingEnabled']),
+        obpViewsByLanguage: readAnalyticsMap(lifetime, 'obpViewsByLanguage'),
+        obpSessionsByLanguage: readAnalyticsMap(lifetime, 'obpSessionsByLanguage'),
+        obpLanguageAdoptions: readAnalyticsMap(lifetime, 'obpLanguageAdoptions'),
+        obpLanguageNames: lifetime.obpLanguageNames || {},
     };
 }
 
@@ -324,7 +382,13 @@ function toDashboardDailyMetrics(data: OBPDailyData) {
             obpActionClicksBySource: normalized.obpActionClicksBySource || {},
             obpMenuClicksBySource: normalized.obpMenuClicksBySource || {},
             obpLinkClicksBySource: normalized.obpLinkClicksBySource || {},
+            obpLanguageTrackingEnabled: Boolean(normalized.obpLanguageTrackingEnabled),
+            obpViewsByLanguage: normalized.obpViewsByLanguage || {},
+            obpSessionsByLanguage: normalized.obpSessionsByLanguage || {},
+            obpLanguageAdoptions: normalized.obpLanguageAdoptions || {},
+            obpLanguageNames: normalized.obpLanguageNames || {},
         }),
+        topLanguages: buildOBPLanguageBreakdown(normalized),
         daysWithData: 1,
     };
 }
@@ -346,6 +410,11 @@ function compactOBPAnalyticsDay(date: string, data: OBPDailyData) {
         obpActionClicksBySource: normalized.obpActionClicksBySource || {},
         obpMenuClicksBySource: normalized.obpMenuClicksBySource || {},
         obpLinkClicksBySource: normalized.obpLinkClicksBySource || {},
+        obpLanguageTrackingEnabled: Boolean(normalized.obpLanguageTrackingEnabled),
+        obpViewsByLanguage: normalized.obpViewsByLanguage || {},
+        obpSessionsByLanguage: normalized.obpSessionsByLanguage || {},
+        obpLanguageAdoptions: normalized.obpLanguageAdoptions || {},
+        obpLanguageNames: normalized.obpLanguageNames || {},
     };
 }
 
@@ -459,6 +528,16 @@ async function applyLateOBPCorrection(
     addMapDelta('obpActionClicksBySource', 'lifetime.obpActionClicksBySource');
     addMapDelta('obpMenuClicksBySource', 'lifetime.obpMenuClicksBySource');
     addMapDelta('obpLinkClicksBySource', 'lifetime.obpLinkClicksBySource');
+    addMapDelta('obpViewsByLanguage', 'lifetime.obpViewsByLanguage');
+    addMapDelta('obpSessionsByLanguage', 'lifetime.obpSessionsByLanguage');
+    addMapDelta('obpLanguageAdoptions', 'lifetime.obpLanguageAdoptions');
+    if (currentDaily.obpLanguageTrackingEnabled) {
+        assignNestedPathUpdate(updates, 'lifetime.obpLanguageTrackingEnabled', true);
+        Object.entries(currentDaily.obpLanguageNames || {}).forEach(([language, name]) => {
+            assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${language}`, name);
+        });
+        hasDelta = true;
+    }
 
     if (!hasDelta) return false;
 
@@ -557,6 +636,11 @@ function aggregateOBPDailyDocsFromMap(
         mergeNumericMap(metrics.obpActionClicksBySource, data.obpActionClicksBySource || {});
         mergeNumericMap(metrics.obpMenuClicksBySource, data.obpMenuClicksBySource || {});
         mergeNumericMap(metrics.obpLinkClicksBySource, data.obpLinkClicksBySource || {});
+        metrics.obpLanguageTrackingEnabled = Boolean(metrics.obpLanguageTrackingEnabled || data.obpLanguageTrackingEnabled);
+        mergeNumericMap(metrics.obpViewsByLanguage, data.obpViewsByLanguage || {});
+        mergeNumericMap(metrics.obpSessionsByLanguage, data.obpSessionsByLanguage || {});
+        mergeNumericMap(metrics.obpLanguageAdoptions, data.obpLanguageAdoptions || {});
+        Object.assign(metrics.obpLanguageNames, data.obpLanguageNames || {});
         metrics.daysWithData++;
     }
 
@@ -719,6 +803,14 @@ export async function aggregateOBPAnalyticsForStoreDate(
         obpActionClicksBySource: sumNumericMaps(existingLifetime.obpActionClicksBySource, normalizedYesterdayData?.obpActionClicksBySource),
         obpMenuClicksBySource: sumNumericMaps(existingLifetime.obpMenuClicksBySource, normalizedYesterdayData?.obpMenuClicksBySource),
         obpLinkClicksBySource: sumNumericMaps(existingLifetime.obpLinkClicksBySource, normalizedYesterdayData?.obpLinkClicksBySource),
+        obpLanguageTrackingEnabled: Boolean(existingLifetime.obpLanguageTrackingEnabled || normalizedYesterdayData?.obpLanguageTrackingEnabled),
+        obpViewsByLanguage: sumNumericMaps(existingLifetime.obpViewsByLanguage, normalizedYesterdayData?.obpViewsByLanguage),
+        obpSessionsByLanguage: sumNumericMaps(existingLifetime.obpSessionsByLanguage, normalizedYesterdayData?.obpSessionsByLanguage),
+        obpLanguageAdoptions: sumNumericMaps(existingLifetime.obpLanguageAdoptions, normalizedYesterdayData?.obpLanguageAdoptions),
+        obpLanguageNames: {
+            ...(existingLifetime.obpLanguageNames || {}),
+            ...(normalizedYesterdayData?.obpLanguageNames || {}),
+        },
     } : existingLifetime;
 
     const hasAnyData = currentWeekMetrics.daysWithData > 0 ||
@@ -778,6 +870,13 @@ export async function aggregateOBPAnalyticsForStoreDate(
             obpActionClicksBySource: lifetimeUpdate.obpActionClicksBySource || {},
             obpMenuClicksBySource: lifetimeUpdate.obpMenuClicksBySource || {},
             obpLinkClicksBySource: lifetimeUpdate.obpLinkClicksBySource || {},
+        }),
+        lifetimeLanguages: buildOBPLanguageBreakdown({
+            obpLanguageTrackingEnabled: Boolean(lifetimeUpdate.obpLanguageTrackingEnabled),
+            obpViewsByLanguage: lifetimeUpdate.obpViewsByLanguage || {},
+            obpSessionsByLanguage: lifetimeUpdate.obpSessionsByLanguage || {},
+            obpLanguageAdoptions: lifetimeUpdate.obpLanguageAdoptions || {},
+            obpLanguageNames: lifetimeUpdate.obpLanguageNames || {},
         }),
         firstDataDate: existingData?.firstDataDate || yesterdayStr,
         lastUpdated: FieldValue.serverTimestamp(),

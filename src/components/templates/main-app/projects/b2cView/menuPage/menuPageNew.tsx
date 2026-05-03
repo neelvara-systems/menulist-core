@@ -62,6 +62,7 @@ interface MenuPageNewProps {
     from: string;
     businessType?: string;
     precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
+    restoreStoredLanguage?: boolean;
 }
 
 const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefined => {
@@ -98,7 +99,8 @@ function MenuPageNew({
     setActiveLanguage,
     from,
     businessType,
-    precomputedBlocks
+    precomputedBlocks,
+    restoreStoredLanguage = true
 }: MenuPageNewProps) {
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const { trackMenuItemTap } = useContext(AnalyticsContext);
@@ -808,6 +810,7 @@ function MenuPageNew({
                         setActiveLanguage={setActiveLanguage}
                         setActivePage={setActivePage}
                         moodConfig={moodConfig}
+                        restoreStoredLanguage={restoreStoredLanguage}
                     />
 
                     {/* Search Bar - Below header, NEVER sticky (scrolls away) */}

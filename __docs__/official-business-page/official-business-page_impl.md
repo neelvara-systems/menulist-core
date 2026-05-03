@@ -246,7 +246,29 @@ This reuses the same logic from `ENABLE_HOURS_STATUS_DISPLAY` feature.
 
 ---
 
-## 9. Schema.org Structured Data
+## 9. Language Handling
+
+**Updated May 3, 2026** — OBP uses the shared public render-language resolver:
+
+- `?lang=xx` wins when the language is available for the store.
+- Otherwise OBP uses `store.defaultLanguage`.
+- Otherwise OBP falls back through the normalized store language policy, with English (`en`) as canonical fallback.
+- When a store has more than one active public language, OBP renders a compact language switcher.
+- OBP menu CTA URLs preserve the current language with `?lang=xx`, so customers land on the menu in the same language.
+- Brand OBP and outlet OBP use the same resolver and selector behavior.
+- OBP metadata and JSON-LD resolve localized business copy using the same language.
+
+Primary implementation files:
+
+- `src/lib/localization/publicRenderLanguage.ts`
+- `src/app/client/obp/OBPContent.tsx`
+- `src/app/client/obp/BrandOBPContent.tsx`
+- `src/app/client/obp/OBPLanguageSwitcher.tsx`
+- `src/app/client/[[...slug]]/page.tsx`
+
+---
+
+## 10. Schema.org Structured Data
 
 **Updated Feb 16, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts`.
 
@@ -280,6 +302,8 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
 }
 ```
 
+The runtime implementation also accepts the resolved render language so localized `displayName`, `descriptor`, `knownFor`, and description fields match the OBP page language.
+
 **Shared utilities** (`src/lib/schema/index.ts`):
 
 - `buildAddress()` — PostalAddress from store fields
@@ -302,7 +326,7 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
 
 ---
 
-## 10. Routing Changes
+## 11. Routing Changes
 
 ### Current Flow (`_client/[[...slug]]/page.tsx`)
 

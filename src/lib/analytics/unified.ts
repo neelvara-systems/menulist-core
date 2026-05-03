@@ -44,6 +44,8 @@ type SessionMilestoneState = {
   intent?: boolean;
   action?: boolean;
   itemIds?: string[];
+  languageSessions?: string[];
+  languageAdoptions?: string[];
 };
 
 type EntrySource =
@@ -182,6 +184,8 @@ const writeSessionMilestoneState = (key: string | null, state: SessionMilestoneS
     window.sessionStorage.setItem(key, JSON.stringify({
       ...state,
       itemIds: Array.from(new Set(state.itemIds || [])).slice(-10),
+      languageSessions: Array.from(new Set(state.languageSessions || [])).slice(-8),
+      languageAdoptions: Array.from(new Set(state.languageAdoptions || [])).slice(-8),
     }));
   } catch {
     // Session milestones are additive analytics only; never block customer UX.
@@ -294,7 +298,7 @@ const normalizeEntrySource = (value?: string | null): EntrySource | null => {
 };
 
 const inferEntrySource = (data: TrackingData): EntrySource => {
-  const explicit = normalizeEntrySource(data.entrySource || data.utm_source || data.utm_medium || data.source);
+  const explicit = normalizeEntrySource(data.entrySource || data.utm_source || data.utm_medium || data.source || data.src);
   if (explicit) return explicit;
 
   if (typeof window === 'undefined') return 'direct';
@@ -320,6 +324,86 @@ const inferEntrySource = (data: TrackingData): EntrySource => {
   }
 
   return 'direct';
+};
+
+const normalizeMenuLanguage = (value?: string | null): string | null => {
+  const language = String(value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 16);
+  return language || null;
+};
+
+const normalizeMenuLanguageName = (code: string, value?: string | null): string => {
+  const label = String(value || '').trim().slice(0, 48);
+  return label || code.toUpperCase();
+};
+
+const addMenuLanguageCounters = (
+  updateData: Record<string, any>,
+  state: SessionMilestoneState | null,
+  data: TrackingData,
+  mode: 'view' | 'adoption',
+): boolean => {
+  const language = normalizeMenuLanguage(data.menuLanguage || data.language);
+  if (!language) return false;
+
+  const label = normalizeMenuLanguageName(language, data.menuLanguageName || data.languageName);
+  updateData.languageTrackingEnabled = true;
+  updateData[`languageNames.${language}`] = label;
+
+  if (mode === 'view') {
+    updateData[`menuViewsByLanguage.${language}`] = 1;
+    if (state) {
+      const languages = new Set(state.languageSessions || []);
+      if (!languages.has(language)) {
+        languages.add(language);
+        state.languageSessions = Array.from(languages).slice(-8);
+        updateData[`menuSessionsByLanguage.${language}`] = 1;
+      }
+    }
+    return true;
+  }
+
+  if (!state) return false;
+  const adoptedLanguages = new Set(state.languageAdoptions || []);
+  if (adoptedLanguages.has(language)) return false;
+  adoptedLanguages.add(language);
+  state.languageAdoptions = Array.from(adoptedLanguages).slice(-8);
+  updateData[`languageAdoptions.${language}`] = 1;
+  return true;
+};
+
+const addOBPLanguageCounters = (
+  updateData: Record<string, any>,
+  state: SessionMilestoneState | null,
+  data: TrackingData,
+  mode: 'view' | 'adoption',
+): boolean => {
+  const language = normalizeMenuLanguage(data.obpLanguage || data.menuLanguage || data.language);
+  if (!language) return false;
+
+  const label = normalizeMenuLanguageName(language, data.obpLanguageName || data.menuLanguageName || data.languageName);
+  updateData.obpLanguageTrackingEnabled = true;
+  updateData[`obpLanguageNames.${language}`] = label;
+
+  if (mode === 'view') {
+    updateData[`obpViewsByLanguage.${language}`] = 1;
+    if (state) {
+      const languages = new Set(state.languageSessions || []);
+      if (!languages.has(language)) {
+        languages.add(language);
+        state.languageSessions = Array.from(languages).slice(-8);
+        updateData[`obpSessionsByLanguage.${language}`] = 1;
+      }
+    }
+    return true;
+  }
+
+  if (!state) return false;
+  const adoptedLanguages = new Set(state.languageAdoptions || []);
+  if (adoptedLanguages.has(language)) return false;
+  adoptedLanguages.add(language);
+  state.languageAdoptions = Array.from(adoptedLanguages).slice(-8);
+  updateData[`obpLanguageAdoptions.${language}`] = 1;
+  return true;
 };
 
 const markSessionMilestone = (
@@ -396,6 +480,7 @@ export enum TrackingEvent {
   SEARCH = 'search',                 // User searching for items
   UNAVAILABLE_ITEM_ATTEMPT = 'unavailable_item_attempt', // User tapped an unavailable item
   MENU_ACTION_CLICK = 'menu_action_click', // Customer clicked a final CTA from the menu
+  MENU_LANGUAGE_ADOPTION = 'menu_language_adoption', // Switched language stayed active long enough to count
   LOGIN = 'login',                   // User login
   SIGN_UP = 'sign_up',               // User registration
   SHARE = 'share',                   // Sharing content
@@ -407,6 +492,7 @@ export enum TrackingEvent {
   OBP_MENU_CLICK = 'obp_menu_click',        // Customer clicked "View Menu" from OBP → measures OBP→menu conversion
   OBP_LINK_CLICK = 'obp_link_click',        // Customer clicked review/social/website link from OBP
   OBP_SHARE = 'obp_share',                  // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
+  OBP_LANGUAGE_ADOPTION = 'obp_language_adoption', // OBP language stayed active after switching
 
   // G-10 (§11 + D-04 PUBLIC-ROUTING-DOCTRINE): customer-side project switch.
   // Fires when the customer switches between projects via the in-menu
@@ -498,6 +584,17 @@ export interface TrackingData {
   utm_campaign?: string;
   entrySource?: EntrySource | string;
   source?: string;
+  src?: string;
+
+  // Menu language usage. Counts only current language on existing menu-view
+  // writes and validated switched-language adoption, not every quick toggle.
+  menuLanguage?: string;
+  menuLanguageName?: string;
+  previousMenuLanguage?: string;
+  languageAdoptionReason?: 'dwell' | 'meaningful_action';
+  obpLanguage?: string;
+  obpLanguageName?: string;
+  previousOBPLanguage?: string;
 
   /**
    * Customer App (PWA) platform tag — 'ios' | 'android' | 'desktop' | 'other'.
@@ -656,6 +753,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           if (!hadMenuSession && updateData.menuSessions) {
             updateData[`menuSessionsBySource.${entrySource}`] = 1;
           }
+          addMenuLanguageCounters(updateData, sessionMilestones, data, 'view');
           updateData[`viewsByEntrySource.${entrySource}`] = 1;
           if (data.utm_source) {
             updateData[`viewsBySource.${data.utm_source}`] = 1;
@@ -670,6 +768,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
             updateData[`menuResolutionLayer.${data.menuResolutionLayer}`] = 1;
           }
         }
+        break;
+
+      case TrackingEvent.MENU_LANGUAGE_ADOPTION:
+        if (!data.menuLanguage) {
+          console.error('menuLanguage is required for menu language adoption tracking');
+          return;
+        }
+        if (!addMenuLanguageCounters(updateData, sessionMilestones, data, 'adoption')) return;
         break;
 
       case TrackingEvent.ITEM_VIEW:
@@ -787,6 +893,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`hourlyViews.${hour}`] = 1;
         updateData.totalSessions = 1;
         updateData[`viewsByEntrySource.${entrySource}`] = 1;
+        addOBPLanguageCounters(updateData, sessionMilestones, data, 'view');
         if (data.utm_source) {
           updateData[`viewsBySource.${data.utm_source}`] = 1;
         } else {
@@ -794,6 +901,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         }
         if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
         if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
+        break;
+
+      case TrackingEvent.OBP_LANGUAGE_ADOPTION:
+        if (!data.obpLanguage && !data.menuLanguage) {
+          console.error('obpLanguage is required for OBP language adoption tracking');
+          return;
+        }
+        if (!addOBPLanguageCounters(updateData, sessionMilestones, data, 'adoption')) return;
         break;
 
       case TrackingEvent.OBP_ACTION_CLICK:
@@ -1155,6 +1270,19 @@ export const trackMenuView = (storeId?: string, storeName?: string, additionalDa
   return trackEvent(TrackingEvent.MENU_VIEW, { storeId, storeName, ...additionalData });
 };
 
+export const trackMenuLanguageAdoption = (
+  menuLanguage: string,
+  previousMenuLanguage?: string,
+  additionalData: Partial<TrackingData> = {},
+): Promise<void> => {
+  return trackEvent(TrackingEvent.MENU_LANGUAGE_ADOPTION, {
+    menuLanguage,
+    previousMenuLanguage,
+    languageAdoptionReason: 'dwell',
+    ...additionalData,
+  });
+};
+
 /**
  * Store active menu filter context without writing to Firebase.
  * The selected filter is attached to later accepted analytics writes only.
@@ -1348,6 +1476,22 @@ export const trackOBPView = (
     storeId: String(storeId),
     projectId: 'obp',
     ...additionalData
+  });
+};
+
+export const trackOBPLanguageAdoption = (
+  storeId: string | number,
+  obpLanguage: string,
+  previousOBPLanguage?: string,
+  additionalData: Partial<TrackingData> = {},
+): Promise<void> => {
+  return trackEvent(TrackingEvent.OBP_LANGUAGE_ADOPTION, {
+    storeId: String(storeId),
+    projectId: 'obp',
+    obpLanguage,
+    previousOBPLanguage,
+    languageAdoptionReason: 'dwell',
+    ...additionalData,
   });
 };
 

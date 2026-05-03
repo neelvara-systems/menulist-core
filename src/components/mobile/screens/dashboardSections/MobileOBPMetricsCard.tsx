@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import type {
     OBPActionBreakdown,
     OBPLinkBreakdown,
+    OBPLanguageUsage,
     OBPPeriodMetrics,
     OBPShareBreakdown,
     OBPSourceBreakdown,
@@ -140,6 +141,32 @@ function renderSourceRows(sources?: OBPSourceBreakdown[]) {
     );
 }
 
+function renderLanguageRows(languages?: OBPLanguageUsage[]) {
+    const rows = (languages || []).filter((language) => (
+        language.views > 0 || language.sessions > 0 || language.adoptions > 0
+    ));
+    if (rows.length === 0) return null;
+
+    return (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                OBP languages
+            </Text>
+            <Flex gap={6} vertical>
+                {rows.slice(0, 5).map((language) => (
+                    <Flex key={language.language} align="center" justify="space-between" gap={10}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{language.label}</Text>
+                        <Text style={{ fontSize: 12, textAlign: 'right' }}>
+                            {Math.max(language.sessions, language.views).toLocaleString()} sessions/views
+                            {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed` : ''}
+                        </Text>
+                    </Flex>
+                ))}
+            </Flex>
+        </div>
+    );
+}
+
 function renderMetricCards(metrics: OBPPeriodMetrics) {
     return (
         <>
@@ -182,6 +209,7 @@ function renderMetricCards(metrics: OBPPeriodMetrics) {
             {renderLinkRows(metrics.links)}
             {renderShareRows(metrics.shareMethods)}
             {renderSourceRows(metrics.sources)}
+            {renderLanguageRows(metrics.topLanguages)}
         </>
     );
 }

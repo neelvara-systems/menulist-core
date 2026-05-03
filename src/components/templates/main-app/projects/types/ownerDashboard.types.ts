@@ -116,6 +116,14 @@ export interface TopCategory {
     clicks: number;
 }
 
+export interface LanguageUsage {
+    language: string;
+    label: string;
+    menuViews: number;
+    menuSessions: number;
+    adoptions: number;
+}
+
 export interface SourceQuality {
     source: string;
     label: string;
@@ -176,6 +184,7 @@ export interface DailyViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
@@ -203,6 +212,7 @@ export interface WeeklyViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
@@ -225,6 +235,7 @@ export interface MonthlyViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
@@ -247,6 +258,7 @@ export interface WTDViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
@@ -270,6 +282,7 @@ export interface MTDViewData {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories?: TopCategory[];
+    topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     topSearchTerms?: SearchTerm[];
@@ -335,6 +348,7 @@ export interface OverallData {
         totalMenuActionClicks?: number;
     };
     topCategories?: TopCategory[];
+    topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     sourceQuality?: SourceQuality[];

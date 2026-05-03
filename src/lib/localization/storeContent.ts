@@ -28,7 +28,7 @@ export function getStoreRenderLanguage(storeDetails?: any): string {
 
     return managedLanguages.includes(defaultLanguage)
         ? defaultLanguage
-        : getStorePreferredLanguage(storeDetails);
+        : managedLanguages[0] || CANONICAL_SOURCE_LANGUAGE;
 }
 
 export function getStoreLanguageLabel(languageCode: string): string {

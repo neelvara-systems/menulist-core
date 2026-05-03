@@ -72,6 +72,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     const topSearch = data.topSearchTerms?.[0];
     const topUnavailable = data.unavailableItems?.[0];
     const topFilter = data.topAttributeFilters?.[0];
+    const topLanguage = data.topLanguages?.[0];
     const detailContent = (
         <div style={{ maxWidth: 320 }}>
             <Text type="secondary" style={{ display: 'block' }}>
@@ -91,6 +92,11 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
             {topFilter ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
                     Top filter right now: {topFilter.label || topFilter.filterId} ({topFilter.interactions} intent, {topFilter.actionClicks} actions)
+                </Text>
+            ) : null}
+            {topLanguage ? (
+                <Text style={{ display: 'block', marginTop: 8 }}>
+                    Top language right now: {topLanguage.label} ({topLanguage.menuSessions || topLanguage.menuViews} sessions/views, {topLanguage.adoptions} stayed switches)
                 </Text>
             ) : null}
             <Text style={{ display: 'block', marginTop: 8 }}>
@@ -150,6 +156,11 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                 <Col xs={12} sm={6}>
                     <Statistic title="Unavailable Interest" value={data.metrics.unavailableItemTaps || 0} />
                 </Col>
+                {topLanguage ? (
+                    <Col xs={12} sm={6}>
+                        <Statistic title="Top Language" value={topLanguage.label} />
+                    </Col>
+                ) : null}
             </Row>
 
             {!showHistorical && onShowHistorical ? (

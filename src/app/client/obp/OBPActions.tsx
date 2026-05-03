@@ -29,6 +29,13 @@ interface OBPActionsProps {
     showDirections: boolean;
     showReservation: boolean;
     showOrder: boolean;
+    labels: {
+        call: string;
+        whatsapp: string;
+        directions: string;
+        reserve: string;
+        order: string;
+    };
 }
 
 export default function OBPActions({
@@ -48,6 +55,7 @@ export default function OBPActions({
     showDirections,
     showReservation,
     showOrder,
+    labels,
 }: OBPActionsProps) {
     const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl);
     if (!hasAnyAction) return null;
@@ -79,7 +87,7 @@ export default function OBPActions({
                     })}
                 >
                     <span className={styles.actionIcon}>📞</span>
-                    Call
+                    {labels.call}
                 </a>
             )}
             {showWhatsApp && whatsappNumber && (
@@ -96,7 +104,7 @@ export default function OBPActions({
                     })}
                 >
                     <span className={styles.actionIcon}>💬</span>
-                    WhatsApp
+                    {labels.whatsapp}
                 </a>
             )}
             {showDirections && directionsUrl && (
@@ -113,7 +121,7 @@ export default function OBPActions({
                     })}
                 >
                     <span className={styles.actionIcon}>📍</span>
-                    Directions
+                    {labels.directions}
                 </a>
             )}
             {showReservation && reservationUrl && (
@@ -130,7 +138,7 @@ export default function OBPActions({
                     })}
                 >
                     <span className={styles.actionIcon}>📅</span>
-                    Reserve
+                    {labels.reserve}
                 </a>
             )}
             {showOrder && orderUrl && (
@@ -147,7 +155,7 @@ export default function OBPActions({
                     })}
                 >
                     <span className={styles.actionIcon}>🛒</span>
-                    Order
+                    {labels.order}
                 </a>
             )}
         </div>

@@ -11,8 +11,10 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
-import { trackOBPView } from '@lib/analytics/unified';
+import { trackOBPLanguageAdoption, trackOBPView } from '@lib/analytics/unified';
 import { useEffect } from 'react';
+
+const OBP_LANGUAGE_STORAGE_PREFIX = 'menulist_obp_language_v1';
 
 interface OBPAnalyticsProps {
     tenantId: number;
@@ -21,9 +23,22 @@ interface OBPAnalyticsProps {
     businessDayEndTime?: string;
     trackViews?: boolean;
     includeLocation?: boolean;
+    activeLanguage?: string;
+    activeLanguageName?: string;
+    trackLanguageUsage?: boolean;
 }
 
-export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews = true, includeLocation = true }: OBPAnalyticsProps) {
+export default function OBPAnalytics({
+    tenantId,
+    storeId,
+    storeTimeZone,
+    businessDayEndTime,
+    trackViews = true,
+    includeLocation = true,
+    activeLanguage,
+    activeLanguageName,
+    trackLanguageUsage = false,
+}: OBPAnalyticsProps) {
     useEffect(() => {
         if (!trackViews || !tenantId || !storeId) return;
 
@@ -48,13 +63,55 @@ export default function OBPAnalytics({ tenantId, storeId, storeTimeZone, busines
                 utm_campaign,
                 entrySource,
                 source,
+                obpLanguage: trackLanguageUsage ? activeLanguage : undefined,
+                obpLanguageName: trackLanguageUsage ? activeLanguageName : undefined,
             }).catch(err => {
                 console.error('OBP view tracking failed:', err);
             });
         } catch (error) {
             console.error('OBP analytics setup failed:', error);
         }
-    }, [tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews, includeLocation]);
+    }, [tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews, includeLocation, activeLanguage, activeLanguageName, trackLanguageUsage]);
+
+    useEffect(() => {
+        if (!trackViews || !trackLanguageUsage || !tenantId || !storeId || !activeLanguage) return;
+        if (typeof window === 'undefined') return;
+
+        const storageKey = `${OBP_LANGUAGE_STORAGE_PREFIX}|${tenantId}|${storeId}`;
+        let previousLanguage: string | null = null;
+        try {
+            previousLanguage = window.sessionStorage.getItem(storageKey);
+            window.sessionStorage.setItem(storageKey, activeLanguage);
+        } catch {
+            previousLanguage = null;
+        }
+
+        if (!previousLanguage || previousLanguage === activeLanguage) return;
+
+        const timerId = window.setTimeout(() => {
+            try {
+                const sessionId = getSessionId();
+                const urlParams = new URLSearchParams(window.location.search);
+                void trackOBPLanguageAdoption(storeId, activeLanguage, previousLanguage || undefined, {
+                    tenantId,
+                    sessionId,
+                    storeTimeZone,
+                    businessDayEndTime,
+                    includeLocation,
+                    obpLanguageName: activeLanguageName,
+                    utm_source: urlParams.get('utm_source') || undefined,
+                    utm_medium: urlParams.get('utm_medium') || undefined,
+                    utm_campaign: urlParams.get('utm_campaign') || undefined,
+                    entrySource: urlParams.get('entry_source') || undefined,
+                    source: urlParams.get('source') || urlParams.get('src') || undefined,
+                });
+            } catch (error) {
+                console.error('OBP language adoption tracking failed:', error);
+            }
+        }, 10000);
+
+        return () => window.clearTimeout(timerId);
+    }, [tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews, includeLocation, activeLanguage, activeLanguageName, trackLanguageUsage]);
 
     return null;
 }

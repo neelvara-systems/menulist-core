@@ -134,6 +134,12 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                 </Text>
             ) : null}
 
+            {data.topLanguages?.length ? (
+                <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
+                    {`Top languages: ${data.topLanguages.slice(0, 3).map((language) => `${language.label || language.language} (${language.menuSessions || language.menuViews} sessions/views, ${language.adoptions || 0} stayed switches)`).join(', ')}`}
+                </Text>
+            ) : null}
+
             {data.topAttributeFilters?.length ? (
                 <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
                     {`Top filters: ${data.topAttributeFilters.slice(0, 3).map((filter) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}`}

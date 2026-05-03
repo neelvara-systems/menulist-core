@@ -40,6 +40,7 @@ import {
     DAILY_GUARDRAILS,
     DailyViewData,
     HistoricalWeek,
+    LanguageUsage,
     MenuActionBreakdown,
     MonthlyViewData,
     MTDViewData,
@@ -334,6 +335,7 @@ function transformTopAttributeFilters(data: any): AttributeFilterInterest[] {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
+    copy_link: 'Copied link',
     qr: 'QR / table scan',
     whatsapp: 'WhatsApp',
     instagram: 'Instagram',
@@ -341,6 +343,7 @@ const SOURCE_LABELS: Record<string, string> = {
     google: 'Google',
     obp: 'Official business page',
     menu_kit: 'Menu kit',
+    native_share: 'Phone share',
     shortcut: 'Customer app shortcut',
     direct: 'Direct link',
     other: 'Other source',
@@ -372,6 +375,32 @@ function transformSourceQuality(data: any): SourceQuality[] {
         .filter((entry) => entry.menuSessions > 0 || entry.actionClicks > 0)
         .sort((a, b) => (b.actionSessions - a.actionSessions) || (b.menuSessions - a.menuSessions))
         .slice(0, 6);
+}
+
+function transformTopLanguages(data: any): LanguageUsage[] {
+    if (!data?.languageTrackingEnabled) return [];
+
+    const menuViews = readAnalyticsMap(data, 'menuViewsByLanguage');
+    const menuSessions = readAnalyticsMap(data, 'menuSessionsByLanguage');
+    const adoptions = readAnalyticsMap(data, 'languageAdoptions');
+    const languageNames = readAnalyticsMap(data, 'languageNames');
+    const languageIds = new Set<string>([
+        ...Object.keys(menuViews),
+        ...Object.keys(menuSessions),
+        ...Object.keys(adoptions),
+    ]);
+
+    return Array.from(languageIds)
+        .map((language) => ({
+            language,
+            label: languageNames[language] || language.toUpperCase(),
+            menuViews: menuViews[language] || 0,
+            menuSessions: menuSessions[language] || 0,
+            adoptions: adoptions[language] || 0,
+        }))
+        .filter((entry) => entry.menuViews > 0 || entry.menuSessions > 0 || entry.adoptions > 0)
+        .sort((a, b) => ((b.menuSessions + b.adoptions + b.menuViews) - (a.menuSessions + a.adoptions + a.menuViews)))
+        .slice(0, 5);
 }
 
 function transformOwnerConfidence(data: any): OwnerConfidence {
@@ -440,6 +469,7 @@ interface DailyDocData {
     totalMenuActionClicks: number;
     totalDecisionBlocksRendered: number;
     totalRecommendationClicks: number;
+    languageTrackingEnabled?: boolean;
     decisionBlocksRendered?: {
         popular?: number;
         quickPick?: number;
@@ -457,6 +487,9 @@ interface DailyDocData {
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
     menuActionClicksBySource?: Record<string, number>;
+    menuViewsByLanguage?: Record<string, number>;
+    menuSessionsByLanguage?: Record<string, number>;
+    languageAdoptions?: Record<string, number>;
     attributeFilterInteractions?: Record<string, number>;
     attributeFilterItemViews?: Record<string, number>;
     attributeFilterItemTaps?: Record<string, number>;
@@ -471,6 +504,7 @@ interface DailyDocData {
     unavailableItemTapsByItem?: Record<string, number>;
     itemNames?: Record<string, string>;
     categoryNames?: Record<string, string>;
+    languageNames?: Record<string, string>;
     attributeFilterNames?: Record<string, string>;
 }
 
@@ -507,6 +541,7 @@ async function fetchDailyDocs(
                     totalMenuActionClicks: data.totalMenuActionClicks || 0,
                     totalDecisionBlocksRendered: data.totalDecisionBlocksRendered || 0,
                     totalRecommendationClicks: data.totalRecommendationClicks || 0,
+                    languageTrackingEnabled: Boolean(data.languageTrackingEnabled),
                     decisionBlocksRendered: readAnalyticsMap(data, 'decisionBlocksRendered'),
                     recommendationClicks: readAnalyticsMap(data, 'recommendationClicks'),
                     recommendationClicksByItem: readAnalyticsMap(data, 'recommendationClicksByItem'),
@@ -516,6 +551,9 @@ async function fetchDailyDocs(
                     menuSessionsBySource: readAnalyticsMap(data, 'menuSessionsBySource'),
                     actionSessionsBySource: readAnalyticsMap(data, 'actionSessionsBySource'),
                     menuActionClicksBySource: readAnalyticsMap(data, 'menuActionClicksBySource'),
+                    menuViewsByLanguage: readAnalyticsMap(data, 'menuViewsByLanguage'),
+                    menuSessionsByLanguage: readAnalyticsMap(data, 'menuSessionsByLanguage'),
+                    languageAdoptions: readAnalyticsMap(data, 'languageAdoptions'),
                     attributeFilterInteractions: readAnalyticsMap(data, 'attributeFilterInteractions'),
                     attributeFilterItemViews: readAnalyticsMap(data, 'attributeFilterItemViews'),
                     attributeFilterItemTaps: readAnalyticsMap(data, 'attributeFilterItemTaps'),
@@ -530,6 +568,7 @@ async function fetchDailyDocs(
                     unavailableItemTapsByItem: readAnalyticsMap(data, 'unavailableItemTapsByItem'),
                     itemNames: readAnalyticsMap(data, 'itemNames'),
                     categoryNames: readAnalyticsMap(data, 'categoryNames'),
+                    languageNames: readAnalyticsMap(data, 'languageNames'),
                     attributeFilterNames: readAnalyticsMap(data, 'attributeFilterNames'),
                 } as DailyDocData;
             }
@@ -548,13 +587,14 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     blockPerformance: BlockPerformance;
     topItems: TopItem[];
     topCategories: TopCategory[];
+    topLanguages: LanguageUsage[];
     topAttributeFilters: AttributeFilterInterest[];
     menuActions: MenuActionBreakdown;
     topSearchTerms: SearchTerm[];
     topZeroResultSearchTerms: SearchTerm[];
     unavailableItems: TopItem[];
-    sourceQuality: SourceQuality[];
-    ownerConfidence: OwnerConfidence;
+        sourceQuality: SourceQuality[];
+        ownerConfidence: OwnerConfidence;
 } {
     const metrics: OwnerDashboardMetrics = {
         menuVisits: 0,
@@ -590,6 +630,13 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         actionSessionsBySource: {} as Record<string, number>,
         menuActionClicksBySource: {} as Record<string, number>,
     };
+    const languageData = {
+        languageTrackingEnabled: false,
+        menuViewsByLanguage: {} as Record<string, number>,
+        menuSessionsByLanguage: {} as Record<string, number>,
+        languageAdoptions: {} as Record<string, number>,
+        languageNames: {} as Record<string, string>,
+    };
     const filterData = {
         attributeFilterInteractions: {} as Record<string, number>,
         attributeFilterItemViews: {} as Record<string, number>,
@@ -614,6 +661,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         metrics.menuActionClicks = (metrics.menuActionClicks || 0) + doc.totalMenuActionClicks;
         metrics.smartPicksRendered += doc.totalDecisionBlocksRendered;
         metrics.smartPicksClicks += doc.totalRecommendationClicks;
+        languageData.languageTrackingEnabled = Boolean(languageData.languageTrackingEnabled || doc.languageTrackingEnabled);
 
         if (doc.decisionBlocksRendered) {
             blockPerformance.popular.rendered += doc.decisionBlocksRendered.popular || 0;
@@ -670,6 +718,9 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             ['menuSessionsBySource', sourceData.menuSessionsBySource],
             ['actionSessionsBySource', sourceData.actionSessionsBySource],
             ['menuActionClicksBySource', sourceData.menuActionClicksBySource],
+            ['menuViewsByLanguage', languageData.menuViewsByLanguage],
+            ['menuSessionsByLanguage', languageData.menuSessionsByLanguage],
+            ['languageAdoptions', languageData.languageAdoptions],
             ['attributeFilterInteractions', filterData.attributeFilterInteractions],
             ['attributeFilterItemViews', filterData.attributeFilterItemViews],
             ['attributeFilterItemTaps', filterData.attributeFilterItemTaps],
@@ -686,6 +737,10 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
 
         if (doc.attributeFilterNames) {
             Object.assign(filterData.attributeFilterNames, doc.attributeFilterNames);
+        }
+
+        if (doc.languageNames) {
+            Object.assign(languageData.languageNames, doc.languageNames);
         }
 
         if (doc.unavailableItemTapsByItem) {
@@ -739,6 +794,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         }))
         .sort((a, b) => (b.views + b.clicks) - (a.views + a.clicks))
         .slice(0, 5);
+    const topLanguages = transformTopLanguages(languageData);
     const topAttributeFilters = transformTopAttributeFilters(filterData);
 
     const unavailableItems: TopItem[] = Object.entries(unavailableItemsMap)
@@ -755,6 +811,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         blockPerformance,
         topItems,
         topCategories,
+        topLanguages,
         topAttributeFilters,
         menuActions,
         topSearchTerms,
@@ -788,6 +845,7 @@ function buildDailyViewData(
         blockPerformance: transformBlockPerformance(data),
         topItems: transformToTopItems(data),
         topCategories: transformTopCategories(data),
+        topLanguages: data.topLanguages || transformTopLanguages(data),
         topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
         menuActions: transformMenuActions(data),
         topSearchTerms: transformTopSearchTerms(data),
@@ -819,6 +877,7 @@ function normalizeDailyViewData(data: any): DailyViewData | null {
     if (!data) return null;
     return {
         ...data,
+        topLanguages: data.topLanguages || transformTopLanguages(data),
         sourceQuality: data.sourceQuality || transformSourceQuality(data),
         ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
         lastUpdated: parseDateValue(data.lastUpdated),
@@ -872,6 +931,7 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
         historicalWeeks: data.historicalWeeks || overview?.historicalWeeks || [],
         overall: data.overall ? {
             ...data.overall,
+            topLanguages: data.overall.topLanguages || transformTopLanguages(data.overall),
             sourceQuality: data.overall.sourceQuality || [],
             ownerConfidence: data.overall.ownerConfidence,
             lastUpdated: parseDateValue(data.overall.lastUpdated),
@@ -1006,6 +1066,7 @@ export async function getOwnerDashboardWeekly(
                 blockPerformance: transformBlockPerformance(weeklyData),
                 topItems: transformToTopItems(weeklyData),
                 topCategories: transformTopCategories(weeklyData),
+                topLanguages: weeklyData.topLanguages || transformTopLanguages(weeklyData),
                 topAttributeFilters: weeklyData.topAttributeFilters || transformTopAttributeFilters(weeklyData),
                 menuActions: transformMenuActions(weeklyData),
                 topSearchTerms: transformTopSearchTerms(weeklyData),
@@ -1051,6 +1112,7 @@ export async function getOwnerDashboardMonthly(
                 blockPerformance: transformBlockPerformance(data),
                 topItems: transformToTopItems(data),
                 topCategories: transformTopCategories(data),
+                topLanguages: data.topLanguages || transformTopLanguages(data),
                 topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
                 menuActions: transformMenuActions(data),
                 topSearchTerms: transformTopSearchTerms(data),
@@ -1083,7 +1145,7 @@ export async function getOwnerDashboardWTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             return {
                 startDate: dates[0],
@@ -1093,6 +1155,7 @@ export async function getOwnerDashboardWTD(
                 blockPerformance,
                 topItems,
                 topCategories,
+                topLanguages,
                 topAttributeFilters,
                 menuActions,
                 topSearchTerms,
@@ -1131,7 +1194,7 @@ export async function getOwnerDashboardMTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
 
             // Get month name
             const firstDate = parseAnalyticsDateKey(dates[0]);
@@ -1154,6 +1217,7 @@ export async function getOwnerDashboardMTD(
                 blockPerformance,
                 topItems,
                 topCategories,
+                topLanguages,
                 topAttributeFilters,
                 menuActions,
                 topSearchTerms,
@@ -1272,7 +1336,7 @@ export async function getOwnerDashboardOverview(
 
             let wtd: WTDViewData | null = null;
             if (wtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
                 wtd = {
                     startDate: wtdDates[0],
                     endDate: wtdDates[wtdDates.length - 1],
@@ -1281,6 +1345,7 @@ export async function getOwnerDashboardOverview(
                     blockPerformance,
                     topItems,
                     topCategories,
+                    topLanguages,
                     topAttributeFilters,
                     menuActions,
                     topSearchTerms,
@@ -1298,7 +1363,7 @@ export async function getOwnerDashboardOverview(
 
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
                 const firstDate = parseAnalyticsDateKey(mtdDates[0]);
                 const monthName = formatMonthLabel(mtdDates[0]);
                 const daysInMonth = new Date(Date.UTC(
@@ -1317,6 +1382,7 @@ export async function getOwnerDashboardOverview(
                     blockPerformance,
                     topItems,
                     topCategories,
+                    topLanguages,
                     topAttributeFilters,
                     menuActions,
                     topSearchTerms,
@@ -1619,6 +1685,14 @@ export interface OBPSourceBreakdown {
     linkClicks: number;
 }
 
+export interface OBPLanguageUsage {
+    language: string;
+    label: string;
+    views: number;
+    sessions: number;
+    adoptions: number;
+}
+
 export interface OBPPeriodMetrics {
     views: number;
     actionClicks: number;
@@ -1629,6 +1703,7 @@ export interface OBPPeriodMetrics {
     shareMethods: OBPShareBreakdown;
     links: OBPLinkBreakdown;
     sources: OBPSourceBreakdown[];
+    topLanguages?: OBPLanguageUsage[];
     daysWithData: number;
 }
 
@@ -1667,6 +1742,7 @@ export interface OBPOverallData {
     lifetimeShareMethods: OBPShareBreakdown;
     lifetimeLinks: OBPLinkBreakdown;
     lifetimeSources: OBPSourceBreakdown[];
+    lifetimeLanguages?: OBPLanguageUsage[];
     firstDataDate?: string;
     lastUpdated?: Date;
 }
@@ -1694,6 +1770,11 @@ interface OBPDailyDoc {
     obpActionClicksBySource: Record<string, number>;
     obpMenuClicksBySource: Record<string, number>;
     obpLinkClicksBySource: Record<string, number>;
+    obpLanguageTrackingEnabled?: boolean;
+    obpViewsByLanguage?: Record<string, number>;
+    obpSessionsByLanguage?: Record<string, number>;
+    obpLanguageAdoptions?: Record<string, number>;
+    obpLanguageNames?: Record<string, string>;
 }
 
 // ── OBP Aggregation Helpers ──
@@ -1751,6 +1832,38 @@ function buildOBPSourceBreakdown(data: {
         .filter((entry) => entry.views > 0 || entry.actionClicks > 0 || entry.menuClicks > 0 || entry.linkClicks > 0)
         .sort((a, b) => (b.views + b.actionClicks + b.menuClicks + b.linkClicks) - (a.views + a.actionClicks + a.menuClicks + a.linkClicks))
         .slice(0, 6);
+}
+
+function buildOBPLanguageBreakdown(data: {
+    obpLanguageTrackingEnabled?: boolean;
+    obpViewsByLanguage?: Record<string, number>;
+    obpSessionsByLanguage?: Record<string, number>;
+    obpLanguageAdoptions?: Record<string, number>;
+    obpLanguageNames?: Record<string, string>;
+}): OBPLanguageUsage[] {
+    if (!data.obpLanguageTrackingEnabled) return [];
+
+    const views = data.obpViewsByLanguage || {};
+    const sessions = data.obpSessionsByLanguage || {};
+    const adoptions = data.obpLanguageAdoptions || {};
+    const names = data.obpLanguageNames || {};
+    const languageIds = new Set<string>([
+        ...Object.keys(views),
+        ...Object.keys(sessions),
+        ...Object.keys(adoptions),
+    ]);
+
+    return Array.from(languageIds)
+        .map((language) => ({
+            language,
+            label: names[language] || language.toUpperCase(),
+            views: views[language] || 0,
+            sessions: sessions[language] || 0,
+            adoptions: adoptions[language] || 0,
+        }))
+        .filter((entry) => entry.views > 0 || entry.sessions > 0 || entry.adoptions > 0)
+        .sort((a, b) => ((b.sessions + b.adoptions + b.views) - (a.sessions + a.adoptions + a.views)))
+        .slice(0, 5);
 }
 
 function readOBPActionBreakdown(data: Record<string, any>): OBPActionBreakdown {
@@ -1822,6 +1935,11 @@ async function fetchOBPDailyDocs(
                 obpActionClicksBySource: readAnalyticsMap(data, 'obpActionClicksBySource'),
                 obpMenuClicksBySource: readAnalyticsMap(data, 'obpMenuClicksBySource'),
                 obpLinkClicksBySource: readAnalyticsMap(data, 'obpLinkClicksBySource'),
+                obpLanguageTrackingEnabled: Boolean(data.obpLanguageTrackingEnabled),
+                obpViewsByLanguage: readAnalyticsMap(data, 'obpViewsByLanguage'),
+                obpSessionsByLanguage: readAnalyticsMap(data, 'obpSessionsByLanguage'),
+                obpLanguageAdoptions: readAnalyticsMap(data, 'obpLanguageAdoptions'),
+                obpLanguageNames: readAnalyticsMap(data, 'obpLanguageNames') as Record<string, string>,
             });
         }
     }
@@ -1840,6 +1958,7 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         shareMethods: { whatsapp: 0, copy_link: 0, copy_message: 0 },
         links: { google_review: 0, instagram: 0, facebook: 0, website: 0 },
         sources: [],
+        topLanguages: [],
         daysWithData: docs.length,
     };
     const sourceAccumulator = {
@@ -1848,6 +1967,11 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         obpActionClicksBySource: {} as Record<string, number>,
         obpMenuClicksBySource: {} as Record<string, number>,
         obpLinkClicksBySource: {} as Record<string, number>,
+        obpLanguageTrackingEnabled: false,
+        obpViewsByLanguage: {} as Record<string, number>,
+        obpSessionsByLanguage: {} as Record<string, number>,
+        obpLanguageAdoptions: {} as Record<string, number>,
+        obpLanguageNames: {} as Record<string, string>,
     };
 
     for (const d of docs) {
@@ -1873,9 +1997,15 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         sumOBPMap(sourceAccumulator.obpActionClicksBySource, d.obpActionClicksBySource);
         sumOBPMap(sourceAccumulator.obpMenuClicksBySource, d.obpMenuClicksBySource);
         sumOBPMap(sourceAccumulator.obpLinkClicksBySource, d.obpLinkClicksBySource);
+        sourceAccumulator.obpLanguageTrackingEnabled = Boolean(sourceAccumulator.obpLanguageTrackingEnabled || d.obpLanguageTrackingEnabled);
+        sumOBPMap(sourceAccumulator.obpViewsByLanguage, d.obpViewsByLanguage);
+        sumOBPMap(sourceAccumulator.obpSessionsByLanguage, d.obpSessionsByLanguage);
+        sumOBPMap(sourceAccumulator.obpLanguageAdoptions, d.obpLanguageAdoptions);
+        Object.assign(sourceAccumulator.obpLanguageNames, d.obpLanguageNames || {});
     }
 
     result.sources = buildOBPSourceBreakdown(sourceAccumulator);
+    result.topLanguages = buildOBPLanguageBreakdown(sourceAccumulator);
     return result;
 }
 
@@ -1896,6 +2026,13 @@ function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayDat
             obpActionClicksBySource: readAnalyticsMap(data, 'obpActionClicksBySource'),
             obpMenuClicksBySource: readAnalyticsMap(data, 'obpMenuClicksBySource'),
             obpLinkClicksBySource: readAnalyticsMap(data, 'obpLinkClicksBySource'),
+        }),
+        topLanguages: buildOBPLanguageBreakdown({
+            obpLanguageTrackingEnabled: Boolean(data.obpLanguageTrackingEnabled),
+            obpViewsByLanguage: readAnalyticsMap(data, 'obpViewsByLanguage'),
+            obpSessionsByLanguage: readAnalyticsMap(data, 'obpSessionsByLanguage'),
+            obpLanguageAdoptions: readAnalyticsMap(data, 'obpLanguageAdoptions'),
+            obpLanguageNames: readAnalyticsMap(data, 'obpLanguageNames') as Record<string, string>,
         }),
         daysWithData: 1,
         isPartial: true,
@@ -2109,6 +2246,13 @@ export async function getOBPDashboardOverall(
                     obpMenuClicksBySource: readAnalyticsMap(lifetime, 'obpMenuClicksBySource'),
                     obpLinkClicksBySource: readAnalyticsMap(lifetime, 'obpLinkClicksBySource'),
                 }),
+                lifetimeLanguages: buildOBPLanguageBreakdown({
+                    obpLanguageTrackingEnabled: Boolean(lifetime.obpLanguageTrackingEnabled),
+                    obpViewsByLanguage: readAnalyticsMap(lifetime, 'obpViewsByLanguage'),
+                    obpSessionsByLanguage: readAnalyticsMap(lifetime, 'obpSessionsByLanguage'),
+                    obpLanguageAdoptions: readAnalyticsMap(lifetime, 'obpLanguageAdoptions'),
+                    obpLanguageNames: readAnalyticsMap(lifetime, 'obpLanguageNames') as Record<string, string>,
+                }),
                 firstDataDate: data.firstDataDate,
                 lastUpdated: data.modifiedOn?.toDate?.() || undefined,
             };
@@ -2136,6 +2280,7 @@ export async function getOBPDashboardData(
                 const normalizeOBPPeriod = (period: any) => period ? {
                     ...period,
                     sources: period.sources || [],
+                    topLanguages: period.topLanguages || [],
                 } : null;
                 const overview = data.overview ? {
                     ...data.overview,
@@ -2148,6 +2293,7 @@ export async function getOBPDashboardData(
                     overall: data.overall ? {
                         ...data.overall,
                         lifetimeSources: data.overall.lifetimeSources || [],
+                        lifetimeLanguages: data.overall.lifetimeLanguages || [],
                         lastUpdated: parseDateValue(data.overall.lastUpdated),
                     } : null,
                     lastFetched: new Date(),

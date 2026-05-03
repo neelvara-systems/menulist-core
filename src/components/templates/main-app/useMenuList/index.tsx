@@ -556,7 +556,7 @@ export default function UseMenuList() {
                             // G-04: inline Layer-2 alias URL (avoids an
                             // extra import the auto-organizer keeps
                             // stripping). Equivalent to generateMenuUrl().
-                            `${data.obpLink.replace(/\/$/, '')}/menu`,
+                            withSource(`${data.obpLink.replace(/\/$/, '')}/menu`, 'qr'),
                             'Store Menu QR',
                             `${data.storeName}-store-menu-qr`,
                         )}
@@ -571,7 +571,7 @@ export default function UseMenuList() {
                         description={t('businessProfileQrDescription')}
                         loading={generatingAsset === 'Business Profile QR'}
                         onDownload={() => handleDownloadQr(
-                            data.obpLink,
+                            withSource(data.obpLink, 'qr'),
                             'Business Profile QR',
                             `${data.storeName}-business-profile-qr`,
                         )}
@@ -585,7 +585,7 @@ export default function UseMenuList() {
                         description={t('projectMenuQrDescription', { projectName: data.projectName || t('projectFallback') })}
                         loading={generatingAsset === 'Project Menu QR'}
                         onDownload={() => handleDownloadQr(
-                            data.menuLink,
+                            withSource(data.menuLink, 'qr'),
                             'Project Menu QR',
                             `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
                         )}

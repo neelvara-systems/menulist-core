@@ -302,6 +302,20 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                             </div>
                         </Col>
                     )}
+                    {wtd.topLanguages && wtd.topLanguages.length > 0 && (
+                        <Col span={24}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Top Languages:
+                            </Text>
+                            <div style={{ marginTop: 4 }}>
+                                {wtd.topLanguages.slice(0, 3).map((language) => (
+                                    <Tag key={language.language} style={{ marginBottom: 4 }}>
+                                        {language.label || language.language} ({language.menuSessions || language.menuViews} sessions/views)
+                                    </Tag>
+                                ))}
+                            </div>
+                        </Col>
+                    )}
                     {wtd.topAttributeFilters && wtd.topAttributeFilters.length > 0 && (
                         <Col span={24}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -412,6 +426,18 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                                 {mtd.topCategories.slice(0, 3).map((category) => (
                                     <Tag key={category.categoryId} style={{ marginBottom: 4 }}>
                                         {category.name || category.categoryId} ({category.views} views, {category.clicks} taps)
+                                    </Tag>
+                                ))}
+                            </div>
+                        </Col>
+                    )}
+                    {mtd.topLanguages && mtd.topLanguages.length > 0 && (
+                        <Col span={24}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Top Languages:</Text>
+                            <div style={{ marginTop: 4 }}>
+                                {mtd.topLanguages.slice(0, 3).map((language) => (
+                                    <Tag key={language.language} style={{ marginBottom: 4 }}>
+                                        {language.label || language.language} ({language.menuSessions || language.menuViews} sessions/views)
                                     </Tag>
                                 ))}
                             </div>

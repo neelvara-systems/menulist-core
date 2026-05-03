@@ -1,5 +1,6 @@
 'use client';
 
+import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -53,6 +54,9 @@ export default function MobileCommunicationKit({
     }), [activeProjects, address, businessType, menuLink, obpLink, phone, projectName, storeName, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
+    const copyTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'copy_link')), [input]);
+    const nativeShareTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'native_share')), [input]);
+    const whatsappTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'whatsapp')), [input]);
 
     return (
         <Flex gap={10} vertical>
@@ -62,14 +66,42 @@ export default function MobileCommunicationKit({
             </Flex>
             <Flex gap={12} vertical>
                 {templates.map((template) => (
-                    <MobileMessageCard key={template.id} template={template} />
+                    <MobileMessageCard
+                        key={template.id}
+                        copyMessage={copyTemplates.find((entry) => entry.id === template.id)?.message || template.message}
+                        nativeShareMessage={nativeShareTemplates.find((entry) => entry.id === template.id)?.message || template.message}
+                        template={template}
+                        whatsappMessage={whatsappTemplates.find((entry) => entry.id === template.id)?.message || template.message}
+                    />
                 ))}
             </Flex>
         </Flex>
     );
 }
 
-function MobileMessageCard({ template }: { template: MessageTemplate }) {
+function withSource(input: MessageTemplateInput, source: AnalyticsEntrySource): MessageTemplateInput {
+    return {
+        ...input,
+        menuLink: withAnalyticsSource(input.menuLink, source),
+        obpLink: input.obpLink ? withAnalyticsSource(input.obpLink, source) : undefined,
+        activeProjects: input.activeProjects?.map((project) => ({
+            ...project,
+            url: withAnalyticsSource(project.url, source),
+        })),
+    };
+}
+
+function MobileMessageCard({
+    copyMessage,
+    nativeShareMessage,
+    template,
+    whatsappMessage,
+}: {
+    copyMessage: string;
+    nativeShareMessage: string;
+    template: MessageTemplate;
+    whatsappMessage: string;
+}) {
     const t = useTranslations('MobileCommunicationKit');
     const { token } = theme.useToken();
     const [copied, setCopied] = useState(false);
@@ -81,7 +113,7 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(template.message);
+            await navigator.clipboard.writeText(copyMessage);
             setCopied(true);
             Toast.show({ content: t('messageCopied'), duration: 1500 });
             setTimeout(() => setCopied(false), 2000);
@@ -95,7 +127,7 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
 
         try {
             await navigator.share({
-                text: template.message,
+                text: nativeShareMessage,
                 title: template.title,
             });
         } catch (error) {
@@ -135,7 +167,7 @@ function MobileMessageCard({ template }: { template: MessageTemplate }) {
                     <ActionTile
                         iconColor={token.colorSuccess}
                         icon={<FaWhatsapp size={18} />}
-                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(template.message)}`, '_blank')}
+                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`, '_blank')}
                     />
                 </Flex>
             </Flex>

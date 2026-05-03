@@ -33,6 +33,39 @@ $obp-closed-color: #c62828;
   // Used by action buttons, social links, and attribute tags for brand coherence
 }
 
+// ── Language Switcher ──
+
+.languageSwitcher {
+  width: 100%;
+  max-width: $obp-max-width;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.languageOption {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid $obp-border;
+  background: #fff;
+  color: $obp-text-secondary;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.languageOptionActive {
+  border-color: $obp-text-primary;
+  color: $obp-text-primary;
+}
+
 // ── Identity Block ──
 
 .identity {

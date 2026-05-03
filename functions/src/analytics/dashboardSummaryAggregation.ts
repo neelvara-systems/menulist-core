@@ -189,11 +189,15 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         totalInstalled: 0,
         totalAppOpens: 0,
         uniqueInstallSessions: 0,
+        languageTrackingEnabled: false,
         viewsByItem: {},
         viewsByEntrySource: {},
         menuSessionsBySource: {},
         actionSessionsBySource: {},
         menuActionClicksBySource: {},
+        menuViewsByLanguage: {},
+        menuSessionsByLanguage: {},
+        languageAdoptions: {},
         attributeFilterInteractions: {},
         attributeFilterItemViews: {},
         attributeFilterItemTaps: {},
@@ -216,6 +220,7 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         shortcutClicks: {},
         itemNames: {},
         categoryNames: {},
+        languageNames: {},
         attributeFilterNames: {},
     };
 
@@ -236,11 +241,15 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         result.totalInstalled += doc.totalInstalled || 0;
         result.totalAppOpens += doc.totalAppOpens || 0;
         result.uniqueInstallSessions += doc.uniqueInstallSessions || 0;
+        result.languageTrackingEnabled = Boolean(result.languageTrackingEnabled || doc.languageTrackingEnabled);
         mergeMapField(result.viewsByItem, readAnalyticsMap(doc, 'viewsByItem'));
         mergeMapField(result.viewsByEntrySource, readAnalyticsMap(doc, 'viewsByEntrySource'));
         mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
         mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
         mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
+        mergeMapField(result.menuViewsByLanguage, readAnalyticsMap(doc, 'menuViewsByLanguage'));
+        mergeMapField(result.menuSessionsByLanguage, readAnalyticsMap(doc, 'menuSessionsByLanguage'));
+        mergeMapField(result.languageAdoptions, readAnalyticsMap(doc, 'languageAdoptions'));
         mergeMapField(result.attributeFilterInteractions, readAnalyticsMap(doc, 'attributeFilterInteractions'));
         mergeMapField(result.attributeFilterItemViews, readAnalyticsMap(doc, 'attributeFilterItemViews'));
         mergeMapField(result.attributeFilterItemTaps, readAnalyticsMap(doc, 'attributeFilterItemTaps'));
@@ -263,6 +272,7 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         mergeMapField(result.shortcutClicks, readAnalyticsMap(doc, 'shortcutClicks'));
         Object.assign(result.itemNames, readAnalyticsMap(doc, 'itemNames'));
         Object.assign(result.categoryNames, readAnalyticsMap(doc, 'categoryNames'));
+        Object.assign(result.languageNames, readAnalyticsMap(doc, 'languageNames'));
         Object.assign(result.attributeFilterNames, readAnalyticsMap(doc, 'attributeFilterNames'));
     }
 
@@ -399,6 +409,7 @@ function topAttributeFilters(data: Record<string, any> = {}) {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
+    copy_link: 'Copied link',
     qr: 'QR / table scan',
     whatsapp: 'WhatsApp',
     instagram: 'Instagram',
@@ -406,6 +417,7 @@ const SOURCE_LABELS: Record<string, string> = {
     google: 'Google',
     obp: 'Official business page',
     menu_kit: 'Menu kit',
+    native_share: 'Phone share',
     shortcut: 'Customer app shortcut',
     direct: 'Direct link',
     other: 'Other source',
@@ -438,6 +450,32 @@ function sourceQualityEntries(data: Record<string, any> = {}) {
         .filter((entry) => entry.menuSessions > 0 || entry.actionClicks > 0)
         .sort((a, b) => (b.actionSessions - a.actionSessions) || (b.menuSessions - a.menuSessions))
         .slice(0, 6);
+}
+
+function topLanguageEntries(data: Record<string, any> = {}) {
+    if (!data.languageTrackingEnabled) return [];
+
+    const menuViews = readAnalyticsMap(data, 'menuViewsByLanguage');
+    const menuSessions = readAnalyticsMap(data, 'menuSessionsByLanguage');
+    const adoptions = readAnalyticsMap(data, 'languageAdoptions');
+    const languageNames = readAnalyticsMap(data, 'languageNames');
+    const languageIds = new Set<string>([
+        ...Object.keys(menuViews),
+        ...Object.keys(menuSessions),
+        ...Object.keys(adoptions),
+    ]);
+
+    return Array.from(languageIds)
+        .map((language) => ({
+            language,
+            label: languageNames[language] || language.toUpperCase(),
+            menuViews: menuViews[language] || 0,
+            menuSessions: menuSessions[language] || 0,
+            adoptions: adoptions[language] || 0,
+        }))
+        .filter((entry) => entry.menuViews > 0 || entry.menuSessions > 0 || entry.adoptions > 0)
+        .sort((a, b) => ((b.menuSessions + b.adoptions + b.menuViews) - (a.menuSessions + a.adoptions + a.menuViews)))
+        .slice(0, 5);
 }
 
 function topHourlyEntry(map?: Record<string, number>) {
@@ -1113,6 +1151,7 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         totalMenuActionClicks: data.totalMenuActionClicks || 0,
         totalRecommendationClicks: data.totalRecommendationClicks || 0,
         totalDecisionBlocksRendered: data.totalDecisionBlocksRendered || 0,
+        languageTrackingEnabled: Boolean(data.languageTrackingEnabled),
         viewsByDevice: readAnalyticsMap(data, 'viewsByDevice'),
         clicksByDevice: readAnalyticsMap(data, 'clicksByDevice'),
         viewsByLocation: readAnalyticsMap(data, 'viewsByLocation'),
@@ -1121,6 +1160,9 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         menuSessionsBySource: topMap(readAnalyticsMap(data, 'menuSessionsBySource'), DASHBOARD_ITEM_LIMIT),
         actionSessionsBySource: topMap(readAnalyticsMap(data, 'actionSessionsBySource'), DASHBOARD_ITEM_LIMIT),
         menuActionClicksBySource: topMap(readAnalyticsMap(data, 'menuActionClicksBySource'), DASHBOARD_ITEM_LIMIT),
+        menuViewsByLanguage: topMap(readAnalyticsMap(data, 'menuViewsByLanguage'), DASHBOARD_ITEM_LIMIT),
+        menuSessionsByLanguage: topMap(readAnalyticsMap(data, 'menuSessionsByLanguage'), DASHBOARD_ITEM_LIMIT),
+        languageAdoptions: topMap(readAnalyticsMap(data, 'languageAdoptions'), DASHBOARD_ITEM_LIMIT),
         attributeFilterInteractions: topMap(readAnalyticsMap(data, 'attributeFilterInteractions'), DASHBOARD_ITEM_LIMIT),
         attributeFilterItemViews: topMap(readAnalyticsMap(data, 'attributeFilterItemViews'), DASHBOARD_ITEM_LIMIT),
         attributeFilterItemTaps: topMap(readAnalyticsMap(data, 'attributeFilterItemTaps'), DASHBOARD_ITEM_LIMIT),
@@ -1143,6 +1185,7 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         decisionBlocksRendered: readAnalyticsMap(data, 'decisionBlocksRendered'),
         itemNames,
         categoryNames: readAnalyticsMap(data, 'categoryNames'),
+        languageNames: readAnalyticsMap(data, 'languageNames'),
         attributeFilterNames: readAnalyticsMap(data, 'attributeFilterNames'),
         lastUpdated: data.lastUpdated || data.modifiedOn || null,
     };
@@ -1247,6 +1290,7 @@ function buildDailyView(data: Record<string, any>, date: string) {
         blockPerformance: getBlockPerformance(data),
         topItems: topMapEntries(data.recommendationClicksByItem, data.itemNames),
         topCategories: topCategoryEntries(data),
+        topLanguages: topLanguageEntries(data),
         topAttributeFilters: topAttributeFilters(data),
         menuActions: getMenuActions(data),
         topSearchTerms: topSearchTerms(data.searchTerms),
@@ -1266,6 +1310,7 @@ function buildPeriodView(aggregated: Record<string, any>) {
         blockPerformance: getBlockPerformance(aggregated),
         topItems: topMapEntries(aggregated.recommendationClicksByItem, aggregated.itemNames),
         topCategories: topCategoryEntries(aggregated),
+        topLanguages: topLanguageEntries(aggregated),
         topAttributeFilters: topAttributeFilters(aggregated),
         menuActions: getMenuActions(aggregated),
         topSearchTerms: topSearchTerms(aggregated.searchTerms),
@@ -1548,6 +1593,7 @@ async function writeMenuDashboardSummary(
             totalMenuActionClicks: summary.lifetimeTotalMenuActionClicks || 0,
         },
         topCategories: topCategoryEntries(summary),
+        topLanguages: topLanguageEntries(summary),
         topAttributeFilters: topAttributeFilters(summary),
         menuActions: getMenuActions(summary),
         sourceQuality: sourceQualityEntries(summary),

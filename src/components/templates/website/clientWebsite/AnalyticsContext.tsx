@@ -2,7 +2,7 @@
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getSessionId, refreshSession } from '@lib/analytics/session';
-import { trackItemClick, trackItemView, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
+import { trackItemClick, trackItemView, trackMenuLanguageAdoption, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
 import React, { createContext, useCallback, useEffect, useRef } from 'react';
 
@@ -33,12 +33,15 @@ interface UtmParams {
   utm_campaign?: string;
   entrySource?: string;
   source?: string;
+  src?: string;
 }
 
 interface AnalyticsProviderProps {
   children: React.ReactNode;
   storeDetails?: StoreDataType;
   projectId?: string;  // Required for project-wise analytics
+  activeLanguage?: string;
+  activeLanguageName?: string;
   // T5-N-01: R5 Layer resolution analytics — 'layer1' for claimed-slug match,
   // 'layer2' for /menu universal alias fallback.
   menuResolutionLayer?: 'layer1' | 'layer2';
@@ -54,14 +57,17 @@ const getUtmParams = () => {
     utm_campaign: urlParams.get('utm_campaign') || '',
     entrySource: urlParams.get('entry_source') || '',
     source: urlParams.get('source') || '',
+    src: urlParams.get('src') || '',
   };
 };
 
-export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, storeDetails, projectId, menuResolutionLayer }) => {
+export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, storeDetails, projectId, activeLanguage, activeLanguageName, menuResolutionLayer }) => {
   const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
   const isEnabled = analyticsPreferences.trackMenuViews;
   const includeLocation = analyticsPreferences.trackLocation;
   const trackedMenuViewKeyRef = useRef<string | null>(null);
+  const languageDwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousLanguageRef = useRef<string | null>(activeLanguage || null);
 
   // Keep the session alive while analytics are enabled on the public menu.
   useEffect(() => {
@@ -107,7 +113,18 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
       // Get the session ID for all tracking events
       const sessionId = getSessionId();
 
-      trackMenuView(storeId, storeName, { sessionId, tenantId, projectId, storeTimeZone: storeDetails.timeZone, businessDayEndTime: storeDetails.businessDayEndTime, menuResolutionLayer, includeLocation, ...utmParams }).catch(error => {
+      trackMenuView(storeId, storeName, {
+        sessionId,
+        tenantId,
+        projectId,
+        storeTimeZone: storeDetails.timeZone,
+        businessDayEndTime: storeDetails.businessDayEndTime,
+        menuResolutionLayer,
+        includeLocation,
+        menuLanguage: activeLanguage,
+        menuLanguageName: activeLanguageName,
+        ...utmParams
+      }).catch(error => {
         console.error('Error tracking menu page view:', error);
       });
       // T5-N-04: If resolved via Layer 2 /menu alias, fire a latent PROJECT_SWITCH
@@ -127,7 +144,54 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
     } catch (error) {
       console.error('Error in analytics tracking setup:', error);
     }
-  }, [storeDetails, isEnabled, projectId, menuResolutionLayer, includeLocation]);
+  }, [storeDetails, isEnabled, projectId, menuResolutionLayer, includeLocation, activeLanguage, activeLanguageName]);
+
+  useEffect(() => {
+    if (!storeDetails || !isEnabled || !projectId || !activeLanguage) return;
+
+    const previousLanguage = previousLanguageRef.current;
+    if (!previousLanguage) {
+      previousLanguageRef.current = activeLanguage;
+      return;
+    }
+    if (previousLanguage === activeLanguage) return;
+
+    previousLanguageRef.current = activeLanguage;
+    if (languageDwellTimerRef.current) {
+      clearTimeout(languageDwellTimerRef.current);
+    }
+
+    languageDwellTimerRef.current = setTimeout(() => {
+      try {
+        const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
+        const storeId = storeDetails.storeId || (storeDetails as any)._id;
+        if (!tenantId || !storeId) return;
+
+        const sessionId = getSessionId();
+        const utmParams = getUtmParams();
+        void trackMenuLanguageAdoption(activeLanguage, previousLanguage, {
+          sessionId,
+          tenantId,
+          storeId,
+          projectId,
+          storeTimeZone: storeDetails.timeZone,
+          businessDayEndTime: storeDetails.businessDayEndTime,
+          includeLocation,
+          menuLanguageName: activeLanguageName,
+          languageAdoptionReason: 'dwell',
+          ...utmParams,
+        });
+      } catch (error) {
+        console.error('Error tracking menu language adoption:', error);
+      }
+    }, 10000);
+
+    return () => {
+      if (languageDwellTimerRef.current) {
+        clearTimeout(languageDwellTimerRef.current);
+      }
+    };
+  }, [activeLanguage, activeLanguageName, storeDetails, isEnabled, projectId, includeLocation]);
 
   const trackMenuItemView = useCallback((data: MenuItemViewData) => {
     if (!isEnabled || !storeDetails) return;

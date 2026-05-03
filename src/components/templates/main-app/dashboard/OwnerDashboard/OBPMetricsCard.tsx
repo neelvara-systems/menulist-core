@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import {
     OBPActionBreakdown,
     OBPLinkBreakdown,
+    OBPLanguageUsage,
     OBPHistoricalWeek,
     OBPPeriodMetrics,
     OBPShareBreakdown,
@@ -113,6 +114,34 @@ function SourceBreakdown({ sources }: { sources?: OBPSourceBreakdown[] }) {
     );
 }
 
+function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
+    const rows = (languages || []).filter((language) => (
+        language.views > 0 || language.sessions > 0 || language.adoptions > 0
+    ));
+    if (!rows.length) return null;
+
+    return (
+        <div>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                OBP languages
+            </Text>
+            <Flex gap={8} wrap="wrap">
+                {rows.slice(0, 5).map((language) => (
+                    <Card key={language.language} size="small" styles={{ body: { padding: '8px 10px' } }}>
+                        <Flex vertical gap={2}>
+                            <Text strong style={{ fontSize: 12 }}>{language.label}</Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                {Math.max(language.sessions, language.views).toLocaleString()} sessions/views
+                                {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed switches` : ''}
+                            </Text>
+                        </Flex>
+                    </Card>
+                ))}
+            </Flex>
+        </div>
+    );
+}
+
 function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
     if (weeks.length === 0) return null;
     const maxViews = Math.max(...weeks.map((week) => week.views), 1);
@@ -183,6 +212,9 @@ function renderPeriodGrid(metrics: OBPPeriodMetrics) {
             </div>
             <div style={{ marginTop: 12 }}>
                 <SourceBreakdown sources={metrics.sources} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+                <LanguageBreakdown languages={metrics.topLanguages} />
             </div>
         </>
     );
@@ -306,6 +338,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                             </div>
                             <div style={{ marginTop: 12 }}>
                                 <SourceBreakdown sources={overview.wtd.sources} />
+                            </div>
+                            <div style={{ marginTop: 12 }}>
+                                <LanguageBreakdown languages={overview.wtd.topLanguages} />
                             </div>
                         </>
                     ) : (

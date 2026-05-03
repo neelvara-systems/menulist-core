@@ -10,7 +10,16 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import GlobalLanguagesList from "@data/languages";
+import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import {
+    appendPublicLanguageParam,
+    getNextIntlLocaleForPublicLanguage,
+    getPublicLanguageOptions,
+    resolveStorePublicLanguage,
+    shouldExposePublicLanguageSwitcher,
+} from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
@@ -23,6 +32,8 @@ import {
 } from "firebase/firestore";
 import { getTranslations } from "next-intl/server";
 import { unstable_cache } from "next/cache";
+import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
+import OBPAnalytics from "./OBPAnalytics";
 import styles from "./obp.module.scss";
 
 interface OutletInfo {
@@ -82,10 +93,15 @@ const getOutletsForTenant = unstable_cache(
 interface BrandOBPContentProps {
     store: StoreDataType;
     baseUrl: string;
+    requestedLanguage?: string | string[] | null;
 }
 
-export default async function BrandOBPContent({ store, baseUrl }: BrandOBPContentProps) {
-    const t = await getTranslations({ namespace: 'BusinessSettings' });
+export default async function BrandOBPContent({ store, baseUrl, requestedLanguage }: BrandOBPContentProps) {
+    const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
+    const t = await getTranslations({
+        locale: getNextIntlLocaleForPublicLanguage(contentLanguage),
+        namespace: 'BusinessSettings',
+    });
     const allOutlets = await getOutletsForTenant(store.tenantId, store.storeId);
     // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a real outletSlug
     // are ever routable and linkable. The outlet-create API guarantees a slug
@@ -95,7 +111,10 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
 
     const pp = store?.publicPresence || {};
     const accentColor = pp.accentColor || '#111';
-    const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
+    const languageOptions = getPublicLanguageOptions(store);
+    const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
+    const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
+    const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const brandName = getLocalizedText(
         pp.displayName,
         contentLanguage,
@@ -107,6 +126,25 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
 
     return (
         <div className={styles.page}>
+            <OBPAnalytics
+                tenantId={store?.tenantId}
+                storeId={store?.storeId}
+                storeTimeZone={store?.timeZone}
+                businessDayEndTime={store?.businessDayEndTime}
+                trackViews={analyticsPreferences.trackOfficialBusinessPage}
+                includeLocation={analyticsPreferences.trackLocation}
+                activeLanguage={showLanguageSwitcher ? contentLanguage : undefined}
+                activeLanguageName={showLanguageSwitcher ? activeLanguageName : undefined}
+                trackLanguageUsage={showLanguageSwitcher}
+            />
+            {showLanguageSwitcher ? (
+                <OBPLanguageSwitcher
+                    activeLanguage={contentLanguage}
+                    baseUrl={baseUrl}
+                    languages={languageOptions}
+                />
+            ) : null}
+
             {/* Brand Identity */}
             <div className={styles.identity}>
                 {logo ? (
@@ -155,7 +193,9 @@ export default async function BrandOBPContent({ store, baseUrl }: BrandOBPConten
                     // guard above the map); the `store-${storeId}` fallback
                     // that used to live here was removed because it would
                     // produce indexable URLs that aren't owner-chosen.
-                    const outletUrl = `${baseUrl}/${outlet.outletSlug}`;
+                    const outletUrl = showLanguageSwitcher
+                        ? appendPublicLanguageParam(`${baseUrl}/${outlet.outletSlug}`, contentLanguage)
+                        : `${baseUrl}/${outlet.outletSlug}`;
 
                     return (
                         <a

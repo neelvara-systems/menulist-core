@@ -23,6 +23,7 @@ interface MainContentRendererProps {
   fromPage: string;
   businessType?: string;
   precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
+  restoreStoredLanguage?: boolean;
 }
 
 function MainContentRenderer({
@@ -35,7 +36,8 @@ function MainContentRenderer({
   setActiveLanguage,
   fromPage,
   businessType,
-  precomputedBlocks
+  precomputedBlocks,
+  restoreStoredLanguage
 }: MainContentRendererProps) {
 
   const homeStyle = projectData?.config?.design?.home?.style || DEFAULTS.home.style;
@@ -80,6 +82,7 @@ function MainContentRenderer({
           from={fromPage}
           businessType={businessType}
           precomputedBlocks={precomputedBlocks}
+          restoreStoredLanguage={restoreStoredLanguage}
         />
       )}
     </DeviceFrame>
