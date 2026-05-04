@@ -6,6 +6,7 @@ import { updateStore } from '@database/stores';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { getBrandName } from '@lib/businessIdentity/names';
 import { updateLocalizedText } from '@lib/localization/text';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -74,7 +75,6 @@ function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
             languageCode,
             {
                 descriptor: getLocalizedStoreValue(initialPresence.descriptor, languageCode, ''),
-                displayName: getLocalizedStoreValue(initialPresence.displayName, languageCode, ''),
                 knownFor: getLocalizedStoreValue(initialPresence.knownFor, languageCode, ''),
                 specialNote: getLocalizedStoreValue(initialPresence.specialNote, languageCode, ''),
             },
@@ -105,7 +105,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [originalFormData, setOriginalFormData] = useState(() => getInitialPresenceForm(storeDetails));
     const [localizedDrafts, setLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
     const [originalLocalizedDrafts, setOriginalLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
-    const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' };
+    const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' };
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const isDirty =
         JSON.stringify(formData) !== JSON.stringify(originalFormData)
@@ -123,13 +123,13 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             <Flex gap={2} vertical>
                 <Text strong>What you manage here</Text>
                 <Text type="secondary">
-                    Public name, short descriptor, known for, customer action links, accent color, ratings, and page photos.
+                    Short descriptor, known for, customer action links, accent color, ratings, and page photos.
                 </Text>
             </Flex>
             <Flex gap={2} vertical>
                 <Text strong>Language rule</Text>
                 <Text type="secondary">
-                    Display name, short descriptor, known for, and the special note can be edited per language. Links, toggles, ratings, and photos stay shared across languages.
+                    Short descriptor, known for, and the special note can be edited per language. Links, toggles, ratings, and photos stay shared across languages.
                 </Text>
             </Flex>
         </Flex>
@@ -140,12 +140,6 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setIsSaving(true);
         const nextLocalizedPresence = Object.entries(localizedDrafts).reduce((presence, [languageCode, draft]) => ({
             ...presence,
-            displayName: updateLocalizedText(
-                presence.displayName,
-                draft.displayName,
-                languageCode,
-                'en',
-            ),
             descriptor: updateLocalizedText(
                 presence.descriptor,
                 draft.descriptor,
@@ -165,7 +159,6 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 'en',
             ),
         }), {
-            displayName: storeDetails.publicPresence?.displayName,
             descriptor: storeDetails.publicPresence?.descriptor,
             knownFor: storeDetails.publicPresence?.knownFor,
             specialNote: storeDetails.publicPresence?.specialNote,
@@ -173,13 +166,12 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         const payload = {
             businessCopyMeta: buildBusinessCopyManualOverrideMeta({
                 existingMeta: storeDetails?.businessCopyMeta,
-                fieldKeys: ['displayName', 'descriptor', 'knownFor', 'specialNote'],
+                fieldKeys: ['descriptor', 'knownFor', 'specialNote'],
             }),
             storeId: storeDetails.storeId,
             publicPresence: {
                 ...(storeDetails.publicPresence || {}),
                 ...nextPresence,
-                displayName: nextLocalizedPresence.displayName,
                 descriptor: nextLocalizedPresence.descriptor,
                 knownFor: nextLocalizedPresence.knownFor,
                 specialNote: nextLocalizedPresence.specialNote,
@@ -341,47 +333,13 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>Public display name</Text>
-                        <TextArea
-                            autoSize={{ minRows: 2, maxRows: 4 }}
-                            maxLength={60}
-                            onChange={(value) => setLocalizedDrafts((previous) => ({
-                                ...previous,
-                                [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
-                                    displayName: value,
-                                },
-                            }))}
-                            placeholder="e.g. Joe's Pizza"
-                            showCount
-                            value={currentLocalizedDraft.displayName}
-                        />
-                        <Text type="secondary">{`Optional. Shown publicly instead of your internal store name for ${getStoreLanguageLabel(selectedLanguage)}.`}</Text>
-                        {selectedLanguage !== referenceLanguage ? (
-                            <LocalizedReferenceHint
-                                onUseReference={() => setLocalizedDrafts((previous) => ({
-                                    ...previous,
-                                    [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
-                                        displayName: previous[referenceLanguage]?.displayName || '',
-                                    },
-                                }))}
-                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
-                                referenceValue={localizedDrafts[referenceLanguage]?.displayName || ''}
-                            />
-                        ) : null}
-                    </Flex>
-                </Card>
-
-                <Card>
-                    <Flex gap={10} vertical>
                         <Text strong>{t('shortDescriptor')}</Text>
                         <Input
                             maxLength={40}
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
                                 [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                    ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
                                     descriptor: value,
                                 },
                             }))}
@@ -394,7 +352,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 onUseReference={() => setLocalizedDrafts((previous) => ({
                                     ...previous,
                                     [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                        ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
                                         descriptor: previous[referenceLanguage]?.descriptor || '',
                                     },
                                 }))}
@@ -413,7 +371,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
                                 [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                    ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
                                     knownFor: value,
                                 },
                             }))}
@@ -426,7 +384,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 onUseReference={() => setLocalizedDrafts((previous) => ({
                                     ...previous,
                                     [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                        ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
                                         knownFor: previous[referenceLanguage]?.knownFor || '',
                                     },
                                 }))}
@@ -446,7 +404,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
                                 [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                    ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
                                     specialNote: value,
                                 },
                             }))}
@@ -460,7 +418,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 onUseReference={() => setLocalizedDrafts((previous) => ({
                                     ...previous,
                                     [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', displayName: '', knownFor: '', specialNote: '' }),
+                                        ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
                                         specialNote: previous[referenceLanguage]?.specialNote || '',
                                     },
                                 }))}
@@ -740,7 +698,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}
                 downloadSuccessMessage={tShare('qrDownloaded')}
-                filename={buildQrCodeFilename(`${storeDetails?.name || 'business'}-official-page`, 'qr')}
+                filename={buildQrCodeFilename(`${getBrandName(storeDetails as any, 'business')}-official-page`, 'qr')}
                 generatingLabel={tShare('generatingQr')}
                 helperText={tShare('obpShareHint')}
                 imageAlt={tShare('officialBusinessLink')}

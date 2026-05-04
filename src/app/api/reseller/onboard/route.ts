@@ -313,7 +313,7 @@ export const POST = withAuth(async (request, session) => {
             resellerEmail: session.user.email || '',
             storeId: result.storeId,
             tenantId: result.tenantId,
-            storeName: `${businessName} - Main Store`,
+            storeName: 'Main Store',
             action: 'ONBOARD',
             pricingTier,
             billingInterval: billingInterval || 'MONTH',

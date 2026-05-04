@@ -5,6 +5,7 @@ import { getProjectsList } from '@database/projects';
 import { isOBPAnalyticsEnabled } from '@lib/analytics/preferences';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackOBPShare } from '@lib/analytics/unified';
+import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -89,7 +90,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     };
 
     const handleWhatsAppShare = () => {
-        const storeName = storeDetails?.name || 'our business';
+        const storeName = getBrandName(storeDetails, 'our business');
         const msg = `${storeName} — menu, timings & contact:\n${obpWhatsAppUrl}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'whatsapp', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
@@ -105,7 +106,10 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         const url = canvas.toDataURL('image/png');
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${storeDetails?.name || 'business'}-${qrType}-qr.png`;
+        const qrName = qrType === 'share'
+            ? getBrandName(storeDetails, 'business')
+            : getStoreContextName(storeDetails, 'business');
+        a.download = `${qrName}-${qrType}-qr.png`;
         a.click();
     };
 

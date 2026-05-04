@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from "@config/features";
+import { getBrandStoreLabel } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { apiError, generateETag, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
@@ -43,12 +44,7 @@ export async function GET(request: NextRequest) {
 
         const { storeData, storeId } = result;
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
-        const publicName = getLocalizedText(
-            storeData.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeData.publicPresence?.displayName, contentLanguage),
-            storeData.name || null,
-        );
+        const publicName = getBrandStoreLabel(storeData, storeData.name || 'Business');
         const publicDescriptor = getLocalizedText(
             storeData.publicPresence?.descriptor,
             contentLanguage,

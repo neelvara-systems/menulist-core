@@ -1,5 +1,5 @@
 import TextElement from '@antdComponent/textElement';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
 import { Button, Card, Divider, Empty, Flex, Tag } from 'antd';
@@ -12,13 +12,7 @@ function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, 
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     console.log("storeDetails", storeDetails)
     const resolveStoreName = (store: any) => {
-        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
-        return getLocalizedText(
-            store?.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
-            store?.name || `Store ${store?.storeId ?? ''}`,
-        );
+        return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
     return (
         <Card title='User Profile' style={{ width: '100%', height: "max-content" }} extra={<Button type='primary' ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}>

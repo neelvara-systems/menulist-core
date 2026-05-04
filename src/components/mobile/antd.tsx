@@ -34,7 +34,7 @@ import {
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useLocale } from 'next-intl';
 import type { ComponentProps, CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
-import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
+import { Children, createContext, Fragment, isValidElement, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
 type AnyStyle = CSSProperties & Record<string, any>;
@@ -645,14 +645,6 @@ export function NavBar({
     titleAlign?: 'center' | 'left';
 }) {
     const { token } = theme.useToken();
-    const isInsideSheet = useContext(MobileSheetContext);
-    const [isPwa, setIsPwa] = useState(false);
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const standaloneMatch = window.matchMedia?.('(display-mode: standalone)')?.matches;
-        const navStandalone = (window.navigator as any)?.standalone === true;
-        setIsPwa(Boolean(standaloneMatch || navStandalone));
-    }, []);
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
@@ -668,9 +660,7 @@ export function NavBar({
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 flex: '0 0 auto',
                 minHeight: navHeight,
-                padding: isInsideSheet
-                    ? (isPwa ? '6px 12px' : `calc(env(safe-area-inset-top) + 6px) 12px 6px`)
-                    : `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
+                padding: `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 width: '100%',

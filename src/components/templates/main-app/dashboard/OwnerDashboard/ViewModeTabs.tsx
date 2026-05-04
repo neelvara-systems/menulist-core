@@ -6,7 +6,7 @@
  * Daily, Weekly, Monthly are SECONDARY.
  */
 
-import { AppstoreOutlined, BarChartOutlined, CalendarOutlined, LineChartOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BarChartOutlined, CalendarOutlined, FieldTimeOutlined, LineChartOutlined, TrophyOutlined } from '@ant-design/icons';
 import { OwnerDashboardViewMode, VIEW_MODE_CONFIG } from '@template/main-app/projects/types';
 import { Segmented } from 'antd';
 import React from 'react';
@@ -15,24 +15,37 @@ import styles from './OwnerDashboard.module.scss';
 interface ViewModeTabsProps {
     activeMode: OwnerDashboardViewMode;
     onModeChange: (mode: OwnerDashboardViewMode) => void;
+    hasToday?: boolean;
     hasOverview?: boolean;
     hasDaily?: boolean;
     hasWeekly?: boolean;
     hasMonthly?: boolean;
+    hasOverall?: boolean;
 }
 
 const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
     activeMode,
     onModeChange,
+    hasToday = true,
     hasOverview = true,
     hasDaily = true,
     hasWeekly = true,
     hasMonthly = true,
+    hasOverall = true,
 }) => {
     const options = [
         {
             label: (
-                <span className={activeMode === 'overview' ? styles.activeTab : styles.primaryTab}>
+                <span className={activeMode === 'today' ? styles.activeTab : styles.primaryTab}>
+                    <FieldTimeOutlined /> {VIEW_MODE_CONFIG.today.label}
+                </span>
+            ),
+            value: 'today',
+            disabled: !hasToday,
+        },
+        {
+            label: (
+                <span className={activeMode === 'overview' ? styles.activeTab : styles.secondaryTab}>
                     <AppstoreOutlined /> {VIEW_MODE_CONFIG.overview.label}
                 </span>
             ),
@@ -65,6 +78,15 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
             ),
             value: 'monthly',
             disabled: !hasMonthly,
+        },
+        {
+            label: (
+                <span className={activeMode === 'overall' ? styles.activeTab : styles.secondaryTab}>
+                    <TrophyOutlined /> {VIEW_MODE_CONFIG.overall.label}
+                </span>
+            ),
+            value: 'overall',
+            disabled: !hasOverall,
         },
     ];
 

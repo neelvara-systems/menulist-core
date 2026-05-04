@@ -231,16 +231,25 @@ const CatalogCard = ({
                         marginBottom: 12,
                         boxShadow: isSelected ? `0 0 0 3px ${token.colorPrimaryBg}` : 'none',
                         transition: 'all 0.2s ease',
+                        overflow: 'hidden',
                     }}
                 >
-                    <Text style={{
-                        color: avatarColor.text,
-                        fontSize: 22,
-                        fontWeight: 600,
-                        letterSpacing: 1
-                    }}>
-                        {initials}
-                    </Text>
+                    {project.projectImage ? (
+                        <img
+                            alt=""
+                            src={project.projectImage}
+                            style={{ height: '100%', objectFit: 'cover', width: '100%' }}
+                        />
+                    ) : (
+                        <Text style={{
+                            color: avatarColor.text,
+                            fontSize: 22,
+                            fontWeight: 600,
+                            letterSpacing: 1
+                        }}>
+                            {initials}
+                        </Text>
+                    )}
                 </div>
 
                 {/* Name */}

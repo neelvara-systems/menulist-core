@@ -1,7 +1,7 @@
 import { ClockCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData } from '@template/main-app/projects/types';
-import { Button, Card, Col, Popover, Row, Skeleton, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Col, Popover, Row, Skeleton, Statistic, Typography } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
 
@@ -18,17 +18,15 @@ function formatUpdatedTime(value?: Date | string): string | null {
 interface TodaySoFarCardProps {
     data: DailyViewData | null;
     loading?: boolean;
-    showHistorical?: boolean;
-    onShowHistorical?: () => void;
     fetchedAt?: Date | string;
+    title?: string;
 }
 
 const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     data,
     loading = false,
-    showHistorical = true,
-    onShowHistorical,
     fetchedAt,
+    title = 'Menu',
 }) => {
     const labels = useOfferingLabels();
 
@@ -45,23 +43,14 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
             <Card className={styles.todayCard}>
                 <div className={styles.todayCardHeader}>
                     <div>
-                        <Tag color="default">Today so far</Tag>
                         <Title level={5} style={{ margin: '8px 0 0' }}>
-                            No activity yet today
+                            {title}
                         </Title>
                         <Text type="secondary">
-                            Settled analytics from previous days are available below.
+                            No menu activity yet today.
                         </Text>
                     </div>
                 </div>
-
-                {!showHistorical && onShowHistorical ? (
-                    <div className={styles.todayCardAction}>
-                        <Button onClick={onShowHistorical} type="default">
-                            View settled analytics
-                        </Button>
-                    </div>
-                ) : null}
             </Card>
         );
     }
@@ -120,14 +109,14 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
             <div className={styles.todayCardHeader}>
                 <div>
                     <div style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
-                        <Tag color="blue">Today so far</Tag>
+                        <Title level={5} style={{ margin: 0 }}>
+                            {title}
+                        </Title>
                         <Popover content={detailContent} title="Today so far">
                             <Button icon={<InfoCircleOutlined />} size="small" type="text" />
                         </Popover>
                     </div>
-                    <Title level={5} style={{ margin: '8px 0 0' }}>
-                        Current activity for today
-                    </Title>
+                    <Text type="secondary">Current menu activity for today.</Text>
                 </div>
                 <div className={styles.todayCardMeta}>
                     <ClockCircleOutlined />
@@ -162,14 +151,6 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                     </Col>
                 ) : null}
             </Row>
-
-            {!showHistorical && onShowHistorical ? (
-                <div className={styles.todayCardAction}>
-                    <Button onClick={onShowHistorical} type="default">
-                        View settled analytics
-                    </Button>
-                </div>
-            ) : null}
         </Card>
     );
 };

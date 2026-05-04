@@ -10,9 +10,11 @@ import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import { generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
@@ -410,8 +412,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const t = useTranslations('MobileMenu');
     const tShare = useTranslations('MobileShare');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'menu'), [storeDetails]);
     const {
         isLoading: loadingProjects,
+        projectsById,
         projectsList,
         refreshCachedProject,
         refreshProjects,
@@ -490,11 +494,91 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const retryTimerRef = useRef<number | null>(null);
     const isPersistingRef = useRef(false);
     const menuUpdateGenerationRef = useRef(0);
+    const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
 
     const replaceProjectInList = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
         upsertCachedProject(updatedProject);
     }, [upsertCachedProject]);
+
+    const updateProjectImageInMobileCache = useCallback((projectId: string, projectImage: string) => {
+        const summaryFromCache = selectedProjectSummary?.projectId === projectId
+            ? selectedProjectSummary
+            : projectsList.find((project: any) => project.projectId === projectId) || null;
+        const currentProjectData = menuDataRef.current?.projectId === projectId
+            ? menuDataRef.current
+            : projectsById?.[projectId] || {};
+
+        upsertCachedProject({
+            ...(summaryFromCache || {}),
+            ...(currentProjectData || {}),
+            projectId,
+            projectImage,
+        });
+
+        setMenuData((current: any) => {
+            if (current?.projectId !== projectId) return current;
+
+            const nextProject = { ...current, projectImage };
+            menuDataRef.current = nextProject;
+            if (persistedMenuRef.current?.projectId === projectId) {
+                persistedMenuRef.current = nextProject;
+                persistedLocalSnapshotRef.current = JSON.stringify(nextProject);
+            }
+            return nextProject;
+        });
+    }, [projectsById, projectsList, selectedProjectSummary, upsertCachedProject]);
+
+    const maybeAutoGenerateProjectImage = useCallback(async ({
+        categories,
+        items,
+        projectData,
+        projectId,
+        projectSummary,
+    }: {
+        categories?: any[];
+        items?: any[];
+        projectData?: any;
+        projectId?: string | null;
+        projectSummary?: any;
+    }) => {
+        if (!projectId) return;
+
+        const summaryFromCache = projectSummary
+            || projectsList.find((project: any) => project.projectId === projectId)
+            || null;
+        if (summaryFromCache?.projectImage || projectData?.projectImage) return;
+        if (projectImageAutoGenerationAttemptRef.current.has(projectId)) return;
+        projectImageAutoGenerationAttemptRef.current.add(projectId);
+
+        try {
+            const result = await generateAndSaveProjectImageIfMissing({
+                businessCategory: storeDetails?.businessCategory,
+                businessType: storeDetails?.businessType,
+                categories,
+                items,
+                project: {
+                    ...(projectData || {}),
+                    ...(summaryFromCache || {}),
+                    projectId,
+                },
+                storeName: storeContextName,
+                summaryData: summaryFromCache,
+            });
+
+            if (result.imageUrl) {
+                updateProjectImageInMobileCache(projectId, result.imageUrl);
+            }
+        } catch (error) {
+            console.warn('[MobileProjectImage] Auto-generation skipped:', error);
+        }
+    }, [
+        projectsList,
+        storeContextName,
+        storeDetails?.businessCategory,
+        storeDetails?.businessType,
+        updateProjectImageInMobileCache,
+    ]);
 
     const clearPersistTimers = useCallback(() => {
         if (persistTimerRef.current) {
@@ -943,6 +1027,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     categoriesCount: result.combinedData?.categories?.length || 0,
                     itemsCount: result.combinedData?.items?.length || 0,
                 });
+                void maybeAutoGenerateProjectImage({
+                    categories: result.combinedData?.categories || [],
+                    items: result.combinedData?.items || [],
+                    projectData: menuData,
+                    projectId: activeProcessingState?.projectId || menuData?.projectId,
+                    projectSummary: selectedProjectSummary,
+                });
             }
             setActiveProcessingState(null);
             setShowReviewSheet(false);
@@ -1020,8 +1111,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         jobIsCompleted,
         jobIsFailed,
         jobIsPreviewReady,
+        maybeAutoGenerateProjectImage,
         menuData,
         refreshCachedProject,
+        selectedProjectSummary,
         setActiveProcessingState,
         showReviewSheet,
         t,
@@ -2129,6 +2222,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             isDefault: activeProjectSummary?.isDefault,
                             isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
                             name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
+                            projectImage: activeProjectSummary?.projectImage || menuData?.projectImage || null,
                             specialMenuBaseProjectId: activeProjectSummary?.specialMenuBaseProjectId,
                             specialMenuBaseProjectName: activeProjectSummary?.specialMenuBaseProjectId
                                 ? projectsList.find((project: any) => project.projectId === activeProjectSummary.specialMenuBaseProjectId)?.name
@@ -3642,6 +3736,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         setActiveProcessingState(null);
                     }}
                     onSaveComplete={() => {
+                        const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
+                        void maybeAutoGenerateProjectImage({
+                            categories: previewData.categories,
+                            items: previewData.items,
+                            projectData: menuData,
+                            projectId: menuData.projectId,
+                            projectSummary: selectedProjectSummary,
+                        });
                         setShowReviewSheet(false);
                         setComparisonResult(null);
                         setActiveProcessingState(null);

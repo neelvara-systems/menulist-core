@@ -338,9 +338,6 @@ export type StoreDataType = {
     // ─────────────────────────────────────────────────────────────
 
     publicPresence?: {
-        /** Customer-facing public display name. Falls back to store.name when unset. */
-        displayName?: string | LocalizedText;
-
         /** Short business descriptor, max 40 chars. e.g. "Modern Indian Kitchen" */
         descriptor?: string | LocalizedText;
 

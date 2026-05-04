@@ -3,7 +3,9 @@
 import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { generateProjectImageCandidate } from '@lib/image/projectImageGeneration';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -16,7 +18,7 @@ import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { LuArchiveRestore, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuTrash2, LuX } from 'react-icons/lu';
+import { LuArchiveRestore, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -186,6 +188,7 @@ export default function MobileProjectSelectorSheet({
     const [formStartsAt, setFormStartsAt] = useState('');
     const [formEndsAt, setFormEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGeneratingProjectImage, setIsGeneratingProjectImage] = useState(false);
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
@@ -300,6 +303,7 @@ export default function MobileProjectSelectorSheet({
         setFormStartsAt('');
         setFormEndsAt('');
         setIsSubmitting(false);
+        setIsGeneratingProjectImage(false);
     };
 
     const openCreate = () => {
@@ -704,6 +708,53 @@ export default function MobileProjectSelectorSheet({
         return false;
     };
 
+    const handleGenerateProjectImage = async () => {
+        const localizedName = applyLocalizedProjectDraftMap(formSourceProject?.name, formNameDrafts);
+        const localizedDescription = applyLocalizedProjectDraftMap(formSourceProject?.description, formDescriptionDrafts);
+        const projectName = getLocalizedText(
+            localizedName,
+            undefined,
+            getPrimaryLocalizedLanguage(localizedName, formSelectedLanguage || CANONICAL_SOURCE_LANGUAGE),
+            '',
+        ).trim();
+
+        if (!projectName) {
+            Toast.show({ content: `Enter a ${labels.offeringPhrase} name first.`, duration: 1800 });
+            return;
+        }
+
+        setIsGeneratingProjectImage(true);
+        try {
+            const sourceProject = formProjectId
+                ? projectsById[formProjectId] || formSourceProject || {}
+                : {};
+            const candidate = await generateProjectImageCandidate({
+                allowNameOnly: true,
+                businessCategory: storeDetails?.businessCategory,
+                businessType: storeDetails?.businessType,
+                project: {
+                    ...sourceProject,
+                    description: localizedDescription,
+                    name: localizedName,
+                    projectId: formProjectId || 'project-draft',
+                },
+                storeName: getStoreContextName(storeDetails as any, 'menu'),
+            });
+
+            if (!candidate?.dataUrl) {
+                Toast.show({ content: 'Add menu items before generating a menu image.', duration: 1800 });
+                return;
+            }
+
+            setFormProjectImage(candidate.dataUrl);
+            Toast.show({ content: 'Menu image generated', icon: 'success', duration: 1400 });
+        } catch (error: any) {
+            Toast.show({ content: error?.message || 'Failed to generate menu image', duration: 2200 });
+        } finally {
+            setIsGeneratingProjectImage(false);
+        }
+    };
+
     const handleFormNameChange = (value: string) => {
         setFormNameDrafts((previous) => ({
             ...previous,
@@ -902,12 +953,7 @@ export default function MobileProjectSelectorSheet({
     const handleShowProjectQr = (project: ProjectSheetProject) => {
         const shareUrl = getProjectShareUrl(project);
         const projectName = resolveProjectName(project.name, labels.offeringTitle);
-        const storeName = getLocalizedText(
-            (storeDetails as any)?.publicPresence?.displayName,
-            undefined,
-            getPrimaryLocalizedLanguage((storeDetails as any)?.publicPresence?.displayName, 'en'),
-            storeDetails?.name || 'menu'
-        );
+        const storeName = getStoreContextName(storeDetails as any, 'menu');
         if (!shareUrl) {
             Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
             return;
@@ -1289,41 +1335,60 @@ export default function MobileProjectSelectorSheet({
                                 <Text strong>Menu image</Text>
                                 <Text type="secondary">Optional. This image appears on the Official Business Page menu card.</Text>
                                 {formProjectImage ? (
-                                    <Flex align="center" gap={12}>
+                                    <Flex gap={10} vertical>
                                         <Image
                                             alt={`${formName || labels.offeringPhrase} preview`}
-                                            height={88}
+                                            height={156}
                                             preview={false}
                                             src={formProjectImage}
-                                            style={{ borderRadius: 12, objectFit: 'cover' }}
-                                            width={132}
+                                            style={{
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 14,
+                                                objectFit: 'cover',
+                                                width: '100%',
+                                            }}
+                                            width="100%"
                                         />
-                                        <Flex gap={8} vertical>
-                                            <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
-                                                <Button fill="outline" size="small">
+                                        <Flex gap={8} style={{ width: '100%' }}>
+                                            <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false} style={{ flex: 1, minWidth: 0, width: '100%' }}>
+                                                <Button block fill="outline" size="small" style={{ width: '100%' }}>
                                                     <Flex align="center" gap={6}>
                                                         <LuImagePlus size={16} />
-                                                        <Text>Replace image</Text>
+                                                        <Text>Replace</Text>
                                                     </Flex>
                                                 </Button>
                                             </Upload>
-                                            <Button color="danger" fill="none" onClick={() => setFormProjectImage(null)} size="small">
+                                            <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small" style={{ flex: 1, minWidth: 0 }}>
                                                 <Flex align="center" gap={6}>
-                                                    <LuTrash2 size={16} />
-                                                    <Text>Remove image</Text>
+                                                    <LuSparkles size={16} />
+                                                    <Text>Regenerate</Text>
                                                 </Flex>
                                             </Button>
                                         </Flex>
-                                    </Flex>
-                                ) : (
-                                    <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
-                                        <Button fill="outline" size="small">
+                                        <Button color="danger" fill="none" onClick={() => setFormProjectImage(null)} size="small" style={{ alignSelf: 'center' }}>
                                             <Flex align="center" gap={6}>
-                                                <LuImagePlus size={16} />
-                                                <Text>Upload image</Text>
+                                                <LuTrash2 size={16} />
+                                                <Text>Remove image</Text>
                                             </Flex>
                                         </Button>
-                                    </Upload>
+                                    </Flex>
+                                ) : (
+                                    <Flex gap={8} style={{ width: '100%' }}>
+                                        <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false} style={{ flex: 1, minWidth: 0, width: '100%' }}>
+                                            <Button block fill="outline" size="small" style={{ width: '100%' }}>
+                                                <Flex align="center" gap={6}>
+                                                    <LuImagePlus size={16} />
+                                                    <Text>Upload</Text>
+                                                </Flex>
+                                            </Button>
+                                        </Upload>
+                                        <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small" style={{ flex: 1, minWidth: 0 }}>
+                                            <Flex align="center" gap={6}>
+                                                <LuSparkles size={16} />
+                                                <Text>Generate</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Flex>
                                 )}
                             </Flex>
 

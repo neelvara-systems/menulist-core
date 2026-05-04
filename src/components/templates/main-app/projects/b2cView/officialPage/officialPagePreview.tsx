@@ -1,29 +1,25 @@
+import { getBrandName } from '@lib/businessIdentity/names';
+import { getNextIntlLocaleForPublicLanguage } from '@lib/localization/publicRenderLanguage';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { StoreDataType } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import type { CSSProperties } from 'react';
-import { LuBadgeCheck, LuCalendarDays, LuClock, LuMapPin, LuMessageSquare, LuPhone, LuShoppingBag, LuStar } from 'react-icons/lu';
+import type { IconType } from 'react-icons';
+import { LuBadgeCheck, LuCalendarDays, LuClock, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuStar } from 'react-icons/lu';
+import { getOBPTranslations } from '@/app/client/obp/i18n';
 import { DeviceTypes, PageType } from '../types';
 import styles from '@/app/client/obp/obp.module.scss';
 
 interface OfficialPagePreviewProps {
     activeDeviceType: DeviceTypes;
     activeLanguage: string;
+    hasFeedbackTarget?: boolean;
     setActivePage?: (page: PageType) => void;
     storeDetails: StoreDataType;
 }
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const DAY_LABELS: Record<string, string> = {
-    mon: 'Monday',
-    tue: 'Tuesday',
-    wed: 'Wednesday',
-    thu: 'Thursday',
-    fri: 'Friday',
-    sat: 'Saturday',
-    sun: 'Sunday',
-};
-
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 function getLocalizedPresenceText(value: unknown, language: string, fallback = ''): string {
     return getLocalizedText(
         value as any,
@@ -39,14 +35,14 @@ function getTodayDayKey(timeZone?: string): string {
             timeZone: timeZone || 'Asia/Kolkata',
             weekday: 'short',
         }).format(new Date()).toLowerCase().slice(0, 3);
-        return DAY_ORDER.includes(weekday) ? weekday : DAY_ORDER[new Date().getDay()] || 'mon';
+        return DAY_KEYS.includes(weekday) ? weekday : DAY_KEYS[new Date().getDay()] || 'mon';
     } catch {
-        return DAY_ORDER[new Date().getDay()] || 'mon';
+        return DAY_KEYS[new Date().getDay()] || 'mon';
     }
 }
 
-function formatHours(hours?: string): string {
-    if (!hours || hours.toLowerCase() === 'closed') return 'Closed';
+function formatHours(hours?: string, closedLabel = 'Closed'): string {
+    if (!hours || hours.toLowerCase() === 'closed') return closedLabel;
     const [openTime, closeTime] = hours.split('-').map((part) => part.trim());
     if (!openTime || !closeTime) return hours.replace('-', ' - ');
     return `${formatClockTime(openTime)} - ${formatClockTime(closeTime)}`;
@@ -64,31 +60,43 @@ function getFullAddress(storeDetails: StoreDataType): string {
 export default function OfficialPagePreview({
     activeDeviceType,
     activeLanguage,
+    hasFeedbackTarget = false,
     setActivePage,
     storeDetails,
 }: OfficialPagePreviewProps) {
     const publicPresence = storeDetails?.publicPresence || {};
     const accentColor = publicPresence.accentColor || '#111111';
     const language = activeLanguage || String(storeDetails?.defaultLanguage || 'en');
-    const storeName = getLocalizedPresenceText(publicPresence.displayName, language, storeDetails?.name || 'Official Page');
+    const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(language));
+    const storeName = getBrandName(storeDetails, 'Official Page');
     const descriptor = getLocalizedPresenceText(publicPresence.descriptor, language, '');
     const knownFor = getLocalizedPresenceText(publicPresence.knownFor, language, '');
     const specialNote = getLocalizedPresenceText(publicPresence.specialNote, language, '');
+    const iconVariant = publicPresence.iconVariant || 'icons';
     const firstLetter = storeName.trim().charAt(0).toUpperCase() || 'M';
     const photos = (publicPresence.photos || []).filter(Boolean).slice(0, 3);
     const fullAddress = getFullAddress(storeDetails);
     const todayKey = getTodayDayKey(storeDetails?.timeZone);
-    const todayHours = formatHours(storeDetails?.workingHours?.[todayKey]);
-    const isClosed = todayHours === 'Closed';
+    const rawTodayHours = storeDetails?.workingHours?.[todayKey];
+    const todayHours = formatHours(rawTodayHours, t('publicClosed'));
+    const isClosed = !rawTodayHours || rawTodayHours.toLowerCase() === 'closed';
     const isDesktop = activeDeviceType === 'desktop';
+    const hasGoogleReview = Boolean(publicPresence.googleReviewUrl && publicPresence.googleRating);
+    const officialPageLabel = t('publicOfficialPagePoweredBy').split('·')[0]?.trim() || t('publicOfficialPagePoweredBy');
+    const renderPreviewIcon = (Icon: IconType, emoji: string, size = 16) => (
+        iconVariant === 'emoji'
+            ? <span aria-hidden="true" className={styles.actionEmoji}>{emoji}</span>
+            : <Icon aria-hidden="true" size={size} />
+    );
     const quickActions = [
-        publicPresence.showCall !== false && storeDetails?.phoneNumber ? { label: 'Call', Icon: LuPhone } : null,
-        publicPresence.showDirections !== false && (publicPresence.googleMapsUrl || fullAddress) ? { label: 'Directions', Icon: LuMapPin } : null,
-        publicPresence.showWhatsApp !== false && (publicPresence.whatsappNumber || storeDetails?.phoneNumber) ? { label: 'WhatsApp', Icon: LuMessageSquare } : null,
-        publicPresence.showGoogleReview !== false && publicPresence.googleReviewUrl ? { label: 'Reviews', Icon: LuStar } : null,
-        publicPresence.showReservation !== false && publicPresence.reservationUrl ? { label: 'Reserve', Icon: LuCalendarDays } : null,
-        publicPresence.showOrder !== false && publicPresence.orderUrl ? { label: 'Order', Icon: LuShoppingBag } : null,
-    ].filter(Boolean) as Array<{ label: string; Icon: typeof LuPhone }>;
+        publicPresence.showCall !== false && storeDetails?.phoneNumber ? { label: t('publicActionCall'), Icon: LuPhone, emoji: '☎️' } : null,
+        publicPresence.showDirections !== false && (publicPresence.googleMapsUrl || fullAddress) ? { label: t('publicActionDirections'), Icon: LuMapPin, emoji: '📍' } : null,
+        publicPresence.showWhatsApp !== false && (publicPresence.whatsappNumber || storeDetails?.phoneNumber) ? { label: t('publicActionWhatsApp'), Icon: LuMessageSquare, emoji: '🟢' } : null,
+        publicPresence.showGoogleReview !== false && publicPresence.googleReviewUrl ? { label: t('publicActionReviews'), Icon: LuStar, emoji: '⭐' } : null,
+        publicPresence.showReservation !== false && publicPresence.reservationUrl ? { label: t('publicActionReserve'), Icon: LuCalendarDays, emoji: '📅' } : null,
+        publicPresence.showOrder !== false && publicPresence.orderUrl ? { label: t('publicActionOrder'), Icon: LuShoppingBag, emoji: '🛍️' } : null,
+        publicPresence.showFeedback !== false && storeDetails?.feedbackEnabled !== false && hasFeedbackTarget ? { label: t('publicActionFeedback'), Icon: LuMessageSquarePlus, emoji: '💬' } : null,
+    ].filter(Boolean) as Array<{ label: string; Icon: IconType; emoji: string }>;
 
     return (
         <main
@@ -110,7 +118,7 @@ export default function OfficialPagePreview({
                     <div className={styles.photoStrip}>
                         {photos.map((photo, index) => (
                             <button className={styles.photoButton} key={`${photo}-${index}`} type="button">
-                                <img alt={`${storeName} photo ${index + 1}`} src={photo} />
+                                <img alt={`${storeName} ${t('publicPhotoLabel', { index: index + 1 })}`} src={photo} />
                             </button>
                         ))}
                     </div>
@@ -144,18 +152,25 @@ export default function OfficialPagePreview({
 
                     <div className={styles.trustRow}>
                         <div className={`${styles.statusBadge} ${isClosed ? styles.statusClosed : styles.statusOpen}`}>
-                            {isClosed ? <LuClock aria-hidden="true" size={14} /> : <span className={`${styles.statusDot} ${styles.statusDotOpen}`} />}
-                            {isClosed ? 'Closed' : `Open · Today ${todayHours}`}
+                            {isClosed ? renderPreviewIcon(LuClock, '🕒', 14) : <span className={`${styles.statusDot} ${styles.statusDotOpen}`} />}
+                            {isClosed ? t('publicClosed') : t('publicOpenToday', { hours: todayHours })}
                         </div>
                         <span className={styles.officialBadge}>
-                            <LuBadgeCheck aria-hidden="true" size={14} />
-                            Official Page
+                            {renderPreviewIcon(LuBadgeCheck, '✅', 14)}
+                            {officialPageLabel}
                         </span>
+                        {hasGoogleReview ? (
+                            <span className={styles.reviewLink}>
+                                {publicPresence.googleReviewCount
+                                    ? t('publicGoogleRatingWithCount', { rating: publicPresence.googleRating, count: publicPresence.googleReviewCount })
+                                    : t('publicGoogleRating', { rating: publicPresence.googleRating })}
+                            </span>
+                        ) : null}
                     </div>
 
                     {(knownFor || publicPresence.establishedYear) ? (
                         <p className={styles.identityMeta}>
-                            {[knownFor ? `Known for: ${knownFor}` : null, publicPresence.establishedYear ? `Serving since ${publicPresence.establishedYear}` : null].filter(Boolean).join(' · ')}
+                            {[knownFor ? t('publicKnownForPrefix', { value: knownFor }) : null, publicPresence.establishedYear ? t('publicServingSince', { year: publicPresence.establishedYear }) : null].filter(Boolean).join(' · ')}
                         </p>
                     ) : null}
                 </section>
@@ -167,15 +182,17 @@ export default function OfficialPagePreview({
                         style={{ background: accentColor }}
                         type="button"
                     >
-                        View Menu
+                        {t('publicViewMenu')}
                     </button>
                 </div>
 
                 {quickActions.length > 0 ? (
                     <div className={styles.actions}>
-                        {quickActions.map(({ label, Icon }) => (
+                        {quickActions.map(({ label, Icon, emoji }) => (
                             <span className={styles.actionButton} key={label}>
-                                <span className={styles.actionIcon}><Icon aria-hidden="true" size={16} /></span>
+                                <span className={`${styles.actionIcon} ${iconVariant === 'emoji' ? styles.actionIconEmojiMode : ''}`}>
+                                    {renderPreviewIcon(Icon, emoji)}
+                                </span>
                                 {label}
                             </span>
                         ))}
@@ -184,7 +201,7 @@ export default function OfficialPagePreview({
 
                 {specialNote ? (
                     <section className={styles.note}>
-                        <h2 className={styles.groupTitle}>Special note</h2>
+                        <h2 className={styles.groupTitle}>{t('publicSpecialNote')}</h2>
                         <p className={styles.noteText}>{specialNote}</p>
                     </section>
                 ) : null}
@@ -192,13 +209,13 @@ export default function OfficialPagePreview({
                 {(fullAddress || todayHours) ? (
                     <section className={`${styles.info} ${styles.locationInfo}`} aria-label="Location">
                         <h2 className={styles.groupTitle}>
-                            <span className={styles.groupTitleIcon}><LuMapPin aria-hidden="true" size={16} /></span>
-                            Location
+                            <span className={styles.groupTitleIcon}>{renderPreviewIcon(LuMapPin, '📍')}</span>
+                            {t('publicLocation')}
                         </h2>
                         {fullAddress ? <p className={styles.locationAddress}>{fullAddress}</p> : null}
                         <div className={styles.infoRow}>
-                            <span className={styles.infoIcon}><LuClock aria-hidden="true" size={16} /></span>
-                            <span>Open today: {todayHours}</span>
+                            <span className={styles.infoIcon}>{renderPreviewIcon(LuClock, '🕒')}</span>
+                            <span>{isClosed ? t('publicClosedToday') : t('publicOpenToday', { hours: todayHours })}</span>
                         </div>
                     </section>
                 ) : null}
@@ -206,15 +223,15 @@ export default function OfficialPagePreview({
                 {storeDetails?.workingHours ? (
                     <section className={`${styles.info} ${styles.utilityInfo}`} aria-label="Business Hours">
                         <h2 className={styles.groupTitle}>
-                            <span className={styles.groupTitleIcon}><LuCalendarDays aria-hidden="true" size={16} /></span>
-                            Business Hours
+                            <span className={styles.groupTitleIcon}>{renderPreviewIcon(LuCalendarDays, '📅')}</span>
+                            {t('publicBusinessHours')}
                         </h2>
                         <div className={styles.hoursList}>
                             {DAY_ORDER.map((day) => (
                                 <div className={`${styles.hoursRow} ${todayKey === day ? styles.hoursRowToday : ''}`} key={day}>
-                                    <span className={styles.hoursDay}>{DAY_LABELS[day]}</span>
-                                    <span className={`${styles.hoursTime} ${formatHours(storeDetails.workingHours?.[day]) === 'Closed' ? styles.hoursClosed : ''}`}>
-                                        {formatHours(storeDetails.workingHours?.[day])}
+                                    <span className={styles.hoursDay}>{t(`publicDays.${day}`)}</span>
+                                    <span className={`${styles.hoursTime} ${formatHours(storeDetails.workingHours?.[day], t('publicClosed')) === t('publicClosed') ? styles.hoursClosed : ''}`}>
+                                        {formatHours(storeDetails.workingHours?.[day], t('publicClosed'))}
                                     </span>
                                 </div>
                             ))}
@@ -223,11 +240,11 @@ export default function OfficialPagePreview({
                 ) : null}
 
                 <footer className={styles.footer}>
-                    <div className={styles.freshnessBadge}>Info verified today</div>
+                    <div className={styles.freshnessBadge}>{t('publicInfoVerifiedToday')}</div>
                     <div className={styles.policyLinks}>
-                        {publicPresence.showPrivacyLink !== false ? <span>Privacy</span> : null}
-                        {publicPresence.showTermsLink !== false ? <span>Terms</span> : null}
-                        {publicPresence.showRefundLink !== false ? <span>Refund</span> : null}
+                        {publicPresence.showPrivacyLink !== false ? <span>{t('publicPrivacy')}</span> : null}
+                        {publicPresence.showTermsLink !== false ? <span>{t('publicTerms')}</span> : null}
+                        {publicPresence.showRefundLink !== false ? <span>{t('publicRefund')}</span> : null}
                     </div>
                 </footer>
             </div>

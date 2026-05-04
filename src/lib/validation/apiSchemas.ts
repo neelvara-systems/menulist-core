@@ -77,10 +77,10 @@ export const SeoGenerationRequestSchema = z.object({
         socialMedia: z.array(z.string().max(200)).max(20).optional(),
         businessAttributes: z.array(z.string().max(100)).max(20).optional(),
         pwaShortName: z.string().max(40).optional(),
+        tenantName: z.string().max(120).optional(),
         publicPresence: z.object({
             accentColor: z.string().max(50).optional(),
             descriptor: z.string().max(120).optional(),
-            displayName: z.string().max(120).optional(),
             establishedYear: z.number().int().min(1800).max(3000).optional(),
             googleMapsUrl: z.string().max(500).optional(),
             googleReviewUrl: z.string().max(500).optional(),
@@ -120,10 +120,10 @@ export const BusinessCopyGenerationRequestSchema = z.object({
         socialMedia: z.array(z.string().max(200)).max(20).optional(),
         businessAttributes: z.array(z.string().max(100)).max(20).optional(),
         pwaShortName: z.string().max(40).optional(),
+        tenantName: z.string().max(120).optional(),
         publicPresence: z.object({
             accentColor: z.string().max(50).optional(),
             descriptor: z.string().max(120).optional(),
-            displayName: z.string().max(120).optional(),
             establishedYear: z.number().int().min(1800).max(3000).optional(),
             googleMapsUrl: z.string().max(500).optional(),
             googleReviewUrl: z.string().max(500).optional(),

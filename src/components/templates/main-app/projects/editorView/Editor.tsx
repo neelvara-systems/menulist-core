@@ -6,6 +6,7 @@ import GlobalLanguagesList from "@data/languages";
 import { updateProject } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useOfferingLabels } from "@hook/useOfferingLabels";
+import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
@@ -112,6 +113,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const { tenantDetails, storeDetails } = useContext<PlatformGlobalDataProviderType>(
         PlatformGlobalDataContext,
     );
+    const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
     const { activeProject, setActiveProject, setCurrentView } =
         useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const [projectData, setProjectData] = useState<Project>(
@@ -1212,7 +1214,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     itemStates={itemStates}
                     categoryStates={categoryStates}
                     masterPrices={masterPrices}
-                    storeName={storeDetails?.name}
+                    storeName={storeContextName}
                     onClose={() => setIsCommandCenterOpen(false)}
                     onApply={(updatedProject) => {
                         setProjectData(updatedProject);

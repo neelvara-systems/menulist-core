@@ -6,7 +6,7 @@
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §8.4
  */
 
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
 import { useContext } from 'react';
@@ -20,13 +20,7 @@ export default function StoreSwitcher() {
     if (!isMasterUser || !tenantDetails?.storesList?.length || !userPermissions?.canSwitchStores) return null;
 
     const resolveStoreName = (store: any) => {
-        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
-        return getLocalizedText(
-            store?.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
-            store?.name || `Store ${store?.storeId ?? ''}`,
-        );
+        return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
 
     const options = tenantDetails.storesList.map((store) => ({

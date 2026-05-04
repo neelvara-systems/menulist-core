@@ -11,6 +11,7 @@
  */
 
 import { extractStoreSemanticProfile } from '../semantics/attributeRegistry';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { extractTaxonomyFromProject } from '../taxonomy/adapter';
 import type { BusinessEntityIndexDoc, IndexBuildInput } from './types';
@@ -47,7 +48,7 @@ export function buildBusinessEntityIndexDoc(
         // Identity
         storeId: storeData.storeId,
         tenantId: storeData.tenantId,
-        name: storeData.name || '',
+        name: getStoreContextName(storeData, ''),
         businessType: storeData.businessType || '',
         businessCategory: businessCategory || '',
         descriptor: getLocalizedText(

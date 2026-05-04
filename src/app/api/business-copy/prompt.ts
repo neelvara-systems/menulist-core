@@ -32,7 +32,6 @@ export default function businessCopyPrompt(payload: BusinessCopyGenerationReques
 Rules:
 - Return valid JSON only.
 - Be factual. Do not invent awards, popularity, claims, menu items, or services not present in input.
-- displayName must be 60 characters or less.
 - descriptor must be 40 characters or less.
 - knownFor must be 40 characters or less.
 - specialNote must be 140 characters or less.
@@ -48,7 +47,8 @@ Rules:
 - Generate every returned value in ${sourceLang?.name || 'English'}${sourceLang?.code ? ` (${sourceLang.code})` : ''}.
 
 Business:
-- Name: ${store.name}
+- Brand name: ${store.tenantName || store.name}
+- Store/location name: ${store.name}
 - Business category: ${store.businessCategory || 'Not provided'}
 - Business type: ${store.businessType || 'Not provided'}
 - City: ${store.city || 'Not provided'}
@@ -60,7 +60,6 @@ Business:
 - Current Customer App short name: ${store.pwaShortName || 'Not provided'}
 - Active business attributes: ${listOrFallback(store.businessAttributes)}
 - Social media handles/links: ${listOrFallback(store.socialMedia)}
-- Public display name: ${textOrFallback(store.publicPresence?.displayName)}
 - Public descriptor: ${textOrFallback(store.publicPresence?.descriptor)}
 - Known for: ${textOrFallback(store.publicPresence?.knownFor)}
 - Special note: ${textOrFallback(store.publicPresence?.specialNote)}
@@ -79,7 +78,6 @@ Menu:
 
 Return JSON in exactly this shape:
 {
-  "displayName": "string",
   "descriptor": "string",
   "knownFor": "string",
   "specialNote": "string",

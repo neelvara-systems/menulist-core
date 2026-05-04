@@ -4,7 +4,6 @@ import ImageUploadInput from '@atoms/imageUploadInput';
 import { BUSINESS_TYPES } from '@constant/common';
 import { updateStore } from '@database/stores';
 import { updateTenant } from '@database/tenants';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
@@ -53,17 +52,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const { storeDetails, setStoreDetails, tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en';
-    const displayName = getLocalizedText(
-        storeDetails?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
-        storeDetails?.name || 'logo',
-    );
+    const logoAltName = storeDetails?.tenantName || tenantDetails?.name || storeDetails?.name || 'logo';
     const [selectedLogo, setSelectedLogo] = useState<UserUploadedFileType | null>(
         storeDetails?.logo
             ? {
-                name: displayName,
+                name: logoAltName,
                 size: 0,
                 type: '',
                 url: storeDetails.logo,
@@ -144,7 +137,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             }));
             if (savedStore?.logo) {
                 setSelectedLogo({
-                    name: displayName,
+                    name: logoAltName,
                     size: 0,
                     type: selectedLogo?.type || 'image/png',
                     url: savedStore.logo,
@@ -178,21 +171,21 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         } finally {
             setIsSaving(false);
         }
-    }, [formData, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
+    }, [formData, logoAltName, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
         setSelectedLogo(
             originalLogoUrl
                 ? {
-                    name: displayName,
+                    name: logoAltName,
                     size: 0,
                     type: '',
                     url: originalLogoUrl,
                 }
-                : null
+            : null
         );
-    }, [displayName, originalFormData, originalLogoUrl]);
+    }, [logoAltName, originalFormData, originalLogoUrl]);
 
     if (!storeDetails) {
         return (
@@ -221,7 +214,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     <Flex align="center" gap={12}>
                         {(selectedLogo?.url || storeDetails.logo) ? (
                             <Image
-                                alt={displayName}
+                                alt={logoAltName}
                                 height={72}
                                 preview={false}
                                 src={selectedLogo?.url || storeDetails.logo}

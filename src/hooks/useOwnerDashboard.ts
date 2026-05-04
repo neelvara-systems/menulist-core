@@ -37,6 +37,7 @@ import {
     DailyViewData,
     MonthlyViewData,
     OverviewData,
+    OverallData,
     OwnerDashboardData,
     OwnerDashboardViewMode,
     UseOwnerDashboardReturn,
@@ -155,7 +156,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const projectId = options?.projectId;
     const loadHistorical = options?.loadHistorical ?? true;
-    const [viewMode, setViewMode] = useState<OwnerDashboardViewMode>('overview');
+    const [viewMode, setViewMode] = useState<OwnerDashboardViewMode>('today');
 
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
@@ -346,6 +347,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         }
 
         switch (viewMode) {
+            case 'today':
+                return todayLoading && !todayData;
             case 'overview':
                 return settledLoading;
             case 'daily':
@@ -354,6 +357,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 return !settledData?.weekly && weeklyLoading;
             case 'monthly':
                 return !settledData?.monthly && monthlyLoading;
+            case 'overall':
+                return settledLoading;
             default:
                 return settledLoading;
         }
@@ -366,6 +371,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
         }
 
         switch (viewMode) {
+            case 'today':
+                return todayError || null;
             case 'overview':
                 return settledError || null;
             case 'daily':
@@ -374,6 +381,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 return settledError || weeklyError || null;
             case 'monthly':
                 return settledError || monthlyError || null;
+            case 'overall':
+                return settledError || null;
             default:
                 return settledError || null;
         }
@@ -405,8 +414,10 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     }, [settledData, todayData, dailyData, weeklyData, monthlyData, projectId]);
 
     // Current view data based on selected mode
-    const currentViewData = useMemo((): OverviewData | DailyViewData | WeeklyViewData | MonthlyViewData | null => {
+    const currentViewData = useMemo((): OverviewData | DailyViewData | WeeklyViewData | MonthlyViewData | OverallData | null => {
         switch (viewMode) {
+            case 'today':
+                return todayData || null;
             case 'overview':
                 return settledData?.overview || null;
             case 'daily':
@@ -415,10 +426,12 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 return settledData?.weekly || weeklyData || null;
             case 'monthly':
                 return settledData?.monthly || monthlyData || null;
+            case 'overall':
+                return settledData?.overall || null;
             default:
                 return settledData?.overview || null;
         }
-    }, [viewMode, settledData, dailyData, weeklyData, monthlyData]);
+    }, [viewMode, todayData, settledData, dailyData, weeklyData, monthlyData]);
 
     // Handle view mode change
     const handleSetViewMode = useCallback((mode: OwnerDashboardViewMode) => {
@@ -428,6 +441,9 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     // Force refetch current view data
     const refetch = useCallback(async () => {
         switch (viewMode) {
+            case 'today':
+                await mutateToday();
+                break;
             case 'overview':
                 await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);
                 break;
@@ -439,6 +455,9 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 break;
             case 'monthly':
                 await Promise.all(loadHistorical ? [mutateToday(), mutateSettled(), mutateMonthly()] : [mutateToday()]);
+                break;
+            case 'overall':
+                await Promise.all(loadHistorical ? [mutateToday(), mutateSettled()] : [mutateToday()]);
                 break;
             default:
                 await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);

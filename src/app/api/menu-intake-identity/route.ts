@@ -7,6 +7,7 @@ import {
   MenuIntakeFileInput,
   RawMenuIntakeIdentityResult,
 } from "@data/shared/menuIntakeIdentity";
+import { getStoreContextName } from "@lib/businessIdentity/names";
 import { genAIClient } from "@lib/google/genAi";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -283,7 +284,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const context: MenuIntakeContext = {
       projectName: resolveContextText(projectData?.name),
-      storeName: resolveContextText(storeData?.name),
+      storeName: getStoreContextName(storeData, resolveContextText(storeData?.name) || "Store"),
       storePhone: storeData?.phoneNumber || storeData?.phone || null,
       storeAddress: buildAddress(storeData),
       storeBusinessType: resolveContextText(storeData?.businessType),

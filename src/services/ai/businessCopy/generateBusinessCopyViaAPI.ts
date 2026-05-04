@@ -27,7 +27,6 @@ export interface BusinessCopyGenerationPayload {
         publicPresence?: {
             accentColor?: string;
             descriptor?: string;
-            displayName?: string;
             establishedYear?: number;
             googleMapsUrl?: string;
             googleReviewUrl?: string;
@@ -41,12 +40,12 @@ export interface BusinessCopyGenerationPayload {
         socialMedia?: string[];
         state?: string;
         tagline?: string;
+        tenantName?: string;
     };
 }
 
 export interface BusinessCopyGenerationResult {
     descriptor: string;
-    displayName: string;
     keywords: string[];
     knownFor: string;
     metaDescription: string;

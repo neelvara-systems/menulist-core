@@ -23,6 +23,7 @@ import GlobalLanguagesList from '@data/languages';
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { StoreDataType } from '@type/platform/store';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import { MenuMoodConfig } from '../designSystem';
@@ -103,7 +104,7 @@ export default function MenuFooter({
     // G09 ENFORCEMENT: Business name is required
     // Legacy fallback: Show "Menu" if no store name provided
     // This ensures footer ALWAYS renders with at least a neutral name
-    const businessName = storeDetails?.name || 'Menu';
+    const businessName = getStoreContextName(storeDetails, 'Menu');
 
     // Build full address from components (handle undefined storeDetails)
     const addressParts = [

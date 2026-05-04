@@ -103,6 +103,7 @@ export const updateTenant = async (data: any) => {
             const docId = data.tenantId//which is tenantId
             const nextTenantName = typeof data.name === 'string' ? data.name.trim() : '';
             let shouldPropagateTenantName = false;
+            let currentTenantData: any = null;
             if (data.imageToUpdate) {
 
                 let logoUrl: any = data.logo;
@@ -129,12 +130,24 @@ export const updateTenant = async (data: any) => {
             const collectionDocRef = doc(firebaseClient, `${COLLECTION}`, `${docId}`);
             if (nextTenantName) {
                 const currentTenantSnap = await getDoc(collectionDocRef);
+                currentTenantData = currentTenantSnap.exists() ? currentTenantSnap.data() : null;
                 const currentTenantName = currentTenantSnap.exists()
                     ? typeof currentTenantSnap.data()?.name === 'string'
                         ? currentTenantSnap.data()?.name.trim()
                         : ''
                     : '';
                 shouldPropagateTenantName = currentTenantName !== nextTenantName;
+            }
+            if (shouldPropagateTenantName) {
+                const sourceStoresList = Array.isArray(data.storesList)
+                    ? data.storesList
+                    : currentTenantData?.storesList;
+                if (Array.isArray(sourceStoresList)) {
+                    data.storesList = sourceStoresList.map((store: any) => ({
+                        ...store,
+                        tenantName: nextTenantName,
+                    }));
+                }
             }
             const composedData = await requestBodyComposer(data);
             await updateDoc(collectionDocRef, composedData);

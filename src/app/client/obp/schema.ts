@@ -17,6 +17,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import {
@@ -29,14 +30,16 @@ import {
     getSchemaType,
 } from '@lib/schema';
 
-export function generateOBPSchema(storeData: any, canonicalUrl: string, language?: string) {
+export function generateOBPSchema(
+    storeData: any,
+    canonicalUrl: string,
+    language?: string,
+    identityScope: 'brand' | 'store' = 'brand',
+) {
     const contentLanguage = language || storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
-    const publicDisplayName = getLocalizedText(
-        storeData?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
-        storeData?.name || 'Business',
-    );
+    const publicDisplayName = identityScope === 'store'
+        ? getStoreContextName(storeData, 'Business')
+        : getBrandName(storeData, 'Business');
     const publicDescriptor = getLocalizedText(
         storeData?.publicPresence?.descriptor,
         contentLanguage,

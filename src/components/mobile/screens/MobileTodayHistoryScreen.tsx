@@ -92,6 +92,7 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                             isDefault: selectedProjectSummary?.isDefault,
                             isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                             name: selectedProjectSummary?.name || 'Untitled',
+                            projectImage: selectedProjectSummary?.projectImage || null,
                             specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
                             specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
                                 ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name

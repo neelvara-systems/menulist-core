@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
 import GlobalLanguagesList from "@data/languages";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { getStoreContextName } from "@lib/businessIdentity/names";
 import { normalizePublicLanguageCode, resolveProjectPublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
@@ -84,13 +85,7 @@ function ClientMenuRenderer({
 }: ClientMenuRendererProps) {
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const storeId = storeDetails?.storeId;
-    const contentLanguage = storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || "en";
-    const storeDisplayName = getLocalizedText(
-        storeDetails?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
-        storeDetails?.name || "Menu",
-    );
+    const storeDisplayName = getStoreContextName(storeDetails, "Menu");
     const requestedInitialLanguage = normalizePublicLanguageCode(initialLanguage);
     const defaultLanguage = requestedInitialLanguage
         ? resolveProjectPublicLanguage(projectData, storeDetails, requestedInitialLanguage)

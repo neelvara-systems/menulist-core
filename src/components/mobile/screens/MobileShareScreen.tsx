@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
@@ -39,6 +40,7 @@ type ProjectLink = {
     isDefault: boolean;
     isSpecialMenu?: boolean;
     name: string | Record<string, string>;
+    projectImage?: string | null;
     projectId: string;
     specialMenuBaseProjectId?: string;
     specialMenuEndsAt?: string;
@@ -92,12 +94,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         [tProjectSelector]
     );
     const storeDisplayName = useMemo(
-        () => getLocalizedText(
-            (storeDetails as any)?.publicPresence?.displayName,
-            undefined,
-            getPrimaryLocalizedLanguage((storeDetails as any)?.publicPresence?.displayName, 'en'),
-            storeDetails?.name || t('yourBusiness')
-        ),
+        () => getStoreContextName(storeDetails as any, t('yourBusiness')),
         [storeDetails, t]
     );
 
@@ -132,6 +129,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             feedbackUrl: project.projectId ? getFeedbackUrl(project.projectId, 'direct_link', obpLink) : '',
             isDefault: project.isDefault || false,
             name: project.name,
+            projectImage: project.projectImage || null,
             projectId: project.projectId,
             url: generateProjectUrl(subdomain, customDomain, resolveProjectName(project.name, labels.offeringTitle), false),
         }));
@@ -239,6 +237,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         isDefault: activeProject.isDefault,
                         isSpecialMenu: activeProject.isSpecialMenu === true,
                         name: activeProject.name,
+                        projectImage: activeProject.projectImage || null,
                         specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
                         specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
                             ? resolveProjectName(

@@ -13,6 +13,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import GlobalLanguagesList from "@data/languages";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { getBrandName } from "@lib/businessIdentity/names";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     appendPublicLanguageParam,
@@ -123,12 +124,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
-    const brandName = getLocalizedText(
-        pp.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(pp.displayName, contentLanguage),
-        store?.name?.replace(/ - Main Store$/, '') || t('publicFallbackBusiness'),
-    );
+    const brandName = getBrandName(store, t('publicFallbackBusiness'));
     const logo = store?.logo;
     const firstLetter = brandName.charAt(0);
 

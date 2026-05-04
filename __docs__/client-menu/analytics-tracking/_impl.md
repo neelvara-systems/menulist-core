@@ -183,6 +183,7 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - Owner dashboard reads settled metrics from nightly dashboard read-model docs, not by rebuilding every card from daily docs on each visit.
 - `aggregateCustomerAnalytics.ts` rolls search demand, unavailable-item demand, active filter context, menu CTA clicks, and Customer App metrics into summary / weekly / monthly rollups, then writes `{tId}_{sId}_{projectId}_dashboard_summary`.
 - `analytics/dashboardSummaryAggregation.ts` writes menu and Customer App owner-dashboard read models. `analytics/obpAnalyticsAggregation.ts` writes the OBP dashboard read model.
+- Settled `Top Items` use item-tap counters (`clicksByItem`). Smart Picks / recommendation clicks remain separate recommendation-performance counters.
 - The menu, OBP, and Customer App dashboard read models update incrementally in steady state: existing compact daily rows are reused, the settled day is added when present, and wide daily-range rebuilds happen only for first deploy/cache gaps.
 - Weekly/monthly rollups also prefer the same dashboard read-model cache. Daily-doc range reads are fallback only when the compact cache does not cover the required window.
 - The next nightly pass checks the previously settled local date for late passive writes and applies only positive deltas to lifetime summaries and cached daily rows.
@@ -197,10 +198,12 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - If a night is missed, the next local nightly run catches up pending store-local dates in order, capped per run for Firebase cost safety.
 - Summary lifetime counters are idempotent: a date already recorded as aggregated is skipped instead of incremented again.
 - Settled owner dashboard views end on the latest settled business date. They are intentionally not mixed with the current partial business day or the just-ended day before scheduler settlement.
-- A separate `Today so far` card reads the current day daily doc directly through the owner-dashboard DAL.
+- The Dashboard has six explicit display tabs on desktop and mobile: `Today`, `Overview`, `Daily`, `Weekly`, `Monthly`, and `Overall`.
+- Every dashboard tab renders its own Menu card/section and matching Official Business Page card/section so owners do not have to mentally combine separate surfaces.
+- The default `Today` tab reads only the current day Menu and OBP daily docs directly through the owner-dashboard DAL.
 - The live card uses SWR plus local cache with a short TTL only for that slice, so Firebase cost stays bounded.
-- Settled dashboard SWR/localStorage cache uses the store-local scheduler cycle key. It survives midnight and business-day cutoff changes, then invalidates after the next expected local scheduler completion window.
-- The existing overview / daily / weekly / monthly historical flow is served from the read-model doc. Legacy daily-doc rebuilds are not used on the owner display path.
+- Settled / past analytics stay gated until the owner opens `Overview`, `Daily`, `Weekly`, `Monthly`, or `Overall`. Menu and OBP settled reads then use SWR/localStorage with the store-local scheduler cycle key. The cache survives midnight and business-day cutoff changes, then invalidates after the next expected local scheduler completion window.
+- The existing overview / daily / weekly / monthly / overall historical flow is served from the read-model doc. Legacy daily-doc rebuilds are not used on the owner display path.
 - The deep analytics dashboard uses the same read-model doc via SWR/local cache:
   - recent settled ranges are served from `{tId}_{sId}_{projectId}_dashboard_summary`
   - ranges including today read the same dashboard summary plus today's daily doc with a 10-minute TTL

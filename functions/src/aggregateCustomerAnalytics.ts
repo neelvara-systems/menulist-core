@@ -535,6 +535,14 @@ async function updateSummaryDocument(
         }
         if (itemNames[itemId]) assignNestedMapUpdate(updates, 'itemNames', itemId, itemNames[itemId]);
     }
+    const namedItemIds = new Set<string>([
+        ...Object.keys(readAnalyticsMap(dailyData as any, 'clicksByItem')),
+        ...Object.keys(readAnalyticsMap(dailyData as any, 'recommendationClicksByItem')),
+        ...Object.keys(unavailableItemTapsByItem),
+    ]);
+    namedItemIds.forEach((itemId) => {
+        if (itemNames[itemId]) assignNestedMapUpdate(updates, 'itemNames', itemId, itemNames[itemId]);
+    });
 
     for (const [categoryId, name] of Object.entries(readAnalyticsMap(dailyData as any, 'categoryNames'))) {
         assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
@@ -1235,10 +1243,10 @@ async function generateWeeklyAISummaryPayload(
         ? Math.round(((aggregated.totalViews - prevWeekAggregated.totalViews) / prevWeekAggregated.totalViews) * 100)
         : 0;
 
-    // Build top items from clicksByItem
+    // Build top items from actual item taps, not only recommendation clicks.
     const topItems: Array<{ itemId: string; clicks: number }> = [];
-    if (aggregated.recommendationClicksByItem) {
-        const entries = Object.entries(aggregated.recommendationClicksByItem) as [string, number][];
+    if (aggregated.clicksByItem) {
+        const entries = Object.entries(aggregated.clicksByItem) as [string, number][];
         entries
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5)
@@ -1313,10 +1321,10 @@ async function generateDailyAISummaryPayload(
     dailyData: DailyMetrics,
     date: string
 ): Promise<NonNullable<OwnerDashboardAIPayloads['daily']>> {
-    // Build top items from recommendationClicksByItem
+    // Build top items from actual item taps, not only recommendation clicks.
     const topItems: Array<{ itemId: string; clicks: number }> = [];
-    if (dailyData.recommendationClicksByItem) {
-        const entries = Object.entries(dailyData.recommendationClicksByItem) as [string, number][];
+    if (dailyData.clicksByItem) {
+        const entries = Object.entries(dailyData.clicksByItem) as [string, number][];
         entries
             .sort((a, b) => b[1] - a[1])
             .slice(0, 3)
@@ -1385,10 +1393,10 @@ async function generateMonthlyAISummaryPayload(
     monthEnd: string,
     daysWithData: number
 ): Promise<NonNullable<OwnerDashboardAIPayloads['monthly']>> {
-    // Build top items from recommendationClicksByItem
+    // Build top items from actual item taps, not only recommendation clicks.
     const topItems: Array<{ itemId: string; clicks: number }> = [];
-    if (aggregated.recommendationClicksByItem) {
-        const entries = Object.entries(aggregated.recommendationClicksByItem) as [string, number][];
+    if (aggregated.clicksByItem) {
+        const entries = Object.entries(aggregated.clicksByItem) as [string, number][];
         entries
             .sort((a, b) => b[1] - a[1])
             .slice(0, 3)

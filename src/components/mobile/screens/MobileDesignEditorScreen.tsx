@@ -13,6 +13,7 @@ import {
 import useViewportInfo from '@hook/useViewportInfo';
 import { publishProject } from '@database/projects';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -354,6 +355,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         isDefault: selectedProjectSummary?.isDefault,
                         isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                         name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
+                        projectImage: selectedProjectSummary?.projectImage || draftProjectData?.projectImage || null,
                         specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
                         specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
                             ? (projectsList || []).find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
@@ -599,7 +601,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}
                 downloadSuccessMessage={tShare('qrDownloaded')}
-                filename={buildQrCodeFilename(`${storeDetails?.name || 'menu'}-${labels.offeringLower}-direct-link`, 'qr')}
+                filename={buildQrCodeFilename(`${getStoreContextName(storeDetails as any, 'menu')}-${labels.offeringLower}-direct-link`, 'qr')}
                 generatingLabel={tShare('generatingQr')}
                 helperText={tShare('directOfferingLinkDesc', { offering: labels.offeringLower })}
                 imageAlt={tShare('directOfferingLink', { offering: labels.offeringTitle })}

@@ -302,7 +302,6 @@
         "businessCopyAuditRepaired": "Last repaired: {when}",
         "businessCopyAuditManual": "Last manual override: {when}",
         "businessCopyCoverageFields": {
-            "displayName": "Public display name",
             "descriptor": "Short descriptor",
             "knownFor": "Known for",
             "specialNote": "Special note",

@@ -21,7 +21,6 @@ export interface SeoGenerationPayload {
         publicPresence?: {
             accentColor?: string;
             descriptor?: string;
-            displayName?: string;
             establishedYear?: number;
             googleMapsUrl?: string;
             googleReviewUrl?: string;
@@ -34,6 +33,7 @@ export interface SeoGenerationPayload {
         socialMedia?: string[];
         state?: string;
         tagline?: string;
+        tenantName?: string;
     };
 }
 

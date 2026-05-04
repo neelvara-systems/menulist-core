@@ -346,7 +346,7 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
 }
 ```
 
-The runtime implementation also accepts the resolved render language so localized `displayName`, `descriptor`, `knownFor`, and description fields match the OBP page language.
+The runtime implementation also accepts the resolved render language so localized `descriptor`, `knownFor`, and description fields match the OBP page language. Brand identity comes from `tenantName`; store/location identity comes from `store.name`.
 
 **Shared utilities** (`src/lib/schema/index.ts`):
 

@@ -39,6 +39,7 @@ interface MobileDashboardScreenProps {
 }
 
 const RISK_LABELS: Record<string, string> = { stable: 'Stable', watch: 'Watch', at_risk: 'At Risk' };
+const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 const FULL_WIDTH_TAG_STYLE = {
     display: 'block',
     fontSize: 13,
@@ -83,13 +84,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         projectId: selectedProjectId,
         loadHistorical: showHistorical,
     } : undefined);
-    const obpDashboard = useOBPDashboard();
-
-    useEffect(() => {
-        if (!loadingToday && !showHistorical && !data?.today) {
-            setShowHistorical(true);
-        }
-    }, [loadingToday, showHistorical, data?.today]);
+    const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
 
     useEffect(() => {
         console.log('[MobileDashboard][Screen] project context', {
@@ -131,13 +126,17 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         });
     }, [obpDashboard.data, obpDashboard.loading, obpDashboard.loadingToday, storeDetails?.storeId]);
 
-    const viewModeLabel = viewMode === 'overview'
-        ? t('overview')
-        : viewMode === 'daily'
-            ? t('daily')
-            : viewMode === 'weekly'
-                ? t('weekly')
-                : t('monthly');
+    const viewModeLabel = viewMode === 'today'
+        ? 'Today'
+        : viewMode === 'overview'
+            ? t('overview')
+            : viewMode === 'daily'
+                ? t('daily')
+                : viewMode === 'weekly'
+                    ? t('weekly')
+                    : viewMode === 'monthly'
+                        ? t('monthly')
+                        : 'Overall';
 
     const handleRefresh = useCallback(async () => {
         try {
@@ -149,22 +148,28 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     }, [refetch]);
 
     const handleViewModeChange = useCallback((key: string) => {
-        setViewMode(key as OwnerDashboardViewMode);
+        const nextMode = key as OwnerDashboardViewMode;
+        setShowHistorical(nextMode !== 'today');
+        setViewMode(nextMode);
     }, [setViewMode]);
 
     const currentViewData = useMemo(() => {
         switch (viewMode) {
+            case 'today':
+                return data?.today || null;
             case 'daily':
                 return data?.daily || null;
             case 'weekly':
                 return data?.weekly || null;
             case 'monthly':
                 return data?.monthly || null;
+            case 'overall':
+                return data?.overall || null;
             case 'overview':
             default:
                 return data?.overview || null;
         }
-    }, [data?.daily, data?.monthly, data?.overview, data?.weekly, viewMode]);
+    }, [data?.daily, data?.monthly, data?.overall, data?.overview, data?.today, data?.weekly, viewMode]);
 
     if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
@@ -207,14 +212,20 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const historicalWeeks = overview?.historicalWeeks || data?.historicalWeeks || [];
     const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
     const isOBPSettledPending = obpDashboard.loading && !obpDashboard.data;
-    const hasOBPCurrentViewData = viewMode === 'overview'
+    const hasOBPCurrentViewData = viewMode === 'today'
+        ? Boolean(obpDashboard.data?.today)
+        : viewMode === 'overview'
         ? hasOBPSettledData
         : viewMode === 'daily'
             ? Boolean(obpDashboard.data?.overview?.yesterday || obpDashboard.data?.overall)
             : viewMode === 'weekly'
                 ? Boolean(obpDashboard.data?.overview?.wtd || obpDashboard.data?.overall)
-                : Boolean(obpDashboard.data?.overview?.mtd || obpDashboard.data?.overall);
-    const isLoading = viewMode === 'overview'
+                : viewMode === 'monthly'
+                    ? Boolean(obpDashboard.data?.overview?.mtd || obpDashboard.data?.overall)
+                    : Boolean(obpDashboard.data?.overall);
+    const isLoading = viewMode === 'today'
+        ? loadingToday && !today && obpDashboard.loadingToday && !obpDashboard.data?.today
+        : viewMode === 'overview'
         ? loading && !data
         : loading && !currentViewData;
 
@@ -355,7 +366,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const renderTodaySoFar = () => {
         if (loadingToday) {
             return (
-                <Card size="small" title={<Text strong>Today so far</Text>}>
+                <Card size="small" title={<Text strong>Menu</Text>}>
                     <Flex align="center" gap={8}>
                         <DotLoading color="primary" />
                         <Text type="secondary">Loading current activity</Text>
@@ -366,15 +377,10 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
         if (!today) {
             return (
-                <Card size="small" title={<Text strong>Today so far</Text>}>
-                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                        No activity yet today. Settled analytics from previous days are available below.
+                <Card size="small" title={<Text strong>Menu</Text>}>
+                    <Text type="secondary" style={{ display: 'block' }}>
+                        No menu activity yet today.
                     </Text>
-                    {!showHistorical ? (
-                        <Button block onClick={() => setShowHistorical(true)}>
-                            View settled analytics
-                        </Button>
-                    ) : null}
                 </Card>
             );
         }
@@ -439,7 +445,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 size="small"
                 title={(
                     <Flex align="center" justify="space-between">
-                        <Text strong>Today so far</Text>
+                        <Text strong>Menu</Text>
                         <Popover content={todayInfoContent} placement="bottom" trigger="click">
                             <Button
                                 fill="none"
@@ -452,13 +458,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 )}
             >
                 {renderMetricsCards(today.metrics)}
-                {!showHistorical ? (
-                    <div style={{ marginTop: 12 }}>
-                        <Button block onClick={() => setShowHistorical(true)}>
-                            View settled analytics
-                        </Button>
-                    </div>
-                ) : null}
             </Card>
         );
     };
@@ -491,7 +490,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const renderPeriodView = () => {
         const periodData = currentViewData as any;
 
-        if (!periodData || viewMode === 'overview') return null;
+        if (!periodData || viewMode === 'today' || viewMode === 'overview' || viewMode === 'overall') return null;
 
         const dateLabel = viewMode === 'daily' && periodData.date
             ? new Date(periodData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'long' })
@@ -529,6 +528,47 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         );
     };
 
+    const renderOverallView = () => (
+        <>
+            {overall?.lifetimeMetrics ? (
+                <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
+                    <Flex gap={12} wrap>
+                        {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile('Engaged Sessions', `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
+                        {renderMetricTile('Action Rate', `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
+                        {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile('Unavailable Interest', overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
+                    </Flex>
+                    {overall.menuActions ? (
+                        <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                            {`Actions: Call ${overall.menuActions.call}, WhatsApp ${overall.menuActions.whatsapp}, Directions ${overall.menuActions.directions}, Reserve ${overall.menuActions.reserve}, Order ${overall.menuActions.order}`}
+                        </Text>
+                    ) : null}
+                    {overall.topItems?.length ? (
+                        <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                            {`Top items: ${overall.topItems.slice(0, 3).map((item: any) => `${item.name || item.itemId} (${item.clicks} taps)`).join(', ')}`}
+                        </Text>
+                    ) : null}
+                    {overall.firstDataDate ? (
+                        <Text type="secondary">
+                            {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                        </Text>
+                    ) : null}
+                </Card>
+            ) : null}
+
+            <MobileOBPMetricsCard
+                data={obpDashboard.data}
+                loading={obpDashboard.loading}
+                loadingToday={obpDashboard.loadingToday}
+                mode="overall"
+            />
+        </>
+    );
+
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
@@ -554,6 +594,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         isDefault: selectedProjectSummary?.isDefault,
                         isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                         name: selectedProjectSummary?.name || t('unnamedProject'),
+                        projectImage: selectedProjectSummary?.projectImage || null,
                         specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
                         specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
                             ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
@@ -564,27 +605,29 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
 
-                {renderTodaySoFar()}
-                <MobileOBPMetricsCard
-                    data={obpDashboard.data}
-                    loading={obpDashboard.loading}
-                    loadingToday={obpDashboard.loadingToday}
-                    mode="today"
-                />
+                <div style={stickyHistoricalHeaderStyle}>
+                    <Card className="mobile-dashboard-tabs-card" size="small">
+                        <div className="mobile-dashboard-tabs">
+                            <Tabs activeKey={viewMode} centered onChange={handleViewModeChange}>
+                                <Tabs.Tab title="Today" key="today" />
+                                <Tabs.Tab title={t('overview')} key="overview" />
+                                <Tabs.Tab title={t('daily')} key="daily" />
+                                <Tabs.Tab title={t('weekly')} key="weekly" />
+                                <Tabs.Tab title={t('monthly')} key="monthly" />
+                                <Tabs.Tab title="Overall" key="overall" />
+                            </Tabs>
+                        </div>
+                    </Card>
+                </div>
 
-                {showHistorical ? (
-                    <div style={stickyHistoricalHeaderStyle}>
-                        <Card className="mobile-dashboard-tabs-card" size="small">
-                            <div className="mobile-dashboard-tabs">
-                                <Tabs activeKey={viewMode} centered onChange={handleViewModeChange}>
-                                    <Tabs.Tab title={t('overview')} key="overview" />
-                                    <Tabs.Tab title={t('daily')} key="daily" />
-                                    <Tabs.Tab title={t('weekly')} key="weekly" />
-                                    <Tabs.Tab title={t('monthly')} key="monthly" />
-                                </Tabs>
-                            </div>
-                        </Card>
-                    </div>
+                <Title level={5} style={{ margin: 0 }}>
+                    {viewMode === 'today' ? 'Today so far' : viewModeLabel}
+                </Title>
+
+                {viewMode !== 'today' ? (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {SETTLED_TAB_HELPER_TEXT}
+                    </Text>
                 ) : null}
 
                 {showHistorical && viewMode === 'overview' ? (
@@ -596,14 +639,39 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     </Tag>
                 ) : null}
 
-                {showHistorical && isLoading ? (
+                {isLoading ? (
                     <Card>
                         <Flex align="center" gap={8} justify="center">
                             <DotLoading color="primary" />
                             <Text type="secondary">{t('loading')}</Text>
                         </Flex>
                     </Card>
-                ) : showHistorical && viewMode !== 'overview' ? (
+                ) : viewMode === 'today' ? (
+                    <>
+                        {renderTodaySoFar()}
+                        <MobileOBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="today"
+                        />
+                    </>
+                ) : viewMode === 'overall' ? (
+                    <>
+                        {renderOverallView()}
+
+                        {!overall && !hasOBPCurrentViewData && !isOBPSettledPending ? (
+                            <Card>
+                                <Flex align="center" gap={12} vertical>
+                                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
+                                    <Text type="secondary" style={{ textAlign: 'center' }}>
+                                        {t('noAnalyticsYet', { offering: labels.offeringLower })}
+                                    </Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                    </>
+                ) : viewMode !== 'overview' ? (
                     <>
                         {renderPeriodView()}
 
@@ -613,26 +681,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             loadingToday={obpDashboard.loadingToday}
                             mode={viewMode}
                         />
-
-                        {overall?.lifetimeMetrics ? (
-                            <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
-                                <Flex gap={12} wrap>
-                                    {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('Engaged Sessions', `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
-                                    {renderMetricTile('Action Rate', `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
-                                    {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('Unavailable Interest', overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
-                                </Flex>
-                                {overall.firstDataDate ? (
-                                    <Text type="secondary">
-                                        {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
-                                    </Text>
-                                ) : null}
-                            </Card>
-                        ) : null}
 
                         {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
@@ -645,7 +693,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             </Card>
                         ) : null}
                     </>
-                ) : showHistorical ? (
+                ) : (
                     <>
                         {wtd ? (
                             <Card size="small" title={<Text strong>{t('last7Days')}</Text>}>
@@ -795,31 +843,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             </Card>
                         ) : null}
 
-                        {overall?.lifetimeMetrics ? (
-                            <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
-                                <Flex gap={12} wrap>
-                                    {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('Engaged Sessions', `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
-                                    {renderMetricTile('Action Rate', `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
-                                    {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
-                                    {renderMetricTile('Unavailable Interest', overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
-                                </Flex>
-                                {overall.menuActions ? (
-                                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                                        {`Actions: Call ${overall.menuActions.call}, WhatsApp ${overall.menuActions.whatsapp}, Directions ${overall.menuActions.directions}, Reserve ${overall.menuActions.reserve}, Order ${overall.menuActions.order}`}
-                                    </Text>
-                                ) : null}
-                                {overall.firstDataDate ? (
-                                    <Text type="secondary">
-                                        {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
-                                    </Text>
-                                ) : null}
-                            </Card>
-                        ) : null}
-
                         {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
@@ -831,7 +854,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             </Card>
                         ) : null}
                     </>
-                ) : null}
+                )}
             </Flex>
 
             <style jsx global>{`

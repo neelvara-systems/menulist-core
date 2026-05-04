@@ -1,6 +1,7 @@
 'use client'
 
 import { getFeedbackList } from '@database/guestFeedback';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -270,7 +271,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 copyErrorMessage={t('failedToUpdate')}
                 copySuccessMessage={t('linkCopied')}
                 downloadSuccessMessage={t('qrDownloaded')}
-                filename={buildQrCodeFilename(storeDetails?.name || 'feedback', 'feedback-qr')}
+                filename={buildQrCodeFilename(getStoreContextName(storeDetails as any, 'feedback'), 'feedback-qr')}
                 generatingLabel={t('generatingQr')}
                 helperText={t('feedbackQrTip')}
                 imageAlt={t('feedbackQrTitle')}

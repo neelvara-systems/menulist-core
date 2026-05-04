@@ -239,9 +239,9 @@ function translateSchemaText(
     return value && value !== key ? value : fallback;
 }
 
-export function buildFaqSchema(storeData: any, canonicalUrl: string, t?: SchemaTranslator) {
+export function buildFaqSchema(storeData: any, canonicalUrl: string, t?: SchemaTranslator, displayName?: string) {
     const faqs: { question: string; answer: string }[] = [];
-    const storeName = storeData?.name || translateSchemaText(t, 'publicFallbackBusiness', {}, 'This business');
+    const storeName = displayName || storeData?.name || translateSchemaText(t, 'publicFallbackBusiness', {}, 'This business');
 
     // Q: Working hours
     if (storeData?.workingHours) {

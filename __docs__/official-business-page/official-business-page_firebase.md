@@ -23,7 +23,7 @@
 | Load OBP page                 | `stores`                        | Customer visits OBP URL      | Per visit (cached 60s) | 1         | Yes      | Uses `where("subdomain", "==", ...)` — same as menu page           |
 | Check published menu exists   | `projects/{tId}/{sId}/metadata` | OBP render                   | Per visit (cached 60s) | 1         | Yes      | `where("deleted","==",false), where("active","==",true), limit(1)` |
 | Load OBP settings (dashboard) | `stores`                        | Owner opens Business Profile | On demand              | 0         | —        | Already loaded as part of store data in Redux                      |
-| Load OBP metrics (dashboard)  | `analytics`                     | Owner opens Dashboard        | On demand (scheduler-window cached) | 1 dashboard summary + 1 today doc | Yes | Settled views read `{tId}_{sId}_obp_dashboard_summary`. `Today so far` reads the current store-local daily doc with 10 min TTL. |
+| Load OBP metrics (dashboard)  | `analytics`                     | Owner opens Dashboard / opens a settled analytics tab | Today: 10 min TTL. Settled: scheduler-window cached | Today: 1 doc. Settled: 1 dashboard summary doc when requested | Yes | The `Today` tab reads the current store-local OBP daily doc when the dashboard opens. `Overview`, `Daily`, `Weekly`, `Monthly`, and `Overall` read `{tId}_{sId}_obp_dashboard_summary` only after the owner opens a settled tab, then cache on the device until the next store-local settlement cycle. |
 
 **Key optimization:** Both reads are wrapped in `unstable_cache` with 60s TTL and per-store tags. At 60s cache, 1000 page views/hour = ~60 actual Firestore reads/hour (not 1000).
 
@@ -67,7 +67,7 @@
 
 **Settlement state:** The shared scheduler stores per-store status in `platformSummary/nightlyState_{tId}_{sId}` and a per-date lock in `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}`. This prevents duplicate runs and allows missed store-local dates to be caught up safely.
 
-**Date semantics:** OBP daily analytics docs now use the **store's local calendar date** and local hour buckets. The owner dashboard `Today so far`, `Yesterday`, WTD, and MTD views read the same store-local day keys.
+**Date semantics:** OBP daily analytics docs now use the **store's local calendar date** and local hour buckets. The owner dashboard `Today`, `Daily`, WTD, MTD, and `Overall` views read the same store-local day keys/read-model cycle.
 
 **Observability:** OBP settlement logs actionable Sentry/Firebase warnings only for cache rebuild fallback and late-event correction. Store-level OBP aggregation failures include `tId`, `sId`, and timezone context. Normal OBP page views and successful counter writes are not logged.
 

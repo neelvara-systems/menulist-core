@@ -174,7 +174,7 @@ export async function executePublish(
     const newTenantId = (summaryData?.tenants?.count || 0) + 1;
     const newStoreId = (summaryData?.stores?.count || 0) + 1;
     const now = admin.firestore.Timestamp.now();
-    const storeName = `${businessName} - Main Store`;
+    const storeName = "Main Store";
     const storeKey = storeName.toLowerCase().replaceAll(" ", "_");
     const tenantKey = businessName.toLowerCase().replaceAll(" ", "_");
     const businessDayEndTime = resolveBusinessDayEndTime(finalBusinessType, undefined, finalBusinessCategory);
@@ -193,6 +193,7 @@ export async function executePublish(
         {
           storeId: newStoreId,
           name: storeName,
+          tenantName: businessName,
           isMaster: true,
         },
       ],
@@ -208,6 +209,7 @@ export async function executePublish(
 
     transaction.set(storeRef, {
       name: storeName,
+      tenantName: businessName,
       businessType: finalBusinessType,
       businessCategory: finalBusinessCategory,
       businessIndustry: "",
@@ -251,6 +253,7 @@ export async function executePublish(
           businessCategory: finalBusinessCategory,
           active: true,
           name: storeName,
+          tenantName: businessName,
           timeZone: currencyInfo.timezone,
           businessDayEndTime,
           schedulerHour,

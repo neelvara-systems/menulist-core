@@ -3,6 +3,7 @@
 import { updateStore } from '@database/stores';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
@@ -89,7 +90,6 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const contentLanguage = selectedLanguage || getStorePreferredLanguage(storeDetails);
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const currentSeoDraft = localizedSeoDrafts[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' };
-    const publicDisplayName = getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, '');
 
     useEffect(() => {
         if (!storeDetails) return;
@@ -646,7 +646,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                             </Button>
                         </Flex>
                         <SeoPreviewCard
-                            businessName={storeDetails?.name}
+                            businessName={getStoreContextName(storeDetails as any, 'Business')}
                             canonicalUrl={canonicalUrl}
                             customDomain={storeDetails?.customDomain}
                             keywords={currentSeoDraft.keywords}

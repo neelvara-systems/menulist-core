@@ -4,7 +4,8 @@ import { getProjectLanguageLabel } from '@lib/localization/projectContent';
 import { getBase64 } from '@util/utils';
 import { Button, Flex, Form, FormInstance, Image, Input, Modal, Select, Switch, Upload, message, theme, Typography } from "antd";
 import { useTranslations } from 'next-intl';
-import { LuImagePlus, LuTrash2 } from 'react-icons/lu';
+import { useState } from 'react';
+import { LuImagePlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
 
 export interface ProjectFormData {
@@ -28,6 +29,7 @@ interface ProjectEditModalProps {
     onDescriptionChange: (value: string) => void;
     onLanguageChange: (languageCode: string) => void;
     onNameChange: (value: string) => void;
+    onGenerateProjectImage?: () => Promise<string | null>;
     onTranslatePublicContent?: () => void;
     referenceDescription: string;
     referenceLanguage: string;
@@ -51,6 +53,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     onDescriptionChange,
     onLanguageChange,
     onNameChange,
+    onGenerateProjectImage,
     onTranslatePublicContent,
     referenceDescription,
     referenceLanguage,
@@ -69,6 +72,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const isDefault = Form.useWatch('isDefault', form) as boolean | undefined;
     const currentProjectName = nameValue?.trim() || `This ${labels.offeringLower}`;
     const currentDefaultLabel = currentDefaultProjectName || `No default ${labels.offeringLower} is set yet`;
+    const [isGeneratingProjectImage, setIsGeneratingProjectImage] = useState(false);
 
     const handleProjectImageSelect = async (file: File) => {
         try {
@@ -81,6 +85,29 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         }
 
         return false;
+    };
+
+    const handleGenerateProjectImage = async () => {
+        if (!onGenerateProjectImage) return;
+        if (!nameValue.trim()) {
+            message.error(`Enter a ${labels.offeringPhrase} name first.`);
+            return;
+        }
+
+        setIsGeneratingProjectImage(true);
+        try {
+            const generatedImage = await onGenerateProjectImage();
+            if (!generatedImage) {
+                message.warning('Add menu items before generating a menu image.');
+                return;
+            }
+            form.setFieldValue('projectImage', generatedImage);
+            message.success('Menu image generated');
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to generate menu image');
+        } finally {
+            setIsGeneratingProjectImage(false);
+        }
     };
 
     return (
@@ -246,12 +273,32 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     >
                                         Remove image
                                     </Button>
+                                    {onGenerateProjectImage ? (
+                                        <Button
+                                            icon={<LuSparkles size={16} />}
+                                            loading={isGeneratingProjectImage}
+                                            onClick={handleGenerateProjectImage}
+                                        >
+                                            Regenerate image
+                                        </Button>
+                                    ) : null}
                                 </Flex>
                             </Flex>
                         ) : (
-                            <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
-                                <Button icon={<LuImagePlus size={16} />}>Upload image</Button>
-                            </Upload>
+                            <Flex align="center" gap={8} wrap="wrap">
+                                <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
+                                    <Button icon={<LuImagePlus size={16} />}>Upload image</Button>
+                                </Upload>
+                                {onGenerateProjectImage ? (
+                                    <Button
+                                        icon={<LuSparkles size={16} />}
+                                        loading={isGeneratingProjectImage}
+                                        onClick={handleGenerateProjectImage}
+                                    >
+                                        Generate image
+                                    </Button>
+                                ) : null}
+                            </Flex>
                         )}
                         <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
                             Optional. This image appears on the Official Business Page menu card.

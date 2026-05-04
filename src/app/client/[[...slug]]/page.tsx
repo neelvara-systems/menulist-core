@@ -28,6 +28,7 @@ import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
 import {
     getStoreByCustomDomain,
     getStoreByOutletSlug,
@@ -465,13 +466,12 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         };
     }
 
+    const slugSegments = params?.slug || [];
+    const isRootRequest = slugSegments.length === 0;
     const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
-    const storeName = getLocalizedText(
-        storeData?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
-        storeData.name || "Restaurant Menu",
-    );
+    const storeName = isRootRequest && FEATURE_FLAGS.ENABLE_OBP
+        ? getBrandName(storeData, "Restaurant Menu")
+        : getStoreContextName(storeData, "Restaurant Menu");
     const storeMetaTitle = getLocalizedText(
         storeData?.metaTitle,
         contentLanguage,
@@ -490,7 +490,6 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         getPrimaryLocalizedLanguage(storeData?.tagline, contentLanguage),
         '',
     );
-    const slugSegments = params?.slug || [];
     const firstSlug = slugSegments[0]?.toLowerCase();
     const secondSlug = slugSegments[1]?.toLowerCase();
     const slugLen = slugSegments.length;
@@ -811,11 +810,9 @@ function generateSchemaOrgJsonLd(
     renderLanguage?: string,
 ) {
     const contentLanguage = renderLanguage || resolveProjectPublicLanguage(projectData, storeData);
-    const storeName = getLocalizedText(
-        storeData?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
-        storeData?.name || getLocalizedText(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage, getPrimaryLocalizedLanguage(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage), "Restaurant"),
+    const storeName = getStoreContextName(
+        storeData,
+        getLocalizedText(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage, getPrimaryLocalizedLanguage(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage), "Restaurant"),
     );
     const categories =
         projectData?.files?.flatMap(
@@ -1324,14 +1321,7 @@ async function MenuContent({
     // G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): capture the master brand name
     // BEFORE the outlet switch so the breadcrumb's "Business" node on outlet
     // project pages can show the tenant-level brand, not the outlet's name.
-    const masterBrandName: string | undefined = storeData?.name
-        ? getLocalizedText(
-            storeData?.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
-            String(storeData.name).replace(/ - Main Store$/, ''),
-        ).replace(/ - Main Store$/, '')
-        : undefined;
+    const masterBrandName: string | undefined = storeData ? getBrandName(storeData, '') || undefined : undefined;
 
     let resolvedSlug = slug;
     let outletRenderedAsObp = false;
@@ -1425,8 +1415,8 @@ async function MenuContent({
             <MenuNotFoundFallback
                 requestedSlug={resolvedSlug || slug || ''}
                 outletSlug={storeData.isMaster === false ? storeData.outletSlug || null : null}
-                storeName={getLocalizedText(storeData?.publicPresence?.displayName, contentLanguage, getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage), storeData.name || '') || null}
-                brandName={masterBrandName || getLocalizedText(storeData?.publicPresence?.displayName, contentLanguage, getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage), storeData.name || '') || null}
+                storeName={getStoreContextName(storeData, '') || null}
+                brandName={masterBrandName || getBrandName(storeData, '') || null}
             />
         );
     }
@@ -1502,12 +1492,7 @@ async function MenuContent({
     );
 
     // BreadcrumbList for search engine navigation: Business → Menu
-    const storeName = getLocalizedText(
-        storeDetails?.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage),
-        storeDetails?.name || 'Business',
-    );
+    const storeName = getStoreContextName(storeDetails, 'Business');
     const menuName = getLocalizedText(projectMetadata?.name, projectLanguage, getPrimaryLocalizedLanguage(projectMetadata?.name, projectLanguage), 'Menu');
     const breadcrumbJsonLd = buildBreadcrumbList(storeName, baseUrl, menuName);
     const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
@@ -1588,12 +1573,7 @@ async function MenuContent({
                 businessName={masterBrandName || storeName}
                 outletName={
                     !storeData.isMaster && storeData.outletSlug
-                        ? (getLocalizedText(
-                            storeData?.publicPresence?.displayName,
-                            contentLanguage,
-                            getPrimaryLocalizedLanguage(storeData?.publicPresence?.displayName, contentLanguage),
-                            storeData.name || '',
-                        ) || undefined)
+                        ? (getStoreName(storeData, '') || undefined)
                         : undefined
                 }
                 outletSlug={

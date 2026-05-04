@@ -6,6 +6,7 @@ import { completeCampaign as dbCompleteCampaign, getCampaign, skipCampaign as db
 import { updateStore } from '@database/stores';
 import { generateCampaignsForProject, useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
@@ -434,7 +435,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 templateId: tentCard.templateId,
                 qrUrl: tentCard.qrUrl,
                 size: 'A6',
-                brandName: storeDetails?.name,
+                brandName: getStoreContextName(storeDetails as any, 'Business'),
             });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
@@ -821,6 +822,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                     isDefault: selectedProjectSummary?.isDefault,
                                     isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
                                     name: selectedProjectSummary?.name || 'Untitled',
+                                    projectImage: selectedProjectSummary?.projectImage || null,
                                     specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
                                     specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
                                         ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name

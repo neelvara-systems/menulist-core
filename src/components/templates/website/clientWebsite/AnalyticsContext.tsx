@@ -1,6 +1,6 @@
 'use client'
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getSessionId, refreshSession } from '@lib/analytics/session';
 import { trackItemClick, trackItemView, trackMenuLanguageAdoption, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
 import { StoreDataType } from '@type/platform/store';
@@ -88,13 +88,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
       const storeId = storeDetails.storeId || (storeDetails as any)._id;
       if (!tenantId || !storeId) return;
 
-      const contentLanguage = storeDetails.defaultLanguage || storeDetails.activeLanguages?.[0] || storeDetails.language || 'en';
-      const storeName = getLocalizedText(
-        storeDetails.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(storeDetails.publicPresence?.displayName, contentLanguage),
-        storeDetails.name || (storeDetails as any).storeName || 'Store Menu'
-      );
+      const storeName = getStoreContextName(storeDetails, 'Store Menu');
       const utmParams = getUtmParams();
       const routeKey = typeof window === 'undefined'
         ? ''

@@ -1,0 +1,500 @@
+import { syncProjectToSummary, updateProjectMetadata, uploadFile } from '@database/projects';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import generateImageViaApi from '@services/ai/image/generateImageViaApi';
+import type {
+    ImageGenerationConfigType,
+    ProjectSummaryData,
+} from '@template/main-app/projects/types';
+import type { ComparisonEngineOutput } from '@lib/extraction/comparisonEngine.types';
+
+type ProjectImageSource = {
+    active?: boolean;
+    defaultLanguage?: string;
+    description?: string | Record<string, string>;
+    files?: any[];
+    isDefault?: boolean;
+    isSpecialMenu?: boolean;
+    languages?: string[];
+    name?: string | Record<string, string>;
+    projectId?: string | null;
+    projectImage?: string | null;
+    [key: string]: any;
+};
+
+type ProjectImageCandidateParams = {
+    allowNameOnly?: boolean;
+    businessCategory?: string | null;
+    businessType?: string | null;
+    categories?: any[];
+    items?: any[];
+    project: ProjectImageSource;
+    storeName?: string | null;
+};
+
+type GenerateAndSaveProjectImageParams = ProjectImageCandidateParams & {
+    summaryData?: Partial<ProjectSummaryData> | null;
+};
+
+export type GeneratedProjectImageCandidate = {
+    dataUrl: string;
+    mimeType: string;
+    name: string;
+};
+
+type GenerateAndSaveProjectImageResult = {
+    imageUrl?: string;
+    skippedReason?: 'existing-image' | 'not-enough-data' | 'generation-failed' | 'upload-failed' | 'missing-project-id';
+};
+
+type BusinessImageViewType = {
+    description?: string;
+    type: string;
+};
+
+type BusinessImageViewConfig = {
+    contextual_elements?: {
+        colors?: string[];
+        compositions?: string[];
+        environments?: string[];
+        lighting?: string[];
+        moods?: string[];
+        subjects?: string[];
+    };
+    imageTypes?: BusinessImageViewType[];
+    persona?: string;
+};
+
+const PROJECT_IMAGE_GENERATION_CONFIG: ImageGenerationConfigType = {
+    prompt: 'Generate a professional menu cover image for this business.',
+    referanceImages: [],
+    referanceImage: null,
+    generatedImages: [],
+    loading: false,
+    aspectRatio: '1:1',
+    stylesCategory: 'Photorealism',
+    styles: ['Natural Light'],
+    lighting: ['soft natural light'],
+    moods: ['welcoming', 'premium'],
+    compositions: ['hero product composition'],
+    negativePrompt: 'text, words, letters, logo, watermark, menu text, price list, blurry, distorted',
+    agreeToTerms: true,
+};
+
+const PROJECT_COVER_IMAGE_GUIDANCE_BY_CATEGORY: Record<string, BusinessImageViewConfig> = {
+    food: {
+        persona: 'Specialist in polished hospitality cover photography',
+        imageTypes: [{
+            type: 'Menu cover ambiance',
+            description: 'A polished cover shot blending signature food or drinks with the business setting',
+        }],
+        contextual_elements: {
+            subjects: ['Signature dishes', 'Drinks', 'Fresh ingredients', 'Table setting', 'Staff serving'],
+            environments: ['Restaurant interior', 'Cafe counter', 'Table setting', 'Bar area'],
+            lighting: ['Warm ambient', 'Natural daylight'],
+            colors: ['Warm tones', 'Fresh greens'],
+            moods: ['Inviting', 'Fresh'],
+            compositions: ['Wide shot of ambiance', 'Overhead food spread'],
+        },
+    },
+    service: {
+        persona: 'Specialist in premium local service photography',
+        imageTypes: [{
+            type: 'Service cover ambiance',
+            description: 'A clean cover shot showing the service environment and key service details',
+        }],
+        contextual_elements: {
+            subjects: ['Service professional', 'Service tools', 'Finished result', 'Product display', 'Customer interaction'],
+            environments: ['Modern service interior', 'Service station', 'Treatment room', 'Product display'],
+            lighting: ['Soft natural light', 'Bright clean lighting'],
+            colors: ['Clean whites', 'Soft neutrals'],
+            moods: ['Premium', 'Professional'],
+            compositions: ['Close-up on service detail', 'Staff in action'],
+        },
+    },
+    retail: {
+        persona: 'Specialist in clean retail and product display photography',
+        imageTypes: [{
+            type: 'Product collection cover',
+            description: 'A clean cover shot showing a curated product selection or store display',
+        }],
+        contextual_elements: {
+            subjects: ['Product display', 'Curated collection', 'Shelf display', 'Customer browsing'],
+            environments: ['Store display', 'Showroom floor', 'Simple studio setup', 'Shelf wall'],
+            lighting: ['Studio lighting', 'Bright natural light'],
+            colors: ['Neutral backgrounds', 'Brand colors'],
+            moods: ['Clean', 'Premium'],
+            compositions: ['Collection grouping', 'Store display overview'],
+        },
+    },
+    professional: {
+        persona: 'Specialist in credible professional service photography',
+        imageTypes: [{
+            type: 'Professional service cover',
+            description: 'A credible cover shot showing the workspace, consultation, or customer-facing service moment',
+        }],
+        contextual_elements: {
+            subjects: ['Owner or staff', 'Client meeting', 'Workspace', 'Planning tools', 'Finished result'],
+            environments: ['Office setting', 'Consultation area', 'Meeting table', 'Reception area'],
+            lighting: ['Natural light', 'Soft studio light'],
+            colors: ['Neutral backgrounds', 'Brand colors'],
+            moods: ['Trustworthy', 'Professional'],
+            compositions: ['Consultation scene', 'Workspace overview'],
+        },
+    },
+    creative: {
+        persona: 'Specialist in expressive creative and event service photography',
+        imageTypes: [{
+            type: 'Creative work cover',
+            description: 'A visual cover shot showing craft, creative output, or event atmosphere',
+        }],
+        contextual_elements: {
+            subjects: ['Artist or maker', 'Finished work', 'Tools', 'Decor details', 'Behind-the-scenes process'],
+            environments: ['Studio space', 'Workshop area', 'Event setup', 'Gallery space'],
+            lighting: ['Soft studio light', 'Natural light'],
+            colors: ['Brand colors', 'Natural tones'],
+            moods: ['Creative', 'Premium'],
+            compositions: ['Work in progress', 'Finished display'],
+        },
+    },
+    health: {
+        persona: 'Specialist in trustworthy health and wellness service photography',
+        imageTypes: [{
+            type: 'Care and wellness cover',
+            description: 'A trustworthy cover shot showing the service space, activity, or care environment',
+        }],
+        contextual_elements: {
+            subjects: ['Instructor', 'Care professional', 'Clean equipment', 'Service room', 'Group activity'],
+            environments: ['Clean clinic environment', 'Studio interior', 'Training room', 'Reception area'],
+            lighting: ['Bright clean lighting', 'Soft natural light'],
+            colors: ['Clean whites', 'Neutral tones'],
+            moods: ['Trustworthy', 'Healthy'],
+            compositions: ['Wide environment shot', 'Professional in action'],
+        },
+    },
+    specialty: {
+        persona: 'Specialist in clear specialty business cover photography',
+        imageTypes: [{
+            type: 'Specialty business cover',
+            description: 'A clear cover shot showing the business result, space, vehicle, equipment, or team in action',
+        }],
+        contextual_elements: {
+            subjects: ['Team at work', 'Equipment', 'Finished result', 'Business space', 'Customer interaction'],
+            environments: ['Workshop bay', 'Customer-facing space', 'Showroom', 'Outdoor work area'],
+            lighting: ['Natural daylight', 'Bright clean lighting'],
+            colors: ['Clean whites', 'Brand colors'],
+            moods: ['Reliable', 'Professional'],
+            compositions: ['Finished service overview', 'Team in action'],
+        },
+    },
+};
+
+function resolveText(value: unknown, fallback = ''): string {
+    return getLocalizedText(
+        value as any,
+        undefined,
+        getPrimaryLocalizedLanguage(value as any, 'en'),
+        fallback,
+    );
+}
+
+function uniqueNonEmpty(values: string[], limit: number): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    for (const value of values) {
+        const normalized = value.replace(/\s+/g, ' ').trim();
+        if (!normalized || seen.has(normalized.toLowerCase())) continue;
+        seen.add(normalized.toLowerCase());
+        result.push(normalized);
+        if (result.length >= limit) break;
+    }
+
+    return result;
+}
+
+function cleanPromptPhrase(value?: string | null): string {
+    return (value || '').replace(/[."]/g, ',').replace(/\s+/g, ' ').trim();
+}
+
+function takeNonEmpty(values: string[] | undefined, limit: number): string[] {
+    return uniqueNonEmpty(values || [], limit);
+}
+
+function findBusinessImageViewConfig(
+    businessType?: string | null,
+    businessCategory?: string | null,
+): BusinessImageViewConfig {
+    const resolvedCategory = resolveBusinessCategory(
+        businessType || undefined,
+        businessCategory || undefined,
+    );
+
+    return PROJECT_COVER_IMAGE_GUIDANCE_BY_CATEGORY[resolvedCategory || 'specialty']
+        || PROJECT_COVER_IMAGE_GUIDANCE_BY_CATEGORY.specialty;
+}
+
+function pickPreferredValue(values: string[] | undefined, preferredTerms: string[]): string | undefined {
+    const options = takeNonEmpty(values, 12);
+    if (!options.length) return undefined;
+
+    for (const term of preferredTerms) {
+        const match = options.find((option) => option.toLowerCase().includes(term));
+        if (match) return match;
+    }
+
+    return options[0];
+}
+
+function pickProjectCoverImageType(imageTypes: BusinessImageViewType[] | undefined): BusinessImageViewType | undefined {
+    const options = imageTypes || [];
+    if (!options.length) return undefined;
+
+    const preferredTerms = [
+        'ambiance',
+        'interior',
+        'environment',
+        'display',
+        'showroom',
+        'lifestyle',
+        'scene',
+        'overview',
+        'wide',
+        'customer',
+        'staff',
+        'action',
+        'at work',
+    ];
+
+    for (const term of preferredTerms) {
+        const match = options.find((option) => option.type.toLowerCase().includes(term));
+        if (match) return match;
+    }
+
+    return options[0];
+}
+
+function buildBusinessImageGuidance(businessType?: string | null, businessCategory?: string | null) {
+    const businessConfig = findBusinessImageViewConfig(businessType, businessCategory);
+    const imageType = pickProjectCoverImageType(businessConfig.imageTypes);
+    const contextualElements = businessConfig.contextual_elements || {};
+
+    return {
+        colors: takeNonEmpty(contextualElements.colors, 2),
+        compositions: takeNonEmpty([
+            pickPreferredValue(contextualElements.compositions, ['wide', 'ambiance', 'lifestyle', 'display', 'overview', 'customer', 'action', 'close-up']) || '',
+        ], 1),
+        environments: takeNonEmpty([
+            pickPreferredValue(contextualElements.environments, ['interior', 'display', 'shop', 'store', 'salon', 'clinic', 'studio', 'showroom', 'table', 'office', 'environment', 'setting']) || '',
+        ], 1),
+        imageType,
+        lighting: takeNonEmpty(contextualElements.lighting, 2),
+        moods: takeNonEmpty(contextualElements.moods, 2),
+        persona: cleanPromptPhrase(businessConfig.persona),
+        subjects: takeNonEmpty(contextualElements.subjects, 5),
+    };
+}
+
+function buildSummaryImageUpdate(summaryData?: Partial<ProjectSummaryData> | null): ProjectSummaryData | null {
+    if (!summaryData?.name) return null;
+
+    return {
+        name: summaryData.name,
+        ...(summaryData.description !== undefined ? { description: summaryData.description } : {}),
+        active: summaryData.active ?? true,
+        ...(summaryData.isDefault !== undefined ? { isDefault: summaryData.isDefault } : {}),
+        ...(summaryData.slug !== undefined ? { slug: summaryData.slug } : {}),
+        ...(summaryData.previousSlugs !== undefined ? { previousSlugs: summaryData.previousSlugs } : {}),
+        ...(summaryData.isSpecialMenu !== undefined ? { isSpecialMenu: summaryData.isSpecialMenu } : {}),
+        ...(summaryData.specialMenuDisplayName !== undefined ? { specialMenuDisplayName: summaryData.specialMenuDisplayName } : {}),
+        ...(summaryData.specialMenuStatus !== undefined ? { specialMenuStatus: summaryData.specialMenuStatus } : {}),
+        ...(summaryData.specialMenuStartsAt !== undefined ? { specialMenuStartsAt: summaryData.specialMenuStartsAt } : {}),
+        ...(summaryData.specialMenuEndsAt !== undefined ? { specialMenuEndsAt: summaryData.specialMenuEndsAt } : {}),
+        ...(summaryData.specialMenuMode !== undefined ? { specialMenuMode: summaryData.specialMenuMode } : {}),
+        ...(summaryData.specialMenuBaseProjectId !== undefined ? { specialMenuBaseProjectId: summaryData.specialMenuBaseProjectId } : {}),
+    };
+}
+
+function collectProjectMenuData(
+    project: ProjectImageSource,
+    categoriesOverride?: any[],
+    itemsOverride?: any[],
+) {
+    const fileCategories = project.files?.flatMap((file) => file?.extractedData?.data?.categories || []) || [];
+    const fileItems = project.files?.flatMap((file) => file?.extractedData?.data?.items || []) || [];
+
+    const categories = categoriesOverride?.length ? categoriesOverride : fileCategories;
+    const items = itemsOverride?.length ? itemsOverride : fileItems;
+
+    const categoryNameById = new Map<string, string>();
+    const categoryNames = uniqueNonEmpty(
+        categories.map((category) => {
+            const categoryName = resolveText(category?.name, '');
+            if (category?.id && categoryName) {
+                categoryNameById.set(category.id, categoryName);
+            }
+            return categoryName;
+        }),
+        5,
+    );
+
+    const itemNames = uniqueNonEmpty(
+        items
+            .filter((item) => item?.active !== false && item?.available !== false)
+            .map((item) => resolveText(item?.name, '')),
+        8,
+    );
+
+    const itemCategoryNames = uniqueNonEmpty(
+        items.map((item) => (
+            resolveText(item?.categoryName, '') ||
+            categoryNameById.get(item?.category || item?.categoryId) ||
+            ''
+        )),
+        4,
+    );
+
+    return {
+        categoryNames: categoryNames.length ? categoryNames : itemCategoryNames,
+        itemNames,
+    };
+}
+
+function buildProjectImageDescription(params: ProjectImageCandidateParams) {
+    const { allowNameOnly = false, businessCategory, businessType, project, storeName } = params;
+    const projectName = resolveText(project.name, 'Menu');
+    const projectDescription = resolveText(project.description, '');
+    const { categoryNames, itemNames } = collectProjectMenuData(project, params.categories, params.items);
+    const businessGuidance = buildBusinessImageGuidance(businessType, businessCategory);
+
+    if (!allowNameOnly && !categoryNames.length && !itemNames.length) {
+        return null;
+    }
+
+    const contextParts = [
+        `${projectName} is a ${businessType || 'business'} menu${storeName ? ` for ${storeName}` : ''}`,
+        projectDescription ? `Owner description: ${cleanPromptPhrase(projectDescription)}` : null,
+        categoryNames.length ? `Menu sections to represent include ${categoryNames.join(', ')}` : null,
+        itemNames.length ? `Representative items or services to visually reference include ${itemNames.join(', ')}` : null,
+        businessGuidance.persona ? `Business photo style is ${businessGuidance.persona}` : null,
+        businessGuidance.subjects.length ? `Relevant visual subjects include ${businessGuidance.subjects.join(', ')}` : null,
+        businessGuidance.imageType ? `Use photo direction ${businessGuidance.imageType.type}: ${cleanPromptPhrase(businessGuidance.imageType.description)}` : null,
+        'Create one polished square cover image for the menu card, focused on the business offering, with no readable text, no logo, and no watermark',
+    ].filter(Boolean);
+
+    return {
+        businessGuidance,
+        coverSubject: itemNames.length
+            ? `${projectName} menu cover featuring ${itemNames.slice(0, 4).join(', ')}`
+            : categoryNames.length
+                ? `${projectName} menu cover featuring ${categoryNames.slice(0, 4).join(', ')}`
+                : `${projectName} menu cover`,
+        descriptionLine: contextParts.join('; '),
+        projectName,
+    };
+}
+
+export function getProjectImageDataFromComparisonPreview(comparisonResult: ComparisonEngineOutput | null | undefined) {
+    const preview = comparisonResult?.preview;
+    if (!preview) return { categories: [], items: [] };
+
+    return {
+        categories: [
+            ...preview.newCategories,
+            ...preview.updatedCategories,
+        ].filter((row) => row.approved).map((row) => row.extractedCategory),
+        items: [
+            ...preview.newItems,
+            ...preview.updatedItems,
+            ...preview.overrideSuggestions,
+        ].filter((row) => row.approved).map((row) => row.extractedItem),
+    };
+}
+
+export async function generateProjectImageCandidate(
+    params: ProjectImageCandidateParams,
+): Promise<GeneratedProjectImageCandidate | null> {
+    const description = buildProjectImageDescription(params);
+    if (!description) return null;
+
+    const projectId = params.project.projectId || 'project-draft';
+    const generatedImages = await generateImageViaApi({
+        businessType: params.businessType || 'restaurant',
+        fileId: 'project-image',
+        generationConfig: {
+            ...PROJECT_IMAGE_GENERATION_CONFIG,
+            colors: description.businessGuidance.colors,
+            compositions: description.businessGuidance.compositions,
+            environments: description.businessGuidance.environments,
+            isMultiMode: false,
+            lighting: description.businessGuidance.lighting,
+            moods: description.businessGuidance.moods,
+            prompt: `Generate a professional menu cover image for ${description.projectName}.`,
+            selectedImageTypes: [],
+        },
+        itemDetails: {
+            id: `${projectId}-project-image`,
+            itemName: description.coverSubject,
+            name: description.coverSubject,
+            categoryName: 'Menu cover',
+            category: 'Menu cover',
+            descriptionLine: description.descriptionLine,
+            description: description.descriptionLine,
+            attributesList: ['menu cover', 'official business page', 'square image'],
+            attributes: ['menu cover', 'official business page', 'square image'],
+            fileId: 'project-image',
+        } as any,
+        projectId,
+    });
+
+    const firstImage = generatedImages?.[0];
+    if (!firstImage?.base64) return null;
+
+    return {
+        dataUrl: firstImage.base64,
+        mimeType: firstImage.mimeType || 'image/jpeg',
+        name: `${description.projectName} menu cover`,
+    };
+}
+
+export async function generateAndSaveProjectImageIfMissing(
+    params: GenerateAndSaveProjectImageParams,
+): Promise<GenerateAndSaveProjectImageResult> {
+    const projectId = params.project.projectId;
+    if (!projectId) return { skippedReason: 'missing-project-id' };
+    if (params.project.projectImage || params.summaryData?.projectImage) {
+        return { skippedReason: 'existing-image' };
+    }
+
+    const candidate = await generateProjectImageCandidate({
+        ...params,
+        allowNameOnly: false,
+    });
+
+    if (!candidate) {
+        return { skippedReason: 'not-enough-data' };
+    }
+
+    const imageUrl = await uploadFile({
+        name: candidate.name,
+        type: candidate.mimeType,
+        uid: `${projectId}-generated-menu-cover`,
+        url: candidate.dataUrl,
+    } as any, 'project-images');
+
+    if (!imageUrl) {
+        return { skippedReason: 'upload-failed' };
+    }
+
+    const summaryUpdate = buildSummaryImageUpdate(params.summaryData);
+    if (summaryUpdate) {
+        await syncProjectToSummary(projectId, {
+            ...summaryUpdate,
+            projectImage: imageUrl,
+        });
+    } else {
+        await updateProjectMetadata(projectId, { projectImage: imageUrl });
+    }
+
+    return { imageUrl };
+}

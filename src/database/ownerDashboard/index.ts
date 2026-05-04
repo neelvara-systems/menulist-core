@@ -211,11 +211,11 @@ function readAnalyticsMap(data: any, field: string): Record<string, any> {
 }
 
 function transformToTopItems(data: any): Array<{ itemId: string; name?: string; clicks: number }> {
-    const recommendationClicksByItem = readAnalyticsMap(data, 'recommendationClicksByItem');
+    const clicksByItem = readAnalyticsMap(data, 'clicksByItem');
     const itemNames = readAnalyticsMap(data, 'itemNames');
-    if (!Object.keys(recommendationClicksByItem).length) return [];
+    if (!Object.keys(clicksByItem).length) return [];
 
-    return Object.entries(recommendationClicksByItem)
+    return Object.entries(clicksByItem)
         .map(([itemId, clicks]) => ({
             itemId,
             clicks: clicks as number,
@@ -931,6 +931,7 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
         historicalWeeks: data.historicalWeeks || overview?.historicalWeeks || [],
         overall: data.overall ? {
             ...data.overall,
+            topItems: data.overall.topItems || transformToTopItems(data.overall),
             topLanguages: data.overall.topLanguages || transformTopLanguages(data.overall),
             sourceQuality: data.overall.sourceQuality || [],
             ownerConfidence: data.overall.ownerConfidence,

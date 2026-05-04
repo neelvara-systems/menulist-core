@@ -56,6 +56,7 @@ function MainContentRenderer({
         <OfficialPagePreview
           activeDeviceType={activeDeviceType}
           activeLanguage={activeLanguage}
+          hasFeedbackTarget={Boolean(projectData?.projectId)}
           setActivePage={setActivePage}
           storeDetails={storeDetails}
         />

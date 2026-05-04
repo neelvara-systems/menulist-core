@@ -15,6 +15,7 @@ export type ProjectSelectorItem = {
     active?: boolean;
     deleted?: boolean;
     isSpecialMenu?: boolean;
+    projectImage?: string | null;
     specialMenuBaseProjectId?: string;
     specialMenuBaseProjectName?: string | Record<string, string>;
     specialMenuEndsAt?: string;
@@ -143,9 +144,16 @@ export function ProjectSelectorTrigger({
                             fontSize: 11,
                             fontWeight: 700,
                             flexShrink: 0,
+                            overflow: 'hidden',
                         }}
                     >
-                        {currentProject ? getInitials(projectName) : <LuFolderOpen size={14} />}
+                        {currentProject?.projectImage ? (
+                            <img
+                                alt=""
+                                src={currentProject.projectImage}
+                                style={{ height: '100%', objectFit: 'cover', width: '100%' }}
+                            />
+                        ) : currentProject ? getInitials(projectName) : <LuFolderOpen size={14} />}
                     </Flex>
                     <Text strong ellipsis>{projectName}</Text>
                 </Flex>
@@ -314,9 +322,16 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     fontSize: 24,
                                     fontWeight: 700,
                                     flexShrink: 0,
+                                    overflow: 'hidden',
                                 }}
                             >
-                                {getInitials(projectName || t('untitled'))}
+                                {project.projectImage ? (
+                                    <img
+                                        alt=""
+                                        src={project.projectImage}
+                                        style={{ height: '100%', objectFit: 'cover', width: '100%' }}
+                                    />
+                                ) : getInitials(projectName || t('untitled'))}
                             </Flex>
                             <Flex align="center" gap={6} justify="center" wrap="wrap">
                                 <Text strong style={{ fontSize: 16, textAlign: 'center' }}>

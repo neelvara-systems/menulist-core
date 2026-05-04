@@ -9,6 +9,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
+import { getBrandName } from "@lib/businessIdentity/names";
 import { extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
@@ -58,7 +59,7 @@ export default async function CompliancePageContent({ type }: CompliancePageCont
         return (
             <ComplianceShell
                 title={titleMap[type] || 'Policy'}
-                businessName={storeData.name || 'Business'}
+                businessName={getBrandName(storeData, 'Business')}
             >
                 <p style={{ color: '#666', textAlign: 'center', padding: '40px 0' }}>
                     This page is not yet available.

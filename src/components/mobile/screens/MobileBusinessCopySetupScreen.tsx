@@ -12,7 +12,7 @@ import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordF
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyRepairMeta } from '@services/ai/businessCopy/metadata';
 import syncMissingBusinessCopyTranslations from '@services/ai/businessCopy/syncMissingBusinessCopyTranslations';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
-import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
+import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -116,7 +116,6 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     publicPresence: {
                         accentColor: storeDetails?.publicPresence?.accentColor || '',
                         descriptor: getLocalizedText(storeDetails?.publicPresence?.descriptor, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.descriptor, contentLanguage), ''),
-                        displayName: getLocalizedText(storeDetails?.publicPresence?.displayName, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, contentLanguage), ''),
                         establishedYear: typeof storeDetails?.publicPresence?.establishedYear === 'number' ? storeDetails.publicPresence.establishedYear : undefined,
                         googleMapsUrl: storeDetails?.publicPresence?.googleMapsUrl || '',
                         googleReviewUrl: storeDetails?.publicPresence?.googleReviewUrl || '',
@@ -135,6 +134,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                         getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
                         '',
                     ),
+                    tenantName: storeDetails?.tenantName || '',
                 },
             });
 
@@ -151,10 +151,6 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
 
             const nextPublicPresence = {
                 ...(storeDetails?.publicPresence || {}),
-                displayName: mergeLocalizedField(
-                    storeDetails?.publicPresence?.displayName,
-                    localized.displayName,
-                ),
                 descriptor: mergeLocalizedField(
                     storeDetails?.publicPresence?.descriptor,
                     localized.descriptor,
@@ -240,10 +236,6 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
 
             const nextPublicPresence = {
                 ...(storeDetails?.publicPresence || {}),
-                displayName: mergeLocalizedField(
-                    storeDetails?.publicPresence?.displayName,
-                    localized.displayName,
-                ),
                 descriptor: mergeLocalizedField(
                     storeDetails?.publicPresence?.descriptor,
                     localized.descriptor,

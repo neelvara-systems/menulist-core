@@ -42,7 +42,8 @@ Rules:
 - Do not generate canonicalUrl.
 
 Business:
-- Name: ${store.name}
+- Brand name: ${store.tenantName || store.name}
+- Store/location name: ${store.name}
 - Business category: ${store.businessCategory || 'Not provided'}
 - Business type: ${store.businessType || 'Not provided'}
 - City: ${store.city || 'Not provided'}
@@ -54,7 +55,6 @@ Business:
 - Current Customer App short name: ${store.pwaShortName || 'Not provided'}
 - Active business attributes: ${listOrFallback(store.businessAttributes)}
 - Social media handles/links: ${listOrFallback(store.socialMedia)}
-- Public display name: ${textOrFallback(store.publicPresence?.displayName)}
 - Public descriptor: ${textOrFallback(store.publicPresence?.descriptor)}
 - Known for: ${textOrFallback(store.publicPresence?.knownFor)}
 - WhatsApp number present: ${store.publicPresence?.whatsappNumber ? 'Yes' : 'No'}

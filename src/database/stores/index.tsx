@@ -204,6 +204,7 @@ export const addStore = async (data: any, from: string = "") => {
                 businessCategory,
                 active: true,
                 name: data.name || '',
+                tenantName: data.tenantName || '',
                 timeZone: data.timeZone,
                 businessDayEndTime: data.businessDayEndTime,
                 schedulerHour,
@@ -277,18 +278,25 @@ export const updateStore = async (data: any) => {
                 }
             }
 
-            const summaryFields = ['businessType', 'businessCategory', 'active', 'name', 'timeZone', 'businessDayEndTime', 'schedulerHour', 'activePlanType'];
+            const summaryFields = ['businessType', 'businessCategory', 'active', 'name', 'tenantName', 'timeZone', 'businessDayEndTime', 'schedulerHour', 'activePlanType'];
             const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
             const needsSchedulerRecompute = data.timeZone !== undefined || data.businessDayEndTime !== undefined;
-            const existingStore = hasSummaryFieldChanges || needsSchedulerRecompute ? await getCurrentStoreData() : {};
+            const needsBusinessCategoryResolution = hasSummaryFieldChanges || needsSchedulerRecompute;
+            const existingStore = needsBusinessCategoryResolution ? await getCurrentStoreData() : {};
             const effectiveBusinessType = data.businessType ?? existingStore.businessType;
             const effectiveBusinessCategory = data.businessCategory ?? existingStore.businessCategory;
             const effectiveTimeZone = data.timeZone ?? existingStore.timeZone;
             const effectiveBusinessDayEndTime = data.businessDayEndTime ?? existingStore.businessDayEndTime;
 
             // Stored businessCategory wins; derive from businessType only as fallback.
-            const businessCategory = resolveBusinessCategory(effectiveBusinessType || '', effectiveBusinessCategory);
-            data.businessCategory = businessCategory;
+            const businessCategory = needsBusinessCategoryResolution
+                ? resolveBusinessCategory(effectiveBusinessType || '', effectiveBusinessCategory)
+                : undefined;
+            if (needsBusinessCategoryResolution && businessCategory) {
+                data.businessCategory = businessCategory;
+            } else {
+                delete data.businessCategory;
+            }
 
             if (data.businessDayEndTime !== undefined) {
                 data.businessDayEndTime = resolveBusinessDayEndTime(effectiveBusinessType, data.businessDayEndTime, businessCategory);
@@ -315,12 +323,13 @@ export const updateStore = async (data: any) => {
                     businessCategory,
                     active: data.active ?? existingStore.active ?? true,
                     name: data.name ?? existingStore.name ?? '',
+                    tenantName: data.tenantName ?? existingStore.tenantName ?? '',
                     timeZone: data.timeZone ?? existingStore.timeZone,
                     businessDayEndTime: data.businessDayEndTime ?? existingStore.businessDayEndTime,
                     schedulerHour: data.schedulerHour ?? existingStore.schedulerHour,
                     activePlanType: data.activePlanType ?? existingStore.activePlanType,
                 });
-            } else if (!summaryTenantId) {
+            } else if (hasSummaryFieldChanges && !summaryTenantId) {
                 console.warn('Skipping syncStoreToSummary: tenantId is undefined for store', data.storeId);
             }
             // Skip sync if no summary-relevant fields present in update

@@ -96,7 +96,6 @@ export function getBusinessCopyFieldKeysFromUpdate(update: any): string[] {
     const fieldKeys = new Set<string>();
 
     if (update?.publicPresence) {
-        if ('displayName' in update.publicPresence) fieldKeys.add('displayName');
         if ('descriptor' in update.publicPresence) fieldKeys.add('descriptor');
         if ('knownFor' in update.publicPresence) fieldKeys.add('knownFor');
         if ('specialNote' in update.publicPresence) fieldKeys.add('specialNote');

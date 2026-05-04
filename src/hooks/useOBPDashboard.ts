@@ -32,6 +32,10 @@ export interface OBPDashboardViewData extends OBPDashboardData {
     today: OBPTodayData | null;
 }
 
+interface UseOBPDashboardOptions {
+    loadHistorical?: boolean;
+}
+
 function createCacheKey(type: string, tId: string, sId: string): string {
     return `obpDashboard-${type}-${tId}-${sId}`;
 }
@@ -88,8 +92,9 @@ function logObpDashboardDalResponse(label: string, payload: unknown, meta: Recor
     });
 }
 
-export function useOBPDashboard() {
+export function useOBPDashboard(options?: UseOBPDashboardOptions) {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const loadHistorical = options?.loadHistorical ?? true;
 
     const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
     const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
@@ -111,7 +116,7 @@ export function useOBPDashboard() {
         data: settledData,
         isLoading: settledLoading,
     } = useSWR(
-        canFetch ? ['obpDashboard', 'settled', tId, sId] : null,
+        canFetch && loadHistorical ? ['obpDashboard', 'settled', tId, sId] : null,
         () => cachedFetcher(
             settledCacheKey!,
             async () => {
@@ -173,7 +178,7 @@ export function useOBPDashboard() {
 
     return {
         data,
-        loading: settledLoading && !settledData && todayLoading && !todayData,
+        loading: (loadHistorical ? settledLoading && !settledData : false) || (todayLoading && !todayData),
         loadingToday: todayLoading,
     };
 }

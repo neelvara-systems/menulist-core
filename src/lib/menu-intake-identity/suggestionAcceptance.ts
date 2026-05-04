@@ -76,7 +76,7 @@ export function buildBusinessIdentitySuggestions(
     addSuggestion(suggestions, {
         currentValue: storeDetails.name,
         field: 'name',
-        label: 'Business name',
+        label: 'Store/location name',
         value: result.identity.businessName,
     });
     addSuggestion(suggestions, {

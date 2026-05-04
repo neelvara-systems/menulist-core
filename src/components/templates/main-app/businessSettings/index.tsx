@@ -12,6 +12,7 @@ import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
+import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { buildScreenUrl } from "@lib/screen/utils";
@@ -105,8 +106,7 @@ function sanitizeSocialMediaMap(source?: Record<string, string> | null) {
 }
 
 function resolveStoreContentLanguage(storeDetails: any): string {
-    return getStorePreferredLanguage(storeDetails)
-        || getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, 'en');
+    return getStorePreferredLanguage(storeDetails);
 }
 
 function getBusinessSettingsInitialValues(storeDetails: any) {
@@ -130,7 +130,6 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
                 languageCode,
                 {
                     descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, languageCode, ''),
-                    displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, languageCode, ''),
                     knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, languageCode, ''),
                     specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, languageCode, ''),
                 },
@@ -162,7 +161,6 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
         longitude: storeDetails?.longitude ?? storeDetails?.geo?.longitude,
         publicPresence: {
             ...(storeDetails?.publicPresence || {}),
-            displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, ''),
             descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, contentLanguage, ''),
             knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, contentLanguage, ''),
             specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, contentLanguage, ''),
@@ -218,12 +216,7 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
                 screenLastSeenAt: null,
                 screenToken,
                 storeLogo: storeDetails.logo || null,
-                storeName: getLocalizedText(
-                    storeDetails?.publicPresence?.displayName,
-                    undefined,
-                    getPrimaryLocalizedLanguage(storeDetails?.publicPresence?.displayName, 'en'),
-                    storeDetails?.name || 'Your Business',
-                ),
+                storeName: getStoreContextName(storeDetails, 'Your Business'),
                 subdomain: storeDetails.subdomain || '',
             });
         }
@@ -418,10 +411,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 });
                                 const nextPublicPresence = {
                                     ...(storeDetails?.publicPresence || {}),
-                                    displayName: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.displayName,
-                                        localized.displayName,
-                                    ),
                                     descriptor: mergeLocalizedField(
                                         storeDetails?.publicPresence?.descriptor,
                                         localized.descriptor,
@@ -499,10 +488,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
                                 const nextPublicPresence = {
                                     ...(storeDetails?.publicPresence || {}),
-                                    displayName: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.displayName,
-                                        localized.displayName,
-                                    ),
                                     descriptor: mergeLocalizedField(
                                         storeDetails?.publicPresence?.descriptor,
                                         localized.descriptor,
@@ -816,17 +801,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             const localizedPresenceDrafts = changesToUpload.__localizedPublicPresenceDrafts;
             changesToUpload.publicPresence = {
                 ...changesToUpload.publicPresence,
-                displayName: localizedPresenceDrafts
-                    ? applyLocalizedDraftMap(
-                        currentPresence.displayName,
-                        Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.displayName || ''])),
-                    )
-                    : updateLocalizedText(
-                        currentPresence.displayName,
-                        changesToUpload.publicPresence.displayName,
-                        contentLanguage,
-                        'en',
-                    ),
                 descriptor: localizedPresenceDrafts
                     ? applyLocalizedDraftMap(
                         currentPresence.descriptor,
@@ -971,14 +945,18 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     }
 
                     //created new store
-                    if ("name" in updatedChanges) {
-                        const savedstoresList = tenantDetails.storesList;
+                    if ("name" in updatedChanges || "tenantName" in updatedChanges) {
+                        const savedstoresList = [...tenantDetails.storesList];
                         const index = savedstoresList.findIndex(
                             (s) => s.storeId == storeDetails.storeId,
                         );
                         if (index != -1) {
                             console.log("stores Updated in tenant");
-                            savedstoresList[index].name = updatedChanges.name;
+                            savedstoresList[index] = {
+                                ...savedstoresList[index],
+                                name: updatedChanges.name || storeDetails.name,
+                                tenantName: updatedChanges.tenantName || storeDetails.tenantName || tenantDetails.name,
+                            };
                             const tenantData = {
                                 tenantId: tenantDetails.tenantId,
                                 storesList: savedstoresList,
@@ -1028,7 +1006,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     tenantId: tenantDetails.tenantId,
                     storesList: [
                         ...tenantDetails.storesList,
-                        { storeId: changesToUpload.storeId, name: changesToUpload.name },
+                        { storeId: changesToUpload.storeId, name: changesToUpload.name, tenantName: tenantDetails.name },
                     ],
                 };
                 updateTenantsStoreslist(tenantData).then(() => {

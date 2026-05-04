@@ -17,7 +17,7 @@ import { deleteField, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc
  * {
  *   lastUpdated: Timestamp,
  *   stores: {
- *     "storeId": { tId: number, businessType: string, active: boolean, name: string }
+ *     "storeId": { tId: number, businessType: string, active: boolean, name: string, tenantName: string }
  *   }
  * }
  * 
@@ -30,6 +30,7 @@ export interface StoreSummaryData {
     businessCategory: string;  // Derived from businessType, used by Cloud Functions
     active: boolean;
     name: string;
+    tenantName?: string;
     timeZone?: string;         // IANA timezone (e.g., 'Asia/Kolkata') — used for DST-safe runtime scheduling
     businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
@@ -167,6 +168,7 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
                 [`stores.${storeId}.businessCategory`]: data.businessCategory || 'specialty',
                 [`stores.${storeId}.active`]: data.active ?? true,
                 [`stores.${storeId}.name`]: data.name || '',
+                [`stores.${storeId}.tenantName`]: data.tenantName || '',
             };
             // Include timeZone for DST-safe runtime scheduling in CF
             if (data.timeZone) {

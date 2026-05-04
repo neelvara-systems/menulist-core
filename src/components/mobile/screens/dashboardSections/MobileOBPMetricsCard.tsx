@@ -14,7 +14,7 @@ import { theme } from 'antd';
 import { LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Popover, Tag, Text, Title } from '../../antd';
 
-type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly';
+type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
 
 interface MobileOBPMetricsCardProps {
     data: OBPDashboardViewData | null;
@@ -251,7 +251,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     size="small"
                     title={(
                         <Flex align="center" justify="space-between">
-                            <Text strong>Official Business Page · Today so far</Text>
+                            <Text strong>Official Business Page</Text>
                             <Popover content={todayInfoContent} placement="bottom" trigger="click">
                                 <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
                                     <LuInfo color={token.colorTextSecondary} size={16} />
@@ -273,7 +273,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 size="small"
                 title={(
                     <Flex align="center" justify="space-between">
-                        <Text strong>Official Business Page · Today so far</Text>
+                        <Text strong>Official Business Page</Text>
                         <Popover content={todayInfoContent} placement="bottom" trigger="click">
                             <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
                                 <LuInfo color={token.colorTextSecondary} size={16} />
@@ -290,9 +290,12 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
     }
 
     if ((loading && !data) || (!overview && !overall)) return null;
+    if (mode === 'overall' && !overall) return null;
 
     const title =
-        mode === 'daily'
+        mode === 'overall'
+            ? 'Official Business Page · Overall'
+            : mode === 'daily'
             ? 'Official Business Page · Yesterday'
             : mode === 'weekly'
                 ? 'Official Business Page · Last 7 Days'
@@ -337,7 +340,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 </Flex>
             )}
         >
-            {mode === 'overview' ? (
+            {mode === 'overall' ? null : mode === 'overview' ? (
                 <>
                     {overview?.wtd ? (
                         <>
@@ -365,7 +368,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 <Text type="secondary">No settled OBP activity yet for this period.</Text>
             )}
 
-            {overall ? (
+            {mode === 'overall' && overall ? (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
                     <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
                         {`Lifetime: ${overall.lifetimeViews.toLocaleString()} views, ${overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, ${overall.lifetimeActionClicks.toLocaleString()} actions, ${overall.lifetimeLinkClicks.toLocaleString()} link taps, ${overall.lifetimeShares.toLocaleString()} shares`}
@@ -379,6 +382,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     {renderLinkRows(overall.lifetimeLinks)}
                     {renderShareRows(overall.lifetimeShareMethods)}
                     {renderSourceRows(overall.lifetimeSources)}
+                    {renderLanguageRows(overall.lifetimeLanguages)}
                 </div>
             ) : null}
         </Card>

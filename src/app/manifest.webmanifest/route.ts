@@ -14,6 +14,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
@@ -95,12 +96,7 @@ export async function GET() {
         const startUrl = await getStoreLevelStartUrl(store);
 
         const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
-        const displayName: string = getLocalizedText(
-            store.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
-            store.name || store.storeName || 'Menu',
-        );
+        const displayName: string = getStoreContextName(store, 'Menu');
         const shortName = getLocalizedText(
             store.pwaSettings?.pwaShortName,
             contentLanguage,

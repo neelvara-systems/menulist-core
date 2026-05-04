@@ -7,6 +7,8 @@
  * @see __docs__/compliance-pages/compliance-pages_impl.md §4
  */
 
+import { getBrandName } from '@lib/businessIdentity/names';
+
 export interface ComplianceInputs {
     businessName: string;
     address: string;
@@ -251,7 +253,7 @@ This refund policy is provided for general informational purposes and may not co
  * Returns null if minimum required data is missing.
  */
 export function extractComplianceInputs(store: any): ComplianceInputs | null {
-    const businessName = store?.name || store?.storeName;
+    const businessName = getBrandName(store, '');
     if (!businessName) return null;
 
     const contactEmail = store?.email || store?.contactEmail || null;
@@ -275,4 +277,3 @@ export function extractComplianceInputs(store: any): ComplianceInputs | null {
         contactPhone,
     };
 }
-

@@ -23,6 +23,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -76,12 +77,7 @@ export default function UseMenuList() {
         getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
     );
     const storeDisplayName = useMemo(
-        () => getLocalizedText(
-            (storeDetails as any)?.publicPresence?.displayName,
-            undefined,
-            getPrimaryLocalizedLanguage((storeDetails as any)?.publicPresence?.displayName, 'en'),
-            storeDetails?.name || 'Your Business'
-        ),
+        () => getStoreContextName(storeDetails as any, 'Your Business'),
         [storeDetails]
     );
 
@@ -160,6 +156,7 @@ export default function UseMenuList() {
                     isDefault: p.isDefault || false,
                     active: p.active !== false,
                     deleted: p.deleted === true,
+                    projectImage: p.projectImage || null,
                     // R5: real canonical slug URL — no /menu alias.
                     url: generateProjectUrl(subdomain, customDomain, resolveProjectName(p.name, labels.offeringTitle), false),
                     feedbackUrl: p.projectId ? getFeedbackUrl(p.projectId, 'direct_link', obpLink) : '',
@@ -385,6 +382,7 @@ export default function UseMenuList() {
                             active: activeProject.active,
                             deleted: activeProject.deleted,
                             isSpecialMenu: activeProject.isSpecialMenu === true,
+                            projectImage: (activeProject as any).projectImage || null,
                             specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
                             specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
                                 ? resolveProjectName(
@@ -1073,6 +1071,7 @@ export default function UseMenuList() {
                         isDefault: project.isDefault,
                         active: project.active,
                         deleted: project.deleted,
+                        projectImage: project.projectImage || null,
                         secondaryLabel: project.url.replace(/^https?:\/\//, ''),
                     }))}
                 />

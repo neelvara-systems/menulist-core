@@ -30,7 +30,7 @@ import { computeSchedulerHour } from '@lib/utils/schedulerHour';
 // ═══════════════════════════════════════════════════════════════
 
 export interface TenantStoreConfig {
-    /** Business display name (used for tenant name, store name derivation, keys) */
+    /** Brand display name used for tenant identity. Store identity stays location-specific. */
     businessName: string;
 
     /** Actual business type (e.g. 'Restaurant', 'Salon', 'SaaS') */
@@ -53,7 +53,7 @@ export interface TenantStoreConfig {
         preChecked: string;
     };
 
-    /** Override store name. Default: `${businessName} - Main Store` */
+    /** Override store/location name. Default: `Main Store` */
     storeName?: string;
 
     /** Whether to auto-generate time slot presets based on businessType. Default: false */
@@ -164,7 +164,7 @@ export async function createTenantStoreInTransaction(
     const now = admin.firestore.Timestamp.now();
 
     // 2. Derive computed fields
-    const storeName = storeNameOverride || `${businessName} - Main Store`;
+    const storeName = storeNameOverride || 'Main Store';
     const tenantKey = businessName.toLowerCase().replaceAll(' ', '_');
     const storeKey = storeName.toLowerCase().replaceAll(' ', '_');
     const businessCategory = resolveBusinessCategory(businessType) || 'specialty';
@@ -191,6 +191,7 @@ export async function createTenantStoreInTransaction(
     const storesListEntry: Record<string, any> = {
         storeId: newStoreId,
         name: storeName,
+        tenantName: businessName,
         isMaster: true,
     };
     if (autoSubdomain) {
@@ -220,6 +221,7 @@ export async function createTenantStoreInTransaction(
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(newStoreId));
     transaction.set(storeRef, {
         name: storeName,
+        tenantName: businessName,
         businessType,
         businessCategory,
         businessIndustry,
@@ -234,11 +236,6 @@ export async function createTenantStoreInTransaction(
         schedulerHour,
         ...(autoSubdomain ? { subdomain: autoSubdomain } : {}),
         ...(timeSlotPresets ? { timeSlotPresets } : {}),
-        publicPresence: {
-            displayName: {
-                [CANONICAL_SOURCE_LANGUAGE]: storeName,
-            },
-        },
         activeLanguages: [CANONICAL_SOURCE_LANGUAGE],
         defaultLanguage: CANONICAL_SOURCE_LANGUAGE,
         roles: defaultRoles,
@@ -261,6 +258,7 @@ export async function createTenantStoreInTransaction(
                 businessCategory,
                 active: true,
                 name: storeName,
+                tenantName: businessName,
                 ...(timeZone ? { timeZone } : {}),
                 businessDayEndTime: resolvedBusinessDayEndTime,
                 schedulerHour,

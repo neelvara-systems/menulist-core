@@ -2,6 +2,7 @@
 
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { backfillAggregates } from '@services/chatAnalytics';
@@ -129,7 +130,7 @@ export default function AnalyticsBackfill() {
                         <li>Analyze conversations from {days} day{days > 1 ? 's' : ''}</li>
                         <li>Take about {Math.ceil(days * 1.5)} seconds to complete</li>
                         <li>Skip days that already have reports</li>
-                        <li>Process data for your store: <Text strong>{storeDetails?.name || 'Your Store'}</Text></li>
+                        <li>Process data for your store: <Text strong>{getStoreContextName(storeDetails as any, 'Your Store')}</Text></li>
                     </ul>
                     <Paragraph type="warning" style={{ fontSize: '13px', marginBottom: 0 }}>
                         ⚠️ This process reads a lot of data. Only continue if you need past reports.
@@ -457,7 +458,7 @@ export default function AnalyticsBackfill() {
                 <Card title="Your Store Information" size="small">
                     <Descriptions column={2} size="small">
                         <Descriptions.Item label="Store Name">
-                            {storeDetails?.name || 'N/A'}
+                            {getStoreContextName(storeDetails as any, 'N/A')}
                         </Descriptions.Item>
                         <Descriptions.Item label="Your Access">
                             <Tag color="gold">Owner</Tag>

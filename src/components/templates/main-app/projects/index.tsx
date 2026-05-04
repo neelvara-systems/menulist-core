@@ -13,6 +13,7 @@ import useDeviceType from '@hook/useDeviceType';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
@@ -35,8 +36,9 @@ import { useTranslations } from 'next-intl';
 import useMasterJobStatus from '@hook/useMasterJobStatus';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
+import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
-import { lazy, Suspense, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFilePlus, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
 import { TbFileTypeJpg, TbFileTypePdf } from 'react-icons/tb';
 import useSWR from 'swr';
@@ -150,6 +152,7 @@ function ProjectsPage() {
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [pdfFiles, setPdfFiles] = useState<{ images: ConvertedImageType[]; action: string } | null>({ images: [], action: "" });
     const { tenantDetails, storeDetails, setStoreDetails, activeSubscription } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
     const [pdfPagesCount, setPdfPagesCount] = useState(null);
     const cancelPdfRef = useRef(false); // Ref for immediate access in async operations
     const dispatch = useAppDispatch()
@@ -162,12 +165,14 @@ function ProjectsPage() {
     const [projectFormSelectedLanguage, setProjectFormSelectedLanguage] = useState(DefaultLanguage);
     const [projectNameDrafts, setProjectNameDrafts] = useState<Record<string, string>>({});
     const [projectDescriptionDrafts, setProjectDescriptionDrafts] = useState<Record<string, string>>({});
+    const [projectFormSourceData, setProjectFormSourceData] = useState<any | null>(null);
     const [isTranslatingProjectPublicContent, setIsTranslatingProjectPublicContent] = useState(false);
     const [confirmActionVisible, setConfirmActionVisible] = useState(false);
     const [confirmActionType, setConfirmActionType] = useState<'reset' | 'delete' | null>(null);
     const [isFirstTime, setIsFirstTime] = useState(false);
     const [failedFiles, setFailedFiles] = useState<FailedFile[]>([]);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+    const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
 
     // Job Queue: Track active menu processing job
     // Persist in sessionStorage so it survives page reloads mid-processing
@@ -383,6 +388,104 @@ function ProjectsPage() {
         itemsCount?: number;
     } | null>(null);
 
+    const updateProjectImageInLocalState = useCallback((projectId: string, projectImage: string) => {
+        setSelectedProject((current) => (
+            current?.projectId === projectId ? { ...current, projectImage } : current
+        ));
+        mutateProjects(
+            (current) => current ? {
+                ...current,
+                projects: current.projects.map((project) => (
+                    project.projectId === projectId ? { ...project, projectImage } : project
+                )),
+            } : current,
+            { revalidate: false },
+        );
+    }, [mutateProjects]);
+
+    const handleGenerateProjectImageForForm = useCallback(async () => {
+        const localizedName = applyLocalizedProjectDraftMap(projectFormSourceData?.name, projectNameDrafts);
+        const localizedDescription = applyLocalizedProjectDraftMap(projectFormSourceData?.description, projectDescriptionDrafts);
+        const projectName = getLocalizedText(
+            localizedName,
+            undefined,
+            getPrimaryLocalizedLanguage(localizedName, projectFormSelectedLanguage || DefaultLanguage),
+            '',
+        ).trim();
+
+        if (!projectName) {
+            throw new Error(`Enter a ${labels.offeringPhrase} name first.`);
+        }
+
+        const candidate = await generateProjectImageCandidate({
+            allowNameOnly: true,
+            businessCategory: storeDetails?.businessCategory,
+            businessType: storeDetails?.businessType,
+            project: {
+                ...(projectFormSourceData || {}),
+                ...(editingProject || {}),
+                description: localizedDescription,
+                name: localizedName,
+                projectId: editingProject?.projectId || 'project-draft',
+            },
+            storeName: storeContextName,
+        });
+
+        return candidate?.dataUrl || null;
+    }, [
+        DefaultLanguage,
+        editingProject,
+        labels.offeringPhrase,
+        projectDescriptionDrafts,
+        projectFormSelectedLanguage,
+        projectFormSourceData,
+        projectNameDrafts,
+        storeDetails?.businessCategory,
+        storeDetails?.businessType,
+        storeContextName,
+    ]);
+
+    const maybeAutoGenerateProjectImage = useCallback(async ({
+        categories,
+        items,
+        projectData,
+        projectId,
+        projectSummary,
+    }: {
+        categories?: any[];
+        items?: any[];
+        projectData?: any;
+        projectId?: string | null;
+        projectSummary?: any;
+    }) => {
+        if (!projectId) return;
+        if (projectSummary?.projectImage || projectData?.projectImage) return;
+        if (projectImageAutoGenerationAttemptRef.current.has(projectId)) return;
+        projectImageAutoGenerationAttemptRef.current.add(projectId);
+
+        try {
+            const result = await generateAndSaveProjectImageIfMissing({
+                businessCategory: storeDetails?.businessCategory,
+                businessType: storeDetails?.businessType,
+                categories,
+                items,
+                project: {
+                    ...(projectData || {}),
+                    ...(projectSummary || {}),
+                    projectId,
+                },
+                storeName: storeContextName,
+                summaryData: projectSummary || null,
+            });
+
+            if (result.imageUrl) {
+                updateProjectImageInLocalState(projectId, result.imageUrl);
+            }
+        } catch (error) {
+            console.warn('[ProjectImage] Auto-generation skipped:', error);
+        }
+    }, [storeDetails?.businessCategory, storeDetails?.businessType, storeContextName, updateProjectImageInLocalState]);
+
     // Handle job completion - refetch project data since server saved results
     useEffect(() => {
         if (!activeProcessingJobId) {
@@ -398,6 +501,13 @@ function ProjectsPage() {
                     qualityDetails: result.qualityDetails,
                     categoriesCount: result.combinedData?.categories?.length || 0,
                     itemsCount: result.combinedData?.items?.length || 0,
+                });
+                void maybeAutoGenerateProjectImage({
+                    categories: result.combinedData?.categories || [],
+                    items: result.combinedData?.items || [],
+                    projectData: activeProject,
+                    projectId: selectedProject?.projectId || activeProject?.projectId,
+                    projectSummary: selectedProject,
                 });
             }
             // Server has already saved the data to the project (first extraction)
@@ -477,7 +587,7 @@ function ProjectsPage() {
             setComparisonResult(null);
             message.info('Processing was cancelled');
         }
-    }, [activeProcessingJobId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, mutateProject, showReviewScreen, activeJob, activeProject]);
+    }, [activeProcessingJobId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // EXTRACTION REVIEW SCREEN HANDLERS
@@ -485,13 +595,21 @@ function ProjectsPage() {
 
     const handleReviewSaveComplete = useCallback(() => {
         console.log('[ExtractionReview] Save complete');
+        const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
+        void maybeAutoGenerateProjectImage({
+            categories: previewData.categories,
+            items: previewData.items,
+            projectData: activeProject,
+            projectId: selectedProject?.projectId || activeProject?.projectId,
+            projectSummary: selectedProject,
+        });
         setShowReviewScreen(false);
         setComparisonResult(null);
         setActiveProcessingJobId(null);
         setFileProcessingId(null);
         mutateProject(); // Refetch to get updated data
         setShowSuccessModal(true);
-    }, [mutateProject]);
+    }, [activeProject, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject]);
 
     const handleReviewDiscard = useCallback(() => {
         console.log('[ExtractionReview] Changes discarded');
@@ -882,6 +1000,7 @@ function ProjectsPage() {
         setProjectFormSelectedLanguage(defaultLanguage);
         setProjectNameDrafts({});
         setProjectDescriptionDrafts({});
+        setProjectFormSourceData(null);
     }
 
     const openModal = async (project?: ProjectMetadata) => {
@@ -894,6 +1013,7 @@ function ProjectsPage() {
             const nextNameDrafts = buildProjectLocalizedDrafts(detailedProject?.name || project.name, languages);
             const nextDescriptionDrafts = buildProjectLocalizedDrafts(detailedProject?.description || project.description, languages);
             setEditingProject(project);
+            setProjectFormSourceData(detailedProject || project);
             setProjectFormLanguages(languages);
             setProjectFormSelectedLanguage(selectedLanguage);
             setProjectNameDrafts(nextNameDrafts);
@@ -906,6 +1026,7 @@ function ProjectsPage() {
         } else {
             const defaultLanguage = storeDetails?.defaultLanguage || DefaultLanguage;
             setEditingProject(null);
+            setProjectFormSourceData(null);
             setProjectFormLanguages([defaultLanguage]);
             setProjectFormSelectedLanguage(defaultLanguage);
             setProjectNameDrafts({ [defaultLanguage]: '' });
@@ -2186,6 +2307,7 @@ function ProjectsPage() {
                         ...previous,
                         [projectFormSelectedLanguage]: value,
                     }))}
+                    onGenerateProjectImage={handleGenerateProjectImageForForm}
                     onTranslatePublicContent={() => void handleTranslateProjectPublicContent()}
                     onSubmit={() => form.validateFields().then(handleProjectEdit)}
                     onReset={() => {
@@ -2245,7 +2367,7 @@ function ProjectsPage() {
                         projectId={selectedProject.projectId}
                         projectName={getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), 'Untitled')}
                         isDefaultProject={selectedProject.isDefault}
-                        storeName={storeDetails?.name}
+                        storeName={storeContextName}
                         storeDescription={getLocalizedText(
                             storeDetails?.metaDescription,
                             storeDetails?.defaultLanguage || storeDetails?.activeLanguages?.[0] || storeDetails?.language || 'en',

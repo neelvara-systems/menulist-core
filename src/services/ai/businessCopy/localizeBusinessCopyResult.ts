@@ -9,7 +9,6 @@ import { BUSINESS_COPY_FIELD_LIMITS, BusinessCopyLocalizedFieldKey, getBusinessC
 
 export type LocalizedBusinessCopyFields = {
     descriptor?: LocalizedText;
-    displayName?: LocalizedText;
     keywords?: LocalizedStringList;
     knownFor?: LocalizedText;
     metaDescription?: LocalizedText;

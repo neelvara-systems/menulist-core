@@ -20,6 +20,7 @@ import {
 } from "@lib/firestore/clientStoreLookup";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
 import {
     appendPublicLanguageParam,
     getNextIntlLocaleForPublicLanguage,
@@ -721,7 +722,11 @@ export default async function OBPContent({
     // Derive values
     const accentColor = pp.accentColor || '#111';
     const descriptor = getLocalizedText(pp.descriptor, contentLanguage, getPrimaryLocalizedLanguage(pp.descriptor, contentLanguage), '');
-    const storeName = getLocalizedText(pp.displayName, contentLanguage, getPrimaryLocalizedLanguage(pp.displayName, contentLanguage), store?.name || t('publicFallbackBusiness'));
+    const brandName = getBrandName(store, t('publicFallbackBusiness'));
+    const storeLocationName = getStoreName(store, brandName);
+    const storeName = storeOverride
+        ? getStoreContextName(store, brandName)
+        : brandName;
     const logo = store?.logo;
     const firstLetter = storeName.charAt(0);
 
@@ -923,8 +928,8 @@ export default async function OBPContent({
         .slice(0, 4) as string[];
 
     // Schema.org
-    const schema = generateOBPSchema(store, obpUrl, contentLanguage);
-    const faqSchema = buildFaqSchema(store, obpUrl, t);
+    const schema = generateOBPSchema(store, obpUrl, contentLanguage, storeOverride ? 'store' : 'brand');
+    const faqSchema = buildFaqSchema(store, obpUrl, t, storeName);
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const trackingEnabled = analyticsPreferences.trackOfficialBusinessPage;
@@ -980,8 +985,8 @@ export default async function OBPContent({
                  */}
                 {storeOverride && store?.outletSlug && (masterBrandName || store?.name) ? (
                     <MenuBreadcrumb
-                        businessName={masterBrandName || storeName}
-                        outletName={storeName || undefined}
+                        businessName={masterBrandName || brandName}
+                        outletName={storeLocationName || undefined}
                         outletSlug={store.outletSlug}
                     />
                 ) : null}
@@ -1180,7 +1185,7 @@ export default async function OBPContent({
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"
                                         src={googleMapsEmbedUrl}
-                                        title={`${storeName} ${t('publicLocation')}`}
+                                        title={`${storeLocationName} ${t('publicLocation')}`}
                                     />
                                 </div>
                             )}

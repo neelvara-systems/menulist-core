@@ -26,7 +26,7 @@ import styles from './OwnerDashboard.module.scss';
 
 const { Text } = Typography;
 
-type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly';
+type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
 
 interface OBPMetricsCardProps {
     data: OBPDashboardViewData | null;
@@ -230,14 +230,14 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
     if (mode === 'today') {
         if (loadingToday && !today) {
             return (
-                <Card className={styles.obpCard} variant="borderless" title="Official Business Page · Today so far">
+                <Card className={styles.obpCard} variant="borderless" title="Official Business Page">
                     <Text type="secondary">Loading current OBP activity…</Text>
                 </Card>
             );
         }
 
         return (
-            <Card className={styles.obpCard} variant="borderless" title="Official Business Page · Today so far">
+            <Card className={styles.obpCard} variant="borderless" title="Official Business Page">
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
                     Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
                 </Text>
@@ -255,7 +255,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
     }
 
     const modeTitle =
-        mode === 'daily'
+        mode === 'overall'
+            ? 'Official Business Page · Overall'
+            : mode === 'daily'
             ? 'Official Business Page · Yesterday'
             : mode === 'weekly'
                 ? 'Official Business Page · Last 7 Days'
@@ -272,7 +274,11 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     ? overview?.mtd || null
                     : null;
 
-    if (mode !== 'overview' && !selectedMetrics && !overall) {
+    if (mode === 'overall' && !overall) {
+        return null;
+    }
+
+    if (!['overview', 'overall'].includes(mode) && !selectedMetrics) {
         return null;
     }
 
@@ -300,7 +306,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                 Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
             </Text>
 
-            {mode === 'overview' ? (
+            {mode === 'overall' ? null : mode === 'overview' ? (
                 <>
                     {overview?.wtd ? (
                         <>
@@ -368,9 +374,8 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                 <Empty description={<Text type="secondary">No settled OBP activity yet for this period.</Text>} />
             )}
 
-            {overall ? (
+            {mode === 'overall' && overall ? (
                 <>
-                    <Divider style={{ margin: '16px 0 12px' }} />
                     <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
                         <Text type="secondary" style={{ fontSize: 11 }}>
                             Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions, {overall.lifetimeLinkClicks.toLocaleString()} link taps, {overall.lifetimeShares.toLocaleString()} shares
@@ -392,6 +397,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     </div>
                     <div style={{ marginTop: 12 }}>
                         <SourceBreakdown sources={overall.lifetimeSources} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                        <LanguageBreakdown languages={overall.lifetimeLanguages} />
                     </div>
                 </>
             ) : null}

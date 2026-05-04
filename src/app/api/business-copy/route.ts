@@ -219,7 +219,6 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const cleaned = {
-            displayName: String(generatedData.displayName || '').trim().slice(0, 60),
             descriptor: String(generatedData.descriptor || '').trim().slice(0, 40),
             knownFor: String(generatedData.knownFor || '').trim().slice(0, 40),
             tagline: String(generatedData.tagline || '').trim().slice(0, 100),
@@ -266,7 +265,6 @@ export const POST = withAuth(async (request, session) => {
 
         logger.info('Business copy generation completed', {
             descriptorLength: cleaned.descriptor.length,
-            displayNameLength: cleaned.displayName.length,
             keywordCount: cleaned.keywords.length,
             metaDescriptionLength: cleaned.metaDescription.length,
             metaTitleLength: cleaned.metaTitle.length,

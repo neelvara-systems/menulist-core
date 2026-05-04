@@ -24,6 +24,7 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { doc, getDoc } from 'firebase/firestore';
@@ -158,12 +159,7 @@ export async function GET(
         const store = snap.exists() ? snap.data() : null;
 
         const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
-        const displayName: string = getLocalizedText(
-            store?.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
-            store?.name || store?.storeName || 'Menu',
-        );
+        const displayName: string = getStoreContextName(store, 'Menu');
         const resolvedTagline = getLocalizedText(
             store?.tagline,
             contentLanguage,

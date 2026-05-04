@@ -128,6 +128,7 @@ export const POST = withAuth(async (request, session) => {
             const businessCategory = resolveBusinessCategory(businessType, masterStore.businessCategory) || 'specialty';
             const defaultPresets = getDefaultTimeSlotPresets(businessType, tenantId, newStoreId);
             const roles = createDefaultRoles(newStoreId, session.user?.email || 'system');
+            const tenantName = tenantData?.name || masterStore.tenantName || '';
 
             // Create outlet store doc
             // Copy brand identity from master store so outlets render correctly
@@ -136,6 +137,7 @@ export const POST = withAuth(async (request, session) => {
             // @see __docs__/official-business-page/official-business-page_impl.md §2
             tx.set(db.doc(`${DB_COLLECTIONS.STORES}/${newStoreId}`), {
                 name: outletName,
+                tenantName,
                 businessType,
                 businessCategory,
                 email: masterStore.email || '',
@@ -169,6 +171,7 @@ export const POST = withAuth(async (request, session) => {
                     businessCategory,
                     active: true,
                     name: outletName,
+                    tenantName,
                     schedulerHour: masterStore.schedulerHour ?? 2, // Inherit from master
                 },
             }, { merge: true });
@@ -179,6 +182,7 @@ export const POST = withAuth(async (request, session) => {
                 storesList: [...currentStoresList, {
                     storeId: newStoreId,
                     name: outletName,
+                    tenantName,
                     isMaster: false,
                 }],
                 outletCreationLock: false,
@@ -219,13 +223,14 @@ export const POST = withAuth(async (request, session) => {
                 }, { merge: true });
             }
 
-            return { newStoreId };
+            return { newStoreId, tenantName };
         });
 
         return NextResponse.json({
             success: true,
             storeId: result.newStoreId,
             outletName,
+            tenantName: result.tenantName,
             quantity: subId ? newQty : null,
         });
     } catch (error) {

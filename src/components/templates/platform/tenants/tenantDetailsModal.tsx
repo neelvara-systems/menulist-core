@@ -6,7 +6,7 @@ import { BUSINESS_TYPES } from '@constant/common';
 import { ECOMSAI_PLATFORM_TENANT_ID } from '@constant/user';
 import { getStoreById } from '@database/stores';
 import { addTenant, updateTenant } from '@database/tenants';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { UserUploadedFileType } from '@type/common';
 import { MinimalStoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
@@ -95,13 +95,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
     }
 
     const resolveStoreName = (store: any) => {
-        const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
-        return getLocalizedText(
-            store?.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(store?.publicPresence?.displayName, contentLanguage),
-            store?.name || `Store ${store?.storeId ?? ''}`,
-        );
+        return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     }
 
     const isUpdateFlow = (Boolean(tenantData?.tenantId) || tenantData?.tenantId == ECOMSAI_PLATFORM_TENANT_ID);

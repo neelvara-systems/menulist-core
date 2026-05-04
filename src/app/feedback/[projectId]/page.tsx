@@ -14,6 +14,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getBrandStoreLabel } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
@@ -132,15 +133,7 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
         const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
         const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';
-        const publicDisplayName = getLocalizedText(
-            storeData.publicPresence?.displayName,
-            contentLanguage,
-            getPrimaryLocalizedLanguage(storeData.publicPresence?.displayName, contentLanguage),
-            businessName || tenantName || '',
-        );
-        const displayStoreName = tenantName && businessName
-            ? `${tenantName} - ${publicDisplayName || businessName}`
-            : publicDisplayName || businessName || tenantName || undefined;
+        const displayStoreName = getBrandStoreLabel(storeData, businessName || tenantName || undefined);
 
         // Check if feedback is enabled at store level (default: true)
         const feedbackEnabled = storeData.feedbackEnabled !== false;

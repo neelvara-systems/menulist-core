@@ -83,7 +83,6 @@ Examples already covered by this contract:
 - `ProjectSummaryData.description`
 - `ProjectSummaryData.specialMenuDisplayName`
 - `SpecialMenuMetadata.displayName`
-- `store.publicPresence.displayName`
 - `store.publicPresence.descriptor`
 - `store.publicPresence.knownFor`
 - `store.tagline`
@@ -112,7 +111,7 @@ Examples:
 - flags
 - enums
 
-`store.name` remains the operational identity fallback. `publicPresence.displayName` is the public/customer-facing identity layer.
+`tenantName` is the brand identity. `store.name` is the store/location identity and remains the operational fallback.
 
 ---
 
@@ -143,7 +142,6 @@ Reference files:
 
 Localized public-presence fields:
 
-- `publicPresence.displayName`
 - `publicPresence.descriptor`
 - `publicPresence.knownFor`
 
@@ -162,6 +160,7 @@ Language policy fields:
 
 Operational fallback remains:
 
+- `tenantName`
 - `name`
 
 Reference file:
@@ -198,11 +197,9 @@ For localized content, rendering must follow this order:
 
 For public business identity:
 
-1. `publicPresence.displayName[requestedLanguage]`
-2. `publicPresence.displayName.en`
-3. `publicPresence.displayName[primaryLanguage]`
-4. `store.name`
-5. hard fallback like `Menu` or `Restaurant` only when no store identity exists
+1. `tenantName` for brand-level OBP identity
+2. `store.name` for store/location identity
+3. hard fallback like `Menu` or `Restaurant` only when no store identity exists
 
 For project identity:
 

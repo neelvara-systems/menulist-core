@@ -17,7 +17,6 @@ function buildLocalizedPresenceDrafts(storeDetails: StoreDataType) {
             languageCode,
             {
                 descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, languageCode, ''),
-                displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, languageCode, ''),
                 knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, languageCode, ''),
                 specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, languageCode, ''),
             },
@@ -35,7 +34,6 @@ function getInitialValues(storeDetails: StoreDataType) {
         publicPresence: {
             ...(storeDetails?.publicPresence || {}),
             descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, contentLanguage, ''),
-            displayName: getLocalizedStoreValue(storeDetails?.publicPresence?.displayName, contentLanguage, ''),
             knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, contentLanguage, ''),
             specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, contentLanguage, ''),
         },
@@ -51,7 +49,6 @@ function buildDraftStore(storeDetails: StoreDataType, values: any): StoreDataTyp
         [contentLanguage]: {
             ...((values.__localizedPublicPresenceDrafts || {})[contentLanguage] || {}),
             descriptor: visiblePresence.descriptor || '',
-            displayName: visiblePresence.displayName || '',
             knownFor: visiblePresence.knownFor || '',
             specialNote: visiblePresence.specialNote || '',
         },
@@ -60,10 +57,6 @@ function buildDraftStore(storeDetails: StoreDataType, values: any): StoreDataTyp
     const publicPresence = {
         ...currentPresence,
         ...visiblePresence,
-        displayName: applyLocalizedDraftMap(
-            currentPresence.displayName,
-            Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.displayName || ''])),
-        ),
         descriptor: applyLocalizedDraftMap(
             currentPresence.descriptor,
             Object.fromEntries(Object.entries(localizedPresenceDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.descriptor || ''])),
@@ -96,12 +89,18 @@ export default function OfficialPageSettings({
         form.setFieldsValue(initialValues);
     }, [form, initialValues]);
 
-    const emitDraft = () => {
+    const emitDraft = (languageOverride?: string) => {
         const values = form.getFieldsValue(true);
-        if (values.__storeContentLanguage) {
-            onLanguageChange?.(values.__storeContentLanguage);
+        const contentLanguage = typeof languageOverride === 'string'
+            ? languageOverride
+            : values.__storeContentLanguage;
+        if (contentLanguage) {
+            onLanguageChange?.(contentLanguage);
         }
-        onStoreDraftChange(buildDraftStore(storeDetails, values));
+        onStoreDraftChange(buildDraftStore(storeDetails, {
+            ...values,
+            __storeContentLanguage: contentLanguage,
+        }));
     };
 
     const handlePublicPresenceChange = (field: string, value: any) => {
@@ -109,19 +108,23 @@ export default function OfficialPageSettings({
         emitDraft();
     };
 
+    const handleContentLanguageChange = (language: string) => {
+        emitDraft(language);
+    };
+
     return (
         <Form
             form={form}
             initialValues={initialValues}
             layout="vertical"
-            onValuesChange={emitDraft}
+            onValuesChange={() => emitDraft()}
         >
             <OfficialPageTab
                 compact
                 showDistributionTools={false}
                 publicPresence={initialValues.publicPresence}
                 onPublicPresenceChange={handlePublicPresenceChange}
-                onContentLanguageChange={onLanguageChange}
+                onContentLanguageChange={handleContentLanguageChange}
                 subdomain={storeDetails?.subdomain}
                 customDomain={storeDetails?.customDomain}
             />

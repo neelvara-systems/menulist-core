@@ -63,7 +63,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     const hasBusinessCopyPresenceChanges = () => {
         const draftPresence = storeDraft?.publicPresence || {};
         const savedPresence = lastPublishedStoreDraft?.publicPresence || {};
-        return ['displayName', 'descriptor', 'knownFor', 'specialNote'].some((field) => (
+        return ['descriptor', 'knownFor', 'specialNote'].some((field) => (
             JSON.stringify(draftPresence[field]) !== JSON.stringify(savedPresence[field])
         ));
     };
@@ -120,7 +120,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     if (hasBusinessCopyPresenceChanges()) {
                         storeUpdate.businessCopyMeta = buildBusinessCopyManualOverrideMeta({
                             existingMeta: storeDetails?.businessCopyMeta,
-                            fieldKeys: ['displayName', 'descriptor', 'knownFor', 'specialNote'],
+                            fieldKeys: ['descriptor', 'knownFor', 'specialNote'],
                         });
                     }
 
@@ -193,6 +193,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     storeDetails={storeDraft || storeDetails}
                     previewModalOpen={previewModalOpen}
                     setPreviewModalOpen={setPreviewModalOpen}
+                    editorActivePage={activePage}
                     activeLanguage={activeLanguage}
                     setActiveLanguage={setActiveLanguage}
                 />

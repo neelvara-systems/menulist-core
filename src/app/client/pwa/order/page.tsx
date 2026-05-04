@@ -9,7 +9,7 @@
 
 import { notFound } from 'next/navigation';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
@@ -31,13 +31,7 @@ export default async function PwaOrderHandoffPage() {
     if (!orderUrl) return notFound();
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
-    const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
-    const storeName = getLocalizedText(
-        store.publicPresence?.displayName,
-        contentLanguage,
-        getPrimaryLocalizedLanguage(store.publicPresence?.displayName, contentLanguage),
-        store.name || 'Restaurant',
-    );
+    const storeName = getStoreContextName(store, 'Restaurant');
 
     return (
         <PwaExternalRedirectClient

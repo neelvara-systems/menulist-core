@@ -20,7 +20,6 @@ export async function assertBusinessCopyTranslationRepair(): Promise<void> {
             metaTitle: { en: 'Habibis | Breakfast' },
             publicPresence: {
                 descriptor: { en: 'Breakfast and coffee' },
-                displayName: { en: 'Habibis', hi: 'हबीबीज़' },
                 knownFor: { en: 'Trendy smoothies' },
             },
             pwaSettings: {
@@ -43,7 +42,6 @@ export async function assertBusinessCopyTranslationRepair(): Promise<void> {
                 },
                 mr: {
                     descriptor: 'नाश्ता आणि कॉफी',
-                    displayName: 'हबीबीज',
                     knownFor: 'ट्रेंडी स्मूदीज',
                     metaDescription: 'नाश्ता आणि कॉफीचा आनंद घ्या.',
                     metaTitle: 'हबीबीज | नाश्ता',
@@ -56,8 +54,6 @@ export async function assertBusinessCopyTranslationRepair(): Promise<void> {
     assert(capturedInputJson !== null, 'Repair flow should send a translation payload');
     assert(!('pwaShortName' in (capturedInputJson || {})), 'PWA short name should be excluded when the feature is disabled');
     assert(capturedTargetLanguages.join(',') === 'hi,mr', 'Repair flow should request only the missing target languages');
-    assert(repaired?.displayName?.hi === 'हबीबीज़', 'Existing localized display name must not be overwritten');
-    assert(repaired?.displayName?.mr === 'हबीबीज', 'Missing display name should be filled for the target language');
     assert(repaired?.metaDescription?.hi === undefined, 'Missing translated keys should remain unset instead of inventing data');
     assert(repaired?.metaDescription?.mr === 'नाश्ता आणि कॉफीचा आनंद घ्या.', 'Valid translated fields should be merged into the result');
 
@@ -72,7 +68,6 @@ export async function assertBusinessCopyTranslationRepair(): Promise<void> {
             metaTitle: { en: 'Habibis | Breakfast' },
             publicPresence: {
                 descriptor: { en: 'Breakfast and coffee' },
-                displayName: { en: 'Habibis' },
                 knownFor: { en: 'Trendy smoothies' },
             },
             pwaSettings: {
@@ -85,7 +80,6 @@ export async function assertBusinessCopyTranslationRepair(): Promise<void> {
             capturedWithPwa = inputJson;
             return Object.fromEntries(targetLang.map((language) => [language.code, {
                 descriptor: 'descriptor',
-                displayName: 'displayName',
                 knownFor: 'knownFor',
                 metaDescription: 'metaDescription',
                 metaTitle: 'metaTitle',

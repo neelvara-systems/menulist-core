@@ -2,7 +2,7 @@ import { DEVICE_TYPES_LIST } from '@constant/builder';
 import MainContentRenderer from '@template/website/mainContentRenderer';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Flex, Modal, Tooltip } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LuMonitor, LuRectangleVertical, LuTablet } from 'react-icons/lu';
 import { DeviceTypes, PageType } from './types';
 
@@ -11,13 +11,20 @@ interface PreviewModalProps {
     storeDetails: StoreDataType;
     previewModalOpen: boolean;
     setPreviewModalOpen: (open: boolean) => void;
+    editorActivePage?: PageType;
     activeLanguage: string;
     setActiveLanguage: (language: string) => void;
 }
 
-function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewModalOpen, activeLanguage, setActiveLanguage }: PreviewModalProps) {
+function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewModalOpen, editorActivePage, activeLanguage, setActiveLanguage }: PreviewModalProps) {
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>('mobile');
-    const [activePage, setActivePage] = useState<PageType>(PageType.OBP);
+    const [activePage, setActivePage] = useState<PageType>(editorActivePage || PageType.MENU);
+
+    useEffect(() => {
+        if (previewModalOpen) {
+            setActivePage(editorActivePage || PageType.MENU);
+        }
+    }, [editorActivePage, previewModalOpen]);
 
     return (
         <Modal

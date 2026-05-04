@@ -6,6 +6,7 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 
@@ -47,7 +48,7 @@ export async function lookupBySubdomain(subdomain: string): Promise<TenantInfo |
             storeKey: storeData.storeKey,
             tenantId: storeData.tenantId,
             projectId: storeData.primaryProjectId,
-            storeName: storeData.name,
+            storeName: getStoreContextName(storeData, storeData.name || 'Store'),
             subdomain: storeData.subdomain,
             customDomain: storeData.customDomain,
         };
@@ -86,7 +87,7 @@ export async function lookupByCustomDomain(domain: string): Promise<TenantInfo |
             storeKey: storeData.storeKey,
             tenantId: storeData.tenantId,
             projectId: storeData.primaryProjectId,
-            storeName: storeData.name,
+            storeName: getStoreContextName(storeData, storeData.name || 'Store'),
             subdomain: storeData.subdomain,
             customDomain: storeData.customDomain,
         };

@@ -19,13 +19,18 @@
 // VIEW MODES
 // ================================================================
 
-export type OwnerDashboardViewMode = 'overview' | 'daily' | 'weekly' | 'monthly';
+export type OwnerDashboardViewMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
 
 export const VIEW_MODE_CONFIG = {
+    today: {
+        label: 'Today',
+        description: 'Live partial activity for the current business day',
+        isPrimary: true,
+    },
     overview: {
         label: 'Overview',
-        description: 'Quick status check - is everything working?',
-        isPrimary: true,
+        description: 'Settled status check - is everything working?',
+        isPrimary: false,
     },
     daily: {
         label: 'Yesterday',
@@ -40,6 +45,11 @@ export const VIEW_MODE_CONFIG = {
     monthly: {
         label: 'This Month',
         description: 'Month so far - subscription value',
+        isPrimary: false,
+    },
+    overall: {
+        label: 'Overall',
+        description: 'Lifetime performance since tracking started',
         isPrimary: false,
     },
 } as const;
@@ -347,6 +357,7 @@ export interface OverallData {
         totalUnavailableItemTaps?: number;
         totalMenuActionClicks?: number;
     };
+    topItems?: TopItem[];
     topCategories?: TopCategory[];
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
@@ -405,7 +416,7 @@ export interface UseOwnerDashboardReturn {
     refetch: () => Promise<void>;
 
     // Convenience getters
-    currentViewData: OverviewData | DailyViewData | WeeklyViewData | MonthlyViewData | null;
+    currentViewData: OverviewData | DailyViewData | WeeklyViewData | MonthlyViewData | OverallData | null;
     viewMode: OwnerDashboardViewMode;
     setViewMode: (mode: OwnerDashboardViewMode) => void;
 

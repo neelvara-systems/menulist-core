@@ -23,14 +23,12 @@
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
-import EmptyState from './EmptyState';
 import LoadingState from './LoadingState';
 import MonthlyView from './MonthlyView';
 import OverallFooter from './OverallFooter';
@@ -51,8 +49,9 @@ import HoursFreshnessNudge from './HoursFreshnessNudge';
 import OBPMetricsCard from './OBPMetricsCard';
 import styles from './OwnerDashboard.module.scss';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 const DASHBOARD_PROJECT_STORAGE_KEY = 'menulist_dashboard_project_id';
+const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 
 const OwnerDashboard: React.FC = () => {
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
@@ -101,20 +100,20 @@ const OwnerDashboard: React.FC = () => {
         projectId: activeProjectId || undefined,
         loadHistorical: showHistorical,
     });
-    const obpDashboard = useOBPDashboard();
-
-    useEffect(() => {
-        if (!loadingToday && !showHistorical && !data?.today) {
-            setShowHistorical(true);
-        }
-    }, [loadingToday, showHistorical, data?.today]);
+    const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
 
     const hasMenuData = Boolean(data?.today || data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall);
     const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
     const hasOBPData = Boolean(obpDashboard.data?.today || hasOBPSettledData);
 
-    // Show loading while storeDetails hasn't loaded yet OR data is still fetching
-    if (!storeDetails?.storeId || loading) {
+    const handleViewModeChange = useCallback((mode: Parameters<typeof setViewMode>[0]) => {
+        setShowHistorical(mode !== 'today');
+        setViewMode(mode);
+    }, [setViewMode]);
+
+    // Show the full loader only before the live section has anything useful to render.
+    // Settled analytics can load below the Today section after the owner requests it.
+    if (!storeDetails?.storeId || (loading && !data?.today && !obpDashboard.data?.today && !showHistorical)) {
         return <LoadingState />;
     }
 
@@ -135,35 +134,109 @@ const OwnerDashboard: React.FC = () => {
         return <LoadingState />;
     }
 
-    if (!hasMenuData && !hasOBPData) {
-        return (
-            <EmptyState
-                title={EMPTY_STATE_MESSAGES.noData.title}
-                description={EMPTY_STATE_MESSAGES.noData.description}
-            />
-        );
-    }
-
-    const renderCurrentView = () => {
+    const renderViewContent = () => {
         switch (viewMode) {
+            case 'today':
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>Today so far</Title>
+                        <Flex gap={16} wrap="wrap">
+                            <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                                <TodaySoFarCard
+                                    data={data?.today || null}
+                                    loading={loadingToday}
+                                    fetchedAt={data?.lastFetched}
+                                    title="Menu"
+                                />
+                            </div>
+                            <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                                <OBPMetricsCard
+                                    data={obpDashboard.data}
+                                    loading={obpDashboard.loading}
+                                    loadingToday={obpDashboard.loadingToday}
+                                    mode="today"
+                                />
+                            </div>
+                        </Flex>
+                    </Space>
+                );
             case 'overview':
-                if (!data?.overview && hasOBPSettledData) return null;
-                return <OverviewView data={data?.overview || null} />;
+                if (loading && !data?.overview && !hasOBPSettledData) return <LoadingState />;
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>Overview</Title>
+                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        {data?.overview ? <OverviewView data={data.overview} /> : null}
+                        <OBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="overview"
+                        />
+                    </Space>
+                );
             case 'daily':
                 if (loadingDaily) return <LoadingState />;
-                if (!data?.daily && hasOBPSettledData) return null;
-                return <DailyView data={data?.daily || null} />;
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>Yesterday</Title>
+                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        {data?.daily ? <DailyView data={data.daily} /> : null}
+                        <OBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="daily"
+                        />
+                    </Space>
+                );
             case 'weekly':
                 if (loadingWeekly) return <LoadingState />;
-                if (!data?.weekly && hasOBPSettledData) return null;
-                return <WeeklyView data={data?.weekly || null} />;
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>Last 7 Days</Title>
+                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        {data?.weekly ? <WeeklyView data={data.weekly} /> : null}
+                        <OBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="weekly"
+                        />
+                    </Space>
+                );
             case 'monthly':
                 if (loadingMonthly) return <LoadingState />;
-                if (!data?.monthly && hasOBPSettledData) return null;
-                return <MonthlyView data={data?.monthly || null} />;
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>This Month</Title>
+                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        {data?.monthly ? <MonthlyView data={data.monthly} /> : null}
+                        <OBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="monthly"
+                        />
+                    </Space>
+                );
+            case 'overall':
+                if (loading && !data?.overall && !hasOBPSettledData) return <LoadingState />;
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>Overall</Title>
+                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        {data?.overall ? <OverallFooter data={data.overall} /> : null}
+                        <OBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="overall"
+                        />
+                    </Space>
+                );
             default:
-                if (!data?.overview && hasOBPSettledData) return null;
-                return <OverviewView data={data?.overview || null} />;
+                return null;
         }
     };
 
@@ -179,63 +252,36 @@ const OwnerDashboard: React.FC = () => {
                     />
                 </Flex>
 
-                <TodaySoFarCard
-                    data={data?.today || null}
-                    loading={loadingToday}
-                    showHistorical={showHistorical}
-                    onShowHistorical={() => setShowHistorical(true)}
-                    fetchedAt={data?.lastFetched}
-                />
+                <Flex
+                    justify="space-between"
+                    align="center"
+                    wrap="wrap"
+                    gap={16}
+                    className={styles.dashboardHeader}
+                >
+                    <ViewModeTabs
+                        activeMode={viewMode}
+                        onModeChange={handleViewModeChange}
+                        hasToday={true}
+                        hasOverview={true}
+                        hasDaily={true}
+                        hasWeekly={true}
+                        hasMonthly={true}
+                        hasOverall={true}
+                    />
+                </Flex>
 
-                <OBPMetricsCard
-                    data={obpDashboard.data}
-                    loading={obpDashboard.loading}
-                    loadingToday={obpDashboard.loadingToday}
-                    mode="today"
-                />
-
-                {showHistorical ? (
-                    <>
-                        {/* Dashboard Header - Project Selector + View Mode Tabs */}
-                        <Flex
-                            justify="space-between"
-                            align="center"
-                            wrap="wrap"
-                            gap={16}
-                            className={styles.dashboardHeader}
-                        >
-                            {/* View Mode Tabs */}
-                            <ViewModeTabs
-                                activeMode={viewMode}
-                                onModeChange={setViewMode}
-                                hasOverview={true}
-                                hasDaily={true}
-                                hasWeekly={true}
-                                hasMonthly={true}
-                            />
-                        </Flex>
-
-                        {/* Main Content Area */}
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={viewMode}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                            >
-                                {renderCurrentView()}
-                            </motion.div>
-                        </AnimatePresence>
-
-                        <OBPMetricsCard
-                            data={obpDashboard.data}
-                            loading={obpDashboard.loading}
-                            loadingToday={obpDashboard.loadingToday}
-                            mode={viewMode}
-                        />
-                    </>
-                ) : null}
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={viewMode}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {renderViewContent()}
+                    </motion.div>
+                </AnimatePresence>
 
                 {/* Hours Freshness Nudge — correction trigger for stale hours
                     Shows only when ENABLE_OUTPUT_CONTROL is ON and hours are RISKY/BROKEN.
@@ -268,10 +314,6 @@ const OwnerDashboard: React.FC = () => {
                 {/* Review Reply Tool - Standalone AI reply suggestion */}
                 <ReviewReplyTool businessType={storeDetails?.businessType} />
 
-                {/* Overall Footer - Always visible */}
-                {showHistorical && data?.overall && (
-                    <OverallFooter data={data.overall} />
-                )}
             </Space>
         </div>
     );

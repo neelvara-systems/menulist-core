@@ -128,6 +128,12 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                 </Text>
             )}
 
+            {data.topItems?.length ? (
+                <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
+                    {`Top items: ${data.topItems.slice(0, 3).map((item) => `${item.name || item.itemId} (${item.clicks} taps)`).join(', ')}`}
+                </Text>
+            ) : null}
+
             {data.topCategories?.length ? (
                 <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
                     {`Top category: ${data.topCategories.slice(0, 3).map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}`}

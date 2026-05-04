@@ -173,7 +173,11 @@ export const DashboardProjectSelector: React.FC<Props> = ({
             key: p.projectId || resolveProjectName(p.name),
             label: (
                 <Flex align="center" gap={12}>
-                    <Avatar size={24} style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name)).bg, fontSize: 10 }}>
+                    <Avatar
+                        size={24}
+                        src={p.projectImage || undefined}
+                        style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name)).bg, fontSize: 10 }}
+                    >
                         {getInitials(resolveProjectName(p.name))}
                     </Avatar>
                     <Flex vertical style={{ flex: 1, minWidth: 0 }}>
@@ -212,7 +216,11 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     border: `1px solid ${token.colorBorder}`,
                 }}
             >
-                <Avatar size={28} style={{ backgroundColor: color.bg, color: color.text, fontSize: 11 }}>
+                <Avatar
+                    size={28}
+                    src={selectedProject?.projectImage || undefined}
+                    style={{ backgroundColor: color.bg, color: color.text, fontSize: 11 }}
+                >
                     {selectedProject ? getInitials(resolveProjectName(selectedProject.name)) : <LuFolderOpen size={14} />}
                 </Avatar>
                 <Flex vertical style={{ minWidth: 0 }}>

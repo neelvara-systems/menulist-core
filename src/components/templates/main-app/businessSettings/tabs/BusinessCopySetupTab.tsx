@@ -26,6 +26,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
     const t = useTranslations('BusinessSettings');
     const { token } = theme.useToken();
     const form = Form.useFormInstance();
+    const tenantName = Form.useWatch('tenantName');
     const businessName = Form.useWatch('name');
     const businessCategory = Form.useWatch('businessCategory');
     const businessType = Form.useWatch('businessType');
@@ -92,7 +93,6 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                     publicPresence: {
                         accentColor: publicPresence?.accentColor || '',
                         descriptor: firstText(publicPresence?.descriptor),
-                        displayName: firstText(publicPresence?.displayName),
                         establishedYear: typeof publicPresence?.establishedYear === 'number' ? publicPresence.establishedYear : undefined,
                         googleMapsUrl: publicPresence?.googleMapsUrl || '',
                         googleReviewUrl: publicPresence?.googleReviewUrl || '',
@@ -116,6 +116,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                         getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
                         '',
                     ),
+                    tenantName: tenantName || storeDetails?.tenantName || '',
                 },
             });
 
@@ -131,7 +132,6 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                     [contentLanguage]: {
                         ...((form.getFieldValue('__localizedPublicPresenceDrafts') || {})[contentLanguage] || {}),
                         descriptor: generated.descriptor,
-                        displayName: generated.displayName,
                         knownFor: generated.knownFor,
                         specialNote: generated.specialNote,
                     },
@@ -152,7 +152,6 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 publicPresence: {
                     ...form.getFieldValue('publicPresence'),
                     descriptor: generated.descriptor,
-                    displayName: generated.displayName,
                     knownFor: generated.knownFor,
                     specialNote: generated.specialNote,
                 },

@@ -15,8 +15,8 @@ function findField(report: ReturnType<typeof computeBusinessCopyCoverageCore>, k
 export function assertBusinessCopyCoverageCore(): void {
     const legacyReport = computeBusinessCopyCoverageCore({
         fields: [
-            { key: 'displayName', value: 'Habibis Restaurant' },
-            { key: 'descriptor', value: '' },
+            { key: 'descriptor', value: 'Breakfast and coffee' },
+            { key: 'knownFor', value: '' },
         ],
         managedLanguages: ['en', 'hi', 'mr'],
         preferredLanguage: 'en',
@@ -24,12 +24,12 @@ export function assertBusinessCopyCoverageCore(): void {
 
     assert(legacyReport.referenceLanguage === 'en', 'Legacy string content should use the preferred language as source');
     assert(legacyReport.repairableGapCount === 2, 'Legacy string content should surface two missing translation gaps');
-    assert(findField(legacyReport, 'displayName').missingLanguages.join(',') === 'hi,mr', 'Legacy display name should be missing in hi and mr');
-    assert(findField(legacyReport, 'descriptor').status === 'empty', 'Empty source content should remain empty');
+    assert(findField(legacyReport, 'descriptor').missingLanguages.join(',') === 'hi,mr', 'Legacy descriptor should be missing in hi and mr');
+    assert(findField(legacyReport, 'knownFor').status === 'empty', 'Empty source content should remain empty');
 
     const driftReport = computeBusinessCopyCoverageCore({
         fields: [
-            { key: 'displayName', value: { mr: 'हबीबीज', en: 'Habibis' } },
+            { key: 'knownFor', value: { mr: 'स्मूदीज', en: 'Smoothies' } },
             { key: 'descriptor', value: { mr: 'नाश्ता, कॉफी आणि स्मूदीज' } },
         ],
         managedLanguages: ['en', 'hi', 'mr'],
@@ -37,12 +37,12 @@ export function assertBusinessCopyCoverageCore(): void {
     });
 
     assert(driftReport.referenceLanguage === 'en', 'Canonical English should remain the effective source language when present');
-    assert(findField(driftReport, 'displayName').missingLanguages.join(',') === 'hi', 'Existing english coverage should not be marked missing');
+    assert(findField(driftReport, 'knownFor').missingLanguages.join(',') === 'hi', 'Existing english coverage should not be marked missing');
     assert(findField(driftReport, 'descriptor').missingLanguages.join(',') === 'hi', 'Descriptor should treat English as canonical source and only repair the remaining target languages');
 
     const fullCoverageReport = computeBusinessCopyCoverageCore({
         fields: [
-            { key: 'displayName', value: { en: 'Habibis', hi: 'हबीबीज', mr: 'हबीबीज' } },
+            { key: 'descriptor', value: { en: 'Breakfast and coffee', hi: 'नाश्ता और कॉफी', mr: 'नाश्ता आणि कॉफी' } },
             { key: 'metaTitle', value: { en: 'Habibis | Breakfast', hi: 'हबीबीज | नाश्ता', mr: 'हबीबीज | नाश्ता' } },
         ],
         managedLanguages: ['en', 'hi', 'mr'],

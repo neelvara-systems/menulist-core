@@ -4,6 +4,7 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestam
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
+import { getStoreContextName } from "@lib/businessIdentity/names";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
@@ -731,7 +732,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
         }
 
         const storeInfo = {
-            name: storeData?.name || storeData?.businessName || 'Menu',
+            name: getStoreContextName(storeData, storeData?.businessName || 'Menu'),
             logoUrl: storeData?.logo || undefined,
             menuQrUrl: getDefaultProjectUrl(
                 storeData?.subdomain || storeId,

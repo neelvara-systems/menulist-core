@@ -1,5 +1,4 @@
 export type BusinessCopyLocalizedFieldKey =
-    | 'displayName'
     | 'descriptor'
     | 'knownFor'
     | 'specialNote'
@@ -16,12 +15,6 @@ export type BusinessCopyFieldConfig = {
 };
 
 const BUSINESS_COPY_FIELD_CONFIGS: BusinessCopyFieldConfig[] = [
-    {
-        key: 'displayName',
-        labelKey: 'displayName',
-        maxLength: 80,
-        readValue: (storeDetails) => storeDetails?.publicPresence?.displayName,
-    },
     {
         key: 'descriptor',
         labelKey: 'descriptor',
