@@ -8,6 +8,7 @@ import {
     MENU_MOODS,
     MenuLayout,
     MenuMood,
+    resolveMenuDesignConfig,
 } from '@config/designSystem';
 import useViewportInfo from '@hook/useViewportInfo';
 import { publishProject } from '@database/projects';
@@ -21,7 +22,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuLink2, LuPalette } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuLayoutGrid, LuLayoutList, LuLayoutPanelTop, LuLink2, LuPalette, LuSquare } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
@@ -74,6 +75,13 @@ const QUICK_PRESETS: QuickPreset[] = [
 
 const SERVICE_CHARGE_MAX_LENGTH = 140;
 
+const LAYOUT_ICONS: Record<MenuLayout, typeof LuLayoutList> = {
+    [MenuLayout.LIST]: LuLayoutList,
+    [MenuLayout.CARD]: LuSquare,
+    [MenuLayout.GRID]: LuLayoutGrid,
+    [MenuLayout.TABS]: LuLayoutPanelTop,
+};
+
 interface MobileDesignEditorScreenProps {
     onBack: () => void;
 }
@@ -109,12 +117,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
 
-    const menuMood = draftProjectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
-    const menuLayout = draftProjectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
-    const showItemPrices = draftProjectData?.config?.design?.menu?.showItemPrices ?? true;
-    const showImages = draftProjectData?.config?.design?.menu?.showImages ?? true;
-    const showCategoryIcons = draftProjectData?.config?.design?.menu?.showCategoryIcons ?? true;
-    const showCategoryTabs = draftProjectData?.config?.design?.menu?.showCategoryTabs ?? false;
+    const menuDesign = resolveMenuDesignConfig(draftProjectData?.config?.design?.menu);
+    const menuMood = menuDesign.mood;
+    const menuLayout = menuDesign.layout;
+    const showItemPrices = menuDesign.showItemPrices ?? true;
+    const showImages = menuDesign.showImages ?? true;
+    const showCategoryIcons = menuDesign.showCategoryIcons ?? true;
+    const showCategoryTabs = menuDesign.showCategoryTabs ?? false;
     const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
     const specialNoteLanguage = draftProjectData?.defaultLanguage || 'en';
     const specialNote = getLocalizedDraftText(draftProjectData?.menuSettings?.specialNote, specialNoteLanguage, '');
@@ -189,7 +198,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             return copy;
         });
     };
-    const handleLayoutChange = (layout: MenuLayout) => updateDesign(['config', 'design', 'menu', 'layout'], layout);
+    const handleLayoutChange = (layout: MenuLayout) => {
+        if (!compatibleLayouts.includes(layout)) return;
+        updateDesign(['config', 'design', 'menu', 'layout'], layout);
+    };
     const handleShowItemPricesChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showItemPrices'], show);
     const handleShowImagesChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showImages'], show);
     const handleShowCategoryIconsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryIcons'], show);
@@ -232,7 +244,12 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         if (!draftProjectData || isPublishing || !hasChanges) return;
         setIsPublishing(true);
         try {
-            const updated = await publishProject(draftProjectData);
+            const normalizedDraft = cloneProjectData(draftProjectData);
+            if (!normalizedDraft.config) normalizedDraft.config = {};
+            if (!normalizedDraft.config.design) normalizedDraft.config.design = {};
+            normalizedDraft.config.design.menu = resolveMenuDesignConfig(normalizedDraft.config.design.menu);
+
+            const updated = await publishProject(normalizedDraft);
             const updatedCopy = cloneProjectData(updated);
             setDraftProjectData(updatedCopy);
             setSavedProjectData(cloneProjectData(updatedCopy));
@@ -445,6 +462,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             const layoutKey = key as MenuLayout;
                             const isSelected = menuLayout === layoutKey;
                             const isCompatible = compatibleLayouts.includes(layoutKey);
+                            const Icon = LAYOUT_ICONS[layoutKey];
                             return (
                                 <Card
                                     key={key}
@@ -456,12 +474,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                                 ? token.colorPrimaryBg
                                                 : token.colorBgContainer,
                                         borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
+                                        cursor: isCompatible ? 'pointer' : 'not-allowed',
                                         opacity: !isCompatible ? 0.4 : 1,
                                         flex: '1 1 45%',
                                     }}
                                 >
                                     <Flex align="center" gap={6} vertical>
-                                        {isSelected ? <LuCheck color={token.colorPrimary} size={14} /> : null}
+                                        {isSelected ? <LuCheck color={token.colorPrimary} size={14} /> : <Icon color={token.colorTextTertiary} size={16} />}
                                         <Text strong>{config.label}</Text>
                                         <Text type="secondary">{config.description}</Text>
                                     </Flex>

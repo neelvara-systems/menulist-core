@@ -27,7 +27,16 @@ import { StoreDataType } from '@type/platform/store';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Project } from '../../types';
-import { DEFAULTS, getMoodWithBrandColor, MENU_LAYOUTS, MenuLayout, MenuMood, SPACING } from '../designSystem';
+import {
+    DEFAULTS,
+    getMoodWithBrandColor,
+    MENU_LAYOUTS,
+    MenuLayout,
+    MenuMood,
+    normalizeMenuLayout,
+    normalizeMenuMood,
+    SPACING
+} from '../designSystem';
 import BackToTop from '../output/BackToTop';
 import DecisionBlocks from '../output/DecisionBlocks';
 import FeedbackNudge from '../output/FeedbackNudge';
@@ -139,8 +148,10 @@ function MenuPageNew({
         window.scrollTo({ top: scrollY, behavior: 'auto' });
     }, []);
 
-    const moodConfig = getMoodWithBrandColor(mood, brandAccentColor);
-    const layoutConfig = MENU_LAYOUTS[layout];
+    const resolvedMood = normalizeMenuMood(mood);
+    const resolvedLayout = normalizeMenuLayout(layout, resolvedMood);
+    const moodConfig = getMoodWithBrandColor(resolvedMood, brandAccentColor);
+    const layoutConfig = MENU_LAYOUTS[resolvedLayout];
     const spacing = SPACING[moodConfig.spacing];
     const isMobile = activeDeviceType === 'mobile';
     const isTablet = activeDeviceType === 'tablet';
@@ -864,16 +875,19 @@ function MenuPageNew({
                                 display: 'flex',
                                 gap: 8,
                                 overflowX: 'auto',
+                                paddingTop: 'calc(8px + env(safe-area-inset-top))',
+                                paddingRight: 0,
                                 paddingBottom: 12,
+                                paddingLeft: 0,
                                 marginBottom: 16,
                                 borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 scrollbarWidth: 'none',
                                 msOverflowStyle: 'none',
                                 position: 'sticky',
-                                top: 'env(safe-area-inset-top)',
-                                zIndex: 20,
-                                background: backgroundImage ? 'inherit' : moodConfig.background,
-                                paddingTop: 'calc(8px + env(safe-area-inset-top))',
+                                top: 0,
+                                zIndex: 60,
+                                background: moodConfig.background,
+                                boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
                             }}
                             className="hide-scrollbar"
                         >
@@ -886,9 +900,15 @@ function MenuPageNew({
                                         element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                     }}
                                     style={{
-                                        padding: '8px 16px',
-                                        borderRadius: 20,
-                                        border: 'none',
+                                        minHeight: 44,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '10px 16px',
+                                        borderRadius: 999,
+                                        border: activeCategory?.id === cat.id
+                                            ? `1px solid ${moodConfig.accentColor}`
+                                            : `1px solid ${moodConfig.itemStyle.borderColor}`,
                                         background: activeCategory?.id === cat.id
                                             ? moodConfig.accentColor
                                             : moodConfig.itemStyle.background,
@@ -902,6 +922,7 @@ function MenuPageNew({
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
                                         flexShrink: 0,
+                                        WebkitTapHighlightColor: 'transparent',
                                     }}
                                 >
                                     <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
@@ -1022,7 +1043,12 @@ function MenuPageNew({
                                         key={category.id}
                                         id={`cat-${category.id}`}
                                         data-category-id={category.id}
-                                        style={{ marginBottom: spacing.category }}
+                                        style={{
+                                            marginBottom: spacing.category,
+                                            scrollMarginTop: !isDesktop && (showCategoryTabs || isTablet)
+                                                ? 'calc(78px + env(safe-area-inset-top))'
+                                                : 24,
+                                        }}
                                     >
                                         <header>
                                             <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
@@ -1296,16 +1322,16 @@ function MenuPageNew({
                 </div>
             </div>
 
-            {/* Category FAB - Only visible when tabs are scrolled out of view (not on desktop - has sidebar) */}
-                    <MenuFilters
-                        categories={allCategories}
-                        activeCategory={activeCategory}
-                        onSelectCategory={handleCategorySelect}
-                        activeLanguage={activeLanguage}
-                        showCategoryIcons={showCategoryIcons}
-                        moodConfig={moodConfig}
-                        hideFAB={isDesktop || categoryTabsVisible || (!showCategoryTabs && !isTablet)}
-                    />
+            {/* Category FAB - visible when sticky tabs are absent or have scrolled out of view */}
+            <MenuFilters
+                categories={allCategories}
+                activeCategory={activeCategory}
+                onSelectCategory={handleCategorySelect}
+                activeLanguage={activeLanguage}
+                showCategoryIcons={showCategoryIcons}
+                moodConfig={moodConfig}
+                hideFAB={isDesktop || (showTabsBar && categoryTabsVisible)}
+            />
 
             {/* G07 - Back to Top Control (Accessibility - Long Menu Navigation) */}
             <BackToTop scrollContainerRef={scrollContainerRef} moodConfig={moodConfig} />

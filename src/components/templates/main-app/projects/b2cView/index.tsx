@@ -10,6 +10,7 @@ import MainContentRenderer from "@template/website/mainContentRenderer";
 import { removeObjRef } from "@util/utils";
 import { Flex } from "antd";
 import { forwardRef, useContext, useEffect, useImperativeHandle, useState } from "react";
+import { resolveMenuDesignConfig } from "./designSystem";
 import { Project } from '../types';
 import PreviewModal from "./previewModal";
 import B2CSidebar from "./sidebar";
@@ -51,6 +52,9 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
         publish: async () => {
             dispatch(startLoader("Project publishing started"));
             const projectCopy: Project = removeObjRef(projectData);
+            if (projectCopy?.config?.design?.menu) {
+                projectCopy.config.design.menu = resolveMenuDesignConfig(projectCopy.config.design.menu);
+            }
 
             // Handle background images (convert base64 to Firebase Storage URL)
             const homeBg = projectCopy?.config?.design?.home?.backgroundImage;

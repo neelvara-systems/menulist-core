@@ -81,9 +81,9 @@ export default function OBPThemeToggle({
             suppressHydrationWarning
         >
             {mounted && theme === 'dark' ? (
-                <LuSun aria-hidden="true" size={16} />
+                <LuSun aria-hidden="true" size={19} strokeWidth={2.4} />
             ) : (
-                <LuMoon aria-hidden="true" size={16} />
+                <LuMoon aria-hidden="true" size={19} strokeWidth={2.4} />
             )}
         </button>
     );

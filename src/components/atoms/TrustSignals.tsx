@@ -25,6 +25,12 @@ interface TrustSignalsProps {
     timeZone?: string;
     /** When hours were last updated — used for confidence-gated rendering */
     hoursLastUpdatedAt?: any;
+    theme?: {
+        background: string;
+        mutedColor: string;
+        borderColor: string;
+        fontFamily: string;
+    };
 }
 
 /**
@@ -112,6 +118,7 @@ export default function TrustSignals({
     workingHours,
     timeZone,
     hoursLastUpdatedAt,
+    theme,
 }: TrustSignalsProps) {
     const labels = getOfferingLabels(businessType);
     const offeringLabel = labels.offeringTitle;
@@ -150,13 +157,25 @@ export default function TrustSignals({
 
     if (!hasMetaLine && !hasContextLine) return null;
 
+    const containerStyle: React.CSSProperties = {
+        ...CONTAINER_STYLE,
+        background: theme?.background || CONTAINER_STYLE.background,
+        color: theme?.mutedColor || CONTAINER_STYLE.color,
+        borderBottom: theme ? `1px solid ${theme.borderColor}` : undefined,
+        fontFamily: theme?.fontFamily || CONTAINER_STYLE.fontFamily,
+    };
+    const separatorStyle = {
+        ...SEPARATOR_STYLE,
+        color: theme?.borderColor || SEPARATOR_STYLE.color,
+    };
+
     return (
-        <div style={CONTAINER_STYLE}>
+        <div style={containerStyle}>
             {/* Row 1: Location · Status */}
             {hasMetaLine && (
                 <div style={META_ROW_STYLE}>
                     {locationText && <span>{locationText}</span>}
-                    {locationText && statusText && <span style={SEPARATOR_STYLE}>·</span>}
+                    {locationText && statusText && <span style={separatorStyle}>·</span>}
                     {statusText && (
                         <span style={{ color: statusColor }}>
                             {statusText}{statusSecondary ? ` · ${statusSecondary}` : ''}
@@ -170,7 +189,7 @@ export default function TrustSignals({
                     <span>{offeringLabel}</span>
                     {freshnessText && (
                         <>
-                            <span style={SEPARATOR_STYLE}>·</span>
+                            <span style={separatorStyle}>·</span>
                             <span>{freshnessText}</span>
                         </>
                     )}

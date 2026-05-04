@@ -13,8 +13,8 @@
  *   - 0 projects → "View Menu" fallback (safety rail; hasMenu gating in
  *     OBPContent normally prevents this branch)
  *   - 1 project  → single big CTA reading "View [projectName]"
- *   - ≥2 projects → default project as big CTA "View [defaultName]" +
- *     secondary projects as smaller cards below
+ *   - ≥2 projects → equal image-led cards so multiple menus do not imply a
+ *     false primary/secondary hierarchy.
  */
 
 import { getSessionId } from '@lib/analytics/session';
@@ -130,10 +130,10 @@ export default function OBPMenuCTA({
         );
     }
 
-    const [primary, ...secondary] = projects;
+    const [primary] = projects;
 
-    return (
-        <>
+    if (projects.length === 1) {
+        return (
             <a
                 href={withOBPEntrySource(primary.url)}
                 className={styles.menuButton}
@@ -153,29 +153,37 @@ export default function OBPMenuCTA({
                     <span className={styles.menuButtonLabel}>{primary.label}</span>
                 </span>
             </a>
-            {secondary.length > 0 && (
-                <div className={styles.secondaryProjects}>
-                    {secondary.map((p) => (
-                        <a
-                            key={p.slug}
-                            href={withOBPEntrySource(p.url)}
-                            className={styles.secondaryProjectCard}
-                            onClick={(event) => trackBeforeNavigate({
-                                event,
-                                href: withOBPEntrySource(p.url),
-                                track: () => trackSecondary(p),
-                            })}
-                        >
-                            {p.projectImage ? (
-                                <span className={styles.secondaryProjectThumb}>
-                                    <img alt={p.name} src={p.projectImage} />
-                                </span>
-                            ) : null}
-                            <span className={styles.secondaryProjectName}>{p.label}</span>
-                        </a>
-                    ))}
-                </div>
-            )}
-        </>
+        );
+    }
+
+    return (
+        <div className={styles.projectCards}>
+            {projects.map((project, index) => {
+                const href = withOBPEntrySource(project.url);
+                return (
+                    <a
+                        key={project.slug}
+                        href={href}
+                        className={styles.projectCard}
+                        onClick={(event) => trackBeforeNavigate({
+                            event,
+                            href,
+                            track: index === 0 ? trackPrimary : () => trackSecondary(project),
+                        })}
+                    >
+                        {project.projectImage ? (
+                            <span className={styles.projectCardThumb}>
+                                <img alt={project.name} src={project.projectImage} />
+                            </span>
+                        ) : (
+                            <span className={styles.projectCardThumbFallback} aria-hidden="true">
+                                {project.name.trim().charAt(0).toUpperCase() || 'M'}
+                            </span>
+                        )}
+                        <span className={styles.projectCardName}>{project.label}</span>
+                    </a>
+                );
+            })}
+        </div>
     );
 }

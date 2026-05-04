@@ -152,6 +152,11 @@ export enum MenuLayout {
     TABS = 'tabs',
 }
 
+const LEGACY_MENU_MOOD_MAP: Record<string, MenuMood> = {
+    elegant: MenuMood.PREMIUM,
+    vibrant: MenuMood.BOLD,
+};
+
 export interface MenuMoodConfig {
     label: string;
     description: string;
@@ -525,6 +530,51 @@ export function getCompatibleLayouts(mood: MenuMood): MenuLayout[] {
 
 export function getDefaultLayout(mood: MenuMood): MenuLayout {
     return MOOD_LAYOUT_COMPATIBILITY[mood][0];
+}
+
+export function normalizeMenuMood(value: unknown): MenuMood {
+    if (typeof value !== 'string') return DEFAULTS.menu.mood;
+
+    const normalizedValue = value.toLowerCase();
+    if (normalizedValue in MENU_MOODS) {
+        return normalizedValue as MenuMood;
+    }
+
+    return LEGACY_MENU_MOOD_MAP[normalizedValue] || DEFAULTS.menu.mood;
+}
+
+export function normalizeMenuLayout(value: unknown, mood: MenuMood): MenuLayout {
+    const compatibleLayouts = getCompatibleLayouts(mood);
+
+    if (typeof value === 'string') {
+        const normalizedValue = value.toLowerCase() as MenuLayout;
+        if (normalizedValue in MENU_LAYOUTS && compatibleLayouts.includes(normalizedValue)) {
+            return normalizedValue;
+        }
+    }
+
+    return getDefaultLayout(mood);
+}
+
+export interface ResolvedMenuDesignConfig extends Record<string, any> {
+    mood: MenuMood;
+    layout: MenuLayout;
+    backgroundImage?: string;
+    showItemPrices?: boolean;
+    showImages?: boolean;
+    showCategoryIcons?: boolean;
+    showCategoryTabs?: boolean;
+}
+
+export function resolveMenuDesignConfig(menuConfig: Record<string, any> | null | undefined): ResolvedMenuDesignConfig {
+    const mood = normalizeMenuMood(menuConfig?.mood);
+    const layout = normalizeMenuLayout(menuConfig?.layout, mood);
+
+    return {
+        ...(menuConfig || {}),
+        mood,
+        layout,
+    };
 }
 
 // ============================================

@@ -1,4 +1,4 @@
-import { DEFAULTS, getHomeStyleWithBrandColor } from "@template/main-app/projects/b2cView/designSystem"
+import { DEFAULTS, getHomeStyleWithBrandColor, resolveMenuDesignConfig } from "@template/main-app/projects/b2cView/designSystem"
 import DeviceFrame from "@template/main-app/projects/b2cView/deviceFrame"
 import HomePageNew from "@template/main-app/projects/b2cView/homePage/homePageNew"
 import MenuPageNew from "@template/main-app/projects/b2cView/menuPage/menuPageNew"
@@ -42,6 +42,7 @@ function MainContentRenderer({
 
   const homeStyle = projectData?.config?.design?.home?.style || DEFAULTS.home.style;
   const brandAccentColor = projectData?.config?.design?.brand?.accentColor;
+  const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
 
   // Get style configs with brand color applied
   const homeStyleConfig = getHomeStyleWithBrandColor(homeStyle, brandAccentColor);
@@ -67,14 +68,14 @@ function MainContentRenderer({
         <MenuPageNew
           activeDeviceType={activeDeviceType}
           setActivePage={setActivePage}
-          mood={projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood}
-          layout={projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout}
+          mood={menuDesign.mood}
+          layout={menuDesign.layout}
           brandAccentColor={brandAccentColor}
-          backgroundImage={projectData?.config?.design?.menu?.backgroundImage}
-          showItemPrices={projectData?.config?.design?.menu?.showItemPrices ?? true}
-          showImages={projectData?.config?.design?.menu?.showImages ?? true}
-          showCategoryIcons={projectData?.config?.design?.menu?.showCategoryIcons ?? true}
-          showCategoryTabs={projectData?.config?.design?.menu?.showCategoryTabs ?? false}
+          backgroundImage={menuDesign.backgroundImage}
+          showItemPrices={menuDesign.showItemPrices ?? true}
+          showImages={menuDesign.showImages ?? true}
+          showCategoryIcons={menuDesign.showCategoryIcons ?? true}
+          showCategoryTabs={menuDesign.showCategoryTabs ?? false}
           activeLanguage={activeLanguage}
           projectData={projectData}
           storeDetails={storeDetails}

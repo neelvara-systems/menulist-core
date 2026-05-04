@@ -193,10 +193,11 @@ function ClientMenuRenderer({
             <FacebookPixel storeDetails={storeDetails} />
             <EnhancedEcommerce storeDetails={storeDetails} />
 
-            {/* Store Status Badge - Feature #2A
+            {/* Store Status Urgency Badge - Feature #2A
                 When ENABLE_OUTPUT_CONTROL is ON, TrustSignals (rendered above by page.tsx)
                 becomes the single hours truth surface. StoreStatusBadge is hidden to avoid
-                two competing hours displays on the same screen.
+                two competing hours displays on the same screen. When output control is off,
+                keep the fixed badge for the 5-minute open/close boundary only.
                 @see __docs__/constitution/18-silent-correction-doctrine.md */}
             {FEATURE_FLAGS.ENABLE_HOURS_STATUS_DISPLAY && !FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL && (
                 <div
@@ -211,6 +212,8 @@ function ClientMenuRenderer({
                     <StoreStatusBadge
                         workingHours={storeDetails?.workingHours}
                         timezone={storeDetails?.timeZone}
+                        urgentOnly
+                        urgencyWindowMinutes={5}
                     />
                 </div>
             )}

@@ -28,7 +28,7 @@ const BrandColorPicker: React.FC<BrandColorPickerProps> = ({
     currentMood,
 }) => {
     const isEnabled = !!value;
-    const defaultMoodColor = MENU_MOODS[currentMood].accentColor;
+    const defaultMoodColor = MENU_MOODS[currentMood]?.accentColor || MENU_MOODS[MenuMood.CLEAN].accentColor;
     const activeColor = value || defaultMoodColor;
 
     const handleToggle = (enabled: boolean) => {

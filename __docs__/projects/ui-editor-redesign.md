@@ -168,17 +168,19 @@ Confident & eye-catching
 | Before                                                            | After                                               |
 | ----------------------------------------------------------------- | --------------------------------------------------- |
 | Theme Style + Layout Style + Page Styles (3 overlapping concepts) | **Menu Mood** + **Menu Layout** (2 clear decisions) |
-| 5+ theme options                                                  | 3 mood presets                                      |
+| 5+ theme options                                                  | 5 controlled mood presets                           |
 | 4 layout options                                                  | 4 layout options (keep)                             |
 | Advanced controls visible                                         | Hidden under "Advanced"                             |
 
-### Menu Mood Options (MAX 3)
+### Menu Mood Options (MAX 5)
 
 | Mood                | Best For                   | Internal Behavior                                |
 | ------------------- | -------------------------- | ------------------------------------------------ |
 | **Clean** (Default) | Fast service, high-traffic | High readability, tight spacing, strong contrast |
-| **Elegant**         | Fine dining, premium       | More whitespace, softer contrast, serif headline |
-| **Vibrant**         | Bars, youth brands         | Strong accent colors, higher visual energy       |
+| **Warm**            | Family restaurants         | Warm neutrals, comfortable spacing, limited food-forward imagery |
+| **Premium**         | Fine dining, premium       | More whitespace, softer contrast, serif headline |
+| **Bold**            | Bars, youth brands         | Strong accent colors, higher visual energy       |
+| **Fast**            | QSRs, food courts          | Dense scan-first layout, minimal decorative weight |
 
 ### Menu Layout Options (MAX 4)
 
@@ -195,11 +197,13 @@ Confident & eye-catching
 
 | Mood    | Allowed Layouts |
 | ------- | --------------- |
-| Clean   | List, Tabs      |
-| Elegant | List, Card      |
-| Vibrant | Card, Grid      |
+| Clean   | List, Grid, Tabs |
+| Warm    | List, Card, Grid, Tabs |
+| Premium | List, Card, Tabs |
+| Bold    | Card, Grid, Tabs |
+| Fast    | List, Tabs |
 
-If layout disabled: Grey out with tooltip "Works best with Elegant mood"
+If layout disabled: Grey out with tooltip explaining it does not fit the selected mood.
 
 ### What Gets Killed (Menu Page)
 
@@ -242,7 +246,7 @@ interface ProjectStyles {
     style: 'simple' | 'premium' | 'bold';
   };
   menu: {
-    mood: 'clean' | 'elegant' | 'vibrant';
+    mood: 'clean' | 'warm' | 'premium' | 'bold' | 'fast';
     layout: 'list' | 'card' | 'grid' | 'tabs';
   };
   brand?: {
@@ -275,12 +279,12 @@ interface ProjectStyles {
 | ------------------- | -------- |
 | Modern              | Clean    |
 | Minimal             | Clean    |
-| Classic             | Elegant  |
-| Modern Elegance     | Elegant  |
-| Elegant Gold        | Elegant  |
-| Diamond Luxe        | Elegant  |
-| Modern Victorian    | Elegant  |
-| Bold/Vibrant themes | Vibrant  |
+| Classic             | Premium  |
+| Modern Elegance     | Premium  |
+| Elegant Gold        | Premium  |
+| Diamond Luxe        | Premium  |
+| Modern Victorian    | Premium  |
+| Bold/Vibrant themes | Bold     |
 
 ---
 
@@ -326,7 +330,7 @@ If people feel forced to tweak → we failed.
 
 ### Phase 2: Menu Page (Priority: HIGH)
 
-- [ ] Create `MenuMood` enum: `clean`, `elegant`, `vibrant`
+- [ ] Create `MenuMood` enum: `clean`, `warm`, `premium`, `bold`, `fast`
 - [ ] Create internal style mappings for each mood
 - [ ] Replace Theme Style/Page Styles with Mood selector
 - [ ] Keep Layout selector (clean up to 4 options)
@@ -483,7 +487,7 @@ if (itemBg && itemBg.includes('base64')) {
 | **Calm, not flashy**   | Solid backgrounds, no gradients/glow     |
 | **Speed is design**    | No heavy animations, 150ms transitions   |
 | **Mobile-first**       | Tailwind responsive classes              |
-| **Opinionated taste**  | 3 moods, 4 layouts, no granular controls |
+| **Opinionated taste**  | 5 moods, 4 layouts, no granular controls |
 | **Professional trust** | Clean typography, clear hierarchy        |
 
 ### What We Removed (Simplification)
@@ -524,19 +528,31 @@ if (itemBg && itemBg.includes('base64')) {
 - Accent used minimally (underlines, outlines, focus)
 - Inter font family
 
-**Elegant:**
+**Warm:**
+
+- Warm light background (`#FEF7ED` example)
+- Accent used for friendly highlights
+- Inter font family
+
+**Premium:**
 
 - Dark/navy background (`#0f172a` example)
 - Accent auto-desaturated and softened
 - Thin strokes and icon highlights only
 - Playfair Display for headings
 
-**Vibrant:**
+**Bold:**
 
 - Dark background (`#000000` example)
 - Accent more visible
 - Filled primary CTA allowed
 - Poppins font family
+
+**Fast:**
+
+- Light utility background (`#f5f5f5` example)
+- Dense spacing and prominent prices when price display is enabled
+- Inter font family
 
 ### Responsive Breakpoints
 
@@ -582,7 +598,7 @@ if (itemBg && itemBg.includes('base64')) {
 
 - [x] `HomeStyle` enum: `simple`, `premium`, `bold`
 - [x] `HOME_STYLES` config with all internal styling tokens
-- [x] `MenuMood` enum: `clean`, `elegant`, `vibrant`
+- [x] `MenuMood` enum: `clean`, `warm`, `premium`, `bold`, `fast`
 - [x] `MENU_MOODS` config with all internal styling tokens
 - [x] `MenuLayout` enum: `list`, `card`, `grid`, `tabs`
 - [x] `MENU_LAYOUTS` config
@@ -594,7 +610,7 @@ if (itemBg && itemBg.includes('base64')) {
 **Editor UI Components (Dashboard - Ant Design):**
 
 - [x] `HomeStyleSelector.tsx` - 3 style cards (Simple/Premium/Bold)
-- [x] `MenuMoodSelector.tsx` - 3 mood cards (Clean/Elegant/Vibrant)
+- [x] `MenuMoodSelector.tsx` - 5 mood cards (Clean/Warm/Premium/Bold/Fast)
 - [x] `MenuLayoutSelector.tsx` - 4 layout cards with compatibility tooltips
 - [x] `homePageSettingsNew.tsx` - Simplified home settings with 1 decision
 - [x] `menuPageSettingsNew.tsx` - Simplified menu settings with 2 decisions

@@ -5,7 +5,10 @@
  * @see __docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md
  */
 
-export { getStoreStatus, useStoreStatus } from "./hoursEngine";
+export {
+    getMinutesUntilStoreStatusChange,
+    getStoreStatus,
+    useStoreStatus,
+} from "./hoursEngine";
 export type { StoreStatus } from "./hoursEngine";
 export { logHoursUpdated } from "./hoursLogger";
-

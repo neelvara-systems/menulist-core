@@ -12,9 +12,10 @@ import { useTranslations } from 'next-intl';
 import { LuFileText, LuImage, LuList, LuSettings2 } from 'react-icons/lu';
 import { Project } from '../../types';
 import {
-    DEFAULTS,
+    getCompatibleLayouts,
     MenuLayout,
-    MenuMood
+    MenuMood,
+    resolveMenuDesignConfig
 } from '../designSystem';
 import MenuLayoutSelector from '../designSystem/MenuLayoutSelector';
 import MenuMoodSelector from '../designSystem/MenuMoodSelector';
@@ -32,12 +33,13 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     setProjectData,
 }) => {
     const t = useTranslations('MobileDesignEditor');
-    const currentMood = projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood;
-    const currentLayout = projectData?.config?.design?.menu?.layout || DEFAULTS.menu.layout;
-    const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
-    const showImages = projectData?.config?.design?.menu?.showImages ?? true;
-    const showCategoryIcons = projectData?.config?.design?.menu?.showCategoryIcons ?? true;
-    const showCategoryTabs = projectData?.config?.design?.menu?.showCategoryTabs ?? false;
+    const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
+    const currentMood = menuDesign.mood;
+    const currentLayout = menuDesign.layout;
+    const showItemPrices = menuDesign.showItemPrices ?? true;
+    const showImages = menuDesign.showImages ?? true;
+    const showCategoryIcons = menuDesign.showCategoryIcons ?? true;
+    const showCategoryTabs = menuDesign.showCategoryTabs ?? false;
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
     const specialNoteLanguage = projectData?.defaultLanguage || 'en';
     const specialNote = getLocalizedDraftText(projectData?.menuSettings?.specialNote, specialNoteLanguage, '');
@@ -46,6 +48,11 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     const SERVICE_CHARGE_MAX_LENGTH = 140;
 
     const handleMoodChange = (mood: MenuMood) => {
+        const compatibleLayouts = getCompatibleLayouts(mood);
+        const nextLayout = compatibleLayouts.includes(currentLayout)
+            ? currentLayout
+            : compatibleLayouts[0];
+
         setProjectData({
             ...projectData,
             config: {
@@ -55,6 +62,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     menu: {
                         ...projectData?.config?.design?.menu,
                         mood,
+                        layout: nextLayout,
                     },
                 },
             },
@@ -62,6 +70,8 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     };
 
     const handleLayoutChange = (layout: MenuLayout) => {
+        if (!getCompatibleLayouts(currentMood).includes(layout)) return;
+
         setProjectData({
             ...projectData,
             config: {
@@ -188,6 +198,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             <MenuLayoutSelector
                 value={currentLayout}
                 onChange={handleLayoutChange}
+                currentMood={currentMood}
             />
 
             <Divider style={{ margin: '4px 0' }} />

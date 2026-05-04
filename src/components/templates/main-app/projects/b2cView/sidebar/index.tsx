@@ -5,7 +5,7 @@ import { Button, Card, Divider, Flex, Segmented, theme } from 'antd'
 import { useContext, useMemo, useState } from 'react';
 import ShareLinkCard from '../../../ShareLinkCard';
 import AIDefaultsModal from '../../editorView/AIDefaultsModal';
-import { DEFAULTS } from '../designSystem'
+import { normalizeMenuMood } from '../designSystem'
 import BrandColorPicker from '../designSystem/BrandColorPicker'
 import HomePageSettingsNew from '../homePage/homePageSettingsNew'
 import MenuPageSettingsNew from '../menuPage/menuPageSettingsNew'
@@ -108,7 +108,7 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: 
                                 },
                             });
                         }}
-                        currentMood={projectData?.config?.design?.menu?.mood || DEFAULTS.menu.mood}
+                        currentMood={normalizeMenuMood(projectData?.config?.design?.menu?.mood)}
                     />
                 </Flex>
             </Card>

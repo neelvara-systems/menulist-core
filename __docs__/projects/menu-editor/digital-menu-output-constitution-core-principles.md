@@ -125,15 +125,17 @@ Every output must serve **decision-making under constraint**.
 
 ---
 
-## ARTICLE V — PRICING TRANSPARENCY (NON-NEGOTIABLE)
+## ARTICLE V — PRICING TRANSPARENCY
 
 **5.1 Price Must Be Instantly Visible**
 
-- No scrolling, tapping, or modal-opening to discover cost.
+- Prices are visible by default.
+- If item price display is enabled, no scrolling, tapping, or modal-opening is allowed to discover cost.
+- If item price display is intentionally disabled at menu level, price-driven UI and price analytics fields must also stay disabled.
 
 **5.2 Comparable Formatting**
 
-- Prices must be aligned to support comparison.
+- When prices are shown, they must be aligned to support comparison.
 - Inconsistent placement signals chaos.
 
 **5.3 Modifier Honesty**

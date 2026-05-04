@@ -8,7 +8,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Card, Flex, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { LuCheck, LuFlame, LuSparkles, LuZap } from 'react-icons/lu';
+import { LuCheck, LuFlame, LuGauge, LuSparkles, LuZap } from 'react-icons/lu';
 import { MENU_MOODS, MenuMood } from './index';
 
 const { Text } = Typography;
@@ -20,8 +20,10 @@ interface MenuMoodSelectorProps {
 
 const MOOD_ICONS: Record<string, typeof LuSparkles> = {
     'clean': LuSparkles,
-    'elegant': LuZap,
-    'vibrant': LuFlame,
+    'warm': LuFlame,
+    'premium': LuSparkles,
+    'bold': LuZap,
+    'fast': LuGauge,
 };
 
 const MenuMoodSelector: React.FC<MenuMoodSelectorProps> = ({ value, onChange }) => {
@@ -50,6 +52,8 @@ const MenuMoodSelector: React.FC<MenuMoodSelectorProps> = ({ value, onChange }) 
                             <Card
                                 hoverable
                                 onClick={() => onChange(moodKey)}
+                                aria-pressed={isSelected}
+                                role="button"
                                 style={{
                                     cursor: 'pointer',
                                     height: '100%',

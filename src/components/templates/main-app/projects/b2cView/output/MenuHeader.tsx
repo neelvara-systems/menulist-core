@@ -70,7 +70,17 @@ function MenuHeader({
     return (
         <header
             className="flex items-center justify-between py-2 md:py-3 mb-2"
-            style={{ borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}` }}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: isMobile ? '8px 0 10px' : '12px 0',
+                marginBottom: 10,
+                borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                fontFamily: moodConfig.bodyFont,
+                color: moodConfig.bodyColor,
+            }}
         >
             {/* Logo — decorative only.
                 G-02 (§11 PUBLIC-ROUTING-DOCTRINE): HomePageNew intro screen is
@@ -78,31 +88,77 @@ function MenuHeader({
                 triggers a HOME transition. Header-logo destination for the public
                 surface is handled separately per D-12 when that gap ships.
                 Editor preview drives activePage via the sidebar tabs. */}
-            <div className="flex items-center gap-2">
+            <div
+                className="flex items-center gap-2"
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flex: '0 0 auto',
+                    minWidth: 0,
+                }}
+            >
                 <img
                     src={LOGO_SMALL}
                     alt="Logo"
                     style={{
                         height: isMobile ? 24 : 32,
                         width: 'auto',
+                        display: 'block',
                     }}
                 />
             </div>
 
             {/* Live Indicator - shows "🟢 Live · updated just now" */}
-            <LiveIndicator modifiedOn={(projectData as any)?.modifiedOn} style={{ fontSize: isMobile ? 10 : 12 }} />
+            <div
+                style={{
+                    flex: '1 1 auto',
+                    minWidth: 0,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                }}
+            >
+                <LiveIndicator
+                    modifiedOn={(projectData as any)?.modifiedOn}
+                    style={{
+                        maxWidth: '100%',
+                        fontSize: isMobile ? 11 : 12,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}
+                />
+            </div>
 
-            <div className="flex items-center gap-3">
+            <div
+                className="flex items-center gap-3"
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    flex: '0 0 auto',
+                }}
+            >
                 {/* Language Selector */}
                 {hasMultipleLanguages && (
-                    <div className="relative">
+                    <div className="relative" style={{ position: 'relative' }}>
                         <button
                             onClick={() => setShowLangDropdown(!showLangDropdown)}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm min-h-[44px]"
                             style={{
+                                minHeight: 44,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '8px 12px',
+                                borderRadius: 10,
                                 background: moodConfig.itemStyle.background,
                                 color: moodConfig.bodyColor,
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                fontFamily: moodConfig.bodyFont,
+                                fontSize: 14,
+                                cursor: 'pointer',
                             }}
                             aria-label="Select language"
                             aria-expanded={showLangDropdown}
@@ -116,13 +172,26 @@ function MenuHeader({
                             <>
                                 <div
                                     className="fixed inset-0 z-10"
+                                    style={{
+                                        position: 'fixed',
+                                        inset: 0,
+                                        zIndex: 9998,
+                                    }}
                                     onClick={() => setShowLangDropdown(false)}
                                 />
                                 <div
                                     className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-20 min-w-[120px]"
                                     style={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: 'calc(100% + 4px)',
+                                        zIndex: 9999,
+                                        minWidth: 140,
+                                        padding: 4,
+                                        borderRadius: 10,
                                         background: moodConfig.background,
                                         border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                        boxShadow: '0 16px 32px rgba(0, 0, 0, 0.2)',
                                     }}
                                 >
                                     {projectData.languages?.map((lang: string) => {
@@ -137,9 +206,20 @@ function MenuHeader({
                                                 }}
                                                 className="w-full text-left px-3 py-2.5 min-h-[44px] flex items-center gap-2 hover:opacity-80 transition-opacity"
                                                 style={{
+                                                    width: '100%',
+                                                    minHeight: 44,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 8,
+                                                    padding: '10px 12px',
+                                                    border: 0,
+                                                    borderRadius: 8,
                                                     color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,
                                                     fontWeight: isActive ? 600 : 400,
                                                     background: isActive ? `${moodConfig.accentColor}10` : 'transparent',
+                                                    fontFamily: moodConfig.bodyFont,
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left',
                                                 }}
                                                 dir={langInfo?.direction || 'ltr'}
                                             >

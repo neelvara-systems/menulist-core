@@ -22,6 +22,7 @@
 
 import TempStatusBanner from "@atoms/TempStatusBanner";
 import TrustSignals from "@atoms/TrustSignals";
+import { getMoodWithBrandColor, resolveMenuDesignConfig } from "@config/designSystem";
 import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
@@ -1509,6 +1510,22 @@ async function MenuContent({
     );
     const menuName = getLocalizedText(projectMetadata?.name, projectLanguage, getPrimaryLocalizedLanguage(projectMetadata?.name, projectLanguage), 'Menu');
     const breadcrumbJsonLd = buildBreadcrumbList(storeName, baseUrl, menuName);
+    const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
+    const menuMoodConfig = getMoodWithBrandColor(
+        menuDesign.mood,
+        projectData?.config?.design?.brand?.accentColor,
+    );
+    const menuHeaderTheme = {
+        background: menuMoodConfig.background,
+        textColor: menuMoodConfig.bodyColor,
+        headingColor: menuMoodConfig.headingColor,
+        mutedColor: menuMoodConfig.descriptionColor || menuMoodConfig.bodyColor,
+        borderColor:
+            menuMoodConfig.categoryStyle.dividerColor ||
+            menuMoodConfig.categoryStyle.borderColor ||
+            menuMoodConfig.itemStyle.borderColor,
+        fontFamily: menuMoodConfig.bodyFont,
+    };
 
     // Customer App (PWA) schema — tells search engines this menu is also an
     // installable WebApplication. Gated on the global + per-store PWA flag so
@@ -1585,6 +1602,7 @@ async function MenuContent({
                         : undefined
                 }
                 projectName={menuName}
+                theme={menuHeaderTheme}
             />
             {/* ── Menu Trust Signals — location · status · offering · freshness ── */}
             {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
@@ -1595,6 +1613,7 @@ async function MenuContent({
                     city={storeDetails?.city || null}
                     workingHours={storeDetails?.workingHours}
                     timeZone={storeDetails?.timeZone}
+                    theme={menuHeaderTheme}
                 />
             )}
             <ClientMenuRenderer

@@ -91,16 +91,18 @@ Only **design constraints baked into the system**.
 
 **Editor enforces:**
 
-- Price must appear in list view
-- Price cannot be hidden inside modals
-- Price cannot be moved below images
+- Item prices are visible by default
+- When item price display is enabled, price must appear in list view
+- When item price display is enabled, price cannot be hidden inside modals
+- When item price display is enabled, price cannot be moved below images
+- When item price display is disabled, price-driven recommendation blocks and analytics payload price fields must be disabled consistently
 
 **Owner cannot:**
 
-- Hide prices for “premium effect”
+- Partially hide prices in one view while showing them in another
 - Use “Market Price” without explanation
 
-> If customer must hunt for price → blocked.
+> If the menu shows prices, customers must never hunt for them.
 
 ---
 

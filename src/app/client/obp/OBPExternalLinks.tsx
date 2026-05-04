@@ -4,7 +4,7 @@ import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
 import type { ElementType } from 'react';
-import { LuGlobe, LuStar } from 'react-icons/lu';
+import { LuGlobe } from 'react-icons/lu';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import styles from './obp.module.scss';
 
@@ -116,7 +116,6 @@ export default function OBPExternalLinks({
                         track: () => handleClick('google_review'),
                     })}
                 >
-                    <LuStar aria-hidden="true" size={14} />
                     {googleReviewLabel}
                 </a>
             ) : null}

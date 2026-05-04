@@ -31,12 +31,18 @@ interface MenuBreadcrumbProps {
      * `/{outletSlug}` to show the brand-level "up" path.
      */
     projectName?: string;
+    theme?: {
+        background: string;
+        textColor: string;
+        headingColor: string;
+        borderColor: string;
+        fontFamily: string;
+    };
 }
 
-const linkStyle: React.CSSProperties = {
+const baseLinkStyle: React.CSSProperties = {
     color: 'inherit',
     textDecoration: 'none',
-    opacity: 0.7,
 };
 
 const separatorStyle: React.CSSProperties = {
@@ -54,9 +60,19 @@ export default function MenuBreadcrumb({
     outletName,
     outletSlug,
     projectName,
+    theme,
 }: MenuBreadcrumbProps) {
     const showOutletNode = Boolean(outletName && outletSlug);
     const hasProject = Boolean(projectName);
+    const linkStyle: React.CSSProperties = {
+        ...baseLinkStyle,
+        color: theme?.textColor || 'inherit',
+        opacity: 0.76,
+    };
+    const activeStyle: React.CSSProperties = {
+        ...currentStyle,
+        color: theme?.headingColor || 'inherit',
+    };
 
     // Outlet-OBP variant (T2-N-05): when no projectName is provided and we
     // have an outlet, the outlet itself is the terminal node.
@@ -78,12 +94,14 @@ export default function MenuBreadcrumb({
                 padding: '10px 16px',
                 fontSize: 13,
                 lineHeight: 1.4,
-                color: '#333',
-                background: 'transparent',
+                color: theme?.textColor || '#333',
+                background: theme?.background || 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
                 flexWrap: 'wrap',
+                borderBottom: theme ? `1px solid ${theme.borderColor}` : undefined,
+                fontFamily: theme?.fontFamily || undefined,
             }}
         >
             {/* Business node — always links to OBP root */}
@@ -95,7 +113,7 @@ export default function MenuBreadcrumb({
                 <>
                     <span style={separatorStyle} aria-hidden="true">/</span>
                     {outletIsTerminal ? (
-                        <span aria-current="page" style={currentStyle}>
+                        <span aria-current="page" style={activeStyle}>
                             {outletName}
                         </span>
                     ) : (
@@ -109,7 +127,7 @@ export default function MenuBreadcrumb({
             {hasProject && (
                 <>
                     <span style={separatorStyle} aria-hidden="true">/</span>
-                    <span aria-current="page" style={currentStyle}>
+                    <span aria-current="page" style={activeStyle}>
                         {projectName}
                     </span>
                 </>

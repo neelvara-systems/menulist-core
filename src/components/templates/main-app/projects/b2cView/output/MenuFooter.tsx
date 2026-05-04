@@ -160,8 +160,15 @@ export default function MenuFooter({
         <footer
             className="py-6 px-4 text-center border-t"
             style={{
+                width: '100%',
+                boxSizing: 'border-box',
                 borderColor: moodConfig.itemStyle.borderColor,
-                marginTop: '24px',
+                borderTop: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                marginTop: '28px',
+                padding: '24px 0 calc(24px + env(safe-area-inset-bottom))',
+                textAlign: 'left',
+                fontFamily: moodConfig.bodyFont,
+                color: moodConfig.bodyColor,
             }}
             aria-label="Business information"
         >
@@ -176,11 +183,13 @@ export default function MenuFooter({
                 aria-label={`${businessName} — business home`}
                 style={{
                     color: moodConfig.headingColor,
-                    fontWeight: 600,
-                    fontSize: '14px',
+                    fontWeight: 700,
+                    fontSize: '18px',
+                    lineHeight: 1.25,
                     fontFamily: moodConfig.headingFont,
                     textDecoration: 'none',
                     display: 'inline-block',
+                    overflowWrap: 'anywhere',
                 }}
             >
                 {businessName}
@@ -189,9 +198,11 @@ export default function MenuFooter({
             {fullAddress && (
                 <p style={{
                     color: moodConfig.bodyColor,
-                    fontSize: '13px',
-                    margin: '4px 0 0 0',
+                    fontSize: '14px',
+                    lineHeight: 1.45,
+                    margin: '8px 0 0 0',
                     fontFamily: moodConfig.bodyFont,
+                    opacity: 0.82,
                 }}>
                     {fullAddress}
                 </p>
@@ -201,9 +212,9 @@ export default function MenuFooter({
                 <div style={{
                     display: 'flex',
                     flexWrap: 'wrap',
-                    justifyContent: 'center',
+                    justifyContent: 'flex-start',
                     gap: '8px',
-                    marginTop: '12px',
+                    marginTop: '16px',
                 }}>
                     {showCall && callHref && (
                         <a
@@ -218,8 +229,14 @@ export default function MenuFooter({
                                 textDecoration: 'none',
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 borderRadius: 999,
-                                padding: '6px 10px',
-                                fontSize: '12px',
+                                minHeight: 40,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px 14px',
+                                fontSize: '14px',
+                                lineHeight: '20px',
+                                fontWeight: 600,
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
@@ -242,8 +259,14 @@ export default function MenuFooter({
                                 textDecoration: 'none',
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 borderRadius: 999,
-                                padding: '6px 10px',
-                                fontSize: '12px',
+                                minHeight: 40,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px 14px',
+                                fontSize: '14px',
+                                lineHeight: '20px',
+                                fontWeight: 600,
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
@@ -266,8 +289,14 @@ export default function MenuFooter({
                                 textDecoration: 'none',
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 borderRadius: 999,
-                                padding: '6px 10px',
-                                fontSize: '12px',
+                                minHeight: 40,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px 14px',
+                                fontSize: '14px',
+                                lineHeight: '20px',
+                                fontWeight: 600,
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
@@ -290,8 +319,14 @@ export default function MenuFooter({
                                 textDecoration: 'none',
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 borderRadius: 999,
-                                padding: '6px 10px',
-                                fontSize: '12px',
+                                minHeight: 40,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px 14px',
+                                fontSize: '14px',
+                                lineHeight: '20px',
+                                fontWeight: 600,
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
@@ -314,8 +349,14 @@ export default function MenuFooter({
                                 textDecoration: 'none',
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 borderRadius: 999,
-                                padding: '6px 10px',
-                                fontSize: '12px',
+                                minHeight: 40,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px 14px',
+                                fontSize: '14px',
+                                lineHeight: '20px',
+                                fontWeight: 600,
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
@@ -328,8 +369,9 @@ export default function MenuFooter({
             {storeDetails?.phoneNumber && (
                 <p style={{
                     color: moodConfig.bodyColor,
-                    fontSize: '13px',
-                    margin: '4px 0 0 0',
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    margin: '14px 0 0 0',
                     fontFamily: moodConfig.bodyFont,
                 }}>
                     {showCall && callHref ? (
@@ -359,9 +401,10 @@ export default function MenuFooter({
             {socialLinks.length > 0 && (
                 <div style={{
                     display: 'flex',
-                    justifyContent: 'center',
-                    gap: '16px',
-                    marginTop: '12px',
+                    justifyContent: 'flex-start',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginTop: '16px',
                 }}>
                     {socialLinks.map(([platform, url]) => {
                         const Icon = SOCIAL_ICONS[platform.toLowerCase()];
@@ -377,6 +420,12 @@ export default function MenuFooter({
                                     color: moodConfig.bodyColor,
                                     opacity: 0.7,
                                     transition: 'opacity 0.2s',
+                                    width: 40,
+                                    height: 40,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 999,
                                 }}
                                 className="hover:opacity-100"
                                 aria-label={`Visit our ${platform}`}
@@ -396,8 +445,9 @@ export default function MenuFooter({
                     style={{
                         display: 'inline-block',
                         color: moodConfig.bodyColor,
-                        fontSize: '12px',
-                        marginTop: '12px',
+                        fontSize: '14px',
+                        lineHeight: '20px',
+                        marginTop: '16px',
                         opacity: 0.7,
                         textDecoration: 'none',
                         fontFamily: moodConfig.bodyFont,
@@ -413,9 +463,9 @@ export default function MenuFooter({
                 <nav
                     style={{
                         display: 'flex',
-                        justifyContent: 'center',
+                        justifyContent: 'flex-start',
                         gap: '8px',
-                        marginTop: '12px',
+                        marginTop: '14px',
                         width: '100%',
                         flexWrap: 'wrap',
                     }}
@@ -431,12 +481,13 @@ export default function MenuFooter({
                                 border: 'none',
                                 color: lang === activeLanguage ? moodConfig.accentColor : moodConfig.bodyColor,
                                 cursor: 'pointer',
-                                fontSize: '12px',
+                                fontSize: '13px',
+                                lineHeight: '18px',
                                 fontFamily: moodConfig.bodyFont,
                                 fontWeight: lang === activeLanguage ? 600 : 400,
                                 minHeight: 36,
                                 opacity: lang === activeLanguage ? 1 : 0.6,
-                                padding: '6px 2px',
+                                padding: '6px 0',
                             }}
                             aria-current={lang === activeLanguage ? 'true' : undefined}
                         >
@@ -454,8 +505,9 @@ export default function MenuFooter({
                 <p
                     style={{
                         color: moodConfig.bodyColor,
-                        fontSize: '10px',
-                        marginTop: '12px',
+                        fontSize: '12px',
+                        lineHeight: '18px',
+                        marginTop: '14px',
                         opacity: 0.4,
                         fontFamily: moodConfig.bodyFont,
                     }}

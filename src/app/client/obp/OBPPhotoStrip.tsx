@@ -77,7 +77,7 @@ export default function OBPPhotoStrip({
                             onClick={() => setPreviewIndex(null)}
                             type="button"
                         >
-                            <LuX aria-hidden="true" size={18} />
+                            <LuX aria-hidden="true" size={22} strokeWidth={2.6} />
                         </button>
                         {canNavigate ? (
                             <button
@@ -86,7 +86,7 @@ export default function OBPPhotoStrip({
                                 onClick={showPreviousPhoto}
                                 type="button"
                             >
-                                <LuChevronLeft aria-hidden="true" size={22} />
+                                <LuChevronLeft aria-hidden="true" size={26} strokeWidth={2.7} />
                             </button>
                         ) : null}
                         <img src={previewUrl} alt={`${storeName} ${formatPhotoLabel((previewIndex || 0) + 1)}`} />
@@ -97,7 +97,7 @@ export default function OBPPhotoStrip({
                                 onClick={showNextPhoto}
                                 type="button"
                             >
-                                <LuChevronRight aria-hidden="true" size={22} />
+                                <LuChevronRight aria-hidden="true" size={26} strokeWidth={2.7} />
                             </button>
                         ) : null}
                         {previewIndex !== null ? (

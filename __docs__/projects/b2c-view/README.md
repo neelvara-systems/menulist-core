@@ -7,7 +7,7 @@
 
 ## Overview
 
-The customer-facing digital menu that restaurant patrons see. Includes visual menu builder for owners to customize themes, layouts, and branding with responsive design and SEO optimization.
+The customer-facing digital menu that restaurant patrons see. Includes a controlled menu design editor for owners to choose moods, compatible layouts, branding accents, and display settings with responsive design and SEO optimization.
 
 ---
 
@@ -40,7 +40,8 @@ The customer-facing digital menu that restaurant patrons see. Includes visual me
 
 - Grid (card-based)
 - List (vertical)
-- Horizontal Tabs
+- Card (image-top item cards)
+- Tabs (sticky category navigation)
 
 ### Key Files
 
@@ -49,7 +50,7 @@ src/app/(website)/menu/[projectId]/page.tsx
 src/components/templates/main-app/projects/b2cView/
 ├── index.tsx
 ├── homePage/
-├── menuPage/menuLayout.tsx   # Core layout (memoized)
+├── menuPage/menuPageNew.tsx  # Core public menu renderer
 ├── layouts/
 └── shareModal/
 ```

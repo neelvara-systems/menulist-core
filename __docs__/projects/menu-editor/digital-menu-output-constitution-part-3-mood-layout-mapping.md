@@ -88,7 +88,7 @@ Each mood is **cross-vertical safe**.
 **System Enforced**
 
 - Images capped per section
-- Prices always visible near name
+- Prices visible near name when item price display is enabled
 - No hero-image takeovers
 
 > This sells food without shouting.
@@ -157,7 +157,7 @@ Each mood is **cross-vertical safe**.
 
 - Dense layout
 - Minimal images
-- Big prices
+- Prominent prices when item price display is enabled
 - Ultra-fast scanning
 
 **Used When**
@@ -168,7 +168,7 @@ Each mood is **cross-vertical safe**.
 
 **System Enforced**
 
-- One-tap add buttons
+- List-first or tabbed scanning
 - Compact spacing
 - No decorative elements
 
@@ -185,37 +185,35 @@ Owners pick **one layout**.
 
 ---
 
-### L1 — Category First (Default)
+### L1 — List (Default)
 
-- Sticky category bar
-- Scroll-based discovery
+- Text-first stacked items
+- Fast scanning with clear item hierarchy
 - Best for most menus
 
 ---
 
-### L2 — Item Grid (Image-Light)
+### L2 — Card
 
-- Small image tiles
-- Fast visual scan
-- Capped rows
-
-> No Pinterest-style grids allowed.
+- Image-top item cards
+- Balanced visual presentation
+- Image quota capped per category
 
 ---
 
-### L3 — List + Quick Add
+### L3 — Grid
 
-- Text-first
-- Add buttons inline
-- Peak-speed layout
+- Two-column visual scan where space allows
+- Image-forward but still text-first in decision hierarchy
+- No Pinterest-style endless grids allowed
 
 ---
 
-### L4 — Service Cards (Salon / Clinic)
+### L4 — Tabs
 
-- Duration + price visible
-- Booking-forward
-- No food assumptions
+- Sticky horizontal category navigation
+- Best for larger menus and fast section jumping
+- Falls back to category popover when tabs are not visible
 
 ---
 
@@ -223,15 +221,14 @@ Owners pick **one layout**.
 
 Not all combos allowed.
 
-| Mood ↓ / Layout → | Category | Grid            | Quick Add | Service |
-| ----------------- | -------- | --------------- | --------- | ------- |
-| Clean & Calm      | ✅       | ⚠️ (light only) | ❌        | ✅      |
-| Warm & Inviting   | ✅       | ✅              | ⚠️        | ❌      |
-| Premium & Minimal | ✅       | ❌              | ❌        | ⚠️      |
-| Bold & Energetic  | ✅       | ⚠️              | ✅        | ❌      |
-| Utility & Fast    | ❌       | ❌              | ✅        | ❌      |
+| Mood ↓ / Layout → | List | Card | Grid | Tabs |
+| ----------------- | ---- | ---- | ---- | ---- |
+| Clean & Calm      | ✅   | ❌   | ✅   | ✅   |
+| Warm & Inviting   | ✅   | ✅   | ✅   | ✅   |
+| Premium & Minimal | ✅   | ✅   | ❌   | ✅   |
+| Bold & Energetic  | ❌   | ✅   | ✅   | ✅   |
+| Utility & Fast    | ✅   | ❌   | ❌   | ✅   |
 
-⚠️ = system restricts features further
 ❌ = not allowed at all
 
 > This prevents **bad taste by design**, not education.

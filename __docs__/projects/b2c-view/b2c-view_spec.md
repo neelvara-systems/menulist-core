@@ -9,12 +9,12 @@
 
 ## Executive Summary
 
-B2C View is the customer-facing digital menu that restaurant patrons see. It includes a visual menu builder for owners to customize themes, layouts, and branding, with real-time preview and responsive design.
+B2C View is the customer-facing digital menu that restaurant patrons see. It includes a controlled menu design editor for owners to choose moods, compatible layouts, and branding accents, with real-time preview and responsive design.
 
 ### What It Does
 
 - **Visual Menu Display** → Beautiful, responsive menu for customers
-- **Theme Customization** → Colors, fonts, layouts, branding
+- **Menu Design Controls** → Controlled moods, compatible layouts, optional brand accent, display settings
 - **Multiple Layouts** → Grid, list, horizontal tabs
 - **Device Preview** → Mobile, tablet, desktop frames
 - **Share & Embed** → URL sharing, QR codes
@@ -60,7 +60,8 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 
 **Acceptance Criteria:**
 
-- Choose colors and fonts
+- Choose a controlled mood and compatible layout
+- Optionally apply a brand accent color
 - Upload logo
 - Select layout style
 - Preview on different devices
@@ -135,19 +136,21 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 
 ---
 
-## Theme Customization
+## Menu Design Controls
 
 ### Available Options
 
 | Option               | Values                      |
 | -------------------- | --------------------------- |
-| **Primary Color**    | Color picker                |
-| **Background Color** | Color picker                |
-| **Text Color**       | Color picker                |
-| **Font Family**      | System fonts, Google Fonts  |
-| **Layout**           | Grid, List, Horizontal tabs |
+| **Menu Mood**        | Clean, Warm, Premium, Bold, Fast |
+| **Layout**           | List, Card, Grid, Tabs, filtered by mood compatibility |
+| **Brand Accent**     | Preset colors or custom color |
+| **Item Prices**      | Show or hide menu-level price display |
+| **Item Images**      | Show or hide item images |
+| **Category Icons**   | Show or hide category icons |
+| **Category Tabs**    | Sticky horizontal category navigation on mobile/tablet |
 | **Logo**             | Upload custom logo          |
-| **Cover Image**      | Upload hero image           |
+| **Menu Background**  | Desktop advanced setting    |
 
 ### Layout Templates
 
@@ -155,7 +158,8 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 | ------------------- | -------------------------- | ------------------------ |
 | **Grid**            | Card-based grid layout     | Visual menus with images |
 | **List**            | Vertical list with details | Text-heavy menus         |
-| **Horizontal Tabs** | Category tabs with swipe   | Quick navigation         |
+| **Card**            | Image-top item cards       | Visual, medium-sized menus |
+| **Tabs**            | Sticky category navigation | Quick navigation         |
 
 ---
 

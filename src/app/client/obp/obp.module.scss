@@ -22,7 +22,7 @@ $obp-closed-color: #c62828;
 
   .languageOption,
   .officialBadge,
-  .secondaryProjectCard,
+  .projectCard,
   .actionButton,
   .info,
   .note,
@@ -118,7 +118,7 @@ $obp-closed-color: #c62828;
     background: rgba(255, 255, 255, 0.14);
   }
 
-  .secondaryProjectCard,
+  .projectCard,
   .actionButton,
   .outletCard {
     color: #eef1ea;
@@ -129,7 +129,8 @@ $obp-closed-color: #c62828;
     }
   }
 
-  .secondaryProjectThumb,
+  .projectCardThumb,
+  .projectCardThumbFallback,
   .photoButton {
     background: #20231f;
   }
@@ -204,18 +205,18 @@ $obp-closed-color: #c62828;
 
   .hoursRow {
     background: transparent;
-    border-color: #252a24;
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   .hoursRow.hoursRowToday {
     background: rgba(131, 232, 156, 0.1);
-    border-color: rgba(131, 232, 156, 0.16);
+    border-color: transparent;
     box-shadow: none;
   }
 
   .hoursList {
-    background: #121412;
-    border-color: #252a24;
+    background: transparent;
+    border-color: transparent;
   }
 
   .hoursDay,
@@ -336,7 +337,7 @@ $obp-closed-color: #c62828;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 0 0 16px;
+  padding: 0 0 20px;
   width: 100%;
 }
 
@@ -431,7 +432,7 @@ $obp-closed-color: #c62828;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 10px;
-  margin-top: 6px;
+  margin-top: 10px;
 }
 
 // ── Status Badge ──
@@ -486,7 +487,7 @@ $obp-closed-color: #c62828;
   color: #8c8c8c;
   font-size: 13px;
   line-height: 1.45;
-  margin: 12px 0 0;
+  margin: 14px 0 0;
 }
 
 .officialBadge {
@@ -514,8 +515,8 @@ $obp-closed-color: #c62828;
 
 .primaryCta {
   width: 100%;
-  margin-top: 10px;
-  margin-bottom: 14px;
+  margin-top: 6px;
+  margin-bottom: 18px;
 }
 
 .menuButton {
@@ -586,35 +587,50 @@ $obp-closed-color: #c62828;
   }
 }
 
-// ── G-06: secondary project cards ──
-// Render below the primary CTA when the store has 2+ projects.
-// Visual language: neutral surface, smaller, unmistakably secondary to the
-// primary default-project CTA so the customer's eye lands on the default first.
+// ── G-06: project menu cards ──
+// When OBP has multiple menus, render equal media cards instead of highlighting
+// one project as the only primary action.
 
-.secondaryProjects {
+.projectCards {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 12px;
   width: 100%;
 }
 
-.secondaryProjectCard {
+.projectCard {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 46px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
   background: #fff;
   color: #333;
   font-size: 14px;
-  font-weight: 620;
+  font-weight: 680;
   text-align: left;
   text-decoration: none;
   border: 1px solid $obp-border;
   transition: all 0.2s ease;
   line-height: 1.3;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 34%;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.68) 0%,
+      rgba(0, 0, 0, 0.36) 48%,
+      rgba(0, 0, 0, 0) 100%
+    );
+  }
 
   &:hover {
     background: #eeeeee;
@@ -627,14 +643,16 @@ $obp-closed-color: #c62828;
   }
 }
 
-.secondaryProjectThumb {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+.projectCardThumb,
+.projectCardThumbFallback {
+  width: 100%;
+  aspect-ratio: 2.35 / 1;
+  border-radius: 0;
   overflow: hidden;
-  flex-shrink: 0;
   background: #e9e9e9;
+}
 
+.projectCardThumb {
   img {
     width: 100%;
     height: 100%;
@@ -643,9 +661,31 @@ $obp-closed-color: #c62828;
   }
 }
 
-.secondaryProjectName {
-  display: block;
+.projectCardThumbFallback {
+  color: var(--obp-accent, #111);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.projectCardName {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
+  padding: 13px 16px 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 760;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.44);
 }
 
 // ── Quick Actions ──
@@ -654,8 +694,8 @@ $obp-closed-color: #c62828;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 22px;
+  gap: 12px 10px;
+  margin-bottom: 28px;
   width: 100%;
 }
 
@@ -761,7 +801,7 @@ $obp-closed-color: #c62828;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin: 0 0 16px;
+  margin: 0 0 24px;
   width: 100%;
 }
 
@@ -829,6 +869,21 @@ $obp-closed-color: #c62828;
   background: rgba(0, 0, 0, 0.54);
   color: #fff;
   cursor: pointer;
+
+  svg {
+    width: 1em;
+    height: 1em;
+    display: block;
+    flex: 0 0 auto;
+    color: currentColor;
+    stroke: currentColor;
+    fill: none;
+    overflow: visible;
+  }
+
+  svg * {
+    vector-effect: non-scaling-stroke;
+  }
 }
 
 .photoPreviewClose {
@@ -865,7 +920,7 @@ $obp-closed-color: #c62828;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
   padding: 15px;
   border: 1px solid $obp-border;
   border-radius: 12px;
@@ -873,7 +928,7 @@ $obp-closed-color: #c62828;
 }
 
 .locationInfo {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .mapPreview {
@@ -901,7 +956,7 @@ $obp-closed-color: #c62828;
 }
 
 .utilityInfo {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
   background: #fff;
 }
 
@@ -964,15 +1019,24 @@ $obp-closed-color: #c62828;
 
 .note {
   width: 100%;
-  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
   border: 1px solid $obp-border;
   border-radius: 12px;
   background: #fff;
   color: $obp-text-info;
-  font-size: 13px;
-  line-height: 1.5;
   padding: 12px 14px;
   text-align: left;
+}
+
+.noteText {
+  margin: 0;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1.5;
 }
 
 .details {
@@ -990,17 +1054,17 @@ $obp-closed-color: #c62828;
 
 .utilityStack {
   width: 100%;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .hoursList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  background: #fbfbfa;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -1011,14 +1075,22 @@ $obp-closed-color: #c62828;
   justify-content: space-between;
   gap: 14px;
   min-height: 40px;
-  padding: 9px 10px;
-  border: 1px solid transparent;
-  border-radius: 9px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid #eeeeea;
+  border-radius: 0;
+
+  &:last-child {
+    border-bottom: 0;
+  }
 }
 
 .hoursRow.hoursRowToday {
   background: #eef8f1;
-  border-color: #d9f0df;
+  border-color: transparent;
+  border-radius: 10px;
+  margin: 4px 0;
+  padding: 10px 12px;
   box-shadow: none;
 }
 
@@ -1047,14 +1119,19 @@ $obp-closed-color: #c62828;
 .iconGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px 8px;
+  gap: 22px 8px;
 }
 
-.iconGridServiceFour {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-width: 320px;
-  width: 100%;
-  margin: 0 auto;
+.iconGridCompact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 6px;
+}
+
+.iconGridCompact .iconTileLabel {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
 }
 
 .iconTile {
@@ -1357,17 +1434,41 @@ $obp-closed-color: #c62828;
   &:active {
     transform: translateY(0);
   }
+
+  svg {
+    width: 19px;
+    height: 19px;
+    display: block;
+    flex: 0 0 auto;
+    color: currentColor;
+    stroke: currentColor;
+    fill: none;
+    overflow: visible;
+  }
+
+  svg * {
+    vector-effect: non-scaling-stroke;
+  }
 }
 
 // ── Responsive ──
+
+@media (max-width: 390px) {
+  .iconGridCompact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px 8px;
+  }
+}
 
 @media (max-width: 380px) {
   .iconGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .iconGridServiceFour {
-    max-width: none;
+@media (max-width: 340px) {
+  .iconGridCompact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

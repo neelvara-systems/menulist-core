@@ -24,25 +24,51 @@ export type StoreStatus = {
  */
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 type DayKey = (typeof DAY_KEYS)[number];
+const MINUTES_PER_DAY = 24 * 60;
 
 /**
- * Get current day key based on timezone
+ * Get day key for a date based on timezone
  */
-function getCurrentDayKey(timeZone?: string): DayKey {
+function getDayKeyForDate(date: Date, timeZone?: string): DayKey {
     try {
-        const now = new Date();
         const options: Intl.DateTimeFormatOptions = {
             weekday: "short",
             timeZone: timeZone || "UTC",
         };
         const dayStr = new Intl.DateTimeFormat("en-US", options)
-            .format(now)
+            .format(date)
             .toLowerCase();
         return dayStr as DayKey;
     } catch {
         // Fallback to local timezone if invalid
-        const day = new Date().getDay();
+        const day = date.getDay();
         return DAY_KEYS[day];
+    }
+}
+
+/**
+ * Get current day key based on timezone
+ */
+function getCurrentDayKey(timeZone?: string): DayKey {
+    return getDayKeyForDate(new Date(), timeZone);
+}
+
+/**
+ * Get time in HH:mm format for a date based on timezone
+ */
+function getTimeForDate(date: Date, timeZone?: string): string {
+    try {
+        const options: Intl.DateTimeFormatOptions = {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+            hourCycle: "h23",
+            timeZone: timeZone || "UTC",
+        };
+        return new Intl.DateTimeFormat("en-GB", options).format(date);
+    } catch {
+        // Fallback to local time
+        return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
     }
 }
 
@@ -50,20 +76,7 @@ function getCurrentDayKey(timeZone?: string): DayKey {
  * Get current time in HH:mm format based on timezone
  */
 function getCurrentTime(timeZone?: string): string {
-    try {
-        const now = new Date();
-        const options: Intl.DateTimeFormatOptions = {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-            timeZone: timeZone || "UTC",
-        };
-        return new Intl.DateTimeFormat("en-GB", options).format(now);
-    } catch {
-        // Fallback to local time
-        const now = new Date();
-        return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-    }
+    return getTimeForDate(new Date(), timeZone);
 }
 
 /**
@@ -178,6 +191,63 @@ export function getStoreStatus(
             currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
         };
     }
+}
+
+/**
+ * Minutes until today's visible open/close boundary.
+ *
+ * This is intentionally scoped to today's schedule so floating UI only appears
+ * for immediate urgency instead of announcing tomorrow or later openings.
+ */
+export function getMinutesUntilStoreStatusChange(
+    workingHours?: Record<string, string>,
+    timeZone?: string,
+    now = new Date(),
+): number | null {
+    if (!workingHours || Object.keys(workingHours).length === 0) {
+        return null;
+    }
+
+    const currentDay = getDayKeyForDate(now, timeZone);
+    const currentTime = getTimeForDate(now, timeZone);
+    const currentMinutes = parseTimeToMinutes(currentTime);
+    const todayHours = workingHours[currentDay];
+
+    if (
+        !Number.isFinite(currentMinutes) ||
+        !todayHours ||
+        !todayHours.includes("-")
+    ) {
+        return null;
+    }
+
+    const [openTime, closeTime] = todayHours.split("-").map((t) => t.trim());
+    const openMinutes = parseTimeToMinutes(openTime);
+    const closeMinutes = parseTimeToMinutes(closeTime);
+
+    if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
+        return null;
+    }
+
+    if (closeMinutes < openMinutes) {
+        if (currentMinutes >= openMinutes) {
+            return MINUTES_PER_DAY - currentMinutes + closeMinutes;
+        }
+        if (currentMinutes < closeMinutes) {
+            return closeMinutes - currentMinutes;
+        }
+        return openMinutes - currentMinutes;
+    }
+
+    if (currentMinutes < openMinutes) {
+        return openMinutes - currentMinutes;
+    }
+
+    if (isWithinWindow(currentMinutes, openMinutes, closeMinutes)) {
+        return closeMinutes - currentMinutes;
+    }
+
+    return null;
 }
 
 /**

@@ -50,6 +50,7 @@ import {
     LuClock,
     LuCreditCard,
     LuDog,
+    LuInfo,
     LuIndianRupee,
     LuLeaf,
     LuMapPin,
@@ -561,6 +562,32 @@ function isLegacySpecialNoteHelper(value: string): boolean {
     return normalized === 'shown on the official business page. use for service charges, today-only notes, or important customer information.';
 }
 
+function getLocalizedPublicText(value: unknown, language: string, fallback: string = ''): string {
+    if (typeof value === 'string') return value.trim() || fallback;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
+
+    const entries = Object.entries(value as Record<string, unknown>);
+    const candidates = [
+        language,
+        language.split('-')[0],
+        getNextIntlLocaleForPublicLanguage(language),
+        getNextIntlLocaleForPublicLanguage(language).split('-')[0],
+    ].map((candidate) => candidate.trim()).filter(Boolean);
+
+    for (const candidate of candidates) {
+        const match = entries.find(([key]) => key.toLowerCase() === candidate.toLowerCase());
+        const text = typeof match?.[1] === 'string' ? match[1].trim() : '';
+        if (text) return text;
+    }
+
+    const english = entries.find(([key]) => key.toLowerCase() === 'en');
+    const englishText = typeof english?.[1] === 'string' ? english[1].trim() : '';
+    if (englishText) return englishText;
+
+    const firstText = entries.map(([, entry]) => (typeof entry === 'string' ? entry.trim() : '')).find(Boolean);
+    return firstText || fallback;
+}
+
 // ── Build full address string ──
 
 function getFullAddress(store: any): string | null {
@@ -857,7 +884,7 @@ export default async function OBPContent({
 
     // Known-for identity cue
     const knownFor = getLocalizedText(pp.knownFor, contentLanguage, getPrimaryLocalizedLanguage(pp.knownFor, contentLanguage), '');
-    const rawSpecialNote = getLocalizedText(pp.specialNote, contentLanguage, getPrimaryLocalizedLanguage(pp.specialNote, contentLanguage), '');
+    const rawSpecialNote = getLocalizedPublicText(pp.specialNote, contentLanguage, '');
     const specialNote = isLegacySpecialNoteHelper(rawSpecialNote) ? '' : rawSpecialNote.trim();
 
     // Short area context (city name for quick location recognition)
@@ -1129,6 +1156,16 @@ export default async function OBPContent({
                         }}
                     />
 
+                    {specialNote ? (
+                        <section className={styles.note} aria-label={t('publicSpecialNote')}>
+                            <h2 className={styles.groupTitle}>
+                                <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuInfo, 'ℹ️')}</span>
+                                {t('publicSpecialNote')}
+                            </h2>
+                            <p className={styles.noteText}>{specialNote}</p>
+                        </section>
+                    ) : null}
+
                     {/* ── Info Block ── */}
                     {(fullAddress || todayHours) && (
                         <section className={`${styles.info} ${styles.locationInfo}`} aria-label={t('publicBusinessDetailsLabel')}>
@@ -1159,12 +1196,6 @@ export default async function OBPContent({
                         </section>
                     )}
 
-                {specialNote ? (
-                    <div className={styles.note}>
-                        {specialNote}
-                    </div>
-                ) : null}
-
                 {(hasStructuredInfo || (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0)) && (
                     <div className={styles.utilityStack}>
                         {/* ── Structured Info Section (P3 — AEO critical, all SSR) ── */}
@@ -1187,7 +1218,7 @@ export default async function OBPContent({
                                     {t('publicServiceOptions')}
                                 </h2>
                                 {serviceModeItems.length > 0 && (
-                                    <div className={`${styles.iconGrid} ${serviceModeItems.length === 4 ? styles.iconGridServiceFour : ''}`}>
+                                    <div className={`${styles.iconGrid} ${styles.iconGridCompact}`}>
                                         {serviceModeItems.map(renderIconTile)}
                                     </div>
                                 )}
@@ -1212,7 +1243,7 @@ export default async function OBPContent({
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCreditCard, '💳')}</span>
                                     {t('publicPaymentOptions')}
                                 </h2>
-                                <div className={styles.iconGrid}>
+                                <div className={`${styles.iconGrid} ${styles.iconGridCompact}`}>
                                     {paymentItems.map(renderIconTile)}
                                 </div>
                             </section>
@@ -1224,7 +1255,7 @@ export default async function OBPContent({
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuLeaf, '🌿')}</span>
                                     {t('publicDietaryOptions')}
                                 </h2>
-                                <div className={styles.iconGrid}>
+                                <div className={`${styles.iconGrid} ${styles.iconGridCompact}`}>
                                     {dietaryAttributeTags.map(renderIconTile)}
                                 </div>
                             </section>
