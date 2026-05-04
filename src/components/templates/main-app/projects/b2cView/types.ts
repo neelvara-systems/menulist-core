@@ -1,10 +1,10 @@
 export enum PageType {
-    HOME = 'home',
+    OBP = 'obp',
     MENU = 'menu'
 }
 
 export const pageOptions = [
-    { label: 'Home Page', value: PageType.HOME },
+    { label: 'Official Page', value: PageType.OBP },
     { label: 'Menu Page', value: PageType.MENU }
 ];
 

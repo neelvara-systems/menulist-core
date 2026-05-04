@@ -13,11 +13,8 @@ function DeviceFrame({
     activeDeviceType,
     backgroundColor = '#18181b',
     fromPage = "b2c",
-    activePage = PageType.HOME
+    activePage = PageType.OBP
 }: DeviceFrameProps) {
-    // Only enable scrolling on menu page, not home page
-    const shouldScroll = activePage === PageType.MENU;
-
     return (
         <div style={{
             maxWidth: fromPage === "b2c"
@@ -26,7 +23,7 @@ function DeviceFrame({
             margin: '0 auto',
             width: '100%',
             height: fromPage === "b2c" ? 'calc(100dvh - 140px)' : '100%',
-            overflowY: shouldScroll ? 'auto' : 'hidden',
+            overflowY: 'auto',
             border: fromPage === "b2c" ? '2px solid lightgray' : 'unset',
             boxShadow: fromPage === "b2c" ? '0px 5px 10px #c1bbbbad' : 'unset',
             borderRadius: fromPage === "b2c" ? 20 : 0,

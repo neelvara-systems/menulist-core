@@ -17,6 +17,8 @@ const { Title, Text } = Typography;
 
 interface OfficialPageTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
+    compact?: boolean;
+    showDistributionTools?: boolean;
     publicPresence?: {
         displayName?: string | Record<string, string>;
         descriptor?: string | Record<string, string>;
@@ -47,6 +49,7 @@ interface OfficialPageTabProps {
         googleLinkUpdatedAt?: string;
     };
     onPublicPresenceChange?: (field: string, value: any) => void;
+    onContentLanguageChange?: (language: string) => void;
     subdomain?: string;
     customDomain?: string;
     onGoogleLinkDone?: () => void;
@@ -54,7 +57,18 @@ interface OfficialPageTabProps {
 }
 
 const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
-    ({ scrollRef, publicPresence = {}, onPublicPresenceChange, subdomain, customDomain, onGoogleLinkDone, onGoogleLinkDismiss }, ref) => {
+    ({
+        scrollRef,
+        compact = false,
+        showDistributionTools = true,
+        publicPresence = {},
+        onPublicPresenceChange,
+        onContentLanguageChange,
+        subdomain,
+        customDomain,
+        onGoogleLinkDone,
+        onGoogleLinkDismiss
+    }, ref) => {
         const t = useTranslations('BusinessSettings');
         const form = Form.useFormInstance();
         const session = useClientAuthSession();
@@ -73,6 +87,11 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
         const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
         const referenceLanguage = getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
+        const halfCol = compact ? { xs: 24 } : { xs: 24, md: 12 };
+        const accentCol = compact ? { xs: 24 } : { xs: 24, md: 6 };
+        const reviewUrlCol = compact ? { xs: 24 } : { xs: 24, md: 10 };
+        const reviewStatCol = compact ? { xs: 24 } : { xs: 24, md: 7 };
+        const actionCol = compact ? { xs: 24 } : { xs: 24, md: 8 };
 
         const handleToggle = (field: string) => (checked: boolean) => {
             onPublicPresenceChange?.(field, checked);
@@ -152,7 +171,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
 
         return (
             <>
-                {officialPageUrl ? (
+                {showDistributionTools && officialPageUrl ? (
                     <div style={{ marginTop: 16 }}>
                         <ShareLinkCard
                             title="Official Business Page Link"
@@ -164,13 +183,15 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         />
                     </div>
                 ) : null}
-                <GoogleListingGuide
-                    subdomain={subdomain}
-                    customDomain={customDomain}
-                    googleLinkUpdated={publicPresence?.googleLinkUpdated}
-                    onMarkDone={onGoogleLinkDone || (() => { })}
-                    onDismiss={onGoogleLinkDismiss || (() => { })}
-                />
+                {showDistributionTools ? (
+                    <GoogleListingGuide
+                        subdomain={subdomain}
+                        customDomain={customDomain}
+                        googleLinkUpdated={publicPresence?.googleLinkUpdated}
+                        onMarkDone={onGoogleLinkDone || (() => { })}
+                        onDismiss={onGoogleLinkDismiss || (() => { })}
+                    />
+                ) : null}
                 <Card size="small" ref={ref || scrollRef} style={{ marginTop: 16 }}>
                     <Title level={5} style={{ margin: 'unset' }}>
                         {t('officialPageSettings')}
@@ -212,6 +233,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 specialNote: nextDrafts[nextLanguage]?.specialNote || '',
                                             },
                                         });
+                                        onContentLanguageChange?.(nextLanguage);
                                     }}
                                 />
                             </Input.Group>
@@ -219,7 +241,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     ) : null}
 
                     <Row gutter={[16, 0]}>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'displayName']}
                                 label="Public display name"
@@ -242,6 +264,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 descriptor: visiblePresence.descriptor || '',
                                                 displayName: referenceValue(localizedPresenceDrafts[referenceLanguage]?.displayName),
                                                 knownFor: visiblePresence.knownFor || '',
+                                                specialNote: visiblePresence.specialNote || '',
                                             },
                                         };
 
@@ -252,13 +275,14 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 displayName: referenceValue(localizedPresenceDrafts[referenceLanguage]?.displayName),
                                             },
                                         });
+                                        onPublicPresenceChange?.('displayName', referenceValue(localizedPresenceDrafts[referenceLanguage]?.displayName));
                                     }}
                                     referenceLabel={getStoreLanguageLabel(referenceLanguage)}
                                     referenceValue={localizedPresenceDrafts[referenceLanguage]?.displayName || ''}
                                 />
                             ) : null}
                         </Col>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'descriptor']}
                                 label={t('shortDescriptor')}
@@ -281,6 +305,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 descriptor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.descriptor),
                                                 displayName: visiblePresence.displayName || '',
                                                 knownFor: visiblePresence.knownFor || '',
+                                                specialNote: visiblePresence.specialNote || '',
                                             },
                                         };
 
@@ -291,13 +316,14 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 descriptor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.descriptor),
                                             },
                                         });
+                                        onPublicPresenceChange?.('descriptor', referenceValue(localizedPresenceDrafts[referenceLanguage]?.descriptor));
                                     }}
                                     referenceLabel={getStoreLanguageLabel(referenceLanguage)}
                                     referenceValue={localizedPresenceDrafts[referenceLanguage]?.descriptor || ''}
                                 />
                             ) : null}
                         </Col>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'knownFor']}
                                 label={t('knownFor')}
@@ -320,6 +346,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 descriptor: visiblePresence.descriptor || '',
                                                 displayName: visiblePresence.displayName || '',
                                                 knownFor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.knownFor),
+                                                specialNote: visiblePresence.specialNote || '',
                                             },
                                         };
 
@@ -330,6 +357,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 knownFor: referenceValue(localizedPresenceDrafts[referenceLanguage]?.knownFor),
                                             },
                                         });
+                                        onPublicPresenceChange?.('knownFor', referenceValue(localizedPresenceDrafts[referenceLanguage]?.knownFor));
                                     }}
                                     referenceLabel={getStoreLanguageLabel(referenceLanguage)}
                                     referenceValue={localizedPresenceDrafts[referenceLanguage]?.knownFor || ''}
@@ -371,6 +399,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                                 specialNote: referenceValue(localizedPresenceDrafts[referenceLanguage]?.specialNote),
                                             },
                                         });
+                                        onPublicPresenceChange?.('specialNote', referenceValue(localizedPresenceDrafts[referenceLanguage]?.specialNote));
                                     }}
                                     referenceLabel={getStoreLanguageLabel(referenceLanguage)}
                                     referenceValue={localizedPresenceDrafts[referenceLanguage]?.specialNote || ''}
@@ -380,7 +409,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     </Row>
 
                     <Row gutter={[16, 0]}>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'whatsappNumber']}
                                 label={t('whatsappNumber')}
@@ -395,7 +424,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     </Row>
 
                     <Row gutter={[16, 0]}>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'googleMapsUrl']}
                                 label={t('googleMapsLink')}
@@ -408,7 +437,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={6}>
+                        <Col {...accentCol}>
                             <Form.Item
                                 name={['publicPresence', 'accentColor']}
                                 label={t('accentColor')}
@@ -417,6 +446,11 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 <ColorPicker
                                     showText
                                     format="hex"
+                                    onChange={(color) => {
+                                        const hex = color.toHexString();
+                                        form.setFieldValue(['publicPresence', 'accentColor'], hex);
+                                        onPublicPresenceChange?.('accentColor', hex);
+                                    }}
                                     presets={[
                                         {
                                             label: 'Recommended',
@@ -426,7 +460,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={6}>
+                        <Col {...accentCol}>
                             <Form.Item
                                 name={['publicPresence', 'establishedYear']}
                                 label={t('establishedYear')}
@@ -449,7 +483,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     </Row>
 
                     <Row gutter={[16, 0]}>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'reservationUrl']}
                                 label={t('reservationUrl')}
@@ -462,7 +496,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={12}>
+                        <Col {...halfCol}>
                             <Form.Item
                                 name={['publicPresence', 'orderUrl']}
                                 label={t('orderUrl')}
@@ -484,7 +518,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     </Divider>
 
                     <Row gutter={[16, 0]}>
-                        <Col xs={24} md={10}>
+                        <Col {...reviewUrlCol}>
                             <Form.Item
                                 name={['publicPresence', 'googleReviewUrl']}
                                 label={t('googleReviewUrl')}
@@ -497,7 +531,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={7}>
+                        <Col {...reviewStatCol}>
                             <Form.Item
                                 name={['publicPresence', 'googleRating']}
                                 label={t('googleRating')}
@@ -519,7 +553,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={7}>
+                        <Col {...reviewStatCol}>
                             <Form.Item
                                 name={['publicPresence', 'googleReviewCount']}
                                 label={t('googleReviewCount')}
@@ -620,7 +654,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     </Divider>
 
                     <Row gutter={[16, 16]}>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'iconVariant']}
                                 label={t('obpIconVariant')}
@@ -636,7 +670,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showCall']}
                                 label={t('showCallButton')}
@@ -649,7 +683,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showWhatsApp']}
                                 label={t('showWhatsAppButton')}
@@ -662,7 +696,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showDirections']}
                                 label={t('showDirectionsButton')}
@@ -675,7 +709,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showReservation']}
                                 label={t('showReservationButton')}
@@ -688,7 +722,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showOrder']}
                                 label={t('showOrderButton')}
@@ -701,7 +735,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showGoogleReview']}
                                 label={t('showGoogleReviewButton')}
@@ -714,7 +748,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col {...actionCol}>
                             <Form.Item
                                 name={['publicPresence', 'showFeedback']}
                                 label={t('showFeedbackButton')}
@@ -737,7 +771,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 </Text>
                             </Divider>
                             <Row gutter={[16, 16]}>
-                                <Col xs={24} md={8}>
+                                <Col {...actionCol}>
                                     <Form.Item
                                         name={['publicPresence', 'showPrivacyLink']}
                                         label={t('showPrivacyLink')}
@@ -747,7 +781,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         <Switch />
                                     </Form.Item>
                                 </Col>
-                                <Col xs={24} md={8}>
+                                <Col {...actionCol}>
                                     <Form.Item
                                         name={['publicPresence', 'showTermsLink']}
                                         label={t('showTermsLink')}
@@ -757,7 +791,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         <Switch />
                                     </Form.Item>
                                 </Col>
-                                <Col xs={24} md={8}>
+                                <Col {...actionCol}>
                                     <Form.Item
                                         name={['publicPresence', 'showRefundLink']}
                                         label={t('showRefundLink')}

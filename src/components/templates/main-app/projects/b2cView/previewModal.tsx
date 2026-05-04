@@ -17,7 +17,7 @@ interface PreviewModalProps {
 
 function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewModalOpen, activeLanguage, setActiveLanguage }: PreviewModalProps) {
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>('mobile');
-    const [activePage, setActivePage] = useState<PageType>(PageType.HOME);
+    const [activePage, setActivePage] = useState<PageType>(PageType.OBP);
 
     return (
         <Modal

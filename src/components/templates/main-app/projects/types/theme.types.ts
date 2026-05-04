@@ -5,20 +5,15 @@
  * Uses high-level presets instead of granular controls.
  */
 
-import { HomeStyle, MenuLayout, MenuMood } from "../b2cView/designSystem";
+import { MenuLayout, MenuMood } from "../b2cView/designSystem";
 
 /**
  * Design System Config
  * 
- * Home: 1 decision (style)
  * Menu: 2 decisions (mood + layout)
  * Brand: Optional brand accent (used for actions, highlights, focus states only)
  */
 export interface DesignConfig {
-    home: {
-        style: HomeStyle;
-        backgroundImage?: string;
-    };
     menu: {
         mood: MenuMood;
         layout: MenuLayout;

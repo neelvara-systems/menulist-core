@@ -83,7 +83,7 @@ function MenuHeader({
             }}
         >
             {/* Logo — decorative only.
-                G-02 (§11 PUBLIC-ROUTING-DOCTRINE): HomePageNew intro screen is
+                G-02 (§11 PUBLIC-ROUTING-DOCTRINE): the old intro screen is
                 retired from the public path (D-01), so the header logo no longer
                 triggers a HOME transition. Header-logo destination for the public
                 surface is handled separately per D-12 when that gap ships.

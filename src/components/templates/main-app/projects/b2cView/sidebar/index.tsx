@@ -7,8 +7,8 @@ import ShareLinkCard from '../../../ShareLinkCard';
 import AIDefaultsModal from '../../editorView/AIDefaultsModal';
 import { normalizeMenuMood } from '../designSystem'
 import BrandColorPicker from '../designSystem/BrandColorPicker'
-import HomePageSettingsNew from '../homePage/homePageSettingsNew'
 import MenuPageSettingsNew from '../menuPage/menuPageSettingsNew'
+import OfficialPageSettings from '../officialPage/officialPageSettings'
 import { pageOptions, PageType } from '../types'
 
 interface B2CSidebarProps {
@@ -16,9 +16,12 @@ interface B2CSidebarProps {
     setActivePage: (page: PageType) => void;
     projectData: any;
     setProjectData: (data: any) => void;
+    storeDraft: any;
+    setStoreDraft: (data: any) => void;
+    setActiveLanguage: (language: string) => void;
 }
 
-function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: B2CSidebarProps) {
+function B2CSidebar({ activePage, setActivePage, projectData, setProjectData, storeDraft, setStoreDraft, setActiveLanguage }: B2CSidebarProps) {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -75,41 +78,44 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData }: 
                         </Card>
                     ) : null}
 
-                    {activePage === PageType.HOME && (
-                        <HomePageSettingsNew
-                            projectData={projectData}
-                            setProjectData={setProjectData}
+                    {activePage === PageType.OBP && storeDraft ? (
+                        <OfficialPageSettings
+                            onLanguageChange={setActiveLanguage}
+                            storeDetails={storeDraft}
+                            onStoreDraftChange={setStoreDraft}
                         />
-                    )}
+                    ) : null}
 
                     {activePage === PageType.MENU && (
-                        <MenuPageSettingsNew
-                            projectData={projectData}
-                            setProjectData={setProjectData}
-                        />
-                    )}
+                        <>
+                            <MenuPageSettingsNew
+                                projectData={projectData}
+                                setProjectData={setProjectData}
+                            />
 
-                    <Divider style={{ margin: '8px 0' }} />
+                            <Divider style={{ margin: '8px 0' }} />
 
-                    <BrandColorPicker
-                        value={projectData?.config?.design?.brand?.accentColor}
-                        onChange={(color) => {
-                            setProjectData({
-                                ...projectData,
-                                config: {
-                                    ...projectData?.config,
-                                    design: {
-                                        ...projectData?.config?.design,
-                                        brand: {
-                                            ...projectData?.config?.design?.brand,
-                                            accentColor: color,
+                            <BrandColorPicker
+                                value={projectData?.config?.design?.brand?.accentColor}
+                                onChange={(color) => {
+                                    setProjectData({
+                                        ...projectData,
+                                        config: {
+                                            ...projectData?.config,
+                                            design: {
+                                                ...projectData?.config?.design,
+                                                brand: {
+                                                    ...projectData?.config?.design?.brand,
+                                                    accentColor: color,
+                                                },
+                                            },
                                         },
-                                    },
-                                },
-                            });
-                        }}
-                        currentMood={normalizeMenuMood(projectData?.config?.design?.menu?.mood)}
-                    />
+                                    });
+                                }}
+                                currentMood={normalizeMenuMood(projectData?.config?.design?.menu?.mood)}
+                            />
+                        </>
+                    )}
                 </Flex>
             </Card>
             <AIDefaultsModal

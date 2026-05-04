@@ -12,128 +12,6 @@
 import { enforceContrast } from '@lib/colorEnforcement';
 
 // ============================================
-// HOME PAGE STYLES
-// ============================================
-
-export enum HomeStyle {
-    SIMPLE = 'simple',
-    PREMIUM = 'premium',
-    BOLD = 'bold'
-}
-
-export interface HomeStyleConfig {
-    label: string;
-    description: string;
-    // Container/Background
-    background: string;
-    backgroundOverlay?: string; // Gradient overlay for depth
-    // Typography
-    fontFamily: string;
-    fontSize: number;
-    fontWeight: number;
-    letterSpacing: string;
-    color: string;
-    taglineColor?: string;
-    // Border/Frame
-    borderColor: string;
-    borderWidth: number;
-    borderStyle: 'solid' | 'dashed' | 'none';
-    frameType: 'none' | 'simple' | 'subtle' | 'glow';
-    // Button
-    buttonStyle: 'filled' | 'outline' | 'gradient' | 'glow';
-    buttonRadius: number;
-    buttonGlow?: string;
-    // Special Effects (Differentiators)
-    glowEffect?: string; // CSS box-shadow for glow
-    glassmorphism?: boolean;
-    patternOverlay?: string; // Subtle pattern for texture
-    animationType?: 'fade' | 'slide' | 'scale' | 'blur';
-}
-
-export const HOME_STYLES: Record<HomeStyle, HomeStyleConfig> = {
-    [HomeStyle.SIMPLE]: {
-        label: 'Simple',
-        description: 'Clean & professional',
-        // Container - Clean dark
-        background: '#18181b',
-        backgroundOverlay: undefined,
-        // Typography - Modern, clean
-        fontFamily: '"Inter", -apple-system, sans-serif',
-        fontSize: 32,
-        fontWeight: 600,
-        letterSpacing: '0.5px',
-        color: '#ffffff',
-        taglineColor: 'rgba(255, 255, 255, 0.6)',
-        // Border - None
-        borderColor: 'transparent',
-        borderWidth: 0,
-        borderStyle: 'none',
-        frameType: 'none',
-        // Button - Clean filled
-        buttonStyle: 'filled',
-        buttonRadius: 8,
-        buttonGlow: undefined,
-        // Effects - Minimal
-        glassmorphism: false,
-        animationType: 'fade',
-    },
-    [HomeStyle.PREMIUM]: {
-        label: 'Premium',
-        description: 'Elegant & refined',
-        // Container - Deep navy
-        background: '#0f172a',
-        backgroundOverlay: undefined,
-        // Typography - Elegant serif
-        fontFamily: '"Playfair Display", Georgia, serif',
-        fontSize: 36,
-        fontWeight: 500,
-        letterSpacing: '2px',
-        color: '#d4af37',
-        taglineColor: 'rgba(212, 175, 55, 0.7)',
-        // Border - Subtle gold line
-        borderColor: 'rgba(212, 175, 55, 0.3)',
-        borderWidth: 1,
-        borderStyle: 'solid',
-        frameType: 'subtle',
-        // Button - Elegant outline
-        buttonStyle: 'outline',
-        buttonRadius: 4,
-        buttonGlow: undefined,
-        // Effects - Calm
-        glowEffect: undefined,
-        glassmorphism: false,
-        animationType: 'fade',
-    },
-    [HomeStyle.BOLD]: {
-        label: 'Bold',
-        description: 'Confident & eye-catching',
-        // Container - Pure black
-        background: '#000000',
-        backgroundOverlay: undefined,
-        // Typography - Strong
-        fontFamily: '"Poppins", sans-serif',
-        fontSize: 38,
-        fontWeight: 700,
-        letterSpacing: '1px',
-        color: '#ffffff',
-        taglineColor: 'rgba(255, 255, 255, 0.7)',
-        // Border - Accent color
-        borderColor: '#3b82f6',
-        borderWidth: 2,
-        borderStyle: 'solid',
-        frameType: 'simple',
-        // Button - Bold filled
-        buttonStyle: 'filled',
-        buttonRadius: 0,
-        buttonGlow: undefined,
-        // Effects - None
-        glowEffect: undefined,
-        glassmorphism: false,
-        animationType: 'fade',
-    },
-};
-
-// ============================================
 // MENU PAGE STYLES
 // ============================================
 
@@ -617,12 +495,13 @@ export const ANIMATION_DURATION = {
 // ============================================
 
 export const DEFAULTS = {
-    home: {
-        style: HomeStyle.SIMPLE,
-    },
     menu: {
         mood: MenuMood.CLEAN,
         layout: MenuLayout.LIST,
+        showItemPrices: true,
+        showImages: true,
+        showCategoryIcons: true,
+        showCategoryTabs: false,
     },
 };
 
@@ -674,24 +553,6 @@ export function getMoodWithBrandColor(mood: MenuMood, brandAccentColor?: string)
     };
 }
 
-/**
- * Get home style config with optional brand color override
- */
-export function getHomeStyleWithBrandColor(style: HomeStyle, brandAccentColor?: string): HomeStyleConfig {
-    const styleConfig = HOME_STYLES[style];
-
-    if (!brandAccentColor) {
-        return styleConfig;
-    }
-
-    // Apply brand color to accent elements
-    return {
-        ...styleConfig,
-        color: style === HomeStyle.PREMIUM ? brandAccentColor : styleConfig.color,
-        borderColor: style !== HomeStyle.SIMPLE ? `${brandAccentColor}50` : styleConfig.borderColor,
-    };
-}
-
 // Pre-defined restaurant brand color suggestions
 export const BRAND_COLOR_PRESETS = [
     { color: '#22c55e', name: 'Fresh Green' },
@@ -709,12 +570,6 @@ export const BRAND_COLOR_PRESETS = [
 // ============================================
 
 export interface DesignConfig {
-    home: {
-        style: HomeStyle;
-        // Optional overrides (hidden in Advanced)
-        backgroundImage?: string;
-        logoUrl?: string;
-    };
     menu: {
         mood: MenuMood;
         layout: MenuLayout;
@@ -730,9 +585,6 @@ export interface DesignConfig {
 
 export function getDefaultDesignConfig(): DesignConfig {
     return {
-        home: {
-            style: HomeStyle.SIMPLE,
-        },
         menu: {
             mood: MenuMood.CLEAN,
             layout: MenuLayout.LIST,

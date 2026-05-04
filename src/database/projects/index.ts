@@ -586,11 +586,13 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
                 deleted: false,
                 config: {
                     design: {
-                        home: { style: DEFAULTS.home.style },
                         menu: {
                             mood: DEFAULTS.menu.mood,
                             layout: DEFAULTS.menu.layout,
-                            showImages: true,
+                            showItemPrices: DEFAULTS.menu.showItemPrices,
+                            showImages: DEFAULTS.menu.showImages,
+                            showCategoryIcons: DEFAULTS.menu.showCategoryIcons,
+                            showCategoryTabs: DEFAULTS.menu.showCategoryTabs,
                         },
                     },
                 },

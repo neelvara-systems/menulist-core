@@ -101,7 +101,7 @@ function ClientMenuRenderer({
     const scrollStorageKey = getCustomerMenuStateKey(storeId, SCROLL_KEY);
 
     // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): public path opens directly to the menu.
-    // HomePageNew intro screen is retired from the public surface per D-01.
+    // The old intro screen is retired from the public surface per D-01.
     // Default to MENU unconditionally; ignore any legacy stored HOME value.
     const [activePage, setActivePage] = useState<PageType>(PageType.MENU);
     const [activeLanguage, setActiveLanguage] = useState<string>(() => {

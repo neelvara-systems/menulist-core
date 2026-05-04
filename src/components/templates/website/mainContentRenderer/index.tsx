@@ -1,7 +1,7 @@
-import { DEFAULTS, getHomeStyleWithBrandColor, resolveMenuDesignConfig } from "@template/main-app/projects/b2cView/designSystem"
+import { resolveMenuDesignConfig } from "@template/main-app/projects/b2cView/designSystem"
 import DeviceFrame from "@template/main-app/projects/b2cView/deviceFrame"
-import HomePageNew from "@template/main-app/projects/b2cView/homePage/homePageNew"
 import MenuPageNew from "@template/main-app/projects/b2cView/menuPage/menuPageNew"
+import OfficialPagePreview from "@template/main-app/projects/b2cView/officialPage/officialPagePreview"
 import { DeviceTypes, PageType } from "@template/main-app/projects/b2cView/types"
 import { Project } from "@template/main-app/projects/types"
 import { StoreDataType } from "@type/platform/store"
@@ -40,29 +40,24 @@ function MainContentRenderer({
   restoreStoredLanguage
 }: MainContentRendererProps) {
 
-  const homeStyle = projectData?.config?.design?.home?.style || DEFAULTS.home.style;
   const brandAccentColor = projectData?.config?.design?.brand?.accentColor;
   const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
 
-  // Get style configs with brand color applied
-  const homeStyleConfig = getHomeStyleWithBrandColor(homeStyle, brandAccentColor);
-
-  // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): HomePageNew must not render in the public
-  // path (fromPage === 'main-website'). Editor preview retains HOME mode for
-  // legacy authored designs — the editor sidebar controls activePage there.
+  // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): the retired intro screen
+  // is no longer part of public runtime or the owner UI editor. Public menu
+  // routes always render the menu; the owner editor uses OBP as the public
+  // identity preview branch.
   const isPublicSurface = fromPage === 'main-website';
   const effectivePage = isPublicSurface ? PageType.MENU : activePage;
 
   return (
-    <DeviceFrame fromPage={fromPage} activeDeviceType={activeDeviceType} backgroundColor={homeStyleConfig.background} activePage={effectivePage}>
-      {effectivePage === PageType.HOME ? (
-        <HomePageNew
+    <DeviceFrame fromPage={fromPage} activeDeviceType={activeDeviceType} backgroundColor="#fbfaf7" activePage={effectivePage}>
+      {effectivePage === PageType.OBP ? (
+        <OfficialPagePreview
           activeDeviceType={activeDeviceType}
+          activeLanguage={activeLanguage}
           setActivePage={setActivePage}
-          homeStyle={homeStyle}
-          brandAccentColor={brandAccentColor}
-          backgroundImage={projectData?.config?.design?.home?.backgroundImage}
-          from={fromPage}
+          storeDetails={storeDetails}
         />
       ) : (
         <MenuPageNew

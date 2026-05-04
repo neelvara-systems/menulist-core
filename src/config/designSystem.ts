@@ -10,8 +10,6 @@ export {
     DEFAULTS,
     getCompatibleLayouts,
     getMoodWithBrandColor,
-    HOME_STYLES,
-    HomeStyle,
     normalizeMenuLayout,
     normalizeMenuMood,
     resolveMenuDesignConfig,
