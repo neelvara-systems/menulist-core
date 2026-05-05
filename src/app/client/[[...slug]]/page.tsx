@@ -21,7 +21,6 @@
  */
 
 import TempStatusBanner from "@atoms/TempStatusBanner";
-import TrustSignals from "@atoms/TrustSignals";
 import { getMoodWithBrandColor, resolveMenuDesignConfig } from "@config/designSystem";
 import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
@@ -1584,18 +1583,6 @@ async function MenuContent({
                 projectName={menuName}
                 theme={menuHeaderTheme}
             />
-            {/* ── Menu Trust Signals — location · status · offering · freshness ── */}
-            {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
-                <TrustSignals
-                    businessType={storeDetails?.businessType || ''}
-                    lastPublishedAt={rawProjectData?.lastPublishedAt || null}
-                    locationArea={storeDetails?.area || null}
-                    city={storeDetails?.city || null}
-                    workingHours={storeDetails?.workingHours}
-                    timeZone={storeDetails?.timeZone}
-                    theme={menuHeaderTheme}
-                />
-            )}
             <ClientMenuRenderer
                 projectData={projectData}
                 storeDetails={storeDetails}

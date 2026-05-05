@@ -31,6 +31,7 @@ interface TrustSignalsProps {
         borderColor: string;
         fontFamily: string;
     };
+    showBorder?: boolean;
 }
 
 /**
@@ -119,6 +120,7 @@ export default function TrustSignals({
     timeZone,
     hoursLastUpdatedAt,
     theme,
+    showBorder = true,
 }: TrustSignalsProps) {
     const labels = getOfferingLabels(businessType);
     const offeringLabel = labels.offeringTitle;
@@ -161,7 +163,7 @@ export default function TrustSignals({
         ...CONTAINER_STYLE,
         background: theme?.background || CONTAINER_STYLE.background,
         color: theme?.mutedColor || CONTAINER_STYLE.color,
-        borderBottom: theme ? `1px solid ${theme.borderColor}` : undefined,
+        borderBottom: theme && showBorder ? `1px solid ${theme.borderColor}` : undefined,
         fontFamily: theme?.fontFamily || CONTAINER_STYLE.fontFamily,
     };
     const separatorStyle = {

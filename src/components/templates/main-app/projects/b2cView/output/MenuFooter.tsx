@@ -45,6 +45,8 @@ interface MenuFooterProps {
     menuVersion?: number;
     /** When menu was last published (from project.lastPublishedAt) */
     lastPublishedAt?: any; // Firestore Timestamp or Date
+    showLanguageSelector?: boolean;
+    showUpdateMeta?: boolean;
     analyticsIds?: Partial<Pick<TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     trackingEnabled?: boolean;
 }
@@ -93,6 +95,8 @@ export default function MenuFooter({
     feedbackEnabled,
     menuVersion,
     lastPublishedAt,
+    showLanguageSelector = true,
+    showUpdateMeta = true,
     analyticsIds,
     trackingEnabled = true,
 }: MenuFooterProps) {
@@ -460,7 +464,7 @@ export default function MenuFooter({
             )}
 
             {/* Language selector */}
-            {languages.length > 1 && (
+            {showLanguageSelector && languages.length > 1 && (
                 <nav
                     style={{
                         display: 'flex',
@@ -502,7 +506,7 @@ export default function MenuFooter({
             )}
 
             {/* Canonical Truth: Version + Timestamp (machine-readable, trust signal) */}
-            {(menuVersion || lastPublishedAt) && (
+            {showUpdateMeta && (menuVersion || lastPublishedAt) && (
                 <p
                     style={{
                         color: moodConfig.bodyColor,

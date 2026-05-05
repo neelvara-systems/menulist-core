@@ -1,12 +1,11 @@
 /**
  * Menu Search Bar Component
  * 
- * Search bar placed below header, scrolls away naturally (NEVER sticky).
+ * Search bar placed below menu identity/status controls.
  * Constitutional requirement: Search is for known-intent acceleration.
  * 
  * HARD RULES:
- * - NEVER sticky (per constitution feedback)
- * - Scrolls away with content
+ * - Sticky behavior is controlled by the parent menu layout
  * - Placeholder adapts to business type
  * - Single-line input only
  */

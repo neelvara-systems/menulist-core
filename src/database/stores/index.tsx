@@ -311,6 +311,24 @@ export const updateStore = async (data: any) => {
 
             await updateDoc(getDocRef(data.id), await requestBodyComposer(data));
 
+            // Public OBP/menu store lookup uses the shared `client-stores`
+            // Data Cache tag. Store-level saves must invalidate it so owner
+            // publicPresence changes, including OBP special notes, reach live
+            // customer pages without waiting for CDN/Data Cache expiry.
+            if (data.storeId && typeof window !== "undefined") {
+                try {
+                    void fetch("/api/revalidate/menu", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ storeId: data.storeId }),
+                    });
+                } catch {
+                    // Silent fail — public cache still self-heals through TTL.
+                }
+            }
+
             // Sync to storesSummary for Cloud Function optimization
             // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
             // Only sync if summary-relevant fields are present in the update

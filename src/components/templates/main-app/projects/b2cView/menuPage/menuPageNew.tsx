@@ -13,6 +13,7 @@
 import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
+import TrustSignals from '@atoms/TrustSignals';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
@@ -389,6 +390,7 @@ function MenuPageNew({
     // B.1: Intersection Observer for tabs/FAB mutual exclusivity
     // Activates when category tabs are rendered (mobile with showCategoryTabs OR tablet always)
     const showTabsBar = !isDesktop && (showCategoryTabs || isTablet);
+    const stickyControlsOffset = isDesktop ? 96 : showTabsBar ? 150 : 86;
     useEffect(() => {
         if (!categoryTabsRef.current || !showTabsBar) return;
 
@@ -422,7 +424,7 @@ function MenuPageNew({
                 const element = document.getElementById(`cat-${cat.id}`);
                 if (element) {
                     const rect = element.getBoundingClientRect();
-                    const distance = Math.abs(rect.top - containerTop - 100); // 100px offset for header
+                    const distance = Math.abs(rect.top - containerTop - stickyControlsOffset);
 
                     if (distance < closestDistance) {
                         closestDistance = distance;
@@ -438,7 +440,7 @@ function MenuPageNew({
 
         container.addEventListener('scroll', handleScroll);
         return () => container.removeEventListener('scroll', handleScroll);
-    }, [allCategories, activeCategory, enableScrollSpy]);
+    }, [allCategories, activeCategory, enableScrollSpy, stickyControlsOffset]);
 
     // #31: Progressive rendering observer — mark categories visible as they approach viewport
     useEffect(() => {
@@ -751,6 +753,41 @@ function MenuPageNew({
         margin: '0 auto',
         width: '100%',
     };
+    const stickyControlsStyle: React.CSSProperties = {
+        position: 'sticky',
+        top: 0,
+        zIndex: 70,
+        marginBottom: 18,
+        paddingTop: isMobile || isTablet ? 'calc(6px + env(safe-area-inset-top))' : 0,
+        paddingBottom: showTabsBar ? 12 : 6,
+        background: moodConfig.background,
+        borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
+    };
+    const categoryTabsStyle: React.CSSProperties = {
+        display: 'flex',
+        gap: 8,
+        overflowX: 'auto',
+        paddingTop: 0,
+        paddingRight: 0,
+        paddingBottom: 0,
+        paddingLeft: 0,
+        marginBottom: 0,
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+    };
+    const bottomMetaTheme = {
+        background: moodConfig.background,
+        mutedColor: moodConfig.descriptionColor || moodConfig.bodyColor,
+        borderColor: moodConfig.categoryStyle.dividerColor || moodConfig.itemStyle.borderColor,
+        fontFamily: moodConfig.bodyFont,
+    };
+    const bottomMetaStyle: React.CSSProperties = {
+        marginTop: spacing.category,
+        padding: isMobile ? '10px 0 12px' : '12px 0 14px',
+        borderTop: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+    };
 
     const categoryHeaderStyle: React.CSSProperties = {
         fontFamily: moodConfig.headingFont,
@@ -822,26 +859,72 @@ function MenuPageNew({
         <div style={containerStyle}>
             <div ref={scrollContainerRef} style={scrollContentStyle}>
                 <div style={contentStyle}>
-                    {/* Header */}
-                    <MenuHeader
-                        activeDeviceType={activeDeviceType}
-                        projectData={projectData}
-                        activeLanguage={activeLanguage}
-                        setActiveLanguage={setActiveLanguage}
-                        setActivePage={setActivePage}
-                        moodConfig={moodConfig}
-                        restoreStoredLanguage={restoreStoredLanguage}
-                    />
+                    {/* Sticky menu controls: search plus horizontal categories on mobile/tablet */}
+                    <div style={stickyControlsStyle}>
+                        <MenuSearchBar
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            moodConfig={moodConfig}
+                            businessType={businessType}
+                            businessCategory={storeDetails?.businessCategory}
+                            isMobile={isMobile}
+                        />
 
-                    {/* Search Bar - Below header, NEVER sticky (scrolls away) */}
-                    <MenuSearchBar
-                        searchTerm={searchTerm}
-                        onSearchChange={setSearchTerm}
-                        moodConfig={moodConfig}
-                        businessType={businessType}
-                        businessCategory={storeDetails?.businessCategory}
-                        isMobile={isMobile}
-                    />
+                        {!isDesktop && showTabsBar && allCategories.length > 0 && (
+                            <div
+                                ref={categoryTabsRef}
+                                style={categoryTabsStyle}
+                                className="hide-scrollbar"
+                            >
+                                {allCategories.map((cat: any) => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => {
+                                            setActiveCategory(cat);
+                                            const element = document.getElementById(`cat-${cat.id}`);
+                                            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }}
+                                        style={{
+                                            minHeight: 44,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '10px 16px',
+                                            borderRadius: 999,
+                                            border: activeCategory?.id === cat.id
+                                                ? `1px solid ${moodConfig.accentColor}`
+                                                : `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                            background: activeCategory?.id === cat.id
+                                                ? moodConfig.accentColor
+                                                : moodConfig.itemStyle.background,
+                                            color: activeCategory?.id === cat.id
+                                                ? '#000'
+                                                : moodConfig.bodyColor,
+                                            fontFamily: moodConfig.bodyFont,
+                                            fontSize: 13,
+                                            fontWeight: activeCategory?.id === cat.id ? 600 : 400,
+                                            whiteSpace: 'nowrap',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            flexShrink: 0,
+                                            WebkitTapHighlightColor: 'transparent',
+                                        }}
+                                    >
+                                        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
+                                            {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
+                                                <CategoryIcon
+                                                    color={activeCategory?.id === cat.id ? '#000' : moodConfig.bodyColor}
+                                                    icon={cat.icon}
+                                                    size={14}
+                                                />
+                                            ) : null}
+                                            <span>{cat.name?.[activeLanguage]}</span>
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Decision Blocks - Recommendation section at top of menu */}
                     {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS && !debouncedSearch && allItems.length > 0 && (
@@ -865,79 +948,6 @@ function MenuPageNew({
                             }}
                             trackingEnabled={isDecisionBlockAnalyticsEnabled(storeDetails?.analytics)}
                         />
-                    )}
-
-                    {/* Horizontal Category Tabs - Sticky (mobile/tablet only, desktop uses sidebar) */}
-                    {!isDesktop && (showCategoryTabs || isTablet) && allCategories.length > 0 && (
-                        <div
-                            ref={categoryTabsRef}
-                            style={{
-                                display: 'flex',
-                                gap: 8,
-                                overflowX: 'auto',
-                                paddingTop: 'calc(8px + env(safe-area-inset-top))',
-                                paddingRight: 0,
-                                paddingBottom: 12,
-                                paddingLeft: 0,
-                                marginBottom: 16,
-                                borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                scrollbarWidth: 'none',
-                                msOverflowStyle: 'none',
-                                position: 'sticky',
-                                top: 0,
-                                zIndex: 60,
-                                background: moodConfig.background,
-                                boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
-                            }}
-                            className="hide-scrollbar"
-                        >
-                            {allCategories.map((cat: any) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => {
-                                        setActiveCategory(cat);
-                                        const element = document.getElementById(`cat-${cat.id}`);
-                                        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }}
-                                    style={{
-                                        minHeight: 44,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: '10px 16px',
-                                        borderRadius: 999,
-                                        border: activeCategory?.id === cat.id
-                                            ? `1px solid ${moodConfig.accentColor}`
-                                            : `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                        background: activeCategory?.id === cat.id
-                                            ? moodConfig.accentColor
-                                            : moodConfig.itemStyle.background,
-                                        color: activeCategory?.id === cat.id
-                                            ? '#000'
-                                            : moodConfig.bodyColor,
-                                        fontFamily: moodConfig.bodyFont,
-                                        fontSize: 13,
-                                        fontWeight: activeCategory?.id === cat.id ? 600 : 400,
-                                        whiteSpace: 'nowrap',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        flexShrink: 0,
-                                        WebkitTapHighlightColor: 'transparent',
-                                    }}
-                                >
-                                    <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
-                                        {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
-                                            <CategoryIcon
-                                                color={activeCategory?.id === cat.id ? '#000' : moodConfig.bodyColor}
-                                                icon={cat.icon}
-                                                size={14}
-                                            />
-                                        ) : null}
-                                        <span>{cat.name?.[activeLanguage]}</span>
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
                     )}
 
                     {/* Filter Chips - Below category tabs, auto-hide when irrelevant */}
@@ -964,8 +974,8 @@ function MenuPageNew({
                                     width: 220,
                                     flexShrink: 0,
                                     position: 'sticky',
-                                    top: 16,
-                                    maxHeight: 'calc(100vh - 120px)',
+                                    top: stickyControlsOffset,
+                                    maxHeight: `calc(100vh - ${stickyControlsOffset + 24}px)`,
                                     overflowY: 'auto',
                                     paddingRight: 16,
                                     scrollbarWidth: 'thin',
@@ -1045,9 +1055,7 @@ function MenuPageNew({
                                         data-category-id={category.id}
                                         style={{
                                             marginBottom: spacing.category,
-                                            scrollMarginTop: !isDesktop && (showCategoryTabs || isTablet)
-                                                ? 'calc(78px + env(safe-area-inset-top))'
-                                                : 24,
+                                            scrollMarginTop: `calc(${stickyControlsOffset + 16}px + env(safe-area-inset-top))`,
                                         }}
                                     >
                                         <header>
@@ -1289,6 +1297,33 @@ function MenuPageNew({
                             />
                         )}
 
+                    {/* Menu meta moves to the bottom so browsing controls stay focused at the top. */}
+                    <section style={bottomMetaStyle} aria-label="Menu status and language">
+                        <MenuHeader
+                            activeDeviceType={activeDeviceType}
+                            projectData={projectData}
+                            activeLanguage={activeLanguage}
+                            setActiveLanguage={setActiveLanguage}
+                            setActivePage={setActivePage}
+                            moodConfig={moodConfig}
+                            restoreStoredLanguage={restoreStoredLanguage}
+                            placement="bottom"
+                        />
+
+                        {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
+                            <TrustSignals
+                                businessType={businessType || storeDetails?.businessType || ''}
+                                lastPublishedAt={projectData?.lastPublishedAt || null}
+                                locationArea={storeDetails?.area || null}
+                                city={storeDetails?.city || null}
+                                workingHours={storeDetails?.workingHours}
+                                timeZone={storeDetails?.timeZone}
+                                theme={bottomMetaTheme}
+                                showBorder={false}
+                            />
+                        )}
+                    </section>
+
                     {/* 
                       * CONSTITUTIONAL ORDER (DO NOT CHANGE):
                       * 1. Pricing disclosures (G06)
@@ -1310,6 +1345,8 @@ function MenuPageNew({
                         menuVersion={projectData?.menuVersion}
                         lastPublishedAt={projectData?.lastPublishedAt}
                         onLanguageSelect={setActiveLanguage}
+                        showLanguageSelector={false}
+                        showUpdateMeta={false}
                         analyticsIds={{
                             tenantId: storeDetails?.tenantId,
                             storeId: String(storeDetails?.storeId || ''),

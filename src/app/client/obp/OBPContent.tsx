@@ -564,29 +564,12 @@ function isLegacySpecialNoteHelper(value: string): boolean {
 }
 
 function getLocalizedPublicText(value: unknown, language: string, fallback: string = ''): string {
-    if (typeof value === 'string') return value.trim() || fallback;
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
-
-    const entries = Object.entries(value as Record<string, unknown>);
-    const candidates = [
+    return getLocalizedText(
+        value as any,
         language,
-        language.split('-')[0],
-        getNextIntlLocaleForPublicLanguage(language),
-        getNextIntlLocaleForPublicLanguage(language).split('-')[0],
-    ].map((candidate) => candidate.trim()).filter(Boolean);
-
-    for (const candidate of candidates) {
-        const match = entries.find(([key]) => key.toLowerCase() === candidate.toLowerCase());
-        const text = typeof match?.[1] === 'string' ? match[1].trim() : '';
-        if (text) return text;
-    }
-
-    const english = entries.find(([key]) => key.toLowerCase() === 'en');
-    const englishText = typeof english?.[1] === 'string' ? english[1].trim() : '';
-    if (englishText) return englishText;
-
-    const firstText = entries.map(([, entry]) => (typeof entry === 'string' ? entry.trim() : '')).find(Boolean);
-    return firstText || fallback;
+        getPrimaryLocalizedLanguage(value as any, language),
+        fallback,
+    );
 }
 
 // ── Build full address string ──
@@ -996,6 +979,7 @@ export default async function OBPContent({
                     <TempStatusBanner tempStatus={store.tempStatus} variant="pill" />
                 )}
 
+                <div className={styles.desktopLayout}>
                     {/* ── Identity Block ── */}
                     <section className={styles.identity} aria-label={storeName}>
                         <div className={styles.identityHeader}>
@@ -1207,12 +1191,13 @@ export default async function OBPContent({
                             )}
                         </section>
                     )}
+                </div>
 
                 {(hasStructuredInfo || (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0)) && (
                     <div className={styles.utilityStack}>
                         {/* ── Structured Info Section (P3 — AEO critical, all SSR) ── */}
                         {allHours && !isPermanentlyClosed && (
-                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicBusinessHours')}>
+                            <section className={`${styles.info} ${styles.utilityInfo} ${styles.businessHoursInfo}`} aria-label={t('publicBusinessHours')}>
                                 <h2 className={styles.groupTitle}>
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCalendarDays, '📅')}</span>
                                     {t('publicBusinessHours')}
@@ -1224,7 +1209,7 @@ export default async function OBPContent({
                         )}
 
                         {(serviceModeItems.length > 0 || cuisineTypes.length > 0 || priceRange) && !isPermanentlyClosed && (
-                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicServiceOptions')}>
+                            <section className={`${styles.info} ${styles.utilityInfo} ${styles.serviceInfo}`} aria-label={t('publicServiceOptions')}>
                                 <h2 className={styles.groupTitle}>
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                     {t('publicServiceOptions')}
@@ -1250,7 +1235,7 @@ export default async function OBPContent({
                         )}
 
                         {paymentItems.length > 0 && !isPermanentlyClosed && (
-                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicPaymentOptions')}>
+                            <section className={`${styles.info} ${styles.utilityInfo} ${styles.paymentInfo}`} aria-label={t('publicPaymentOptions')}>
                                 <h2 className={styles.groupTitle}>
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCreditCard, '💳')}</span>
                                     {t('publicPaymentOptions')}
@@ -1262,7 +1247,7 @@ export default async function OBPContent({
                         )}
 
                         {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && dietaryAttributeTags.length > 0 && (
-                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicDietaryOptions')}>
+                            <section className={`${styles.info} ${styles.utilityInfo} ${styles.dietaryInfo}`} aria-label={t('publicDietaryOptions')}>
                                 <h2 className={styles.groupTitle}>
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuLeaf, '🌿')}</span>
                                     {t('publicDietaryOptions')}
@@ -1275,7 +1260,7 @@ export default async function OBPContent({
 
                         {/* ── Business Attributes (BTG Layer 12) ── */}
                         {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && amenityAttributeTags.length > 0 && (
-                            <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicAmenities')}>
+                            <section className={`${styles.info} ${styles.utilityInfo} ${styles.amenitiesInfo}`} aria-label={t('publicAmenities')}>
                                 <h2 className={styles.groupTitle}>
                                     <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                     {t('publicAmenities')}

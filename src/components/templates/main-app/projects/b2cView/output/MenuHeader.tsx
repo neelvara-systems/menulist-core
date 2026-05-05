@@ -22,6 +22,7 @@ interface MenuHeaderProps {
     setActivePage: (page: PageType) => void;
     moodConfig: MenuMoodConfig;
     restoreStoredLanguage?: boolean;
+    placement?: 'top' | 'bottom';
 }
 
 function MenuHeader({
@@ -32,10 +33,12 @@ function MenuHeader({
     setActivePage,
     moodConfig,
     restoreStoredLanguage = true,
+    placement = 'top',
 }: MenuHeaderProps) {
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const isMobile = activeDeviceType === 'mobile';
     const hasMultipleLanguages = projectData.languages?.length > 1;
+    const isBottomPlacement = placement === 'bottom';
 
     // Get current language info
     const currentLang = GlobalLanguagesList.find(gl => gl.code === activeLanguage);
@@ -75,11 +78,14 @@ function MenuHeader({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 12,
-                padding: isMobile ? '8px 0 10px' : '12px 0',
-                marginBottom: 10,
-                borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                padding: isBottomPlacement
+                    ? (isMobile ? '10px 0' : '12px 0')
+                    : (isMobile ? '8px 0 10px' : '12px 0'),
+                marginBottom: isBottomPlacement ? 0 : 10,
+                borderBottom: isBottomPlacement ? 'none' : `1px solid ${moodConfig.itemStyle.borderColor}`,
                 fontFamily: moodConfig.bodyFont,
                 color: moodConfig.bodyColor,
+                flexWrap: isBottomPlacement && isMobile ? 'wrap' : 'nowrap',
             }}
         >
             {/* Logo — decorative only.

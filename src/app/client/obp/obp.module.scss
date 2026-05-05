@@ -5,6 +5,7 @@
 // ── Variables ──
 $obp-bg: #fbfaf7;
 $obp-max-width: 500px;
+$obp-desktop-width: 1180px;
 $obp-border: #e8e8e8;
 $obp-text-primary: #111;
 $obp-text-secondary: #666;
@@ -23,6 +24,7 @@ $obp-closed-color: #c62828;
   .languageOption,
   .officialBadge,
   .projectCard,
+  .actions,
   .actionButton,
   .info,
   .note,
@@ -297,6 +299,10 @@ $obp-closed-color: #c62828;
   max-width: $obp-max-width;
   margin: 0 auto;
   padding: calc(18px + env(safe-area-inset-top)) 18px calc(38px + env(safe-area-inset-bottom));
+}
+
+.desktopLayout {
+  width: 100%;
 }
 
 // ── Language Switcher ──
@@ -1504,6 +1510,288 @@ $obp-closed-color: #c62828;
     min-width: 0;
     max-width: none;
     min-height: 76px;
+  }
+}
+
+@media (min-width: 900px) {
+  .shell {
+    max-width: $obp-desktop-width;
+    padding: calc(32px + env(safe-area-inset-top)) 36px calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .languageSwitcher {
+    justify-content: flex-end;
+    gap: 8px;
+    padding-bottom: 18px;
+  }
+
+  .languageOption {
+    min-height: 32px;
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  .desktopLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+    gap: 20px 24px;
+    align-items: start;
+  }
+
+  .identity {
+    grid-column: 1;
+    padding-bottom: 0;
+  }
+
+  .identityHeader {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .logo,
+  .logoFallback {
+    width: 96px;
+    height: 96px;
+    border-radius: 18px;
+  }
+
+  .logoFallback {
+    font-size: 38px;
+  }
+
+  .name {
+    font-size: 44px;
+    line-height: 1.06;
+    margin-bottom: 10px;
+  }
+
+  .descriptor {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .identityPills {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .identityPill {
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 14px;
+  }
+
+  .trustRow {
+    gap: 10px 12px;
+    margin-top: 18px;
+  }
+
+  .statusBadge,
+  .officialBadge,
+  .freshnessBadge {
+    min-height: 32px;
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+
+  .reviewLink {
+    min-height: 32px;
+    font-size: 13.5px;
+  }
+
+  .identityMeta {
+    font-size: 15px;
+    margin-top: 16px;
+  }
+
+  .primaryCta {
+    grid-column: 1;
+    margin: 0;
+  }
+
+  .menuButton {
+    min-height: 72px;
+    border-radius: 14px;
+    font-size: 18px;
+  }
+
+  .menuButtonThumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .projectCards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .projectCard {
+    border-radius: 16px;
+  }
+
+  .projectCardThumb,
+  .projectCardThumbFallback {
+    aspect-ratio: 1.65 / 1;
+  }
+
+  .projectCardName {
+    min-height: 54px;
+    padding: 14px 18px 16px;
+    font-size: 18px;
+  }
+
+  .actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-self: start;
+    width: 100%;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid $obp-border;
+    border-radius: 16px;
+    background: #fff;
+  }
+
+  .actions .actionButton:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .actionButton,
+  .actionButtonUtility {
+    flex: none;
+    min-width: 0;
+    max-width: none;
+    min-height: 56px;
+    justify-content: flex-start;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13.5px;
+  }
+
+  .actionIcon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .photoStrip {
+    grid-column: 1;
+    gap: 12px;
+    margin: 0;
+  }
+
+  .photoButton {
+    aspect-ratio: 4 / 3;
+
+    &:only-child {
+      aspect-ratio: 2.35 / 1;
+    }
+  }
+
+  .note,
+  .locationInfo {
+    grid-column: 2;
+    margin-bottom: 0;
+  }
+
+  .note,
+  .info {
+    border-radius: 16px;
+    padding: 18px;
+  }
+
+  .groupTitle {
+    font-size: 18px;
+  }
+
+  .noteText {
+    font-size: 14.5px;
+  }
+
+  .locationAddress,
+  .infoRow {
+    font-size: 15.5px;
+  }
+
+  .mapPreview {
+    border-radius: 12px;
+  }
+
+  .utilityStack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin: 24px 0;
+  }
+
+  .utilityInfo {
+    margin-bottom: 0;
+  }
+
+  .businessHoursInfo {
+    grid-column: 1 / -1;
+  }
+
+  .businessHoursInfo .hoursList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 28px;
+  }
+
+  .hoursRow {
+    min-height: 44px;
+  }
+
+  .hoursDay,
+  .hoursTime {
+    font-size: 15px;
+  }
+
+  .iconGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 26px 14px;
+  }
+
+  .iconGridCompact {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px 12px;
+  }
+
+  .iconTile {
+    gap: 8px;
+  }
+
+  .iconTileSymbol {
+    width: 42px;
+    height: 42px;
+  }
+
+  .iconTileLabel {
+    font-size: 13px;
+  }
+
+  .footer {
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+  }
+
+  .outletList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .footerSocials {
+    margin-bottom: 14px;
+  }
+
+  .themeToggle {
+    margin-top: 16px;
   }
 }
 
