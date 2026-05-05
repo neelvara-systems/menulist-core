@@ -200,6 +200,7 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - Settled owner dashboard views end on the latest settled business date. They are intentionally not mixed with the current partial business day or the just-ended day before scheduler settlement.
 - The Dashboard has six explicit display tabs on desktop and mobile: `Today`, `Overview`, `Daily`, `Weekly`, `Monthly`, and `Overall`.
 - Every dashboard tab renders its own Menu card/section and matching Official Business Page card/section so owners do not have to mentally combine separate surfaces.
+- Desktop Dashboard is analytics-only like mobile. Operational cards such as menu quality repair, temporary status, official-link setup, Google listing setup, and review reply tools are not mounted inside Dashboard; they belong to their own owner workflow surfaces.
 - The default `Today` tab reads only the current day Menu and OBP daily docs directly through the owner-dashboard DAL.
 - The live card uses SWR plus local cache with a short TTL only for that slice, so Firebase cost stays bounded.
 - Settled / past analytics stay gated until the owner opens `Overview`, `Daily`, `Weekly`, `Monthly`, or `Overall`. Menu and OBP settled reads then use SWR/localStorage with the store-local scheduler cycle key. The cache survives midnight and business-day cutoff changes, then invalidates after the next expected local scheduler completion window.

@@ -996,18 +996,6 @@ export default async function OBPContent({
                     <TempStatusBanner tempStatus={store.tempStatus} variant="pill" />
                 )}
 
-                    {/* ── Business Photos (first 3 preview, full tap viewer) ── */}
-                    <OBPPhotoStrip
-                        closePreviewLabel={t('publicPhotoPreviewClose')}
-                        nextPhotoLabel={t('publicPhotoNext')}
-                        photoLabelTemplate={t('publicPhotoLabel', { index: '{index}' })}
-                        photoPositionTemplate={t('publicPhotoPosition', { index: '{index}', total: '{total}' })}
-                        previousPhotoLabel={t('publicPhotoPrevious')}
-                        photos={photos}
-                        previewLabel={t('publicPhotoPreview')}
-                        storeName={storeName}
-                    />
-
                     {/* ── Identity Block ── */}
                     <section className={styles.identity} aria-label={storeName}>
                         <div className={styles.identityHeader}>
@@ -1069,6 +1057,13 @@ export default async function OBPContent({
                                 {renderDisplayIcon(iconVariant, LuBadgeCheck, '✅', 14)}
                                 {officialPageLabel}
                             </span>
+
+                            {freshnessText && !isPermanentlyClosed && (
+                                <span className={styles.freshnessBadge}>
+                                    <LuCheck aria-hidden="true" size={14} />
+                                    <span>{freshnessText}</span>
+                                </span>
+                            )}
 
                             {/* Google rating as subtle reference signal (NOT dominant) */}
                             {hasGoogleReview && (
@@ -1159,6 +1154,18 @@ export default async function OBPContent({
                             reviews: t('publicActionReviews'),
                             feedback: t('publicActionFeedback'),
                         }}
+                    />
+
+                    {/* ── Business Photos (first 3 preview, full tap viewer) ── */}
+                    <OBPPhotoStrip
+                        closePreviewLabel={t('publicPhotoPreviewClose')}
+                        nextPhotoLabel={t('publicPhotoNext')}
+                        photoLabelTemplate={t('publicPhotoLabel', { index: '{index}' })}
+                        photoPositionTemplate={t('publicPhotoPosition', { index: '{index}', total: '{total}' })}
+                        previousPhotoLabel={t('publicPhotoPrevious')}
+                        photos={photos}
+                        previewLabel={t('publicPhotoPreview')}
+                        storeName={storeName}
                     />
 
                     {specialNote ? (
@@ -1312,17 +1319,11 @@ export default async function OBPContent({
                             />
                         </div>
                     )}
-                    {freshnessText && !isPermanentlyClosed && (
-                        <div className={styles.freshnessBadge}>
-                            <LuCheck aria-hidden="true" size={14} />
-                            <span>{freshnessText}</span>
-                        </div>
-                    )}
                     <PublicMenuListAttribution
                         mode="compact"
                         surfaceLabel={t('publicOfficialPagePoweredBy')}
                         rightsLabel={t('publicAllRightsReserved')}
-                        ctaLabel={t('publicCreateMenuCta')}
+                        ctaLabel={null}
                         mutedColor="#bbb"
                     />
                     {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && policyLinks.length > 0 && (

@@ -2,10 +2,9 @@
 
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
-import { Divider, Spin, Typography } from 'antd';
+import { Spin } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useContext, useEffect } from 'react';
-import AnalyticsDashboard from './AnalyticsDashboard';
 import OwnerDashboard from './OwnerDashboard';
 
 function DashboardPage() {
@@ -30,13 +29,7 @@ function DashboardPage() {
     }
 
     return (
-        <>
-            <OwnerDashboard />
-            <Divider>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>Deep Analytics</Typography.Text>
-            </Divider>
-            <AnalyticsDashboard />
-        </>
+        <OwnerDashboard />
     )
 }
 

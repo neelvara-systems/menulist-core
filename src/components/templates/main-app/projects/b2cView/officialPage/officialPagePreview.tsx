@@ -7,6 +7,7 @@ import type { CSSProperties } from 'react';
 import type { IconType } from 'react-icons';
 import { LuBadgeCheck, LuCalendarDays, LuClock, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuStar } from 'react-icons/lu';
 import { getOBPTranslations } from '@/app/client/obp/i18n';
+import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { DeviceTypes, PageType } from '../types';
 import styles from '@/app/client/obp/obp.module.scss';
 
@@ -114,16 +115,6 @@ export default function OfficialPagePreview({
                     paddingInline: isDesktop ? 24 : undefined,
                 }}
             >
-                {photos.length > 0 ? (
-                    <div className={styles.photoStrip}>
-                        {photos.map((photo, index) => (
-                            <button className={styles.photoButton} key={`${photo}-${index}`} type="button">
-                                <img alt={`${storeName} ${t('publicPhotoLabel', { index: index + 1 })}`} src={photo} />
-                            </button>
-                        ))}
-                    </div>
-                ) : null}
-
                 <section className={styles.identity} aria-label={storeName}>
                     <div className={styles.identityHeader}>
                         {storeDetails?.logo ? (
@@ -159,6 +150,7 @@ export default function OfficialPagePreview({
                             {renderPreviewIcon(LuBadgeCheck, '✅', 14)}
                             {officialPageLabel}
                         </span>
+                        <span className={styles.freshnessBadge}>{t('publicInfoVerifiedToday')}</span>
                         {hasGoogleReview ? (
                             <span className={styles.reviewLink}>
                                 {publicPresence.googleReviewCount
@@ -195,6 +187,16 @@ export default function OfficialPagePreview({
                                 </span>
                                 {label}
                             </span>
+                        ))}
+                    </div>
+                ) : null}
+
+                {photos.length > 0 ? (
+                    <div className={styles.photoStrip}>
+                        {photos.map((photo, index) => (
+                            <button className={styles.photoButton} key={`${photo}-${index}`} type="button">
+                                <img alt={`${storeName} ${t('publicPhotoLabel', { index: index + 1 })}`} src={photo} />
+                            </button>
                         ))}
                     </div>
                 ) : null}
@@ -240,7 +242,13 @@ export default function OfficialPagePreview({
                 ) : null}
 
                 <footer className={styles.footer}>
-                    <div className={styles.freshnessBadge}>{t('publicInfoVerifiedToday')}</div>
+                    <PublicMenuListAttribution
+                        mode="compact"
+                        surfaceLabel={t('publicOfficialPagePoweredBy')}
+                        rightsLabel={t('publicAllRightsReserved')}
+                        ctaLabel={null}
+                        mutedColor="#bbb"
+                    />
                     <div className={styles.policyLinks}>
                         {publicPresence.showPrivacyLink !== false ? <span>{t('publicPrivacy')}</span> : null}
                         {publicPresence.showTermsLink !== false ? <span>{t('publicTerms')}</span> : null}
