@@ -37,15 +37,7 @@ import TodaySoFarCard from './TodaySoFarCard';
 import ViewModeTabs from './ViewModeTabs';
 import WeeklyView from './WeeklyView';
 
-import OBPLinkCard from '../../businessSettings/OBPLinkCard';
-import TempStatusCard from '../../businessSettings/TempStatusCard';
-import ReputationGuard from '../../reviews/ReputationGuard';
-import ReviewReplyTool from '../../reviews/ReviewReplyTool';
-import MenuQualitySignals from '../MenuQualitySignals';
-import BehaviorNudgeCard from './BehaviorNudgeCard';
-import GoogleListingCard from './GoogleListingCard';
-import HealthSignalCards from './HealthSignalCards';
-import HoursFreshnessNudge from './HoursFreshnessNudge';
+import CustomerAppMetrics from '../AnalyticsDashboard/CustomerAppMetrics';
 import OBPMetricsCard from './OBPMetricsCard';
 import styles from './OwnerDashboard.module.scss';
 
@@ -54,7 +46,7 @@ const DASHBOARD_PROJECT_STORAGE_KEY = 'menulist_dashboard_project_id';
 const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 
 const OwnerDashboard: React.FC = () => {
-    const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     // Derive a fallback projectId from storeDetails immediately (no SWR wait needed)
     const fallbackProjectId = storeDetails?.storeId
@@ -173,6 +165,7 @@ const OwnerDashboard: React.FC = () => {
                             loadingToday={obpDashboard.loadingToday}
                             mode="overview"
                         />
+                        <CustomerAppMetrics />
                     </Space>
                 );
             case 'daily':
@@ -282,37 +275,6 @@ const OwnerDashboard: React.FC = () => {
                         {renderViewContent()}
                     </motion.div>
                 </AnimatePresence>
-
-                {/* Hours Freshness Nudge — correction trigger for stale hours
-                    Shows only when ENABLE_OUTPUT_CONTROL is ON and hours are RISKY/BROKEN.
-                    @see __docs__/silent-correction-systems/README.md */}
-                <HoursFreshnessNudge />
-
-                {/* Menu Quality Signals - Actionable quality nudges */}
-                <MenuQualitySignals projectId={activeProjectId} />
-
-                {/* Behavior Nudge Card - First-time reinforcement for official link adoption */}
-                <BehaviorNudgeCard />
-
-                {/* Google Listing Card - Pre-API bridge for GBP link control */}
-                {storeDetails && <GoogleListingCard storeDetails={storeDetails} />}
-
-                {/* Temporary Status Card - Daily operational action for public status banners */}
-                {storeDetails && <TempStatusCard storeDetails={storeDetails} setStoreDetails={setStoreDetails} />}
-
-                {/* OBP Link Card - Persistent visibility for link sharing habit */}
-                {storeDetails && <OBPLinkCard storeDetails={storeDetails} />}
-
-                {/* Health Signal Cards - Pillars 4-6 (visible only when data exists) */}
-                {storeDetails?.healthSignals && (
-                    <HealthSignalCards healthSignals={storeDetails.healthSignals} />
-                )}
-
-                {/* Reputation Guard - Pillar 3 (passive notice when review risk detected) */}
-                <ReputationGuard />
-
-                {/* Review Reply Tool - Standalone AI reply suggestion */}
-                <ReviewReplyTool businessType={storeDetails?.businessType} />
 
             </Space>
         </div>

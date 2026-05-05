@@ -257,7 +257,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                         mode="compact"
                         surfaceLabel={t('publicPoweredBy')}
                         rightsLabel={t('publicAllRightsReserved')}
-                        ctaLabel={t('publicCreateMenuCta')}
+                        ctaLabel={null}
                         mutedColor="#bbb"
                     />
                     <OBPThemeToggle

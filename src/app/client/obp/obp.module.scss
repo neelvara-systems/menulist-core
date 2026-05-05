@@ -296,7 +296,7 @@ $obp-closed-color: #c62828;
   width: 100%;
   max-width: $obp-max-width;
   margin: 0 auto;
-  padding: calc(18px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom));
+  padding: calc(18px + env(safe-area-inset-top)) 18px calc(38px + env(safe-area-inset-bottom));
 }
 
 // ── Language Switcher ──
@@ -304,23 +304,23 @@ $obp-closed-color: #c62828;
 .languageSwitcher {
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 0 18px;
+  gap: 5px;
+  padding: 0 0 14px;
 }
 
 .languageOption {
-  min-height: 32px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 5px 9px;
   border-radius: 999px;
   border: 1px solid $obp-border;
   background: #fff;
   color: $obp-text-secondary;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   line-height: 1.2;
   text-decoration: none;
@@ -337,7 +337,7 @@ $obp-closed-color: #c62828;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 0 0 20px;
+  padding: 0 0 22px;
   width: 100%;
 }
 
@@ -431,8 +431,8 @@ $obp-closed-color: #c62828;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
-  margin-top: 10px;
+  gap: 9px 10px;
+  margin-top: 12px;
 }
 
 // ── Status Badge ──
@@ -515,8 +515,8 @@ $obp-closed-color: #c62828;
 
 .primaryCta {
   width: 100%;
-  margin-top: 6px;
-  margin-bottom: 18px;
+  margin-top: 8px;
+  margin-bottom: 22px;
 }
 
 .menuButton {
@@ -594,7 +594,7 @@ $obp-closed-color: #c62828;
 .projectCards {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
 }
 
@@ -622,12 +622,12 @@ $obp-closed-color: #c62828;
     content: "";
     position: absolute;
     inset: auto 0 0;
-    height: 34%;
+    height: 27%;
     pointer-events: none;
     background: linear-gradient(
       to top,
-      rgba(0, 0, 0, 0.68) 0%,
-      rgba(0, 0, 0, 0.36) 48%,
+      rgba(0, 0, 0, 0.66) 0%,
+      rgba(0, 0, 0, 0.30) 54%,
       rgba(0, 0, 0, 0) 100%
     );
   }
@@ -695,7 +695,7 @@ $obp-closed-color: #c62828;
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px 10px;
-  margin-bottom: 28px;
+  margin-bottom: 30px;
   width: 100%;
 }
 
@@ -714,7 +714,7 @@ $obp-closed-color: #c62828;
   background: #fff;
   text-decoration: none;
   color: $obp-text-primary;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.15;
   text-align: center;
@@ -800,8 +800,8 @@ $obp-closed-color: #c62828;
 .photoStrip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0 0 24px;
+  gap: 9px;
+  margin: 2px 0 28px;
   width: 100%;
 }
 
@@ -919,16 +919,16 @@ $obp-closed-color: #c62828;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 15px;
+  gap: 13px;
+  margin-bottom: 22px;
+  padding: 16px;
   border: 1px solid $obp-border;
   border-radius: 12px;
   background: #fff;
 }
 
 .locationInfo {
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .mapPreview {
@@ -956,7 +956,7 @@ $obp-closed-color: #c62828;
 }
 
 .utilityInfo {
-  margin-bottom: 18px;
+  margin-bottom: 22px;
   background: #fff;
 }
 
@@ -966,7 +966,7 @@ $obp-closed-color: #c62828;
   gap: 8px;
   margin: 0;
   color: #202020;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 760;
   line-height: 1.2;
 }
@@ -999,7 +999,7 @@ $obp-closed-color: #c62828;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 14px;
+  font-size: 14.5px;
   color: $obp-text-info;
   line-height: 1.45;
 }
@@ -1022,7 +1022,7 @@ $obp-closed-color: #c62828;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
   border: 1px solid $obp-border;
   border-radius: 12px;
   background: #fff;
@@ -1054,7 +1054,7 @@ $obp-closed-color: #c62828;
 
 .utilityStack {
   width: 100%;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .hoursList {
@@ -1376,7 +1376,7 @@ $obp-closed-color: #c62828;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: 0 auto 10px;
+  margin: 0;
   padding: 6px 11px;
   border-radius: 999px;
   background: $obp-open-bg;
