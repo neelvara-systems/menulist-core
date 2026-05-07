@@ -258,7 +258,7 @@ No owner action required
 | FR8  | State persists on refresh           | P1       | ✅     |
 | FR9  | Offline mode works (cached content) | P1       | ✅     |
 | FR10 | Analytics track all events          | P1       | ✅     |
-| FR11 | Public category identity avoids raw emoji rendering | P0 | ✅ |
+| FR11 | Public category identity preserves owner-selected icon choices | P0 | ✅ |
 | FR12 | Public output uses localized fallback for menu/category/item labels | P0 | ✅ |
 | FR13 | Image-enabled layouts reserve stable image slots | P0 | ✅ |
 
@@ -280,7 +280,7 @@ No owner action required
 | Area | Requirement |
 | ---- | ----------- |
 | Theme system | Owners can choose existing menu moods/layouts, but cannot change public layout order, custom CSS, custom fonts, or interaction behavior. |
-| Category identity | Public category icons must use controlled icon rendering. `emoji:*` values may remain in stored data/editor context, but public output renders a glyph fallback. |
+| Category identity | Public category icons must render through the shared icon system and preserve owner-selected icon choices, including `emoji:*` values. |
 | Navigation | Search and category rail are the primary orientation/retrieval layer. The floating category control is a `Sections` navigator, not a generic menu button. |
 | Typography | Category headings must orient the user without becoming decorative title screens. Item names/descriptions use line limits to preserve scanning rhythm. |
 | Images | Images support item understanding. They cannot turn the menu into a feed, and missing/broken images must not collapse reserved layout space. |

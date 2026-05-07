@@ -18,6 +18,7 @@ import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { slugify } from "@lib/utils/slugify";
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
@@ -234,6 +235,9 @@ export const POST = withAuth(async (request, session) => {
 
             return { newStoreId, tenantName };
         });
+        revalidateTag(`menu-store-${result.newStoreId}`);
+        revalidateTag(`store-${result.newStoreId}`);
+        revalidateTag('client-stores');
 
         return NextResponse.json({
             success: true,

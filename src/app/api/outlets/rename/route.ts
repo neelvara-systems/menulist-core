@@ -29,6 +29,7 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { secureError } from '@lib/security/secureLogger';
 import { slugify } from '@lib/utils/slugify';
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyTenantAccess, withAuth } from '../../../../middleware/auth';
@@ -172,6 +173,9 @@ export const POST = withAuth(async (request, session) => {
             }
             tx.set(summaryRef, summaryPayload, { merge: true });
         });
+        revalidateTag(`menu-store-${outletStoreIdStr}`);
+        revalidateTag(`store-${outletStoreIdStr}`);
+        revalidateTag('client-stores');
 
         return NextResponse.json({
             success: true,

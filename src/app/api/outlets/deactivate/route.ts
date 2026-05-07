@@ -13,6 +13,7 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
@@ -102,6 +103,9 @@ export const POST = withAuth(async (request, session) => {
             outletStoreId,
             billingReduced,
         }, 'medium');
+        revalidateTag(`menu-store-${outletStoreId}`);
+        revalidateTag(`store-${outletStoreId}`);
+        revalidateTag('client-stores');
 
         return NextResponse.json({ success: true, outletStoreId, deactivatedAt: now, billingReduced });
     } catch (error) {

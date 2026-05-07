@@ -221,7 +221,6 @@ function MenuFilters({
                                                 color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
                                                 defaultIcon="LuTag"
                                                 icon={category.icon}
-                                                allowEmoji={false}
                                                 size={16}
                                             />
                                         ) : null}

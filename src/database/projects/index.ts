@@ -1047,6 +1047,7 @@ export const removePresetFromAllCategories = async (presetId: string) => {
                     await setDoc(await getDataDocRef(project.projectId), project, {
                         merge: true,
                     });
+                    await revalidatePublicClientCacheForProject(project.projectId, "removePresetFromAllCategories");
                     updatedCount++;
                 }
             }

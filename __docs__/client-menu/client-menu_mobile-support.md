@@ -16,7 +16,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 | Aspect | Status | Notes |
 |--------|--------|-------|
 | Customer mobile browsing | ✅ | Mobile-first responsive design, 70%+ users on mobile |
-| Category navigation | ✅ | Sticky touch rail plus `Sections` navigator; public icons use controlled glyph fallback |
+| Category navigation | ✅ | Sticky touch rail plus `Sections` navigator; public icons preserve owner-selected icon choices |
 | Item display (name/price/image) | ✅ | Responsive grid/list layouts with line limits and reserved image slots |
 | Search/filter | ✅ | Debounced search with stronger focus state and business-type placeholder |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
@@ -27,7 +27,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 ## Mobile Output Rules
 
 - Customer-facing category labels, item labels, and footer language actions must use localization fallback instead of active-language-only reads.
-- Raw emoji category icons can exist in owner/project data, but public mobile output renders a controlled Lucide fallback.
+- Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
 - Image-enabled layouts reserve thumbnail/card image space so missing or broken images do not move the user's scroll position.
 - Floating controls must respect `env(safe-area-inset-bottom)` and remain secondary to the sticky category/search layer.
 - Platform attribution stays compact and quiet; no extra marketing CTA is added to the mobile footer by default.

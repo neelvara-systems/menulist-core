@@ -931,7 +931,6 @@ function MenuPageNew({
                                                     color={activeCategory?.id === cat.id ? moodConfig.accentColor : moodConfig.bodyColor}
                                                     defaultIcon="LuTag"
                                                     icon={cat.icon}
-                                                    allowEmoji={false}
                                                     size={14}
                                                 />
                                             ) : null}
@@ -1044,7 +1043,6 @@ function MenuPageNew({
                                                             color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
                                                             defaultIcon="LuTag"
                                                             icon={cat.icon}
-                                                            allowEmoji={false}
                                                             size={15}
                                                         />
                                                     ) : null}
@@ -1098,7 +1096,6 @@ function MenuPageNew({
                                                             color={moodConfig.headingColor}
                                                             defaultIcon="LuTag"
                                                             icon={category.icon}
-                                                            allowEmoji={false}
                                                             size={16}
                                                         />
                                                     </div>

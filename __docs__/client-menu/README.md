@@ -129,7 +129,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
 - Category navigation remains the orientation layer: sticky rail/tabs plus the `Sections` navigator.
-- Public category icons render controlled Lucide glyphs or fallback glyphs; raw emoji is not rendered on customer-facing output.
+- Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and stable image slots.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution`.

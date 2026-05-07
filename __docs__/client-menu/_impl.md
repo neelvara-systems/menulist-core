@@ -103,7 +103,7 @@ The public renderer keeps the project-wise `config.design.menu` mood/layout mode
 
 | Area | Implementation | File |
 | ---- | -------------- | ---- |
-| Controlled category identity | `CategoryIcon` accepts `allowEmoji`; public menu paths pass `allowEmoji={false}` so `emoji:*` stored values render a controlled Lucide fallback on customer output. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
+| Owner-controlled category identity | Public menu paths render category icons through `CategoryIcon`, preserving owner-selected Lucide and `emoji:*` values while retaining fallback icons for missing/legacy values. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
 | Section navigator | Floating category action is now a `Sections` navigator with localized fallback labels and calmer active styling. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
 | Sticky retrieval layer | Search focus has explicit structural affordance; mobile/tablet chips are denser and less CTA-like. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Card rhythm | Item titles/descriptions use line governance, price weight is restrained, and image-enabled layouts reserve stable slots with placeholders. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |

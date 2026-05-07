@@ -10,7 +10,7 @@
 
 ### Changed
 
-- **Public menu category identity is constrained on customer output** — Stored category icon config can still contain legacy `emoji:*` values, but the public menu renderer and section navigator now render controlled Lucide fallback glyphs instead of raw emoji.
+- **Public menu category identity preserves owner choice** — Stored category icon config continues to render through the shared icon system, including owner-selected emoji values.
 - **Navigation language clarified** — The floating category action now says `Sections` and opens `Menu sections`, making it a structural jump control instead of a vague menu button.
 - **Search and category rail tightened** — Search focus has a clearer affordance; mobile/tablet category chips are denser, calmer, and use localization fallback labels.
 - **Item card rhythm hardened** — Item titles/descriptions use stricter line governance, price typography is quieter, and image-enabled layouts reserve stable image slots with placeholders to prevent scroll jumps.
