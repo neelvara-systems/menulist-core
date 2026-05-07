@@ -8,6 +8,7 @@ dayjs.extend(relativeTime);
 interface LiveIndicatorProps {
     modifiedOn?: Timestamp | Date | string | null;
     style?: React.CSSProperties;
+    label?: string;
 }
 
 /**
@@ -67,7 +68,7 @@ function normalizeTimestamp(value: Timestamp | Date | string | null | undefined)
     return value as Date;
 }
 
-const LiveIndicator: React.FC<LiveIndicatorProps> = ({ modifiedOn, style }) => {
+const LiveIndicator: React.FC<LiveIndicatorProps> = ({ modifiedOn, style, label = "Live" }) => {
     const [updateText, setUpdateText] = useState<string | null>("");
     const [hasValidDate, setHasValidDate] = useState(false);
 
@@ -116,7 +117,7 @@ const LiveIndicator: React.FC<LiveIndicatorProps> = ({ modifiedOn, style }) => {
                     animation: 'livePulse 2s ease-in-out infinite',
                 }}
             />
-            <span style={{ fontWeight: 500, color: '#22c55e' }}>Live</span>
+            <span style={{ fontWeight: 500, color: '#22c55e' }}>{label}</span>
             {/* Only show separator and time if updateText exists (< 3 days old) */}
             {updateText && (
                 <>

@@ -27,7 +27,9 @@ import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
+import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
 import {
     getStoreByCustomDomain,
     getStoreByOutletSlug,
@@ -45,6 +47,8 @@ import {
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
+import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
+import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
@@ -144,9 +148,8 @@ async function getPrecomputedDecisionBlocks(
 ): Promise<any | null> {
     try {
         const docId = `${tId}_${sId}_${projectId}`;
-        const docRef = doc(firebaseClient, DB_COLLECTIONS.DECISION_BLOCKS, docId);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) return null;
+        const docSnap = await firestoreAdmin.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).get();
+        if (!docSnap.exists) return null;
         return docSnap.data();
     } catch (error) {
         // Fail silently - Decision Blocks are optional enhancement
@@ -882,19 +885,25 @@ function generateSchemaOrgJsonLd(
     const categories =
         projectData?.files?.flatMap(
             (file: any) => file?.extractedData?.data?.categories || [],
-        ) || [];
+        ).filter((category: any) => category?.active !== false) || [];
     const items =
         projectData?.files?.flatMap(
             (file: any) => file?.extractedData?.data?.items || [],
-        ) || [];
+        ).filter((item: any) => item?.active !== false) || [];
 
     const address = buildAddress(storeData);
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
-    const schemaType = getMenuSchemaType(storeData?.businessType);
+    const effectiveBusinessType = resolvePublicBusinessType(
+        storeData?.businessType,
+        storeData?.businessIndustry,
+    );
+    const schemaType = getMenuSchemaType(effectiveBusinessType);
     const publicDescription = getPublicBusinessDescription(storeData, contentLanguage);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
+    const showImages = projectData?.config?.design?.menu?.showImages ?? true;
+    const freshness = getPublicMenuFreshness(projectData, storeData);
 
     return {
         "@context": "https://schema.org",
@@ -913,17 +922,25 @@ function generateSchemaOrgJsonLd(
         ...(geo && { geo }),
         ...(openingHours && { openingHoursSpecification: openingHours }),
         ...(sameAs && { sameAs }),
-        ...(storeData?.modifiedOn && {
-            dateModified: typeof storeData.modifiedOn === 'string'
-                ? storeData.modifiedOn
-                : storeData.modifiedOn?.toDate?.()?.toISOString?.() || undefined,
-        }),
+        ...(freshness.dateModified && { dateModified: freshness.dateModified }),
         ...(storeData?.cuisineTypes?.length && { servesCuisine: storeData.cuisineTypes }),
         menu: canonicalUrl,
         hasMenu: {
             "@type": "Menu",
+            identifier: projectData?.projectId || canonicalUrl,
+            ...(freshness.dateModified && { dateModified: freshness.dateModified }),
+            ...(freshness.menuVersion && {
+                additionalProperty: [
+                    {
+                        "@type": "PropertyValue",
+                        name: "menuVersion",
+                        value: freshness.menuVersion,
+                    },
+                ],
+            }),
             hasMenuSection: categories.slice(0, 10).map((category: any) => ({
                 "@type": "MenuSection",
+                identifier: category.id,
                 name: getLocalizedValue(category.name, contentLanguage) || "Menu Section",
                 hasMenuItem: items
                     .filter((item: any) => item.category === category.id)
@@ -938,6 +955,26 @@ function generateSchemaOrgJsonLd(
                         const warranty = getDecisionFactString(item, "warranty");
                         const targetAudience = getDecisionFactString(item, "targetAudience");
                         const skillLevel = getDecisionFactString(item, "skillLevel");
+                        const allergens = getDecisionFactArray(item, "allergens");
+                        const spiceLevel = getDecisionFactString(item, "spiceLevel");
+                        const itemName = getLocalizedValue(item.name, contentLanguage) || "Menu Item";
+                        const itemId = item.id ? String(item.id) : '';
+                        const itemUrl = itemId
+                            ? `${canonicalUrl}/item/${slugify(itemName)}-${itemId.slice(-6)}`
+                            : undefined;
+                        const itemImage = showImages ? item.images?.[0]?.url : undefined;
+                        const schemaPrice = showItemPrices && item.price !== undefined && item.price !== null
+                            ? String(item.price).replace(/[^0-9.]/g, "")
+                            : "";
+                        const itemProperties = [
+                            ...(duration ? [{ "@type": "PropertyValue", name: "duration", value: `${duration} minutes` }] : []),
+                            ...(materials ? [{ "@type": "PropertyValue", name: "material", value: materials }] : []),
+                            ...(warranty ? [{ "@type": "PropertyValue", name: "warranty", value: warranty }] : []),
+                            ...(targetAudience ? [{ "@type": "PropertyValue", name: "audience", value: targetAudience }] : []),
+                            ...(skillLevel ? [{ "@type": "PropertyValue", name: "skillLevel", value: skillLevel }] : []),
+                            ...(allergens.length ? [{ "@type": "PropertyValue", name: "allergens", value: allergens.join(", ") }] : []),
+                            ...(spiceLevel ? [{ "@type": "PropertyValue", name: "spiceLevel", value: spiceLevel }] : []),
+                        ].filter(Boolean);
                         if (item.tags?.includes("Vegetarian") || dietaryTags.includes("vegetarian")) diets.push("https://schema.org/VegetarianDiet");
                         if (dietaryTags.includes("vegan")) diets.push("https://schema.org/VeganDiet");
                         if (dietaryTags.includes("gluten-free")) diets.push("https://schema.org/GlutenFreeDiet");
@@ -946,13 +983,16 @@ function generateSchemaOrgJsonLd(
 
                         return {
                             "@type": "MenuItem",
-                            name: getLocalizedValue(item.name, contentLanguage) || "Menu Item",
+                            ...(itemId && { identifier: itemId }),
+                            name: itemName,
+                            ...(itemUrl && { url: itemUrl }),
+                            ...(itemImage && { image: itemImage }),
                             description:
                                 getLocalizedValue(item.description, contentLanguage) || "",
-                            ...(showItemPrices && item.price && {
+                            ...(schemaPrice && {
                                 offers: {
                                     "@type": "Offer",
-                                    price: item.price.replace(/[^0-9.]/g, ""),
+                                    price: schemaPrice,
                                     priceCurrency: storeData?.currencyCode || "USD",
                                     availability: item.available === false
                                         ? "https://schema.org/OutOfStock"
@@ -973,15 +1013,7 @@ function generateSchemaOrgJsonLd(
                                 },
                             }),
                             // Owner-provided SMB metadata. AI generation is blocked from creating these fields.
-                            ...((duration || materials || warranty || targetAudience || skillLevel) && {
-                                additionalProperty: [
-                                    ...(duration ? [{ "@type": "PropertyValue", name: "duration", value: `${duration} minutes` }] : []),
-                                    ...(materials ? [{ "@type": "PropertyValue", name: "material", value: materials }] : []),
-                                    ...(warranty ? [{ "@type": "PropertyValue", name: "warranty", value: warranty }] : []),
-                                    ...(targetAudience ? [{ "@type": "PropertyValue", name: "audience", value: targetAudience }] : []),
-                                    ...(skillLevel ? [{ "@type": "PropertyValue", name: "skillLevel", value: skillLevel }] : []),
-                                ].filter(Boolean),
-                            }),
+                            ...(itemProperties.length > 0 && { additionalProperty: itemProperties }),
                         };
                     }),
             })),
@@ -998,13 +1030,18 @@ function generateSchemaOrgJsonLd(
 // Strips non-primary language descriptions (heavy text) while keeping all language names (short strings).
 // Menus with <3 languages are untouched (optimization not worth the clone cost).
 // UI gracefully handles missing descriptions — they simply don't render.
-function optimizeLanguagePayload(projectData: any): any {
+function optimizeLanguagePayload(projectData: any, requestedLanguage?: string | null): any {
     if (!projectData?.files?.length) return projectData;
 
     const languages = projectData.files[0]?.extractedData?.data?.languages || [];
     if (languages.length < 3) return projectData; // Not worth optimizing for 1-2 languages
 
     const primaryLang = languages.find((l: any) => l.isPrimary)?.code || languages[0]?.code || 'en';
+    const descriptionLanguages = new Set(
+        [primaryLang, requestedLanguage].filter((language): language is string =>
+            typeof language === 'string' && language.trim().length > 0,
+        ),
+    );
 
     // Deep clone to avoid mutating cached data
     const optimized = JSON.parse(JSON.stringify(projectData));
@@ -1013,8 +1050,12 @@ function optimizeLanguagePayload(projectData: any): any {
         const items = file.extractedData?.data?.items || [];
         for (const item of items) {
             if (item.description && typeof item.description === 'object') {
-                const primaryDesc = item.description[primaryLang];
-                item.description = primaryDesc ? { [primaryLang]: primaryDesc } : {};
+                const nextDescription: Record<string, string> = {};
+                descriptionLanguages.forEach((language) => {
+                    const description = item.description[language];
+                    if (description) nextDescription[language] = description;
+                });
+                item.description = nextDescription;
             }
         }
     }
@@ -1510,12 +1551,26 @@ async function MenuContent({
 
     // Strip internal metadata before any customer-facing usage (TASK 7)
     const sanitized = serializeClientValue(sanitizeForClient(rawProjectData));
+    const effectiveBusinessType = resolvePublicBusinessType(
+        storeDetails?.businessType,
+        storeDetails?.businessIndustry,
+    );
+    const searchReadyProjectData = FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION
+        ? attachPublicMenuSearchIndex(sanitized, {
+            includePrices: sanitized?.config?.design?.menu?.showItemPrices ?? true,
+            businessType: effectiveBusinessType,
+            businessCategory: storeDetails?.businessCategory,
+        })
+        : sanitized;
 
     // #30: Lazy language loading — reduce SSR payload for multi-language menus (3+ languages)
     // Names kept in ALL languages (short strings, needed for instant language switching)
-    // Descriptions stripped for non-primary languages (heavy text, gracefully omitted in UI if missing)
-    const projectData = optimizeLanguagePayload(sanitized);
-    const clientStoreDetails = serializeClientValue(storeDetails);
+    // Descriptions keep primary + initially requested language. Search uses compact terms for all languages.
+    const projectData = optimizeLanguagePayload(searchReadyProjectData, requestedLanguage);
+    const clientStoreDetails = serializeClientValue({
+        ...storeDetails,
+        ...(effectiveBusinessType && { businessType: effectiveBusinessType }),
+    });
 
     // Fetch precomputed Decision Blocks (optional enhancement — cached)
     const projectId = projectMetadata.projectId || projectMetadata.id;
@@ -1581,6 +1636,7 @@ async function MenuContent({
         textColor: menuMoodConfig.bodyColor,
         headingColor: menuMoodConfig.headingColor,
         mutedColor: menuMoodConfig.descriptionColor || menuMoodConfig.bodyColor,
+        accentColor: menuMoodConfig.accentColor,
         borderColor:
             menuMoodConfig.categoryStyle.dividerColor ||
             menuMoodConfig.categoryStyle.borderColor ||
@@ -1658,6 +1714,8 @@ async function MenuContent({
                         : undefined
                 }
                 projectName={menuName}
+                logoUrl={storeDetails?.logo || null}
+                variant="identity"
                 theme={menuHeaderTheme}
             />
             <ClientMenuRenderer

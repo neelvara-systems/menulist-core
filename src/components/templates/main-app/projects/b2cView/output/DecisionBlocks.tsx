@@ -125,7 +125,8 @@ function isPrecomputedValid(precomputed: PrecomputedDecisionBlocks | null | unde
  * Beyond normal TTL — even pinned items should not show
  */
 function isHardStale(precomputed: PrecomputedDecisionBlocks | null | undefined): boolean {
-    if (!precomputed?.computedAt) return true;
+    if (!precomputed) return false;
+    if (!precomputed.computedAt) return true;
 
     const computedAt = (precomputed.computedAt as any)?.toDate
         ? (precomputed.computedAt as any).toDate()
@@ -166,14 +167,18 @@ function passesGlobalGate(precomputed: PrecomputedDecisionBlocks | null | undefi
  */
 function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined): boolean {
     if (!category) return true; // No category = always visible
-    if (!category.timeSlots || category.timeSlots.length === 0) return true; // No slots = always visible
+    if (!Array.isArray(category.timeSlots) || category.timeSlots.length === 0) return true; // No slots = always visible
 
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     for (const slot of category.timeSlots) {
+        if (!slot?.startTime || !slot?.endTime) continue;
+
         const [startHour, startMin] = slot.startTime.split(':').map(Number);
         const [endHour, endMin] = slot.endTime.split(':').map(Number);
+        if ([startHour, startMin, endHour, endMin].some((value) => Number.isNaN(value))) continue;
+
         const slotStart = startHour * 60 + startMin;
         const slotEnd = endHour * 60 + endMin;
 
@@ -302,10 +307,10 @@ function computeFromPrecomputed(
         (stats.itemsWithPrice ?? 0) >= LIFECYCLE_THRESHOLDS.BEST_VALUE_MIN_ITEMS;
 
     // ⭐ Popular Right Now
-    const isPopularEnabled = ownerControls?.enablePopular !== false && enabledBlocks.includes('popular') && isPopularEligible;
-    if (isPopularEnabled && precomputed.popular?.length > 0) {
+    const isPopularEnabled = ownerControls?.enablePopular !== false && enabledBlocks.includes('popular');
+    if (isPopularEnabled && (ownerControls?.pinnedPopular || (isPopularEligible && precomputed.popular?.length > 0))) {
         const result = selectAvailableCandidate(
-            precomputed.popular,
+            isPopularEligible ? (precomputed.popular || []) : [],
             items,
             categoryMap,
             usedItemIds,
@@ -321,11 +326,11 @@ function computeFromPrecomputed(
         }
     }
 
-    // ⚡ Quick Pick (only in STABLE lifecycle with duration coverage)
-    const isQuickPickEnabled = ownerControls?.enableQuickPick !== false && enabledBlocks.includes('quickPick') && isQuickPickEligible;
-    if (isQuickPickEnabled && precomputed.quickPick?.length > 0) {
+    // ⚡ Quick Pick (automatic picks require STABLE lifecycle with duration coverage)
+    const isQuickPickEnabled = ownerControls?.enableQuickPick !== false && enabledBlocks.includes('quickPick');
+    if (isQuickPickEnabled && (ownerControls?.pinnedQuickPick || (isQuickPickEligible && precomputed.quickPick?.length > 0))) {
         const result = selectAvailableCandidate(
-            precomputed.quickPick,
+            isQuickPickEligible ? (precomputed.quickPick || []) : [],
             items,
             categoryMap,
             usedItemIds,
@@ -341,11 +346,11 @@ function computeFromPrecomputed(
         }
     }
 
-    // 💰 Best Value (only with price coverage)
-    const isBestValueEnabled = ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue') && isBestValueEligible;
-    if (isBestValueEnabled && precomputed.bestValue?.length > 0) {
+    // 💰 Best Value (automatic picks require price coverage)
+    const isBestValueEnabled = showItemPrices && ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue');
+    if (isBestValueEnabled && (ownerControls?.pinnedBestValue || (isBestValueEligible && precomputed.bestValue?.length > 0))) {
         const result = selectAvailableCandidate(
-            precomputed.bestValue,
+            isBestValueEligible ? (precomputed.bestValue || []) : [],
             items,
             categoryMap,
             usedItemIds,
@@ -361,9 +366,10 @@ function computeFromPrecomputed(
         }
     }
 
-    // ── Minimum viability: require ≥2 blocks or show nothing ──
-    // Showing 1 lonely block looks weak and reduces trust
-    if (blocks.length < LIFECYCLE_THRESHOLDS.MIN_BLOCKS_TO_RENDER) {
+    // ── Minimum viability: require ≥2 automatic blocks or show nothing ──
+    // Owner pins are explicit featured choices, so one pinned block may render.
+    const hasOwnerPinnedBlock = blocks.some((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
+    if (!hasOwnerPinnedBlock && blocks.length < LIFECYCLE_THRESHOLDS.MIN_BLOCKS_TO_RENDER) {
         return [];
     }
 
@@ -525,7 +531,10 @@ export default function DecisionBlocks({
         if (usePrecomputed && precomputedBlocks) {
             // Global activation gate: minimum data thresholds must pass
             if (!passesGlobalGate(precomputedBlocks)) {
-                return [];
+                // Automatic recommendations need enough behavior data. Owner pins
+                // are owner-authored menu truth, so they can still render as
+                // pinned-only blocks while the automatic system is learning.
+                return computeBlocksFallback(items, categories, businessType, ownerControls, showItemPrices);
             }
 
             // Layer 1 + 2: Precomputed candidates with lifecycle-aware gating + runtime filter
@@ -615,6 +624,9 @@ export default function DecisionBlocks({
             <div
                 className="flex gap-3 px-4"
                 style={{
+                    display: 'flex',
+                    gap: 12,
+                    paddingInline: 16,
                     minWidth: 'max-content',
                 }}
             >
@@ -627,6 +639,11 @@ export default function DecisionBlocks({
                     const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
                     const itemImage = rec.item.images?.[0]?.url;
                     const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
+                    const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
+                    const displayTitle = isOwnerPinned ? 'Featured by business' : labels.title;
+                    const displayReason = isOwnerPinned
+                        ? 'Selected by the business'
+                        : translateReason(rec.reason, rec.reasonParams);
 
                     // P3.1: Visual Hierarchy - first block is slightly larger/prominent
                     const isFirstBlock = index === 0;
@@ -637,6 +654,9 @@ export default function DecisionBlocks({
                             onClick={() => handleClick(rec)}
                             className="flex-shrink-0 flex items-center gap-3 p-3 rounded-xl transition-all duration-150 active:scale-[0.98] hover:shadow-md"
                             style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
                                 background: moodConfig.itemStyle.background,
                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                 // P3.1: First block is slightly wider for visual hierarchy
@@ -668,7 +688,7 @@ export default function DecisionBlocks({
                                     style={{ color: moodConfig.accentColor }}
                                 >
                                     {labels.icon && <span>{labels.icon}</span>}
-                                    <span>{labels.title}</span>
+                                    <span>{displayTitle}</span>
                                 </div>
 
                                 {/* Item Name */}
@@ -688,7 +708,7 @@ export default function DecisionBlocks({
                                         className="text-xs truncate"
                                         style={{ color: moodConfig.descriptionColor }}
                                     >
-                                        {translateReason(rec.reason, rec.reasonParams)}
+                                        {displayReason}
                                     </span>
                                     {showItemPrices && itemPrice ? (
                                         <span

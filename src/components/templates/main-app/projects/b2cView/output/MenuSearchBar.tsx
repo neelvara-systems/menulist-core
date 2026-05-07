@@ -22,6 +22,8 @@ interface MenuSearchBarProps {
     businessType?: string;
     businessCategory?: string;
     isMobile?: boolean;
+    compact?: boolean;
+    containerStyle?: React.CSSProperties;
 }
 
 const getSearchAriaLabel = (businessType?: string, businessCategory?: string): string => {
@@ -30,9 +32,13 @@ const getSearchAriaLabel = (businessType?: string, businessCategory?: string): s
             return 'Search menu items';
         case 'service':
         case 'health':
+        case 'professional':
+        case 'specialty':
             return 'Search services';
         case 'retail':
             return 'Search products';
+        case 'creative':
+            return 'Search offerings';
         default:
             return 'Search menu';
     }
@@ -44,9 +50,13 @@ const getSearchPlaceholder = (businessType?: string, businessCategory?: string):
             return 'Search menu...';
         case 'service':
         case 'health':
+        case 'professional':
+        case 'specialty':
             return 'Search services...';
         case 'retail':
             return 'Search products...';
+        case 'creative':
+            return 'Search offerings...';
         default:
             return 'Search menu...';
     }
@@ -59,6 +69,8 @@ function MenuSearchBar({
     businessType,
     businessCategory,
     isMobile = false,
+    compact = false,
+    containerStyle,
 }: MenuSearchBarProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [isFocused, setIsFocused] = useState(false);
@@ -78,8 +90,9 @@ function MenuSearchBar({
             style={{
                 position: 'relative',
                 width: '100%',
-                marginTop: 8,
-                marginBottom: 16,
+                marginTop: compact ? 0 : 8,
+                marginBottom: compact ? 0 : 16,
+                ...containerStyle,
             }}
         >
             <LuSearch

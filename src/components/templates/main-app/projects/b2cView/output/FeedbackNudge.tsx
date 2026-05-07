@@ -87,11 +87,16 @@ export default function FeedbackNudge({
         if (wasShownThisSession()) return;
 
         const container = scrollContainerRef?.current;
-        if (!container) return;
 
         const handleScroll = () => {
-            const scrollTop = container.scrollTop;
-            const scrollHeight = container.scrollHeight - container.clientHeight;
+            const containerScrollTop = container?.scrollTop || 0;
+            const windowScrollTop = window.scrollY;
+            const scrollTop = Math.max(containerScrollTop, windowScrollTop);
+            const containerScrollHeight = container
+                ? container.scrollHeight - container.clientHeight
+                : 0;
+            const windowScrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollHeight = Math.max(containerScrollHeight, windowScrollHeight);
             if (scrollHeight > 0) {
                 const scrollPercent = scrollTop / scrollHeight;
                 if (scrollPercent >= SCROLL_THRESHOLD) {
@@ -100,8 +105,12 @@ export default function FeedbackNudge({
             }
         };
 
-        container.addEventListener('scroll', handleScroll, { passive: true });
-        return () => container.removeEventListener('scroll', handleScroll);
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        container?.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            container?.removeEventListener('scroll', handleScroll);
+        };
     }, [scrollContainerRef, showNudge, wasShownThisSession]);
 
     if (!visible || dismissed) return null;

@@ -36,6 +36,18 @@
 
 const OFFLINE_URL = '/offline';
 const OFFLINE_CACHE = 'customer-app-offline-v1';
+const NAVIGATION_TIMEOUT_MS = 8000;
+
+const fetchNavigationWithTimeout = async (request) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
+
+    try {
+        return await fetch(request, { signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
 
 // Precache the offline fallback page on install.
 // This is the ONLY thing stored in cache storage for customer tenants.
@@ -75,8 +87,9 @@ self.addEventListener('activate', (event) => {
 // - Non-navigation requests (fetch API, images, scripts): passed through
 //   to the network with no SW involvement. No caching.
 // - Navigation requests: network-first. On failure, serve the precached
-//   offline page so customers get a branded screen instead of a raw
-//   browser error.
+//   offline page so customers get a branded screen instead of a raw browser
+//   error. Stalled networks are capped by NAVIGATION_TIMEOUT_MS; this still
+//   never serves stale menu content.
 self.addEventListener('fetch', (event) => {
     const { request } = event;
 
@@ -87,7 +100,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         (async () => {
             try {
-                const response = await fetch(request);
+                const response = await fetchNavigationWithTimeout(request);
                 return response;
             } catch (err) {
                 const cache = await caches.open(OFFLINE_CACHE);

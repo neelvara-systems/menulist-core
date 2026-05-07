@@ -2,16 +2,16 @@
 
 **Feature:** Decision Blocks (Smart Menu Recommendations)  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
-**Priority:** HIGH — Nightly Cloud Function scoring + customer-facing reads on every menu view.
+**Last Updated:** May 7, 2026
+**Priority:** HIGH — Timezone-aware Cloud Function scoring + customer-facing server-side reads on menu views.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `decisionBlocks`, `projects/{tId}/{sId}`, `analytics`, `stores`
+- **Collections Used:** `decisionBlocks`, `projects/{tId}/{sId}/{projectId}`, `analytics`, `platformSummary`, `schedulerRunLogs`
 - **Storage Buckets:** None
-- **Cloud Functions:** `decisionBlocksScoring` (scheduled nightly)
+- **Cloud Functions:** `computeDecisionBlocksScores` (scheduled hourly, timezone-aware) and `triggerDecisionBlocksScoring` (manual platform-only recovery)
 - **Estimated Monthly Cost:** **Medium** — Scales with number of active projects
 
 ---
@@ -22,19 +22,20 @@
 
 | Operation                          | Collection                               | Trigger              | Frequency                  | Docs Read | Indexed?         | Notes                                                                                                   |
 | ---------------------------------- | ---------------------------------------- | -------------------- | -------------------------- | --------- | ---------------- | ------------------------------------------------------------------------------------------------------- |
-| Customer: fetch precomputed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` | Customer page load   | Per menu view (cached 60s) | 1         | Direct doc       | Read by client menu page. Cached via `unstable_cache`. File: `src/app/_client/[[...slug]]/page.tsx:138` |
-| Scoring: read project data         | `projects/{tId}/{sId}/{projectId}`       | Nightly scoring job  | Per active project         | 1         | Direct doc       | Cloud Function reads full project for item analysis.                                                    |
-| Scoring: read analytics            | `analytics`                              | Nightly scoring job  | Per active project         | 7-30      | Yes (date range) | Reads daily analytics docs for scoring period (7-30 days).                                              |
-| Scoring: read store config         | `stores/{storeId}`                       | Nightly scoring job  | Per store                  | 1         | Direct doc       | Reads business type for category-specific config.                                                       |
-| Owner: read block config           | `decisionBlocks/{tId}_{sId}_{projectId}` | Owner opens settings | Per settings view          | 1         | Direct doc       | Owner viewing pin controls and block configuration.                                                     |
+| Customer: fetch precomputed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` | Customer page load   | Per menu view (cached 60s) | 1         | Direct doc       | Server-side Admin SDK read on public menu page. Cached via `unstable_cache`. File: `src/app/client/[[...slug]]/page.tsx` |
+| Scoring: read project data         | `projects/{tId}/{sId}/{projectId}`       | Scheduled scoring    | Per active project         | 1         | Direct doc       | Cloud Function reads full project for item analysis.                                                    |
+| Scoring: read analytics snapshot   | `analytics/{tId}_{sId}_{projectId}_intelligence_7d` | Scheduled scoring | Per active project | 1 | Direct doc | Uses the scheduler-written compact 7-day snapshot; missing/stale snapshots score as empty instead of running hidden daily range reads. |
+| Scoring: read active project list  | `platformSummary/projects_{sId}`         | Scheduled scoring    | Per store                  | 1         | Direct doc       | Used to resolve active project IDs before nested project reads.                                          |
+| Scoring: read store summary        | `platformSummary/storesSummary`          | Scheduled run        | 1 per scheduler invocation | 1         | Direct doc       | Used for store scheduling, tenant/store IDs, business category, timezone, and active status.             |
+| Owner: read block config           | `projects/{tId}/{sId}/{projectId}`       | Owner opens editor/settings | Existing project load | 0 additional | Direct doc | Pins and toggles are part of already-loaded project data.                                                |
 
 ### Writes
 
 | Operation                      | Collection                               | Trigger                  | Frequency          | Docs Written | Fields                                                | Notes                                       |
 | ------------------------------ | ---------------------------------------- | ------------------------ | ------------------ | ------------ | ----------------------------------------------------- | ------------------------------------------- |
-| Scoring: write computed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` | Nightly scoring complete | Per active project | 1            | popular, quickPick, bestValue candidates + computedAt | Cloud Function writes full scoring results. |
-| Scoring: write run log         | `schedulerRunLogs/{autoId}`              | Nightly scoring complete | 1 per run          | 1            | status, tasks[], errors[], durations, counts          | Persisted for Scheduler Monitor Dashboard.  |
-| Owner: update pin controls     | `decisionBlocks/{tId}_{sId}_{projectId}` | Owner pins/unpins items  | Per pin action     | 1            | Merge update                                          | Owner manually pins items to blocks.        |
+| Scoring: write computed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` | Scheduled scoring complete | Per active project | 1            | popular, quickPick, bestValue candidates + computedAt | Cloud Function writes full scoring results. |
+| Scoring: write run log         | `schedulerRunLogs/{autoId}`              | Scheduled scoring complete | 1 per run          | 1            | status, tasks[], errors[], durations, counts          | Persisted for Scheduler Monitor Dashboard.  |
+| Owner: update pin controls     | `projects/{tId}/{sId}/{projectId}`       | Owner saves Smart Recommendations | Per save | 1 | `menuSettings.decisionBlocks` | Saved through `updateProject()`, which also invalidates public menu/OBP cache tags. |
 
 ### Deletes
 
@@ -46,7 +47,8 @@ None — decision blocks documents are overwritten nightly, never deleted.
 
 | Function                      | Trigger                       | Frequency                 | Duration           | Memory | Notes                                                                                                      |
 | ----------------------------- | ----------------------------- | ------------------------- | ------------------ | ------ | ---------------------------------------------------------------------------------------------------------- |
-| `computeDecisionBlocksScores` | Scheduled (nightly 02:30 UTC) | 1x/day per active project | 10-30s per project | 256MB  | Reads project + analytics, computes scores, writes results. File: `functions/src/decisionBlocksScoring.ts` |
+| `computeDecisionBlocksScores` | Scheduled (`30 * * * *`, UTC) | Hourly trigger; only due stores are processed | Store/project dependent | 256MB | Reads project + compact analytics snapshot, computes scores, writes results. File: `functions/src/decisionBlocksScoring.ts` |
+| `triggerDecisionBlocksScoring` | Callable manual recovery | On platform-owner action only | Store/project dependent | 256MB | Requires authenticated `PLATFORM` role; recomputes Decision Blocks without running all global scheduler tasks. |
 
 ---
 
@@ -54,27 +56,30 @@ None — decision blocks documents are overwritten nightly, never deleted.
 
 ### Current Optimizations
 
-- **Precomputed results**: Scoring runs nightly, results cached. Customer reads are instant getDoc.
+- **Precomputed results**: Scoring runs in the nightly scheduler window for each store, results cached. Customer reads are direct server-side doc reads.
 - **60s Vercel cache**: Customer-facing reads cached, reducing Firestore reads significantly.
-- **Batch scoring**: All projects scored in one Cloud Function run.
+- **Store-scoped scoring**: Hourly trigger filters stores by local settlement window, avoiding one large global daily run.
+- **Compact analytics input**: Decision Blocks consume the 7-day intelligence snapshot instead of opening daily range reads during normal scheduled scoring.
 - **Runtime availability filter**: Blocks filtered client-side for sold-out items (no extra read).
 
 ### Warnings: Expensive Patterns
 
-- **Analytics reads**: 7-30 daily docs per project per scoring run. 1000 projects × 30 docs = 30,000 reads/night.
+- **Analytics snapshot dependency**: If the 7-day intelligence snapshot is missing or stale, scoring proceeds with empty analytics for that run. This protects cost, but output quality depends on the aggregation step being healthy.
 - **Scaling**: Cost grows linearly with active project count.
 
 ---
 
 ## Cost Estimate (per 1000 active projects)
 
-| Resource                   | Operations/month          | Unit Cost  | Monthly Cost     |
-| -------------------------- | ------------------------- | ---------- | ---------------- |
-| Firestore Reads (customer) | 100,000 ÷ cache ≈ 10,000  | $0.06/100K | $0.01            |
-| Firestore Reads (scoring)  | 30 × 1,000 × 30 = 900,000 | $0.06/100K | $0.54            |
-| Firestore Writes (scoring) | 30,000 (1/day × 1000)     | $0.18/100K | $0.05            |
-| Cloud Functions            | 30,000 invocations        | $0.40/M    | $0.01            |
-| **Total**                  |                           |            | **~$0.61/month** |
+Assumption: $1 = ₹83.
+
+| Resource                   | Operations/month                   | Unit Cost      | Monthly Cost |
+| -------------------------- | ---------------------------------- | -------------- | ------------ |
+| Firestore Reads (customer) | 100,000 views ÷ cache ≈ 10,000     | ~₹4.98/100K    | ~₹0.50       |
+| Firestore Reads (scoring)  | ~30 × 1,000 projects × 2 reads     | ~₹4.98/100K    | ~₹3.00       |
+| Firestore Writes (scoring) | 30,000 (1/day × 1000 projects)     | ~₹14.94/100K   | ~₹4.50       |
+| Cloud Functions            | Store-scoped hourly scheduler runs | ~₹33.20/M      | <₹1.00       |
+| **Total**                  |                                    |                | **~₹9/month** |
 
 ---
 
@@ -82,5 +87,5 @@ None — decision blocks documents are overwritten nightly, never deleted.
 
 | Function                       | File                                       | Operation Type           |
 | ------------------------------ | ------------------------------------------ | ------------------------ |
-| `getPrecomputedDecisionBlocks` | `src/app/_client/[[...slug]]/page.tsx:138` | Read (getDoc)            |
+| `getPrecomputedDecisionBlocks` | `src/app/client/[[...slug]]/page.tsx` | Read (Admin SDK get)     |
 | `computeDecisionBlocksScores`  | `functions/src/decisionBlocksScoring.ts`   | Read + Write (admin SDK) |

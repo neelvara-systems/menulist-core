@@ -104,11 +104,26 @@ The public renderer keeps the project-wise `config.design.menu` mood/layout mode
 | Area | Implementation | File |
 | ---- | -------------- | ---- |
 | Owner-controlled category identity | Public menu paths render category icons through `CategoryIcon`, preserving owner-selected Lucide and `emoji:*` values while retaining fallback icons for missing/legacy values. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
-| Section navigator | Floating category action is now a `Sections` navigator with localized fallback labels and calmer active styling. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
-| Sticky retrieval layer | Search focus has explicit structural affordance; mobile/tablet chips are denser and less CTA-like. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
+| Section navigator | Mobile/tablet menus place `Sections` in the sticky command row and open a bottom-sheet-style category navigator with localized fallback labels, active state, owner-selected icons, and item counts. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
+| Sticky retrieval layer | Search focus has explicit structural affordance; mobile/tablet search runs compactly beside `Sections`, and category chips remain a lightweight rail below the command row. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Card rhythm | Item titles/descriptions use line governance, price weight is restrained, and image-enabled layouts reserve stable slots with placeholders. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Theme preset governance | Mood presets reduce decorative heading drift and strengthen light-theme containment without adding arbitrary owner design freedom. | `src/components/templates/main-app/projects/b2cView/designSystem/index.ts` |
 | Platform attribution | Default attribution is `Powered by MenuList` with no customer-facing marketing CTA unless a caller opts in. | `src/components/customer/PublicMenuListAttribution.tsx` |
+
+### Retrieval, Structured Truth, and Low-Network Foundation (May 2026)
+
+The public menu search and schema layer now use the same stored menu truth that customers see: sanitized project files, active categories/items, localized names/descriptions, attributes, tags, decision facts, `menuVersion`, and `lastPublishedAt`.
+
+| Area | Implementation | File |
+| ---- | -------------- | ---- |
+| Fuzzy public search | Client-side search normalizes case, accents, punctuation, repeated characters, common phonetic variants, and bounded typo distance. | `src/lib/menu/publicMenuSearch.ts` |
+| Transliteration fold | Lightweight Devanagari/Marathi and Gujarati text fold supports practical India-first Roman search without adding a search dependency. | `src/lib/menu/publicMenuSearch.ts` |
+| Search scope | Search covers item names/descriptions, category names, attribute names, tags, decision facts, optional public prices, and compact `_publicSearch.terms` generated server-side. | `src/lib/menu/publicMenuSearch.ts`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
+| Multilingual payload | For 3+ language menus, SSR keeps primary plus initially requested language descriptions and attaches compact search terms so non-primary text remains findable without shipping all raw descriptions. | `src/app/client/[[...slug]]/page.tsx` |
+| Structured freshness | JSON-LD uses project `lastPublishedAt`/`menuVersion` before store modified timestamps, and emits active public categories/items only. | `src/lib/menu/publicMenuStructuredData.ts`, `src/app/client/[[...slug]]/page.tsx` |
+| Offline boundary | Customer service worker remains network-first and only serves `/offline` after failure or bounded navigation timeout. It does not cache menu HTML/data/images. | `public/sw-customer.js` |
+
+Feature flag: `FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION`.
 
 ---
 
@@ -191,6 +206,9 @@ src/lib/
 │   ├── correctnessResolver.ts       # 17 validation rules
 │   ├── types.ts                     # MCE types
 │   └── utils.ts                     # sanitizeForClient
+├── menu/
+│   ├── publicMenuSearch.ts          # Public fuzzy/transliteration search
+│   └── publicMenuStructuredData.ts  # Public freshness helpers
 ├── multiOutlet/
 │   └── index.ts                     # resolveProjectForRender (master + outlet merge)
 ├── multiTenant/

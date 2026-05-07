@@ -10,7 +10,7 @@
 Customers stare at a 50-item menu for 2 minutes, overwhelmed. They ask the waiter "what's good?" or play it safe with the same dish every time. Longer decision time means slower table turns and frustrated customers.
 
 ## Solution Statement
-MenuList adds three recommendation sections to the top of your menu — Most Popular, Quick Pick, and Best Value. Customers see what works and decide faster. No extra effort from you.
+MenuList adds recommendation sections to the top of your menu — Most Popular, Quick Pick, and Best Value. Customers see what works and decide faster. You can leave it automatic or pin an item when you want direct control.
 
 ## Feature Benefits
 
@@ -26,14 +26,14 @@ Highlights items that are ready quickly. Perfect for lunch rushes when customers
 Shows the best quality-to-price items. Helps price-conscious customers find great options without feeling cheap.
 > **Visual:** "Best Value" section with subtle value indicator
 
-### 4. Zero Effort From You
-Recommendations update themselves every night based on actual customer behavior. You don't configure anything.
-> **Visual:** Clock icon showing "Updates every night at 2 AM"
+### 4. Automatic, With Owner Control
+Recommendations update after your store's daily analytics settle. You can also pin a specific item when you want it featured.
+> **Visual:** Clock icon showing "Updates automatically"
 
 ## How It Works
 1. **Automatic** — Recommendations appear on your menu without any setup
-2. **Learn from behavior** — The system watches what customers click and order
-3. **Update nightly** — Fresh recommendations every morning based on yesterday's data
+2. **Based on behavior** — Uses customer menu views, taps, and recommendation taps
+3. **Updates automatically** — Fresh recommendations after the store's daily analytics settle
 
 ## FAQ
 
@@ -41,7 +41,7 @@ Recommendations update themselves every night based on actual customer behavior.
 **A:** No. Decision Blocks appear automatically once you have menu activity.
 
 ### Q: Can I control what appears in the recommendations?
-**A:** Yes. You can pin specific items to any block if you want manual control.
+**A:** Yes. You can pin specific items to any block from Smart Recommendations.
 
 ### Q: Will customers know it's automated?
 **A:** No. It looks like curated recommendations, not algorithm output.

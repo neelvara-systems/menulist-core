@@ -1,12 +1,25 @@
 # DECISION INTELLIGENCE (DECISION BLOCKS) - LOGIC VERIFICATION REPORT
 
 **Date:** January 11, 2026  
+**Latest Verification:** May 7, 2026
 **Target Feature:** decision-intelligence  
 **Status:** ✅ **DEPLOYABLE**
 
 ---
 
 ## 📊 EXECUTIVE SUMMARY
+
+### May 7, 2026 Verification Addendum
+
+The implementation was re-checked against the current codebase and corrected for production readiness:
+
+- Scheduler project reads now use the canonical nested project path: `projects/{tId}/{sId}/{projectId}`.
+- Public menu reads `decisionBlocks/{tId}_{sId}_{projectId}` server-side with the Admin SDK, so customer rendering does not depend on authenticated client Firestore rules.
+- Missing precomputed documents now fall through to the owner-pinned fallback path instead of being treated as hard-stale.
+- Valid precomputed documents that fail automatic activation gates now fall through to owner-pinned fallback, preserving owner-authored picks without client-side ranking.
+- Owner pins in valid precomputed mode now bypass automatic block eligibility and empty candidate-list gates. They still respect runtime availability, owner toggles, business-type block support, duplicate suppression, category time slots, and hidden-price Best Value suppression.
+- Manual recovery callable now requires an authenticated `PLATFORM` role.
+- Mobile owner controls exist through `SmartRecommendationsSheet.tsx`; the older "no owner UI" mobile note was stale.
 
 ```
 DECISION BLOCKS LOGIC AUDIT
@@ -24,7 +37,7 @@ COVERAGE: 100% (7/7 flows)
 
 | Logic Type | Entry Point                     | Trigger             | Source File                | Docs Reference   |
 | ---------- | ------------------------------- | ------------------- | -------------------------- | ---------------- |
-| Scheduler  | `decisionBlocksScoring.ts:505`  | Nightly 2:30 AM UTC | `decisionBlocksScoring.ts` | impl.md          |
+| Scheduler  | `decisionBlocksScoring.ts`      | Hourly trigger; store-local settlement window | `decisionBlocksScoring.ts` | impl.md          |
 | Scoring    | `calculatePopularScore():141`   | Within scheduler    | `decisionBlocksScoring.ts` | spec.md Scoring  |
 | Scoring    | `calculateQuickPickScore():156` | Within scheduler    | `decisionBlocksScoring.ts` | spec.md Scoring  |
 | Scoring    | `calculateBestValueScore():181` | Within scheduler    | `decisionBlocksScoring.ts` | spec.md Scoring  |
@@ -394,7 +407,7 @@ precomputedBlocks (prop) → useMemo → blocks → map → Button components
 
 **SCHEDULER INTEGRATION**
 
-- [x] Runs at 2:30 AM UTC (`decisionBlocksScoring.ts:506`)
+- [x] Runs hourly at `:30` UTC and processes stores whose local settlement window is due
 - [x] Uses `storesSummary` for cost optimization (`decisionBlocksScoring.ts:530`)
 - [x] Iterates all stores → all projects
 - [x] Also triggers CMI computation (`decisionBlocksScoring.ts:604-629`)

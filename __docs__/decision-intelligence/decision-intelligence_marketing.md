@@ -18,7 +18,7 @@ Every restaurant owner knows the scene: customers scan the QR, stare at 50 items
 
 ### The Solution
 
-**Decision Blocks** - Three smart recommendations at the top of every menu:
+**Decision Blocks** - Three recommendations at the top of every menu:
 
 | Block                    | What It Shows               | Why It Works                   |
 | ------------------------ | --------------------------- | ------------------------------ |
@@ -47,7 +47,7 @@ Every restaurant owner knows the scene: customers scan the QR, stare at 50 items
 | **Higher check average**    | Best Value promotes premium items     |
 | **Less staff interruption** | "What's good?" answered automatically |
 | **Promote new items**       | Pin to Popular block                  |
-| **Zero effort**             | AI learns and updates nightly         |
+| **Low effort**              | Recommendations update automatically after daily analytics settle |
 
 ---
 
@@ -57,7 +57,7 @@ Every restaurant owner knows the scene: customers scan the QR, stare at 50 items
 
 - Analyzes 7-day customer behavior
 - Scores items on views, clicks, prep time, price
-- Updates every night at 2:30 AM
+- Updates after each store's daily analytics settle
 - Zero manual configuration required
 
 ### 2. Owner Control
@@ -191,7 +191,7 @@ Every restaurant owner knows the scene: customers scan the QR, stare at 50 items
 
 ### Q: How often does it update?
 
-**A:** Every night at 2:30 AM UTC, using the last 7 days of data.
+**A:** Automatically after the store's daily analytics settle, using the recent 7-day intelligence snapshot.
 
 ---
 

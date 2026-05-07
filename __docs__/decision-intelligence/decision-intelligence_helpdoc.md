@@ -1,7 +1,7 @@
 # Decision Intelligence — Help Documentation
 
 ## Quick Summary
-Decision Blocks are automatic recommendation sections that appear at the top of your customer menu: Most Popular, Quick Pick, and Best Value. They help customers decide faster without any effort from you.
+Decision Blocks are recommendation sections that can appear at the top of your customer menu: Most Popular, Quick Pick, and Best Value. They help customers decide faster and can run automatically, with optional owner pins when you want direct control.
 
 ---
 
@@ -9,7 +9,8 @@ Decision Blocks are automatic recommendation sections that appear at the top of 
 
 ### Prerequisites
 - An active menu with customer traffic (the system needs scan data to generate recommendations)
-- Decision Blocks appear automatically — no setup required
+- Decision Blocks appear automatically when enough menu activity exists
+- You can pin an item to a block from Smart Recommendations if you want direct control
 
 ### What You'll See
 Once your menu has enough activity, three sections appear at the top of your customer menu:
@@ -22,11 +23,12 @@ Once your menu has enough activity, three sections appear at the top of your cus
 ## How-To Guides
 
 ### How to pin an item to a recommendation block
-1. Go to your project settings or Decision Blocks configuration
-2. Find the block you want to customize (Popular, Quick Pick, Best Value)
-3. Click **Pin Item**
-4. Select the item you want to feature
-5. Save — the pinned item will always appear in that block
+1. Open your menu editor
+2. Open **Smart Recommendations**
+3. Find the block you want to customize (Popular, Quick Pick, Best Value)
+4. Choose an item under **Pin specific item**
+5. Select the item you want to feature
+6. Save — the pinned item will always appear in that block
 
 ### How to check if Decision Blocks are active
 1. Scan your QR code on your phone
@@ -48,9 +50,9 @@ Once your menu has enough activity, three sections appear at the top of your cus
 ---
 
 ## Tips
-- 💡 Decision Blocks update every night — you'll see fresh recommendations each morning
+- 💡 Decision Blocks update automatically after your store's daily analytics settle
 - 💡 Pin your best-selling items if you want guaranteed placement
-- 💡 Don't worry about setup — it's fully automatic
+- 💡 You can leave setup alone unless you want to pin a specific item
 - 💡 Items marked as sold out are automatically excluded from recommendations
 
 ## Related Features

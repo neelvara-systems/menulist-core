@@ -34,10 +34,13 @@ import {
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useLocale } from 'next-intl';
 import type { ComponentProps, CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
-import { Children, createContext, Fragment, isValidElement, useEffect, useMemo, useState } from 'react';
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
 type AnyStyle = CSSProperties & Record<string, any>;
+// iOS standalone PWAs can report safe-area env vars as 0 during drawer mount.
+// Keep sheet headers below the status bar even in that failure mode.
+const PWA_SHEET_TOP_INSET_FALLBACK = 44;
 
 const { Text: AntText, Title } = Typography;
 const MobileSheetContext = createContext(false);
@@ -408,17 +411,21 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
         setIsPwa(Boolean(standaloneMatch || navStandalone));
     }, []);
 
-    const popupHeight = (height as string | number | undefined) ?? 'auto';
     const normalizeViewportHeight = (value: string | number | undefined) => {
         if (typeof value === 'string' && value.includes('vh')) {
             return value.replace(/vh/g, isPwa ? 'dvh' : 'svh');
         }
         return value;
     };
+    // Ant Drawer uses both the `height` prop and content style; normalize both
+    // or iOS PWA can leave visible top/bottom mask gaps.
+    const popupHeight = normalizeViewportHeight((height as string | number | undefined) ?? 'auto');
+    const popupMaxHeight = normalizeViewportHeight(maxHeight ?? '88vh');
+    const popupMinHeight = normalizeViewportHeight(minHeight);
     const popupContentStyle = {
-        height: normalizeViewportHeight(popupHeight),
-        maxHeight: normalizeViewportHeight(maxHeight ?? '88vh'),
-        minHeight: normalizeViewportHeight(minHeight),
+        height: popupHeight,
+        maxHeight: popupMaxHeight,
+        minHeight: popupMinHeight,
     };
     const popupBodyStyle = {
         ...normalizedPadding,
@@ -645,9 +652,20 @@ export function NavBar({
     titleAlign?: 'center' | 'left';
 }) {
     const { token } = theme.useToken();
+    const isInsideSheet = useContext(MobileSheetContext);
+    const [isPwa, setIsPwa] = useState(false);
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const standaloneMatch = window.matchMedia?.('(display-mode: standalone)')?.matches;
+        const navStandalone = (window.navigator as any)?.standalone === true;
+        setIsPwa(Boolean(standaloneMatch || navStandalone));
+    }, []);
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
+    const navPaddingTop = isInsideSheet && isPwa
+        ? `calc(max(env(safe-area-inset-top), ${PWA_SHEET_TOP_INSET_FALLBACK}px) + 6px)`
+        : `calc(env(safe-area-inset-top) + 6px)`;
     return (
         <Flex
             align="center"
@@ -660,7 +678,7 @@ export function NavBar({
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 flex: '0 0 auto',
                 minHeight: navHeight,
-                padding: `calc(env(safe-area-inset-top) + 6px) 12px 6px`,
+                padding: `${navPaddingTop} 12px 6px`,
                 position: 'sticky',
                 top: 0,
                 width: '100%',

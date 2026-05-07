@@ -1666,6 +1666,26 @@ export const FEATURE_FLAGS = {
     ENABLE_CUSTOMER_APP_PWA: true,
 
     /**
+     * Public Menu Retrieval Foundation — customer-side search, freshness schema,
+     * and low-network resilience hardening.
+     *
+     * When enabled:
+     * - Public menu search uses deterministic fuzzy/transliteration matching
+     * - Public payload includes compact search terms for multilingual fields
+     * - JSON-LD freshness uses project menuVersion/lastPublishedAt where present
+     * - Customer service worker keeps a bounded network-first offline fallback
+     *
+     * When disabled:
+     * - Public menu can fall back to the previous substring search behavior
+     * - No search index terms are attached to the public payload
+     *
+     * Firebase cost: ₹0. Search is client-side against already-loaded menu data.
+     *
+     * @see __docs__/client-menu-retrieval-foundation/README.md
+     */
+    ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION: true,
+
+    /**
      * Customer App — Install prompt eligibility threshold.
      *
      * Number of menu visits before the install prompt may appear.

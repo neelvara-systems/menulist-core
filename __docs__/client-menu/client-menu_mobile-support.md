@@ -16,20 +16,23 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 | Aspect | Status | Notes |
 |--------|--------|-------|
 | Customer mobile browsing | ✅ | Mobile-first responsive design, 70%+ users on mobile |
-| Category navigation | ✅ | Sticky touch rail plus `Sections` navigator; public icons preserve owner-selected icon choices |
+| Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator; public icons preserve owner-selected icon choices |
 | Item display (name/price/image) | ✅ | Responsive grid/list layouts with line limits and reserved image slots |
-| Search/filter | ✅ | Debounced search with stronger focus state and business-type placeholder |
+| Search/filter | ✅ | Debounced fuzzy/transliteration search with stronger focus state, business-type placeholder, and compact sticky command-row behavior |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
-| Schema.org JSON-LD | ✅ | Server-side |
+| Schema.org JSON-LD | ✅ | Server-side active menu data with real freshness fields |
 | Analytics tracking | ✅ | Device-independent |
 | Auto-sell features | ✅ | Decision blocks render on all devices |
+| Low-network fallback | ✅ | Customer service worker stays network-first and shows `/offline`; no stale menu cache |
 
 ## Mobile Output Rules
 
 - Customer-facing category labels, item labels, and footer language actions must use localization fallback instead of active-language-only reads.
 - Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
 - Image-enabled layouts reserve thumbnail/card image space so missing or broken images do not move the user's scroll position.
-- Floating controls must respect `env(safe-area-inset-bottom)` and remain secondary to the sticky category/search layer.
+- Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
+- Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
+- Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet; no extra marketing CTA is added to the mobile footer by default.
 
 ## Owner Mobile Interaction

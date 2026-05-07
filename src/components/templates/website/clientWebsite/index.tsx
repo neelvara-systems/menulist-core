@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
 import GlobalLanguagesList from "@data/languages";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { normalizePublicLanguageCode, resolveProjectPublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
@@ -86,6 +87,10 @@ function ClientMenuRenderer({
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const storeId = storeDetails?.storeId;
     const storeDisplayName = getStoreContextName(storeDetails, "Menu");
+    const publicBusinessType = resolvePublicBusinessType(
+        storeDetails?.businessType,
+        storeDetails?.businessIndustry,
+    );
     const requestedInitialLanguage = normalizePublicLanguageCode(initialLanguage);
     const defaultLanguage = requestedInitialLanguage
         ? resolveProjectPublicLanguage(projectData, storeDetails, requestedInitialLanguage)
@@ -229,7 +234,7 @@ function ClientMenuRenderer({
                     setActivePage={setActivePage}
                     activeLanguage={activeLanguage}
                     setActiveLanguage={setActiveLanguage}
-                    businessType={storeDetails?.businessType}
+                    businessType={publicBusinessType || storeDetails?.businessType}
                     precomputedBlocks={precomputedBlocks}
                     restoreStoredLanguage={!requestedInitialLanguage}
                 />

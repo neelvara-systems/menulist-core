@@ -20,8 +20,20 @@ import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
 import { getLocalizedText } from '@lib/localization/text';
+import {
+    getDecisionFactArray,
+    getDecisionFactNumber,
+    getDecisionFactString,
+    getDecisionFactValue,
+} from '@lib/menu/itemDecisionFacts';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import {
+    buildPublicMenuSearchDocument,
+    buildPublicMenuSearchQuery,
+    matchesPublicMenuSearchDocument,
+} from '@lib/menu/publicMenuSearch';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -46,6 +58,7 @@ import MenuFilterChips, { FilterType } from '../output/MenuFilterChips';
 import MenuFilters from '../output/MenuFilters';
 import MenuFooter from '../output/MenuFooter';
 import MenuHeader from '../output/MenuHeader';
+import MenuLanguageSwitcher from '../output/MenuLanguageSwitcher';
 import MenuSearchBar from '../output/MenuSearchBar';
 import PDPModal from '../output/PDPModal';
 import ServiceChargeNote from '../output/ServiceChargeNote';
@@ -98,6 +111,48 @@ const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefine
 const hasDisplayPrice = (price: unknown): boolean =>
     price !== undefined && price !== null && String(price).trim() !== '';
 
+const isElementScrollable = (element: HTMLElement | null): element is HTMLElement =>
+    !!element && element.scrollHeight > element.clientHeight + 1;
+
+const normalizeFactLabel = (value: string): string => value
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const renderHighlightedText = (
+    text: string,
+    term: string,
+    accentColor: string,
+): React.ReactNode => {
+    const normalizedTerm = term.trim();
+    if (!normalizedTerm) return text;
+
+    const textIndex = text.toLowerCase().indexOf(normalizedTerm.toLowerCase());
+    if (textIndex === -1) return text;
+
+    const before = text.slice(0, textIndex);
+    const match = text.slice(textIndex, textIndex + normalizedTerm.length);
+    const after = text.slice(textIndex + normalizedTerm.length);
+
+    return (
+        <>
+            {before}
+            <mark
+                style={{
+                    background: `${accentColor}22`,
+                    borderRadius: 3,
+                    color: 'inherit',
+                    padding: '0 2px',
+                }}
+            >
+                {match}
+            </mark>
+            {after}
+        </>
+    );
+};
+
 function MenuPageNew({
     mood = DEFAULTS.menu.mood,
     layout = DEFAULTS.menu.layout,
@@ -108,7 +163,6 @@ function MenuPageNew({
     showCategoryIcons = true,
     showCategoryTabs = false,
     activeDeviceType,
-    setActivePage,
     activeLanguage,
     projectData,
     storeDetails,
@@ -120,6 +174,8 @@ function MenuPageNew({
 }: MenuPageNewProps) {
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const { trackMenuItemTap } = useContext(AnalyticsContext);
+    const isPublicSurface = from === 'main-website';
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const getMenuBasePath = useCallback(() => {
         if (typeof window === 'undefined') return '/menu';
 
@@ -131,24 +187,30 @@ function MenuPageNew({
         return window.location.pathname;
     }, []);
 
-    const getScrollPosition = useCallback(() => {
+    const getActiveScrollContainer = useCallback(() => {
+        if (isPublicSurface) return null;
         const container = scrollContainerRef.current;
-        if (container && container.scrollHeight > container.clientHeight) {
+        return isElementScrollable(container) ? container : null;
+    }, [isPublicSurface]);
+
+    const getScrollPosition = useCallback(() => {
+        const container = getActiveScrollContainer();
+        if (container) {
             return container.scrollTop;
         }
 
         return window.scrollY;
-    }, []);
+    }, [getActiveScrollContainer]);
 
     const restoreScrollPosition = useCallback((scrollY: number) => {
-        const container = scrollContainerRef.current;
-        if (container && container.scrollHeight > container.clientHeight) {
+        const container = getActiveScrollContainer();
+        if (container) {
             container.scrollTo({ top: scrollY, behavior: 'auto' });
             return;
         }
 
         window.scrollTo({ top: scrollY, behavior: 'auto' });
-    }, []);
+    }, [getActiveScrollContainer]);
 
     const resolvedMood = normalizeMenuMood(mood);
     const resolvedLayout = normalizeMenuLayout(layout, resolvedMood);
@@ -158,7 +220,15 @@ function MenuPageNew({
     const isMobile = activeDeviceType === 'mobile';
     const isTablet = activeDeviceType === 'tablet';
     const isDesktop = activeDeviceType === 'desktop';
-    const labels = useMemo(() => getOfferingLabels(businessType), [businessType]);
+    const effectiveBusinessType = useMemo(
+        () => resolvePublicBusinessType(
+            businessType,
+            storeDetails?.businessType,
+            storeDetails?.businessIndustry,
+        ) || businessType,
+        [businessType, storeDetails?.businessType, storeDetails?.businessIndustry],
+    );
+    const labels = useMemo(() => getOfferingLabels(effectiveBusinessType), [effectiveBusinessType]);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const currencyCode = storeDetails?.currencyCode || 'INR';
     const primaryLanguage = projectData?.defaultLanguage || storeDetails?.defaultLanguage || projectData?.languages?.[0] || 'en';
@@ -171,11 +241,8 @@ function MenuPageNew({
     const isGridLayout = layoutConfig.itemsPerRow > 1;
     const imageOnTop = layoutConfig.imagePosition === 'top';
 
-    // Responsive grid: desktop/tablet always get multi-column, mobile follows layout config
-    const gridColumns = isDesktop ? (isGridLayout ? 3 : 2) : isTablet ? 2 : (isGridLayout ? 2 : 1);
-
-    // Refs
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    // Responsive grid: desktop owns the multi-column rail model; mobile/tablet use a deterministic single-column scan.
+    const gridColumns = isDesktop ? (isGridLayout ? 3 : 2) : 1;
 
     // State
     const [searchTerm, setSearchTerm] = useState('');
@@ -183,10 +250,7 @@ function MenuPageNew({
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
-
-    // B.1: Track if category tabs are visible (for tabs/FAB mutual exclusivity)
-    const [categoryTabsVisible, setCategoryTabsVisible] = useState(true);
-    const categoryTabsRef = useRef<HTMLDivElement>(null);
+    const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
 
     // Phase C: Filter chips state
     const [activeFilter, setActiveFilter] = useState<FilterType>(null);
@@ -211,7 +275,7 @@ function MenuPageNew({
     }, [projectData?.projectId]);
 
     // Get unavailable label based on business type
-    const unavailableLabel = useMemo(() => getUnavailableLabel(businessType), [businessType]);
+    const unavailableLabel = useMemo(() => getUnavailableLabel(effectiveBusinessType), [effectiveBusinessType]);
     const clearSearch = useCallback(() => {
         setSearchTerm('');
         setDebouncedSearch('');
@@ -234,6 +298,13 @@ function MenuPageNew({
 
         return cats;
     }, [projectData?.files]);
+    const categoriesById = useMemo(() => {
+        const map = new Map<string, any>();
+        allCategories.forEach((category: any) => {
+            if (category?.id) map.set(category.id, category);
+        });
+        return map;
+    }, [allCategories]);
     const suggestedCategories = useMemo(() => allCategories.slice(0, 4), [allCategories]);
     const recoveryActions = useMemo(() => {
         const addressParts = [
@@ -326,6 +397,7 @@ function MenuPageNew({
             const savedState = sessionStorage.getItem(storageKey);
             if (savedState) {
                 const { scrollY, filter, category } = JSON.parse(savedState);
+                const restoredScrollY = Number(scrollY) || 0;
 
                 // Restore filter
                 if (filter) {
@@ -333,15 +405,15 @@ function MenuPageNew({
                 }
 
                 // Restore active category
-                if (category) {
+                if (category && restoredScrollY > 0) {
                     const cat = allCategories.find((c: any) => c.id === category);
                     if (cat) setActiveCategory(cat);
                 }
 
                 // Restore scroll position after content renders
-                if (scrollY && scrollY > 0) {
+                if (restoredScrollY > 0) {
                     requestAnimationFrame(() => {
-                        restoreScrollPosition(scrollY);
+                        restoreScrollPosition(restoredScrollY);
                     });
                 }
             }
@@ -370,10 +442,15 @@ function MenuPageNew({
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(() => {
                 try {
+                    const scrollY = getScrollPosition();
+                    const firstCategoryId = allCategories[0]?.id || null;
+                    const categoryId = scrollY > 16
+                        ? activeCategory?.id || firstCategoryId
+                        : firstCategoryId;
                     const state = {
-                        scrollY: getScrollPosition(),
+                        scrollY,
                         filter: activeFilter,
-                        category: activeCategory?.id || null,
+                        category: categoryId,
                     };
                     sessionStorage.setItem(storageKey, JSON.stringify(state));
                 } catch (e) {
@@ -391,37 +468,22 @@ function MenuPageNew({
             container?.removeEventListener('scroll', saveState);
             clearTimeout(saveTimeout);
         };
-    }, [storageKey, activeFilter, activeCategory, getScrollPosition]);
+    }, [storageKey, activeFilter, activeCategory, allCategories, getScrollPosition]);
 
-    // B.1: Intersection Observer for tabs/FAB mutual exclusivity
-    // Activates when category tabs are rendered (mobile with showCategoryTabs OR tablet always)
     const showTabsBar = !isDesktop && (showCategoryTabs || isTablet);
-    const stickyControlsOffset = isDesktop ? 96 : showTabsBar ? 150 : 86;
-    useEffect(() => {
-        if (!categoryTabsRef.current || !showTabsBar) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                // FAB shows when tabs are NOT visible (scrolled out of view)
-                setCategoryTabsVisible(entry.isIntersecting);
-            },
-            { threshold: 0.1, rootMargin: '-50px 0px 0px 0px' }
-        );
-
-        observer.observe(categoryTabsRef.current);
-        return () => observer.disconnect();
-    }, [showTabsBar]);
+    const showSectionsControl = !isDesktop && allCategories.length >= 2;
+    const stickyControlsOffset = isDesktop ? 96 : showTabsBar ? 124 : 76;
 
     // Scroll spy - update active category based on scroll position
     // Activates for: desktop sidebar, tablet category tabs, or mobile with showCategoryTabs
     const enableScrollSpy = isDesktop || isTablet || showCategoryTabs;
     useEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container || !enableScrollSpy) return;
+        if (!enableScrollSpy) return;
 
         const handleScroll = () => {
-            const containerRect = container.getBoundingClientRect();
-            const containerTop = containerRect.top;
+            const container = getActiveScrollContainer();
+            const scrollOriginTop = container?.getBoundingClientRect().top || 0;
+            const targetTop = scrollOriginTop + stickyControlsOffset + 8;
 
             let closestCategory = null;
             let closestDistance = Infinity;
@@ -430,7 +492,7 @@ function MenuPageNew({
                 const element = document.getElementById(`cat-${cat.id}`);
                 if (element) {
                     const rect = element.getBoundingClientRect();
-                    const distance = Math.abs(rect.top - containerTop - stickyControlsOffset);
+                    const distance = Math.abs(rect.top - targetTop);
 
                     if (distance < closestDistance) {
                         closestDistance = distance;
@@ -444,9 +506,16 @@ function MenuPageNew({
             }
         };
 
-        container.addEventListener('scroll', handleScroll);
-        return () => container.removeEventListener('scroll', handleScroll);
-    }, [allCategories, activeCategory, enableScrollSpy, stickyControlsOffset]);
+        const container = getActiveScrollContainer();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        container?.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            container?.removeEventListener('scroll', handleScroll);
+        };
+    }, [allCategories, activeCategory?.id, enableScrollSpy, getActiveScrollContainer, stickyControlsOffset]);
 
     // #31: Progressive rendering observer — mark categories visible as they approach viewport
     useEffect(() => {
@@ -499,18 +568,64 @@ function MenuPageNew({
         ) || [];
     }, [projectData?.files]);
 
+    const visibleItems = useMemo(() => {
+        return allItems.filter((item: any) =>
+            typeof item.category === 'string' && categoriesById.has(item.category),
+        );
+    }, [allItems, categoriesById]);
+
+    const categoryItemCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        visibleItems.forEach((item: any) => {
+            if (item.active === false || typeof item.category !== 'string') return;
+            counts[item.category] = (counts[item.category] || 0) + 1;
+        });
+        return counts;
+    }, [visibleItems]);
+
+    const searchDocumentsByItem = useMemo(() => {
+        const documents = new Map<any, ReturnType<typeof buildPublicMenuSearchDocument>>();
+        if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION) return documents;
+
+        visibleItems.forEach((item: any) => {
+            const category = typeof item.category === 'string'
+                ? categoriesById.get(item.category)
+                : undefined;
+            documents.set(item, buildPublicMenuSearchDocument(item, {
+                category,
+                includePrices: showItemPrices,
+                businessType: effectiveBusinessType,
+                businessCategory: storeDetails?.businessCategory,
+            }));
+        });
+
+        return documents;
+    }, [visibleItems, categoriesById, showItemPrices, effectiveBusinessType, storeDetails?.businessCategory]);
+
     // Filter items by search term and active filter
     const filteredItems = useMemo(() => {
-        let items = allItems;
+        let items = visibleItems;
 
         // Apply search filter
         if (debouncedSearch) {
-            const term = debouncedSearch.toLowerCase();
-            items = items.filter((item: any) => {
-                const nameMatch = getMenuText(item.name).toLowerCase().includes(term);
-                const descMatch = getMenuText(item.description).toLowerCase().includes(term);
-                return nameMatch || descMatch;
-            });
+            if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION) {
+                const query = buildPublicMenuSearchQuery(debouncedSearch, {
+                    businessType: effectiveBusinessType,
+                    businessCategory: storeDetails?.businessCategory,
+                });
+                items = items.filter((item: any) => {
+                    const document = searchDocumentsByItem.get(item);
+                    if (!document) return false;
+                    return matchesPublicMenuSearchDocument(document, query);
+                });
+            } else {
+                const term = debouncedSearch.toLowerCase();
+                items = items.filter((item: any) => {
+                    const nameMatch = getMenuText(item.name).toLowerCase().includes(term);
+                    const descMatch = getMenuText(item.description).toLowerCase().includes(term);
+                    return nameMatch || descMatch;
+                });
+            }
         }
 
         // Apply filter chips using normalized attributes
@@ -523,7 +638,56 @@ function MenuPageNew({
         }
 
         return items;
-    }, [allItems, debouncedSearch, getMenuText, activeFilter]);
+    }, [visibleItems, debouncedSearch, getMenuText, activeFilter, searchDocumentsByItem, effectiveBusinessType, storeDetails?.businessCategory]);
+
+    const searchResultSectionCount = useMemo(() => {
+        if (!debouncedSearch) return 0;
+        return new Set(filteredItems.map((item: any) => item.category).filter(Boolean)).size;
+    }, [debouncedSearch, filteredItems]);
+
+    const getItemDecisionChips = useCallback((item: any) => {
+        const chips: Array<{ label: string; tone?: 'neutral' | 'warning' }> = [];
+        const addChip = (label?: string, tone: 'neutral' | 'warning' = 'neutral') => {
+            const normalized = label?.trim();
+            if (!normalized) return;
+            if (chips.some((chip) => chip.label.toLowerCase() === normalized.toLowerCase())) return;
+            chips.push({ label: normalized, tone });
+        };
+
+        const normalizedAttributes = normalizeItemFilterAttributes(item);
+        if (normalizedAttributes.veg) addChip('Vegetarian');
+        if (normalizedAttributes.nonveg) addChip('Non-veg');
+        if (normalizedAttributes.forMen) addChip('For men');
+        if (normalizedAttributes.forWomen) addChip('For women');
+        if (normalizedAttributes.popular) addChip('Popular');
+
+        getDecisionFactArray(item, 'dietaryTags')
+            .slice(0, 2)
+            .forEach((tag) => addChip(normalizeFactLabel(tag)));
+
+        const spiceLevel = getDecisionFactString(item, 'spiceLevel');
+        if (spiceLevel && !['none', 'not spicy', 'no spice'].includes(spiceLevel.toLowerCase())) {
+            addChip(`${normalizeFactLabel(spiceLevel)} spice`);
+        }
+
+        const durationNumber = getDecisionFactNumber(item, 'duration');
+        const durationValue = getDecisionFactValue(item, 'duration');
+        if (typeof durationNumber === 'number') {
+            addChip(durationNumber <= 90 ? `${durationNumber} min` : `${Math.round(durationNumber / 60)} hr`);
+        } else if (typeof durationValue === 'string') {
+            addChip(normalizeFactLabel(durationValue));
+        }
+
+        const targetAudience = getDecisionFactString(item, 'targetAudience');
+        if (targetAudience) addChip(normalizeFactLabel(targetAudience));
+
+        const allergens = getDecisionFactArray(item, 'allergens');
+        if (allergens.length > 0) {
+            addChip(`Contains ${normalizeFactLabel(allergens[0])}`, 'warning');
+        }
+
+        return chips.slice(0, 3);
+    }, []);
 
     useEffect(() => {
         if (!analyticsPreferences.trackMenuViews) return;
@@ -722,14 +886,59 @@ function MenuPageNew({
         }
     }, [allItems, getMenuText]);
 
+    const scrollToCategoryElement = useCallback((categoryId: string) => {
+        const element = document.getElementById(`cat-${categoryId}`);
+        if (!element) return false;
+
+        const container = getActiveScrollContainer();
+        const offset = stickyControlsOffset + 12;
+
+        if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const top = container.scrollTop + element.getBoundingClientRect().top - containerRect.top - offset;
+            container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            return true;
+        }
+
+        const top = window.scrollY + element.getBoundingClientRect().top - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        return true;
+    }, [getActiveScrollContainer, stickyControlsOffset]);
+
     // Handle category selection (scroll to category)
     const handleCategorySelect = useCallback((category: any) => {
-        setActiveCategory(category);
         if (category?.id) {
-            const element = document.getElementById(`cat-${category.id}`);
-            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const didScroll = scrollToCategoryElement(category.id);
+            if (!didScroll) return;
+            setActiveCategory(category);
+            return;
         }
-    }, []);
+
+        setActiveCategory(category);
+    }, [scrollToCategoryElement]);
+
+    const handleBrowseCategorySelect = useCallback((category: any) => {
+        if (searchTerm || debouncedSearch) {
+            setPendingBrowseCategory(category);
+            clearSearch();
+            return;
+        }
+
+        handleCategorySelect(category);
+    }, [clearSearch, debouncedSearch, handleCategorySelect, searchTerm]);
+
+    const displayActiveCategory = debouncedSearch ? null : activeCategory;
+
+    useEffect(() => {
+        if (!pendingBrowseCategory || searchTerm || debouncedSearch) return;
+
+        const frame = requestAnimationFrame(() => {
+            handleCategorySelect(pendingBrowseCategory);
+            setPendingBrowseCategory(null);
+        });
+
+        return () => cancelAnimationFrame(frame);
+    }, [debouncedSearch, handleCategorySelect, pendingBrowseCategory, searchTerm]);
 
     // Styles
     const containerStyle: React.CSSProperties = {
@@ -746,9 +955,9 @@ function MenuPageNew({
         flex: 1,
         paddingTop: `calc(${spacing.container}px + env(safe-area-inset-top))`,
         paddingRight: spacing.container,
-        paddingBottom: `calc(${spacing.container}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 96}px)`,
+        paddingBottom: `calc(${spacing.container}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 24}px)`,
         paddingLeft: spacing.container,
-        overflowY: 'auto',
+        overflowY: isPublicSurface ? 'visible' : 'auto',
         scrollPaddingTop: `calc(72px + env(safe-area-inset-top))`,
         scrollPaddingBottom: `calc(96px + env(safe-area-inset-bottom))`,
     };
@@ -762,12 +971,18 @@ function MenuPageNew({
         position: 'sticky',
         top: 0,
         zIndex: 70,
-        marginBottom: 14,
+        marginBottom: 16,
         paddingTop: isMobile || isTablet ? 'calc(6px + env(safe-area-inset-top))' : 0,
-        paddingBottom: showTabsBar ? 10 : 6,
+        paddingBottom: showTabsBar ? 8 : 8,
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
+    };
+    const commandLayerStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: showTabsBar ? 8 : 0,
     };
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
@@ -798,7 +1013,7 @@ function MenuPageNew({
 
     const categoryHeaderStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isMobile ? 15 : 16,
+        fontSize: isMobile ? 14 : 15,
         fontWeight: 700,
         color: moodConfig.headingColor,
         margin: 0,
@@ -859,6 +1074,7 @@ function MenuPageNew({
         fontSize: isMobile ? 13 : 14,
         fontWeight: 600,
         color: moodConfig.priceColor,
+        opacity: 0.88,
         marginTop: 'auto',
         lineHeight: 1.3,
         ...(moodConfig.itemStyle.priceStyle === 'badge' && moodConfig.itemStyle.priceBadgeColor && {
@@ -869,35 +1085,94 @@ function MenuPageNew({
         }),
     };
 
+    const itemFactRowStyle: React.CSSProperties = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 5,
+        marginTop: 6,
+    };
+
+    const itemFactChipStyle = (tone: 'neutral' | 'warning' = 'neutral'): React.CSSProperties => ({
+        border: `1px solid ${tone === 'warning' ? `${moodConfig.priceColor}36` : moodConfig.itemStyle.borderColor}`,
+        borderRadius: 999,
+        color: tone === 'warning' ? moodConfig.priceColor : moodConfig.bodyColor,
+        background: tone === 'warning' ? `${moodConfig.priceColor}10` : `${moodConfig.accentColor}08`,
+        fontFamily: moodConfig.bodyFont,
+        fontSize: 11,
+        fontWeight: 500,
+        lineHeight: '16px',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        padding: '2px 7px',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+    });
+
+    const searchResultSummaryStyle: React.CSSProperties = {
+        alignItems: 'center',
+        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderRadius: 10,
+        color: moodConfig.bodyColor,
+        display: 'flex',
+        fontFamily: moodConfig.bodyFont,
+        fontSize: 13,
+        justifyContent: 'space-between',
+        lineHeight: '18px',
+        marginBottom: 16,
+        padding: '9px 12px',
+        background: `${moodConfig.accentColor}08`,
+    };
+
     return (
         <div style={containerStyle}>
             <div ref={scrollContainerRef} style={scrollContentStyle}>
                 <div style={contentStyle}>
-                    {/* Sticky menu controls: search plus horizontal categories on mobile/tablet */}
+                    {/* Sticky command layer: retrieval first, section navigation second */}
                     <div style={stickyControlsStyle}>
-                        <MenuSearchBar
-                            searchTerm={searchTerm}
-                            onSearchChange={setSearchTerm}
-                            moodConfig={moodConfig}
-                            businessType={businessType}
-                            businessCategory={storeDetails?.businessCategory}
-                            isMobile={isMobile}
-                        />
+                        <div style={commandLayerStyle}>
+                            <MenuSearchBar
+                                searchTerm={searchTerm}
+                                onSearchChange={setSearchTerm}
+                                moodConfig={moodConfig}
+                                businessType={effectiveBusinessType}
+                                businessCategory={storeDetails?.businessCategory}
+                                isMobile={isMobile}
+                                compact={!isDesktop}
+                                containerStyle={{ flex: '1 1 auto', minWidth: 0 }}
+                            />
+
+                            {showSectionsControl && (
+                                <MenuFilters
+                                    categories={allCategories}
+                                    activeCategory={displayActiveCategory}
+                                    onSelectCategory={handleBrowseCategorySelect}
+                                    activeLanguage={activeLanguage}
+                                    showCategoryIcons={showCategoryIcons}
+                                    moodConfig={moodConfig}
+                                    triggerVariant="inline"
+                                    categoryItemCounts={categoryItemCounts}
+                                />
+                            )}
+
+                            <MenuLanguageSwitcher
+                                projectData={projectData}
+                                activeLanguage={activeLanguage}
+                                setActiveLanguage={setActiveLanguage}
+                                moodConfig={moodConfig}
+                                restoreStoredLanguage={restoreStoredLanguage}
+                                compact
+                            />
+                        </div>
 
                         {!isDesktop && showTabsBar && allCategories.length > 0 && (
                             <div
-                                ref={categoryTabsRef}
                                 style={categoryTabsStyle}
                                 className="hide-scrollbar"
                             >
                                 {allCategories.map((cat: any) => (
                                     <button
                                         key={cat.id}
-                                        onClick={() => {
-                                            setActiveCategory(cat);
-                                            const element = document.getElementById(`cat-${cat.id}`);
-                                            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        }}
+                                        onClick={() => handleBrowseCategorySelect(cat)}
                                         style={{
                                             minHeight: 40,
                                             display: 'inline-flex',
@@ -905,18 +1180,18 @@ function MenuPageNew({
                                             justifyContent: 'center',
                                             padding: '8px 12px',
                                             borderRadius: 999,
-                                            border: activeCategory?.id === cat.id
+                                            border: displayActiveCategory?.id === cat.id
                                                 ? `1px solid ${moodConfig.accentColor}50`
                                                 : `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                            background: activeCategory?.id === cat.id
+                                            background: displayActiveCategory?.id === cat.id
                                                 ? `${moodConfig.accentColor}14`
                                                 : moodConfig.itemStyle.background,
-                                            color: activeCategory?.id === cat.id
+                                            color: displayActiveCategory?.id === cat.id
                                                 ? moodConfig.accentColor
                                                 : moodConfig.bodyColor,
                                             fontFamily: moodConfig.bodyFont,
                                             fontSize: 13,
-                                            fontWeight: activeCategory?.id === cat.id ? 700 : 500,
+                                            fontWeight: displayActiveCategory?.id === cat.id ? 600 : 500,
                                             whiteSpace: 'nowrap',
                                             cursor: 'pointer',
                                             transition: 'all 0.2s ease',
@@ -928,7 +1203,7 @@ function MenuPageNew({
                                         <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
                                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                                 <CategoryIcon
-                                                    color={activeCategory?.id === cat.id ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                    color={displayActiveCategory?.id === cat.id ? moodConfig.accentColor : moodConfig.bodyColor}
                                                     defaultIcon="LuTag"
                                                     icon={cat.icon}
                                                     size={14}
@@ -948,7 +1223,7 @@ function MenuPageNew({
                             items={allItems}
                             categories={allCategories}
                             activeLanguage={activeLanguage}
-                            businessType={businessType}
+                            businessType={effectiveBusinessType}
                             moodConfig={moodConfig}
                             onItemClick={handleItemClick}
                             currency={currencySymbol}
@@ -973,9 +1248,34 @@ function MenuPageNew({
                         onFilterChange={setActiveFilter}
                         onFilterIntentChange={handleAttributeFilterIntentChange}
                         moodConfig={moodConfig}
-                        businessType={businessType}
+                        businessType={effectiveBusinessType}
                         isSearchActive={!!debouncedSearch}
                     />
+
+                    {debouncedSearch && filteredItems.length > 0 && (
+                        <div style={searchResultSummaryStyle} aria-live="polite">
+                            <span>
+                                {filteredItems.length} {filteredItems.length === 1 ? 'result' : 'results'}
+                                {' '}across {searchResultSectionCount} {searchResultSectionCount === 1 ? 'section' : 'sections'}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={clearSearch}
+                                style={{
+                                    background: 'transparent',
+                                    border: 0,
+                                    color: moodConfig.accentColor,
+                                    cursor: 'pointer',
+                                    fontFamily: moodConfig.bodyFont,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    padding: 0,
+                                }}
+                            >
+                                Show all
+                            </button>
+                        </div>
+                    )}
 
                     {/* Desktop: Sidebar + Content layout | Mobile/Tablet: Content only */}
                     <div style={{
@@ -1000,15 +1300,11 @@ function MenuPageNew({
                             >
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     {allCategories.map((cat: any) => {
-                                        const isActive = activeCategory?.id === cat.id;
+                                        const isActive = displayActiveCategory?.id === cat.id;
                                         return (
                                             <button
                                                 key={cat.id}
-                                                onClick={() => {
-                                                    setActiveCategory(cat);
-                                                    const element = document.getElementById(`cat-${cat.id}`);
-                                                    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }}
+                                                onClick={() => handleBrowseCategorySelect(cat)}
                                                 style={{
                                                     padding: '10px 16px',
                                                     borderRadius: 8,
@@ -1120,6 +1416,9 @@ function MenuPageNew({
                                             }}>
                                                 {items.map((item: any, itemIndex: number) => {
                                                     const isAvailable = item.available !== false;
+                                                    const itemName = getMenuText(item.name, 'Menu item');
+                                                    const itemDescription = getMenuText(item.description);
+                                                    const itemDecisionChips = getItemDecisionChips(item);
 
                                                     // G10 ENFORCEMENT: Image quota per category
                                                     const reserveItemImageSlot = showImages && categoryHasImages && itemIndex < layoutConfig.maxImagesPerCategory;
@@ -1148,7 +1447,7 @@ function MenuPageNew({
                                                             }
                                                             role="button"
                                                             tabIndex={isAvailable ? 0 : -1}
-                                                            aria-label={getMenuText(item.name, 'Menu item')}
+                                                            aria-label={itemName}
                                                         >
                                                             {reserveItemImageSlot && (
                                                                 <div
@@ -1183,7 +1482,7 @@ function MenuPageNew({
                                                                     {itemImageUrl && (
                                                                         <Image
                                                                             src={itemImageUrl}
-                                                                            alt={getMenuText(item.name, 'Menu item')}
+                                                                            alt={itemName}
                                                                             fill
                                                                             style={{ objectFit: 'cover' }}
                                                                             sizes={isDesktop ? '300px' : '(max-width: 768px) 50vw, 200px'}
@@ -1198,15 +1497,28 @@ function MenuPageNew({
 
                                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                                                    <h3 style={itemNameStyle}>{getMenuText(item.name, 'Menu item')}</h3>
+                                                                    <h3 style={itemNameStyle}>
+                                                                        {renderHighlightedText(itemName, debouncedSearch, moodConfig.accentColor)}
+                                                                    </h3>
                                                                     {showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (
                                                                         <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>
                                                                             {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                {getMenuText(item.description) && (
-                                                                    <p style={itemDescStyle}>{getMenuText(item.description)}</p>
+                                                                {itemDecisionChips.length > 0 && (
+                                                                    <div style={itemFactRowStyle} aria-label="Item details">
+                                                                        {itemDecisionChips.map((chip) => (
+                                                                            <span key={chip.label} style={itemFactChipStyle(chip.tone)}>
+                                                                                {chip.label}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {itemDescription && (
+                                                                    <p style={itemDescStyle}>
+                                                                        {renderHighlightedText(itemDescription, debouncedSearch, moodConfig.accentColor)}
+                                                                    </p>
                                                                 )}
                                                                 {!isAvailable && (
                                                                     <span style={{ fontSize: 11, fontWeight: 500, color: '#ef4444', marginTop: 4 }}>
@@ -1247,7 +1559,7 @@ function MenuPageNew({
                                         No {labels.itemsPlural} found for &ldquo;{debouncedSearch}&rdquo;
                                     </div>
                                     <p style={{ margin: '10px auto 0', maxWidth: 420, lineHeight: 1.5 }}>
-                                        Try a different search, jump back into a category, or contact the business directly.
+                                        Try another spelling, jump back into a section, or contact the business directly.
                                     </p>
                                     <div style={{
                                         display: 'flex',
@@ -1275,10 +1587,7 @@ function MenuPageNew({
                                             <button
                                                 key={category.id}
                                                 type="button"
-                                                onClick={() => {
-                                                    clearSearch();
-                                                    handleCategorySelect(category);
-                                                }}
+                                                onClick={() => handleBrowseCategorySelect(category)}
                                                 style={{
                                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                                     borderRadius: 999,
@@ -1327,6 +1636,7 @@ function MenuPageNew({
                     {/* Only on live pages (not editor preview), only if feedback enabled */}
                     {from === 'main-website' &&
                         FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK &&
+                        !debouncedSearch &&
                         storeDetails?.feedbackEnabled !== false &&
                         projectData?.menuSettings?.feedback !== false &&
                         projectData?.projectId && (
@@ -1345,15 +1655,15 @@ function MenuPageNew({
                             projectData={projectData}
                             activeLanguage={activeLanguage}
                             setActiveLanguage={setActiveLanguage}
-                            setActivePage={setActivePage}
                             moodConfig={moodConfig}
                             restoreStoredLanguage={restoreStoredLanguage}
                             placement="bottom"
+                            showLanguageSelector={false}
                         />
 
                         {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
                             <TrustSignals
-                                businessType={businessType || storeDetails?.businessType || ''}
+                                businessType={effectiveBusinessType || storeDetails?.businessType || ''}
                                 lastPublishedAt={projectData?.lastPublishedAt || null}
                                 locationArea={storeDetails?.area || null}
                                 city={storeDetails?.city || null}
@@ -1399,17 +1709,6 @@ function MenuPageNew({
                     />
                 </div>
             </div>
-
-            {/* Category FAB - visible when sticky tabs are absent or have scrolled out of view */}
-            <MenuFilters
-                categories={allCategories}
-                activeCategory={activeCategory}
-                onSelectCategory={handleCategorySelect}
-                activeLanguage={activeLanguage}
-                showCategoryIcons={showCategoryIcons}
-                moodConfig={moodConfig}
-                hideFAB={isDesktop || (showTabsBar && categoryTabsVisible)}
-            />
 
             {/* G07 - Back to Top Control (Accessibility - Long Menu Navigation) */}
             <BackToTop scrollContainerRef={scrollContainerRef} moodConfig={moodConfig} />

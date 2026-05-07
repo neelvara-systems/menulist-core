@@ -3,7 +3,7 @@
 **Source:** ChatGPT screenshot-only review of two public menu examples  
 **Review owner:** Codex  
 **Started:** May 7, 2026  
-**Status:** Implemented  
+**Status:** Implemented, including second-turn sticky command-layer review and retrieval foundation follow-up
 
 ---
 
@@ -40,8 +40,8 @@ References:
 | 2 | Typography | Partial | Reduce decorative category heading drift in public output. Do not remove the mood system. | Done |
 | 3 | Color system | Partial | Improve light containment and reduce active-state loudness. Do not create arbitrary theme freedom. | Done |
 | 4 | Spacing/rhythm | Agree | Tighten category interruption, chip density, card text rhythm, and footer separation using shared output styles. | Done |
-| 5 | Category navigation | Partial | Category rail remains canonical and FAB becomes a section navigator. Owner-selected category icons, including emoji, are preserved. | Done |
-| 6 | Search UX | Agree with constraints | Search is already sticky; strengthen affordance/focus and keep exact, calm retrieval UI. Fuzzy/semantic search is not part of this pass. | Done |
+| 5 | Category navigation | Partial | Category rail remains lightweight and the sticky-row `Sections` button becomes the section navigator. Owner-selected category icons, including emoji, are preserved. | Done |
+| 6 | Search UX | Agree with constraints | Search is sticky and calm. UI affordance was handled first; fuzzy/transliteration retrieval was then implemented as a separate foundation feature without AI chat or new owner settings. | Done |
 | 7 | Item cards | Agree | Add title/description governance, softer price weight, stable image slot behavior, and restrained interaction feedback. | Done |
 | 8 | Image system | Agree | Preserve text-first cards and reserve image slots when image mode is active. Do not turn menu into a visual feed. | Done |
 | 9 | Freshness/live state | Partial | Existing `LiveIndicator`, `TrustSignals`, and footer metadata already exist. Improve docs and avoid louder "live" theater. | Documented |
@@ -58,11 +58,39 @@ References:
 
 ---
 
+## Second-Turn ChatGPT Review: Sticky Search + Sections Row
+
+| ChatGPT Idea | Verdict | Decision | Action |
+| --- | --- | --- | --- |
+| Move the disconnected bottom `Sections` control into the sticky search row | Agree | This improves retrieval speed and orientation clarity without adding a new feature surface. Desktop keeps its existing sidebar because the duplicated button is unnecessary there. | Implemented in `menuPageNew.tsx` and `MenuFilters.tsx`. |
+| Treat search + sections as one command/navigation layer | Agree | The actual value is a unified retrieval/orientation row, not merely moving a button. | Search now renders compactly beside `Sections` on mobile/tablet. |
+| Open `Sections` as a structured navigator | Agree with constraints | Full fuzzy/semantic navigation is not part of this pass, but a bottom-sheet-style section list with active state and item counts is aligned and low risk. | Implemented in `MenuFilters.tsx`. |
+| Remove double navigation overload | Agree | Keep the lightweight category rail where configured, but remove the separate floating section FAB from the public menu render. | Implemented in `menuPageNew.tsx`; back-to-top remains as accessibility infrastructure only. |
+| Add smarter search, transliteration, AI retrieval, low-network/offline systems | Split | Fuzzy/transliteration search, structured public truth, and low-network navigation fallback are valid base foundations. AI retrieval infrastructure remains separate. | Base foundations implemented; AI retrieval deferred. |
+
+## Third-Turn Review: Retrieval Foundation
+
+| ChatGPT/User Idea | Verdict | Decision | Action |
+| --- | --- | --- | --- |
+| Fuzzy search and transliteration | Agree | High end-user value if deterministic, client-side, and based on already-published public menu data. | Implemented in `src/lib/menu/publicMenuSearch.ts` and wired into `menuPageNew.tsx`. |
+| Search every relevant public menu field | Agree | Search should include localized names/descriptions, category names, attributes, tags, public decision facts, and prices only when prices are visible. | Implemented without new Firestore reads. |
+| AI-era metadata and structured public truth | Agree with constraints | JSON-LD must represent visible/current public truth only. No fake verified claims or hidden schema-only data. | Hardened in `src/app/client/[[...slug]]/page.tsx` and `src/lib/menu/publicMenuStructuredData.ts`. |
+| Offline/low-network resilience | Agree with strict boundary | Customer app can fail clearly to `/offline`, but must not serve stale menu content. | `public/sw-customer.js` now applies bounded network-first navigation fallback. |
+| AI retrieval infrastructure | Defer | Requires separate API/retrieval/cache/data design after base search is stable. | Not implemented in this pass. |
+
+Final pass notes:
+
+- The shared app and Functions copies of `businessTypes.ts` matched byte-for-byte.
+- Public rendering now resolves legacy/generic stored values such as `businessType: B2C` through real SMB industry values before search/schema output.
+- Browser search flow was verified on the tenant route: phonetic `chay`, no-result recovery, category jump from search, search-mode recommendation/feedback suppression, and active-category state restoration.
+
+---
+
 ## Accepted Implementation Scope
 
 - Public category icons preserve owner-selected icon choices, including emoji values, through the shared `CategoryIcon` path: `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx`.
-- Sticky navigation becomes visually unified: stronger search affordance, tighter category chips, calmer active state: `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`.
-- Floating category button is renamed from vague "Menu" to "Sections" and opens "Menu sections": `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx`.
+- Sticky navigation becomes a unified mobile/tablet command layer: search on the left, `Sections` on the right, with tighter category chips below when configured: `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`.
+- `Sections` opens a bottom-sheet-style navigator with localized fallback labels, active state, owner-selected icons, and item counts: `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx`.
 - Category headings become structural markers rather than theme-heavy title screens: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/designSystem/index.ts`.
 - Item cards enforce title/description line limits and softer price weight: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`.
 - Image-enabled layouts reserve stable image slots and show intentional placeholders when an item has no image: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`.
@@ -74,7 +102,7 @@ References:
 - Full custom theme redesign.
 - Arbitrary owner design freedom.
 - Feed-like/image-first menus.
-- Fuzzy/semantic/AI search UI.
+- AI chat/search UI. Deterministic fuzzy and transliteration retrieval moved into the separate retrieval-foundation feature.
 - Public engagement counters or popularity theater.
 - Extra marketing CTAs on customer-facing menu footer.
 
@@ -87,7 +115,7 @@ This appendix exists because the source review had many small points inside the 
 | Suggestion | Decision | Status |
 | --- | --- | --- |
 | Keep direct utility-first page start instead of hero/welcome page | Accepted | Existing behavior preserved in `menuPageNew.tsx`. |
-| Strengthen one dominant orientation model | Accepted | Sticky search/category controls and `Sections` navigator tightened. |
+| Strengthen one dominant orientation model | Accepted | Sticky search plus `Sections` command row implemented on mobile/tablet. |
 | Avoid long-scrolling website feeling | Accepted with constraints | Category rail and section jump layer remain the navigation structure. |
 | Make category rail sticky earlier | Partial | Existing sticky controls retained and visual cohesion improved; no new scroll algorithm in this pass. |
 | Reduce category header interruption | Accepted | Category headings made smaller and structural. |
@@ -134,7 +162,7 @@ This appendix exists because the source review had many small points inside the 
 | --- | --- | --- |
 | Make category rail canonical | Accepted | Rail remains the primary orientation layer. |
 | Rename floating `Menu` button | Accepted | Renamed to `Sections`. |
-| Bottom sheet/full navigator concept | Partial | Existing floating category popover clarified; larger navigator remains future work. |
+| Bottom sheet/full navigator concept | Accepted with constraints | Sticky-row `Sections` opens a bottom-sheet-style list with active state and item counts; deeper semantic navigator remains separate retrieval work. |
 | Improve active-state clarity | Accepted | Active chip/popover state made calmer but clearer. |
 | Use localization fallback for category labels | Accepted | `getLocalizedText`/`getMenuText` paths used. |
 | Remove raw emoji category icons | Rejected after owner correction | Owner-selected icon choices, including emoji, are preserved. |
@@ -144,12 +172,12 @@ This appendix exists because the source review had many small points inside the 
 
 | Suggestion | Decision | Status |
 | --- | --- | --- |
-| Make search more structurally primary | Accepted | Search focus/containment strengthened. |
+| Make search more structurally primary | Accepted | Search focus/containment strengthened and compacted into the sticky command row. |
 | Keep search near top before categories | Accepted | Existing placement preserved. |
-| Sticky search behavior | Existing | Search already lives in sticky controls. |
+| Sticky search behavior | Existing/accepted | Search already lived in sticky controls; it now shares that row with `Sections` on mobile/tablet. |
 | Better focus state | Accepted | Focus border, ring, and icon emphasis added. |
 | Better empty state recovery | Existing/accepted | Existing no-result recovery actions retained. |
-| Typo tolerance/fuzzy search | Deferred | Needs separate retrieval/data design. |
+| Typo tolerance/fuzzy search | Accepted in follow-up | Implemented as deterministic client-side retrieval foundation. |
 | Semantic/AI search UI | Rejected for this pass | Would add complexity and drift from calm deterministic retrieval. |
 
 ### 7. Item Cards
@@ -239,8 +267,8 @@ This appendix exists because the source review had many small points inside the 
 | Text should load before images | Accepted | Existing text-first rendering retained. |
 | Avoid image-driven layout shifts | Accepted | Stable image slots added. |
 | Preserve progressive rendering | Existing | Large-menu progressive category rendering retained. |
-| Improve perceived search speed | Partial | Focus/UI strengthened; debounce/search logic unchanged. |
-| Improve weak-network/offline behavior | Existing/partial | PWA/offline docs retained; no new cache policy added. |
+| Improve perceived search speed | Partial | Search remains debounced/client-side and now uses deterministic fuzzy matching against already-loaded data. |
+| Improve weak-network/offline behavior | Accepted | Customer service worker now uses bounded network-first fallback while still never caching menu content. |
 | Predictive preload/adaptive loading | Deferred | Needs performance design and measurement. |
 
 ### 15. Accessibility & Internationalization
@@ -253,7 +281,7 @@ This appendix exists because the source review had many small points inside the 
 | Preserve mobile touch targets | Accepted | Chips tightened but stay at least 40px; footer actions remain large. |
 | Do not rely only on color for unavailable state | Existing | Unavailable label remains visible. |
 | RTL-ready architecture | Deferred | Requires separate global RTL audit. |
-| Transliteration-aware search | Deferred | Requires search/indexing work. |
+| Transliteration-aware search | Accepted in follow-up | Implemented with lightweight deterministic matching for public menu search. |
 
 ### 16. AI/AEO Readiness
 
@@ -261,8 +289,8 @@ This appendix exists because the source review had many small points inside the 
 | --- | --- | --- |
 | Preserve semantic hierarchy | Accepted | Business/category/item structure retained. |
 | Keep canonical URLs correct | Accepted | Outlet-aware redirect/canonical fixes are in `page.tsx`. |
-| Keep visible content aligned with schema | Accepted | No hidden/misleading schema added. |
-| Strengthen freshness metadata | Existing/documented | Live/trust metadata retained. |
+| Keep visible content aligned with schema | Accepted | JSON-LD now filters active public menu data and respects visible price rules. |
+| Strengthen freshness metadata | Accepted | Schema now prefers project `lastPublishedAt`/`menuVersion` when real values exist. |
 | Add AI retrieval APIs | Deferred | Not a UI hardening task. |
 | Add trust scoring/business graph | Deferred | Needs separate infrastructure design. |
 
@@ -296,7 +324,7 @@ This appendix exists because the source review had many small points inside the 
 | Canonical public truth is the moat | Accepted as doctrine | Docs updated around public UI governance and constrained primitives. |
 | Structural consistency compounds trust | Accepted | Presets remain constrained; arbitrary customization rejected. |
 | Freshness trust matters | Existing/documented | Live/trust signals remain and are documented. |
-| Machine readability matters | Accepted | Canonical/schema alignment preserved; no hidden claims added. |
+| Machine readability matters | Accepted | Canonical/schema/freshness alignment hardened without hidden verification claims. |
 | QR/public URL continuity matters | Existing/accepted | Outlet/canonical fixes from the audit preserve URL correctness. |
 | Avoid feature creep | Accepted | Explicit rejected/deferred list maintained. |
 
@@ -305,10 +333,12 @@ This appendix exists because the source review had many small points inside the 
 - `npx tsc --noEmit --incremental false` passed on May 7, 2026.
 - `npm run build` passed on May 7, 2026. The build still logs the existing website i18n dynamic-server warnings for cookie-using routes, but exits successfully.
 - Local tenant-route smoke passed: `Host: mysalon.menulist.ai` `HEAD /bar-menu` returned `200 OK` and rewrote to `/client/bar-menu`.
+- Full tenant menu GET rendered after a defensive Decision Blocks time-slot guard; saved HTML contained `_publicSearch`, `menuVersion`, and `dateModified`.
+- `/offline` route smoke returned `200 OK`.
 
 ## Intentionally Deferred
 
-- Fuzzy, semantic, or transliteration-aware search. Existing exact local filtering stays; future retrieval work needs a separate data/search design.
+- AI retrieval APIs, semantic ranking, and chat-style search. Base fuzzy/transliteration menu search is implemented, but AI retrieval infrastructure remains separate.
 - RTL architecture and adaptive typography by script. The current pass improves fallback and text constraints without claiming full RTL readiness.
 - Verification/trust scoring, POS freshness, or AI-consumable APIs. Existing trust signals stay visible and honest; no hidden trust score was added.
 - Owner-facing theme model overhaul. The current `config.design.menu` presets remain, with stricter public rendering behavior.

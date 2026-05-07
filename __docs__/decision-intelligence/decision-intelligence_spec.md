@@ -4,6 +4,7 @@
 **Status:** 🔒 **LOCKED — Production Ready**  
 **Source:** Codebase (Single Source of Truth)  
 **Applies:** 3-Year Architecture Freeze Rule
+**Last Verified:** May 7, 2026
 
 ---
 
@@ -18,7 +19,7 @@ Transform MenuListAi QR menus from **passive item lists** into **active decision
 | Current State        | With Decision Blocks         |
 | -------------------- | ---------------------------- |
 | Customer scans QR    | Customer scans QR            |
-| Scrolls through menu | Sees 3 smart recommendations |
+| Scrolls through menu | Sees 3 recommendations |
 | Hesitates, compares  | Taps recommendation          |
 | Asks staff for help  | Orders immediately           |
 | Orders "safe" item   | Better item selected         |
@@ -36,7 +37,7 @@ Three Decision Blocks at the top of every menu:
 
 ### One-Line Value Proposition
 
-> **"Help customers decide faster with smart recommendations that learn from behavior."**
+> **"Help customers decide faster with recommendations based on menu behavior."**
 
 ---
 
@@ -45,7 +46,7 @@ Three Decision Blocks at the top of every menu:
 | In Scope                       | Out of Scope                |
 | ------------------------------ | --------------------------- |
 | ✅ 3 Decision Block types      | ❌ Per-item analytics UI    |
-| ✅ Nightly scoring scheduler   | ❌ Real-time scoring        |
+| ✅ Scheduled scoring           | ❌ Real-time scoring        |
 | ✅ Runtime availability filter | ❌ ML model training        |
 | ✅ Owner pin controls          | ❌ A/B testing framework    |
 | ✅ Business category configs   | ❌ Customer-facing settings |
@@ -99,15 +100,15 @@ Three Decision Blocks at the top of every menu:
 | ID    | Requirement                           | Priority    | Evidence                                  |
 | ----- | ------------------------------------- | ----------- | ----------------------------------------- |
 | FR-1  | Show 3 Decision Blocks at top of menu | Must Have   | `DecisionBlocks.tsx:472-573`              |
-| FR-2  | Nightly scoring at 2:30 AM UTC        | Must Have   | `decisionBlocksScoring.ts:506`            |
-| FR-3  | 48-hour TTL with fallback             | Must Have   | `decisionBlocksScoring.ts:67`             |
-| FR-4  | Runtime availability filtering        | Must Have   | `DecisionBlocks.tsx:126-179`              |
-| FR-5  | Owner enable/disable per block        | Must Have   | `DecisionBlocksSettingsModal.tsx:116-118` |
-| FR-6  | Owner pin items to blocks             | Must Have   | `DecisionBlocksSettingsModal.tsx:119-121` |
-| FR-7  | Business category awareness           | Must Have   | `decisionBlocks.ts:190-228`               |
+| FR-2  | Timezone-aware scheduler runs hourly at `:30` and processes stores when settlement is due | Must Have | `functions/src/decisionBlocksScoring.ts:725-791` |
+| FR-3  | 48-hour TTL with owner-pin fallback when precomputed data expires or is missing | Must Have | `functions/src/decisionBlocksScoring.ts:80-81`, `DecisionBlocks.tsx:isPrecomputedValid`, `DecisionBlocks.tsx:computeBlocksFallback` |
+| FR-4  | Runtime availability filtering        | Must Have   | `DecisionBlocks.tsx:selectAvailableCandidate` |
+| FR-5  | Owner enable/disable per block        | Must Have   | `DecisionBlocksSettingsModal.tsx`, `SmartRecommendationsSheet.tsx` |
+| FR-6  | Owner pin items to blocks and override automatic ranking gates while preserving availability/business-type safety | Must Have | `decisionBlocks.shared.ts:applyDecisionBlockSettings`, `DecisionBlocks.tsx:computeFromPrecomputed` |
+| FR-7  | Business category awareness           | Must Have   | `decisionBlocks.ts:getEnabledBlocks`       |
 | FR-8  | i18n translated reasons               | Must Have   | `decisionBlockTranslations.ts`            |
-| FR-9  | Track renders and clicks              | Must Have   | `DecisionBlocks.tsx:424-430, 453-458`     |
-| FR-10 | Scroll to item on tap                 | Should Have | `DecisionBlocks.tsx:432-441`              |
+| FR-9  | Track renders and clicks when analytics settings allow it | Must Have | `DecisionBlocks.tsx`, `src/lib/analytics/unified.ts` |
+| FR-10 | Scroll to item on tap                 | Should Have | `DecisionBlocks.tsx:handleClick`          |
 
 ### Non-Functional Requirements
 
@@ -145,8 +146,12 @@ Three Decision Blocks at the top of every menu:
 | All unavailable             | Hide all blocks             |
 | TTL expired, no pins        | Hide all blocks             |
 | TTL expired, with pins      | Show pinned only            |
+| Automatic activation gate not met, with pins | Show available pinned blocks only |
+| Valid precomputed doc, automatic block eligibility fails, with pin | Show available pinned item for that block |
 | Block disabled by owner     | Hide that block             |
 | Category time slot inactive | Exclude item from selection |
+| Precomputed document missing, with pins | Show available pinned blocks only |
+| Precomputed document older than hard-stale cutoff | Hide all blocks |
 
 ---
 
@@ -192,9 +197,11 @@ score = ((popularity/price) × 0.7) + (popularity × 0.2) + (ownerBoost × 0.1)
 | ------------------------------- | ----------------------------- |
 | Quick Pick disabled for Health  | Speed ≠ quality in healthcare |
 | Quick Pick disabled for Retail  | Items are instant (no prep)   |
-| Owner pin overrides scoring     | Business knows best sometimes |
+| Owner pin overrides scoring and automatic block gates | Business knows best sometimes |
 | Availability beats intelligence | Never show unavailable items  |
+| Generated candidates live in `decisionBlocks` | Scheduler owns ranking; client never ranks |
+| Owner controls live in project menu settings | Pins and toggles are saved with the menu project and invalidate the public menu cache through `updateProject()` |
 
 ---
 
-_Stage 2 Complete: Spec from Code_
+_Verified against code on May 7, 2026._

@@ -9,6 +9,7 @@ import { reconcileSubscriptions } from './billing/reconcileSubscriptions';
 import { SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getDecisionBlocksDocId, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
+import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 import { logger as appLogger } from './lib/logger';
 import { flush as flushSentry, initSentry } from './lib/sentry';
@@ -114,6 +115,23 @@ interface ActiveProjectEntry {
     data: FirebaseFirestore.DocumentData;
 }
 
+function getProjectDocRef(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+) {
+    return db.collection(DB_COLLECTIONS.PROJECTS).doc(tId).collection(sId).doc(projectId);
+}
+
+function getProjectCollectionRef(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+) {
+    return db.collection(DB_COLLECTIONS.PROJECTS).doc(tId).collection(sId);
+}
+
 function parseSummaryProjects(data: any): Record<string, any> {
     if (!data || typeof data !== 'object') return {};
 
@@ -165,7 +183,7 @@ async function loadActiveProjectsForScheduler(
         .map(([projectId]) => projectId);
 
     if (activeProjectIds.length > 0) {
-        const refs = activeProjectIds.map((projectId) => db.collection(DB_COLLECTIONS.PROJECTS).doc(projectId));
+        const refs = activeProjectIds.map((projectId) => getProjectDocRef(db, tId, sId, projectId));
         const projectSnaps = await db.getAll(...refs);
         const projectEntries = projectSnaps
             .filter((snap) => snap.exists)
@@ -181,10 +199,7 @@ async function loadActiveProjectsForScheduler(
         return { projectEntries, activeProjectIds, source: 'summary' };
     }
 
-    const projectsQuery = await db.collection(DB_COLLECTIONS.PROJECTS)
-        .where('tId', '==', parseInt(tId))
-        .where('sId', '==', parseInt(sId))
-        .get();
+    const projectsQuery = await getProjectCollectionRef(db, tId, sId).get();
 
     const projectEntries = projectsQuery.docs
         .map((doc) => {
@@ -1694,10 +1709,14 @@ export const triggerDecisionBlocksScoring = onCall({
     initSentry();
     const logger = functions.logger;
 
-    // Optional: restrict to admin users
-    // if (!request.auth?.token?.admin) {
-    //     throw new HttpsError('permission-denied', 'Admin access required');
-    // }
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to trigger Decision Blocks scoring');
+    }
+
+    const requesterRole = String(request.auth.token.role || request.auth.token.platformRole || '');
+    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+        throw new HttpsError('permission-denied', 'Only platform owners can trigger Decision Blocks scoring');
+    }
 
     const { tId, sId, projectId } = request.data || {};
     const db = firestoreAdmin;
@@ -1711,7 +1730,7 @@ export const triggerDecisionBlocksScoring = onCall({
             throw new HttpsError('not-found', `Store ${sId} not found`);
         }
 
-        const projectDoc = await db.collection(DB_COLLECTIONS.PROJECTS).doc(projectId).get();
+        const projectDoc = await getProjectDocRef(db, String(tId), String(sId), String(projectId)).get();
         if (!projectDoc.exists) {
             throw new HttpsError('not-found', `Project ${projectId} not found`);
         }
@@ -1751,12 +1770,7 @@ export const triggerDecisionBlocksScoring = onCall({
 
         const storeData = storeDoc.data();
 
-        // Fetch ALL projects for this store
-        // Note: Projects use tId/sId field names, not tenantId/storeId
-        const projectsQuery = await db.collection(DB_COLLECTIONS.PROJECTS)
-            .where('tId', '==', parseInt(tId))
-            .where('sId', '==', parseInt(sId))
-            .get();
+        const projectsQuery = await getProjectCollectionRef(db, String(tId), String(sId)).get();
 
         if (projectsQuery.empty) {
             return { success: false, message: 'No projects found for this store' };
@@ -1815,12 +1829,7 @@ export const triggerDecisionBlocksScoring = onCall({
 
         if (!storeTId) continue;
 
-        // Fetch ALL projects for this store
-        // Note: Projects use tId/sId field names, not tenantId/storeId
-        const projectsQuery = await db.collection(DB_COLLECTIONS.PROJECTS)
-            .where('tId', '==', parseInt(storeTId))
-            .where('sId', '==', parseInt(storeSId))
-            .get();
+        const projectsQuery = await getProjectCollectionRef(db, storeTId, storeSId).get();
 
         totalProjects += projectsQuery.size;
 

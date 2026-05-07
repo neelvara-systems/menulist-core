@@ -1,13 +1,20 @@
 # Decision Intelligence (Decision Blocks) — Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ✅ CUSTOMER-FACING — Renders on customer menu, not an owner-operational feature
+**Last Updated:** May 7, 2026
+**Decision:** ✅ CUSTOMER-FACING + OWNER CONTROL SHEET
 
 ---
 
 ## Feature Admission Test
 
-Not applicable — Decision Blocks are CUSTOMER-facing smart recommendation cards displayed on the QR menu. They are not managed by the owner in the dashboard.
+Decision Blocks are customer-facing recommendation cards displayed on the QR menu. Owner controls are intentionally small enough for mobile because owners may need to hide a block or pin an item from their phone.
+
+| Gate | Decision | Reason |
+| ---- | -------- | ------ |
+| Frequency | Pass | Pins/toggles are occasional but operationally useful during promotions, sellouts, or seasonal menus. |
+| Speed | Pass | The sheet supports quick toggle/pin changes and saves through the shared project DAL. |
+| Touch | Pass | Mobile uses native sheet controls, switches, selects, and a sticky bottom Save action. |
+| Value | Pass | Owners can correct what customers see without opening desktop. |
 
 ---
 
@@ -20,4 +27,14 @@ Decision Blocks (Popular Right Now, Quick Pick, Best Value) are:
 
 ## Owner Interaction
 
-None required. Decision Blocks are automatic — they use menu data + analytics to surface recommendations. No owner dashboard UI exists for managing them. When owners edit menu items on mobile (availability, price), the scoring adjusts automatically.
+Owner interaction is optional. Decision Blocks work automatically, but owners can:
+
+- Enable or disable each available block type.
+- Pin a specific item to Popular, Quick Pick, or Best Value.
+- Clear a pinned item and return the block to automatic selection.
+
+Desktop UI: `DecisionBlocksSettingsModal.tsx`.
+
+Mobile UI: `SmartRecommendationsSheet.tsx`.
+
+Both surfaces write the same `project.menuSettings.decisionBlocks` shape through shared helpers in `decisionBlocks.shared.ts`. When owners edit menu items on mobile (availability, price), runtime filtering and the next scoring run adjust automatically.

@@ -228,6 +228,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Firebase Cost Discipline**: Avoid redundant reads, batch writes, paginate growing lists, document every new read/write/delete pattern.
 - **Operational Monitoring**: AI and expensive routes need SAFE_MODE and rate limiting; mutation/payment/publish flows need appropriate monitoring and alerts.
 - **Public Entity Addressability**: Customer-facing items and business entities should have stable, human-readable URLs when they are intended to be shareable/indexable.
+- **Public Cache Invalidation**: Any code path that writes public-facing `projects` or `stores` truth must invalidate the public menu/OBP cache. Client/browser DAL paths must use `src/lib/cache/publicClientCache.ts`; server/API paths must revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. This applies to desktop, mobile, direct Firestore writes, API routes, special menus, PWA/customer app settings, and multi-outlet propagation/override flows.
 - **Website Auto-Sync**: If a feature changes public/customer-visible capability, check whether website copy, help docs, and output surfaces need updating.
 
 ---
@@ -292,6 +293,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - Load constitution, language governance, failure/refusal rules, feature rejection gate, menu enforcement, and public-route security rules when relevant.
 - Customer-facing surfaces must show less rather than wrong, load fast on low bandwidth, work mobile-first, avoid technical leakage, and avoid forbidden public copy such as "AI-powered", "Smart", or "Dynamic".
 - Public endpoints need public rate limiting, validation, safe CORS behavior where relevant, and no sensitive response data.
+- When owner/admin changes can affect public menu, OBP, PWA, outlet, or store identity output, verify the write path invalidates both menu and OBP cache tags. Do not assume desktop/mobile parity unless both surfaces route through the same invalidating DAL or API.
 
 ### Documentation Workflow
 
@@ -329,6 +331,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - Verify mobile impact and mobile data parity when owner or customer workflows are touched.
 - Verify operational monitoring for modified API routes and Cloud Functions.
 - Verify public content language governance and website/help/changelog impact when public capability changes.
+- Verify public cache invalidation for any touched public-facing `projects` or `stores` write path, including direct Firestore writes that bypass shared desktop/mobile DAL functions.
 - Run `npx tsc --noEmit --incremental false` unless the task is documentation-only.
 - Preserve important decisions in docs when they would otherwise be lost in chat.
 

@@ -1,9 +1,10 @@
 # Decision Intelligence - Implementation Document
 
 **Created:** January 11, 2026  
-**Status:** � **LOCKED — Production Ready**  
+**Status:** 🔒 **LOCKED — Production Ready**
 **Source:** Codebase (Single Source of Truth)  
 **Applies:** 3-Year Architecture Freeze Rule
+**Last Verified:** May 7, 2026
 
 ---
 
@@ -13,13 +14,15 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ LAYER 1: CLOUD FUNCTION (Nightly at 2:30 AM UTC)           │
+│ LAYER 1: CLOUD FUNCTION (hourly :30, timezone-aware)       │
 │                                                             │
 │  computeDecisionBlocksScores (onSchedule)                  │
 │  ├── Fetch storesSummary (1 read, cost-optimized)          │
+│  ├── Process only stores whose business-day settlement is due│
 │  ├── For each active store:                                 │
 │  │     └── For each active project:                         │
-│  │           ├── Query 7-day analytics                      │
+│  │           ├── Read project at projects/{tId}/{sId}/{id} │
+│  │           ├── Read 7-day intelligence analytics snapshot │
 │  │           ├── Extract items from project.files           │
 │  │           ├── Calculate scores per block type            │
 │  │           ├── Store top 3 candidates per block           │
@@ -31,6 +34,7 @@
 │ LAYER 2: RUNTIME FILTER (Client-side)                       │
 │                                                             │
 │  DecisionBlocks.tsx                                         │
+│  ├── Read owner controls from project.menuSettings          │
 │  ├── Check: isPrecomputedValid() (TTL check)               │
 │  ├── If valid: computeFromPrecomputed()                    │
 │  │     └── selectAvailableCandidate()                      │
@@ -38,7 +42,8 @@
 │  │           ├── Check: item.available === true            │
 │  │           ├── Check: Category time slot valid           │
 │  │           └── Return first available                     │
-│  └── If expired: computeBlocksFallback()                   │
+│  ├── If valid but activation gate fails: pinned-only       │
+│  └── If missing/expired: computeBlocksFallback()           │
 │        └── Show owner-pinned only (no client ranking)      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -63,7 +68,7 @@ src/
 
 functions/
 └── src/
-    ├── decisionBlocksScoring.ts       # Nightly scheduler + manual trigger
+    ├── decisionBlocksScoring.ts       # Timezone-aware scheduler + manual trigger
     ├── constants/
     │   └── database.ts                # Collection names + helpers
     └── intelligence/
@@ -72,6 +77,17 @@ functions/
             ├── analyticsAggregator.ts  # 7-day analytics fetch (shared with CMI)
             └── itemExtractor.ts       # Item extraction from project files (shared with CMI)
 ```
+
+## Runtime Entry Points
+
+| Surface | File | Responsibility |
+| ------- | ---- | -------------- |
+| Scheduled generation | `functions/src/decisionBlocksScoring.ts` | Hourly scheduler that processes stores whose local settlement window is due. |
+| Manual recovery | `triggerDecisionBlocksScoring` in `functions/src/decisionBlocksScoring.ts` | Platform-only callable used by Scheduler Monitor to recompute Decision Blocks. |
+| Public precomputed read | `src/app/client/[[...slug]]/page.tsx` | Server-side Admin SDK read for `decisionBlocks/{tId}_{sId}_{projectId}`, cached for 60 seconds. |
+| Customer rendering | `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` | Applies TTL, lifecycle, owner controls, availability, and time-slot filters. |
+| Desktop owner editing | `DecisionBlocksSettingsModal.tsx` | Saves pins/toggles into `project.menuSettings.decisionBlocks`. |
+| Mobile owner editing | `SmartRecommendationsSheet.tsx` | Same settings model as desktop, saved through the project DAL. |
 
 ---
 
@@ -114,9 +130,30 @@ interface ScoredItem {
 }
 ```
 
+### Project Menu Settings
+
+Owner controls are stored with the project, not in `decisionBlocks`.
+
+```typescript
+project.menuSettings.decisionBlocks = {
+  enablePopular?: boolean;
+  enableQuickPick?: boolean;
+  enableBestValue?: boolean;
+  pinnedPopular?: string;
+  pinnedQuickPick?: string;
+  pinnedBestValue?: string;
+};
+```
+
+This keeps generated ranking data (`decisionBlocks`) separate from owner-authored menu truth (`projects/{tId}/{sId}/{projectId}`).
+
+Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
+
 ### Collection: `analytics`
 
-**Document ID:** `{tId}_{sId}_{projectId}_daily_{YYYY-MM-DD}`
+**Primary scoring input:** `{tId}_{sId}_{projectId}_intelligence_7d`
+
+**Daily source documents:** `{tId}_{sId}_{projectId}_daily_{YYYY-MM-DD}` are settled into the compact intelligence snapshot by the nightly analytics aggregation step.
 
 Used data:
 
@@ -124,6 +161,7 @@ Used data:
 - `clicksByItem: Record<string, number>`
 - `recommendationClicksByItem: Record<string, number>`
 - `itemNames: Record<string, string>`
+- `daysWithData: number`
 
 ---
 
@@ -207,7 +245,7 @@ function selectAvailableCandidate(
     return { item: itemMap.get(pinnedId), reason: "decision.pinned.ownerPick" };
   }
 
-  // Find first available from precomputed
+  // Find first available from precomputed automatic candidates
   for (const candidate of candidates) {
     if (isAvailable(candidate.itemId)) {
       usedItemIds.add(candidate.itemId);
@@ -294,9 +332,11 @@ CTR = DECISION_BLOCK_CLICK / DECISION_BLOCKS_RENDERED
 | Check                  | Implementation                               |
 | ---------------------- | -------------------------------------------- |
 | Cloud Function auth    | Scheduler-triggered (not public)             |
+| Manual recovery auth   | Callable requires authenticated `PLATFORM` role |
 | Multi-tenant isolation | `{tId}_{sId}_{projectId}` document keys      |
 | No sensitive data      | Only item IDs + scores stored                |
 | Owner controls         | Via `menuSettings.decisionBlocks` in project |
+| Public precomputed read | Server-side Admin SDK read, not a client Firestore rules dependency |
 
 ---
 

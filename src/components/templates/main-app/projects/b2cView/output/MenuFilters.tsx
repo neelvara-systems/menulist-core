@@ -1,13 +1,13 @@
 /**
- * Menu Category FAB (New Design System)
+ * Menu Sections Navigator (New Design System)
  * 
- * Floating Action Button for category navigation.
+ * Category/section jump control for public menu navigation.
  * No Ant Design - uses Tailwind + Framer Motion only.
  * 
  * CONSTITUTIONAL RULES:
- * - FAB only visible when category tabs are scrolled out of view
+ * - Inline trigger belongs to the sticky search/navigation layer
+ * - Floating trigger remains available only as a legacy fallback mode
  * - No search in this component (moved to MenuSearchBar)
- * - Bottom-right corner positioning
  * 
  * Preserves functional logic from old CategoryPopup:
  * - findVisibleCategory: auto-selects visible category when popup opens
@@ -15,7 +15,7 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuList } from 'react-icons/lu';
 import CategoryIcon from '@atoms/CategoryIcon';
@@ -36,6 +36,8 @@ interface MenuFiltersProps {
     activeLanguage: string;
     showCategoryIcons?: boolean;
     moodConfig: MenuMoodConfig;
+    triggerVariant?: 'floating' | 'inline';
+    categoryItemCounts?: Record<string, number>;
     /** When true, FAB is hidden (category tabs are visible) */
     hideFAB?: boolean;
 }
@@ -50,14 +52,39 @@ function MenuFilters({
     activeLanguage,
     showCategoryIcons = true,
     moodConfig,
+    triggerVariant = 'floating',
+    categoryItemCounts,
     hideFAB = false,
 }: MenuFiltersProps) {
     const [showCategories, setShowCategories] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [isWideInlinePopover, setIsWideInlinePopover] = useState(false);
+    const [triggerFocused, setTriggerFocused] = useState(false);
+    const [anchorPosition, setAnchorPosition] = useState({ top: 72, right: 12 });
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const isInline = triggerVariant === 'inline';
 
     useEffect(() => {
         setMounted(true);
         return () => setMounted(false);
+    }, []);
+
+    useEffect(() => {
+        const updateViewportMode = () => setIsWideInlinePopover(window.innerWidth >= 768);
+
+        updateViewportMode();
+        window.addEventListener('resize', updateViewportMode);
+        return () => window.removeEventListener('resize', updateViewportMode);
+    }, []);
+
+    const updateAnchorPosition = useCallback(() => {
+        const rect = triggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+
+        setAnchorPosition({
+            top: Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - 180)),
+            right: Math.max(12, window.innerWidth - rect.right),
+        });
     }, []);
 
     // Find the currently visible category when popup opens
@@ -99,6 +126,7 @@ function MenuFilters({
 
     // When popup opens, find and select the visible category
     const handleOpenCategories = () => {
+        updateAnchorPosition();
         setShowCategories(true);
 
         const visibleCategory = findVisibleCategory();
@@ -112,8 +140,30 @@ function MenuFilters({
         setShowCategories(false);
     };
 
+    useEffect(() => {
+        if (!showCategories) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowCategories(false);
+            }
+        };
+
+        const handlePositionChange = () => updateAnchorPosition();
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', handlePositionChange);
+        window.addEventListener('scroll', handlePositionChange, { passive: true });
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', handlePositionChange);
+            window.removeEventListener('scroll', handlePositionChange);
+        };
+    }, [showCategories, updateAnchorPosition]);
+
     // Only show category button if there are 2+ categories
     const showCategoryButton = categories.length >= 2;
+    const useAnchoredInlinePopover = isInline && isWideInlinePopover;
 
     const categoryPopover = mounted ? createPortal(
         <AnimatePresence>
@@ -129,7 +179,9 @@ function MenuFilters({
                             position: 'fixed',
                             inset: 0,
                             zIndex: 10020,
-                            background: 'rgba(0, 0, 0, 0.16)',
+                            background: useAnchoredInlinePopover
+                                ? 'rgba(0, 0, 0, 0.04)'
+                                : 'rgba(0, 0, 0, 0.16)',
                         }}
                     />
                     <motion.div
@@ -138,18 +190,31 @@ function MenuFilters({
                         exit={{ opacity: 0, y: 12, scale: 0.98 }}
                         className="fixed left-4 right-4 z-50 rounded-xl overflow-hidden"
                         role="dialog"
-                        aria-modal="false"
+                        aria-modal={isInline}
                         aria-label="Menu sections"
                         style={{
                             position: 'fixed',
-                            right: 16,
-                            left: 'auto',
-                            bottom: 'calc(84px + env(safe-area-inset-bottom))',
+                            right: useAnchoredInlinePopover
+                                ? anchorPosition.right
+                                : isInline ? 12 : 16,
+                            left: useAnchoredInlinePopover
+                                ? 'auto'
+                                : isInline ? 12 : 'auto',
+                            top: useAnchoredInlinePopover ? anchorPosition.top : 'auto',
+                            bottom: useAnchoredInlinePopover
+                                ? 'auto'
+                                : isInline
+                                    ? 'calc(12px + env(safe-area-inset-bottom))'
+                                    : 'calc(84px + env(safe-area-inset-bottom))',
                             zIndex: 10021,
-                            width: 'min(360px, calc(100vw - 32px))',
-                            maxHeight: 'min(440px, 58vh)',
+                            width: useAnchoredInlinePopover
+                                ? 'min(360px, calc(100vw - 24px))'
+                                : isInline ? 'auto' : 'min(360px, calc(100vw - 32px))',
+                            maxHeight: useAnchoredInlinePopover
+                                ? `min(440px, calc(100vh - ${anchorPosition.top + 16}px))`
+                                : isInline ? 'min(560px, 72vh)' : 'min(440px, 58vh)',
                             overflow: 'hidden',
-                            borderRadius: 14,
+                            borderRadius: useAnchoredInlinePopover ? 14 : isInline ? 18 : 14,
                             background: moodConfig.background,
                             border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                             boxShadow: '0 20px 44px rgba(0, 0, 0, 0.32)',
@@ -179,7 +244,11 @@ function MenuFilters({
                         <div
                             className="max-h-64 overflow-y-auto p-2"
                             style={{
-                                maxHeight: 'calc(min(440px, 58vh) - 45px)',
+                                maxHeight: isInline
+                                    ? useAnchoredInlinePopover
+                                        ? `calc(min(440px, calc(100vh - ${anchorPosition.top + 16}px)) - 45px)`
+                                        : 'calc(min(560px, 72vh) - 45px)'
+                                    : 'calc(min(440px, 58vh) - 45px)',
                                 overflowY: 'auto',
                                 padding: 8,
                                 WebkitOverflowScrolling: 'touch',
@@ -187,6 +256,7 @@ function MenuFilters({
                         >
                             {categories.map((category) => {
                                 const isActive = activeCategory?.id === category.id;
+                                const itemCount = categoryItemCounts?.[category.id];
                                 return (
                                     <button
                                         key={category.id}
@@ -227,6 +297,7 @@ function MenuFilters({
                                         <span
                                             style={{
                                                 minWidth: 0,
+                                                flex: '1 1 auto',
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 whiteSpace: 'nowrap',
@@ -234,6 +305,20 @@ function MenuFilters({
                                         >
                                             {getCategoryLabel(category, activeLanguage)}
                                         </span>
+                                        {typeof itemCount === 'number' && itemCount > 0 && (
+                                            <span
+                                                aria-hidden="true"
+                                                style={{
+                                                    flexShrink: 0,
+                                                    color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    opacity: isActive ? 0.82 : 0.46,
+                                                }}
+                                            >
+                                                {itemCount}
+                                            </span>
+                                        )}
                                     </button>
                                 );
                             })}
@@ -250,10 +335,52 @@ function MenuFilters({
             {/* Category Popup */}
             {categoryPopover}
 
-            {/* Floating Category FAB - Bottom Right */}
-            {/* Constitutional: Only show when category tabs are NOT visible */}
+            {isInline && showCategoryButton && (
+                <button
+                    ref={triggerRef}
+                    type="button"
+                    onClick={handleOpenCategories}
+                    onFocus={() => setTriggerFocused(true)}
+                    onBlur={() => setTriggerFocused(false)}
+                    aria-label="Open menu sections"
+                    aria-expanded={showCategories}
+                    style={{
+                        minHeight: 44,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        flexShrink: 0,
+                        padding: '0 12px',
+                        borderRadius: 10,
+                        background: showCategories
+                            ? `${moodConfig.accentColor}14`
+                            : moodConfig.itemStyle.background,
+                        border: `1px solid ${showCategories ? `${moodConfig.accentColor}50` : moodConfig.itemStyle.borderColor}`,
+                        outline: 'none',
+                        boxShadow: showCategories || triggerFocused
+                            ? `0 0 0 3px ${moodConfig.accentColor}14`
+                            : 'none',
+                        color: moodConfig.accentColor,
+                        cursor: 'pointer',
+                        fontFamily: moodConfig.bodyFont,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        lineHeight: '20px',
+                        whiteSpace: 'nowrap',
+                        transition: 'background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease',
+                        WebkitTapHighlightColor: 'transparent',
+                    }}
+                    className="active:scale-[0.98]"
+                >
+                    <LuList size={17} />
+                    <span>Sections</span>
+                </button>
+            )}
+
+            {/* Floating fallback trigger - kept for callers that have not adopted the sticky command row */}
             <AnimatePresence>
-                {showCategoryButton && !hideFAB && (
+                {!isInline && showCategoryButton && !hideFAB && (
                     <motion.button
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}

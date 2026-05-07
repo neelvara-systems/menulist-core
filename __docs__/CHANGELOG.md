@@ -6,12 +6,27 @@
 
 ---
 
+## May 7, 2026 — Client Menu: Retrieval Foundation
+
+### Changed
+
+- **Public menu search strengthened** — Customer search now handles common spelling, phonetic, accent, punctuation, and lightweight Devanagari/Gujarati transliteration cases across item names, descriptions, categories, attributes, tags, decision facts, and public prices.
+- **Multilingual search payload added** — Public SSR attaches compact search terms after client sanitization so large multilingual menus remain searchable without shipping every raw non-primary description.
+- **Structured public truth hardened** — Menu JSON-LD now uses active public categories/items, item identifiers/URLs, real availability, visible price rules, project `lastPublishedAt`, and `menuVersion` when present.
+- **Offline fallback bounded** — Customer service worker remains network-first, adds an 8s navigation timeout, and still never serves stale cached menu content.
+
+### Documentation
+
+- Added `__docs__/client-menu-retrieval-foundation/` with spec, implementation, cost, mobile, help, website, marketing, and test-case docs.
+- Updated `__docs__/client-menu/README.md`, `_spec.md`, `_impl.md`, and `client-menu_mobile-support.md`.
+
 ## May 7, 2026 — Client Menu: Public UI Governance Hardening
 
 ### Changed
 
 - **Public menu category identity preserves owner choice** — Stored category icon config continues to render through the shared icon system, including owner-selected emoji values.
-- **Navigation language clarified** — The floating category action now says `Sections` and opens `Menu sections`, making it a structural jump control instead of a vague menu button.
+- **Navigation command layer tightened** — Mobile/tablet menus now keep search and `Sections` in one sticky row, replacing the disconnected category FAB with a structural sections navigator.
+- **Sections navigator strengthened** — `Sections` opens a bottom-sheet-style list with localized fallback labels, active state, owner-selected icons, and item counts.
 - **Search and category rail tightened** — Search focus has a clearer affordance; mobile/tablet category chips are denser, calmer, and use localization fallback labels.
 - **Item card rhythm hardened** — Item titles/descriptions use stricter line governance, price typography is quieter, and image-enabled layouts reserve stable image slots with placeholders to prevent scroll jumps.
 - **Theme presets restrained** — Public mood presets keep project-wise design choice but reduce decorative heading drift and improve light-theme surface containment.

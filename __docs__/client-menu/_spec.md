@@ -74,8 +74,10 @@ A **live, intelligent digital menu** that:
 | Instant Availability        | Sold-out items fade instantly  | ✅ Done |
 | Time-Based Categories       | Categories show/hide by time   | ✅ Done |
 | Multi-language support      | Customer selects language      | ✅ Done |
+| Fuzzy/transliteration search | Customers can find items despite common spelling and phonetic variants | ✅ Done |
+| Structured public truth      | JSON-LD uses active menu data, real freshness fields, and visible price rules | ✅ Done |
 | Analytics tracking          | Internal + third-party         | ✅ Done |
-| Offline resilience          | PWA with service worker        | ✅ Done |
+| Offline resilience          | PWA with service worker, bounded network fallback, and no stale menu cache | ✅ Done |
 | State persistence           | Scroll, filter, category saved | ✅ Done |
 
 ### Out of Scope
@@ -101,6 +103,7 @@ A **live, intelligent digital menu** that:
 | C3  | Customer            | Know if an item is sold out         | I don't order unavailable items |
 | C4  | Customer            | See menu in my language             | I understand all items          |
 | C5  | Customer            | Return to where I was after refresh | I don't lose my place           |
+| C6  | Customer            | Search with common spelling variations | I can find items without knowing exact names |
 
 ### Owner Stories
 
@@ -111,6 +114,7 @@ A **live, intelligent digital menu** that:
 | O3  | Owner            | Set time windows for categories | Breakfast/lunch/dinner auto-switch |
 | O4  | Owner            | Have my branding on menu        | It looks like my restaurant        |
 | O5  | Owner            | Use my own domain               | It looks professional              |
+| O6  | Owner            | Have search work from my published menu data | I do not need extra search settings |
 
 ---
 
@@ -281,7 +285,7 @@ No owner action required
 | ---- | ----------- |
 | Theme system | Owners can choose existing menu moods/layouts, but cannot change public layout order, custom CSS, custom fonts, or interaction behavior. |
 | Category identity | Public category icons must render through the shared icon system and preserve owner-selected icon choices, including `emoji:*` values. |
-| Navigation | Search and category rail are the primary orientation/retrieval layer. The floating category control is a `Sections` navigator, not a generic menu button. |
+| Navigation | Search and section navigation form the primary orientation/retrieval layer. Mobile/tablet menus keep them in one sticky command row, with `Sections` opening a bottom-sheet navigator instead of a disconnected floating menu button. |
 | Typography | Category headings must orient the user without becoming decorative title screens. Item names/descriptions use line limits to preserve scanning rhythm. |
 | Images | Images support item understanding. They cannot turn the menu into a feed, and missing/broken images must not collapse reserved layout space. |
 | Footer | Business identity comes before platform attribution. MenuList attribution is quiet infrastructure metadata, not a growth-marketing CTA. |

@@ -58,8 +58,9 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | Instant Availability     | Sold-out items fade instantly                       | ✅     |
 | Time-Based Categories    | Auto-switch by time                                 | ✅     |
 | Multi-language           | Customer language selection                         | ✅     |
+| Fuzzy menu search        | Client-side spelling/phonetic search across localized menu data | ✅     |
 | Analytics tracking       | Internal + optional GA4/FB Pixel per store          | ✅     |
-| Offline support          | PWA with service worker                             | ✅     |
+| Offline support          | PWA with service worker and no stale menu cache     | ✅     |
 | State persistence        | Scroll, filter preserved                            | ✅     |
 | Infrastructure hardening | Timeout, retry, skeleton, Vercel Data Cache         | ✅     |
 | OBP Integration          | Root = Official Business Page, /menu = default menu | ✅     |
@@ -69,6 +70,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | Menu Correctness Engine  | 17-rule validation + publish-gate                   | ✅     |
 | Client Sanitization      | Internal metadata stripped before customer exposure | ✅     |
 | Public UI Governance     | Locked output primitives over project-wise presets  | ✅     |
+| Structured public truth  | JSON-LD aligned to active menu data and freshness   | ✅     |
 
 ### Entry Points
 
@@ -109,6 +111,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | `__docs__/projects/DECISION-INTELLIGENCE-ANALYSIS.md` | Decision Blocks feature (owner controls, scoring) |
 | `__docs__/projects/DECISION-BLOCKS-SCHEDULER.md`      | Nightly Cloud Function scheduler                  |
 | `__docs__/continuous-menu-intelligence/`              | CMI system documentation                          |
+| `__docs__/client-menu-retrieval-foundation/`          | Public menu search, structured truth, low-network contract |
 
 ---
 
@@ -122,13 +125,16 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | `src/components/templates/website/mainContentRenderer/index.tsx` | Home/Menu router    |
 | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` | Public menu renderer |
 | `src/components/templates/main-app/projects/b2cView/designSystem/index.ts` | Menu mood/layout presets |
+| `src/lib/menu/publicMenuSearch.ts` | Client-side fuzzy/transliteration search utility |
+| `src/lib/menu/publicMenuStructuredData.ts` | Public menu freshness helpers |
 
 ## Public UI Governance
 
 The public menu is not a website-builder surface. Store/project owners can select the existing `config.design.menu` mood and layout presets, but customer output keeps the following primitives locked:
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
-- Category navigation remains the orientation layer: sticky rail/tabs plus the `Sections` navigator.
+- Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
+- Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and stable image slots.
@@ -140,6 +146,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-07 | Client menu retrieval foundation: fuzzy/transliteration search, compact multilingual search terms, active-item JSON-LD freshness, and bounded offline navigation fallback |
 | 2026-05-07 | Public menu UI governance hardening: constrained category icon rendering, structural category/navigation styling, search focus state, stable image slots, quiet platform attribution, and localized fallback use |
 | 2026-03-15 | Implemented all 8 ChatGPT review items: lazy language loading, progressive rendering, dish metadata schema, analytics lazy loading, state version key, text-first fallback |
 | 2026-04-28 | Analytics tracking tightened for Firebase cost discipline: added de-duplicated search demand, unavailable-item demand, and final menu CTA conversion clicks; explicitly rejected scroll-depth telemetry |

@@ -1,12 +1,12 @@
 # Decision Intelligence (Decision Blocks)
 
-**Customer-facing smart menu recommendations**
+**Customer-facing menu recommendations with optional owner control**
 
 ---
 
 ## What This Is
 
-Decision Blocks are 3 smart recommendation cards shown at the top of every QR menu:
+Decision Blocks are 3 recommendation cards shown at the top of every QR menu:
 
 | Block                    | Purpose                  |
 | ------------------------ | ------------------------ |
@@ -41,10 +41,10 @@ Decision Blocks are 3 smart recommendation cards shown at the top of every QR me
 | **Collection** | `decisionBlocks`        | `menuIntelligence`             |
 | **Visibility** | Customers see it        | Internal only                  |
 
-**Shared Infrastructure:** Both run in the same Cloud Function scheduler at 2:30 AM UTC.
+**Shared Infrastructure:** Both run inside the unified timezone-aware scheduler. The Cloud Scheduler trigger fires hourly at `:30`, and the function processes only stores whose local settlement window is due.
 
 ```
-decisionBlocksScoring.ts (2:30 AM UTC)
+decisionBlocksScoring.ts (hourly trigger, store-local settlement window)
 ├── STEP 1: Decision Blocks → decisionBlocks/{tId}_{sId}_{projectId}
 └── STEP 2: CMI → menuIntelligence/{tId}_{sId}_{projectId}
 ```
@@ -58,7 +58,8 @@ decisionBlocksScoring.ts (2:30 AM UTC)
 | `src/config/decisionBlocks.ts`                       | Block configuration |
 | `src/components/.../DecisionBlocks.tsx`              | Customer UI         |
 | `src/components/.../DecisionBlocksSettingsModal.tsx` | Owner settings      |
-| `functions/src/decisionBlocksScoring.ts`             | Nightly scheduler   |
+| `functions/src/decisionBlocksScoring.ts`             | Timezone-aware scheduler + platform-only manual recovery |
+| `src/components/mobile/sheets/SmartRecommendationsSheet.tsx` | Mobile owner controls |
 
 ---
 
@@ -73,5 +74,5 @@ To extend Decision Blocks:
 
 ---
 
-_Last Updated: February 9, 2026_  
+_Last Updated: May 7, 2026_
 _Status: 🔒 LOCKED — Production Ready_

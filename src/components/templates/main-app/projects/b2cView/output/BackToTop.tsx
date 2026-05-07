@@ -27,19 +27,34 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
 
     useEffect(() => {
         const container = scrollContainerRef.current;
-        if (!container) return;
 
         const handleScroll = () => {
-            // Show button after scrolling 300px
-            setIsVisible(container.scrollTop > 300);
+            const containerScrollTop = container?.scrollTop || 0;
+            const windowScrollTop = typeof window !== 'undefined' ? window.scrollY : 0;
+            setIsVisible(Math.max(containerScrollTop, windowScrollTop) > 300);
         };
 
-        container.addEventListener('scroll', handleScroll);
-        return () => container.removeEventListener('scroll', handleScroll);
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        container?.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            container?.removeEventListener('scroll', handleScroll);
+        };
     }, [scrollContainerRef]);
 
     const scrollToTop = () => {
-        scrollContainerRef.current?.scrollTo({
+        const container = scrollContainerRef.current;
+        if (container && container.scrollTop > 0) {
+            container.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+            });
+            return;
+        }
+
+        window.scrollTo({
             top: 0,
             behavior: 'smooth',
         });
@@ -52,7 +67,7 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
             onClick={scrollToTop}
             style={{
                 position: 'fixed',
-                bottom: 'calc(80px + env(safe-area-inset-bottom))', // Above MenuFilters bottom bar
+                bottom: 'calc(24px + env(safe-area-inset-bottom))',
                 right: '16px',
                 width: '48px',
                 height: '48px',

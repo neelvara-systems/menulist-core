@@ -8,6 +8,8 @@
  * @see __docs__/official-business-page/official-business-page_impl.md §9
  */
 
+import { getBusinessCategory } from '@data/shared/businessTypes';
+
 // ── Constants ──
 
 const DAY_MAP: Record<string, string> = {
@@ -30,27 +32,123 @@ const DAY_MAP: Record<string, string> = {
 const BUSINESS_TYPE_SCHEMA_MAP: Record<string, string> = {
     'restaurant': 'Restaurant',
     'cafe': 'CafeOrCoffeeShop',
+    'coffee shop': 'CafeOrCoffeeShop',
+    'specialty coffee shop': 'CafeOrCoffeeShop',
     'coffee': 'CafeOrCoffeeShop',
+    'cake shop': 'Bakery',
     'bakery': 'Bakery',
     'bar': 'BarOrPub',
     'pub': 'BarOrPub',
+    'ice cream shop': 'IceCreamShop',
     'salon': 'BeautySalon',
+    'nail salon': 'BeautySalon',
+    'barbershop': 'BeautySalon',
     'beauty salon': 'BeautySalon',
     'spa': 'DaySpa',
+    'spa resort': 'DaySpa',
     'gym': 'ExerciseGym',
+    'fitness center': 'ExerciseGym',
+    'fitness bootcamp': 'ExerciseGym',
+    'personal trainer': 'ExerciseGym',
+    'yoga studio': 'ExerciseGym',
+    'martial arts academy': 'ExerciseGym',
     'fitness': 'ExerciseGym',
+    'dental clinic': 'Dentist',
     'clinic': 'MedicalClinic',
     'medical': 'MedicalClinic',
     'dentist': 'Dentist',
+    'veterinary clinic': 'VeterinaryCare',
     'hotel': 'Hotel',
+    'boutique hotel': 'Hotel',
     'store': 'Store',
     'shop': 'Store',
     'retail': 'Store',
+    'fashion boutique': 'ClothingStore',
+    'jewelry store': 'JewelryStore',
+    'bookstore': 'BookStore',
+    'electronics store': 'ElectronicsStore',
+    'furniture store': 'FurnitureStore',
+    'luxury watch dealer': 'JewelryStore',
+    'craft supply store': 'Store',
+    'music store': 'MusicStore',
+    'shoe store': 'ShoeStore',
+    'aquarium store': 'PetStore',
+    'florist shop': 'Florist',
+    'fitness equipment seller': 'SportingGoodsStore',
+    'real estate agent': 'RealEstateAgent',
+    'real estate agency': 'RealEstateAgent',
+    'law firm': 'LegalService',
+    'financial advisor': 'FinancialService',
+    'travel agency': 'TravelAgency',
+    'home renovation contractor': 'HomeAndConstructionBusiness',
+    'cleaning services company': 'HomeAndConstructionBusiness',
+    'landscaping service': 'HomeAndConstructionBusiness',
+    'landscaping company': 'HomeAndConstructionBusiness',
+    'photography studio': 'ProfessionalService',
+    'photography tour operator': 'TravelAgency',
+    'tattoo studio': 'HealthAndBeautyBusiness',
+    'art gallery': 'ArtGallery',
+    'music school': 'School',
+    'makeup studio': 'BeautySalon',
+    'tailoring shop': 'Store',
+    'auto repair shop': 'AutoRepair',
+    'car dealership': 'AutoDealer',
+    'car wash & detailing service': 'AutoWash',
+    "children's daycare": 'ChildCare',
+    'daycare center': 'ChildCare',
     'food truck': 'FoodEstablishment',
     'cloud kitchen': 'FoodEstablishment',
     'ice cream': 'IceCreamShop',
     'fast food': 'FastFoodRestaurant',
 };
+
+const BUSINESS_TYPE_SCHEMA_KEYWORDS: Array<[string, string]> = [
+    ['specialty coffee', 'CafeOrCoffeeShop'],
+    ['coffee', 'CafeOrCoffeeShop'],
+    ['cafe', 'CafeOrCoffeeShop'],
+    ['restaurant', 'Restaurant'],
+    ['cake', 'Bakery'],
+    ['bakery', 'Bakery'],
+    ['ice cream', 'IceCreamShop'],
+    ['salon', 'BeautySalon'],
+    ['barber', 'BeautySalon'],
+    ['spa', 'DaySpa'],
+    ['gym', 'ExerciseGym'],
+    ['fitness', 'ExerciseGym'],
+    ['yoga', 'ExerciseGym'],
+    ['dental', 'Dentist'],
+    ['veterinary', 'VeterinaryCare'],
+    ['hotel', 'Hotel'],
+    ['boutique', 'ClothingStore'],
+    ['jewelry', 'JewelryStore'],
+    ['bookstore', 'BookStore'],
+    ['electronics', 'ElectronicsStore'],
+    ['furniture', 'FurnitureStore'],
+    ['florist', 'Florist'],
+    ['shoe', 'ShoeStore'],
+    ['aquarium', 'PetStore'],
+    ['watch', 'JewelryStore'],
+    ['real estate', 'RealEstateAgent'],
+    ['law', 'LegalService'],
+    ['financial', 'FinancialService'],
+    ['travel', 'TravelAgency'],
+    ['renovation', 'HomeAndConstructionBusiness'],
+    ['contractor', 'HomeAndConstructionBusiness'],
+    ['cleaning', 'HomeAndConstructionBusiness'],
+    ['landscaping', 'HomeAndConstructionBusiness'],
+    ['photography', 'ProfessionalService'],
+    ['tattoo', 'HealthAndBeautyBusiness'],
+    ['art gallery', 'ArtGallery'],
+    ['music school', 'School'],
+    ['makeup', 'BeautySalon'],
+    ['tailoring', 'Store'],
+    ['auto repair', 'AutoRepair'],
+    ['car dealership', 'AutoDealer'],
+    ['car wash', 'AutoWash'],
+    ['daycare', 'ChildCare'],
+    ['shop', 'Store'],
+    ['store', 'Store'],
+];
 
 // ── Builders ──
 
@@ -188,7 +286,8 @@ export function buildAmenityFeatures(attributes?: Record<string, boolean>) {
 export function getSchemaType(businessType?: string): string {
     if (!businessType) return 'LocalBusiness';
     const normalized = businessType.toLowerCase().trim();
-    return BUSINESS_TYPE_SCHEMA_MAP[normalized] || 'LocalBusiness';
+    if (BUSINESS_TYPE_SCHEMA_MAP[normalized]) return BUSINESS_TYPE_SCHEMA_MAP[normalized];
+    return BUSINESS_TYPE_SCHEMA_KEYWORDS.find(([keyword]) => normalized.includes(keyword))?.[1] || 'LocalBusiness';
 }
 
 /**
@@ -352,8 +451,12 @@ export function getMenuSchemaType(businessType?: string): string {
 
     if (foodTypes.includes(schemaType)) return schemaType;
 
-    // If generic LocalBusiness but has a menu, likely food-related
-    if (schemaType === 'LocalBusiness') return 'Restaurant';
+    // Only food-category unknowns should use Restaurant as the menu-page fallback.
+    // Other SMB categories are still customer-facing offering pages, but they
+    // must not be mislabeled as restaurants in structured data.
+    if (schemaType === 'LocalBusiness' && getBusinessCategory(businessType) === 'food') {
+        return 'Restaurant';
+    }
 
     return schemaType;
 }

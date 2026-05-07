@@ -24,7 +24,7 @@ import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { StoreDataType } from '@type/platform/store';
-import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
+import { LuFacebook, LuInstagram, LuLinkedin, LuMessageCircle, LuTwitter, LuYoutube } from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';
 
 interface MenuFooterProps {
@@ -52,12 +52,12 @@ interface MenuFooterProps {
 
 // Social media icon mapping
 const SOCIAL_ICONS: Record<string, React.ElementType> = {
-    facebook: TbBrandFacebook,
-    instagram: TbBrandInstagram,
-    twitter: TbBrandTwitter,
-    linkedin: TbBrandLinkedin,
-    youtube: TbBrandYoutube,
-    whatsapp: TbBrandWhatsapp,
+    facebook: LuFacebook,
+    instagram: LuInstagram,
+    twitter: LuTwitter,
+    linkedin: LuLinkedin,
+    youtube: LuYoutube,
+    whatsapp: LuMessageCircle,
 };
 
 /**
@@ -137,6 +137,11 @@ export default function MenuFooter({
     const showReservation = (publicPresence?.showReservation !== false) && !!publicPresence?.reservationUrl;
     const showOrder = (publicPresence?.showOrder !== false) && !!publicPresence?.orderUrl;
     const shouldTrackMenuActions = trackingEnabled && !!analyticsIds?.tenantId && !!analyticsIds?.storeId && !!analyticsIds?.projectId;
+    const displayPhone = storeDetails?.phoneNumber
+        ? storeDetails?.dialCode && !storeDetails.phoneNumber.startsWith('+')
+            ? `${storeDetails.dialCode} ${storeDetails.phoneNumber}`
+            : storeDetails.phoneNumber
+        : '';
 
     // Get social media links that have values
     const socialLinks = storeDetails?.socialMedia
@@ -168,8 +173,8 @@ export default function MenuFooter({
                 boxSizing: 'border-box',
                 borderColor: moodConfig.itemStyle.borderColor,
                 borderTop: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                marginTop: '28px',
-                padding: '24px 0 calc(24px + env(safe-area-inset-bottom))',
+                marginTop: '22px',
+                padding: '20px 0 calc(16px + env(safe-area-inset-bottom))',
                 textAlign: 'left',
                 fontFamily: moodConfig.bodyFont,
                 color: moodConfig.bodyColor,
@@ -188,7 +193,7 @@ export default function MenuFooter({
                 style={{
                     color: moodConfig.headingColor,
                     fontWeight: 700,
-                    fontSize: '18px',
+                    fontSize: '17px',
                     lineHeight: 1.25,
                     fontFamily: moodConfig.headingFont,
                     textDecoration: 'none',
@@ -204,7 +209,7 @@ export default function MenuFooter({
                     color: moodConfig.bodyColor,
                     fontSize: '14px',
                     lineHeight: 1.45,
-                    margin: '8px 0 0 0',
+                    margin: '6px 0 0 0',
                     fontFamily: moodConfig.bodyFont,
                     opacity: 0.82,
                 }}>
@@ -218,7 +223,7 @@ export default function MenuFooter({
                     flexWrap: 'wrap',
                     justifyContent: 'flex-start',
                     gap: '8px',
-                    marginTop: '16px',
+                    marginTop: '12px',
                 }}>
                     {showCall && callHref && (
                         <a
@@ -237,6 +242,7 @@ export default function MenuFooter({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                gap: 8,
                                 padding: '8px 14px',
                                 fontSize: '14px',
                                 lineHeight: '20px',
@@ -244,7 +250,19 @@ export default function MenuFooter({
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
-                            Call
+                            <span>Call</span>
+                            {displayPhone && (
+                                <span
+                                    style={{
+                                        color: moodConfig.bodyColor,
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        opacity: 0.68,
+                                    }}
+                                >
+                                    {displayPhone}
+                                </span>
+                            )}
                         </a>
                     )}
                     {showWhatsApp && whatsappHref && (
@@ -370,12 +388,12 @@ export default function MenuFooter({
                 </div>
             )}
 
-            {storeDetails?.phoneNumber && (
+            {storeDetails?.phoneNumber && (!showCall || !callHref) && (
                 <p style={{
                     color: moodConfig.bodyColor,
                     fontSize: '14px',
                     lineHeight: '20px',
-                    margin: '14px 0 0 0',
+                    margin: '10px 0 0 0',
                     fontFamily: moodConfig.bodyFont,
                 }}>
                     {showCall && callHref ? (
@@ -391,11 +409,11 @@ export default function MenuFooter({
                                 textDecoration: 'none',
                             }}
                         >
-                            {storeDetails?.dialCode && `${storeDetails.dialCode} `}{storeDetails.phoneNumber}
+                            {displayPhone}
                         </a>
                     ) : (
                         <span>
-                            {storeDetails?.dialCode && `${storeDetails.dialCode} `}{storeDetails.phoneNumber}
+                            {displayPhone}
                         </span>
                     )}
                 </p>
@@ -407,8 +425,8 @@ export default function MenuFooter({
                     display: 'flex',
                     justifyContent: 'flex-start',
                     alignItems: 'center',
-                    gap: '12px',
-                    marginTop: '16px',
+                    gap: '8px',
+                    marginTop: '12px',
                 }}>
                     {socialLinks.map(([platform, url]) => {
                         const Icon = SOCIAL_ICONS[platform.toLowerCase()];
@@ -422,10 +440,10 @@ export default function MenuFooter({
                                 rel="noopener noreferrer"
                                 style={{
                                     color: moodConfig.bodyColor,
-                                    opacity: 0.7,
+                                    opacity: 0.6,
                                     transition: 'opacity 0.2s',
-                                    width: 40,
-                                    height: 40,
+                                    width: 34,
+                                    height: 34,
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -434,7 +452,7 @@ export default function MenuFooter({
                                 className="hover:opacity-100"
                                 aria-label={`Visit our ${platform}`}
                             >
-                                <Icon size={20} />
+                                <Icon size={16} />
                             </a>
                         );
                     })}
@@ -451,8 +469,8 @@ export default function MenuFooter({
                         color: moodConfig.bodyColor,
                         fontSize: '14px',
                         lineHeight: '20px',
-                        marginTop: '16px',
-                        opacity: 0.7,
+                        marginTop: '12px',
+                        opacity: 0.62,
                         textDecoration: 'none',
                         fontFamily: moodConfig.bodyFont,
                     }}
@@ -526,6 +544,7 @@ export default function MenuFooter({
 
             <PublicMenuListAttribution
                 mode="compact"
+                rightsLabel={null}
                 mutedColor={moodConfig.bodyColor}
                 accentColor={moodConfig.accentColor}
             />
