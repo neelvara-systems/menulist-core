@@ -3,7 +3,7 @@
 **Feature Name:** Client Menu (Customer-Facing Digital Menu)  
 **Document Type:** Technical Implementation Plan  
 **Status:** ✅ Production Ready  
-**Last Updated:** March 15, 2026  
+**Last Updated:** May 7, 2026
 **Audience:** Engineers, Technical Leads
 
 ---
@@ -37,8 +37,8 @@ This document consolidates all technical implementation details for the Customer
 2. Middleware (src/middleware.ts)
    - resolveDomain() extracts subdomain or custom domain
    - Sets headers: x-tenant-subdomain, x-tenant-custom-domain, x-tenant-type
-   - Rewrites to /_client/drinks
-3. Page (src/app/_client/[[...slug]]/page.tsx)
+   - Rewrites to /client/drinks
+3. Page (src/app/client/[[...slug]]/page.tsx)
    - getTenantFromHeaders() reads middleware headers
    - getStoreBySubdomain() or getStoreByCustomDomain()
    - getProjectBySlugOrDefault() finds correct menu
@@ -97,6 +97,19 @@ The following infrastructure improvements were implemented to make the menu surf
 | **MCE Publish Gate**        | 17 validation rules prevent corrupt data from reaching customers |
 | **Multi-Outlet Resolution** | `resolveProjectForRender()` merges master + outlet data          |
 
+### Public UI Governance Hardening (May 2026)
+
+The public renderer keeps the project-wise `config.design.menu` mood/layout model, but the final customer-facing structure is locked by shared components.
+
+| Area | Implementation | File |
+| ---- | -------------- | ---- |
+| Controlled category identity | `CategoryIcon` accepts `allowEmoji`; public menu paths pass `allowEmoji={false}` so `emoji:*` stored values render a controlled Lucide fallback on customer output. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
+| Section navigator | Floating category action is now a `Sections` navigator with localized fallback labels and calmer active styling. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
+| Sticky retrieval layer | Search focus has explicit structural affordance; mobile/tablet chips are denser and less CTA-like. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
+| Card rhythm | Item titles/descriptions use line governance, price weight is restrained, and image-enabled layouts reserve stable slots with placeholders. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
+| Theme preset governance | Mood presets reduce decorative heading drift and strengthen light-theme containment without adding arbitrary owner design freedom. | `src/components/templates/main-app/projects/b2cView/designSystem/index.ts` |
+| Platform attribution | Default attribution is `Powered by MenuList` with no customer-facing marketing CTA unless a caller opts in. | `src/components/customer/PublicMenuListAttribution.tsx` |
+
 ---
 
 ## File Structure
@@ -104,9 +117,9 @@ The following infrastructure improvements were implemented to make the menu surf
 ### Core Files
 
 ```
-src/app/_client/
+src/app/client/
 ├── [[...slug]]/
-│   └── page.tsx              # Main entry point (~905 lines)
+│   └── page.tsx              # Main entry point
 ├── obp/
 │   ├── OBPContent.tsx        # Official Business Page (server component)
 │   ├── OBPSkeleton.tsx       # OBP loading skeleton
@@ -134,7 +147,7 @@ src/components/templates/main-app/projects/b2cView/
 ├── homePage/
 │   └── homePageNew.tsx              # Home screen
 ├── menuPage/
-│   ├── menuPageNew.tsx              # Menu screen (660 lines)
+│   ├── menuPageNew.tsx              # Menu screen
 │   ├── layouts/
 │   │   ├── verticalMenuLayout.tsx   # Standard layout
 │   │   └── horizontalMenuLayout.tsx # Tab-based layout
@@ -320,7 +333,7 @@ export function resolveDomain(hostname: string): DomainInfo {
 ### 2. Store Lookup
 
 ```typescript
-// src/app/_client/[[...slug]]/page.tsx
+// src/app/client/[[...slug]]/page.tsx
 async function getStoreBySubdomain(subdomain: string) {
   const q = query(
     collection(firebaseClient, DB_COLLECTIONS.STORES),
@@ -982,4 +995,4 @@ Registry policy fields:
 ---
 
 _Document Status: ✅ PRODUCTION READY_  
-_Last Updated: March 15, 2026_
+_Last Updated: May 7, 2026_

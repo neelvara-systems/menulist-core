@@ -13,8 +13,7 @@
  * 
  * FOOTER CONSTITUTION:
  * - Social links (icons only)
- * - Read-only language indicator (clicking scrolls to top + opens header selector)
- * - No direct language switching here (prevents desync with header)
+ * - Footer language labels directly activate the selected language
  * 
  * This is trust infrastructure, not marketing space.
  */

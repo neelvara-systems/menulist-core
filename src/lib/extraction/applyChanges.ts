@@ -13,6 +13,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { revalidatePublicClientCacheForProject } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { logMOLEvent } from '@lib/pricing/molLogger';
 import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
@@ -287,6 +288,7 @@ export async function applyExtractionChanges(
         // ═══════════════════════════════════════════════════════════
         if (Object.keys(updatePayload).length > 0) {
             await updateDoc(projectRef, updatePayload);
+            await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
         }
 
         // Mark job as completed (separate doc, not project)

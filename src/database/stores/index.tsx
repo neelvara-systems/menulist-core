@@ -9,6 +9,7 @@ import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
@@ -205,10 +206,17 @@ export const addStore = async (data: any, from: string = "") => {
                 active: true,
                 name: data.name || '',
                 tenantName: data.tenantName || '',
+                isMaster: data.isMaster,
+                outletSlug: data.outletSlug,
+                city: data.city,
+                addressLine: data.addressLine,
+                logo: data.logo,
+                workingHours: data.workingHours,
                 timeZone: data.timeZone,
                 businessDayEndTime: data.businessDayEndTime,
                 schedulerHour,
                 activePlanType: data.activePlanType,
+                modifiedOn: data.modifiedOn,
             });
 
             return ({ ...data })
@@ -278,7 +286,24 @@ export const updateStore = async (data: any) => {
                 }
             }
 
-            const summaryFields = ['businessType', 'businessCategory', 'active', 'name', 'tenantName', 'timeZone', 'businessDayEndTime', 'schedulerHour', 'activePlanType'];
+            const summaryFields = [
+                'businessType',
+                'businessCategory',
+                'active',
+                'name',
+                'tenantName',
+                'isMaster',
+                'outletSlug',
+                'city',
+                'addressLine',
+                'logo',
+                'workingHours',
+                'timeZone',
+                'businessDayEndTime',
+                'schedulerHour',
+                'activePlanType',
+                'modifiedOn',
+            ];
             const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
             const needsSchedulerRecompute = data.timeZone !== undefined || data.businessDayEndTime !== undefined;
             const needsBusinessCategoryResolution = hasSummaryFieldChanges || needsSchedulerRecompute;
@@ -315,18 +340,8 @@ export const updateStore = async (data: any) => {
             // Data Cache tag. Store-level saves must invalidate it so owner
             // publicPresence changes, including OBP special notes, reach live
             // customer pages without waiting for CDN/Data Cache expiry.
-            if (data.storeId && typeof window !== "undefined") {
-                try {
-                    void fetch("/api/revalidate/menu", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ storeId: data.storeId }),
-                    });
-                } catch {
-                    // Silent fail — public cache still self-heals through TTL.
-                }
+            if (data.storeId) {
+                await revalidatePublicClientCache(data.storeId, "updateStore");
             }
 
             // Sync to storesSummary for Cloud Function optimization
@@ -342,10 +357,17 @@ export const updateStore = async (data: any) => {
                     active: data.active ?? existingStore.active ?? true,
                     name: data.name ?? existingStore.name ?? '',
                     tenantName: data.tenantName ?? existingStore.tenantName ?? '',
+                    isMaster: data.isMaster ?? existingStore.isMaster,
+                    outletSlug: data.outletSlug ?? existingStore.outletSlug,
+                    city: data.city ?? existingStore.city,
+                    addressLine: data.addressLine ?? existingStore.addressLine,
+                    logo: data.logo ?? existingStore.logo,
+                    workingHours: data.workingHours ?? existingStore.workingHours,
                     timeZone: data.timeZone ?? existingStore.timeZone,
                     businessDayEndTime: data.businessDayEndTime ?? existingStore.businessDayEndTime,
                     schedulerHour: data.schedulerHour ?? existingStore.schedulerHour,
                     activePlanType: data.activePlanType ?? existingStore.activePlanType,
+                    modifiedOn: data.modifiedOn ?? existingStore.modifiedOn,
                 });
             } else if (hasSummaryFieldChanges && !summaryTenantId) {
                 console.warn('Skipping syncStoreToSummary: tenantId is undefined for store', data.storeId);

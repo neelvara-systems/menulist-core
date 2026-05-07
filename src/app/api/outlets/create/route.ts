@@ -172,7 +172,16 @@ export const POST = withAuth(async (request, session) => {
                     active: true,
                     name: outletName,
                     tenantName,
+                    isMaster: false,
+                    outletSlug,
+                    city: '',
+                    addressLine: '',
+                    logo: masterStore.logo || '',
+                    workingHours: {},
+                    timeZone: masterStore.timeZone || '',
+                    businessDayEndTime: masterStore.businessDayEndTime || '',
                     schedulerHour: masterStore.schedulerHour ?? 2, // Inherit from master
+                    modifiedOn: now,
                 },
             }, { merge: true });
 

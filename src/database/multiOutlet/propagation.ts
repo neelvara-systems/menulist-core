@@ -9,6 +9,7 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { secureError } from "@lib/security/secureLogger";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -82,6 +83,7 @@ export async function propagateNewProjectToOutlets(
                     active: true,
                 },
             }, { merge: true });
+            await revalidatePublicClientCacheForProject(outletProjectId, "propagateNewProjectToOutlets");
 
             propagated++;
         } catch (e) {

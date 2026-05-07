@@ -100,6 +100,29 @@ async function withRetry<T>(
     }
 }
 
+const serializeClientValue = (value: any): any => {
+    if (value === null || value === undefined || typeof value !== 'object') {
+        return value;
+    }
+
+    if (typeof value.toDate === 'function') {
+        const date = value.toDate();
+        return date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+    }
+
+    if (value instanceof Date) {
+        return !Number.isNaN(value.getTime()) ? value.toISOString() : null;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(serializeClientValue);
+    }
+
+    return Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => [key, serializeClientValue(entry)]),
+    );
+};
+
 // Get project data by ID
 async function getProjectData(projectId: string): Promise<any> {
     const [tId, , sId] = projectId.split("-");
@@ -445,6 +468,33 @@ const getMenuAliasCanonicalSlug = unstable_cache(
     { revalidate: 60, tags: ['client-stores'] },
 );
 
+function buildProjectCanonicalUrl({
+    baseUrl,
+    outletSlug,
+    projectMetadata,
+    projectData,
+    language,
+}: {
+    baseUrl: string;
+    outletSlug?: string | null;
+    projectMetadata?: any;
+    projectData?: any;
+    language?: string;
+}): string {
+    const projectNameSource = projectMetadata?.name || projectData?.metadata?.name;
+    const projectName = getLocalizedText(
+        projectNameSource,
+        language || projectData?.languages?.[0] || 'en',
+        getPrimaryLocalizedLanguage(projectNameSource, language || projectData?.languages?.[0] || 'en'),
+        '',
+    );
+    const projectSlug = projectMetadata?.slug || (projectName ? slugify(projectName) : '');
+    if (!projectSlug) return baseUrl;
+
+    const outletPrefix = outletSlug ? `/${outletSlug}` : '';
+    return `${baseUrl}${outletPrefix}/${projectSlug}`;
+}
+
 // Generate metadata for SEO
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
@@ -589,6 +639,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     let metadataProject: any = null;
     let metadataProjectRecord: any = null;
     let projectSlugForLookup: string | undefined = slugSegments[0];
+    let metadataOutletSlug: string | undefined;
     let contextSegments: string[] = [];
 
     if (
@@ -603,6 +654,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
         if (outletStore) {
             metadataStore = outletStore;
+            metadataOutletSlug = (outletStore.outletSlug || firstSlug || '').toLowerCase() || undefined;
             projectSlugForLookup = slugSegments[1];
             contextSegments = slugSegments.slice(2);
         } else {
@@ -640,9 +692,20 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         : getPublicLanguageOptions(metadataStore);
     const languageAlternates = buildPublicLanguageAlternates(currentUrl, metadataLanguageOptions);
     const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject;
+    const projectCanonicalUrl = metadataProject
+        ? (metadataProjectRecord?.isDefault && !projectSlugForLookup && !metadataOutletSlug && !FEATURE_FLAGS.ENABLE_OBP
+            ? canonicalBase
+            : buildProjectCanonicalUrl({
+                baseUrl: canonicalBase,
+                outletSlug: metadataOutletSlug,
+                projectMetadata: metadataProjectRecord,
+                projectData: metadataProject,
+                language: metadataLanguage,
+            }))
+        : undefined;
     const canonicalWithoutLanguage = isOBPMetadata
-        ? currentUrl
-        : metadataStore.canonicalUrl || menuAliasCanonical || canonicalBase;
+        ? (metadataStore.canonicalUrl || currentUrl)
+        : menuAliasCanonical || projectCanonicalUrl || canonicalBase;
     const canonicalWithLanguage = isOBPMetadata && requestedLanguage && metadataLanguageOptions.length > 1
         ? appendPublicLanguageParam(canonicalWithoutLanguage, metadataLanguage)
         : canonicalWithoutLanguage;
@@ -675,6 +738,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             storeDescription: description,
             defaultImageUrl: resolvedImageUrl,
             currentUrl,
+            canonicalUrl: projectCanonicalUrl && contextSegments.length
+                ? `${projectCanonicalUrl}/${contextSegments.join('/')}`
+                : projectCanonicalUrl,
             projectData: metadataProject,
             contextSegments,
             language: metadataLanguage,
@@ -1030,6 +1096,7 @@ function buildContextMetadata({
     storeDescription,
     defaultImageUrl,
     currentUrl,
+    canonicalUrl,
     projectData,
     contextSegments,
     language,
@@ -1038,6 +1105,7 @@ function buildContextMetadata({
     storeDescription?: string;
     defaultImageUrl: string;
     currentUrl: string;
+    canonicalUrl?: string;
     projectData: any;
     contextSegments: string[];
     language?: string;
@@ -1045,6 +1113,7 @@ function buildContextMetadata({
     if (contextSegments.length < 2) return null;
 
     const renderLanguage = language || getProjectLanguage(projectData);
+    const resolvedCanonicalUrl = canonicalUrl || currentUrl;
     const { categories, items } = flattenProjectMenu(projectData);
     const [contextType, contextValue] = contextSegments;
 
@@ -1065,7 +1134,7 @@ function buildContextMetadata({
                     ? `${itemName} in ${categoryName} at ${storeName}.`
                     : `${itemName} at ${storeName}.`),
             alternates: {
-                canonical: currentUrl,
+                canonical: resolvedCanonicalUrl,
             },
             openGraph: {
                 title: `${itemName} | ${storeName}`,
@@ -1073,7 +1142,7 @@ function buildContextMetadata({
                     || (categoryName
                         ? `${itemName} in ${categoryName} at ${storeName}.`
                         : `${itemName} at ${storeName}.`),
-                url: currentUrl,
+                url: resolvedCanonicalUrl,
                 images: imageUrl ? [{ url: imageUrl }] : undefined,
             },
             twitter: {
@@ -1099,12 +1168,12 @@ function buildContextMetadata({
             title: `${categoryName} | ${storeName}`,
             description: storeDescription || categoryDescription,
             alternates: {
-                canonical: currentUrl,
+                canonical: resolvedCanonicalUrl,
             },
             openGraph: {
                 title: `${categoryName} | ${storeName}`,
                 description: storeDescription || categoryDescription,
-                url: currentUrl,
+                url: resolvedCanonicalUrl,
                 images: defaultImageUrl ? [{ url: defaultImageUrl }] : undefined,
             },
             twitter: {
@@ -1323,6 +1392,7 @@ async function MenuContent({
     const masterBrandName: string | undefined = storeData ? getBrandName(storeData, '') || undefined : undefined;
 
     let resolvedSlug = slug;
+    let resolvedOutletSlug: string | null = null;
     let outletRenderedAsObp = false;
     if (slug && storeData.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         const outletStore = await withRetry(() =>
@@ -1346,6 +1416,7 @@ async function MenuContent({
             }
 
             storeData = outletStore;
+            resolvedOutletSlug = canonicalOutletSlug || slug.toLowerCase();
             if (slugSegments.length === 1) {
                 // G-01: `/{outletSlug}` alone → outlet OBP surface.
                 outletRenderedAsObp = true;
@@ -1433,24 +1504,26 @@ async function MenuContent({
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
             : origin || `https://${subdomain}.menulist.ai`;
-        redirect(appendPublicLanguageParam(`${baseUrl}/${redirectSlug}`, requestedLanguage));
+        const outletPrefix = resolvedOutletSlug ? `/${resolvedOutletSlug}` : '';
+        redirect(appendPublicLanguageParam(`${baseUrl}${outletPrefix}/${redirectSlug}`, requestedLanguage));
     }
 
     // Strip internal metadata before any customer-facing usage (TASK 7)
-    const sanitized = sanitizeForClient(rawProjectData);
+    const sanitized = serializeClientValue(sanitizeForClient(rawProjectData));
 
     // #30: Lazy language loading — reduce SSR payload for multi-language menus (3+ languages)
     // Names kept in ALL languages (short strings, needed for instant language switching)
     // Descriptions stripped for non-primary languages (heavy text, gracefully omitted in UI if missing)
     const projectData = optimizeLanguagePayload(sanitized);
+    const clientStoreDetails = serializeClientValue(storeDetails);
 
     // Fetch precomputed Decision Blocks (optional enhancement — cached)
     const projectId = projectMetadata.projectId || projectMetadata.id;
-    const precomputedBlocks = await withTimeout(getCachedBlocks(
+    const precomputedBlocks = serializeClientValue(await withTimeout(getCachedBlocks(
         storeData.tenantId,
         storeData.storeId,
         projectId,
-    ));
+    )));
 
     // Build canonical URL based on tenant type and slug
     const baseUrl =
@@ -1476,11 +1549,15 @@ async function MenuContent({
     );
     const realDefaultSlug = projectMetadata?.slug
         || (canonicalProjectName ? slugify(canonicalProjectName) : '');
+    const outletPrefix = resolvedOutletSlug ? `/${resolvedOutletSlug}` : '';
+    const canonicalProjectSlug = projectMetadata?.slug || (canonicalProjectName ? slugify(canonicalProjectName) : '');
     const canonicalUrl = isMenuAliasFallback && realDefaultSlug
-        ? `${baseUrl}/${realDefaultSlug}`
-        : (projectMetadata?.isDefault || !slug
+        ? `${baseUrl}${outletPrefix}/${realDefaultSlug}`
+        : (projectMetadata?.isDefault && !resolvedSlug && !outletPrefix
             ? baseUrl
-            : `${baseUrl}/${slugify(canonicalProjectName)}`);
+            : canonicalProjectSlug
+            ? `${baseUrl}${outletPrefix}/${canonicalProjectSlug}`
+            : baseUrl);
 
     const projectLanguage = resolveProjectPublicLanguage(projectData, storeDetails, requestedLanguage);
     const schemaOrgJsonLd = generateSchemaOrgJsonLd(
@@ -1559,8 +1636,8 @@ async function MenuContent({
                 />
             ) : null}
             {/* ── Temporary Status Banner ── */}
-            {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeDetails?.tempStatus && (
-                <TempStatusBanner tempStatus={storeDetails.tempStatus} />
+            {FEATURE_FLAGS.ENABLE_TEMP_STATUS && clientStoreDetails?.tempStatus && (
+                <TempStatusBanner tempStatus={clientStoreDetails.tempStatus} />
             )}
             {/*
               * G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): visible breadcrumb.
@@ -1585,7 +1662,7 @@ async function MenuContent({
             />
             <ClientMenuRenderer
                 projectData={projectData}
-                storeDetails={storeDetails}
+                storeDetails={clientStoreDetails}
                 precomputedBlocks={precomputedBlocks}
                 projectId={projectId}
                 initialLanguage={requestedLanguage || undefined}

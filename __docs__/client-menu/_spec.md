@@ -3,7 +3,7 @@
 **Feature Name:** Client Menu (Customer-Facing Digital Menu)  
 **Document Type:** Product Requirements Document (PRD)  
 **Status:** ✅ Production Ready  
-**Last Updated:** March 15, 2026  
+**Last Updated:** May 7, 2026
 **Audience:** Product, CEO, Business Teams, Non-Technical Stakeholders
 
 ---
@@ -20,6 +20,7 @@ A **live, intelligent digital menu** that:
 - Shows smart recommendations (Decision Blocks) without exposing AI
 - Works on any device (mobile-first, responsive)
 - Supports custom branding and multi-language
+- Preserves a locked public information structure even when the owner chooses a project-wise menu mood or layout
 
 ### What It Is NOT
 
@@ -27,6 +28,7 @@ A **live, intelligent digital menu** that:
 - ❌ An ordering system (no checkout/payment)
 - ❌ An analytics dashboard for customers
 - ❌ A marketing campaign display
+- ❌ A website builder or freeform design surface
 
 ### Business Value
 
@@ -68,7 +70,7 @@ A **live, intelligent digital menu** that:
 | Multi-tenant domain routing | Subdomains + custom domains    | ✅ Done |
 | SEO optimization            | Metadata, Schema.org, sitemap  | ✅ Done |
 | Decision Blocks             | Smart recommendations          | ✅ Done |
-| Live Indicator              | "🟢 Live · updated just now"   | ✅ Done |
+| Live Indicator              | "Live · updated recently" trust signal | ✅ Done |
 | Instant Availability        | Sold-out items fade instantly  | ✅ Done |
 | Time-Based Categories       | Categories show/hide by time   | ✅ Done |
 | Multi-language support      | Customer selects language      | ✅ Done |
@@ -211,7 +213,7 @@ No owner action required
 
 | Feature               | Customer Sees                | Effect   |
 | --------------------- | ---------------------------- | -------- |
-| Live Indicator        | "🟢 Live · updated just now" | Trust    |
+| Live Indicator        | "Live · updated recently" | Trust    |
 | Instant Availability  | Item fades when sold out     | Surprise |
 | Time-Based Categories | "Lunch starts in 12 min"     | Stories  |
 
@@ -256,6 +258,9 @@ No owner action required
 | FR8  | State persists on refresh           | P1       | ✅     |
 | FR9  | Offline mode works (cached content) | P1       | ✅     |
 | FR10 | Analytics track all events          | P1       | ✅     |
+| FR11 | Public category identity avoids raw emoji rendering | P0 | ✅ |
+| FR12 | Public output uses localized fallback for menu/category/item labels | P0 | ✅ |
+| FR13 | Image-enabled layouts reserve stable image slots | P0 | ✅ |
 
 ### Non-Functional Requirements
 
@@ -267,6 +272,20 @@ No owner action required
 | NFR4 | Mobile responsiveness    | 100%            |
 | NFR5 | WCAG 2.1 AA compliance   | 100%            |
 | NFR6 | Offline data persistence | Session storage |
+| NFR7 | Layout stability         | No image-driven scroll jumps |
+| NFR8 | Theme governance         | Locked primitives across presets |
+
+### Public UI Governance Requirements
+
+| Area | Requirement |
+| ---- | ----------- |
+| Theme system | Owners can choose existing menu moods/layouts, but cannot change public layout order, custom CSS, custom fonts, or interaction behavior. |
+| Category identity | Public category icons must use controlled icon rendering. `emoji:*` values may remain in stored data/editor context, but public output renders a glyph fallback. |
+| Navigation | Search and category rail are the primary orientation/retrieval layer. The floating category control is a `Sections` navigator, not a generic menu button. |
+| Typography | Category headings must orient the user without becoming decorative title screens. Item names/descriptions use line limits to preserve scanning rhythm. |
+| Images | Images support item understanding. They cannot turn the menu into a feed, and missing/broken images must not collapse reserved layout space. |
+| Footer | Business identity comes before platform attribution. MenuList attribution is quiet infrastructure metadata, not a growth-marketing CTA. |
+| Localization | Public labels must use the shared localization fallback path instead of reading only `activeLanguage`. |
 
 ### Firebase Cost Impact
 
@@ -397,6 +416,9 @@ All items from the ChatGPT review have been implemented or verified as already d
 | Full custom design system           | Redundant with existing antd + SCSS                  |
 | Flatten project data structure      | Violates 3-year schema freeze                        |
 | "Offer Catalog" identity change     | Premature — focus on restaurant menu dominance first |
+| Freeform public menu customization  | Weakens canonical public surface consistency         |
+| Public engagement counters          | Creates activity theater instead of operational trust |
+| Feed-like/image-first menu browsing | Reduces scan speed and public information clarity    |
 
 ---
 
@@ -442,6 +464,7 @@ Current architecture is ~80% compatible with non-restaurant SMBs (salons, gyms, 
 | `multi-tenant-architecture.md`                    | Domain routing architecture        |
 | `seo-implementation-guide.md`                     | SEO/Schema.org implementation      |
 | `_archive/chatgpt-review-infrastructure-audit.md` | ChatGPT review (March 2026)        |
+| `_archive/client-menu_chatgpt-ui-ux-review-progress.md` | May 2026 screenshot-only UI/UX review validation and progress |
 
 ---
 
@@ -456,4 +479,4 @@ Current architecture is ~80% compatible with non-restaurant SMBs (salons, gyms, 
 ---
 
 _Document Status: ✅ PRODUCTION READY_  
-_Last Updated: March 15, 2026_
+_Last Updated: May 7, 2026_

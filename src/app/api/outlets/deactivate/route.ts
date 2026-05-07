@@ -61,7 +61,9 @@ export const POST = withAuth(async (request, session) => {
 
         // Update storesSummary
         await db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`).set({
+            lastUpdated: now,
             [`stores.${outletStoreId}.active`]: false,
+            [`stores.${outletStoreId}.modifiedOn`]: now,
         }, { merge: true });
 
         // Update tenant storesList to reflect deactivation

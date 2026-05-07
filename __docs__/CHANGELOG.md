@@ -6,6 +6,22 @@
 
 ---
 
+## May 7, 2026 — Client Menu: Public UI Governance Hardening
+
+### Changed
+
+- **Public menu category identity is constrained on customer output** — Stored category icon config can still contain legacy `emoji:*` values, but the public menu renderer and section navigator now render controlled Lucide fallback glyphs instead of raw emoji.
+- **Navigation language clarified** — The floating category action now says `Sections` and opens `Menu sections`, making it a structural jump control instead of a vague menu button.
+- **Search and category rail tightened** — Search focus has a clearer affordance; mobile/tablet category chips are denser, calmer, and use localization fallback labels.
+- **Item card rhythm hardened** — Item titles/descriptions use stricter line governance, price typography is quieter, and image-enabled layouts reserve stable image slots with placeholders to prevent scroll jumps.
+- **Theme presets restrained** — Public mood presets keep project-wise design choice but reduce decorative heading drift and improve light-theme surface containment.
+- **Footer attribution quieted** — Default public attribution is now `Powered by MenuList` with no marketing CTA unless a caller explicitly opts in.
+
+### Documentation
+
+- Updated `__docs__/client-menu/README.md`, `_spec.md`, `_impl.md`, and `client-menu_mobile-support.md`.
+- Added progress tracker at `__docs__/client-menu/_archive/client-menu_chatgpt-ui-ux-review-progress.md`.
+
 ## April 18, 2026 — Customer App Analytics: Full Surface Lifecycle Tracking
 
 ### Reversed

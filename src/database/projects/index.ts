@@ -46,6 +46,7 @@ import {
     buildSummaryProjectFieldPayload,
     buildSummaryProjectPayload,
 } from "@lib/firestore/summaryProjectsWriter";
+import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import {
@@ -494,6 +495,7 @@ export const syncProjectToSummary = async (
                 },
                 { merge: true },
             );
+            await revalidatePublicClientCacheForProject(projectId, "syncProjectToSummary");
             return { projectId, ...cleanData };
         },
         { projectId, data },
@@ -516,6 +518,7 @@ export const removeProjectFromSummary = async (projectId: string) => {
                 },
                 { merge: true },
             );
+            await revalidatePublicClientCacheForProject(projectId, "removeProjectFromSummary");
             return { projectId, removed: true };
         },
         { projectId },
@@ -823,23 +826,11 @@ const runUpdateProject = async (data: Partial<Project>) => {
         merge: true,
     });
 
-    // Instantly invalidate customer menu Vercel Data Cache (GPT FIX 1)
-    // Without this, customers may see stale prices for up to 60s after owner saves.
-    // Use the authenticated API route here so browser saves do not pull in a server
-    // action module and trigger a full app refresh/remount cycle.
-    if (data.projectId && process.env.NODE_ENV === "production") {
-        try {
-            const [, , sId] = (data.projectId as string).split("-");
-            void fetch("/api/revalidate/menu", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ storeId: sId }),
-            });
-        } catch {
-            // Silent fail — cache will self-heal via 60s TTL
-        }
+    // Public menu and OBP pages share Vercel Data Cache tags. Invalidate after
+    // every owner-side project save, including local/dev, so refreshes do not
+    // keep showing stale public content.
+    if (data.projectId) {
+        await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");
     }
 
     // Multi-Outlet: Invalidate master project cache on master save
@@ -1130,6 +1121,7 @@ export const publishProject = async (data: Partial<Project>) => {
             await setDoc(await getDataDocRef(data.projectId), updatedData, {
                 merge: true,
             });
+            await revalidatePublicClientCacheForProject(data.projectId, "publishProject");
 
             // ═══════════════════════════════════════════════════════════════
             // CANONICAL TRUTH: Post-publish events (all fire-and-forget)
@@ -2068,6 +2060,7 @@ export const updateSpecialMenuProject = async (params: {
                     await setDoc(storeRef, { tempStatus: deleteField() }, { merge: true });
                 }
             }
+            await revalidatePublicClientCacheForProject(projectId, "updateSpecialMenuProject");
 
             return { projectId, status: nextStatus };
         },
@@ -2111,6 +2104,7 @@ async function activateSpecialMenuInternal(
     }
 
     await setDoc(storeRef, storeUpdate, { merge: true });
+    await revalidatePublicClientCacheForProject(projectId, "activateSpecialMenuInternal");
 }
 
 /**
@@ -2153,6 +2147,7 @@ export const activateSpecialMenu = async (projectId: string) => {
             await setDoc(summaryDocRef, {
                 [`projects.${projectId}.specialMenuStatus`]: "active",
             }, { merge: true });
+            await revalidatePublicClientCacheForProject(projectId, "activateSpecialMenu");
 
             return { success: true };
         },
@@ -2203,6 +2198,7 @@ export const deactivateSpecialMenu = async (projectId: string) => {
             await setDoc(summaryDocRef, {
                 [`projects.${projectId}.specialMenuStatus`]: "expired",
             }, { merge: true });
+            await revalidatePublicClientCacheForProject(projectId, "deactivateSpecialMenu");
 
             return { success: true };
         },
@@ -2237,6 +2233,7 @@ export const cancelSpecialMenu = async (projectId: string) => {
             await setDoc(summaryDocRef, {
                 [`projects.${projectId}.specialMenuStatus`]: "cancelled",
             }, { merge: true });
+            await revalidatePublicClientCacheForProject(projectId, "cancelSpecialMenu");
 
             return { success: true };
         },

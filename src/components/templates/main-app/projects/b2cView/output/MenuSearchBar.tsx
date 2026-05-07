@@ -10,7 +10,7 @@
  * - Single-line input only
  */
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { MenuMoodConfig } from '../designSystem';
@@ -61,6 +61,7 @@ function MenuSearchBar({
     isMobile = false,
 }: MenuSearchBarProps) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onSearchChange(e.target.value);
@@ -89,8 +90,8 @@ function MenuSearchBar({
                     left: 12,
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: moodConfig.bodyColor,
-                    opacity: 0.5,
+                    color: isFocused ? moodConfig.accentColor : moodConfig.bodyColor,
+                    opacity: isFocused ? 0.85 : 0.55,
                     pointerEvents: 'none',
                     zIndex: 1,
                 }}
@@ -101,6 +102,8 @@ function MenuSearchBar({
                 placeholder={getSearchPlaceholder(businessType, businessCategory)}
                 value={searchTerm}
                 onChange={handleChange}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
                 className="w-full pl-10 pr-10 py-3 rounded-lg text-sm outline-none transition-all"
                 style={{
                     boxSizing: 'border-box',
@@ -109,7 +112,8 @@ function MenuSearchBar({
                     padding: '12px 40px',
                     borderRadius: 10,
                     background: moodConfig.itemStyle.background,
-                    border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                    border: `1px solid ${isFocused ? moodConfig.accentColor : moodConfig.itemStyle.borderColor}`,
+                    boxShadow: isFocused ? `0 0 0 3px ${moodConfig.accentColor}20` : 'none',
                     color: moodConfig.bodyColor,
                     fontFamily: moodConfig.bodyFont,
                     fontSize: isMobile ? 14 : 15,

@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu  
 **Status:** ✅ Production Ready  
-**Last Updated:** April 28, 2026
+**Last Updated:** May 7, 2026
 
 ---
 
@@ -68,6 +68,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | URL Routing Architecture | Slug chain redirects, reserved namespaces           | ✅     |
 | Menu Correctness Engine  | 17-rule validation + publish-gate                   | ✅     |
 | Client Sanitization      | Internal metadata stripped before customer exposure | ✅     |
+| Public UI Governance     | Locked output primitives over project-wise presets  | ✅     |
 
 ### Entry Points
 
@@ -115,10 +116,23 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 | File                                                             | Purpose             |
 | ---------------------------------------------------------------- | ------------------- |
-| `src/app/_client/[[...slug]]/page.tsx`                           | Main page component |
-| `src/app/_client/layout.tsx`                                     | Minimal HTML layout |
+| `src/app/client/[[...slug]]/page.tsx`                            | Main page component |
+| `src/app/client/layout.tsx`                                      | Minimal HTML layout |
 | `src/components/templates/website/clientWebsite/index.tsx`       | Client renderer     |
 | `src/components/templates/website/mainContentRenderer/index.tsx` | Home/Menu router    |
+| `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` | Public menu renderer |
+| `src/components/templates/main-app/projects/b2cView/designSystem/index.ts` | Menu mood/layout presets |
+
+## Public UI Governance
+
+The public menu is not a website-builder surface. Store/project owners can select the existing `config.design.menu` mood and layout presets, but customer output keeps the following primitives locked:
+
+- Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
+- Category navigation remains the orientation layer: sticky rail/tabs plus the `Sections` navigator.
+- Public category icons render controlled Lucide glyphs or fallback glyphs; raw emoji is not rendered on customer-facing output.
+- Category headings are structural markers, not decorative title screens.
+- Item cards preserve line limits, price alignment, text-first hierarchy, and stable image slots.
+- Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution`.
 
 ---
 
@@ -126,6 +140,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-07 | Public menu UI governance hardening: constrained category icon rendering, structural category/navigation styling, search focus state, stable image slots, quiet platform attribution, and localized fallback use |
 | 2026-03-15 | Implemented all 8 ChatGPT review items: lazy language loading, progressive rendering, dish metadata schema, analytics lazy loading, state version key, text-first fallback |
 | 2026-04-28 | Analytics tracking tightened for Firebase cost discipline: added de-duplicated search demand, unavailable-item demand, and final menu CTA conversion clicks; explicitly rejected scroll-depth telemetry |
 | 2026-03-11 | Responsive layout architecture (mobile/tablet/desktop sidebar)                                                                                                             |
@@ -143,4 +158,4 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 ---
 
-_Documentation Index — Last Updated: April 28, 2026_
+_Documentation Index — Last Updated: May 7, 2026_

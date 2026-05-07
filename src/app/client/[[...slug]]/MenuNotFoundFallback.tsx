@@ -45,11 +45,19 @@ type LadderStep = {
 };
 
 function buildLadder({
+    requestedSlug,
     outletSlug,
     storeName,
     brandName,
-}: Pick<MenuNotFoundFallbackProps, 'outletSlug' | 'storeName' | 'brandName'>): LadderStep[] {
+}: Pick<MenuNotFoundFallbackProps, 'requestedSlug' | 'outletSlug' | 'storeName' | 'brandName'>): LadderStep[] {
     const steps: LadderStep[] = [];
+    const normalizedRequestedSlug = requestedSlug?.toLowerCase();
+    if (normalizedRequestedSlug !== 'menu') {
+        steps.push({
+            href: outletSlug ? `/${outletSlug}/menu` : '/menu',
+            label: 'Try the current menu',
+        });
+    }
     if (outletSlug) {
         steps.push({
             href: `/${outletSlug}`,
@@ -70,8 +78,8 @@ export default function MenuNotFoundFallback({
     brandName,
 }: MenuNotFoundFallbackProps) {
     const ladder = useMemo(
-        () => buildLadder({ outletSlug, storeName, brandName }),
-        [outletSlug, storeName, brandName],
+        () => buildLadder({ requestedSlug, outletSlug, storeName, brandName }),
+        [requestedSlug, outletSlug, storeName, brandName],
     );
 
     const [isStandalone, setIsStandalone] = useState(false);

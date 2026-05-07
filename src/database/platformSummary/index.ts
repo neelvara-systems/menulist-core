@@ -31,10 +31,17 @@ export interface StoreSummaryData {
     active: boolean;
     name: string;
     tenantName?: string;
+    isMaster?: boolean;
+    outletSlug?: string;
+    city?: string;
+    addressLine?: string;
+    logo?: string;
+    workingHours?: Record<string, string>;
     timeZone?: string;         // IANA timezone (e.g., 'Asia/Kolkata') — used for DST-safe runtime scheduling
     businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
     activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
+    modifiedOn?: any;
 }
 
 export interface StoresSummary {
@@ -177,12 +184,33 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
             if (data.businessDayEndTime) {
                 summaryEntry[`stores.${storeId}.businessDayEndTime`] = data.businessDayEndTime;
             }
+            if (data.isMaster !== undefined) {
+                summaryEntry[`stores.${storeId}.isMaster`] = data.isMaster;
+            }
+            if (data.outletSlug !== undefined) {
+                summaryEntry[`stores.${storeId}.outletSlug`] = data.outletSlug;
+            }
+            if (data.city !== undefined) {
+                summaryEntry[`stores.${storeId}.city`] = data.city || '';
+            }
+            if (data.addressLine !== undefined) {
+                summaryEntry[`stores.${storeId}.addressLine`] = data.addressLine || '';
+            }
+            if (data.logo !== undefined) {
+                summaryEntry[`stores.${storeId}.logo`] = data.logo || '';
+            }
+            if (data.workingHours !== undefined) {
+                summaryEntry[`stores.${storeId}.workingHours`] = data.workingHours || {};
+            }
             // schedulerHour is FALLBACK only (for stores without timeZone)
             if (data.schedulerHour !== undefined) {
                 summaryEntry[`stores.${storeId}.schedulerHour`] = data.schedulerHour;
             }
             if (data.activePlanType !== undefined) {
                 summaryEntry[`stores.${storeId}.activePlanType`] = data.activePlanType;
+            }
+            if (data.modifiedOn !== undefined) {
+                summaryEntry[`stores.${storeId}.modifiedOn`] = data.modifiedOn;
             }
             await setDoc(ref, {
                 lastUpdated: serverTimestamp(),

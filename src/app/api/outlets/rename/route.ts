@@ -161,17 +161,16 @@ export const POST = withAuth(async (request, session) => {
 
         await db.runTransaction(async (tx) => {
             tx.update(outletRef, updatePayload);
+            const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
+            const summaryPayload: Record<string, any> = {
+                lastUpdated: now,
+                [`stores.${outletStoreIdStr}.outletSlug`]: proposed,
+                [`stores.${outletStoreIdStr}.modifiedOn`]: now,
+            };
             if (newOutletName) {
-                const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
-                tx.set(
-                    summaryRef,
-                    {
-                        lastUpdated: now,
-                        [`stores.${outletStoreIdStr}.name`]: newOutletName,
-                    },
-                    { merge: true },
-                );
+                summaryPayload[`stores.${outletStoreIdStr}.name`] = newOutletName;
             }
+            tx.set(summaryRef, summaryPayload, { merge: true });
         });
 
         return NextResponse.json({

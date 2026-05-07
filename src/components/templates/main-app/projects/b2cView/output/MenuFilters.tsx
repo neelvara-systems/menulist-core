@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom';
 import { LuList } from 'react-icons/lu';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { FEATURE_FLAGS } from '@config/features';
+import { getLocalizedText } from '@lib/localization/text';
 import { MenuMoodConfig } from '../designSystem';
 
 interface Category {
@@ -38,6 +39,9 @@ interface MenuFiltersProps {
     /** When true, FAB is hidden (category tabs are visible) */
     hideFAB?: boolean;
 }
+
+const getCategoryLabel = (category: Category, activeLanguage: string): string =>
+    getLocalizedText(category.name, activeLanguage, 'en', 'Section');
 
 function MenuFilters({
     categories,
@@ -135,7 +139,7 @@ function MenuFilters({
                         className="fixed left-4 right-4 z-50 rounded-xl overflow-hidden"
                         role="dialog"
                         aria-modal="false"
-                        aria-label="Menu categories"
+                        aria-label="Menu sections"
                         style={{
                             position: 'fixed',
                             right: 16,
@@ -169,7 +173,7 @@ function MenuFilters({
                                     fontWeight: 700,
                                 }}
                             >
-                                Categories
+                                Menu sections
                             </h3>
                         </div>
                         <div
@@ -198,7 +202,7 @@ function MenuFilters({
                                             padding: '10px 12px',
                                             borderRadius: 10,
                                             background: isActive
-                                                ? `${moodConfig.accentColor}20`
+                                                ? `${moodConfig.accentColor}14`
                                                 : 'transparent',
                                             color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,
                                             border: isActive
@@ -215,7 +219,9 @@ function MenuFilters({
                                         {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                                             <CategoryIcon
                                                 color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                defaultIcon="LuTag"
                                                 icon={category.icon}
+                                                allowEmoji={false}
                                                 size={16}
                                             />
                                         ) : null}
@@ -227,7 +233,7 @@ function MenuFilters({
                                                 whiteSpace: 'nowrap',
                                             }}
                                         >
-                                            {category.name[activeLanguage]}
+                                            {getCategoryLabel(category, activeLanguage)}
                                         </span>
                                     </button>
                                 );
@@ -258,13 +264,13 @@ function MenuFilters({
                         style={{
                             position: 'fixed',
                             right: 16,
-                            background: moodConfig.accentColor,
+                            background: moodConfig.itemStyle.background,
                             bottom: 'calc(24px + env(safe-area-inset-bottom))',
                             zIndex: 10010,
-                            color: '#000',
+                            color: moodConfig.accentColor,
                             fontWeight: 600,
                             fontFamily: moodConfig.bodyFont,
-                            fontSize: 15,
+                            fontSize: 14,
                             lineHeight: '20px',
                             minHeight: 48,
                             display: 'inline-flex',
@@ -274,17 +280,17 @@ function MenuFilters({
                             width: 'auto',
                             maxWidth: 'calc(100vw - 32px)',
                             padding: '12px 18px',
-                            border: 0,
+                            border: `1px solid ${moodConfig.accentColor}50`,
                             borderRadius: 999,
-                            boxShadow: '0 12px 26px rgba(0, 0, 0, 0.28)',
+                            boxShadow: '0 10px 24px rgba(0, 0, 0, 0.22)',
                             cursor: 'pointer',
                             WebkitTapHighlightColor: 'transparent',
                         }}
-                        aria-label="Open category menu"
+                        aria-label="Open menu sections"
                         aria-expanded={showCategories}
                     >
                         <LuList size={18} />
-                        <span>Menu</span>
+                        <span>Sections</span>
                     </motion.button>
                 )}
             </AnimatePresence>

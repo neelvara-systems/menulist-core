@@ -15,6 +15,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { submitGuestFeedback } from '@database/guestFeedback';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { secureError } from '@lib/security/secureLogger';
 import { guestFeedbackSubmitSchema } from '@lib/validation/apiSchemas';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPublicRateLimit, sanitizeString, validateHoneypot } from 'src/middleware/publicApi';
@@ -78,13 +79,23 @@ export async function POST(req: NextRequest) {
 
     // 6. Verify project exists and has feedback enabled
     // Uses correct nested path: projects/{tId}/{sId}/{projectId}
+    let storeFeedbackDefaults: { collectComment?: boolean; collectCommentRequired?: boolean } | null = null;
+    let reviewUrl: string | null = null;
+
     try {
-        const projectDoc = await firestoreAdmin
+        const projectRef = firestoreAdmin
             .collection('projects')
             .doc(String(data.tId))
             .collection(String(data.sId))
-            .doc(data.projectId)
-            .get();
+            .doc(data.projectId);
+        const storeRef = firestoreAdmin
+            .collection(DB_COLLECTIONS.STORES)
+            .doc(String(data.sId));
+
+        const [projectDoc, storeDoc] = await Promise.all([
+            projectRef.get(),
+            storeRef.get(),
+        ]);
 
         if (!projectDoc.exists) {
             return NextResponse.json(
@@ -102,10 +113,32 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        if (!storeDoc.exists) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid store.' },
+                { status: 400 }
+            );
+        }
+
+        const storeData = storeDoc.data();
+        if (storeData?.feedbackEnabled === false) {
+            return NextResponse.json(
+                { success: false, error: 'Feedback is disabled for this business.' },
+                { status: 400 }
+            );
+        }
+
+        storeFeedbackDefaults = storeData?.feedbackDefaults || null;
+        reviewUrl = storeData?.reviewUrl || storeData?.publicPresence?.googleReviewUrl || null;
     } catch (error) {
-        console.error('[PublicFeedback] Project verification error:', error);
+        secureError(
+            '[PublicFeedback] Project/store verification error',
+            error instanceof Error ? error : new Error(String(error)),
+            { tId: data.tId, sId: data.sId, projectId: data.projectId },
+        );
         return NextResponse.json(
-            { success: false, error: 'Unable to verify project.' },
+            { success: false, error: 'Unable to verify feedback settings.' },
             { status: 500 }
         );
     }
@@ -114,21 +147,6 @@ export async function POST(req: NextRequest) {
     const sanitizedMessage = sanitizeString(data.message);
 
     // 8. Validate store-level feedback defaults
-    let storeFeedbackDefaults: { collectComment?: boolean; collectCommentRequired?: boolean } | null = null;
-    try {
-        const storeDoc = await firestoreAdmin
-            .collection(DB_COLLECTIONS.STORES)
-            .doc(String(data.sId))
-            .get();
-
-        if (storeDoc.exists) {
-            const storeData = storeDoc.data();
-            storeFeedbackDefaults = storeData?.feedbackDefaults || null;
-        }
-    } catch (error) {
-        console.error('[PublicFeedback] Store settings verification error:', error);
-    }
-
     const commentEnabled = storeFeedbackDefaults?.collectComment !== false;
     const effectiveMessage = commentEnabled ? sanitizedMessage : undefined;
 
@@ -157,23 +175,6 @@ export async function POST(req: NextRequest) {
             customerEmail: data.customerEmail?.toLowerCase(),
         });
 
-        // 10. Get store's Google Review URL (if available)
-        // Direct doc fetch - storeId is the document ID
-        let reviewUrl: string | null = null;
-        try {
-            const storeDoc = await firestoreAdmin
-                .collection(DB_COLLECTIONS.STORES)
-                .doc(String(data.sId))
-                .get();
-
-            if (storeDoc.exists) {
-                const storeData = storeDoc.data();
-                reviewUrl = storeData?.reviewUrl || storeData?.publicPresence?.googleReviewUrl || null;
-            }
-        } catch {
-            // Don't fail if we can't get review URL
-        }
-
         return NextResponse.json(
             {
                 success: true,
@@ -183,7 +184,11 @@ export async function POST(req: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error('[PublicFeedback] Submit error:', error);
+        secureError(
+            '[PublicFeedback] Submit error',
+            error instanceof Error ? error : new Error(String(error)),
+            { tId: data.tId, sId: data.sId, projectId: data.projectId },
+        );
         return NextResponse.json(
             { success: false, error: 'Failed to submit feedback.' },
             { status: 500 }

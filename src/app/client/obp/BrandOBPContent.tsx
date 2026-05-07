@@ -15,6 +15,7 @@ import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttri
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getBrandName } from "@lib/businessIdentity/names";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { parseSummaryStores } from "@lib/firestore/parseSummaryStores";
 import {
     appendPublicLanguageParam,
     getNextIntlLocaleForPublicLanguage,
@@ -28,6 +29,8 @@ import { resolveHoursOutput } from "@lib/outputControl";
 import { StoreDataType } from "@type/platform/store";
 import {
     collection,
+    doc,
+    getDoc,
     getDocs,
     query,
     where,
@@ -50,10 +53,56 @@ interface OutletInfo {
     timeZone?: string;
     active?: boolean;
     modifiedOn?: any;
+    isMaster?: boolean;
 }
 
-// Fetch all active outlets for a tenant
-const getOutletsForTenant = unstable_cache(
+const mapSummaryStoreToOutlet = (storeId: string, data: any): OutletInfo => ({
+    storeId: Number(data.storeId || storeId),
+    name: data.name,
+    outletSlug: data.outletSlug,
+    city: data.city,
+    addressLine: data.addressLine,
+    logo: data.logo,
+    workingHours: data.workingHours,
+    timeZone: data.timeZone,
+    active: data.active,
+    isMaster: data.isMaster,
+    modifiedOn: data.modifiedOn,
+});
+
+// Summary-first active outlet list. Falls back to the store collection for
+// legacy summaries that do not yet carry outletSlug/isMaster fields.
+const getSummaryOutletsForTenant = unstable_cache(
+    async (tenantId: number): Promise<OutletInfo[] | null> => {
+        const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary", "storesSummary");
+        const summarySnap = await getDoc(summaryRef);
+        if (!summarySnap.exists()) return null;
+
+        const stores = parseSummaryStores(summarySnap.data());
+        const tenantStores = Object.entries(stores)
+            .filter(([, data]: [string, any]) => data?.tId === tenantId && data?.active !== false)
+            .map(([storeId, data]: [string, any]) => mapSummaryStoreToOutlet(storeId, data));
+
+        if (tenantStores.length === 0) return null;
+
+        // Old summaries only contain name/type fields, so they cannot power
+        // customer-routable location cards. Use collection fallback until the
+        // next store/outlet save backfills summary routing fields.
+        const hasRoutableOutlet = tenantStores.some((entry) => entry.outletSlug);
+        if (!hasRoutableOutlet) return null;
+
+        return tenantStores.sort((a, b) => {
+            if (a.isMaster) return -1;
+            if (b.isMaster) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+    },
+    ['brand-obp-summary-outlets'],
+    { revalidate: 60, tags: ['client-stores'] },
+);
+
+// Legacy fallback for storesSummary docs that predate outlet routing fields.
+const getCollectionOutletsForTenant = unstable_cache(
     async (tenantId: number, masterStoreId: number): Promise<OutletInfo[]> => {
         const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
         const q = query(
@@ -92,6 +141,12 @@ const getOutletsForTenant = unstable_cache(
     ['brand-obp-outlets'],
     { revalidate: 60, tags: ['client-stores'] }
 );
+
+async function getOutletsForTenant(tenantId: number, masterStoreId: number): Promise<OutletInfo[]> {
+    const summaryOutlets = await getSummaryOutletsForTenant(tenantId);
+    if (summaryOutlets) return summaryOutlets;
+    return getCollectionOutletsForTenant(tenantId, masterStoreId);
+}
 
 interface BrandOBPContentProps {
     store: StoreDataType;

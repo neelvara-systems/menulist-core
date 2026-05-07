@@ -13,9 +13,9 @@ const ctaHref = `${PLATFORM_URL}/create-menu`;
 
 export default function PublicMenuListAttribution({
     mode = 'full',
-    surfaceLabel = 'Created with MenuList',
+    surfaceLabel = 'Powered by MenuList',
     rightsLabel = 'All rights reserved.',
-    ctaLabel = 'Create your own menu in minutes',
+    ctaLabel = null,
     mutedColor = '#8a8f98',
     accentColor = '#111',
 }: PublicMenuListAttributionProps) {

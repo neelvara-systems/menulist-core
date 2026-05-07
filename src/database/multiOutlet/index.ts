@@ -13,6 +13,10 @@ import { getProjectDataByStore } from "@database/projects";
 import { replaceUndefined } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
+import {
+    revalidatePublicClientCache,
+    revalidatePublicClientCacheForProject,
+} from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     createOverrideAppliedEvent,
@@ -111,6 +115,7 @@ export const setProjectAsMaster = async (
             };
 
             await updateDoc(projectRef, updateData);
+            await revalidatePublicClientCacheForProject(projectId, "setProjectAsMaster");
 
             // Log MOL event
             await logMultiOutletEvent({
@@ -183,6 +188,7 @@ export const unsetProjectAsMaster = async (projectId: string) => {
             await updateDoc(projectRef, {
                 isMaster: deleteField(),
             });
+            await revalidatePublicClientCacheForProject(projectId, "removeMasterDesignation");
 
             // Log MOL event
             await logMultiOutletEvent({
@@ -326,6 +332,7 @@ export const linkStoreToMaster = async (
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "linkStoreToMaster");
 
             // Log MOL event
             await logMultiOutletEvent(
@@ -450,6 +457,7 @@ export const switchStoreMaster = async (
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "switchStoreMaster");
 
             // Log MOL event
             await logMultiOutletEvent(
@@ -507,6 +515,7 @@ export const unlinkStoreFromMaster = async (storeProjectId: string) => {
                 masterProjectId: null,
                 masterSnapshot: null,
             });
+            await revalidatePublicClientCacheForProject(storeProjectId, "unlinkStoreFromMaster");
 
             // Log MOL event
             await logMultiOutletEvent(
@@ -606,6 +615,7 @@ export const applyItemOverride = async (
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "applyItemOverride");
 
             // Log MOL event
             await logMultiOutletEvent(
@@ -661,6 +671,7 @@ export const applyCategoryOverride = async (
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "applyCategoryOverride");
 
             return { success: true };
         },
@@ -706,6 +717,7 @@ export const removeItemOverride = async (
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "removeItemOverride");
 
             return { success: true };
         },
@@ -752,6 +764,7 @@ export const removeCategoryOverride = async (
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "removeCategoryOverride");
 
             return { success: true };
         },
@@ -853,6 +866,7 @@ export const clearAllOverrides = async (storeProjectId: string) => {
             });
 
             await updateDoc(storeRef, updateData);
+            await revalidatePublicClientCacheForProject(storeProjectId, "clearAllOverrides");
 
             return { success: true };
         },
@@ -1040,6 +1054,7 @@ export const updateOutletPolicy = async (
             const mergedPolicy = { ...currentPolicy, ...policy };
 
             await updateDoc(storeRef, { outletPolicy: mergedPolicy });
+            await revalidatePublicClientCache(storeId, "updateOutletPolicy");
 
             return { success: true };
         },

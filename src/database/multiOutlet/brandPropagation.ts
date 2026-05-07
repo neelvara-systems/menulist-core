@@ -11,6 +11,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { secureError } from "@lib/security/secureLogger";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -91,6 +92,7 @@ export async function propagateBrandToOutlets(
             try {
                 const outletRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(outlet.storeId));
                 await updateDoc(outletRef, brandChanges);
+                await revalidatePublicClientCache(outlet.storeId, "propagateBrandToOutlets");
                 result.propagated++;
             } catch (e) {
                 secureError(`[BrandPropagation] Failed for outlet ${outlet.storeId}`, e as Error);

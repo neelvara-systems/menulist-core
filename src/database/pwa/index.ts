@@ -15,6 +15,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { requestBodyComposer } from '@lib/apiHelper';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { revalidatePublicClientCache } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { uploadFile } from '@lib/firebase/storage';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
@@ -96,6 +97,7 @@ export const updatePWASettings = async (
             if (Object.keys(update).length === 0) return { noop: true };
 
             await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
+            await revalidatePublicClientCache(storeId, 'updatePWASettings');
             return { success: true, updated: Object.keys(update) };
         },
         { storeId, settings },
@@ -118,6 +120,7 @@ export const updatePWAIconOverride = async (
                 'publicPresence.pwaIconOverrideUrl': override.pwaIconOverrideUrl,
             };
             await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
+            await revalidatePublicClientCache(storeId, 'updatePWAIconOverride');
             return { success: true };
         },
         { storeId, override },

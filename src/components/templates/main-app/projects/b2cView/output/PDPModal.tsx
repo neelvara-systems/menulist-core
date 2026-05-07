@@ -12,11 +12,12 @@
 import { ExtractedDataCategory } from '@template/main-app/projects/types';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
+import { getLocalizedText } from '@lib/localization/text';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronLeft, LuChevronRight, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -58,6 +59,11 @@ function PDPModal({
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [category, setCategory] = useState<ExtractedDataCategory>();
     const [mounted, setMounted] = useState(false);
+    const primaryLanguage = projectData?.defaultLanguage || projectData?.languages?.[0] || 'en';
+    const getModalText = useCallback(
+        (value: unknown, fallback = '') => getLocalizedText(value as any, language, primaryLanguage, fallback),
+        [language, primaryLanguage],
+    );
 
     useEffect(() => {
         setMounted(true);
@@ -76,13 +82,12 @@ function PDPModal({
                 ));
                 const categoryId = typeof item.category === 'string' ? item.category : '';
                 const categoryRecord = file?.extractedData?.data?.categories?.find((cat: any) => cat.id === categoryId);
-                const categoryName = categoryRecord?.name?.[language]
-                    || categoryRecord?.name?.en
-                    || (typeof item.category === 'object' ? item.category?.[language] || item.category?.en : undefined);
+                const categoryName = getModalText(categoryRecord?.name)
+                    || (typeof item.category === 'object' ? getModalText(item.category) : undefined);
 
                 trackMenuItemView({
                     itemId: item.id,
-                    name: item.name?.[language] || 'Unknown Item',
+                    name: getModalText(item.name, 'Unknown Item'),
                     category: categoryName,
                     categoryId,
                     categoryName,
@@ -92,8 +97,9 @@ function PDPModal({
                     currency: currencyCode,
                     attributes: showItemPrices
                         ? item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
-                            if (attr.name?.[language]) {
-                                acc[attr.name[language]] = String(attr.price);
+                            const attributeName = getModalText(attr.name);
+                            if (attributeName) {
+                                acc[attributeName] = String(attr.price);
                             }
                             return acc;
                         }, {})
@@ -111,7 +117,7 @@ function PDPModal({
             document.documentElement.style.overflow = '';
             document.body.style.overflow = '';
         };
-    }, [currencyCode, item, language, trackMenuItemView, projectData, showItemPrices, trackView]);
+    }, [currencyCode, getModalText, item, trackMenuItemView, projectData, showItemPrices, trackView]);
 
     useEffect(() => {
         if (!item) return;
@@ -177,7 +183,7 @@ function PDPModal({
                         className="fixed z-[60] flex items-center justify-center"
                         role="dialog"
                         aria-modal="true"
-                        aria-label={item.name?.[language] || 'Menu item details'}
+                        aria-label={getModalText(item.name, 'Menu item details')}
                         style={{
                             position: 'fixed',
                             inset: 'calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px',
@@ -244,7 +250,7 @@ function PDPModal({
                                 >
                                     <Image
                                         src={images[currentImageIndex]?.url}
-                                        alt={item.name?.[language] || 'Menu item'}
+                                        alt={getModalText(item.name, 'Menu item')}
                                         fill
                                         className="object-cover"
                                         style={{ objectFit: 'cover' }}
@@ -380,7 +386,7 @@ function PDPModal({
                                             opacity: 0.76,
                                         }}
                                     >
-                                        {category.name?.[language]}
+                                        {getModalText(category.name)}
                                     </span>
                                 )}
 
@@ -409,7 +415,7 @@ function PDPModal({
                                             overflowWrap: 'anywhere',
                                         }}
                                     >
-                                        {item.name?.[language] || 'Menu Item'}
+                                        {getModalText(item.name, 'Menu Item')}
                                     </h2>
                                     {showItemPrices && !item.attributes?.length && item.price !== undefined && item.price !== null && String(item.price).trim() !== '' && (
                                         <span
@@ -517,7 +523,7 @@ function PDPModal({
                                 )}
 
                                 {/* Description */}
-                                {item.description?.[language] && (
+                                {getModalText(item.description) && (
                                     <p
                                         className="text-sm md:text-base mb-4 whitespace-pre-line"
                                         style={{
@@ -529,7 +535,7 @@ function PDPModal({
                                             whiteSpace: 'pre-line',
                                         }}
                                     >
-                                        {item.description[language]}
+                                        {getModalText(item.description)}
                                     </p>
                                 )}
 
@@ -637,7 +643,7 @@ function PDPModal({
                                                         lineHeight: '20px',
                                                     }}
                                                 >
-                                                    {attr.name?.[language]}
+                                                    {getModalText(attr.name, 'Option')}
                                                 </span>
                                                 {showItemPrices ? (
                                                     <span

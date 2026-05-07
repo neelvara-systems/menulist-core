@@ -27,6 +27,7 @@ import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { LuImage } from 'react-icons/lu';
 import { Project } from '../../types';
 import {
     DEFAULTS,
@@ -160,6 +161,11 @@ function MenuPageNew({
     const labels = useMemo(() => getOfferingLabels(businessType), [businessType]);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const currencyCode = storeDetails?.currencyCode || 'INR';
+    const primaryLanguage = projectData?.defaultLanguage || storeDetails?.defaultLanguage || projectData?.languages?.[0] || 'en';
+    const getMenuText = useCallback(
+        (value: unknown, fallback = '') => getLocalizedText(value as any, activeLanguage, primaryLanguage, fallback),
+        [activeLanguage, primaryLanguage],
+    );
 
     // Layout properties from config
     const isGridLayout = layoutConfig.itemsPerRow > 1;
@@ -501,8 +507,8 @@ function MenuPageNew({
         if (debouncedSearch) {
             const term = debouncedSearch.toLowerCase();
             items = items.filter((item: any) => {
-                const nameMatch = item.name?.[activeLanguage]?.toLowerCase().includes(term);
-                const descMatch = item.description?.[activeLanguage]?.toLowerCase().includes(term);
+                const nameMatch = getMenuText(item.name).toLowerCase().includes(term);
+                const descMatch = getMenuText(item.description).toLowerCase().includes(term);
                 return nameMatch || descMatch;
             });
         }
@@ -517,7 +523,7 @@ function MenuPageNew({
         }
 
         return items;
-    }, [allItems, debouncedSearch, activeLanguage, activeFilter]);
+    }, [allItems, debouncedSearch, getMenuText, activeFilter]);
 
     useEffect(() => {
         if (!analyticsPreferences.trackMenuViews) return;
@@ -591,7 +597,7 @@ function MenuPageNew({
     const handleItemClick = useCallback((item: any) => {
         if (item.available === false) {
             if (analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
-                const itemName = item.name?.[activeLanguage] || item.name?.en || 'Unavailable Item';
+                const itemName = getMenuText(item.name, 'Unavailable Item');
                 void trackUnavailableItemAttempt(item.id, itemName, item.category, {
                     tenantId: storeDetails.tenantId,
                     storeId: String(storeDetails.storeId),
@@ -608,10 +614,9 @@ function MenuPageNew({
 
         const categoryId = typeof item.category === 'string' ? item.category : '';
         const category = allCategories.find((cat: any) => cat.id === categoryId);
-        const categoryName = category?.name?.[activeLanguage]
-            || category?.name?.en
-            || (typeof item.category === 'object' ? item.category?.[activeLanguage] || item.category?.en : undefined);
-        const trackedItemName = item.name?.[activeLanguage] || item.name?.en || 'Menu item';
+        const categoryName = getMenuText(category?.name)
+            || (typeof item.category === 'object' ? getMenuText(item.category) : undefined);
+        const trackedItemName = getMenuText(item.name, 'Menu item');
         trackMenuItemTap({
             itemId: item.id,
             name: trackedItemName,
@@ -630,7 +635,7 @@ function MenuPageNew({
         // G14: Push history state for back button support
         // Human-readable slug URLs for shareability + AI crawlability
         // Format: /menu/item/{slug}-{shortId} — slug for readability, shortId for uniqueness
-        const itemSlugName = item.name?.[activeLanguage] || item.name?.en || '';
+        const itemSlugName = getMenuText(item.name);
         const itemSlug = slugify(itemSlugName);
         const shortId = item.id?.slice(-6) || '';
         const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
@@ -642,7 +647,7 @@ function MenuPageNew({
             '',
             `${basePath}/item/${urlSegment}`
         );
-    }, [activeLanguage, allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuBasePath, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuBasePath, getMenuText, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -703,7 +708,7 @@ function MenuPageNew({
             // 3. Try slug-only match (best effort for manually constructed URLs)
             if (!item) {
                 item = allItems.find((i: any) => {
-                    const name = i.name?.[activeLanguage] || i.name?.en || '';
+                    const name = getMenuText(i.name);
                     return slugify(name) === urlSegment || urlSegment.startsWith(slugify(name));
                 });
             }
@@ -715,7 +720,7 @@ function MenuPageNew({
                 historyPushedRef.current = false;
             }
         }
-    }, [allItems, activeLanguage]);
+    }, [allItems, getMenuText]);
 
     // Handle category selection (scroll to category)
     const handleCategorySelect = useCallback((category: any) => {
@@ -757,16 +762,16 @@ function MenuPageNew({
         position: 'sticky',
         top: 0,
         zIndex: 70,
-        marginBottom: 18,
+        marginBottom: 14,
         paddingTop: isMobile || isTablet ? 'calc(6px + env(safe-area-inset-top))' : 0,
-        paddingBottom: showTabsBar ? 12 : 6,
+        paddingBottom: showTabsBar ? 10 : 6,
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
     };
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
-        gap: 8,
+        gap: 6,
         overflowX: 'auto',
         paddingTop: 0,
         paddingRight: 0,
@@ -775,6 +780,8 @@ function MenuPageNew({
         marginBottom: 0,
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
+        scrollSnapType: 'x proximity',
+        WebkitOverflowScrolling: 'touch',
     };
     const bottomMetaTheme = {
         background: moodConfig.background,
@@ -790,42 +797,48 @@ function MenuPageNew({
     };
 
     const categoryHeaderStyle: React.CSSProperties = {
-        fontFamily: moodConfig.headingFont,
-        fontSize: isMobile ? 18 : 20,
-        fontWeight: 600,
+        fontFamily: moodConfig.bodyFont,
+        fontSize: isMobile ? 15 : 16,
+        fontWeight: 700,
         color: moodConfig.headingColor,
         margin: 0,
-        marginBottom: spacing.item,
-        textTransform: moodConfig.categoryStyle.titleTransform || 'none',
-        letterSpacing: moodConfig.categoryStyle.titleLetterSpacing || '0',
+        marginBottom: Math.max(6, spacing.item - 4),
+        textTransform: 'none',
+        letterSpacing: 0,
+        lineHeight: 1.3,
     };
 
     const dividerStyle: React.CSSProperties = {
         height: 1,
         width: 48,
         background: moodConfig.categoryStyle.dividerColor || moodConfig.accentColor,
-        marginTop: 8,
-        marginBottom: spacing.item,
+        marginTop: 6,
+        marginBottom: Math.max(8, spacing.item - 2),
     };
 
     const getItemStyle = (): React.CSSProperties => ({
         display: 'flex',
         flexDirection: imageOnTop ? 'column' : 'row',
-        gap: 12,
-        padding: isMobile ? 12 : 16,
+        gap: isMobile ? 10 : 12,
+        padding: isMobile ? 11 : 14,
         background: moodConfig.itemStyle.background,
         border: `${moodConfig.itemStyle.borderWidth || 1}px solid ${moodConfig.itemStyle.borderColor}`,
         borderRadius: moodConfig.itemStyle.borderRadius,
         cursor: 'pointer',
-        transition: 'transform 0.15s, opacity 0.15s, box-shadow 0.15s',
+        transition: 'transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease',
     });
 
     const itemNameStyle: React.CSSProperties = {
-        fontFamily: moodConfig.headingFont,
-        fontSize: isMobile ? 14 : 16,
+        fontFamily: moodConfig.bodyFont,
+        fontSize: isMobile ? 14 : 15,
         fontWeight: 600,
         color: moodConfig.headingColor,
         margin: 0,
+        lineHeight: 1.35,
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
     };
 
     const itemDescStyle: React.CSSProperties = {
@@ -833,8 +846,8 @@ function MenuPageNew({
         fontSize: isMobile ? 12 : 13,
         color: moodConfig.descriptionColor || moodConfig.bodyColor,
         margin: 0,
-        marginTop: 4,
-        lineHeight: 1.4,
+        marginTop: 3,
+        lineHeight: 1.35,
         display: '-webkit-box',
         WebkitLineClamp: 2,
         WebkitBoxOrient: 'vertical',
@@ -843,10 +856,11 @@ function MenuPageNew({
 
     const priceStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isMobile ? 14 : 15,
+        fontSize: isMobile ? 13 : 14,
         fontWeight: 600,
         color: moodConfig.priceColor,
         marginTop: 'auto',
+        lineHeight: 1.3,
         ...(moodConfig.itemStyle.priceStyle === 'badge' && moodConfig.itemStyle.priceBadgeColor && {
             background: moodConfig.itemStyle.priceBadgeColor,
             padding: '2px 8px',
@@ -885,40 +899,43 @@ function MenuPageNew({
                                             element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                         }}
                                         style={{
-                                            minHeight: 44,
+                                            minHeight: 40,
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            padding: '10px 16px',
+                                            padding: '8px 12px',
                                             borderRadius: 999,
                                             border: activeCategory?.id === cat.id
-                                                ? `1px solid ${moodConfig.accentColor}`
+                                                ? `1px solid ${moodConfig.accentColor}50`
                                                 : `1px solid ${moodConfig.itemStyle.borderColor}`,
                                             background: activeCategory?.id === cat.id
-                                                ? moodConfig.accentColor
+                                                ? `${moodConfig.accentColor}14`
                                                 : moodConfig.itemStyle.background,
                                             color: activeCategory?.id === cat.id
-                                                ? '#000'
+                                                ? moodConfig.accentColor
                                                 : moodConfig.bodyColor,
                                             fontFamily: moodConfig.bodyFont,
                                             fontSize: 13,
-                                            fontWeight: activeCategory?.id === cat.id ? 600 : 400,
+                                            fontWeight: activeCategory?.id === cat.id ? 700 : 500,
                                             whiteSpace: 'nowrap',
                                             cursor: 'pointer',
                                             transition: 'all 0.2s ease',
                                             flexShrink: 0,
+                                            scrollSnapAlign: 'start',
                                             WebkitTapHighlightColor: 'transparent',
                                         }}
                                     >
                                         <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
                                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                                 <CategoryIcon
-                                                    color={activeCategory?.id === cat.id ? '#000' : moodConfig.bodyColor}
+                                                    color={activeCategory?.id === cat.id ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                    defaultIcon="LuTag"
                                                     icon={cat.icon}
+                                                    allowEmoji={false}
                                                     size={14}
                                                 />
                                             ) : null}
-                                            <span>{cat.name?.[activeLanguage]}</span>
+                                            <span>{getMenuText(cat.name)}</span>
                                         </span>
                                     </button>
                                 ))}
@@ -1025,11 +1042,13 @@ function MenuPageNew({
                                                     {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                                         <CategoryIcon
                                                             color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                            defaultIcon="LuTag"
                                                             icon={cat.icon}
+                                                            allowEmoji={false}
                                                             size={15}
                                                         />
                                                     ) : null}
-                                                    <span>{cat.name?.[activeLanguage]}</span>
+                                                    <span>{getMenuText(cat.name)}</span>
                                                 </span>
                                             </button>
                                         );
@@ -1044,6 +1063,7 @@ function MenuPageNew({
                             {allCategories.map((category: any) => {
                                 const items = getItemsForCategory(category.id);
                                 if (items.length === 0 && debouncedSearch) return null;
+                                const categoryHasImages = items.some((item: any) => !!item.images?.[0]?.url);
 
                                 // #31: Progressive rendering — show placeholder for off-screen categories
                                 const isCategoryVisible = !useProgressiveRender || visibleCategoryIds.has(category.id);
@@ -1066,18 +1086,24 @@ function MenuPageNew({
                                                             alignItems: 'center',
                                                             background: `${moodConfig.accentColor}12`,
                                                             border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                            borderRadius: 10,
+                                                            borderRadius: 8,
                                                             display: 'flex',
                                                             flexShrink: 0,
-                                                            height: 32,
+                                                            height: 28,
                                                             justifyContent: 'center',
-                                                            width: 32,
+                                                            width: 28,
                                                         }}
                                                     >
-                                                        <CategoryIcon color={moodConfig.headingColor} icon={category.icon} size={18} />
+                                                        <CategoryIcon
+                                                            color={moodConfig.headingColor}
+                                                            defaultIcon="LuTag"
+                                                            icon={category.icon}
+                                                            allowEmoji={false}
+                                                            size={16}
+                                                        />
                                                     </div>
                                                 ) : null}
-                                                <h2 style={categoryHeaderStyle}>{category.name?.[activeLanguage]}</h2>
+                                                <h2 style={categoryHeaderStyle}>{getMenuText(category.name, 'Category')}</h2>
                                             </div>
                                             {moodConfig.categoryStyle.dividerStyle === 'line' && <div style={dividerStyle} />}
                                         </header>
@@ -1099,7 +1125,8 @@ function MenuPageNew({
                                                     const isAvailable = item.available !== false;
 
                                                     // G10 ENFORCEMENT: Image quota per category
-                                                    const showItemImage = showImages && itemIndex < layoutConfig.maxImagesPerCategory;
+                                                    const reserveItemImageSlot = showImages && categoryHasImages && itemIndex < layoutConfig.maxImagesPerCategory;
+                                                    const itemImageUrl = item.images?.[0]?.url;
 
                                                     return (
                                                         <article
@@ -1124,48 +1151,65 @@ function MenuPageNew({
                                                             }
                                                             role="button"
                                                             tabIndex={isAvailable ? 0 : -1}
+                                                            aria-label={getMenuText(item.name, 'Menu item')}
                                                         >
-                                                            {showItemImage && item.images?.[0]?.url && (
+                                                            {reserveItemImageSlot && (
                                                                 <div
                                                                     style={{
                                                                         position: 'relative',
                                                                         width: imageOnTop ? '100%' : (isMobile ? 64 : 80),
-                                                                        height: imageOnTop ? 140 : (isMobile ? 64 : 80),
+                                                                        height: imageOnTop ? (isMobile ? 124 : 132) : (isMobile ? 64 : 80),
                                                                         borderRadius: moodConfig.itemStyle.imageRadius || 6,
                                                                         overflow: 'hidden',
                                                                         flexShrink: 0,
-                                                                        backgroundColor: moodConfig.itemStyle.background,
+                                                                        backgroundColor: `${moodConfig.accentColor}08`,
+                                                                        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                                                     }}
                                                                     data-image-container={item.id}
                                                                 >
-                                                                    <Image
-                                                                        src={item.images[0].url}
-                                                                        alt={item.name?.[activeLanguage] || 'Menu item'}
-                                                                        fill
-                                                                        style={{ objectFit: 'cover' }}
-                                                                        sizes={isDesktop ? '300px' : '(max-width: 768px) 50vw, 200px'}
-                                                                        onError={(e) => {
-                                                                            // G04 Runtime Fallback: Hide broken images gracefully
-                                                                            const container = e.currentTarget.parentElement;
-                                                                            if (container) {
-                                                                                container.style.display = 'none';
-                                                                            }
-                                                                        }}
-                                                                    />
+                                                                    {!itemImageUrl && (
+                                                                        <div
+                                                                            aria-hidden="true"
+                                                                            style={{
+                                                                                alignItems: 'center',
+                                                                                color: moodConfig.bodyColor,
+                                                                                display: 'flex',
+                                                                                inset: 0,
+                                                                                justifyContent: 'center',
+                                                                                opacity: 0.28,
+                                                                                position: 'absolute',
+                                                                            }}
+                                                                        >
+                                                                            <LuImage size={imageOnTop ? 22 : 18} />
+                                                                        </div>
+                                                                    )}
+                                                                    {itemImageUrl && (
+                                                                        <Image
+                                                                            src={itemImageUrl}
+                                                                            alt={getMenuText(item.name, 'Menu item')}
+                                                                            fill
+                                                                            style={{ objectFit: 'cover' }}
+                                                                            sizes={isDesktop ? '300px' : '(max-width: 768px) 50vw, 200px'}
+                                                                            onError={(e) => {
+                                                                                // G04 Runtime Fallback: Keep the reserved slot to avoid scroll jumps.
+                                                                                e.currentTarget.style.opacity = '0';
+                                                                            }}
+                                                                        />
+                                                                    )}
                                                                 </div>
                                                             )}
 
                                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                                                    <h3 style={itemNameStyle}>{item.name?.[activeLanguage]}</h3>
+                                                                    <h3 style={itemNameStyle}>{getMenuText(item.name, 'Menu item')}</h3>
                                                                     {showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (
                                                                         <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>
                                                                             {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                {item.description?.[activeLanguage] && (
-                                                                    <p style={itemDescStyle}>{item.description[activeLanguage]}</p>
+                                                                {getMenuText(item.description) && (
+                                                                    <p style={itemDescStyle}>{getMenuText(item.description)}</p>
                                                                 )}
                                                                 {!isAvailable && (
                                                                     <span style={{ fontSize: 11, fontWeight: 500, color: '#ef4444', marginTop: 4 }}>
@@ -1248,7 +1292,7 @@ function MenuPageNew({
                                                     cursor: 'pointer',
                                                 }}
                                             >
-                                                {category.name?.[activeLanguage] || category.name?.en}
+                                                {getMenuText(category.name, 'Category')}
                                             </button>
                                         ))}
                                         {recoveryActions.map((action) => (

@@ -8,6 +8,7 @@
  * Tag format matches page.tsx cached wrappers:
  * - `menu-store-${storeId}` → project data, decision blocks
  * - `store-${storeId}` → store details
+ * - `client-stores` → public lookup and OBP summary helpers
  *
  * 3-Year Freeze: Without instant invalidation, price changes
  * could show stale data for up to 60s — unacceptable for infra product.
@@ -19,4 +20,5 @@ import { revalidateTag } from "next/cache";
 export async function revalidateMenuCache(storeId: string | number) {
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
+    revalidateTag('client-stores');
 }

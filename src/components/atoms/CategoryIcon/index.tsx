@@ -4,6 +4,7 @@ import * as LuIcons from 'react-icons/lu';
 interface CategoryIconProps {
     icon: unknown;
     defaultIcon?: keyof typeof LuIcons | null;
+    allowEmoji?: boolean;
     color?: string;
     size?: number;
     style?: React.CSSProperties;
@@ -31,6 +32,7 @@ function normalizeIconValue(icon: unknown): string {
 const CategoryIcon = ({
     icon,
     defaultIcon = null,
+    allowEmoji = true,
     color,
     size = 20,
     style = {},
@@ -56,6 +58,10 @@ const CategoryIcon = ({
     }
 
     if (normalizedIcon.startsWith('emoji:')) {
+        if (!allowEmoji) {
+            const FallbackIcon = defaultIcon ? LuIcons[defaultIcon] : LuIcons.LuFolder;
+            return <FallbackIcon className={className} size={size} color={resolvedColor} style={style} />;
+        }
         const emoji = normalizedIcon.replace('emoji:', '');
         return <span className={className} style={{ fontSize: `${size}px`, lineHeight: 1, ...style }}>{emoji}</span>;
     }

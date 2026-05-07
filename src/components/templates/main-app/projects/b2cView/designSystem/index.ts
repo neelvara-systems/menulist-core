@@ -89,16 +89,16 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
     [MenuMood.CLEAN]: {
         label: 'Clean & Calm',
         description: 'Professional, clinic-safe',
-        // Container - LIGHT BACKGROUND (Constitutional M1)
-        background: '#FFFFFF',
+        // Container - light but contained (Constitutional M1)
+        background: '#f7f8fa',
         backgroundOverlay: undefined,
         // Typography - Modern, readable
         headingFont: '"Inter", -apple-system, sans-serif',
         bodyFont: '"Inter", sans-serif',
         headingColor: '#1a1a1a',
         bodyColor: '#4a4a4a',
-        priceColor: '#059669',
-        descriptionColor: '#6b7280',
+        priceColor: '#047857',
+        descriptionColor: '#5f6b7a',
         // Spacing - Generous whitespace
         spacing: 'relaxed',
         // Visual - High contrast on light
@@ -109,18 +109,18 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         // Category - Minimal
         categoryStyle: {
             background: 'transparent',
-            borderColor: 'rgba(0, 0, 0, 0.08)',
+            borderColor: 'rgba(17, 24, 39, 0.12)',
             borderRadius: 0,
             borderWidth: 0,
-            titleTransform: 'uppercase',
-            titleLetterSpacing: '1px',
+            titleTransform: 'none',
+            titleLetterSpacing: '0',
             dividerStyle: 'line',
-            dividerColor: 'rgba(0, 0, 0, 0.1)',
+            dividerColor: 'rgba(17, 24, 39, 0.12)',
         },
         // Item - Clean cards
         itemStyle: {
-            background: '#f9fafb',
-            borderColor: 'rgba(0, 0, 0, 0.08)',
+            background: '#ffffff',
+            borderColor: 'rgba(17, 24, 39, 0.12)',
             borderRadius: 8,
             borderWidth: 1,
             hoverEffect: 'none',
@@ -162,7 +162,7 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
             borderRadius: 4,
             borderWidth: 0,
             titleTransform: 'capitalize',
-            titleLetterSpacing: '0.5px',
+            titleLetterSpacing: '0',
             dividerStyle: 'line',
             dividerColor: 'rgba(234, 88, 12, 0.2)',
         },
@@ -190,8 +190,8 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         // Container - Deep navy
         background: '#0f172a',
         backgroundOverlay: undefined,
-        // Typography - Serif elegance
-        headingFont: '"Playfair Display", Georgia, serif',
+        // Typography - restrained public information hierarchy
+        headingFont: '"Inter", -apple-system, sans-serif',
         bodyFont: '"Inter", sans-serif',
         headingColor: '#d4af37',
         bodyColor: 'rgba(255, 255, 255, 0.65)',
@@ -210,8 +210,8 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
             borderColor: 'rgba(212, 175, 55, 0.15)',
             borderRadius: 0,
             borderWidth: 0,
-            titleTransform: 'uppercase',
-            titleLetterSpacing: '3px',
+            titleTransform: 'none',
+            titleLetterSpacing: '0',
             dividerStyle: 'line',
             dividerColor: 'rgba(212, 175, 55, 0.2)',
         },
@@ -259,8 +259,8 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
             borderColor: 'rgba(59, 130, 246, 0.15)',
             borderRadius: 8,
             borderWidth: 1,
-            titleTransform: 'uppercase',
-            titleLetterSpacing: '2px',
+            titleTransform: 'none',
+            titleLetterSpacing: '0',
             dividerStyle: 'line',
             dividerColor: 'rgba(59, 130, 246, 0.2)',
         },
@@ -308,8 +308,8 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
             borderColor: '#d1d5db',
             borderRadius: 4, // Smaller than others
             borderWidth: 1,
-            titleTransform: 'uppercase',
-            titleLetterSpacing: '0.5px',
+            titleTransform: 'none',
+            titleLetterSpacing: '0',
             dividerStyle: 'line',
             dividerColor: '#d1d5db',
         },
