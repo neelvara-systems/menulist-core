@@ -445,13 +445,18 @@ export interface ResolvedMenuDesignConfig extends Record<string, any> {
 }
 
 export function resolveMenuDesignConfig(menuConfig: Record<string, any> | null | undefined): ResolvedMenuDesignConfig {
+    const rawConfig = menuConfig || {};
     const mood = normalizeMenuMood(menuConfig?.mood);
     const layout = normalizeMenuLayout(menuConfig?.layout, mood);
 
     return {
-        ...(menuConfig || {}),
+        ...rawConfig,
         mood,
         layout,
+        showItemPrices: rawConfig.showItemPrices ?? true,
+        showImages: rawConfig.showImages ?? true,
+        showCategoryIcons: rawConfig.showCategoryIcons ?? true,
+        showCategoryTabs: rawConfig.showCategoryTabs ?? false,
     };
 }
 

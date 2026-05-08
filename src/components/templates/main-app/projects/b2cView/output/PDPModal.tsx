@@ -212,7 +212,7 @@ function PDPModal({
                             <button
                                 onClick={onClose}
                                 className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-                                aria-label="Close"
+                                aria-label="Close item details"
                                 style={{
                                     position: 'absolute',
                                     top: 16,
@@ -252,8 +252,8 @@ function PDPModal({
                                         src={images[currentImageIndex]?.url}
                                         alt={getModalText(item.name, 'Menu item')}
                                         fill
-                                        className="object-cover"
-                                        style={{ objectFit: 'cover' }}
+                                        className="object-contain"
+                                        style={{ objectFit: 'contain' }}
                                         sizes="(max-width: 768px) 100vw, 42rem"
                                         priority
                                     />

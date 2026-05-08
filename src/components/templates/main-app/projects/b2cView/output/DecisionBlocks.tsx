@@ -28,6 +28,7 @@ import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlo
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { DecisionBlockEntry, PrecomputedDecisionBlocks } from '../../types';
 import { ExtractedDataCategory, ExtractedDataItem } from '../../types/extractedData.types';
@@ -58,6 +59,30 @@ interface ComputedBlock {
     item: ExtractedDataItem;
     reason: string;                      // i18n key or plain text
     reasonParams?: Record<string, any>;  // Optional params for interpolation
+}
+
+const OWNER_PINNED_TITLES: Record<DecisionBlockType, string> = {
+    popular: 'Featured choice',
+    quickPick: 'Quick choice',
+    bestValue: 'Value choice',
+};
+
+function getLocalizedMenuText(value: unknown, language: string, fallback = ''): string {
+    if (typeof value === 'string') return value || fallback;
+    if (!value || typeof value !== 'object') return fallback;
+
+    const localized = value as Record<string, unknown>;
+    const direct = localized[language];
+    if (typeof direct === 'string' && direct.trim()) return direct;
+
+    const english = localized.en;
+    if (typeof english === 'string' && english.trim()) return english;
+
+    const firstText = Object.values(localized).find((entry): entry is string => (
+        typeof entry === 'string' && entry.trim().length > 0
+    ));
+
+    return firstText || fallback;
 }
 
 /**
@@ -474,6 +499,12 @@ export default function DecisionBlocks({
     trackingEnabled = true,
 }: DecisionBlocksProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const categoryLabelById = useMemo(() => {
+        return new Map(categories.map((category) => [
+            category.id,
+            getLocalizedMenuText(category.name, activeLanguage),
+        ]));
+    }, [activeLanguage, categories]);
 
     /**
      * Translate reason key to localized text
@@ -612,118 +643,264 @@ export default function DecisionBlocks({
         return null;
     }
 
+    const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
+
     return (
-        <div
-            ref={containerRef}
-            className="w-full overflow-x-auto scrollbar-hide"
+        <section
+            aria-label="Featured choices"
             style={{
-                paddingBottom: 16,
-                marginBottom: 8,
+                boxSizing: 'border-box',
+                marginBottom: 14,
+                maxWidth: '100%',
+                minWidth: 0,
+                overflow: 'hidden',
+                width: '100%',
             }}
         >
             <div
-                className="flex gap-3 px-4"
                 style={{
+                    alignItems: 'center',
                     display: 'flex',
-                    gap: 12,
-                    paddingInline: 16,
-                    minWidth: 'max-content',
+                    gap: 10,
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
                 }}
             >
-                {blocks.map((rec, index) => {
-                    const labels = getBlockLabels(rec.blockType, businessType);
-                    // Guard: labels should never be null here since blocks are pre-filtered by enabledBlocks
-                    // But we check for type safety
-                    if (!labels) return null;
+                <h2
+                    style={{
+                        color: moodConfig.headingColor,
+                        fontFamily: moodConfig.bodyFont,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        letterSpacing: 0,
+                        lineHeight: '18px',
+                        margin: 0,
+                    }}
+                >
+                    Featured
+                </h2>
+                {allBlocksOwnerPinned && (
+                    <span
+                        style={{
+                            color: moodConfig.descriptionColor || moodConfig.bodyColor,
+                            fontFamily: moodConfig.bodyFont,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            lineHeight: '16px',
+                            opacity: 0.78,
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        Business picks
+                    </span>
+                )}
+            </div>
 
-                    const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
-                    const itemImage = rec.item.images?.[0]?.url;
-                    const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
-                    const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
-                    const displayTitle = isOwnerPinned ? 'Featured by business' : labels.title;
-                    const displayReason = isOwnerPinned
-                        ? 'Selected by the business'
-                        : translateReason(rec.reason, rec.reasonParams);
+            <div
+                ref={containerRef}
+                className="w-full overflow-x-auto scrollbar-hide"
+                style={{
+                    boxSizing: 'border-box',
+                    contain: 'layout paint',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    overflowX: 'auto',
+                    paddingBottom: 8,
+                    overscrollBehaviorX: 'contain',
+                    scrollPaddingInline: 0,
+                    scrollSnapType: 'x proximity',
+                    WebkitOverflowScrolling: 'touch',
+                    width: '100%',
+                }}
+            >
+                <div
+                    className="flex"
+                    style={{
+                        display: 'flex',
+                        gap: 10,
+                        minWidth: 'max-content',
+                        paddingRight: 14,
+                        width: 'max-content',
+                    }}
+                >
+                    {blocks.map((rec) => {
+                        const labels = getBlockLabels(rec.blockType, businessType);
+                        // Guard: labels should never be null here since blocks are pre-filtered by enabledBlocks
+                        // But we check for type safety
+                        if (!labels) return null;
 
-                    // P3.1: Visual Hierarchy - first block is slightly larger/prominent
-                    const isFirstBlock = index === 0;
+                        const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, 'Menu item');
+                        const itemImage = rec.item.images?.[0]?.url;
+                        const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
+                        const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
+                        const categoryLabel = categoryLabelById.get(rec.item.category);
+                        const displayTitle = isOwnerPinned ? OWNER_PINNED_TITLES[rec.blockType] : labels.title;
+                        const displayMeta = isOwnerPinned
+                            ? categoryLabel
+                            : translateReason(rec.reason, rec.reasonParams);
 
-                    return (
-                        <button
-                            key={rec.blockType}
-                            onClick={() => handleClick(rec)}
-                            className="flex-shrink-0 flex items-center gap-3 p-3 rounded-xl transition-all duration-150 active:scale-[0.98] hover:shadow-md"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 12,
-                                background: moodConfig.itemStyle.background,
-                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                // P3.1: First block is slightly wider for visual hierarchy
-                                minWidth: isFirstBlock ? 220 : 200,
-                                maxWidth: isFirstBlock ? 300 : 280,
-                            }}
-                        >
-                            {/* Item Image (optional) */}
-                            {itemImage && (
+                        return (
+                            <button
+                                key={rec.blockType}
+                                onClick={() => handleClick(rec)}
+                                aria-label={[
+                                    displayTitle,
+                                    itemName,
+                                    displayMeta,
+                                    showItemPrices && itemPrice ? itemPrice : null,
+                                ].filter(Boolean).join('. ')}
+                                className="flex-shrink-0 transition-all duration-150 active:scale-[0.98] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+                                style={{
+                                    '--tw-ring-color': `${moodConfig.accentColor}AA`,
+                                    alignItems: itemImage ? 'center' : 'stretch',
+                                    appearance: 'none',
+                                    background: moodConfig.itemStyle.background,
+                                    border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                    borderRadius: Math.min(10, moodConfig.itemStyle.borderRadius || 10),
+                                    boxShadow: '0 1px 0 rgba(0, 0, 0, 0.03)',
+                                    color: moodConfig.bodyColor,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    flexShrink: 0,
+                                    gap: itemImage ? 10 : 0,
+                                    minHeight: 86,
+                                    outline: 'none',
+                                    overflow: 'hidden',
+                                    padding: itemImage ? 10 : 12,
+                                    position: 'relative',
+                                    scrollSnapAlign: 'start',
+                                    textAlign: 'left',
+                                    width: itemImage ? 'min(82vw, 316px)' : 'min(74vw, 292px)',
+                                    WebkitTapHighlightColor: 'transparent',
+                                } as CSSProperties}
+                            >
+                                {itemImage && (
+                                    <div
+                                        className="relative flex-shrink-0 overflow-hidden"
+                                        style={{
+                                            background: `${moodConfig.accentColor}12`,
+                                            borderRadius: Math.min(8, moodConfig.itemStyle.imageRadius || 8),
+                                            height: 58,
+                                            width: 58,
+                                        }}
+                                    >
+                                        <Image
+                                            src={itemImage}
+                                            alt={itemName}
+                                            fill
+                                            className="object-cover"
+                                            sizes="58px"
+                                        />
+                                    </div>
+                                )}
+
                                 <div
-                                    className="relative flex-shrink-0 overflow-hidden rounded-lg"
-                                    style={{ width: 56, height: 56 }}
-                                >
-                                    <Image
-                                        src={itemImage}
-                                        alt={itemName}
-                                        fill
-                                        className="object-cover"
-                                        sizes="56px"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Content */}
-                            <div className="flex-1 text-left min-w-0">
-                                {/* Block Label - P2.6: Only show icon if non-empty */}
-                                <div
-                                    className="flex items-center gap-1 text-xs font-medium mb-1"
-                                    style={{ color: moodConfig.accentColor }}
-                                >
-                                    {labels.icon && <span>{labels.icon}</span>}
-                                    <span>{displayTitle}</span>
-                                </div>
-
-                                {/* Item Name */}
-                                <div
-                                    className="text-sm font-semibold truncate"
+                                    className="min-w-0"
                                     style={{
-                                        color: moodConfig.headingColor,
-                                        fontFamily: moodConfig.headingFont,
+                                        display: 'flex',
+                                        flex: '1 1 auto',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between',
+                                        minWidth: 0,
+                                        paddingLeft: 0,
                                     }}
                                 >
-                                    {itemName}
-                                </div>
-
-                                {/* Reason + Price */}
-                                <div className="flex items-center justify-between gap-2 mt-1">
-                                    <span
-                                        className="text-xs truncate"
-                                        style={{ color: moodConfig.descriptionColor }}
-                                    >
-                                        {displayReason}
-                                    </span>
-                                    {showItemPrices && itemPrice ? (
-                                        <span
-                                            className="text-xs font-semibold flex-shrink-0"
-                                            style={{ color: moodConfig.priceColor }}
+                                    <div style={{ minWidth: 0 }}>
+                                        <div
+                                            style={{
+                                                alignItems: 'center',
+                                                color: moodConfig.accentColor,
+                                                display: 'flex',
+                                                fontFamily: moodConfig.bodyFont,
+                                                fontSize: 12,
+                                                fontWeight: 700,
+                                                gap: 6,
+                                                lineHeight: '16px',
+                                                marginBottom: 4,
+                                                minWidth: 0,
+                                            }}
                                         >
-                                            {itemPrice}
-                                        </span>
-                                    ) : null}
+                                            <span
+                                                style={{
+                                                    display: 'block',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {displayTitle}
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                color: moodConfig.headingColor,
+                                                display: '-webkit-box',
+                                                fontFamily: moodConfig.headingFont,
+                                                fontSize: 14,
+                                                fontWeight: 700,
+                                                lineHeight: '19px',
+                                                overflow: 'hidden',
+                                                WebkitBoxOrient: 'vertical',
+                                                WebkitLineClamp: 2,
+                                            }}
+                                        >
+                                            {itemName}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            alignItems: 'center',
+                                            display: 'flex',
+                                            gap: 10,
+                                            justifyContent: 'space-between',
+                                            marginTop: 10,
+                                            minWidth: 0,
+                                        }}
+                                    >
+                                        {displayMeta ? (
+                                            <span
+                                                style={{
+                                                    color: moodConfig.descriptionColor || moodConfig.bodyColor,
+                                                    display: 'block',
+                                                    fontFamily: moodConfig.bodyFont,
+                                                    fontSize: 12,
+                                                    fontWeight: 500,
+                                                    lineHeight: '16px',
+                                                    minWidth: 0,
+                                                    opacity: 0.82,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {displayMeta}
+                                            </span>
+                                        ) : (
+                                            <span />
+                                        )}
+                                        {showItemPrices && itemPrice ? (
+                                            <span
+                                                style={{
+                                                    color: moodConfig.priceColor,
+                                                    flexShrink: 0,
+                                                    fontFamily: moodConfig.bodyFont,
+                                                    fontSize: 13,
+                                                    fontWeight: 700,
+                                                    lineHeight: '18px',
+                                                }}
+                                            >
+                                                {itemPrice}
+                                            </span>
+                                        ) : null}
+                                    </div>
                                 </div>
-                            </div>
-                        </button>
-                    );
-                })}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+        </section>
     );
 }

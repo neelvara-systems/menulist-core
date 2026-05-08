@@ -139,6 +139,7 @@ const renderHighlightedText = (
         <>
             {before}
             <mark
+                data-search-highlight="true"
                 style={{
                     background: `${accentColor}22`,
                     borderRadius: 3,
@@ -176,6 +177,7 @@ function MenuPageNew({
     const { trackMenuItemTap } = useContext(AnalyticsContext);
     const isPublicSurface = from === 'main-website';
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const categoryTabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
     const getMenuBasePath = useCallback(() => {
         if (typeof window === 'undefined') return '/menu';
 
@@ -238,11 +240,12 @@ function MenuPageNew({
     );
 
     // Layout properties from config
-    const isGridLayout = layoutConfig.itemsPerRow > 1;
-    const imageOnTop = layoutConfig.imagePosition === 'top';
+    const layoutAllowsImages = layoutConfig.showImages && layoutConfig.imagePosition !== 'none';
+    const shouldShowItemImages = showImages && layoutAllowsImages;
+    const imageOnTop = shouldShowItemImages && layoutConfig.imagePosition === 'top';
 
     // Responsive grid: desktop owns the multi-column rail model; mobile/tablet use a deterministic single-column scan.
-    const gridColumns = isDesktop ? (isGridLayout ? 3 : 2) : 1;
+    const gridColumns = isDesktop ? Math.max(1, layoutConfig.itemsPerRow) : 1;
 
     // State
     const [searchTerm, setSearchTerm] = useState('');
@@ -470,7 +473,7 @@ function MenuPageNew({
         };
     }, [storageKey, activeFilter, activeCategory, allCategories, getScrollPosition]);
 
-    const showTabsBar = !isDesktop && (showCategoryTabs || isTablet);
+    const showTabsBar = !isDesktop && showCategoryTabs;
     const showSectionsControl = !isDesktop && allCategories.length >= 2;
     const stickyControlsOffset = isDesktop ? 96 : showTabsBar ? 124 : 76;
 
@@ -892,16 +895,19 @@ function MenuPageNew({
 
         const container = getActiveScrollContainer();
         const offset = stickyControlsOffset + 12;
+        const initialElementRect = element.getBoundingClientRect();
+        const documentTop = Math.max(0, window.scrollY + initialElementRect.top - offset);
+        const containerTop = container
+            ? Math.max(0, container.scrollTop + initialElementRect.top - container.getBoundingClientRect().top - offset)
+            : null;
 
-        if (container) {
-            const containerRect = container.getBoundingClientRect();
-            const top = container.scrollTop + element.getBoundingClientRect().top - containerRect.top - offset;
-            container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-            return true;
+        if (container && containerTop !== null) {
+            container.scrollTo({ top: containerTop, behavior: 'smooth' });
         }
-
-        const top = window.scrollY + element.getBoundingClientRect().top - offset;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        window.scrollTo({ top: documentTop, behavior: 'smooth' });
+        window.setTimeout(() => {
+            window.dispatchEvent(new Event('scroll'));
+        }, 420);
         return true;
     }, [getActiveScrollContainer, stickyControlsOffset]);
 
@@ -917,10 +923,15 @@ function MenuPageNew({
         setActiveCategory(category);
     }, [scrollToCategoryElement]);
 
-    const handleBrowseCategorySelect = useCallback((category: any) => {
+    const handleBrowseCategorySelect = useCallback((category: any, source?: string) => {
         if (searchTerm || debouncedSearch) {
             setPendingBrowseCategory(category);
             clearSearch();
+            return;
+        }
+
+        if (source === 'CATEGORY-ANCHOR' || source === 'MENU-POPOVER') {
+            setActiveCategory(category);
             return;
         }
 
@@ -928,6 +939,7 @@ function MenuPageNew({
     }, [clearSearch, debouncedSearch, handleCategorySelect, searchTerm]);
 
     const displayActiveCategory = debouncedSearch ? null : activeCategory;
+    const activeCategoryTabId = displayActiveCategory?.id;
 
     useEffect(() => {
         if (!pendingBrowseCategory || searchTerm || debouncedSearch) return;
@@ -940,14 +952,32 @@ function MenuPageNew({
         return () => cancelAnimationFrame(frame);
     }, [debouncedSearch, handleCategorySelect, pendingBrowseCategory, searchTerm]);
 
+    useEffect(() => {
+        if (isDesktop || !showTabsBar || !activeCategoryTabId) return;
+
+        const tab = categoryTabRefs.current[activeCategoryTabId];
+        if (!tab) return;
+
+        const frame = requestAnimationFrame(() => {
+            tab.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center',
+            });
+        });
+
+        return () => cancelAnimationFrame(frame);
+    }, [activeCategoryTabId, isDesktop, showTabsBar]);
+
     // Styles
     const containerStyle: React.CSSProperties = {
         minHeight: from === 'main-website' ? '100dvh' : 'calc(100dvh - 76px)',
         background: backgroundImage
-            ? `url(${backgroundImage}) center/cover no-repeat fixed`
+            ? `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url(${backgroundImage}) center/cover no-repeat fixed`
             : moodConfig.background,
         display: 'flex',
         flexDirection: 'column',
+        overflowX: 'clip',
         position: 'relative',
     };
 
@@ -957,6 +987,8 @@ function MenuPageNew({
         paddingRight: spacing.container,
         paddingBottom: `calc(${spacing.container}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 24}px)`,
         paddingLeft: spacing.container,
+        boxSizing: 'border-box',
+        overflowX: 'clip',
         overflowY: isPublicSurface ? 'visible' : 'auto',
         scrollPaddingTop: `calc(72px + env(safe-area-inset-top))`,
         scrollPaddingBottom: `calc(96px + env(safe-area-inset-bottom))`,
@@ -966,6 +998,8 @@ function MenuPageNew({
         maxWidth: isDesktop ? 1200 : isTablet ? 960 : 768,
         margin: '0 auto',
         width: '100%',
+        boxSizing: 'border-box',
+        overflowX: 'clip',
     };
     const stickyControlsStyle: React.CSSProperties = {
         position: 'sticky',
@@ -987,6 +1021,8 @@ function MenuPageNew({
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
         gap: 6,
+        maxWidth: '100%',
+        minWidth: 0,
         overflowX: 'auto',
         paddingTop: 0,
         paddingRight: 0,
@@ -998,6 +1034,11 @@ function MenuPageNew({
         scrollSnapType: 'x proximity',
         WebkitOverflowScrolling: 'touch',
     };
+    const categoryNavRadius = Math.max(4, moodConfig.categoryStyle.borderRadius ?? 0);
+    const categoryNavBackground = moodConfig.categoryStyle.background !== 'transparent'
+        ? moodConfig.categoryStyle.background
+        : moodConfig.itemStyle.background;
+    const categoryNavBorderWidth = moodConfig.categoryStyle.borderWidth ?? 1;
     const bottomMetaTheme = {
         background: moodConfig.background,
         mutedColor: moodConfig.descriptionColor || moodConfig.bodyColor,
@@ -1012,23 +1053,70 @@ function MenuPageNew({
     };
 
     const categoryHeaderStyle: React.CSSProperties = {
-        fontFamily: moodConfig.bodyFont,
+        fontFamily: moodConfig.headingFont,
         fontSize: isMobile ? 14 : 15,
         fontWeight: 700,
         color: moodConfig.headingColor,
         margin: 0,
-        marginBottom: Math.max(6, spacing.item - 4),
-        textTransform: 'none',
-        letterSpacing: 0,
+        textTransform: moodConfig.categoryStyle.titleTransform || 'none',
+        letterSpacing: moodConfig.categoryStyle.titleLetterSpacing || '0',
         lineHeight: 1.3,
     };
 
-    const dividerStyle: React.CSSProperties = {
-        height: 1,
-        width: 48,
-        background: moodConfig.categoryStyle.dividerColor || moodConfig.accentColor,
-        marginTop: 6,
-        marginBottom: Math.max(8, spacing.item - 2),
+    const getCategoryHeaderFrameStyle = (): React.CSSProperties => {
+        const categoryBorderWidth = moodConfig.categoryStyle.borderWidth || 0;
+        const hasCategorySurface =
+            categoryBorderWidth > 0 ||
+            moodConfig.categoryStyle.background !== 'transparent';
+
+        return {
+            marginBottom: Math.max(8, spacing.item - 2),
+            ...(hasCategorySurface && {
+                background: moodConfig.categoryStyle.background,
+                border: categoryBorderWidth > 0
+                    ? `${categoryBorderWidth}px solid ${moodConfig.categoryStyle.borderColor}`
+                    : 'none',
+                borderRadius: moodConfig.categoryStyle.borderRadius,
+                padding: isMobile ? 8 : spacing.item,
+            }),
+        };
+    };
+
+    const getDividerStyle = (): React.CSSProperties | null => {
+        const dividerColor = moodConfig.categoryStyle.dividerColor || moodConfig.accentColor;
+        const baseStyle: React.CSSProperties = {
+            marginTop: 8,
+            marginBottom: 0,
+            opacity: 0.72,
+        };
+
+        switch (moodConfig.categoryStyle.dividerStyle) {
+            case 'line':
+                return {
+                    ...baseStyle,
+                    height: 1,
+                    width: 56,
+                    background: dividerColor,
+                };
+            case 'gradient':
+                return {
+                    ...baseStyle,
+                    height: 1,
+                    width: '100%',
+                    background: `linear-gradient(90deg, ${dividerColor}, transparent)`,
+                };
+            case 'dots':
+                return {
+                    ...baseStyle,
+                    height: 4,
+                    width: 44,
+                    backgroundImage: `radial-gradient(circle, ${dividerColor} 1.5px, transparent 1.5px)`,
+                    backgroundSize: '10px 4px',
+                    backgroundRepeat: 'repeat-x',
+                };
+            default:
+                return null;
+        }
     };
 
     const getItemStyle = (): React.CSSProperties => ({
@@ -1042,6 +1130,33 @@ function MenuPageNew({
         cursor: 'pointer',
         transition: 'transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease',
     });
+
+    const handleItemMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
+        const hoverEffect = moodConfig.itemStyle.hoverEffect || 'none';
+        if (hoverEffect === 'none') return;
+
+        if (hoverEffect === 'lift') {
+            event.currentTarget.style.transform = 'translateY(-1px)';
+            event.currentTarget.style.boxShadow = '0 8px 18px rgba(0, 0, 0, 0.10)';
+            return;
+        }
+
+        if (hoverEffect === 'scale') {
+            event.currentTarget.style.transform = 'scale(1.01)';
+            return;
+        }
+
+        if (hoverEffect === 'glow') {
+            event.currentTarget.style.boxShadow =
+                moodConfig.itemStyle.hoverGlow || `0 0 0 3px ${moodConfig.accentColor}14`;
+        }
+    };
+
+    const handleItemMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
+        if ((moodConfig.itemStyle.hoverEffect || 'none') === 'none') return;
+        event.currentTarget.style.transform = '';
+        event.currentTarget.style.boxShadow = '';
+    };
 
     const itemNameStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
@@ -1111,7 +1226,7 @@ function MenuPageNew({
     const searchResultSummaryStyle: React.CSSProperties = {
         alignItems: 'center',
         border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-        borderRadius: 10,
+        borderRadius: moodConfig.itemStyle.borderRadius,
         color: moodConfig.bodyColor,
         display: 'flex',
         fontFamily: moodConfig.bodyFont,
@@ -1127,6 +1242,16 @@ function MenuPageNew({
         <div style={containerStyle}>
             <div ref={scrollContainerRef} style={scrollContentStyle}>
                 <div style={contentStyle}>
+                    <div
+                        id="menu-top"
+                        data-menu-top-anchor
+                        aria-hidden="true"
+                        style={{
+                            height: 1,
+                            pointerEvents: 'none',
+                            width: 1,
+                        }}
+                    />
                     {/* Sticky command layer: retrieval first, section navigation second */}
                     <div style={stickyControlsStyle}>
                         <div style={commandLayerStyle}>
@@ -1170,22 +1295,29 @@ function MenuPageNew({
                                 className="hide-scrollbar"
                             >
                                 {allCategories.map((cat: any) => (
-                                    <button
+                                    <a
                                         key={cat.id}
-                                        onClick={() => handleBrowseCategorySelect(cat)}
+                                        ref={(element) => {
+                                            categoryTabRefs.current[cat.id] = element;
+                                        }}
+                                        href={`#cat-${cat.id}`}
+                                        onClick={() => handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR')}
                                         style={{
+                                            boxSizing: 'border-box',
+                                            maxWidth: isMobile ? 220 : 260,
                                             minHeight: 40,
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             padding: '8px 12px',
-                                            borderRadius: 999,
+                                            lineHeight: '18px',
+                                            borderRadius: categoryNavRadius,
                                             border: displayActiveCategory?.id === cat.id
-                                                ? `1px solid ${moodConfig.accentColor}50`
-                                                : `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                ? `${Math.max(1, categoryNavBorderWidth)}px solid ${moodConfig.accentColor}50`
+                                                : `${categoryNavBorderWidth}px solid ${moodConfig.categoryStyle.borderColor}`,
                                             background: displayActiveCategory?.id === cat.id
                                                 ? `${moodConfig.accentColor}14`
-                                                : moodConfig.itemStyle.background,
+                                                : categoryNavBackground,
                                             color: displayActiveCategory?.id === cat.id
                                                 ? moodConfig.accentColor
                                                 : moodConfig.bodyColor,
@@ -1193,6 +1325,7 @@ function MenuPageNew({
                                             fontSize: 13,
                                             fontWeight: displayActiveCategory?.id === cat.id ? 600 : 500,
                                             whiteSpace: 'nowrap',
+                                            textDecoration: 'none',
                                             cursor: 'pointer',
                                             transition: 'all 0.2s ease',
                                             flexShrink: 0,
@@ -1200,7 +1333,7 @@ function MenuPageNew({
                                             WebkitTapHighlightColor: 'transparent',
                                         }}
                                     >
-                                        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
+                                        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8, maxWidth: '100%', minWidth: 0 }}>
                                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                                 <CategoryIcon
                                                     color={displayActiveCategory?.id === cat.id ? moodConfig.accentColor : moodConfig.bodyColor}
@@ -1209,9 +1342,20 @@ function MenuPageNew({
                                                     size={14}
                                                 />
                                             ) : null}
-                                            <span>{getMenuText(cat.name)}</span>
+                                            <span
+                                                style={{
+                                                    display: 'block',
+                                                    maxWidth: '100%',
+                                                    minWidth: 0,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {getMenuText(cat.name)}
+                                            </span>
                                         </span>
-                                    </button>
+                                    </a>
                                 ))}
                             </div>
                         )}
@@ -1253,7 +1397,11 @@ function MenuPageNew({
                     />
 
                     {debouncedSearch && filteredItems.length > 0 && (
-                        <div style={searchResultSummaryStyle} aria-live="polite">
+                        <div
+                            data-search-results-summary="true"
+                            style={searchResultSummaryStyle}
+                            aria-live="polite"
+                        >
                             <span>
                                 {filteredItems.length} {filteredItems.length === 1 ? 'result' : 'results'}
                                 {' '}across {searchResultSectionCount} {searchResultSectionCount === 1 ? 'section' : 'sections'}
@@ -1302,12 +1450,13 @@ function MenuPageNew({
                                     {allCategories.map((cat: any) => {
                                         const isActive = displayActiveCategory?.id === cat.id;
                                         return (
-                                            <button
+                                            <a
                                                 key={cat.id}
-                                                onClick={() => handleBrowseCategorySelect(cat)}
+                                                href={`#cat-${cat.id}`}
+                                                onClick={() => handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR')}
                                                 style={{
                                                     padding: '10px 16px',
-                                                    borderRadius: 8,
+                                                    borderRadius: categoryNavRadius,
                                                     border: 'none',
                                                     background: isActive ? `${moodConfig.accentColor}15` : 'transparent',
                                                     color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,
@@ -1317,19 +1466,23 @@ function MenuPageNew({
                                                     textAlign: 'left',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.15s ease',
-                                                    borderLeft: isActive ? `3px solid ${moodConfig.accentColor}` : '3px solid transparent',
+                                                    borderLeft: isActive
+                                                        ? `${Math.max(3, categoryNavBorderWidth)}px solid ${moodConfig.accentColor}`
+                                                        : `${Math.max(3, categoryNavBorderWidth)}px solid transparent`,
+                                                    display: 'block',
+                                                    textDecoration: 'none',
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
                                                 }}
                                                 onMouseEnter={(e) => {
                                                     if (!isActive) {
-                                                        (e.currentTarget as HTMLButtonElement).style.background = `${moodConfig.accentColor}08`;
+                                                        (e.currentTarget as HTMLAnchorElement).style.background = `${moodConfig.accentColor}08`;
                                                     }
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     if (!isActive) {
-                                                        (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                                                        (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
                                                     }
                                                 }}
                                             >
@@ -1344,7 +1497,7 @@ function MenuPageNew({
                                                     ) : null}
                                                     <span>{getMenuText(cat.name)}</span>
                                                 </span>
-                                            </button>
+                                            </a>
                                         );
                                     })}
                                 </div>
@@ -1358,6 +1511,8 @@ function MenuPageNew({
                                 const items = getItemsForCategory(category.id);
                                 if (items.length === 0 && debouncedSearch) return null;
                                 const categoryHasImages = items.some((item: any) => !!item.images?.[0]?.url);
+                                const categoryHeaderFrameStyle = getCategoryHeaderFrameStyle();
+                                const renderedDividerStyle = getDividerStyle();
 
                                 // #31: Progressive rendering — show placeholder for off-screen categories
                                 const isCategoryVisible = !useProgressiveRender || visibleCategoryIds.has(category.id);
@@ -1372,15 +1527,15 @@ function MenuPageNew({
                                             scrollMarginTop: `calc(${stickyControlsOffset + 16}px + env(safe-area-inset-top))`,
                                         }}
                                     >
-                                        <header>
+                                        <header style={categoryHeaderFrameStyle}>
                                             <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
                                                 {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                                                     <div
                                                         style={{
                                                             alignItems: 'center',
                                                             background: `${moodConfig.accentColor}12`,
-                                                            border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                            borderRadius: 8,
+                                                            border: `1px solid ${moodConfig.categoryStyle.borderColor}`,
+                                                            borderRadius: categoryNavRadius,
                                                             display: 'flex',
                                                             flexShrink: 0,
                                                             height: 28,
@@ -1398,7 +1553,7 @@ function MenuPageNew({
                                                 ) : null}
                                                 <h2 style={categoryHeaderStyle}>{getMenuText(category.name, 'Category')}</h2>
                                             </div>
-                                            {moodConfig.categoryStyle.dividerStyle === 'line' && <div style={dividerStyle} />}
+                                            {renderedDividerStyle && <div style={renderedDividerStyle} />}
                                         </header>
 
                                         {!isCategoryVisible ? (
@@ -1421,7 +1576,7 @@ function MenuPageNew({
                                                     const itemDecisionChips = getItemDecisionChips(item);
 
                                                     // G10 ENFORCEMENT: Image quota per category
-                                                    const reserveItemImageSlot = showImages && categoryHasImages && itemIndex < layoutConfig.maxImagesPerCategory;
+                                                    const reserveItemImageSlot = shouldShowItemImages && categoryHasImages && itemIndex < layoutConfig.maxImagesPerCategory;
                                                     const itemImageUrl = item.images?.[0]?.url;
 
                                                     return (
@@ -1435,6 +1590,8 @@ function MenuPageNew({
                                                                     handleItemClick(item);
                                                                 }
                                                             }}
+                                                            onMouseEnter={isAvailable ? handleItemMouseEnter : undefined}
+                                                            onMouseLeave={isAvailable ? handleItemMouseLeave : undefined}
                                                             style={{
                                                                 ...getItemStyle(),
                                                                 opacity: isAvailable ? 1 : 0.5,
@@ -1442,7 +1599,7 @@ function MenuPageNew({
                                                             }}
                                                             // G08 - Tap feedback + desktop hover
                                                             className={isAvailable
-                                                                ? 'active:scale-[0.98] active:opacity-90 transition-all duration-100 hover:shadow-md hover:-translate-y-px'
+                                                                ? 'active:scale-[0.98] active:opacity-90 transition-all duration-100'
                                                                 : ''
                                                             }
                                                             role="button"
@@ -1459,7 +1616,7 @@ function MenuPageNew({
                                                                         overflow: 'hidden',
                                                                         flexShrink: 0,
                                                                         backgroundColor: `${moodConfig.accentColor}08`,
-                                                                        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                                        border: moodConfig.itemStyle.imageBorder || `1px solid ${moodConfig.itemStyle.borderColor}`,
                                                                     }}
                                                                     data-image-container={item.id}
                                                                 >
@@ -1573,7 +1730,7 @@ function MenuPageNew({
                                             onClick={clearSearch}
                                             style={{
                                                 border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                borderRadius: 999,
+                                                borderRadius: categoryNavRadius,
                                                 padding: '8px 14px',
                                                 background: moodConfig.itemStyle.background,
                                                 color: moodConfig.accentColor,
@@ -1590,7 +1747,7 @@ function MenuPageNew({
                                                 onClick={() => handleBrowseCategorySelect(category)}
                                                 style={{
                                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                    borderRadius: 999,
+                                                    borderRadius: categoryNavRadius,
                                                     padding: '8px 14px',
                                                     background: moodConfig.itemStyle.background,
                                                     color: moodConfig.bodyColor,
@@ -1615,7 +1772,7 @@ function MenuPageNew({
                                                 rel={action.external ? 'noopener noreferrer' : undefined}
                                                 style={{
                                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                    borderRadius: 999,
+                                                    borderRadius: categoryNavRadius,
                                                     padding: '8px 14px',
                                                     background: moodConfig.itemStyle.background,
                                                     color: moodConfig.accentColor,

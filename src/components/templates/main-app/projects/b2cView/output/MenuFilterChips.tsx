@@ -172,7 +172,7 @@ function MenuFilterChips({
         alignItems: 'center',
         gap: 6,
         padding: '8px 14px',
-        borderRadius: 20,
+        borderRadius: Math.max(4, moodConfig.itemStyle.borderRadius),
         border: `1px solid ${isActive ? moodConfig.accentColor : moodConfig.itemStyle.borderColor}`,
         background: isActive ? `${moodConfig.accentColor}15` : 'transparent',
         color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,

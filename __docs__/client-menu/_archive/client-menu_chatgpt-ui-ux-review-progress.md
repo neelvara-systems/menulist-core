@@ -3,7 +3,7 @@
 **Source:** ChatGPT screenshot-only review of two public menu examples  
 **Review owner:** Codex  
 **Started:** May 7, 2026  
-**Status:** Implemented, including second-turn sticky command-layer review and retrieval foundation follow-up
+**Status:** Implemented, including second-turn sticky command-layer review, retrieval foundation follow-up, and featured-section UX polish
 
 ---
 
@@ -24,11 +24,15 @@
 | Contrast | W3C WCAG 2.2, SC 1.4.3 requires 4.5:1 for normal text and 3:1 for large text | Accepted: light theme containment and readable borders deserve priority. |
 | Layout stability | web.dev CLS guidance warns against visible layout shifts that move content while users read or tap | Accepted: item image slots need stable reserved space when images are enabled. |
 | Structured data | Google Search Central says structured data must represent visible page content and be up to date | Accepted: AEO claims are valid only where UI and schema stay aligned; no hidden/misleading markup. |
+| Horizontal scroll affordance | Apple HIG Scroll Views guidance notes partial content at the edge can make horizontal scrollability apparent | Accepted: featured choices can use a horizontal row when the next card peeks and the main page does not overflow horizontally. |
+| Carousel restraint | SAP Fiori carousel guidance uses related cards with a glimpse of the next card and recommends a small compact set | Accepted: keep featured choices to the three related decision blocks instead of turning the menu into a feed. |
 
 References:
 - https://www.w3.org/TR/WCAG22/
 - https://web.dev/optimize-cls
 - https://developers.google.com/search/docs/appearance/structured-data/sd-policies
+- https://developer.apple.com/design/human-interface-guidelines/scroll-views
+- https://www.sap.com/design-system/fiori-design-ios/v26-1/components/cards-and-layouts/carousel-layout/usage
 
 ---
 
@@ -83,6 +87,15 @@ Final pass notes:
 - The shared app and Functions copies of `businessTypes.ts` matched byte-for-byte.
 - Public rendering now resolves legacy/generic stored values such as `businessType: B2C` through real SMB industry values before search/schema output.
 - Browser search flow was verified on the tenant route: phonetic `chay`, no-result recovery, category jump from search, search-mode recommendation/feedback suppression, and active-category state restoration.
+
+## Fourth-Turn Review: Featured Section UX
+
+| User/Review Point | Verdict | Decision | Action |
+| --- | --- | --- | --- |
+| Featured section caused or risked full-page horizontal scroll | Agree | The featured row may scroll horizontally, but the page itself must stay width-safe. | Constrained the carousel in `DecisionBlocks.tsx` and added the missing global `.scrollbar-hide` utility in `public/styles/base/_base.scss`. |
+| Featured cards felt like repeated status labels | Agree | The section should explain ownership once, not repeat "selected" on every card. | Replaced repeated owner text with a compact `Business picks` header label and category metadata per card. |
+| Featured row needed better scanability | Agree | Use compact related cards with stable width, visible next-card peek, clamped names, and aligned price metadata. | Reworked `DecisionBlocks.tsx` card layout and localized category fallback. |
+| Featured shortcuts must still open item detail | Required | Visual polish must not break decision-block click behavior or analytics. | Browser-verified a featured card opens the PDP overlay. |
 
 ---
 
@@ -328,6 +341,17 @@ This appendix exists because the source review had many small points inside the 
 | QR/public URL continuity matters | Existing/accepted | Outlet/canonical fixes from the audit preserve URL correctness. |
 | Avoid feature creep | Accepted | Explicit rejected/deferred list maintained. |
 
+## May 8, 2026 Runtime Bugfix Pass
+
+| Issue Found In Public Menu | Decision | Status |
+| --- | --- | --- |
+| PDP image could crop instead of showing the full uploaded image | Accepted | PDP image rendering now uses `object-contain` inside the reserved modal image frame. |
+| Mobile search focus could trigger browser zoom | Accepted | Public menu search input uses 16px mobile font sizing and touch manipulation to avoid iOS zoom behavior. |
+| Featured/decision blocks could widen the full page horizontally | Accepted | The featured row remains a contained horizontal carousel, with max-width/min-width guards so page-level horizontal scroll is blocked. |
+| Category click should select and keep the active category visible in the horizontal rail | Accepted | Category tabs now use anchor semantics plus active-tab refs and `scrollIntoView({ inline: 'center' })` on mobile/tablet. |
+| Category icon/title vertical alignment was uneven | Accepted, preserving owner choice | Shared `CategoryIcon` now renders icon and emoji choices in a stable inline-flex box; owner-selected emoji/icons are not removed. |
+| Category header divider felt partial | Accepted | Section divider now spans the content width with calmer opacity instead of a short partial underline. |
+
 ## Verification
 
 - `npx tsc --noEmit --incremental false` passed on May 7, 2026.
@@ -335,6 +359,9 @@ This appendix exists because the source review had many small points inside the 
 - Local tenant-route smoke passed: `Host: mysalon.menulist.ai` `HEAD /bar-menu` returned `200 OK` and rewrote to `/client/bar-menu`.
 - Full tenant menu GET rendered after a defensive Decision Blocks time-slot guard; saved HTML contained `_publicSearch`, `menuVersion`, and `dateModified`.
 - `/offline` route smoke returned `200 OK`.
+- `npx tsc --noEmit --incremental false` passed again on May 8, 2026.
+- `npm run build` passed again on May 8, 2026. The same pre-existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
+- Local tenant-route runtime smoke passed on May 8, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: menu loaded, search returned results, PDP opened/closed, and category anchor navigation scrolled to the requested section.
 
 ## Intentionally Deferred
 

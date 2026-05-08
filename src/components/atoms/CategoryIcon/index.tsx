@@ -39,11 +39,26 @@ const CategoryIcon = ({
     const { token } = theme.useToken();
     const resolvedColor = color || token.colorText;
     const normalizedIcon = normalizeIconValue(icon);
+    const baseStyle: React.CSSProperties = {
+        flexShrink: 0,
+        lineHeight: 1,
+        verticalAlign: 'middle',
+        ...style,
+    };
+    const emojiStyle: React.CSSProperties = {
+        ...baseStyle,
+        alignItems: 'center',
+        display: 'inline-flex',
+        fontSize: `${size}px`,
+        height: size,
+        justifyContent: 'center',
+        width: size,
+    };
 
     if (!normalizedIcon) {
         if (!defaultIcon) return null;
         const DefaultIcon = LuIcons[defaultIcon];
-        return DefaultIcon ? <DefaultIcon className={className} size={size} color={resolvedColor} style={style} /> : null;
+        return DefaultIcon ? <DefaultIcon className={className} size={size} color={resolvedColor} style={baseStyle} /> : null;
     }
 
     if (normalizedIcon.startsWith('lu:')) {
@@ -51,20 +66,20 @@ const CategoryIcon = ({
         const IconComponent = LuIcons[iconName];
         const FallbackIcon = LuIcons['LuCircle'];
         return IconComponent
-            ? <IconComponent className={className} size={size} color={resolvedColor} style={style} />
-            : <FallbackIcon className={className} size={size} color={token.colorTextSecondary} style={style} />;
+            ? <IconComponent className={className} size={size} color={resolvedColor} style={baseStyle} />
+            : <FallbackIcon className={className} size={size} color={token.colorTextSecondary} style={baseStyle} />;
     }
 
     if (normalizedIcon.startsWith('emoji:')) {
         const emoji = normalizedIcon.replace('emoji:', '');
-        return <span className={className} style={{ fontSize: `${size}px`, lineHeight: 1, ...style }}>{emoji}</span>;
+        return <span className={className} style={emojiStyle}>{emoji}</span>;
     }
 
     // Fallback for icons that don't follow the prefix system (legacy)
     const LegacyIcon = LuIcons[normalizedIcon as keyof typeof LuIcons];
     return LegacyIcon
-        ? <LegacyIcon className={className} size={size} color={resolvedColor} style={style} />
-        : <LuIcons.LuFolder className={className} size={size} color={resolvedColor} style={style} />;
+        ? <LegacyIcon className={className} size={size} color={resolvedColor} style={baseStyle} />
+        : <LuIcons.LuFolder className={className} size={size} color={resolvedColor} style={baseStyle} />;
 };
 
 export default CategoryIcon;

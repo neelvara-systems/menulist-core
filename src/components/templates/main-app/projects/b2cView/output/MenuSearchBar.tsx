@@ -129,9 +129,10 @@ function MenuSearchBar({
                     boxShadow: isFocused ? `0 0 0 3px ${moodConfig.accentColor}20` : 'none',
                     color: moodConfig.bodyColor,
                     fontFamily: moodConfig.bodyFont,
-                    fontSize: isMobile ? 14 : 15,
+                    fontSize: isMobile ? 16 : 15,
                     lineHeight: '20px',
                     outline: 'none',
+                    touchAction: 'manipulation',
                 }}
                 aria-label={getSearchAriaLabel(businessType, businessCategory)}
             />
