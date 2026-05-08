@@ -25,6 +25,8 @@
  */
 
 import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlockTranslation, getEnabledBlocks } from '@config/decisionBlocks';
+import { FEATURE_FLAGS } from '@config/features';
+import CategoryIcon from '@atoms/CategoryIcon';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
@@ -48,6 +50,7 @@ interface DecisionBlocksProps {
     /** Precomputed Decision Blocks from Cloud Function (optional) */
     precomputedBlocks?: PrecomputedDecisionBlocks | null;
     showItemPrices?: boolean;
+    showCategoryIcons?: boolean;
     /** Required for project-wise analytics storage */
     analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     /** Controls whether decision-block analytics should fire. */
@@ -495,14 +498,18 @@ export default function DecisionBlocks({
     menuSettings,
     precomputedBlocks,
     showItemPrices = true,
+    showCategoryIcons = true,
     analyticsIds,
     trackingEnabled = true,
 }: DecisionBlocksProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const categoryLabelById = useMemo(() => {
+    const categoryMetaById = useMemo(() => {
         return new Map(categories.map((category) => [
             category.id,
-            getLocalizedMenuText(category.name, activeLanguage),
+            {
+                icon: category.icon,
+                label: getLocalizedMenuText(category.name, activeLanguage),
+            },
         ]));
     }, [activeLanguage, categories]);
 
@@ -733,7 +740,15 @@ export default function DecisionBlocks({
                         const itemImage = rec.item.images?.[0]?.url;
                         const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
                         const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
-                        const categoryLabel = categoryLabelById.get(rec.item.category);
+                        const categoryMeta = categoryMetaById.get(rec.item.category);
+                        const categoryLabel = categoryMeta?.label;
+                        const categoryIcon = categoryMeta?.icon;
+                        const showFeaturedCategoryIcon = Boolean(
+                            FEATURE_FLAGS.ENABLE_CATEGORY_ICONS
+                            && showCategoryIcons
+                            && categoryIcon
+                            && categoryLabel
+                        );
                         const displayTitle = isOwnerPinned ? OWNER_PINNED_TITLES[rec.blockType] : labels.title;
                         const displayMeta = isOwnerPinned
                             ? categoryLabel
@@ -862,11 +877,13 @@ export default function DecisionBlocks({
                                         {displayMeta ? (
                                             <span
                                                 style={{
+                                                    alignItems: 'center',
                                                     color: moodConfig.descriptionColor || moodConfig.bodyColor,
-                                                    display: 'block',
+                                                    display: 'inline-flex',
                                                     fontFamily: moodConfig.bodyFont,
                                                     fontSize: 12,
                                                     fontWeight: 500,
+                                                    gap: 5,
                                                     lineHeight: '16px',
                                                     minWidth: 0,
                                                     opacity: 0.82,
@@ -875,7 +892,37 @@ export default function DecisionBlocks({
                                                     whiteSpace: 'nowrap',
                                                 }}
                                             >
-                                                {displayMeta}
+                                                {showFeaturedCategoryIcon ? (
+                                                    <span
+                                                        aria-hidden="true"
+                                                        style={{
+                                                            alignItems: 'center',
+                                                            display: 'inline-flex',
+                                                            flexShrink: 0,
+                                                            height: 14,
+                                                            justifyContent: 'center',
+                                                            width: 14,
+                                                        }}
+                                                    >
+                                                        <CategoryIcon
+                                                            color={moodConfig.descriptionColor || moodConfig.bodyColor}
+                                                            defaultIcon="LuTag"
+                                                            icon={categoryIcon}
+                                                            size={13}
+                                                        />
+                                                    </span>
+                                                ) : null}
+                                                <span
+                                                    style={{
+                                                        display: 'block',
+                                                        minWidth: 0,
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {displayMeta}
+                                                </span>
                                             </span>
                                         ) : (
                                             <span />

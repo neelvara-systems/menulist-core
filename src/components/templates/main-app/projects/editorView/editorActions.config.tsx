@@ -49,8 +49,8 @@ export function getEditorActions(labels: OfferingLabels): EditorActionConfig[] {
         {
             key: 'decisionBlocks',
             icon: <LuZap style={{ fontSize: 20 }} />,
-            title: 'Smart Recommendations',
-            description: 'Configure which items appear in Popular, Quick Pick, and Best Value blocks',
+            title: 'Featured section',
+            description: 'Choose items for Featured choice, Quick choice, and Value choice',
         },
         {
             key: 'storeCustomization',

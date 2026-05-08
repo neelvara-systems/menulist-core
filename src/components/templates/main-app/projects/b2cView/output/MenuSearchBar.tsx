@@ -24,6 +24,8 @@ interface MenuSearchBarProps {
     isMobile?: boolean;
     compact?: boolean;
     containerStyle?: React.CSSProperties;
+    expanded?: boolean;
+    onFocusChange?: (isFocused: boolean) => void;
 }
 
 const getSearchAriaLabel = (businessType?: string, businessCategory?: string): string => {
@@ -71,6 +73,8 @@ function MenuSearchBar({
     isMobile = false,
     compact = false,
     containerStyle,
+    expanded = false,
+    onFocusChange,
 }: MenuSearchBarProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [isFocused, setIsFocused] = useState(false);
@@ -81,17 +85,30 @@ function MenuSearchBar({
 
     const clearSearch = () => {
         onSearchChange('');
+        setIsFocused(true);
+        onFocusChange?.(true);
         inputRef.current?.focus();
+    };
+    const handleFocus = () => {
+        setIsFocused(true);
+        onFocusChange?.(true);
+    };
+    const handleBlur = () => {
+        setIsFocused(false);
+        onFocusChange?.(false);
     };
 
     return (
         <div
             className="relative mb-4"
+            data-menu-search-expanded={expanded ? 'true' : 'false'}
             style={{
                 position: 'relative',
                 width: '100%',
                 marginTop: compact ? 0 : 8,
                 marginBottom: compact ? 0 : 16,
+                transition: 'flex 0.18s ease, flex-basis 0.18s ease, width 0.18s ease',
+                willChange: expanded ? 'flex-basis, width' : undefined,
                 ...containerStyle,
             }}
         >
@@ -115,8 +132,10 @@ function MenuSearchBar({
                 placeholder={getSearchPlaceholder(businessType, businessCategory)}
                 value={searchTerm}
                 onChange={handleChange}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onPointerDown={handleFocus}
+                onClick={handleFocus}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 className="w-full pl-10 pr-10 py-3 rounded-lg text-sm outline-none transition-all"
                 style={{
                     boxSizing: 'border-box',
@@ -133,12 +152,14 @@ function MenuSearchBar({
                     lineHeight: '20px',
                     outline: 'none',
                     touchAction: 'manipulation',
+                    transition: 'border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease',
                 }}
                 aria-label={getSearchAriaLabel(businessType, businessCategory)}
             />
             {searchTerm && (
                 <button
                     onClick={clearSearch}
+                    onMouseDown={(event) => event.preventDefault()}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:opacity-70 transition-opacity"
                     aria-label="Clear search"
                     style={{

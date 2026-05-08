@@ -3,7 +3,7 @@
 **Feature Name:** Client Menu (Customer-Facing Digital Menu)  
 **Document Type:** Technical Implementation Plan  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 7, 2026
+**Last Updated:** May 8, 2026
 **Audience:** Engineers, Technical Leads
 
 ---
@@ -103,7 +103,8 @@ The public renderer keeps the project-wise `config.design.menu` mood/layout mode
 
 | Area | Implementation | File |
 | ---- | -------------- | ---- |
-| Owner-controlled category identity | Public menu paths render category icons through `CategoryIcon`, preserving owner-selected Lucide and `emoji:*` values while retaining fallback icons for missing/legacy values. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
+| Owner-controlled category identity | Public menu paths render category icons through `CategoryIcon`, preserving owner-selected Lucide and `emoji:*` values while retaining fallback icons for missing/legacy values. Featured cards inherit the same category icon/emoji identity only when category icons are enabled in the menu design. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx`, `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` |
+| Owner featured controls | Desktop and mobile owner controls use customer-facing Featured terminology instead of smart-recommendation wording, while retaining the existing decision-block settings path. | `src/components/templates/main-app/projects/editorView/editorActions.config.tsx`, `src/components/templates/main-app/projects/editorView/DecisionBlocksSettingsModal.tsx`, `src/components/mobile/components/MobileMenuCommandSheet.tsx`, `src/components/mobile/sheets/SmartRecommendationsSheet.tsx`, `public/locales/menulist.ai/*.json` |
 | Section navigator | Mobile/tablet menus place `Sections` in the sticky command row and open a bottom-sheet-style category navigator with localized fallback labels, active state, owner-selected icons, and item counts. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
 | Sticky retrieval layer | Search focus has explicit structural affordance; mobile/tablet search runs compactly beside `Sections`, and category chips remain a lightweight rail below the command row. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Card rhythm | Item titles/descriptions use line governance, price weight is restrained, and image-enabled layouts reserve stable slots with placeholders. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |

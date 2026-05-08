@@ -145,11 +145,12 @@ function MenuFilters({
 
         const visibleCategory = findVisibleCategory();
         if (visibleCategory && visibleCategory.id !== activeCategory?.id) {
-            onSelectCategory(visibleCategory, 'MENU-POPOVER');
+            onSelectCategory(visibleCategory, 'MENU-POPOVER-SYNC');
         }
     };
 
-    const handleCategorySelect = (category: Category) => {
+    const handleCategorySelect = (category: Category, event?: ReactMouseEvent<HTMLAnchorElement>) => {
+        event?.preventDefault();
         onSelectCategory(category, 'MENU-POPOVER');
         setShowCategories(false);
     };
@@ -264,7 +265,7 @@ function MenuFilters({
                         <a
                             key={category.id}
                             href={`#cat-${category.id}`}
-                            onClick={() => handleCategorySelect(category)}
+                            onClick={(event) => handleCategorySelect(category, event)}
                             className="w-full text-left px-3 py-2.5 rounded-lg transition-colors mb-1"
                             style={{
                                 width: '100%',

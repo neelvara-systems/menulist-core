@@ -188,9 +188,9 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                                     <div>
-                                        <Text strong={true}>Track Recommendations</Text>
+                                        <Text strong={true}>Track Featured Section</Text>
                                         <br />
-                                        <Text type="secondary">See when smart recommendation blocks are shown and tapped</Text>
+                                        <Text type="secondary">See when Featured choices are shown and tapped</Text>
                                     </div>
                                     <Switch
                                         checked={form.getFieldValue(['analytics', 'trackDecisionBlocks'])}

@@ -6,6 +6,17 @@
 
 ---
 
+## May 8, 2026 — Client Menu: Featured Category Identity
+
+### Changed
+
+- **Featured cards inherit category identity** — Featured choices now show the item category icon or emoji beside the category label when category icons are enabled in the menu design. Owner-disabled category icons remain hidden.
+- **Owner Featured section wording aligned** — The desktop editor, mobile Menu tab, Featured section sheet, analytics settings, and feature copy now use `Featured section`, `Featured choice`, `Quick choice`, and `Value choice` instead of the older smart-recommendation wording.
+
+### Documentation
+
+- Updated `__docs__/client-menu/README.md`, `_impl.md`, and the ChatGPT UI/UX progress tracker.
+
 ## May 7, 2026 — Client Menu: Retrieval Foundation
 
 ### Changed

@@ -1,6 +1,6 @@
 'use client'
 
-import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
+import { getEnabledBlocks } from '@config/decisionBlocks';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import {
     applyDecisionBlockSettings,
@@ -22,6 +22,10 @@ import { Button, Card, Flex, NavBar, Popup, Select, Switch, Text, Title, Toast }
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 type BlockType = 'popular' | 'quickPick' | 'bestValue';
+type FeaturedBlockLabels = {
+    subtitle: string;
+    title: string;
+};
 
 interface SmartRecommendationsSheetProps {
     businessType?: string;
@@ -46,9 +50,6 @@ export default function SmartRecommendationsSheet({
     } as const;
     const activeLang = getProjectDefaultLanguage(projectData);
     const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType), [businessType]);
-    const popularLabels = useMemo(() => getBlockLabels('popular', businessType), [businessType]);
-    const quickPickLabels = useMemo(() => getBlockLabels('quickPick', businessType), [businessType]);
-    const bestValueLabels = useMemo(() => getBlockLabels('bestValue', businessType), [businessType]);
     const initialSettings = useMemo(() => getDecisionBlockSettings(projectData), [projectData]);
 
     const [enablePopular, setEnablePopular] = useState(initialSettings.enablePopular);
@@ -109,10 +110,19 @@ export default function SmartRecommendationsSheet({
         bestValue: <LuTrendingUp size={18} style={{ color: token.colorPrimary }} />,
     };
 
-    const blockLabelsMap = {
-        popular: popularLabels,
-        quickPick: quickPickLabels,
-        bestValue: bestValueLabels,
+    const blockLabelsMap: Record<BlockType, FeaturedBlockLabels> = {
+        popular: {
+            subtitle: t('featuredChoiceDesc'),
+            title: t('featuredChoiceTitle'),
+        },
+        quickPick: {
+            subtitle: t('quickChoiceDesc'),
+            title: t('quickChoiceTitle'),
+        },
+        bestValue: {
+            subtitle: t('valueChoiceDesc'),
+            title: t('valueChoiceTitle'),
+        },
     };
 
     const getPickerOptions = (blockType: BlockType) => {
@@ -123,11 +133,6 @@ export default function SmartRecommendationsSheet({
                 value: option.value,
                 label: option.categoryName ? `${option.label} (${option.categoryName})` : option.label,
             }));
-    };
-
-    const getPinnedLabel = (pinnedId?: string) => {
-        if (!pinnedId) return t('smartRecommendationsAutoSelect');
-        return itemOptions.find((option) => option.value === pinnedId)?.label || t('smartRecommendationsPinnedUnavailable');
     };
 
     const handlePinChange = (blockType: BlockType, value?: string) => {
@@ -209,7 +214,7 @@ export default function SmartRecommendationsSheet({
                             <Select
                                 onChange={(value) => handlePinChange(blockType, value || undefined)}
                                 options={getPickerOptions(blockType)}
-                                placeholder={t('smartRecommendationsChooseItem')}
+                                placeholder={t('smartRecommendationsAutoSelect')}
                                 value={pinnedId}
                             />
 

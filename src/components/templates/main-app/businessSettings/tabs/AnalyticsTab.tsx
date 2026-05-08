@@ -203,15 +203,15 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                     <Form.Item
                         label={(
                             <Space>
-                                <span>Recommendation analytics</span>
-                                <Tooltip title="Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu.">
+                                <span>Featured section analytics</span>
+                                <Tooltip title="Tracks Featured section impressions and taps when Featured choices appear on the customer menu.">
                                     <QuestionCircleOutlined />
                                 </Tooltip>
                             </Space>
                         )}
                         name={["analytics", "trackDecisionBlocks"]}
                         valuePropName="checked"
-                        extra={<Text type="secondary">Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu.</Text>}
+                        extra={<Text type="secondary">Tracks Featured section impressions and taps when Featured choices appear on the customer menu.</Text>}
                     >
                         <Switch />
                     </Form.Item>

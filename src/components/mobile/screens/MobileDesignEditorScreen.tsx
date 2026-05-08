@@ -11,10 +11,11 @@ import {
     resolveMenuDesignConfig,
 } from '@config/designSystem';
 import useViewportInfo from '@hook/useViewportInfo';
-import { publishProject } from '@database/projects';
+import { publishProject, uploadFile } from '@database/projects';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
+import { validateImageUpload } from '@lib/performanceBudget';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -23,9 +24,9 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuLayoutGrid, LuLayoutList, LuLayoutPanelTop, LuLink2, LuPalette, LuSquare } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuImage, LuLayoutGrid, LuLayoutList, LuLayoutPanelTop, LuLink2, LuPalette, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast, Upload } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
@@ -125,6 +126,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const showImages = menuDesign.showImages ?? true;
     const showCategoryIcons = menuDesign.showCategoryIcons ?? true;
     const showCategoryTabs = menuDesign.showCategoryTabs ?? false;
+    const backgroundImage = menuDesign.backgroundImage;
     const brandAccentColor = draftProjectData?.config?.design?.brand?.accentColor;
     const specialNoteLanguage = draftProjectData?.defaultLanguage || 'en';
     const specialNote = getLocalizedDraftText(draftProjectData?.menuSettings?.specialNote, specialNoteLanguage, '');
@@ -208,6 +210,27 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const handleShowCategoryIconsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryIcons'], show);
     const handleCategoryTabsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryTabs'], show);
     const handleBrandColorChange = (color: string | undefined) => updateDesign(['config', 'design', 'brand', 'accentColor'], color);
+    const handleBackgroundImageChange = (imageUrl: string) => updateDesign(['config', 'design', 'menu', 'backgroundImage'], imageUrl);
+    const handleBackgroundImageRemove = () => handleBackgroundImageChange('');
+    const handleBackgroundImageSelect = (file: File) => {
+        const validation = validateImageUpload(file, 0, 'background');
+        if (!validation.allowed) {
+            Toast.show({ content: validation.reason || t('failedToPublish'), duration: 2200 });
+            return false;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                handleBackgroundImageChange(reader.result);
+            }
+        };
+        reader.onerror = () => {
+            Toast.show({ content: t('failedToPublish'), duration: 1800 });
+        };
+        reader.readAsDataURL(file);
+        return false;
+    };
     const handleServiceChargeChange = (note: string) => {
         const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
         setDraftProjectData((prev: any) => ({
@@ -249,6 +272,14 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             if (!normalizedDraft.config) normalizedDraft.config = {};
             if (!normalizedDraft.config.design) normalizedDraft.config.design = {};
             normalizedDraft.config.design.menu = resolveMenuDesignConfig(normalizedDraft.config.design.menu);
+            const menuBackgroundImage = normalizedDraft.config.design.menu.backgroundImage;
+            if (typeof menuBackgroundImage === 'string' && menuBackgroundImage.includes('base64')) {
+                normalizedDraft.config.design.menu.backgroundImage = await uploadFile({
+                    url: menuBackgroundImage,
+                    type: 'image/png',
+                    uid: normalizedDraft.projectId || selectedProjectId || 'menu-background',
+                }, 'assets');
+            }
 
             const updated = await publishProject(normalizedDraft);
             const updatedCopy = cloneProjectData(updated);
@@ -409,6 +440,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             title={<Text>{t('categoryTabs')}</Text>}
                             extra={<Tag color={showCategoryTabs ? 'success' : 'default'}>{showCategoryTabs ? t('on') : t('off')}</Tag>}
                         />
+                        <List.Item
+                            title={<Text>{t('background')}</Text>}
+                            extra={<Tag color={backgroundImage ? 'success' : 'default'}>{backgroundImage ? t('image') : t('off')}</Tag>}
+                        />
                     </List>
                 </Card>
                 <SectionCard title={t('quickStart')} subtitle={t('quickStartSubtitle')}>
@@ -545,6 +580,62 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             description={<Text type="secondary">{t('categoryTabsDesc')}</Text>}
                         />
                     </List>
+                </SectionCard>
+
+                <SectionCard title={t('background')} subtitle={t('backgroundImagePriorityNote')}>
+                    <Flex gap={12} vertical>
+                        {backgroundImage ? (
+                            <div
+                                style={{
+                                    aspectRatio: '16 / 7',
+                                    background: `url(${backgroundImage}) center/cover no-repeat`,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 12,
+                                    overflow: 'hidden',
+                                    width: '100%',
+                                }}
+                                aria-label={t('background')}
+                            />
+                        ) : (
+                            <Flex
+                                align="center"
+                                justify="center"
+                                style={{
+                                    aspectRatio: '16 / 7',
+                                    background: token.colorFillAlter,
+                                    border: `1px dashed ${token.colorBorder}`,
+                                    borderRadius: 12,
+                                    color: token.colorTextTertiary,
+                                }}
+                            >
+                                <LuImage size={22} />
+                            </Flex>
+                        )}
+                        <Flex gap={8}>
+                            <Upload
+                                accept="image/*"
+                                beforeUpload={handleBackgroundImageSelect}
+                                showUploadList={false}
+                                style={{ flex: 1, minWidth: 0 }}
+                            >
+                                <Button block icon={<LuUpload size={16} />} size="large">
+                                    {backgroundImage ? t('replace') : t('image')}
+                                </Button>
+                            </Upload>
+                            {backgroundImage ? (
+                                <Button
+                                    color="danger"
+                                    fill="outline"
+                                    icon={<LuTrash2 size={16} />}
+                                    onClick={handleBackgroundImageRemove}
+                                    size="large"
+                                >
+                                    {t('remove')}
+                                </Button>
+                            ) : null}
+                        </Flex>
+                        <Text type="secondary">{t('backgroundUploadFormats')}</Text>
+                    </Flex>
                 </SectionCard>
 
                 <SectionCard title={t('pricingNote')} subtitle={t('pricingNoteSubtitle')}>

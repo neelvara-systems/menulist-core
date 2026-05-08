@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 7, 2026
+**Last Updated:** May 8, 2026
 
 ---
 
@@ -53,7 +53,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | ------------------------ | --------------------------------------------------- | ------ |
 | Multi-tenant routing     | Subdomains + custom domains + outlet routing        | ✅     |
 | SEO optimization         | Metadata, Schema.org, BreadcrumbList, FAQ, sitemap  | ✅     |
-| Decision Blocks          | Smart recommendations (precomputed nightly)         | ✅     |
+| Decision Blocks          | Featured choices (precomputed nightly)              | ✅     |
 | Live Indicator           | "Updated just now" trust signal                     | ✅     |
 | Instant Availability     | Sold-out items fade instantly                       | ✅     |
 | Time-Based Categories    | Auto-switch by time                                 | ✅     |
@@ -136,6 +136,8 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
+- Featured cards reuse category icon/emoji identity only when the owner has category icons enabled for the menu design.
+- Desktop and mobile owner controls use the same public wording for this area: `Featured section`, `Featured choice`, `Quick choice`, and `Value choice`.
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and stable image slots.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution`.
@@ -146,6 +148,8 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-08 | Desktop and mobile owner Featured section controls now use the same Featured choice, Quick choice, and Value choice wording as the public menu |
+| 2026-05-08 | Featured cards now inherit owner-enabled category icon/emoji identity in their compact category metadata row without adding a separate badge system |
 | 2026-05-07 | Client menu retrieval foundation: fuzzy/transliteration search, compact multilingual search terms, active-item JSON-LD freshness, and bounded offline navigation fallback |
 | 2026-05-07 | Public menu UI governance hardening: constrained category icon rendering, structural category/navigation styling, search focus state, stable image slots, quiet platform attribution, and localized fallback use |
 | 2026-03-15 | Implemented all 8 ChatGPT review items: lazy language loading, progressive rendering, dish metadata schema, analytics lazy loading, state version key, text-first fallback |

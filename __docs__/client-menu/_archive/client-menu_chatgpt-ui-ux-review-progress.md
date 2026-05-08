@@ -24,14 +24,12 @@
 | Contrast | W3C WCAG 2.2, SC 1.4.3 requires 4.5:1 for normal text and 3:1 for large text | Accepted: light theme containment and readable borders deserve priority. |
 | Layout stability | web.dev CLS guidance warns against visible layout shifts that move content while users read or tap | Accepted: item image slots need stable reserved space when images are enabled. |
 | Structured data | Google Search Central says structured data must represent visible page content and be up to date | Accepted: AEO claims are valid only where UI and schema stay aligned; no hidden/misleading markup. |
-| Horizontal scroll affordance | Apple HIG Scroll Views guidance notes partial content at the edge can make horizontal scrollability apparent | Accepted: featured choices can use a horizontal row when the next card peeks and the main page does not overflow horizontally. |
-| Carousel restraint | SAP Fiori carousel guidance uses related cards with a glimpse of the next card and recommends a small compact set | Accepted: keep featured choices to the three related decision blocks instead of turning the menu into a feed. |
+| Carousel restraint | SAP Fiori carousel guidance uses related cards with a glimpse of the next card and recommends a small compact set | Accepted: featured choices can use a horizontal row when the next card peeks and the main page does not overflow horizontally. |
 
 References:
 - https://www.w3.org/TR/WCAG22/
 - https://web.dev/optimize-cls
 - https://developers.google.com/search/docs/appearance/structured-data/sd-policies
-- https://developer.apple.com/design/human-interface-guidelines/scroll-views
 - https://www.sap.com/design-system/fiori-design-ios/v26-1/components/cards-and-layouts/carousel-layout/usage
 
 ---
@@ -95,6 +93,8 @@ Final pass notes:
 | Featured section caused or risked full-page horizontal scroll | Agree | The featured row may scroll horizontally, but the page itself must stay width-safe. | Constrained the carousel in `DecisionBlocks.tsx` and added the missing global `.scrollbar-hide` utility in `public/styles/base/_base.scss`. |
 | Featured cards felt like repeated status labels | Agree | The section should explain ownership once, not repeat "selected" on every card. | Replaced repeated owner text with a compact `Business picks` header label and category metadata per card. |
 | Featured row needed better scanability | Agree | Use compact related cards with stable width, visible next-card peek, clamped names, and aligned price metadata. | Reworked `DecisionBlocks.tsx` card layout and localized category fallback. |
+| Featured cards should reflect category icon/emoji config | Agree with constraint | Reuse the existing category icon/emoji design setting; do not add a featured-only badge or force icons when the owner disables category icons. | `DecisionBlocks.tsx` now receives `showCategoryIcons` and renders the item category icon beside category metadata when enabled. |
+| Owner controls still said `Smart Recommendations` | Agree | Desktop and mobile owner controls should use the same mental model as the public menu: Featured section, Featured choice, Quick choice, and Value choice. | Desktop editor action/modal, mobile Menu tab/sheet, analytics settings, and feature copy now use Featured wording while preserving the existing settings path. |
 | Featured shortcuts must still open item detail | Required | Visual polish must not break decision-block click behavior or analytics. | Browser-verified a featured card opens the PDP overlay. |
 
 ---
@@ -360,7 +360,7 @@ This appendix exists because the source review had many small points inside the 
 - Full tenant menu GET rendered after a defensive Decision Blocks time-slot guard; saved HTML contained `_publicSearch`, `menuVersion`, and `dateModified`.
 - `/offline` route smoke returned `200 OK`.
 - `npx tsc --noEmit --incremental false` passed again on May 8, 2026.
-- `npm run build` passed again on May 8, 2026. The same pre-existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
+- Default worker-mode `npm run build` compiled and type-checked on May 8, 2026 but hit a Next build-worker `.next/server/chunks/2274.js` page-data race; `NEXT_PRIVATE_BUILD_WORKER=0 npm run build` passed. The same pre-existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
 - Local tenant-route runtime smoke passed on May 8, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: menu loaded, search returned results, PDP opened/closed, and category anchor navigation scrolled to the requested section.
 
 ## Intentionally Deferred

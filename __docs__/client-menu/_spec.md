@@ -3,7 +3,7 @@
 **Feature Name:** Client Menu (Customer-Facing Digital Menu)  
 **Document Type:** Product Requirements Document (PRD)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 7, 2026
+**Last Updated:** May 8, 2026
 **Audience:** Product, CEO, Business Teams, Non-Technical Stakeholders
 
 ---
@@ -17,7 +17,7 @@ The Customer-Facing Digital Menu is the **public-facing interface** that restaur
 A **live, intelligent digital menu** that:
 
 - Updates in real-time when owners make changes
-- Shows smart recommendations (Decision Blocks) without exposing AI
+- Shows Featured choices without exposing internal scoring
 - Works on any device (mobile-first, responsive)
 - Supports custom branding and multi-language
 - Preserves a locked public information structure even when the owner chooses a project-wise menu mood or layout
@@ -35,7 +35,7 @@ A **live, intelligent digital menu** that:
 | Metric                 | Value                            |
 | ---------------------- | -------------------------------- |
 | First Contentful Paint | < 1.5s                           |
-| Customer Decision Time | 60s → 15s (with Decision Blocks) |
+| Customer Decision Time | 60s → 15s (with Featured section) |
 | Owner Effort           | Zero (auto-updates)              |
 | Word-of-Mouth Trigger  | 3 Auto-Sell Features             |
 
@@ -55,7 +55,7 @@ A **live, intelligent digital menu** that:
 | Metric                    | Target           | How Measured     |
 | ------------------------- | ---------------- | ---------------- |
 | Menu load time            | < 2 seconds      | Lighthouse       |
-| Decision Block engagement | > 10% click rate | Analytics        |
+| Featured section engagement | > 10% click rate | Analytics        |
 | Return visits             | > 30% same-week  | Session tracking |
 | Owner retention           | > 70% 30-day     | Platform metrics |
 
@@ -69,7 +69,7 @@ A **live, intelligent digital menu** that:
 | --------------------------- | ------------------------------ | ------- |
 | Multi-tenant domain routing | Subdomains + custom domains    | ✅ Done |
 | SEO optimization            | Metadata, Schema.org, sitemap  | ✅ Done |
-| Decision Blocks             | Smart recommendations          | ✅ Done |
+| Featured section            | Featured choice, Quick choice, and Value choice | ✅ Done |
 | Live Indicator              | "Live · updated recently" trust signal | ✅ Done |
 | Instant Availability        | Sold-out items fade instantly  | ✅ Done |
 | Time-Based Categories       | Categories show/hide by time   | ✅ Done |
@@ -194,15 +194,15 @@ No owner action required
 | Custom Domain | `joespizza.com`                | DNS points to us, middleware looks up by domain |
 | Slug Path     | `joespizza.menulist.ai/drinks` | Multiple projects per store                     |
 
-### 2. Decision Blocks
+### 2. Featured section
 
-**What:** Smart recommendations that help customers decide faster.
+**What:** A compact Featured section that helps customers decide faster.
 
-| Block Type | Customer Sees         | Purpose          |
-| ---------- | --------------------- | ---------------- |
-| Popular    | "People often choose" | Social proof     |
-| Quick Pick | "Ready quickly"       | Speed-conscious  |
-| Best Value | "Good choice"         | Budget-conscious |
+| Choice | Customer Sees      | Purpose          |
+| ------ | ------------------ | ---------------- |
+| Featured | "Featured choice" | Main shortcut    |
+| Quick Pick | "Quick choice" | Speed-conscious  |
+| Value | "Value choice"    | Value-conscious  |
 
 **Key Rules:**
 

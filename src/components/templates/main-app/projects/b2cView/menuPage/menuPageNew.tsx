@@ -250,6 +250,7 @@ function MenuPageNew({
     // State
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
@@ -896,42 +897,50 @@ function MenuPageNew({
         const container = getActiveScrollContainer();
         const offset = stickyControlsOffset + 12;
         const initialElementRect = element.getBoundingClientRect();
-        const documentTop = Math.max(0, window.scrollY + initialElementRect.top - offset);
-        const containerTop = container
-            ? Math.max(0, container.scrollTop + initialElementRect.top - container.getBoundingClientRect().top - offset)
-            : null;
 
-        if (container && containerTop !== null) {
+        if (container) {
+            const containerTop = Math.max(0, container.scrollTop + initialElementRect.top - container.getBoundingClientRect().top - offset);
             container.scrollTo({ top: containerTop, behavior: 'smooth' });
+        } else {
+            const documentTop = Math.max(0, window.scrollY + initialElementRect.top - offset);
+            window.scrollTo({ top: documentTop, behavior: 'smooth' });
         }
-        window.scrollTo({ top: documentTop, behavior: 'smooth' });
         window.setTimeout(() => {
             window.dispatchEvent(new Event('scroll'));
         }, 420);
         return true;
     }, [getActiveScrollContainer, stickyControlsOffset]);
 
+    const updateCategoryHash = useCallback((categoryId: string) => {
+        if (typeof window === 'undefined') return;
+
+        window.history.replaceState(null, '', `${getMenuBasePath()}#cat-${categoryId}`);
+    }, [getMenuBasePath]);
+
     // Handle category selection (scroll to category)
     const handleCategorySelect = useCallback((category: any) => {
         if (category?.id) {
             const didScroll = scrollToCategoryElement(category.id);
             if (!didScroll) return;
+            updateCategoryHash(category.id);
+            setIsSearchFocused(false);
             setActiveCategory(category);
             return;
         }
 
+        setIsSearchFocused(false);
         setActiveCategory(category);
-    }, [scrollToCategoryElement]);
+    }, [scrollToCategoryElement, updateCategoryHash]);
 
     const handleBrowseCategorySelect = useCallback((category: any, source?: string) => {
+        if (source === 'MENU-POPOVER-SYNC') {
+            setActiveCategory(category);
+            return;
+        }
+
         if (searchTerm || debouncedSearch) {
             setPendingBrowseCategory(category);
             clearSearch();
-            return;
-        }
-
-        if (source === 'CATEGORY-ANCHOR' || source === 'MENU-POPOVER') {
-            setActiveCategory(category);
             return;
         }
 
@@ -940,6 +949,7 @@ function MenuPageNew({
 
     const displayActiveCategory = debouncedSearch ? null : activeCategory;
     const activeCategoryTabId = displayActiveCategory?.id;
+    const isSearchCommandExpanded = isSearchFocused || searchTerm.trim().length > 0;
 
     useEffect(() => {
         if (!pendingBrowseCategory || searchTerm || debouncedSearch) return;
@@ -1017,6 +1027,21 @@ function MenuPageNew({
         alignItems: 'center',
         gap: 8,
         marginBottom: showTabsBar ? 8 : 0,
+    };
+    const searchSideControlsStyle: React.CSSProperties = {
+        alignItems: 'center',
+        display: 'flex',
+        flexShrink: 0,
+        gap: 8,
+        maxWidth: isSearchCommandExpanded ? 0 : isMobile ? 216 : 280,
+        opacity: isSearchCommandExpanded ? 0 : 1,
+        overflow: 'hidden',
+        pointerEvents: isSearchCommandExpanded ? 'none' : 'auto',
+        transform: isSearchCommandExpanded ? 'translateX(8px) scale(0.98)' : 'translateX(0) scale(1)',
+        transition: isSearchCommandExpanded
+            ? 'max-width 0.18s ease, opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.18s'
+            : 'max-width 0.18s ease, opacity 0.14s ease, transform 0.14s ease',
+        visibility: isSearchCommandExpanded ? 'hidden' : 'visible',
     };
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
@@ -1258,35 +1283,47 @@ function MenuPageNew({
                             <MenuSearchBar
                                 searchTerm={searchTerm}
                                 onSearchChange={setSearchTerm}
+                                onFocusChange={setIsSearchFocused}
                                 moodConfig={moodConfig}
                                 businessType={effectiveBusinessType}
                                 businessCategory={storeDetails?.businessCategory}
                                 isMobile={isMobile}
                                 compact={!isDesktop}
-                                containerStyle={{ flex: '1 1 auto', minWidth: 0 }}
+                                expanded={isSearchCommandExpanded}
+                                containerStyle={{
+                                    flex: isSearchCommandExpanded ? '1 1 100%' : '1 1 auto',
+                                    minWidth: 0,
+                                    width: isSearchCommandExpanded ? '100%' : undefined,
+                                }}
                             />
 
-                            {showSectionsControl && (
-                                <MenuFilters
-                                    categories={allCategories}
-                                    activeCategory={displayActiveCategory}
-                                    onSelectCategory={handleBrowseCategorySelect}
+                            <div
+                                aria-hidden={isSearchCommandExpanded}
+                                data-menu-search-side-controls={isSearchCommandExpanded ? 'hidden' : 'visible'}
+                                style={searchSideControlsStyle}
+                            >
+                                {showSectionsControl && (
+                                    <MenuFilters
+                                        categories={allCategories}
+                                        activeCategory={displayActiveCategory}
+                                        onSelectCategory={handleBrowseCategorySelect}
+                                        activeLanguage={activeLanguage}
+                                        showCategoryIcons={showCategoryIcons}
+                                        moodConfig={moodConfig}
+                                        triggerVariant="inline"
+                                        categoryItemCounts={categoryItemCounts}
+                                    />
+                                )}
+
+                                <MenuLanguageSwitcher
+                                    projectData={projectData}
                                     activeLanguage={activeLanguage}
-                                    showCategoryIcons={showCategoryIcons}
+                                    setActiveLanguage={setActiveLanguage}
                                     moodConfig={moodConfig}
-                                    triggerVariant="inline"
-                                    categoryItemCounts={categoryItemCounts}
+                                    restoreStoredLanguage={restoreStoredLanguage}
+                                    compact
                                 />
-                            )}
-
-                            <MenuLanguageSwitcher
-                                projectData={projectData}
-                                activeLanguage={activeLanguage}
-                                setActiveLanguage={setActiveLanguage}
-                                moodConfig={moodConfig}
-                                restoreStoredLanguage={restoreStoredLanguage}
-                                compact
-                            />
+                            </div>
                         </div>
 
                         {!isDesktop && showTabsBar && allCategories.length > 0 && (
@@ -1301,7 +1338,10 @@ function MenuPageNew({
                                             categoryTabRefs.current[cat.id] = element;
                                         }}
                                         href={`#cat-${cat.id}`}
-                                        onClick={() => handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR')}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR');
+                                        }}
                                         style={{
                                             boxSizing: 'border-box',
                                             maxWidth: isMobile ? 220 : 260,
@@ -1374,6 +1414,7 @@ function MenuPageNew({
                             menuSettings={projectData?.menuSettings}
                             precomputedBlocks={precomputedBlocks}
                             showItemPrices={showItemPrices}
+                            showCategoryIcons={showCategoryIcons}
                             analyticsIds={{
                                 tenantId: storeDetails?.tenantId,
                                 storeId: String(storeDetails?.storeId || ''),
@@ -1453,7 +1494,10 @@ function MenuPageNew({
                                             <a
                                                 key={cat.id}
                                                 href={`#cat-${cat.id}`}
-                                                onClick={() => handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR')}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR');
+                                                }}
                                                 style={{
                                                     padding: '10px 16px',
                                                     borderRadius: categoryNavRadius,

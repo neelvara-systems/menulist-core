@@ -326,8 +326,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         />
                         <FeatureToggleCard
                             checked={trackDecisionBlocks}
-                            description="Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu."
-                            label="Recommendation analytics"
+                            description="Tracks Featured section impressions and taps when Featured choices appear on the customer menu."
+                            label="Featured section analytics"
                             onChange={setTrackDecisionBlocks}
                         />
                         <FeatureToggleCard
@@ -723,8 +723,8 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 />
                                 <ToggleRow
                                     checked={trackDecisionBlocks}
-                                    description="Tracks smart recommendation block impressions and taps when decision blocks appear on the customer menu."
-                                    label="Recommendation analytics"
+                                    description="Tracks Featured section impressions and taps when Featured choices appear on the customer menu."
+                                    label="Featured section analytics"
                                     onChange={setTrackDecisionBlocks}
                                 />
                                 <ToggleRow

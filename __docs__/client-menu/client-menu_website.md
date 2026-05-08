@@ -19,8 +19,8 @@ Your menu reflects reality. Change a price, add an item, mark something sold out
 > **Visual:** Split screen showing owner editing price on dashboard → customer seeing updated price on phone
 
 ### 2. Helps Customers Decide Faster
-Most Popular, Quick Picks, Best Value — your menu quietly highlights what works, so customers spend less time deciding and more time enjoying.
-> **Visual:** Phone screen showing "Most Popular" section with 3 highlighted items
+Featured choice, Quick choice, Value choice — your menu quietly highlights what works, so customers spend less time deciding and more time enjoying.
+> **Visual:** Phone screen showing the Featured section with 3 highlighted items
 
 ### 3. Works on Any Phone
 No app to download. Customers scan a QR code and see your menu instantly — on any phone, any browser, any language.

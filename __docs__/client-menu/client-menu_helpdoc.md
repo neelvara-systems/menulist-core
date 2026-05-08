@@ -139,7 +139,7 @@ Your digital menu is what customers see when they scan your QR code. It shows yo
 ## Related Features
 
 - **[Multi-Outlet Consistency]** — Running multiple locations? Each outlet's customer menu shows the master menu with local overrides (prices, availability). See [Multi-Outlet help](../multi-outlet-consistency/multi-outlet-consistency_helpdoc.md).
-- **[Decision Blocks]** — Automatic "Most Popular" and "Quick Picks" sections on your menu
+- **[Featured section]** — Automatic Featured choice, Quick choice, and Value choice on your menu
 - **[Multi-Language]** — Let customers view your menu in their preferred language
 - **[Digital Screens]** — Show your menu on a TV or tablet in your restaurant
 - **[Analytics]** — See how customers interact with your menu (views, clicks, popular items)

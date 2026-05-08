@@ -120,7 +120,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | ---------------------------- | ----------------------------------------- |
 | **🟢 Live Indicator**        | "Updated just now" — customers trust it   |
 | **⚡ Instant Availability**  | Sold out? Fades instantly, no page reload |
-| **🎯 Smart Recommendations** | "People often choose..." appears first    |
+| **🎯 Featured section** | Featured choice, Quick choice, and Value choice appear first |
 | **⏰ Time-Based Menu**       | Breakfast → Lunch → Dinner automatically  |
 | **🌐 Multi-Language**        | Customer picks their language             |
 
@@ -171,7 +171,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | Staff time saved | —            | 2 hrs/week  |
 | **Annual cost**  | **₹34,000**  | **₹11,988** |
 
-**Message:** Save ₹22,000/year AND get smart recommendations, analytics, and zero effort.
+**Message:** Save ₹22,000/year and get Featured choices, analytics, and zero effort.
 
 ---
 

@@ -1,4 +1,4 @@
-import { getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
+import { getEnabledBlocks } from '@config/decisionBlocks';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { Alert, Button, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
@@ -17,6 +17,22 @@ import {
 } from './decisionBlocks.shared';
 
 const { Text, Title } = Typography;
+type BlockType = 'popular' | 'quickPick' | 'bestValue';
+
+const FEATURED_BLOCK_LABELS: Record<BlockType, { title: string; subtitle: string }> = {
+    popular: {
+        title: 'Featured choice',
+        subtitle: 'Shown first in the Featured section.',
+    },
+    quickPick: {
+        title: 'Quick choice',
+        subtitle: 'Shown as the quick option.',
+    },
+    bestValue: {
+        title: 'Value choice',
+        subtitle: 'Shown as the value option.',
+    },
+};
 
 interface DecisionBlocksSettingsModalProps {
     open: boolean;
@@ -60,11 +76,6 @@ const DecisionBlocksSettingsModal = ({
     // Get enabled blocks for this business type
     const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType), [businessType]);
 
-    // Get labels for each block
-    const popularLabels = useMemo(() => getBlockLabels('popular', businessType), [businessType]);
-    const quickPickLabels = useMemo(() => getBlockLabels('quickPick', businessType), [businessType]);
-    const bestValueLabels = useMemo(() => getBlockLabels('bestValue', businessType), [businessType]);
-
     // Reset to initial state when modal opens
     const handleOpen = () => {
         const settings = getDecisionBlockSettings(projectData);
@@ -103,7 +114,7 @@ const DecisionBlocksSettingsModal = ({
     };
 
     // Filter options for select (remove already pinned items from other blocks)
-    const getFilteredOptions = (currentBlock: 'popular' | 'quickPick' | 'bestValue') => {
+    const getFilteredOptions = (currentBlock: BlockType) => {
         const pinnedIds = getFilteredDecisionBlockOptionIds(currentBlock, {
             enablePopular,
             enableQuickPick,
@@ -129,9 +140,8 @@ const DecisionBlocksSettingsModal = ({
     };
 
     const renderBlockConfig = (
-        blockType: 'popular' | 'quickPick' | 'bestValue',
+        blockType: BlockType,
         icon: React.ReactNode,
-        labels: { title: string; subtitle: string } | null,
         enabled: boolean,
         setEnabled: (v: boolean) => void,
         pinnedId: string | undefined,
@@ -142,8 +152,10 @@ const DecisionBlocksSettingsModal = ({
         // Check if pinned item is unavailable
         const pinnedStatus = isPinnedItemUnavailable(projectData.files || [], pinnedId);
 
-        // Don't render if block type is not enabled or labels are null
-        if (!isBlockTypeEnabled || !labels) return null;
+        // Don't render if block type is not enabled for this business type.
+        if (!isBlockTypeEnabled) return null;
+
+        const blockLabels = FEATURED_BLOCK_LABELS[blockType];
 
         return (
             <Flex
@@ -170,8 +182,8 @@ const DecisionBlocksSettingsModal = ({
                             {icon}
                         </div>
                         <Flex vertical gap={0}>
-                            <Text strong>{labels.title}</Text>
-                            <Text type="secondary" style={{ fontSize: 12 }}>{labels.subtitle}</Text>
+                            <Text strong>{blockLabels.title}</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>{blockLabels.subtitle}</Text>
                         </Flex>
                     </Flex>
                     <Switch
@@ -182,20 +194,20 @@ const DecisionBlocksSettingsModal = ({
                     />
                 </Flex>
 
-                {/* Pin Item Selector */}
+                {/* Chosen item selector */}
                 {enabled && (
                     <Flex vertical gap={4}>
                         <Flex gap={4} align="center">
                             <LuPin size={12} style={{ color: token.colorTextSecondary }} />
-                            <Text type="secondary" style={{ fontSize: 12 }}>Pin specific item (optional)</Text>
-                            <Tooltip title="Pin an item to always show it in this block, overriding the automatic selection">
+                            <Text type="secondary" style={{ fontSize: 12 }}>Item shown here</Text>
+                            <Tooltip title="Choose an item for this choice. Leave it empty and MenuList chooses automatically.">
                                 <LuHelpCircle size={12} style={{ color: token.colorTextSecondary, cursor: 'help' }} />
                             </Tooltip>
                         </Flex>
                         <Select
                             allowClear
                             showSearch
-                            placeholder="Auto-select based on data"
+                            placeholder="MenuList chooses automatically"
                             value={pinnedId}
                             onChange={(val) => setPinnedId(val || undefined)}
                             options={getFilteredOptions(blockType)}
@@ -211,7 +223,7 @@ const DecisionBlocksSettingsModal = ({
                             <Alert
                                 type="warning"
                                 showIcon
-                                message="Pinned item is currently unavailable"
+                                message="Chosen item is currently unavailable"
                                 description={`"${pinnedStatus.itemName}" is ${pinnedStatus.reason}. The next best available item will be shown to customers instead.`}
                                 style={{ borderRadius: 8, marginTop: 8 }}
                             />
@@ -226,9 +238,9 @@ const DecisionBlocksSettingsModal = ({
         <Modal
             title={
                 <Flex vertical gap={4}>
-                    <Title level={5} style={{ margin: 0 }}>Smart Recommendations</Title>
+                    <Title level={5} style={{ margin: 0 }}>Featured section</Title>
                     <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal' }}>
-                        Configure which {labels.itemsPlural} appear in Decision Blocks on your {labels.offeringLower}
+                        Choose which {labels.itemsPlural} appear as Featured choice, Quick choice, and Value choice on your public menu.
                     </Text>
                 </Flex>
             }
@@ -250,8 +262,8 @@ const DecisionBlocksSettingsModal = ({
                 <Alert
                     type="info"
                     showIcon
-                    message="These blocks help customers decide faster"
-                    description="Items are automatically selected based on popularity, prep time, and value. You can override by pinning specific items."
+                    message="Featured choices are shown on the menu"
+                    description="MenuList can choose automatically, or you can choose an item for each choice."
                     style={{ borderRadius: 8 }}
                 />
 
@@ -259,7 +271,6 @@ const DecisionBlocksSettingsModal = ({
                 {renderBlockConfig(
                     'popular',
                     <LuStar size={18} style={{ color: token.colorWarning }} />,
-                    popularLabels,
                     enablePopular,
                     setEnablePopular,
                     pinnedPopular,
@@ -269,7 +280,6 @@ const DecisionBlocksSettingsModal = ({
                 {renderBlockConfig(
                     'quickPick',
                     <LuZap size={18} style={{ color: token.colorSuccess }} />,
-                    quickPickLabels,
                     enableQuickPick,
                     setEnableQuickPick,
                     pinnedQuickPick,
@@ -279,7 +289,6 @@ const DecisionBlocksSettingsModal = ({
                 {renderBlockConfig(
                     'bestValue',
                     <LuTrendingUp size={18} style={{ color: token.colorPrimary }} />,
-                    bestValueLabels,
                     enableBestValue,
                     setEnableBestValue,
                     pinnedBestValue,
@@ -290,8 +299,8 @@ const DecisionBlocksSettingsModal = ({
                 {enabledBlockTypes.length === 0 && (
                     <Alert
                         type="warning"
-                        message="No Decision Blocks available"
-                        description="Decision Blocks are not available for this business type."
+                        message="Featured section is not available"
+                        description="Featured choices are not available for this business type."
                     />
                 )}
             </Flex>
